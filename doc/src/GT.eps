@@ -1,0 +1,94 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 0 0 504 288
+%%Creator: Gisselquist Technology LLC
+%%Title: Gisselquist Technology Logo
+%%CreationDate: 11 Mar 2014
+%%EndComments
+%%BeginProlog
+/black { 0 setgray } def
+/white { 1 setgray } def
+/height { 288 } def
+/lw { height 8 div } def
+%%EndProlog
+% %%Page: 1
+
+false { % A bounding box
+	0 setlinewidth
+	newpath
+	0 0 moveto
+	0 height lineto
+	1.625 height mul lw add 0 rlineto
+	0 height neg rlineto
+	closepath stroke
+} if
+
+true { % The "G"
+	newpath
+		height 2 div 1.25 mul height moveto
+		height 2 div height 4 div sub height lineto
+		0 height 3 4 div mul lineto
+		0 height 4 div lineto
+		height 4 div 0 lineto
+		height 3 4 div mul 0 lineto
+		height height 4 div lineto
+		height height 2 div lineto
+		%
+		height lw sub height 2 div lineto
+		height lw sub height 4 div lw 2 div add lineto
+		height 3 4 div mul lw 2 div sub lw lineto
+		height 4 div lw 2 div add lw lineto
+		lw height 4 div lw 2 div add lineto
+		lw height 3 4 div mul lw 2 div sub lineto
+		height 4 div lw 2 div add height lw sub lineto
+		height 2 div 1.25 mul height lw sub lineto
+			closepath fill
+	newpath
+		height 2 div height 2 div moveto
+		height 2 div 0 rlineto
+		0 height 2 div neg rlineto
+		lw neg 0 rlineto
+		0 height 2 div lw sub rlineto
+		height 2 div height 2 div lw sub lineto
+	closepath fill
+} if
+
+height 2 div 1.25 mul lw add 0 translate
+false {
+	newpath
+		0 height moveto
+		height 0 rlineto
+		0 lw neg rlineto
+		height lw sub 2 div neg 0 rlineto
+		0 height lw sub neg rlineto
+		lw neg 0 rlineto
+		0 height lw sub rlineto
+		height lw sub 2 div neg 0 rlineto
+		0 lw rlineto
+	closepath fill
+} if
+
+true { % The "T" of "GT".
+	newpath
+		0 height moveto
+		height lw add 2 div 0 rlineto
+		0 height neg rlineto
+		lw neg 0 rlineto
+		0 height lw sub rlineto
+		height lw sub 2 div neg 0 rlineto
+	closepath  fill
+
+	% The right half of the top of the "T"
+	newpath
+		% (height + lw)/2 + lw
+		height lw add 2 div lw add height moveto
+		% height - (above) = height - height/2 - 3/2 lw = height/2-3/2lw
+		height 3 lw mul sub 2 div 0 rlineto
+		0 lw neg rlineto
+		height 3 lw mul sub 2 div neg 0 rlineto
+		closepath fill
+} if
+
+
+grestore
+showpage
+%%EOF

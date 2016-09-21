@@ -1,0 +1,153 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// Filename:	icontrol.v
+//
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+//
+// Purpose:	An interrupt controller, for managing many interrupt sources.
+//
+//	This interrupt controller started from the question of how best to
+//	design a simple interrupt controller.  As such, it has a few nice
+//	qualities to it:
+//		1. This is wishbone compliant
+//		2. It sits on a 32-bit wishbone data bus
+//		3. It only consumes one address on that wishbone bus.
+//		4. There is no extra delays associated with reading this
+//			device.
+//		5. Common operations can all be done in one clock.
+//
+//	So, how shall this be used?  First, the 32-bit word is broken down as
+//	follows:
+//
+//	Bit 31	- This is the global interrupt enable bit.  If set, interrupts
+//		will be generated and passed on as they come in.
+//	Bits 16-30	- These are specific interrupt enable lines.  If set,
+//		interrupts from source (bit#-16) will be enabled.
+//		To set this line and enable interrupts from this source, write
+//		to the register with this bit set and the global enable set.
+//		To disable this line, write to this register with global enable
+//		bit not set, but this bit set.  (Writing a zero to any of these
+//		bits has no effect, either setting or unsetting them.)
+//	Bit 15 - This is the any interrupt pin.  If any interrupt is pending,
+//		this bit will be set.
+//	Bits 0-14	- These are interrupt bits.  When set, an interrupt is
+//		pending from the corresponding source--regardless of whether
+//		it was enabled.  (If not enabled, it won't generate an
+//		interrupt, but it will still register here.)  To clear any
+//		of these bits, write a '1' to the corresponding bit.  Writing
+//		a zero to any of these bits has no effect.
+//
+//	The peripheral also sports a parameter, IUSED, which can be set
+//	to any value between 1 and (buswidth/2-1, or) 15 inclusive.  This will
+//	be the number of interrupts handled by this routine.  (Without the
+//	parameter, Vivado was complaining about unused bits.  With it, we can
+//	keep the complaints down and still use the routine).
+//
+//	To get access to more than 15 interrupts, chain these together, so
+//	that one interrupt controller device feeds another.
+//
+//
+// Creator:	Dan Gisselquist, Ph.D.
+//		Gisselquist Technology, LLC
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+// Copyright (C) 2015, Gisselquist Technology, LLC
+//
+// This program is free software (firmware): you can redistribute it and/or
+// modify it under the terms of  the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or (at
+// your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// License:	GPL, v3, as defined and found on www.gnu.org,
+//		http://www.gnu.org/licenses/gpl.html
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+module	icontrol(i_clk, i_reset, i_wr, i_proc_bus, o_proc_bus,
+		i_brd_ints, o_interrupt);
+	parameter	IUSED = 15;
+	input			i_clk, i_reset;
+	input			i_wr;
+	input		[31:0]	i_proc_bus;
+	output	wire	[31:0]	o_proc_bus;
+	input		[(IUSED-1):0]	i_brd_ints;
+	output	wire		o_interrupt;
+
+	reg	[(IUSED-1):0]	r_int_state;
+	reg	[(IUSED-1):0]	r_int_enable;
+	wire	[(IUSED-1):0]	nxt_int_state;
+	reg		r_any, r_interrupt, r_gie;
+
+	assign	nxt_int_state = (r_int_state|i_brd_ints);
+	initial	r_int_state = 0;
+	always @(posedge i_clk)
+		if (i_reset)
+			r_int_state  <= 0;
+		else if (i_wr)
+			r_int_state <= nxt_int_state & (~i_proc_bus[(IUSED-1):0]);
+		else
+			r_int_state <= nxt_int_state;
+	initial	r_int_enable = 0;
+	always @(posedge i_clk)
+		if (i_reset)
+			r_int_enable <= 0;
+		else if ((i_wr)&&(i_proc_bus[31]))
+			r_int_enable <= r_int_enable | i_proc_bus[(16+IUSED-1):16];
+		else if ((i_wr)&&(~i_proc_bus[31]))
+			r_int_enable <= r_int_enable & (~ i_proc_bus[(16+IUSED-1):16]);
+
+	initial	r_gie = 1'b0;
+	always @(posedge i_clk)
+		if (i_reset)
+			r_gie <= 1'b0;
+		else if (i_wr)
+			r_gie <= i_proc_bus[31];
+
+	initial	r_any = 1'b0;
+	always @(posedge i_clk)
+		r_any <= ((r_int_state & r_int_enable) != 0);
+	initial	r_interrupt = 1'b0;
+	always @(posedge i_clk)
+		r_interrupt <= r_gie & r_any;
+
+	generate
+	if (IUSED < 15)
+	begin
+		assign o_proc_bus = {
+				r_gie, { {(15-IUSED){1'b0}}, r_int_enable }, 
+				r_any, { {(15-IUSED){1'b0}}, r_int_state  } };
+	end else begin
+		assign o_proc_bus = { r_gie, r_int_enable, r_any, r_int_state };
+	end endgenerate
+
+	/*
+	reg	int_condition;
+	initial	int_condition      = 1'b0;
+	initial	o_interrupt_strobe = 1'b0;
+	always @(posedge i_clk)
+		if (i_reset)
+		begin
+			int_condition <= 1'b0;
+			o_interrupt_strobe <= 1'b0;
+		end else if (~r_interrupt) // This might end up generating
+		begin // many, many, (wild many) interrupts
+			int_condition <= 1'b0;
+			o_interrupt_strobe <= 1'b0;
+		end else if ((~int_condition)&&(r_interrupt))
+		begin
+			int_condition <= 1'b1;
+			o_interrupt_strobe <= 1'b1;
+		end else
+			o_interrupt_strobe <= 1'b0;
+	*/
+
+	assign	o_interrupt = r_interrupt;
+
+endmodule

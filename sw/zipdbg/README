@@ -1,0 +1,25 @@
+#Zip Debugger
+
+This directory contains the Zip System Debugger.  If you wish to use it,
+you'll need to define something that implements the DEVBUS interface,
+as found in devbus.h.  Basically, the debugger expects to interact with the
+Zip System across a 32-bit bus.  Since this interaction is hardware system
+specific, the implementation for your system isn't provided here.
+
+If you are wondering what the Zip System Debugger looks like, you'll find
+that it works in a fashion very similar to the bench test program zippy_tb
+found in the bench/cpp directory.  The big difference is and will be that
+zippy_tb allows clock for clock testing, whereas the debugger allows
+instruction to instruction testing.  There isn't  supposed to be any difference
+between the two, but there may be.  This is why I run the zippy_tb program:
+to find errors in the CPU, whereas a normal debugger is supposed to find
+errors in the user program.
+  
+Now that I have break point functionality in the CPU, I hope to add
+breakpoints to the debugger.
+
+Contact me if you need help building such a capability for your system.
+My current implementation transforms a UART signal into 32-bit wishbone
+bus interactions which then support this CPU.
+
+
