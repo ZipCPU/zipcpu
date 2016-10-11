@@ -67,8 +67,9 @@ sw:
 
 .PHONY: bench
 bench:	rtl sw
-	@echo "Building bench/cpp"; cd bench/cpp; $(MAKE) --no-print-directory
-	@echo "Building bench/asm"; cd bench/asm; $(MAKE) --no-print-directory
+	@echo "Building in bench/rtl"; cd bench/rtl; $(MAKE) --no-print-directory
+	@echo "Building in bench/cpp"; cd bench/cpp; $(MAKE) --no-print-directory
+	@echo "Building in bench/asm"; cd bench/asm; $(MAKE) --no-print-directory
 
 .PHONY: test
 test: sw rtl
