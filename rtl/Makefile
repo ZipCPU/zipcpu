@@ -32,7 +32,7 @@
 ################################################################################
 #
 .PHONY: all
-all: zipsystem zipbones cpudefs.h div
+all: zipsystem zipbones cpudefs.h div zipmmu
 
 CORED:= core
 PRPHD:= peripherals
@@ -40,7 +40,7 @@ AUXD := aux
 VSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
-		$(PRPHD)/ziptimer.v $(PRPHD)/ziptrap.v		\
+		$(PRPHD)/ziptimer.v				\ # ! ziptrap.c
 	$(CORED)/zipcpu.v $(CORED)/cpuops.v $(CORED)/idecode.v	\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
@@ -69,8 +69,12 @@ $(VOBJ)/Vzipbones.cpp: $(VZIP)
 $(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
 
 $(VOBJ)/Vdiv.cpp: $(CORED)/div.v
-	verilator -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) $(CORED)/div.v
+	verilator -cc -y $(CORED) $(CORED)/div.v
 $(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
+
+$(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
+	verilator -cc  -y $(PRPHD) $(PRPHD)/zipmmu.v
+$(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
 
 $(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
 	cd $(VOBJ); make --no-print-directory -f Vzipsystem.mk
@@ -80,6 +84,9 @@ $(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
 
 $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
 	cd $(VOBJ); make --no-print-directory -f Vdiv.mk
+
+$(VOBJ)/Vzipmmu__ALL.a: $(VOBJ)/Vzipmmu.cpp $(VOBJ)/Vzipmmu.h
+	cd $(VOBJ); make --no-print-directory -f Vzipmmu.mk
 
 cpudefs.h: cpudefs.v
 	@echo "Building cpudefs.h"
@@ -97,6 +104,9 @@ zipbones: $(VOBJ)/Vzipbones__ALL.a
 
 .PHONY: div
 div: $(VOBJ)/Vdiv__ALL.a
+
+.PHONY: zipmmu
+zipmmu: $(VOBJ)/Vzipmmu__ALL.a
 
 .PHONY: clean
 clean:
