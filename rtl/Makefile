@@ -40,7 +40,7 @@ AUXD := aux
 VSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
-		$(PRPHD)/ziptimer.v				\ # ! ziptrap.c
+		$(PRPHD)/ziptimer.v				\
 	$(CORED)/zipcpu.v $(CORED)/cpuops.v $(CORED)/idecode.v	\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
