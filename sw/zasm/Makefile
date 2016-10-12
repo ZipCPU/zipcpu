@@ -71,8 +71,10 @@ $(OBJDIR)/zpp.o: $(OBJDIR)/zpp.cpp
 zpp: $(OBJDIR)/zpp.o
 	$(CXX) -o $@ $(CCFLAGS) $^
 
-$(OBJDIR)/zasm.tab.h: zasm.y asmdata.h zparser.h
+$(OBJDIR)/zasm.tab.h: $(OBJDIR)/ zasm.y asmdata.h zparser.h
 	$(YACC) -b $(OBJDIR)/zasm -d zasm.y
+$(OBJDIR)/zasm.tab.c: $(OBJDIR)/zasm.tab.h
+$(OBJDIR)/zasm.tab.c: ;
 zasm.output: zasm.y asmdata.h
 	$(YACC) -v -b $(OBJDIR)/zasm -d zasm.y
 $(OBJDIR)/zasm.lex.cpp: zasm.l $(OBJDIR)/zasm.tab.h
@@ -122,7 +124,7 @@ tags: $(SOURCES) $(HEADERS)
 depends: tags
 	$(build-depends)
 
-$(OBJDIR)/depends.txt: $(SOURCES) $(HEADERS)
+$(OBJDIR)/depends.txt: $(OBJDIR)/ $(SOURCES) $(HEADERS)
 	$(build-depends)
 
 .PHONY: clean

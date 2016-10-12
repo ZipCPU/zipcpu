@@ -122,7 +122,7 @@ gcc-pdf-install: gcc-pdf
 #
 #
 zasm:
-	$(MAKE) --no-print-directory --directory=$(ZASMD)
+	$(MAKE) --no-print-directory --directory=$(ZASMD) all
 
 zasm-install: zasm
 	$(MAKE) --no-print-directory --directory=$(ZASMD) install
