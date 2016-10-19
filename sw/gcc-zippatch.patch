@@ -138,7 +138,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/common/config/zip/zip-common
 +
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h gcc-5.3.0-zip/gcc/config/aarch64/aarch64-linux.h
---- gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h	2016-10-19 11:02:11.471843057 -0400
 +++ gcc-5.3.0-zip/gcc/config/aarch64/aarch64-linux.h	2015-07-24 12:00:26.000000000 -0400
 @@ -21,7 +21,7 @@
  #ifndef GCC_AARCH64_LINUX_H
@@ -150,7 +150,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux
  #undef  ASAN_CC1_SPEC
  #define ASAN_CC1_SPEC "%{%:sanitize(address):-funwind-tables}"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/alpha/linux-elf.h gcc-5.3.0-zip/gcc/config/alpha/linux-elf.h
---- gcc-5.3.0-original/gcc/config/alpha/linux-elf.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/alpha/linux-elf.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/alpha/linux-elf.h	2015-01-05 07:33:28.000000000 -0500
 @@ -23,8 +23,8 @@
  #define EXTRA_SPECS \
@@ -164,7 +164,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/alpha/linux-elf.h gcc
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-eabi.h gcc-5.3.0-zip/gcc/config/arm/linux-eabi.h
---- gcc-5.3.0-original/gcc/config/arm/linux-eabi.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/arm/linux-eabi.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/arm/linux-eabi.h	2015-01-05 07:33:28.000000000 -0500
 @@ -68,8 +68,8 @@
     GLIBC_DYNAMIC_LINKER_DEFAULT and TARGET_DEFAULT_FLOAT_ABI.  */
@@ -178,7 +178,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-eabi.h gcc-
  
  #define GLIBC_DYNAMIC_LINKER \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-elf.h gcc-5.3.0-zip/gcc/config/arm/linux-elf.h
---- gcc-5.3.0-original/gcc/config/arm/linux-elf.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/arm/linux-elf.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/arm/linux-elf.h	2015-06-23 05:26:54.000000000 -0400
 @@ -62,7 +62,7 @@
  
@@ -190,7 +190,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-elf.h gcc-5
  #define LINUX_TARGET_LINK_SPEC  "%{h*} \
     %{static:-Bstatic} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/bfin/linux.h gcc-5.3.0-zip/gcc/config/bfin/linux.h
---- gcc-5.3.0-original/gcc/config/bfin/linux.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/bfin/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/bfin/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -45,7 +45,7 @@
    %{shared:-G -Bdynamic} \
@@ -202,7 +202,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/bfin/linux.h gcc-5.3.
  
  #undef TARGET_SUPPORTS_SYNC_CALLS
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/cris/linux.h gcc-5.3.0-zip/gcc/config/cris/linux.h
---- gcc-5.3.0-original/gcc/config/cris/linux.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/cris/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/cris/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -102,7 +102,7 @@
  #undef CRIS_DEFAULT_CPU_VERSION
@@ -214,7 +214,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/cris/linux.h gcc-5.3.
  #undef CRIS_LINK_SUBTARGET_SPEC
  #define CRIS_LINK_SUBTARGET_SPEC \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/freebsd-spec.h gcc-5.3.0-zip/gcc/config/freebsd-spec.h
---- gcc-5.3.0-original/gcc/config/freebsd-spec.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/freebsd-spec.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/freebsd-spec.h	2015-06-25 13:53:14.000000000 -0400
 @@ -129,9 +129,9 @@
  #endif
@@ -229,7 +229,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/freebsd-spec.h gcc-5.
  
  /* NOTE: The freebsd-spec.h header is included also for various
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/frv/linux.h gcc-5.3.0-zip/gcc/config/frv/linux.h
---- gcc-5.3.0-original/gcc/config/frv/linux.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/frv/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/frv/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -34,7 +34,7 @@
  #define ENDFILE_SPEC \
@@ -241,7 +241,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/frv/linux.h gcc-5.3.0
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/gnu.h gcc-5.3.0-zip/gcc/config/i386/gnu.h
---- gcc-5.3.0-original/gcc/config/i386/gnu.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/i386/gnu.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/i386/gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,7 +22,7 @@
  #define GNU_USER_LINK_EMULATION "elf_i386"
@@ -253,7 +253,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/gnu.h gcc-5.3.0-
  #undef	STARTFILE_SPEC
  #if defined HAVE_LD_PIE
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu64.h
---- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,6 +22,6 @@
  #define GNU_USER_LINK_EMULATION64 "elf_x86_64_fbsd"
@@ -266,7 +266,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h
 +#define GLIBC_DYNAMIC_LINKER64 "/lib/ld-kfreebsd-x86-64.so.1"
 +#define GLIBC_DYNAMIC_LINKERX32 "/lib/ld-kfreebsd-x32.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu.h
---- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h	2016-09-13 10:23:45.886099269 -0400
+--- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -19,4 +19,4 @@
  <http://www.gnu.org/licenses/>.  */
@@ -275,7 +275,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h g
 -#define GLIBC_DYNAMIC_LINKER "/tools/lib/ld.so.1"
 +#define GLIBC_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux64.h gcc-5.3.0-zip/gcc/config/i386/linux64.h
---- gcc-5.3.0-original/gcc/config/i386/linux64.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/i386/linux64.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/i386/linux64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -27,6 +27,6 @@
  #define GNU_USER_LINK_EMULATION64 "elf_x86_64"
@@ -288,7 +288,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux64.h gcc-5.
 +#define GLIBC_DYNAMIC_LINKER64 "/lib64/ld-linux-x86-64.so.2"
 +#define GLIBC_DYNAMIC_LINKERX32 "/libx32/ld-linux-x32.so.2"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux.h gcc-5.3.0-zip/gcc/config/i386/linux.h
---- gcc-5.3.0-original/gcc/config/i386/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/i386/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/i386/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -20,4 +20,4 @@
  <http://www.gnu.org/licenses/>.  */
@@ -297,7 +297,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux.h gcc-5.3.
 -#define GLIBC_DYNAMIC_LINKER "/tools/lib/ld-linux.so.2"
 +#define GLIBC_DYNAMIC_LINKER "/lib/ld-linux.so.2"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/ia64/linux.h gcc-5.3.0-zip/gcc/config/ia64/linux.h
---- gcc-5.3.0-original/gcc/config/ia64/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/ia64/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/ia64/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -55,7 +55,7 @@
  /* Define this for shared library support because it isn't in the main
@@ -309,7 +309,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/ia64/linux.h gcc-5.3.
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/knetbsd-gnu.h gcc-5.3.0-zip/gcc/config/knetbsd-gnu.h
---- gcc-5.3.0-original/gcc/config/knetbsd-gnu.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/knetbsd-gnu.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/knetbsd-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -32,4 +32,4 @@
  
@@ -318,7 +318,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/knetbsd-gnu.h gcc-5.3
 -#define GNU_USER_DYNAMIC_LINKER "/tools/lib/ld.so.1"
 +#define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h gcc-5.3.0-zip/gcc/config/kopensolaris-gnu.h
---- gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/kopensolaris-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -31,5 +31,4 @@
    while (0)
@@ -328,7 +328,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h gc
 -
 +#define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/linux.h gcc-5.3.0-zip/gcc/config/linux.h
---- gcc-5.3.0-original/gcc/config/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/linux.h	2016-10-19 11:02:11.783840959 -0400
 +++ gcc-5.3.0-zip/gcc/config/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -73,10 +73,10 @@
     GLIBC_DYNAMIC_LINKER must be defined for each target using them, or
@@ -346,7 +346,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/linux.h gcc-5.3.0-zip
  #define BIONIC_DYNAMIC_LINKER32 "/system/bin/linker"
  #define BIONIC_DYNAMIC_LINKER64 "/system/bin/linker64"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h gcc-5.3.0-zip/gcc/config/lm32/uclinux-elf.h
---- gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/lm32/uclinux-elf.h	2015-01-05 07:33:28.000000000 -0500
 @@ -67,7 +67,7 @@
     %{shared:-shared} \
@@ -358,7 +358,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h gc
  #define TARGET_OS_CPP_BUILTINS() GNU_USER_TARGET_OS_CPP_BUILTINS()
  
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/m68k/linux.h gcc-5.3.0-zip/gcc/config/m68k/linux.h
---- gcc-5.3.0-original/gcc/config/m68k/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/m68k/linux.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/m68k/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -71,7 +71,7 @@
     When the -shared link option is used a final link is not being
@@ -370,7 +370,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/m68k/linux.h gcc-5.3.
  #undef LINK_SPEC
  #define LINK_SPEC "-m m68kelf %{shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/microblaze/linux.h gcc-5.3.0-zip/gcc/config/microblaze/linux.h
---- gcc-5.3.0-original/gcc/config/microblaze/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/microblaze/linux.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/microblaze/linux.h	2015-05-28 10:08:19.000000000 -0400
 @@ -28,7 +28,7 @@
  #undef TLS_NEEDS_GOT
@@ -382,7 +382,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/microblaze/linux.h gc
  #define SUBTARGET_EXTRA_SPECS \
    { "dynamic_linker", DYNAMIC_LINKER }
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mips/linux.h gcc-5.3.0-zip/gcc/config/mips/linux.h
---- gcc-5.3.0-original/gcc/config/mips/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/mips/linux.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/mips/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,20 +22,20 @@
  #define GNU_USER_LINK_EMULATIONN32 "elf32%{EB:b}%{EL:l}tsmipn32"
@@ -412,7 +412,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mips/linux.h gcc-5.3.
  #define BIONIC_DYNAMIC_LINKERN32 "/system/bin/linker32"
  #define GNU_USER_DYNAMIC_LINKERN32 \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mn10300/linux.h gcc-5.3.0-zip/gcc/config/mn10300/linux.h
---- gcc-5.3.0-original/gcc/config/mn10300/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/mn10300/linux.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/mn10300/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -32,7 +32,7 @@
  #undef  ASM_SPEC
@@ -424,7 +424,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mn10300/linux.h gcc-5
  #undef  LINK_SPEC
  #define LINK_SPEC "%{mrelax:--relax} %{shared:-shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/pa/pa-linux.h gcc-5.3.0-zip/gcc/config/pa/pa-linux.h
---- gcc-5.3.0-original/gcc/config/pa/pa-linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/pa/pa-linux.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/pa/pa-linux.h	2015-09-24 20:04:26.000000000 -0400
 @@ -37,7 +37,7 @@
  /* Define this for shared library support because it isn't in the main
@@ -436,7 +436,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/pa/pa-linux.h gcc-5.3
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/linux64.h gcc-5.3.0-zip/gcc/config/rs6000/linux64.h
---- gcc-5.3.0-original/gcc/config/rs6000/linux64.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/rs6000/linux64.h	2016-10-19 11:02:11.787840932 -0400
 +++ gcc-5.3.0-zip/gcc/config/rs6000/linux64.h	2015-03-09 19:18:57.000000000 -0400
 @@ -357,14 +357,14 @@
  #undef	LINK_OS_DEFAULT_SPEC
@@ -459,7 +459,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/linux64.h gcc-
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/sysv4.h gcc-5.3.0-zip/gcc/config/rs6000/sysv4.h
---- gcc-5.3.0-original/gcc/config/rs6000/sysv4.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/rs6000/sysv4.h	2016-10-19 11:02:11.891840233 -0400
 +++ gcc-5.3.0-zip/gcc/config/rs6000/sysv4.h	2015-09-24 09:46:45.000000000 -0400
 @@ -757,8 +757,8 @@
  
@@ -473,7 +473,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/sysv4.h gcc-5.
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif !defined (DEFAULT_LIBC) || DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/s390/linux.h gcc-5.3.0-zip/gcc/config/s390/linux.h
---- gcc-5.3.0-original/gcc/config/s390/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/s390/linux.h	2016-10-19 11:02:11.891840233 -0400
 +++ gcc-5.3.0-zip/gcc/config/s390/linux.h	2015-05-11 03:14:10.000000000 -0400
 @@ -60,8 +60,8 @@
  #define MULTILIB_DEFAULTS { "m31" }
@@ -487,7 +487,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/s390/linux.h gcc-5.3.
  #undef  LINK_SPEC
  #define LINK_SPEC \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sh/linux.h gcc-5.3.0-zip/gcc/config/sh/linux.h
---- gcc-5.3.0-original/gcc/config/sh/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/sh/linux.h	2016-10-19 11:02:11.891840233 -0400
 +++ gcc-5.3.0-zip/gcc/config/sh/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -43,7 +43,7 @@
  
@@ -499,7 +499,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sh/linux.h gcc-5.3.0-
  #undef SUBTARGET_LINK_EMUL_SUFFIX
  #define SUBTARGET_LINK_EMUL_SUFFIX "_linux"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux64.h gcc-5.3.0-zip/gcc/config/sparc/linux64.h
---- gcc-5.3.0-original/gcc/config/sparc/linux64.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/sparc/linux64.h	2016-10-19 11:02:12.023839345 -0400
 +++ gcc-5.3.0-zip/gcc/config/sparc/linux64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -84,8 +84,8 @@
     When the -shared link option is used a final link is not being
@@ -522,7 +522,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux64.h gcc-5
      %{!static: \
        %{rdynamic:-export-dynamic} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux.h gcc-5.3.0-zip/gcc/config/sparc/linux.h
---- gcc-5.3.0-original/gcc/config/sparc/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/sparc/linux.h	2016-10-19 11:02:12.023839345 -0400
 +++ gcc-5.3.0-zip/gcc/config/sparc/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -83,7 +83,7 @@
     When the -shared link option is used a final link is not being
@@ -534,7 +534,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux.h gcc-5.3
  #undef  LINK_SPEC
  #define LINK_SPEC "-m elf32_sparc %{shared:-shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/vax/linux.h gcc-5.3.0-zip/gcc/config/vax/linux.h
---- gcc-5.3.0-original/gcc/config/vax/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/vax/linux.h	2016-10-19 11:02:12.023839345 -0400
 +++ gcc-5.3.0-zip/gcc/config/vax/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -41,7 +41,7 @@
    %{!shared: \
@@ -546,7 +546,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/vax/linux.h gcc-5.3.0
  
  #undef  WCHAR_TYPE
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/xtensa/linux.h gcc-5.3.0-zip/gcc/config/xtensa/linux.h
---- gcc-5.3.0-original/gcc/config/xtensa/linux.h	2016-09-13 10:23:45.890099248 -0400
+--- gcc-5.3.0-original/gcc/config/xtensa/linux.h	2016-10-19 11:02:12.023839345 -0400
 +++ gcc-5.3.0-zip/gcc/config/xtensa/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -44,7 +44,7 @@
    %{mlongcalls:--longcalls} \
@@ -706,8 +706,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/t-zip gcc-5.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-zip/gcc/config/zip/zip.c
 --- gcc-5.3.0-original/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.c	2016-09-13 10:06:40.979536485 -0400
-@@ -0,0 +1,2151 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.c	2016-09-13 15:36:22.342322803 -0400
+@@ -0,0 +1,2291 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -1380,6 +1380,67 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +	// RTX_FRAME_RELATED_P(insn) = 1;
 +}
 +
++void
++zip_sibcall_epilogue(void) {
++	int	regno, offset;
++	const bool	dbg = ((ALL_DEBUG_ON)||(false))&&(!ALL_DEBUG_OFF);
++	rtx	insn;
++
++	zip_compute_frame();
++
++	if (dbg) fprintf(stderr, "EPILOG::\n");
++	if (cfun->machine->fp_needed) {
++		// This is done special--if you can't trust the stack pointer
++		// enough so that you must have a frame pointer, then you can't
++		// trust its offset enough to restore from it.  Hence, we start
++		// by moving the frame pointer to the stack pointer to recover
++		// the stack pointer back to a usable value.
++		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::Moving frame pointer to stack register\n");
++		insn = emit_insn(gen_movsi_reg(stack_pointer_rtx, frame_pointer_rtx));
++		RTX_FRAME_RELATED_P(insn) = 1;
++	}
++
++	if (cfun->machine->saved_reg_size != 0) {
++		if (cfun->machine->fp_needed)
++			offset = 0;
++		else
++			offset = cfun->machine->sp_fp_offset;
++		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
++		for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
++			if (zip_save_reg(regno)) {
++				if (dbg) fprintf(stderr, "SIBCALL-EPILOG::RESTORING R%d\n", regno);
++				rtx reg = gen_rtx_REG(SImode, regno);
++				insn = emit_insn(gen_movsi_lod_off(
++						reg,
++						stack_pointer_rtx,
++						GEN_INT(offset++)));
++				add_reg_note(insn, REG_CFA_RESTORE, reg);
++				RTX_FRAME_RELATED_P(insn) = 1;
++			}
++		}
++	}
++
++	if (cfun->machine->fp_needed) {
++		// Restore the stack pointer back to the original, the
++		// difference being the difference from the frame pointer
++		// to the original stack
++		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
++			stack_pointer_rtx,
++			GEN_INT(cfun->machine->size_for_adjusting_sp
++				-cfun->machine->sp_fp_offset)));
++		RTX_FRAME_RELATED_P(insn) = 1;
++	} else {
++		// else now the difference is between the stack pointer and
++		// the original stack pointer.
++		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::ADDSI3(StackPtr, %d)\n",
++				cfun->machine->size_for_adjusting_sp);
++		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
++			stack_pointer_rtx,
++			GEN_INT(cfun->machine->size_for_adjusting_sp)));
++		RTX_FRAME_RELATED_P(insn) = 1;
++	}
++}
++
 +/* Implement RETURN_ADDR_RTX(COUNT, FRAMEADDR).
 + *
 + * We currently only support calculating the return address for the current
@@ -1534,6 +1595,85 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +		return NULL_RTX;
 +	return
 +		gen_rtx_REG(mode, (*cum)+1);
++}
++
++/* DECL is the declaration of the function being targeted by the call, and EXP
++ * is the CALL_EXPR representing the call.
++ */
++bool	zip_function_ok_for_sibcall(ATTRIBUTE_UNUSED tree decl, tree exp) {
++	// calls.c already checks whether or not the parameter stack space
++	// is identical, so ... let's hope this all works and find out.
++
++	//
++	// Actually, this will fail:  If the sibling uses R5 to pass registers
++	// in and we don't, then there will be no way to restore R5.  This is
++	// true for the current configuration.  It will be true for future
++	// configurations if the sibling ever uses a register that must be
++	// saved as a parameter register.
++	//
++	// We can check this ... if we can count how many registers the
++	// sibling call will use.
++	//
++	CUMULATIVE_ARGS	cum_v;
++	cumulative_args_t	cum;
++	tree		parameter;
++	machine_mode	mode;
++	tree		ttype;
++	rtx		parm_rtx;
++	int		i;
++	static const char zip_call_used_register[] = CALL_USED_REGISTERS;
++
++	INIT_CUMULATIVE_ARGS(cum_v, NULL, NULL, 0,0);
++	cum = pack_cumulative_args(&cum_v);
++	for (i=0; i<call_expr_nargs(exp); i++) {
++
++		parameter = CALL_EXPR_ARG(exp, i);
++
++		if ((!parameter) || (TREE_CODE(parameter)==ERROR_MARK))
++			return true;
++		ttype = TREE_TYPE(parameter);
++		gcc_assert(ttype);
++		mode = ttype->type_common.mode;
++
++		if (pass_by_reference(&cum_v, mode, ttype, true)) {
++			mode = Pmode;
++			ttype = build_pointer_type(ttype);
++		}
++
++		parm_rtx = zip_function_arg(cum, mode, ttype, 0);
++		zip_function_arg_advance(cum, mode, ttype, 0);
++		if (!parm_rtx)
++			continue;
++
++		// If it is a register
++		//	and it is *NOT* a CALL_USED_REGISTER
++		//	then we can't do this.
++		//
++		// Example: func(R1,..R4,R5)
++		//	can be followed by func2(R1,.., up to R5)
++		//	(not supported, though... just to simplify our test
++		//	below)
++		// Example: func(R1,..R4)
++		//	cannot be followed by func2(R1,..,R5)
++		//	We would blow R5 away by our prologue, even if it was
++		//	properly set.
++		// Example: func(R1,..R5)
++		//	can be followed by func2(R1,.., up to R4)
++		//	func2 may save R5 (which doesn't need saving) but that's
++		//		irrelevant
++		// Example: func(R1,..up to R4)
++		//	can be followed by func2(R1,.., up to R4)
++		//	
++		if (REG_P(parm_rtx)&&(REGNO(parm_rtx))
++				&&(REGNO(parm_rtx)<sizeof(zip_call_used_register))
++				&&(!zip_call_used_register[REGNO(parm_rtx)]))
++			return false;
++	}
++
++	return true;
++
++	// We also need to check if the return types are the same ... or
++	// will GCC handle that for us?
 +}
 +
 +void	zip_canonicalize_comparison(int *code, rtx *op0, rtx *op1,
@@ -2861,8 +3001,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +}
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-zip/gcc/config/zip/zip.h
 --- gcc-5.3.0-original/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.h	2016-09-13 10:05:21.871953479 -0400
-@@ -0,0 +1,4058 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.h	2016-09-13 13:46:17.890711238 -0400
+@@ -0,0 +1,4095 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -4753,7 +4893,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 +#define	ACCUMULATE_OUTGOING_ARGS	1
 +
 +
-+/* REG_PARM_STACK_SPACCE(FN) ... Define this macro if functions should assume
++/* REG_PARM_STACK_SPACE(FN) ... Define this macro if functions should assume
 + * that stack space has been allocated for arguments even when their values
 + * are passed in registers.  The value of this macro is the size, in bytes, of
 + * the area reserved for arguments passed in registers for the function
@@ -5123,12 +5263,44 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 + * successful sibling call optimization may vary greatly between different
 + * architectures.
 + *
-+ * ?? What's a sibling call?
++ * What's a sibling call?  "Sibling calls or tail calls terminate the function
++ * in a nonn-standard way and thus an edge to the exit must be present.  
++ * EDGE_SIBCALL and EDGE_ABNORMAL are set in such case(s).  These edges only
++ * exist in the RTL representation.
++ *
++ * So, basically, a sibling call is a function call at the end of one function.
++ * Rather than setting up a new stack frame, return address, etc, it is 
++ * possible to just jump to this new function, leaving the return address for
++ * the prior function as the (now) return address for this one.
++ *
++ * ZipCPU --- These are good things.  We wish to support them.  We will require,
++ * though, that the sibling require no more stack space than the original.
++ * We might go even stricter, requiring that the sibling require no stack space
++ * at all--and only register variables.
++ */
++#define	TARGET_FUNCTION_OK_FOR_SIBCALL	zip_function_ok_for_sibcall
++
++/* TARGET_EXTRA_LIVE_ON_ENTRY(REGS) ... Add any hard registers to regs that are
++ * live on entry to the function.  This hook only needs to be defined to provide
++ * registers that cannot be found by examination of FUNTION_ARG_REGNO_P, the
++ * ... and the ...
++ *
++ * ZipCPU -- the default should be good enough for us.
++ */
++/* TARGET_SET_UP_BY_PROLOGUE(CONTAINER) ... This hook should add additional
++ * registers that are computed by the prologue to the hard register set for
++ * shrink-wrapping optimization purposes.
++ *
++ * ??
 + */
 +
-+// TARGET_EXTRA_LIVE_ON_ENTRY
-+// TARGET_SET_UP_BY_PROLOGUE
-+// TARGET_WARN_FUNC_RETURN
++/* TARGET_WARN_FUNC_RETURN(TREE) ... True if a function's return statements
++ * should be checked for matching the function's return type.  This includes
++ * checking for falling off the end of a non-void function.  Return false if
++ * no such check should be made.
++ *
++ * ZipCPU--the default should be good enough for us.
++ */
 +
 +/* 17.09.14 Stack smashing protection */
 +// TARGET_STACK_PROTECT_GUARD
@@ -5552,9 +5724,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 + *
 + * ZipCPU --- We need this, as not all expressions set (cc0).
 + *
++ * In hind sight, this is the *old* and unsupported way of doing business within
++ * GCC.  To switch to the new way, all instruction definitions within our .md
++ * file have been adjusted to either change or clobber the CC register.
++ *
 + */
 +#ifdef	HAVE_cc0
-+#define	NOTICE_UPDATE_CC(EXP, INSN)	zip_update_cc_notice(EXP, INSN)
++// #define	NOTICE_UPDATE_CC(EXP, INSN)	zip_update_cc_notice(EXP, INSN)
++#error "ZipCPU no longer has CC0"
 +#endif
 +
 +
@@ -6923,8 +7100,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-zip/gcc/config/zip/zip.md
 --- gcc-5.3.0-original/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.md	2016-08-08 07:07:39.251163261 -0400
-@@ -0,0 +1,3254 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.md	2016-09-15 11:37:25.730251033 -0400
+@@ -0,0 +1,3463 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -8677,7 +8854,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	})
 +(define_insn_and_split "movsicc_bare"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(if_then_else (match_operator 1 "ordered_comparison_operator"
++		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
 +				[(reg:CC CC_REG) (const_int 0)])
 +			(match_operand:SI 2 "general_operand" "rio")
 +			(match_operand:SI 3 "register_operand" "0")))]
@@ -9076,6 +9253,55 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
++;; Looping constructs
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++; 
++(define_insn "decrement_and_branch_until_zero"
++	[(set (pc)
++		(if_then_else
++			(ge (plus:SI (match_operand:SI 0 "register_operand" "+r")
++				(const_int -1)) (const_int 0))
++			(label_ref (match_operand 1 "" ""))
++			(pc)))
++	(set (match_dup 0) (plus:SI (match_dup 0) (const_int -1)))
++	;(set (reg:CC CC_REG)
++		;(compare:CC (minus:SI (match_dup 0) (const_int 1))
++ 			;(const_int 0)))
++	(clobber (reg:CC CC_REG))]
++	""
++	"ADD\t-1,%0\n\tBLT\t.Ldec%=\n\tBRA\t%1\n.Ldec%=:"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++(define_insn "doloop_end"
++	[(set (pc)
++		(if_then_else
++			(ne (plus:SI (match_operand:SI 0 "register_operand" "+r")
++				(const_int -1)) (const_int 0))
++			(label_ref (match_operand 1 "" ""))
++			(pc)))
++	(set (match_dup 0) (plus:SI (match_dup 0) (const_int -1)))
++	; (set (reg:CC CC_REG)
++		; (compare:CC (minus:SI (match_dup 0) (const_int 1))
++ 			; (const_int 0)))
++	(clobber (reg:CC CC_REG))]
++	"(reload_completed)"
++	"ADD\t-1,%0\n\tBZ\t.Lloop%=\n\tBRA\t%1\n.Lloop%=:"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++; Since we have a doloop_end, we must also have a doloop_begin.  Since the 
++; ZipCPU has no special begin looping instruction, we'll simply define this
++; as a null instruction.
++(define_expand "doloop_begin" [(const_int 0)] "(0)")
++;
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
 +;; Subroutine call
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -9125,6 +9351,89 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		}
 +	})
 +;
++(define_expand "sibcall"
++	[(call (mem:SI (match_operand 0 "zip_const_address_operand_p" ""))
++		(match_operand 1 "" ""))
++	(use (match_operand 2 "" ""))
++	(use (reg:SI RTN_REG))
++	(simple_return)]
++	""
++	{
++		if (MEM_P(operands[0])) {
++			// This should always be the case
++			rtx addr = XEXP(operands[0],0);
++			if (zip_const_address_operand_p(addr, SImode)) {
++				//; fprintf(stderr, "Generating gen_void_call_const()\n");
++				emit_call_insn(gen_void_sibcall_const(addr,
++						operands[1]));
++			} else if ((MEM_P(addr))&&(zip_address_operand(
++							XEXP(addr,0)))) {
++				emit_call_insn(gen_void_sibcall_mem(XEXP(addr,0),
++								 operands[1]));
++			} else {
++				emit_call_insn(gen_void_sibcall_var(addr,
++								 operands[1]));
++			}
++			DONE;
++		}
++	}) ; "BAR\t%0\n"
++;
++(define_insn "void_sibcall_const"
++	[(call (mem:SI (match_operand:SI 0 "zip_const_address_operand_p" ""))
++			(match_operand 1 "const_int_operand" "n"))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"BRA\t%0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++(define_insn "void_sibcall_mem"
++	[(call (mem:SI (match_operand:SI 0 "zip_memory_operand_p" "Q"))
++			(match_operand 1 "const_int_operand" "n"))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"LOD\t%0,PC"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++; #warning "This predicate is appropriate for non-moves, but not for JMPs"
++(define_insn "void_sibcall_var"
++	[(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++			(match_operand 1 "const_int_operand" "n"))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"JMP\t%0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++(define_expand "sibcall_value"
++	[(set (match_operand 0 "register_operand" "")
++		(call (mem:SI
++			(match_operand 1 "zip_const_address_operand_p" ""))
++		(match_operand 2 "" "")))
++	(use (match_operand 3 "" ""))
++	(use (reg:SI RTN_REG))
++	(clobber (reg:CC CC_REG))
++	(simple_return)]
++	""
++	{
++		if (MEM_P(operands[1])) {
++			rtx addr = XEXP(operands[1],0);
++			if (zip_const_address_operand_p(addr, SImode)) {
++				emit_call_insn(gen_reg_sibcall_const(addr, operands[2]));
++			} else if ((MEM_P(addr))&&(zip_address_operand(XEXP(addr,0)))) {
++				emit_call_insn(gen_reg_sibcall_mem(XEXP(addr,0), operands[2]));
++			} else {
++				//; fprintf(stderr, "ZIP.MD::CALL-VALUE() INDIRECT\n");
++				emit_call_insn(gen_reg_sibcall_var(addr, operands[2]));
++			}
++			DONE;
++		}
++	})
++;
++;
 +;
 +;
 +; How do we want to do this better?
@@ -9168,6 +9477,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	""
 +	"MOV	.Lcall%=(PC),R0\;JMP\t%0\n.Lcall%=:"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
 +(define_expand "call_value"
 +	[(parallel [(set (reg:SI RTNV_REG)
 +		(call (match_operand:SI 1 "" "")
@@ -9229,6 +9540,41 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +;
++(define_insn "reg_sibcall_const"
++	[(set (reg:SI RTNV_REG)
++		(call (mem:SI (match_operand:SI 0 "zip_const_address_operand_p" ""))
++			(match_operand 1 "const_int_operand" "n")))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"BRA\t%0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++(define_insn "reg_sibcall_mem"
++	[(set (reg:SI RTNV_REG)
++		(call (mem:SI (match_operand:SI 0 "zip_memory_operand_p" "Q"))
++			(match_operand 1 "const_int_operand" "n")))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"LOD\t%0,PC"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++; #warning "This predicate is appropriate for non-moves, but not for JMPs"
++(define_insn "reg_sibcall_var"
++	[(set (reg:SI RTNV_REG)
++		(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++			(match_operand 1 "const_int_operand" "n")))
++		(use (reg:SI RTN_REG))
++		(clobber (reg:CC CC_REG))
++		(simple_return)]
++	""
++	"JMP\t%0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Frame manipulation RTX
@@ -9241,6 +9587,10 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(const_int 0)]
 +	""
 +	"{ zip_expand_prologue(); DONE; }")
++(define_expand "sibcall_epilogue"
++	[(return)]
++	""
++	"{ zip_sibcall_epilogue(); DONE; }")
 +(define_expand "epilogue"
 +	[(return)]
 +	""
@@ -9260,6 +9610,42 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	""
 +	"JMP	R0"
 +	[(set_attr "ccresult" "unchanged")])
++(define_insn "return_if_eq"
++	[(set (pc) (if_then_else (eq (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.Z	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_ne"
++	[(set (pc) (if_then_else (ne (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.NZ	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_lt"
++	[(set (pc) (if_then_else (lt (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.LT	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_gt"
++	[(set (pc) (if_then_else (gt (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.GT	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_gte"
++	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.GTE	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_ltu"
++	[(set (pc) (if_then_else (ltu (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"zip_use_return_insn()"
++	"JMP.C	R0"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +;
 +;
 +;
@@ -10208,8 +10594,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-modes.def gcc
 +// config directory.
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-5.3.0-zip/gcc/config/zip/zip-protos.h
 --- gcc-5.3.0-original/gcc/config/zip/zip-protos.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip-protos.h	2016-05-09 11:16:54.734258166 -0400
-@@ -0,0 +1,83 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip-protos.h	2016-09-13 15:32:55.403521585 -0400
+@@ -0,0 +1,81 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-protos.h
@@ -10251,6 +10637,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-
 +extern	bool	zip_supported_condition(int c);
 +extern	void	zip_expand_prologue(void);
 +extern	void	zip_expand_epilogue(void);
++extern	void	zip_sibcall_epilogue(void);
 +extern	bool	zip_expand_movsicc(rtx,rtx,rtx,rtx);
 +extern	int	zip_initial_elimination_offset(int, int);
 +extern	void	zip_print_operand(FILE *, rtx, int);
@@ -10261,11 +10648,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-
 +
 +extern	void	zip_asm_output_def(FILE *s, const char *n, const char *v);
 +
-+#ifdef	HAVE_cc0
-+extern	void	zip_update_cc_notice(rtx exp, rtx_insn *insn);
-+#else
 +extern	void	zip_canonicalize_comparison(int *, rtx *, rtx *, bool);
-+#endif
++extern	bool	zip_function_ok_for_sibcall(tree, tree);
 +extern	int	zip_address_operand(rtx op);
 +extern	int	zip_const_address_operand(rtx op);
 +extern	bool	zip_gen_move_rtl(rtx, rtx);
@@ -10911,6 +11295,79 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/jump.c gcc-5.3.0-zip/gcc/jum
    fmt = GET_RTX_FORMAT (code);
  
    /* The primary target of a tablejump is the label of the ADDR_VEC,
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/loop-doloop.c gcc-5.3.0-zip/gcc/loop-doloop.c
+--- gcc-5.3.0-original/gcc/loop-doloop.c	2015-01-15 08:28:42.000000000 -0500
++++ gcc-5.3.0-zip/gcc/loop-doloop.c	2016-09-13 12:12:36.248901944 -0400
+@@ -62,6 +62,13 @@
+ #include "dumpfile.h"
+ #include "loop-unroll.h"
+ 
++// #define	DO_ZIP_DEBUGS
++#ifdef	DO_ZIP_DEBUGS
++extern	void	zip_debug_rtx(const_rtx);
++#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr, "%s:%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX); }while(0)
++#else
++#define	ZIP_DEBUG_LINE(STR,RTX)
++#endif
+ /* This module is used to modify loops with a determinable number of
+    iterations to use special low-overhead looping instructions.
+ 
+@@ -138,7 +145,7 @@
+ 
+   pattern = PATTERN (doloop_pat);
+ 
+-  if (GET_CODE (pattern) != PARALLEL)
++  if (GET_CODE (doloop_pat) != PARALLEL)
+     {
+       rtx cond;
+       rtx prev_insn = prev_nondebug_insn (doloop_pat);
+@@ -186,10 +193,11 @@
+     }
+   else
+     {
+-      cmp = XVECEXP (pattern, 0, 0);
+-      inc = XVECEXP (pattern, 0, 1);
++      cmp = XVECEXP (doloop_pat, 0, 0);
++      inc = XVECEXP (doloop_pat, 0, 1);
+     }
+ 
++
+   /* Check for (set (reg) (something)).  */
+   if (GET_CODE (inc) != SET)
+     return 0;
+@@ -227,6 +235,7 @@
+           && XEXP (condition, 1) != const1_rtx))
+     return 0;
+ 
++
+   if ((XEXP (condition, 0) == reg)
+       /* For the third case:  */  
+       || ((cc_reg != NULL_RTX)
+@@ -235,7 +244,7 @@
+       || (GET_CODE (XEXP (condition, 0)) == PLUS
+ 	  && XEXP (XEXP (condition, 0), 0) == reg))
+    {
+-     if (GET_CODE (pattern) != PARALLEL)
++     if (GET_CODE (doloop_pat) != PARALLEL)
+      /*  For the second form we expect:
+ 
+          (set (reg) (plus (reg) (const_int -1))
+@@ -275,6 +284,7 @@
+     return condition;
+    }
+ 
++
+   /* ??? If a machine uses a funny comparison, we could return a
+      canonicalized form here.  */
+ 
+@@ -500,7 +510,6 @@
+     default:
+       gcc_unreachable ();
+     }
+-
+   if (increment_count)
+     count = simplify_gen_binary (PLUS, mode, count, const1_rtx);
+ 
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/machmode.def gcc-5.3.0-zip/gcc/machmode.def
 --- gcc-5.3.0-original/gcc/machmode.def	2015-01-05 07:33:28.000000000 -0500
 +++ gcc-5.3.0-zip/gcc/machmode.def	2016-03-08 11:56:45.375491523 -0500
