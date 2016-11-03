@@ -2598,8 +2598,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/app.c binutils-2.25/gas/
  	     optimize the copying in the simple case without using the
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils-2.25/gas/config/tc-zip.c
 --- binutils-2.25-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.c	2016-11-02 12:28:24.310194462 -0400
-@@ -0,0 +1,2748 @@
++++ binutils-2.25/gas/config/tc-zip.c	2016-11-03 13:48:17.213367383 -0400
+@@ -0,0 +1,2756 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2710,9 +2710,17 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	// bytes, which are (must be) octets.  Therefore, we align any
 +	// data structure to every four octets.
 +	//
++	// Actually, we can't do this.  This will often be called after a
++	// symbol value is set, but of which symbol value must be aligned.
++	// This function pushes the alignment to the next possible valid
++	// alignment.  However, if we already have a valid alignment, this
++	// doesn't work.
++	//
++/*
 +	frag_align(2, // Desired alignment is 2^this number
 +		0, // Fill character
 +		3); // Maximum number of characters to emit to get alignment
++*/
 +}
 +
 +const	pseudo_typeS	md_pseudo_table[] = 
@@ -3229,7 +3237,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		fprintf(stderr, "+ R%d", insn->i_breg);
 +	fprintf(stderr, "\n");
 +	if (insn->i_rp)
-+		fprintf(stderr, "\t@%ld\n", insn->i_rp->r_fr_offset);
++		fprintf(stderr, "\t@%ld (offset w/in instruction frag)\n", insn->i_rp->r_fr_offset);
 +	fprintf(stderr, "\tINSN:CODE %08x", insn->i_code);
 +	{
 +		int	i;
@@ -5350,8 +5358,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +}
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils-2.25/gas/config/tc-zip.h
 --- binutils-2.25-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.h	2016-10-31 16:21:30.738323774 -0400
-@@ -0,0 +1,213 @@
++++ binutils-2.25/gas/config/tc-zip.h	2016-11-03 13:50:09.140655412 -0400
+@@ -0,0 +1,218 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.h
@@ -5458,10 +5466,15 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +
 +/* Accept numbers with a suffix, e.g. 0ffffh, 1010b. --- from TI-c4x code */
 +// #define	NUMBERS_WITH_SUFFIX 1
++
++
 +/* md_cons_align ... You may define this macro to do any special alignment
 + * before a data allocation pseudo-op.
++ *
++ * However ... for the ZipCPU forcing alignment (which has already been forced)
++ * breaks things.
 + */
-+#define	md_cons_align(N)	zip_cons_align(N)
++// #define	md_cons_align(N)	zip_cons_align(N)
 +
 +/* TI implements the tic4x_do_align --- do we need it? */
 +
@@ -5587,7 +5600,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/configure.tgt binutils-2
    *-*-freebsd* | *-*-kfreebsd*-gnu)	fmt=elf em=freebsd ;;
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/frags.c binutils-2.25/gas/frags.c
 --- binutils-2.25-original/gas/frags.c	2014-10-14 03:32:03.000000000 -0400
-+++ binutils-2.25/gas/frags.c	2016-02-20 18:52:07.305435296 -0500
++++ binutils-2.25/gas/frags.c	2016-11-03 13:36:59.201628196 -0400
 @@ -125,6 +125,7 @@
            /* Not enough room in this frag.  Close it and start a new one.
               This must be done in a loop because the created frag may not
@@ -5695,7 +5708,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/Makefile.in binutils-2.2
  @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/xtensa-relax.Tpo $(DEPDIR)/xtensa-relax.Po
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/read.c binutils-2.25/gas/read.c
 --- binutils-2.25-original/gas/read.c	2014-10-14 03:32:03.000000000 -0400
-+++ binutils-2.25/gas/read.c	2016-05-06 10:32:11.758653388 -0400
++++ binutils-2.25/gas/read.c	2016-11-03 13:36:47.725698610 -0400
 @@ -684,7 +684,8 @@
    /* We do this every time rather than just in s_bundle_align_mode
       so that we catch any affected section without needing hooks all
@@ -6324,7 +6337,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/testsuite/gas/macros/var
 +0+05[ 	]+[a-zA-Z0-9_]+[ 	]+foo6
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/write.c binutils-2.25/gas/write.c
 --- binutils-2.25-original/gas/write.c	2014-11-04 04:54:41.000000000 -0500
-+++ binutils-2.25/gas/write.c	2016-05-12 15:52:51.386003347 -0400
++++ binutils-2.25/gas/write.c	2016-11-03 13:37:48.881323382 -0400
 @@ -2638,7 +2638,7 @@
  
  	      case rs_org:
