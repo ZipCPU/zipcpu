@@ -58,6 +58,11 @@
 #		debugging output) if successful.  To actually run this test,
 #		you'll need to run ./div_tb (no arguments necessary).
 #
+#	mpy_tb
+#		A raw test bench to test the multiply instructions within the
+#		cpuops (ALU) unit separate from the rest of the CPU.  For more
+#		details, look at the usage statement wtihin mpy_tb.
+#
 #	zipmmu_tb
 #		Like div_tb, this is another raw component test bench.  In this
 #		case, zipmmu_tb tests whether or not the MMU works when
@@ -102,15 +107,17 @@
 #
 ################################################################################
 #
-all: zippy_tb pdump div_tb
+all: zippy_tb pdump div_tb mpy_tb
 
 CXX	:= g++
 FLAGS	:= -Wall -Og -g
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
-INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I/usr/share/verilator/include -I$(ZASM)
+VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
+VROOT   := $(VERILATOR_ROOT)
+INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I$(VROOT)/include -I$(ZASM)
 SOURCES := zippy_tb.cpp memsim.cpp twoc.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp
-VLIB	:= /usr/share/verilator/include/verilated.cpp
+VLIB	:= $(VROOT)/include/verilated.cpp
 RAWLIB	:= $(VLIB) $(RTLD)/obj_dir/Vzipsystem__ALL.a
 LIBS	:= $(RAWLIB) -lncurses -lelf
 TESTF	:= $(ZASM)/z.out
@@ -122,6 +129,9 @@ zippy_tb: $(RTLD)/cpudefs.h
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a testb.h
 	$(CXX) $(FLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a -o $@
+
+mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a testb.h
+	$(CXX) $(FLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a -o $@
 
 zipmmu_tb: zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a
 	$(CXX) $(FLAGS) $(INCS) -I ../rtl/obj_dir zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a -o $@
@@ -148,4 +158,4 @@ dhrystone: zippy_tb
 
 .PHONY: clean
 clean:
-	rm ./zippy_tb pdump div_tb
+	rm ./zippy_tb pdump div_tb mpy_tb

@@ -76,8 +76,14 @@
 // OPT_ILLEGAL_INSTRUCTION is set, then the multiply will create an illegal
 // instruction that will then trip the illegal instruction trap.
 //
+// Either not defining this value, or defining it to zero will disable the
+// hardware multiply.  A value of '1' will cause the multiply to occurr in one
+// clock cycle only--often at the expense of the rest of the CPUs speed.
+// A value of 2 will cause the multiply to have a single delay cycle, 3 will
+// have two delay cycles, and 4 (or more) will have 3 delay cycles.
 //
-`define	OPT_MULTIPLY	1
+//
+`define	OPT_MULTIPLY	3
 //
 //
 //

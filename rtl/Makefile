@@ -32,7 +32,7 @@
 ################################################################################
 #
 .PHONY: all
-all: zipsystem zipbones cpudefs.h div zipmmu
+all: zipsystem zipbones cpudefs.h div zipmmu cpuops
 
 CORED:= core
 PRPHD:= peripherals
@@ -72,6 +72,10 @@ $(VOBJ)/Vdiv.cpp: $(CORED)/div.v
 	verilator -cc -y $(CORED) $(CORED)/div.v
 $(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
 
+$(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
+	verilator -cc -y $(CORED) $(CORED)/cpuops.v
+$(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
+
 $(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
 	verilator -cc  -y $(PRPHD) $(PRPHD)/zipmmu.v
 $(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
@@ -85,8 +89,14 @@ $(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
 $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
 	cd $(VOBJ); make --no-print-directory -f Vdiv.mk
 
+$(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
+	cd $(VOBJ); make --no-print-directory -f Vcpuops.mk
+
 $(VOBJ)/Vzipmmu__ALL.a: $(VOBJ)/Vzipmmu.cpp $(VOBJ)/Vzipmmu.h
 	cd $(VOBJ); make --no-print-directory -f Vzipmmu.mk
+
+# $(VOBJ)/V%__ALL.a: $(VOBJ)/V%.cpp $(VOBJ)/V%.h
+#	cd $(VOBJ); make --no-print-directory -f V%.mk
 
 cpudefs.h: cpudefs.v
 	@echo "Building cpudefs.h"
@@ -97,13 +107,16 @@ cpudefs.h: cpudefs.v
 	@grep "^\`" $^ | sed -e '{ s/^`/#/ }' >> $@
 
 .PHONY: zipsystem
-zipsystem: $(VOBJ)/Vzipsystem__ALL.a
+zipsystem: $(VOBJ)/Vzipsystem__ALL.a cpudefs.h
 
 .PHONY: zipbones
-zipbones: $(VOBJ)/Vzipbones__ALL.a
+zipbones: $(VOBJ)/Vzipbones__ALL.a cpudefs.h
 
 .PHONY: div
 div: $(VOBJ)/Vdiv__ALL.a
+
+.PHONY: cpuops
+cpuops: $(VOBJ)/Vcpuops__ALL.a cpudefs.h
 
 .PHONY: zipmmu
 zipmmu: $(VOBJ)/Vzipmmu__ALL.a

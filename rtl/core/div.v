@@ -34,8 +34,8 @@
 //
 module	div(i_clk, i_rst, i_wr, i_signed, i_numerator, i_denominator,
 		o_busy, o_valid, o_err, o_quotient, o_flags);
-	parameter	BW=32, LGBW = 5;
-	input		i_clk, i_rst;
+	parameter		BW=32, LGBW = 5;
+	input			i_clk, i_rst;
 	// Input parameters
 	input			i_wr, i_signed;
 	input	[(BW-1):0]	i_numerator, i_denominator;

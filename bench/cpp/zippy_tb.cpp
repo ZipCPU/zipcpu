@@ -792,7 +792,7 @@ public:
 			printw("%8s","");
 		mvprintw(ln-1, 48, "%s%s%s ",
 			(m_core->v__DOT__thecpu__DOT__alu_valid)?"A"
-			  :((m_core->v__DOT__thecpu__DOT__doalu__DOT__genblk2__DOT__r_busy)?"a":" "),
+			  :((m_core->v__DOT__thecpu__DOT__doalu__DOT__r_busy)?"a":" "),
 			(m_core->v__DOT__thecpu__DOT__div_valid)?"D"
 			  :((m_core->v__DOT__thecpu__DOT__div_busy)?"d":" "),
 			(m_core->v__DOT__thecpu__DOT__div_valid)?"F"
