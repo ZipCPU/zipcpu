@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, Gisselquist Technology, LLC
+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -38,8 +38,12 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
 			o_illegal);
 	parameter	LGCACHELEN = 8, ADDRESS_WIDTH=24,
-			CACHELEN=(1<<LGCACHELEN), BUSW=32, AW=ADDRESS_WIDTH,
-			CW=LGCACHELEN, PW=LGCACHELEN-5;
+			LGLINES=5; // Log of the number of separate cache lines
+	localparam	CACHELEN=(1<<LGCACHELEN); // Size of our cache memory
+	localparam	CW=LGCACHELEN;	// Short hand for LGCACHELEN
+	localparam	PW=LGCACHELEN-LGLINES; // Size of a cache line
+	localparam	BUSW = 32;	// Number of data lines on the bus
+	localparam	AW=ADDRESS_WIDTH; // Shorthand for ADDRESS_WIDTH
 	input				i_clk, i_rst, i_new_pc;
 	input				i_clear_cache;
 	input				i_stall_n;
@@ -66,8 +70,8 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	wire			r_v;
 	reg	[(BUSW-1):0]	cache	[0:((1<<CW)-1)];
-	reg	[(AW-CW-1):0]	tags	[0:((1<<(CW-PW))-1)];
-	reg	[((1<<(CW-PW))-1):0]	vmask;
+	reg	[(AW-CW-1):0]	tags	[0:((1<<(LGLINES))-1)];
+	reg	[((1<<(LGLINES))-1):0]	vmask;
 
 	reg	[(AW-1):0]	lastpc;
 	reg	[(CW-1):0]	rdaddr;
@@ -255,7 +259,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	reg	svmask;
 	initial	vmask = 0;
 	initial	svmask = 1'b0;
-	reg	[(CW-PW-1):0]	saddr;
+	reg	[(LGLINES-1):0]	saddr;
 	always @(posedge i_clk)
 		if ((i_rst)||(i_clear_cache))
 		begin

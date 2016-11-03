@@ -170,7 +170,7 @@ module	zipsystem(i_clk, i_rst,
 		, o_cpu_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=24'h0100000, ADDRESS_WIDTH=24,
+	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=32,
 			LGICACHE=10, START_HALTED=1, EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
 			IMPLEMENT_MPY = `OPT_MULTIPLY,
@@ -523,6 +523,9 @@ module	zipsystem(i_clk, i_rst,
 	wire	[31:0]	dc_data;
 	wire	[(AW-1):0]	dc_addr;
 	wire		cpu_gbl_cyc;
+	wire	[31:0]	dmac_int_vec;
+	assign	dmac_int_vec = { 1'b0, alt_int_vector, 1'b0,
+					main_int_vector[14:1], 1'b0 };
 	assign	dmac_stb = (sys_stb)&&(sys_addr[4]);
 `ifdef	INCLUDE_DMA_CONTROLLER
 	wbdmac	#(AW) dma_controller(i_clk, cpu_reset,
@@ -533,8 +536,7 @@ module	zipsystem(i_clk, i_rst,
 				dc_cyc, dc_stb, dc_we, dc_addr, dc_data,
 					dc_ack, dc_stall, ext_idata, dc_err,
 				// External device interrupts
-				{ 1'b0, alt_int_vector, 1'b0,
-					main_int_vector[14:1], 1'b0 },
+				dmac_int_vec,
 				// DMAC interrupt, for upon completion
 				dmac_int);
 `else
@@ -782,7 +784,7 @@ module	zipsystem(i_clk, i_rst,
 
 	assign	sys_stall = (tma_stall | tmb_stall | tmc_stall | jif_stall
 				| wdt_stall | ctri_stall | actr_stall 
-				| pic_stall | dmac_stall);
+				| pic_stall | dmac_stall); // Always 1'b0!
 	assign	cpu_stall = (sys_stall)|(cpu_ext_stall);
 	assign	sys_ack = (tmr_ack|wdt_ack|ctri_ack|actr_ack|pic_ack|dmac_ack|wdbus_ack);
 	assign	cpu_ack = (sys_ack)||(cpu_ext_ack);

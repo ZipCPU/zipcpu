@@ -89,7 +89,7 @@ module	busdelay(i_clk,
 		reg	[(AW-1):0]	r_addr;
 
 		initial	o_dly_cyc  = 1'b0;
-		initial	o_wb_stall = 1'b0;
+		initial	r_rtn_stall= 1'b0;
 		initial	r_stb      = 1'b0;
 		always @(posedge i_clk)
 		begin

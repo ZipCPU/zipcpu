@@ -42,7 +42,7 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=24, IMPLEMENT_LOCK=0, AW=ADDRESS_WIDTH;
+	parameter	ADDRESS_WIDTH=32, IMPLEMENT_LOCK=0, AW=ADDRESS_WIDTH;
 	input			i_clk, i_rst;
 	input			i_pipe_stb, i_lock;
 	// CPU interface
