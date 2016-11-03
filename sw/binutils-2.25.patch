@@ -2598,8 +2598,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/app.c binutils-2.25/gas/
  	     optimize the copying in the simple case without using the
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils-2.25/gas/config/tc-zip.c
 --- binutils-2.25-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.c	2016-09-15 09:31:15.907749200 -0400
-@@ -0,0 +1,2610 @@
++++ binutils-2.25/gas/config/tc-zip.c	2016-11-02 12:28:24.310194462 -0400
+@@ -0,0 +1,2748 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2656,7 +2656,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +#include "elf/zip.h"
 +
 +// #define	ZIP_DEBUG
-+#define	LONG_MPY
 +
 +const	char	comment_chars[] = ";#";
 +const	char	line_comment_chars[] = ";#";
@@ -2749,6 +2748,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +
 +#define	ZIP_CC_SLEEP	0x010
 +#define	ZIP_CC_GIE	0x020
++#define	ZIP_CC_STEP	0x040
 +
 +#define	NOOP_OPCODE	0x76000000
 +
@@ -2794,121 +2794,246 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	return r;
 +}
 +
++const	int MACH_VUNKNOWN = 0, MACH_VKNOWN = 1, MACH_VUPPERKNOWN = 2;
++const	int	use_machine = 1;
++
 +static void
 +zip_clear_machine(MACHINEREGS *pzipm) {
 +	int	i;
 +
++#ifdef	ZIP_DEBUG
++	fprintf(stderr, "MACHINE, CLEAR\n");
++#endif
 +	for(i=0; i<ZIP_USER_REGS; i++)
-+		pzipm->r[i].m_known = 0;
++		pzipm->r[i].m_known = MACH_VUNKNOWN;
 +	for(i=0; i<ZIP_USER_REGS; i++)
-+		pzipm->r[i].m_addsy = 0;
++		pzipm->r[i].m_addsy = NULL;
 +	for(i=0; i<ZIP_USER_REGS; i++)
-+		pzipm->r[i].m_subsy = 0;
++		pzipm->r[i].m_subsy = NULL;
 +}
 +
 +static void
 +zip_advance_machine(MACHINEREGS *pzipm, ZIPIS *insn) {
-+	int	bval = insn->i_imm;
-+	int	bknown;
++	int		bval = insn->i_imm;
++	int		bknown;
++	MACHINEVALUE	*av;
 +
-+	if (ZIP_RNONE == insn->i_breg)
-+		bknown = 1;
-+	else if (insn->i_breg >= ZIP_USER_REGS)
-+		bknown = 0;
-+	else
++	if (!use_machine) {
++		zip_clear_machine(pzipm);
++		return;
++	}
++
++	//
++	// What remains to be done is to include symbols into the machine
++	// state.  For now, we state that anything with a symbol becomes
++	// unknown.
++	//
++	if (insn->i_rp)
++		bknown = MACH_VUNKNOWN;
++	else if (ZIP_RNONE == insn->i_breg)
++		bknown = MACH_VKNOWN;
++	else if (insn->i_breg >= ZIP_CC)
++		bknown = MACH_VUNKNOWN;
++	else if (insn->i_imm == 0)
 +		bknown = (pzipm->r[insn->i_breg].m_known);
++	else // If we have an immediate plus a value, can't know UPPER anymore
++		bknown = (pzipm->r[insn->i_breg].m_known == MACH_VKNOWN)
++					? MACH_VKNOWN : MACH_VUNKNOWN;
 +
 +	if (insn->i_breg < ZIP_USER_REGS)
 +		bval += pzipm->r[insn->i_breg].m_value;
 +
-+	if (insn->i_areg >= ZIP_USER_REGS)
++	if (insn->i_areg >= ZIP_USER_REGS) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, A-REG[%02x] out of bounds\n", insn->i_areg);
++#endif
 +		return; // Nothing to do -- no change to machine
++	} else if ((insn->i_areg == ZIP_PC)&&(insn->i_op != ZIPO_STO)) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, CLEAR ON JUMP\n");
++#endif
++		zip_clear_machine(pzipm);
++		return;
++	} else if ((insn->i_areg >= ZIP_CC)&&(insn->i_op == ZIPO_AND)) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, CLEAR ON ANDing to CC\n");
++#endif
++		zip_clear_machine(pzipm);
++	} else if ((insn->i_areg >= ZIP_CC)&&(
++			(insn->i_op == ZIPO_LDI)
++			||(insn->i_op == ZIPO_LOD)
++			||(insn->i_op == ZIPO_CLR)
++			||(insn->i_op == ZIPO_CLRF)
++			||(insn->i_op == ZIPO_LDILO))) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, CLEAR ON setting CC\n");
++#endif
++		zip_clear_machine(pzipm);
++		return;
++	} else if (insn->i_areg >= ZIP_CC) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, Not tracking CC or PC changes\n");
++#endif
++		pzipm->r[insn->i_areg].m_known = MACH_VUNKNOWN;
++		return;
++	}
++
++	av = &pzipm->r[insn->i_areg];
++
 +	if (ZIPC_ALWAYS != insn->i_cnd) {
-+		if ((ZIPO_LDILO == insn->i_code)
-+				&&((pzipm->r[insn->i_areg].m_known == 1)
-+					||(pzipm->r[insn->i_areg].m_known == 2)))
-+			pzipm->r[insn->i_areg].m_known = 2;
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, CONDITIONAL\n");
++#endif
++		if ((ZIPO_LDILO == insn->i_op)
++				&&((av->m_known == MACH_VKNOWN)
++					||(av->m_known == MACH_VUPPERKNOWN)))
++			av->m_known = MACH_VUPPERKNOWN;
++		else if ((ZIPO_LDI == insn->i_op)||(ZIPO_LDIn == insn->i_op))
++			; // We'll catch this in a moment
 +		else
-+			pzipm->r[insn->i_areg].m_known = 0;
-+	} else if ((insn->i_rp)&&(insn->i_code != ZIPO_LDI)
-+			&&(insn->i_code != ZIPO_MOV)) {
++			av->m_known = MACH_VUNKNOWN;
++	} else if ((insn->i_rp)&&(insn->i_op != ZIPO_LDI)
++			&&(insn->i_op != ZIPO_MOV)) {
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "MACHINE, NOT AN LDI/MOV\n");
++#endif
 +		if ((ZIPO_TST != insn->i_op)&&(ZIPO_CMP != insn->i_op))
-+			pzipm->r[insn->i_areg].m_known = 0;
-+	} switch(insn->i_code) {
++			av->m_known = MACH_VUNKNOWN;
++	} switch(insn->i_op) {
 +		case	ZIPO_SUB:
-+			pzipm->r[insn->i_areg].m_known = (pzipm->r[insn->i_areg].m_known==1)?1:0;
-+			pzipm->r[insn->i_areg].m_value -= bval;
-+			if (bknown != 1)
-+				pzipm->r[insn->i_areg].m_known = 0;
++			av->m_known = (av->m_known==MACH_VKNOWN)
++					? MACH_VKNOWN:MACH_VUNKNOWN;
++			av->m_value -= bval;
++			if (bknown != MACH_VKNOWN)
++				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_AND:
 +			pzipm->r[insn->i_areg].m_value &= bval;
-+			if ((bknown == 2)&&(insn->i_imm == 0)) {
-+				if (pzipm->r[insn->i_areg].m_known == 1)
-+					pzipm->r[insn->i_areg].m_known = 2;
-+				else if (pzipm->r[insn->i_areg].m_known != 2)
-+					pzipm->r[insn->i_areg].m_known = 0;
-+			} else if (bknown != 1)
-+				pzipm->r[insn->i_areg].m_known = 0;
++			if ((bknown == MACH_VUPPERKNOWN)&&(bval == 0)) {
++				if (av->m_known == MACH_VKNOWN)
++					av->m_known = MACH_VUPPERKNOWN;
++				else if (av->m_known != MACH_VUPPERKNOWN)
++					av->m_known = MACH_VUNKNOWN;
++			} else if (bknown != MACH_VKNOWN)
++				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_ADD:
-+			pzipm->r[insn->i_areg].m_known = (pzipm->r[insn->i_areg].m_known==1)?1:0;
-+			pzipm->r[insn->i_areg].m_value += bval;
-+			if (bknown != 1)
-+				pzipm->r[insn->i_areg].m_known = 0;
++			av->m_value += bval;
++			if (bknown != MACH_VKNOWN)
++				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_OR:
-+			pzipm->r[insn->i_areg].m_value |= bval;
-+			if ((bknown == 2)&&(insn->i_imm == 0)) {
-+				if (pzipm->r[insn->i_areg].m_known == 1)
-+					pzipm->r[insn->i_areg].m_known = 2;
-+				else if (pzipm->r[insn->i_areg].m_known != 2)
-+					pzipm->r[insn->i_areg].m_known = 0;
-+			} else if (bknown != 1)
-+				pzipm->r[insn->i_areg].m_known = 0;
++			av->m_value |= bval;
++			if (bknown == MACH_VUPPERKNOWN) {
++				if (av->m_known != MACH_VUNKNOWN)
++					av->m_known = MACH_VUPPERKNOWN;
++			} else if (bknown != MACH_VKNOWN)
++				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_XOR:
-+			pzipm->r[insn->i_areg].m_value ^= bval;
-+			if ((bknown == 2)&&(insn->i_imm == 0)) {
-+				if (pzipm->r[insn->i_areg].m_known == 1)
-+					pzipm->r[insn->i_areg].m_known = 2;
-+				else if (pzipm->r[insn->i_areg].m_known != 2)
-+					pzipm->r[insn->i_areg].m_known = 0;
-+			} else if (bknown != 1)
-+				pzipm->r[insn->i_areg].m_known = 0;
++			av->m_value ^= bval;
++			if (bknown == MACH_VUPPERKNOWN) {
++				if (av->m_known != MACH_VUNKNOWN)
++					av->m_known = MACH_VUPPERKNOWN;
++			} else if (bknown != MACH_VKNOWN)
++				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_LDI: case ZIPO_LDIn:
++			// Although the h/w instruction has no conditions, our
++			// decoding may have conditions until we finish
++			// working out what the actual result is.  Hence, we
++			// need to be aware of any conditions from above.
++#ifdef	ZIP_DEBUG
++			fprintf(stderr, "MACHINE, LDI -> %02x\n", insn->i_areg);
++#endif
++			av->m_value = bval;
 +			if (insn->i_rp)
-+				pzipm->r[insn->i_areg].m_known = 0;
-+			else {
-+				pzipm->r[insn->i_areg].m_known = 1;
-+				pzipm->r[insn->i_areg].m_value = insn->i_imm;
++				av->m_known = MACH_VUNKNOWN;
++			else if (insn->i_cnd != ZIPC_ALWAYS) {
++				// if ((bknown)&&(bvalue == insn->i_imm))
++					// pzipm->r[insn->i_areg].m_known = MACH_VKNOWN;
++			} else {
++				av->m_known = 1;
 +			} break;
 +		case	ZIPO_LDILO:
-+			pzipm->r[insn->i_areg].m_value &= ~0x0ffff;
-+			pzipm->r[insn->i_areg].m_value |= insn->i_imm &0x0ffff;
++#ifdef	ZIP_DEBUG
++			fprintf(stderr, "MACHINE, LDILO -> %02x\n", insn->i_areg);
++#endif
++			av->m_value &= ~0x0ffff;
++			av->m_value |= bval &0x0ffff;
++			if ((av->m_known == MACH_VUPPERKNOWN)
++					&&(bknown == MACH_VKNOWN)
++					&&(ZIPC_ALWAYS == insn->i_cnd))
++				av->m_known = MACH_VKNOWN;
 +			break;
 +		case	ZIPO_BREV:
-+			pzipm->r[insn->i_areg].m_value = zip_brev(bval);
-+			pzipm->r[insn->i_areg].m_value = (bknown == 1);
++			av->m_value = zip_brev(bval);
++			if (ZIPC_ALWAYS == insn->i_cnd)
++				av->m_known = (bknown == MACH_VKNOWN)?MACH_VKNOWN:MACH_VUNKNOWN;
++			else if ((bknown == MACH_VKNOWN)
++				&&(av->m_known != MACH_VUNKNOWN)
++				&&((((zip_brev(bval)^av->m_value)&0x0ffff)==0)))
++				av->m_known = MACH_VUPPERKNOWN;
 +			break;
 +		case	ZIPO_MOV:
-+			pzipm->r[insn->i_areg].m_known = ((insn->i_imm == 0)||(pzipm->r[insn->i_breg].m_known==1))?1:0;
-+			pzipm->r[insn->i_areg].m_value = bval;
++#ifdef	ZIP_DEBUG
++			fprintf(stderr, "MACHINE, MOV -> %02x\n", insn->i_areg);
++#endif
++			av->m_value = bval;
++			if (ZIPC_ALWAYS == insn->i_cnd)
++				av->m_known = bknown;
++			else if (((ZIPC_ALWAYS == insn->i_cnd)
++					&&(av->m_known != MACH_VUNKNOWN)
++					&&(bknown != MACH_VUNKNOWN))
++					&&(((bval^av->m_value)&0xffff0000)==0))
++				av->m_known = MACH_VUPPERKNOWN;
++			else
++				av->m_known = MACH_VUNKNOWN;
++			av->m_value = bval;
 +			break;
 +		case	ZIPO_CLR: case ZIPO_CLRF:
-+			pzipm->r[insn->i_areg].m_known = 1;
-+			pzipm->r[insn->i_areg].m_value = 0;
++			if (insn->i_cnd == ZIPC_ALWAYS)
++				av->m_known = MACH_VKNOWN;
++			else if ((av->m_value & 0xffff0000)==0) {
++				if ((av->m_known != MACH_VUNKNOWN)
++					&&(((av->m_value ^ bval)&0xffff0000)==0))
++					av->m_known = MACH_VUPPERKNOWN;
++				else
++					av->m_known = MACH_VUNKNOWN;
++			} av->m_value = 0;
 +			break;
++		case	ZIPO_STO: // Doesn't change any registers
 +		case	ZIPO_NOOP: case	ZIPO_BREAK: case ZIPO_LOCK:
 +		case	ZIPO_CMP:  case	ZIPO_TST:
++			// These don't change any registers
 +			break;
++		case	ZIPO_LOD: // Result is always unknown
 +		default:
-+			pzipm->r[insn->i_areg].m_known = 0;
-+			// zip_clear_machine(pzipm);
++#ifdef	ZIP_DEBUG
++			fprintf(stderr, "MACHINE, DEFAULT, %02x -> unknown\n", insn->i_areg);
++#endif
++			av->m_known = MACH_VUNKNOWN;
 +			break;
 +	}
++
++	pzipm->r[ZIP_CC].m_known = MACH_VUNKNOWN;
++	pzipm->r[ZIP_PC].m_known = MACH_VUNKNOWN;
 +}
++
++#ifdef	ZIP_DEBUG
++static void
++zip_debug_machine(MACHINEREGS *pzipm) {
++	int	i;
++	for(i=0; i<ZIP_USER_REGS; i++) {
++		if (pzipm->r[i].m_known == MACH_VKNOWN)
++			fprintf(stderr, "MACH-KNOW[Y][%2x] = %08x\n", 
++				i, pzipm->r[i].m_value);
++		else if (pzipm->r[i].m_known == MACH_VUPPERKNOWN)
++			fprintf(stderr, "MACH-KNOW[U][%2x] = %04x\n", 
++				i, (pzipm->r[i].m_value>>16)&0x0ffff);
++	}
++}
++#endif
 +
 +
 +/*
@@ -3045,42 +3170,37 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		case ZIPO_LSL:   fprintf(stderr, "%7s", "LSL"); break;
 +		case ZIPO_ASR:   fprintf(stderr, "%7s", "ASR"); break;
 +		case ZIPO_LDI:   fprintf(stderr, "%7s", "LDI"); break;
-+#ifdef	LONG_MPY
 +		case ZIPO_MPYUHI:fprintf(stderr, "%7s", "MPYUHI"); break;
 +		case ZIPO_MPYSHI:fprintf(stderr, "%7s", "MPYSHI"); break;
-+#else	// LONG_MPY
-+		case ZIPO_LDIHI: fprintf(stderr, "%7s", "LDIHI"); break;
-+		case ZIPO_MPYU:  fprintf(stderr, "%7s", "MPYU"); break;
-+		case ZIPO_MPYS:  fprintf(stderr, "%7s", "MPYS"); break;
-+#endif
 +		case ZIPO_LDILO: fprintf(stderr, "%7s", "LDILO"); break;
-+		case ZIPO_BREV:  fprintf(stderr, "%7s", "BREV"); break;
-+		case ZIPO_POPC:  fprintf(stderr, "%7s", "POPC"); break;
-+		case ZIPO_ROL:   fprintf(stderr, "%7s", "ROL"); break;
-+		case ZIPO_MOV:   fprintf(stderr, "%7s", "MOV"); break;
-+		case ZIPO_CMP:   fprintf(stderr, "%7s", "CMP"); break;
-+		case ZIPO_TST:   fprintf(stderr, "%7s", "TST"); break;
-+		case ZIPO_LOD:   fprintf(stderr, "%7s", "LOD"); break;
-+		case ZIPO_STO:   fprintf(stderr, "%7s", "STO"); break;
-+		case ZIPO_DIVU:  fprintf(stderr, "%7s", "DIVU"); break;
-+		case ZIPO_DIVS:  fprintf(stderr, "%7s", "DIVS"); break;
++		case ZIPO_BREV:  fprintf(stderr, "%7s", "BREV");  break;
++		case ZIPO_POPC:  fprintf(stderr, "%7s", "POPC");  break;
++		case ZIPO_ROL:   fprintf(stderr, "%7s", "ROL");   break;
++		case ZIPO_MOV:   fprintf(stderr, "%7s", "MOV");   break;
++		case ZIPO_CMP:   fprintf(stderr, "%7s", "CMP");   break;
++		case ZIPO_TST:   fprintf(stderr, "%7s", "TST");   break;
++		case ZIPO_LOD:   fprintf(stderr, "%7s", "LOD");   break;
++		case ZIPO_STO:   fprintf(stderr, "%7s", "STO");   break;
++		case ZIPO_DIVU:  fprintf(stderr, "%7s", "DIVU");  break;
++		case ZIPO_DIVS:  fprintf(stderr, "%7s", "DIVS");  break;
 +		case ZIPO_FPADD: fprintf(stderr, "%7s", "FPADD"); break;
 +		case ZIPO_FPSUB: fprintf(stderr, "%7s", "FPSUB"); break;
 +		//
-+		case ZIPO_NOOP:  fprintf(stderr, "%7s", "NOOP"); break;
++		case ZIPO_NOOP:  fprintf(stderr, "%7s", "NOOP");  break;
 +		case ZIPO_BREAK: fprintf(stderr, "%7s", "BREAK"); break;
-+		case ZIPO_LOCK:  fprintf(stderr, "%7s", "LOCK"); break;
-+		case ZIPO_TRAP:  fprintf(stderr, "%7s", "TRAP"); break;
-+		case ZIPO_CLR:   fprintf(stderr, "%7s", "CLR"); break;
-+		case ZIPO_CLRF:  fprintf(stderr, "%7s", "CLRF"); break;
-+		case ZIPO_HALT:  fprintf(stderr, "%7s", "HALT"); break;
-+		case ZIPO_WAIT:  fprintf(stderr, "%7s", "WAIT"); break;
-+		case ZIPO_RTU:   fprintf(stderr, "%7s", "RTU"); break;
-+		case ZIPO_BRA:   fprintf(stderr, "%7s", "BRA"); break;
-+		case ZIPO_BUSY:  fprintf(stderr, "%7s", "BUSY"); break;
-+		case ZIPO_JMP:   fprintf(stderr, "%7s", "JMP"); break;
-+		case ZIPO_NOT:   fprintf(stderr, "%7s", "NOT"); break;
-+		case ZIPO_NEG:   fprintf(stderr, "%7s", "NEG"); break;
++		case ZIPO_LOCK:  fprintf(stderr, "%7s", "LOCK");  break;
++		case ZIPO_TRAP:  fprintf(stderr, "%7s", "TRAP");  break;
++		case ZIPO_CLR:   fprintf(stderr, "%7s", "CLR");   break;
++		case ZIPO_CLRF:  fprintf(stderr, "%7s", "CLRF");  break;
++		case ZIPO_HALT:  fprintf(stderr, "%7s", "HALT");  break;
++		case ZIPO_WAIT:  fprintf(stderr, "%7s", "WAIT");  break;
++		case ZIPO_STEP:  fprintf(stderr, "%7s", "STEP");  break;
++		case ZIPO_RTU:   fprintf(stderr, "%7s", "RTU");   break;
++		case ZIPO_BRA:   fprintf(stderr, "%7s", "BRA");   break;
++		case ZIPO_BUSY:  fprintf(stderr, "%7s", "BUSY");  break;
++		case ZIPO_JMP:   fprintf(stderr, "%7s", "JMP");   break;
++		case ZIPO_NOT:   fprintf(stderr, "%7s", "NOT");   break;
++		case ZIPO_NEG:   fprintf(stderr, "%7s", "NEG");   break;
 +		default:
 +			fprintf(stderr, "%d", insn->i_op); break;
 +	}
@@ -3139,10 +3259,16 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		ustr = str+1;
 +		userreg = 0x10;
 +	}
-+	
++
++	/*
 +	if (strcasecmp(ustr, "GBL")==0) {
 +		*regid = userreg + 11;
 +		ustr += 3;
++	} else
++	*/
++	if (strcasecmp(ustr, "LR")==0) {
++		*regid = userreg + 0;
++		ustr += 2;
 +	} else if (strcasecmp(ustr, "FP")==0) {
 +		*regid = userreg + 12;
 +		ustr += 2;
@@ -3584,16 +3710,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	} else if (strcasecmp(opstr, "ASR")==0) {
 +		insn->i_op = ZIPO_ASR;
 +		insn_form = TWO_OP;
-+#ifdef	LONG_MPY
 +	} else if (strcasecmp(opstr, "MPY")==0) {
 +		insn_form = TWO_OP;
 +		insn->i_op = ZIPO_MPY;
-+#else
-+	} else if((strcasecmp(opstr, "LDIHI")==0)
-+			||(strcasecmp(opstr, "LHI")==0)) {
-+		insn_form = TWO_OP;
-+		insn->i_op = ZIPO_LDIHI;
-+#endif
 +	} else if((strcasecmp(opstr, "LDILO")==0)
 +			||(strcasecmp(opstr, "LLO")==0)) {
 +		insn->i_op = ZIPO_LDILO;
@@ -3601,21 +3720,12 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	// } else if (strcasecmp(opstr, "MPY")==0) {
 +	//	insn->i_op = ZIPO_MPY;
 +	//	insn_form = TWO_OP
-+#ifdef	LONG_MPY
 +	} else if (strcasecmp(opstr, "MPYUHI")==0) {	// MPUHI
 +		insn->i_op = ZIPO_MPYUHI;
 +		insn_form = TWO_OP;
 +	} else if (strcasecmp(opstr, "MPYSHI")==0) {	// MPSHI
 +		insn->i_op = ZIPO_MPYSHI;
 +		insn_form = TWO_OP;
-+#else
-+	} else if (strcasecmp(opstr, "MPYU")==0) {	// MPUHI
-+		insn->i_op = ZIPO_MPYU;
-+		insn_form = TWO_OP;
-+	} else if (strcasecmp(opstr, "MPYS")==0) {	// MPSHI
-+		insn->i_op = ZIPO_MPYS;
-+		insn_form = TWO_OP;
-+#endif
 +	} else if (strcasecmp(opstr, "BREV")==0) {
 +		insn->i_op = ZIPO_BREV;
 +		insn_form = TWO_OP;
@@ -3734,6 +3844,11 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		insn->i_imm = ZIP_CC_SLEEP | ZIP_CC_GIE;
 +		insn->i_areg= ZIP_CC;
 +		insn_form = NO_OP;
++	} else if (strcasecmp(opstr, "STEP")==0) {
++		insn->i_op = ZIPO_STEP;
++		insn->i_imm = ZIP_CC_STEP | ZIP_CC_GIE;
++		insn->i_areg= ZIP_CC;
++		insn_form = NO_OP;
 +	} else if ((strcasecmp(opstr, "RTU")==0)
 +			||(strcasecmp(opstr, "IRET")==0)) {
 +		insn->i_op = ZIPO_RTU;
@@ -3750,6 +3865,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		insn->i_op = ZIPO_JMP;
 +		insn->i_areg = ZIP_PC;
 +		insn_form = OP_B;
++	} else if ((strcasecmp(opstr, "RETN")==0)
++			||(strcasecmp(opstr, "RTN")==0)) {
++		insn->i_op = ZIPO_JMP;
++		insn->i_areg = ZIP_PC;
++		insn->i_breg = ZIP_R0;
++		insn->i_imm  = 0;
++		insn_form = NO_OP;
 +	} else if (strcasecmp(opstr, "NOT")==0) {
 +		insn->i_op = ZIPO_NOT;
 +		insn->i_imm = -1;
@@ -3919,13 +4041,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		case ZIPO_DIVU: case ZIPO_DIVS:
 +		case ZIPO_LDI: case ZIPO_LDIn:
 +		case ZIPO_BREV: case ZIPO_POPC: case ZIPO_ROL:
-+#ifdef	LONG_MPY
 +		case ZIPO_MPYUHI: case ZIPO_MPYSHI:
 +		case ZIPO_MPY:
-+#else
-+		case ZIPO_MPYU: case ZIPO_MPYS:
-+		case ZIPO_LDIHI:
-+#endif
 +			break;
 +		case ZIPO_MOV:
 +			if (insn->i_breg == ZIP_RNONE)
@@ -3994,7 +4111,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			insn->i_breg = ZIP_RNONE;
 +			insn->i_imm  = 0;
 +			break;
-+		case ZIPO_HALT: case ZIPO_WAIT: case ZIPO_RTU:
++		case ZIPO_HALT: case ZIPO_WAIT: case ZIPO_RTU: case ZIPO_STEP:
 +			insn->i_op = ZIPO_OR;
 +			break;
 +		case ZIPO_BUSY:
@@ -4045,6 +4162,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			| ((CND&0x07)<<19)|((B&0x0f)<<14)|(IMM & 0x01fff))
 +#define	IMMOP(OP,CND,IMM,A)	(((OP&0x01f)<<22)|((A&0x0f)<<27)	\
 +			| ((CND&0x07)<<19)|(IMM & 0x03ffff))
++#define	LDIOP(IMM,A)	((ZIPO_LDI<<22)|((A&0x0f)<<27)|(IMM & 0x07fffff))
 +
 +
 +/*
@@ -4134,9 +4252,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			break;
 +		case	ZIPO_LDI: case ZIPO_LDIn:
 +		case	ZIPO_LDILO:
-+#ifndef	LONG_MPY
-+		case ZIPO_LDIHI: // BREVx would rm LDIHI
-+#endif
 +			// LDIxx instructions have only immediates.  If the
 +			// immediate doesn't fit in 5 bits, this won't work.
 +			imma = zip_non_vliw_immediate(a);
@@ -4167,9 +4282,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			break;
 +		case	ZIPO_LDI: case ZIPO_LDIn:
 +		case	ZIPO_LDILO:
-+#ifndef	LONG_MPY
-+		case ZIPO_LDIHI:
-+#endif
 +			// LDIxx instructions have only immediates.  If the
 +			// immediate doesn't fit in 5 bits, this won't work.
 +			immb = zip_non_vliw_immediate(b);
@@ -4434,7 +4546,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&(0==((immv^pzipm->r[insn->i_areg].m_value)
 +					& 0x0ffff0000))) {
-+fprintf(stderr, "Creating an LDILO\n");
 +			// Replace LDI with LDILO
 +			insn->i_naux = 0;
 +			insn->i_code=IMMOP(ZIPO_LDILO, insn->i_cnd,
@@ -4444,9 +4555,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			if (ZIPC_ALWAYS == insn->i_cnd) {
 +				// Henceforth, we only know the bottom 16bits
 +				// of this register
-+				pzipm->r[insn->i_areg].m_known = 2;
++				pzipm->r[insn->i_areg].m_known = MACH_VUPPERKNOWN;
 +			} else
-+				pzipm->r[insn->i_areg].m_known = 1;
++				pzipm->r[insn->i_areg].m_known = MACH_VKNOWN;
 +		} else {
 +			//
 +			// If the symbol isn't defined, then any immv value
@@ -4454,11 +4565,17 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			//
 +			int known_bypass = 0, i;
 +
-+			if ((pzipm)&&((!insn->i_rp)||(sym_known))) {
++			if ((pzipm)&&(
++					((!insn->i_rp)
++						&&(!fits_within(4,immv)))
++					||((insn->i_rp)&&(sym_known)))) {
 +				for(i=0; i<14; i++) {
 +					int offset = immv-pzipm->r[i].m_value;
-+					if ((pzipm->r[i].m_known==1)
-+						&&(fits_within(13, offset))) {
++					if ((pzipm->r[i].m_known==MACH_VKNOWN)
++						&&(fits_within(13, offset))
++						&&((insn->i_rp)
++							||(!fits_within(4, immv)))
++						) {
 +						// Pick the closest value ... if
 +						// there's a choice
 +						if ((!known_bypass)
@@ -4598,6 +4715,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		//	offsets.
 +		//		
 +		if (insn->i_rp) {
++			// MOV label(Rb),Ra
 +			insn->i_rp->r_pcrel = (insn->i_breg == ZIP_PC);
 +			immv += symv;
 +			if (insn->i_breg == ZIP_PC) {
@@ -4623,6 +4741,20 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +				// address?
 +				insn->i_rp->r_type = BFD_RELOC_ZIP_MOV_OFFSET;
 +			}
++		} else if ((pzipm)&&(insn->i_breg<ZIP_CC)&&(insn->i_areg<ZIP_CC)
++				&&(ZIPC_ALWAYS == insn->i_cnd)
++				&&(pzipm->r[insn->i_breg].m_known==MACH_VKNOWN)
++				&&(fits_within(4,pzipm->r[insn->i_breg].m_value
++					+immv))) {
++			// MOV Rb,Ra
++			// turn this into an LDI instruction, rather than a
++			// move instruction
++			insn->i_op = ZIPO_LDI;
++			insn->i_imm += pzipm->r[insn->i_breg].m_value;
++			insn->i_breg = ZIP_RNONE;
++
++			insn->i_code = LDIOP(insn->i_imm, insn->i_areg);
++			insn->i_naux = 0;
 +		}
 +		/*
 +		// Handle offsets greater than 13 bits --- up to 32 bits
@@ -4643,14 +4775,17 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			return;
 +		}
 +		*/
-+		insn->i_code = SMPLMOV(insn->i_cnd, immv, insn->i_breg,
-+				insn->i_areg);
-+		//
-+		// Now for the extra two register bits only present in move
-+		// instructions
-+		//
-+		insn->i_code |= (insn->i_areg&0x10)?0x40000:0;
-+		insn->i_code |= (insn->i_breg&0x10)?0x02000:0;
++
++		if (insn->i_op == ZIPO_MOV) { // If we haven't changed insns,
++			insn->i_code = SMPLMOV(insn->i_cnd, immv, insn->i_breg,
++					insn->i_areg);
++			//
++			// Now for the extra two register bits only present
++			// in move instructions
++			//
++			insn->i_code |= (insn->i_areg&0x10)?0x40000:0;
++			insn->i_code |= (insn->i_breg&0x10)?0x02000:0;
++		}
 +#ifdef	ZIP_DEBUG
 +		fprintf(stderr, "MOV Instruction assembled into %08x\n", insn->i_code);
 +#endif
@@ -4748,6 +4883,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +
 +	zip_assemble_insn_words(frag_now, now_seg, insn, 0, 0, &zipm);
 +	zip_advance_machine(&zipm, insn);
++#ifdef	ZIP_DEBUG
++	zip_debug_machine(&zipm);
++#endif
 +
 +	// Then, if the instruction is valid we ...
 +	//	for branches ...
@@ -5212,7 +5350,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +}
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils-2.25/gas/config/tc-zip.h
 --- binutils-2.25-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.h	2016-09-15 08:40:22.608881028 -0400
++++ binutils-2.25/gas/config/tc-zip.h	2016-10-31 16:21:30.738323774 -0400
 @@ -0,0 +1,213 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5417,7 +5555,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +	ZIPO_BRA,  ZIPO_BZ,   ZIPO_BNZ, ZIPO_BGE,
 +	ZIPO_BGT,  ZIPO_BLT,  ZIPO_BC,  ZIPO_BV,
 +	ZIPO_HALT, ZIPO_WAIT, ZIPO_RTU, ZIPO_BUSY,
-+	ZIPO_JMP,  ZIPO_NOT, ZIPO_NEG
++	ZIPO_STEP, ZIPO_JMP,  ZIPO_NOT, ZIPO_NEG
 +} ZIP_OPCODE;
 +
 +// If LONG_MPY is defined (or not) we then use these opcodes
