@@ -138,7 +138,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/common/config/zip/zip-common
 +
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h gcc-5.3.0-zip/gcc/config/aarch64/aarch64-linux.h
---- gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/aarch64/aarch64-linux.h	2015-07-24 12:00:26.000000000 -0400
 @@ -21,7 +21,7 @@
  #ifndef GCC_AARCH64_LINUX_H
@@ -150,7 +150,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/aarch64/aarch64-linux
  #undef  ASAN_CC1_SPEC
  #define ASAN_CC1_SPEC "%{%:sanitize(address):-funwind-tables}"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/alpha/linux-elf.h gcc-5.3.0-zip/gcc/config/alpha/linux-elf.h
---- gcc-5.3.0-original/gcc/config/alpha/linux-elf.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/alpha/linux-elf.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/alpha/linux-elf.h	2015-01-05 07:33:28.000000000 -0500
 @@ -23,8 +23,8 @@
  #define EXTRA_SPECS \
@@ -164,7 +164,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/alpha/linux-elf.h gcc
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-eabi.h gcc-5.3.0-zip/gcc/config/arm/linux-eabi.h
---- gcc-5.3.0-original/gcc/config/arm/linux-eabi.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/arm/linux-eabi.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/arm/linux-eabi.h	2015-01-05 07:33:28.000000000 -0500
 @@ -68,8 +68,8 @@
     GLIBC_DYNAMIC_LINKER_DEFAULT and TARGET_DEFAULT_FLOAT_ABI.  */
@@ -178,7 +178,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-eabi.h gcc-
  
  #define GLIBC_DYNAMIC_LINKER \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-elf.h gcc-5.3.0-zip/gcc/config/arm/linux-elf.h
---- gcc-5.3.0-original/gcc/config/arm/linux-elf.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/arm/linux-elf.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/arm/linux-elf.h	2015-06-23 05:26:54.000000000 -0400
 @@ -62,7 +62,7 @@
  
@@ -190,7 +190,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/arm/linux-elf.h gcc-5
  #define LINUX_TARGET_LINK_SPEC  "%{h*} \
     %{static:-Bstatic} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/bfin/linux.h gcc-5.3.0-zip/gcc/config/bfin/linux.h
---- gcc-5.3.0-original/gcc/config/bfin/linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/bfin/linux.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/bfin/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -45,7 +45,7 @@
    %{shared:-G -Bdynamic} \
@@ -202,7 +202,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/bfin/linux.h gcc-5.3.
  
  #undef TARGET_SUPPORTS_SYNC_CALLS
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/cris/linux.h gcc-5.3.0-zip/gcc/config/cris/linux.h
---- gcc-5.3.0-original/gcc/config/cris/linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/cris/linux.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/cris/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -102,7 +102,7 @@
  #undef CRIS_DEFAULT_CPU_VERSION
@@ -214,7 +214,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/cris/linux.h gcc-5.3.
  #undef CRIS_LINK_SUBTARGET_SPEC
  #define CRIS_LINK_SUBTARGET_SPEC \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/freebsd-spec.h gcc-5.3.0-zip/gcc/config/freebsd-spec.h
---- gcc-5.3.0-original/gcc/config/freebsd-spec.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/freebsd-spec.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/freebsd-spec.h	2015-06-25 13:53:14.000000000 -0400
 @@ -129,9 +129,9 @@
  #endif
@@ -229,7 +229,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/freebsd-spec.h gcc-5.
  
  /* NOTE: The freebsd-spec.h header is included also for various
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/frv/linux.h gcc-5.3.0-zip/gcc/config/frv/linux.h
---- gcc-5.3.0-original/gcc/config/frv/linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/frv/linux.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/frv/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -34,7 +34,7 @@
  #define ENDFILE_SPEC \
@@ -241,7 +241,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/frv/linux.h gcc-5.3.0
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/gnu.h gcc-5.3.0-zip/gcc/config/i386/gnu.h
---- gcc-5.3.0-original/gcc/config/i386/gnu.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/i386/gnu.h	2016-11-28 18:14:19.382586425 -0500
 +++ gcc-5.3.0-zip/gcc/config/i386/gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,7 +22,7 @@
  #define GNU_USER_LINK_EMULATION "elf_i386"
@@ -253,7 +253,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/gnu.h gcc-5.3.0-
  #undef	STARTFILE_SPEC
  #if defined HAVE_LD_PIE
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu64.h
---- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,6 +22,6 @@
  #define GNU_USER_LINK_EMULATION64 "elf_x86_64_fbsd"
@@ -266,7 +266,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu64.h
 +#define GLIBC_DYNAMIC_LINKER64 "/lib/ld-kfreebsd-x86-64.so.1"
 +#define GLIBC_DYNAMIC_LINKERX32 "/lib/ld-kfreebsd-x32.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu.h
---- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/i386/kfreebsd-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -19,4 +19,4 @@
  <http://www.gnu.org/licenses/>.  */
@@ -275,7 +275,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/kfreebsd-gnu.h g
 -#define GLIBC_DYNAMIC_LINKER "/tools/lib/ld.so.1"
 +#define GLIBC_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux64.h gcc-5.3.0-zip/gcc/config/i386/linux64.h
---- gcc-5.3.0-original/gcc/config/i386/linux64.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/i386/linux64.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/i386/linux64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -27,6 +27,6 @@
  #define GNU_USER_LINK_EMULATION64 "elf_x86_64"
@@ -288,7 +288,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux64.h gcc-5.
 +#define GLIBC_DYNAMIC_LINKER64 "/lib64/ld-linux-x86-64.so.2"
 +#define GLIBC_DYNAMIC_LINKERX32 "/libx32/ld-linux-x32.so.2"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux.h gcc-5.3.0-zip/gcc/config/i386/linux.h
---- gcc-5.3.0-original/gcc/config/i386/linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/i386/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/i386/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -20,4 +20,4 @@
  <http://www.gnu.org/licenses/>.  */
@@ -297,7 +297,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/i386/linux.h gcc-5.3.
 -#define GLIBC_DYNAMIC_LINKER "/tools/lib/ld-linux.so.2"
 +#define GLIBC_DYNAMIC_LINKER "/lib/ld-linux.so.2"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/ia64/linux.h gcc-5.3.0-zip/gcc/config/ia64/linux.h
---- gcc-5.3.0-original/gcc/config/ia64/linux.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/ia64/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/ia64/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -55,7 +55,7 @@
  /* Define this for shared library support because it isn't in the main
@@ -309,7 +309,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/ia64/linux.h gcc-5.3.
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/knetbsd-gnu.h gcc-5.3.0-zip/gcc/config/knetbsd-gnu.h
---- gcc-5.3.0-original/gcc/config/knetbsd-gnu.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/knetbsd-gnu.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/knetbsd-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -32,4 +32,4 @@
  
@@ -318,7 +318,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/knetbsd-gnu.h gcc-5.3
 -#define GNU_USER_DYNAMIC_LINKER "/tools/lib/ld.so.1"
 +#define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h gcc-5.3.0-zip/gcc/config/kopensolaris-gnu.h
---- gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h	2016-11-03 10:52:07.158745979 -0400
+--- gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/kopensolaris-gnu.h	2015-01-05 07:33:28.000000000 -0500
 @@ -31,5 +31,4 @@
    while (0)
@@ -328,7 +328,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/kopensolaris-gnu.h gc
 -
 +#define GNU_USER_DYNAMIC_LINKER "/lib/ld.so.1"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/linux.h gcc-5.3.0-zip/gcc/config/linux.h
---- gcc-5.3.0-original/gcc/config/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -73,10 +73,10 @@
     GLIBC_DYNAMIC_LINKER must be defined for each target using them, or
@@ -346,7 +346,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/linux.h gcc-5.3.0-zip
  #define BIONIC_DYNAMIC_LINKER32 "/system/bin/linker"
  #define BIONIC_DYNAMIC_LINKER64 "/system/bin/linker64"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h gcc-5.3.0-zip/gcc/config/lm32/uclinux-elf.h
---- gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/lm32/uclinux-elf.h	2015-01-05 07:33:28.000000000 -0500
 @@ -67,7 +67,7 @@
     %{shared:-shared} \
@@ -358,7 +358,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/lm32/uclinux-elf.h gc
  #define TARGET_OS_CPP_BUILTINS() GNU_USER_TARGET_OS_CPP_BUILTINS()
  
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/m68k/linux.h gcc-5.3.0-zip/gcc/config/m68k/linux.h
---- gcc-5.3.0-original/gcc/config/m68k/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/m68k/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/m68k/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -71,7 +71,7 @@
     When the -shared link option is used a final link is not being
@@ -370,7 +370,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/m68k/linux.h gcc-5.3.
  #undef LINK_SPEC
  #define LINK_SPEC "-m m68kelf %{shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/microblaze/linux.h gcc-5.3.0-zip/gcc/config/microblaze/linux.h
---- gcc-5.3.0-original/gcc/config/microblaze/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/microblaze/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/microblaze/linux.h	2015-05-28 10:08:19.000000000 -0400
 @@ -28,7 +28,7 @@
  #undef TLS_NEEDS_GOT
@@ -382,7 +382,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/microblaze/linux.h gc
  #define SUBTARGET_EXTRA_SPECS \
    { "dynamic_linker", DYNAMIC_LINKER }
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mips/linux.h gcc-5.3.0-zip/gcc/config/mips/linux.h
---- gcc-5.3.0-original/gcc/config/mips/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/mips/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/mips/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -22,20 +22,20 @@
  #define GNU_USER_LINK_EMULATIONN32 "elf32%{EB:b}%{EL:l}tsmipn32"
@@ -412,7 +412,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mips/linux.h gcc-5.3.
  #define BIONIC_DYNAMIC_LINKERN32 "/system/bin/linker32"
  #define GNU_USER_DYNAMIC_LINKERN32 \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mn10300/linux.h gcc-5.3.0-zip/gcc/config/mn10300/linux.h
---- gcc-5.3.0-original/gcc/config/mn10300/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/mn10300/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/mn10300/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -32,7 +32,7 @@
  #undef  ASM_SPEC
@@ -424,7 +424,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/mn10300/linux.h gcc-5
  #undef  LINK_SPEC
  #define LINK_SPEC "%{mrelax:--relax} %{shared:-shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/pa/pa-linux.h gcc-5.3.0-zip/gcc/config/pa/pa-linux.h
---- gcc-5.3.0-original/gcc/config/pa/pa-linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/pa/pa-linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/pa/pa-linux.h	2015-09-24 20:04:26.000000000 -0400
 @@ -37,7 +37,7 @@
  /* Define this for shared library support because it isn't in the main
@@ -436,7 +436,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/pa/pa-linux.h gcc-5.3
  #undef LINK_SPEC
  #define LINK_SPEC "\
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/linux64.h gcc-5.3.0-zip/gcc/config/rs6000/linux64.h
---- gcc-5.3.0-original/gcc/config/rs6000/linux64.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/rs6000/linux64.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/rs6000/linux64.h	2015-03-09 19:18:57.000000000 -0400
 @@ -357,14 +357,14 @@
  #undef	LINK_OS_DEFAULT_SPEC
@@ -459,7 +459,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/linux64.h gcc-
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/sysv4.h gcc-5.3.0-zip/gcc/config/rs6000/sysv4.h
---- gcc-5.3.0-original/gcc/config/rs6000/sysv4.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/rs6000/sysv4.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/rs6000/sysv4.h	2015-09-24 09:46:45.000000000 -0400
 @@ -757,8 +757,8 @@
  
@@ -473,7 +473,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/rs6000/sysv4.h gcc-5.
  #define CHOOSE_DYNAMIC_LINKER(G, U) "%{mglibc:" G ";:" U "}"
  #elif !defined (DEFAULT_LIBC) || DEFAULT_LIBC == LIBC_GLIBC
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/s390/linux.h gcc-5.3.0-zip/gcc/config/s390/linux.h
---- gcc-5.3.0-original/gcc/config/s390/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/s390/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/s390/linux.h	2015-05-11 03:14:10.000000000 -0400
 @@ -60,8 +60,8 @@
  #define MULTILIB_DEFAULTS { "m31" }
@@ -487,7 +487,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/s390/linux.h gcc-5.3.
  #undef  LINK_SPEC
  #define LINK_SPEC \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sh/linux.h gcc-5.3.0-zip/gcc/config/sh/linux.h
---- gcc-5.3.0-original/gcc/config/sh/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/sh/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/sh/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -43,7 +43,7 @@
  
@@ -499,7 +499,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sh/linux.h gcc-5.3.0-
  #undef SUBTARGET_LINK_EMUL_SUFFIX
  #define SUBTARGET_LINK_EMUL_SUFFIX "_linux"
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux64.h gcc-5.3.0-zip/gcc/config/sparc/linux64.h
---- gcc-5.3.0-original/gcc/config/sparc/linux64.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/sparc/linux64.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/sparc/linux64.h	2015-01-05 07:33:28.000000000 -0500
 @@ -84,8 +84,8 @@
     When the -shared link option is used a final link is not being
@@ -522,7 +522,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux64.h gcc-5
      %{!static: \
        %{rdynamic:-export-dynamic} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux.h gcc-5.3.0-zip/gcc/config/sparc/linux.h
---- gcc-5.3.0-original/gcc/config/sparc/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/sparc/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/sparc/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -83,7 +83,7 @@
     When the -shared link option is used a final link is not being
@@ -534,7 +534,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/sparc/linux.h gcc-5.3
  #undef  LINK_SPEC
  #define LINK_SPEC "-m elf32_sparc %{shared:-shared} \
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/vax/linux.h gcc-5.3.0-zip/gcc/config/vax/linux.h
---- gcc-5.3.0-original/gcc/config/vax/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/vax/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/vax/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -41,7 +41,7 @@
    %{!shared: \
@@ -546,7 +546,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/vax/linux.h gcc-5.3.0
  
  #undef  WCHAR_TYPE
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/xtensa/linux.h gcc-5.3.0-zip/gcc/config/xtensa/linux.h
---- gcc-5.3.0-original/gcc/config/xtensa/linux.h	2016-11-03 10:52:07.162745954 -0400
+--- gcc-5.3.0-original/gcc/config/xtensa/linux.h	2016-11-28 18:14:19.386586394 -0500
 +++ gcc-5.3.0-zip/gcc/config/xtensa/linux.h	2015-01-05 07:33:28.000000000 -0500
 @@ -44,7 +44,7 @@
    %{mlongcalls:--longcalls} \
@@ -706,8 +706,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/t-zip gcc-5.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-zip/gcc/config/zip/zip.c
 --- gcc-5.3.0-original/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.c	2016-11-02 10:55:10.906812219 -0400
-@@ -0,0 +1,2291 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.c	2016-11-19 08:28:56.703678695 -0500
+@@ -0,0 +1,2293 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -793,6 +793,8 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +
 +#include "diagnostic.h"
 +// #include "integrate.h"
++
++#include "zip-protos.h"
 +
 +// static int	zip_arg_partial_bytes(CUMULATIVE_ARGS *, enum machine_mode, tree, bool);
 +// static	bool	zip_pass_by_reference(CUMULATIVE_ARGS *, enum machine_mode, const_tree, bool);
@@ -1264,7 +1266,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +	}
 +}
 +
-+bool
++int
 +zip_use_return_insn(void)
 +{
 +	if ((!reload_completed)||(cfun->machine->fp_needed)
@@ -1274,11 +1276,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +		// stack first.
 +		if ((!crtl->is_leaf)||((df_regs_ever_live_p(0))
 +						&&(!call_used_regs[0]))) {
-+			return false;
++			return 0;
 +		}
 +	}
 +	zip_compute_frame();
-+	return (cfun->machine->size_for_adjusting_sp == 0);
++	return (cfun->machine->size_for_adjusting_sp == 0)?1:0;
 +}
 +
 +/* As per the notes in M68k.c, quote the function epilogue should not depend
@@ -2666,15 +2668,15 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +}
 +*/
 +
-+bool
++int
 +zip_supported_condition(int c) {
 +	switch(c) {
 +	case NE: case LT: case EQ: case GT: case GE: case LTU:
-+		return true;
++		return 1;
 +		break;
 +	default:
 +		break;
-+	} return false;
++	} return 0;
 +}
 +
 +bool
@@ -2687,7 +2689,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +	} return false;
 +}
 +
-+bool
++int
 +zip_expand_movsicc(rtx dst, rtx condition, rtx iftrue, rtx iffalse) {
 +	rtx_insn *insn;
 +	const bool	dbg = ((ALL_DEBUG_ON)||(false))&&(!ALL_DEBUG_OFF);
@@ -2777,7 +2779,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +			zip_debug_ccode(cmpcode);
 +			fprintf(stderr, "\n");
 +		}
-+		return false;
++		return 0;
 +	}
 +	gcc_assert(zip_supported_condition((int)cmpcode));
 +
@@ -2793,7 +2795,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +			zip_debug_ccode(cmpcode);
 +			fprintf(stderr, "\n");
 +		}
-+		return false;
++		return 0;
 +	}
 +
 +	if ((!rtx_equal_p(dst, iffalse))&&(!conditionally_do_false)) {
@@ -2829,7 +2831,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +	}
 +
 +	// Return true on success
-+	return true;
++	return 1;
 +}
 +
 +const char *zip_addsicc(rtx dst, rtx condition, rtx ifsrc, rtx addv ATTRIBUTE_UNUSED) {
@@ -2999,10 +3001,152 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.c gcc-5.3.0-z
 +int	zip_is_conditional(rtx_insn *insn) {
 +	return (get_attr_conditional(insn)==CONDITIONAL_YES);
 +}
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-float.md gcc-5.3.0-zip/gcc/config/zip/zip-float.md
+--- gcc-5.3.0-original/gcc/config/zip/zip-float.md	1969-12-31 19:00:00.000000000 -0500
++++ gcc-5.3.0-zip/gcc/config/zip/zip-float.md	2016-11-10 10:17:53.248750791 -0500
+@@ -0,0 +1,138 @@
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Filename:	zip-float.md
++;;
++;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++;;
++;; Purpose:	This is the machine description of the ZipCPU floating point
++;;		unit (if installed).
++;;
++;;
++;; Creator:	Dan Gisselquist, Ph.D.
++;;		Gisselquist Technology, LLC
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Copyright (C) 2015, Gisselquist Technology, LLC
++;;
++;; This program is free software (firmware): you can redistribute it and/or
++;; modify it under the terms of  the GNU General Public License as published
++;; by the Free Software Foundation, either version 3 of the License, or (at
++;; your option) any later version.
++;;
++;; This program is distributed in the hope that it will be useful, but WITHOUT
++;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++;; for more details.
++;;
++;; License:	GPL, v3, as defined and found on www.gnu.org,
++;;		http://www.gnu.org/licenses/gpl.html
++;;
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;;
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Floating point Op-codes
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++;
++(define_insn "addsf3"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(plus:SF (match_operand:SF 1 "register_operand" "0")
++			(match_operand:SF 2 "register_operand" "r")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_FPU)"
++	"FPADD	%2,%0"
++	[(set_attr "ccresult" "unknown")])
++(define_insn "subsf3"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(minus:SF (match_operand:SF 1 "register_operand" "0")
++			(match_operand:SF 2 "register_operand" "r")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_FPU)"
++	"FPSUB	%2,%0"
++	[(set_attr "ccresult" "unknown")])
++(define_insn "mulsf3"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(mult:SF (match_operand:SF 1 "register_operand" "0")
++			(match_operand:SF 2 "register_operand" "r")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_FPU)"
++	"FPMUL	%2,%0"
++	[(set_attr "ccresult" "unknown")])
++(define_insn "divsf3"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(div:SF (match_operand:SF 1 "register_operand" "0")
++			(match_operand:SF 2 "register_operand" "r")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_FPU)"
++	"FPDIV	%2,%0"
++	[(set_attr "ccresult" "unknown")])
++; (define_insn "floatsisf2"
++;	[(set (match_operand:SF 0 "register_operand" "=r"
++;		(float:SI (match_operand:SF 1 "register_operand" "r"))))
++;	(set (reg:CC CC_REG) (compare:CC (match_dup 1) (const_int 0)))]
++;	"(ZIP_FPU)"
++;	"FPI2F	%1,%0")
++; (define_insn "floatunssisf2" ... ?)
++; (define_insn "fix_truncsfsi2"
++;	[(set (match_operand:SI 0 "register_operand" "=r"
++;		(float:SF (match_operand:SF 1 "register_operand" "r"))))
++;	(set (reg:CC CC_REG) (compare:CC (match_dup 1) (const_int 0)))]
++;	"(ZIP_FPU)"
++;	"FPI2F	%1,%0")
++; (define_insn "nearbyintsf2" ... ?)
++; (define_insn "truncsfsi2" ... ?)
++(define_expand "negsf2"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(neg:SF (match_operand:SF 1 "register_operand" "0")))
++	]
++	""
++	{
++		operands[0] = gen_rtx_SUBREG(SImode, operands[0], 0);
++		if (can_create_pseudo_p()) {
++			rtx tmp = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi_ldi(tmp,gen_int_mode(0x80000000,SImode)));
++			emit_insn(gen_xorsi3(operands[0], operands[0], tmp));
++			DONE;
++		} else {
++			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
++			emit_insn(gen_iorsi3(operands[0], operands[0],
++				gen_int_mode(1,SImode)));
++			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
++			DONE;
++		}
++	})
++(define_expand "abssf2"
++	[(set (match_operand:SF 0 "register_operand" "=r")
++		(abs:SF (match_operand:SF 1 "register_operand" "0")))
++	]
++	""
++	{
++		operands[0] = gen_rtx_SUBREG(SImode, operands[0], 0);
++		if (can_create_pseudo_p()) {
++			rtx tmp = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi_ldi(tmp,gen_int_mode(0x7fffffff,SImode)));
++			emit_insn(gen_andsi3(operands[0], operands[0], tmp));
++			DONE;
++		} else {
++			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
++			emit_insn(gen_andsi3(operands[0], operands[0],
++				gen_int_mode(-2,SImode)));
++			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
++			DONE;
++		}
++	})
++;
++;
++; STILL MISSING:
++;
++;
++;
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-zip/gcc/config/zip/zip.h
 --- gcc-5.3.0-original/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.h	2016-09-13 13:46:17.890711238 -0400
-@@ -0,0 +1,4095 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.h	2016-11-19 08:26:58.092386679 -0500
+@@ -0,0 +1,4096 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -3053,13 +3197,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 +#define	ZIP_FPU		0	// Assume we have no floating point instructions
 +#define	ZIP_PIPELINED	1	// Assume our instructions are pipelined
 +#define	ZIP_VLIW	1	// Assume we have the VLIW feature
-+#define	ZIP_ATOMIC	((ZIP_PIPELINED)&&(ZIP_VLIW))
++#define	ZIP_ATOMIC	(ZIP_PIPELINED)
 +#define	ZIP_PIC		0	// Attempting to produce PIC code, with GOT
 +#define	ZIP_HAS_DI	1
 +// Should we use the peephole optimizations?
 +#define	ZIP_PEEPHOLE	1	// 0 means no peephole optimizations.
 +// How about the new long multiply instruction set?
 +#define	ZIP_LONGMPY	1	// 0 means use the old instruction set
++#define	ZIP_NEW_CONDITION_CODE	0	// 0 means use the old condition codes
 +
 +// Zip has 16 registers in each user mode.
 +//	Register 15 is the program counter (PC)
@@ -3591,14 +3736,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 +#define	CHAR_TYPE_SIZE	32
 +#define	SHORT_TYPE_SIZE	32
 +#define	INT_TYPE_SIZE	32
-+#define	LONG_TYPE_SIZE	32
++#define	LONG_TYPE_SIZE	64
 +#define	LONG_LONG_TYPE_SIZE	64
 +// BOOL_TYPE_SIZE defaults to CHAR_TYPE_SIZE
 +#undef	FLOAT_TYPE_SIZE
 +#undef	DOUBLE_TYPE_SIZE
 +#undef	LONG_DOUBLE_TYPE_SIZE
 +#define	FLOAT_TYPE_SIZE		32
-+#define	DOUBLE_TYPE_SIZE	FLOAT_TYPE_SIZE	// Zip CPU doesn't support dbls
++#define	DOUBLE_TYPE_SIZE	64	// This'll need to be done via emulation
 +#define	LONG_DOUBLE_TYPE_SIZE	64	// This'll need to be done via emulation
 +// SHORT_FRAC_TYPE_SIZE
 +// LONG_FFRACT_TYPE_SIZE
@@ -7094,14 +7239,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.h gcc-5.3.0-z
 +#define	HAmode	SAmode
 +
 +#include "insn-modes.h"
-+#include "zip-protos.h"
++// #include "zip-protos.h"	// Cant include this here!
 +
 +#endif	/* GCC_ZIP_H */
 +
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-zip/gcc/config/zip/zip.md
 --- gcc-5.3.0-original/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip.md	2016-11-02 12:05:18.838341497 -0400
-@@ -0,0 +1,3468 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip.md	2016-11-28 18:12:19.339493020 -0500
+@@ -0,0 +1,3058 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -7198,8 +7343,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +;
-+
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
 +;; Predicates
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++;
 +(define_predicate "zip_const_address_operand_p"
 +	(match_code "symbol_ref,const,label_ref,code_label")
 +{
@@ -7284,7 +7435,16 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	return 1;
 +})
 +
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
 +;; Constraints
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
 +;
 +(define_memory_constraint "S"
 +	"Any memory referenced by a constant address, possibly unknown at compile time"
@@ -7304,7 +7464,16 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		(match_test "zip_ct_const_address_operand(op)")))
 +;
 +;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
 +;; Attributes
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++;
++;
 +;
 +(define_attr "predicable"  "no,yes" (const_string "yes"))
 +(define_attr "conditional" "no,yes" (const_string "no"))
@@ -7315,6 +7484,17 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +; (define_mode_attr zipa [(QI "") (HI "") (SI "")])
 +(define_mode_iterator ZI [SI])
 +(define_mode_attr zipa [(SI "")])
++;
++;
++;
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Instructions
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;
 +;
 +;
@@ -7351,10 +7531,10 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Move instructions: both
-+;	(arbitrary) from variables to variables, but this gets
-+;		expanded into:
-+;	from registers to registers
-+;	from immediates to registers
++;;	(arbitrary) from variables to variables, but this gets
++;;		expanded into:
++;;	from registers to registers
++;;	from immediates to registers
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;
@@ -7683,29 +7863,6 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	""
 +	"SUB	%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
-+(define_insn "mul<mode>3_oldstyle"
-+	[(set (match_operand:ZI 0 "register_operand" "=r")
-+		(mult:ZI (match_operand:ZI 1 "register_operand" "%r")
-+			(match_operand:ZI 2 "register_operand" "r")))
-+	(clobber (match_scratch:ZI 3 "=r"))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	; "(R0 != R1)&&(R0 != R2)&&(R0!=R3)&&(R1!=R2)&&(R1=R3)&&(R2!=R3)"
-+	"(!ZIP_LONGMPY)"
-+	"MOV	%1,%0
-+	MPYS	%2,%0
-+	MOV	%1,%3
-+	ROL	16,%3
-+	MPYS	%2,%3
-+	ROL	16,%3
-+	AND	0x0ffff,%3
-+	ADD	%3,%0
-+	MOV	%2,%3
-+	ROL	16,%3
-+	MPYS	%1,%3
-+	ROL	16,%3
-+	AND	0x0ffff,%3
-+	ADD	%3,%0"
-+	[(set_attr "ccresult" "unknown")])
 +;
 +;
 +(define_expand "mul<mode>3"
@@ -7779,14 +7936,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
 +		(sign_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "")))
 +		(const_int 32))))]
-+	"(ZIP_LONGMPY)")
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))")
 +(define_insn_and_split "smulsi3_highpart_split_reg"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +	    (truncate:SI (ashiftrt:DI (mult:DI
 +		(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
 +		(sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"#"
 +	"(reload_completed)"
 +	[(parallel [(set (match_dup 0)
@@ -7806,7 +7963,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(plus:SI (match_operand:SI 2 "register_operand" "r")
 +				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
 +			(const_int 32))))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"#"
 +	"(reload_completed)"
 +	[(parallel [(set (match_dup 0)
@@ -7827,7 +7984,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		  (sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))
 +	(clobber (reg:CC CC_REG))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "smulsi3_highpart_reg_raw"
@@ -7838,7 +7995,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		  (sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "smulsi3_highpart_off_raw"
@@ -7851,7 +8008,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
 +		(const_int 32))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "smulsi3_highpart_off_clobber"
@@ -7864,7 +8021,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:SI 3 "zip_opb_immv_p" "N"))))
 +		(const_int 32))))
 +	(clobber (reg:CC CC_REG))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
 +;
@@ -7875,14 +8032,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
 +		(zero_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "")))
 +		(const_int 32))))]
-+	"(ZIP_LONGMPY)")
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))")
 +(define_insn_and_split "umulsi3_highpart_split_reg"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +	    (truncate:SI (ashiftrt:DI (mult:DI
 +		(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
 +		(zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"#"
 +	"(reload_completed)"
 +	[(parallel [(set (match_dup 0)
@@ -7903,7 +8060,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(plus:SI (match_operand:SI 2 "register_operand" "r")
 +				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
 +		(const_int 32))))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"#"
 +	"(reload_completed)"
 +	[(parallel [(set (match_dup 0)
@@ -7924,7 +8081,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		    (zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))
 +	(clobber (reg:CC CC_REG))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "umulsi3_highpart_reg_raw"
@@ -7935,7 +8092,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		   (zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +		(const_int 32))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "umulsi3_highpart_off_raw"
@@ -7948,7 +8105,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +				(match_operand:DI 3 "zip_opb_immv_p" "N"))))
 +		(const_int 32))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
 +(define_insn "umulsi3_highpart_off_clobber"
@@ -7961,7 +8118,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 3 "zip_opb_immv_p" "N"))))
 +		(const_int 32))))
 +	(clobber (reg:CC CC_REG))]
-+	"(ZIP_LONGMPY)"
++	"((ZIP_LONGMPY)&&(ZIP_HAS_DI))"
 +	"MPYSHI\t%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
 +;
@@ -8058,6 +8215,9 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
++; AND
++;
++;
 +(define_expand "and<mode>3"
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(and:ZI (match_operand:ZI 1 "register_operand" "%0")
@@ -8122,6 +8282,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "ccresult" "set")])
 +;
 +;
++;
++;
++; iOR
++;
++;
 +(define_expand "ior<mode>3"
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(ior:ZI (match_operand:ZI 1 "register_operand" "%0")
@@ -8184,6 +8349,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	""
 +	"OR	%3+%2,%0"
 +	[(set_attr "ccresult" "set")])
++;
++;
++;
++;
++; XOR
 +;
 +;
 +;
@@ -8279,6 +8449,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;; (define_insn "umulvsi4"
 +;;	... ???)
 +;;
++;
++;
++; ASR
++;
++;
 +(define_expand "ashr<mode>3"
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(ashiftrt:ZI (match_operand:ZI 1 "register_operand" "0")
@@ -8312,6 +8487,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "ccresult" "set")])
 +;
 +;
++;
++; LSL
++;
++;
++;
 +(define_expand "ashl<mode>3"
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(ashift:ZI (match_operand:ZI 1 "register_operand" "0")
@@ -8343,6 +8523,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	""
 +	"LSL	%2,%0"
 +	[(set_attr "ccresult" "set")])
++;
++;
++;
++; LSR
++;
 +;
 +;
 +(define_expand "lshr<mode>3"
@@ -8412,6 +8597,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +;
++;
++;
++; Others:  NEG, TEST, POPC, NOT
++;
++;
 +(define_insn "neg<mode>2"
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(neg:ZI (match_operand:ZI 1 "register_operand" "r")))
@@ -8464,11 +8654,12 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +(define_expand "movdi3"
 +	[(set (match_operand:DI 0 "nonimmediate_operand" "")
-+		(match_operand:DI 1 "general_operand" ""))])
++		(match_operand:DI 1 "general_operand" ""))]
++	"(ZIP_HAS_DI)")
 +(define_insn "movdi_lod"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(mem:DI (match_operand:SI 1 "zip_opb_operand_p" "")))]
-+	""
++	"(ZIP_HAS_DI)"
 +	{
 +		if (REG_P(operands[1]))
 +			return "LOD\t(%1),%H0\n\tLOD\t1(%1),%L0";
@@ -8488,7 +8679,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +(define_insn "movdi_sto"
 +	[(set (mem:DI (match_operand:SI 0 "zip_opb_operand_p" ""))
 +		(match_operand:DI 1 "register_operand" "r"))]
-+	""
++	"(ZIP_HAS_DI)"
 +	{
 +		if (REG_P(operands[0]))
 +			return "STO\t%H0,(%1)\n\tSTO\t%L0,1(%1)";
@@ -8508,18 +8699,28 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +(define_insn "movdi_ldi"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(match_operand:DI 1 "immediate_operand" "i"))]
-+	""
++	"(ZIP_HAS_DI)"
 +	"LDI\t%H1,%H0\n\tLDI\t%L1,%L0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; ADD
++;
++;
 +(define_insn "adddi3" ; Fastest/best instruction always goes first
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(plus:DI (match_operand:DI 1 "register_operand" "0")
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"ADD	%L2,%L0\n\tADD.C\t1,%H0\n\tADD\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; SUB
++;
 +;
 +(define_insn "subdi3"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -8527,9 +8728,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"SUB	%L2,%L0\n\tSUB.C\t1,%H0\n\tSUB\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; AND
++;
 +;
 +(define_insn "anddi3"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -8537,9 +8743,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"AND	%L2,%L0\n\tAND\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; iOR
++;
 +;
 +(define_insn "iordi3"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -8547,9 +8758,14 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
-+	"OR	%2,%0\n\tOR\t%H2,%H0"
++	"(ZIP_HAS_DI)"
++	"OR	%L2,%L0\n\tOR\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; XOR
++;
 +;
 +(define_insn "xordi3"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -8557,18 +8773,28 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
-+	"XOR	%2,%0\n\tXOR\t%H2,%H0"
++	"(ZIP_HAS_DI)"
++	"XOR	%L2,%L0\n\tXOR\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; NEG
++;
 +;
 +(define_insn "negdi2"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(neg:DI (match_operand:DI 1 "register_operand" "0")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"XOR	-1,%L0\n\tXOR\t-1,%H0\n\tADD\t1,%L0\n\tADD.C\t1,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++;
++; ABS
++;
 +;
 +(define_insn "absdi2"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -8576,7 +8802,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	(clobber (match_scratch:SI 2 "=r"))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"CLR	%2
 +	TEST	%H0		; Problem, we can't tell conditions
 +	LDILO.LT	1,%2
@@ -8585,21 +8811,31 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	ADD	%2,%L0
 +	ADD.C	1,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++; NOT
++;
++;
 +(define_insn "one_cmpldi2"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(not:DI (match_operand:DI 1 "register_operand" "0")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"XOR	-1,%L0\n\tXOR\t-1,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++; Unsigned min/max
++;
++;
 +(define_insn "umindi3"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(umin:DI (match_operand:DI 1 "register_operand" "%0")
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"CMP	%H0,%H2
 +	CMP.Z	%L0,%L2
 +	MOV.C	%H2,%H0
@@ -8611,23 +8847,33 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(match_operand:DI 2 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"CMP	%H2,%H0
 +	CMP.Z	%L2,%L0
 +	MOV.C	%H2,%H0
 +	MOV.C	%L2,%L0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
++;
++;
++; POP
++;
++;
 +(define_insn "popcountdi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(popcount:SI (match_operand:DI 1 "register_operand" "r")))
 +	(clobber (match_scratch:SI 2 "=r"))
 +	(clobber (reg:CC CC_REG))
 +	]
-+	""
++	"(ZIP_HAS_DI)"
 +	"POPC	%L1,%0
 +	POPC	%H1,%2
 +	ADD	%2,%0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++; PARITY
++;
++;
 +(define_expand "paritydi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(popcount (match_operand:DI 1 "register_operand" "r")))
@@ -8636,7 +8882,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;(define_insn "extendsidi2"
 +;	[(set (match_operand:DI 0 "register_operand" "=r")
 +;		(sign_extend:DI (match_operand:SI 0 "register_operand" "r")))]
-+;	""
++;	"(ZIP_HAS_DI)"
 +;	"TEST\t%1\nMOV\t%1,%L0\nCLR\t%L1\nLDI.LT\t-1,%L1"
 +;	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;(define_insn "mulsidi3"
@@ -8645,7 +8891,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;			(match_operand:SI 2 "register_operand" "r")))
 +;	(clobber (match_scratch:SI 3 "=r"))]
 +;	; "(R0 != R1)&&(R0 != R2)&&(R0!=R3)&&(R1!=R2)&&(R1=R3)&&(R2!=R3)"
-+;	""
++;	"(ZIP_HAS_DI)"
 +;	"MOV	%1,%L0
 +;	MPYS	%2,%L0			; L0 = R2 * R1
 +;	MOV	%1,%3			; R3 = R1
@@ -8693,15 +8939,23 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +				(match_operand:DI 3 "register_operand" "r")])
 +			(const_int 1) (const_int 0)))
 +	(clobber (reg:CC CC_REG))]
-+	""
++	"(ZIP_HAS_DI)"
 +	{
 +		switch(GET_CODE(operands[1])) {
 +		case EQ:	return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.Z\t%L3,%L2\n\tLDILO.Z\t1,%0\n";
 +		case NE:	return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.NZ\t%L3,%L2\n\tLDILO.NZ\t1,%0\n";
 +		case LTU:	return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.Z\t%L3,%L2\n\tLDILO.C\t1,%0\n";
-+		case LEU:	return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.Z\t%L3,%L2\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0\n";
++		case LEU:
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CLR\t%0\n\tCMP\t%H2,%H3\n\tCMP.Z\t%L2,%L3\n\tLDILO.NC\t1,%0\n";
++			else
++			return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.Z\t%L3,%L2\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0\n";
 +		case GTU:	return "CLR\t%0\n\tCMP\t%H2,%H3\n\tCMP.Z\t%L2,%L3\n\tLDILO.C\t1,%0\n";
-+		case GEU:	return "CLR\t%0\n\tCMP\t%H2,%H3\n\tCMP.Z\t%L2,%L3\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0\n";
++		case GEU:
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CLR\t%0\n\tCMP\t%H3,%H2\n\tCMP.Z\t%L3,%L2\n\tLDILO.NC\t1,%0\n";
++			else
++			return "CLR\t%0\n\tCMP\t%H2,%H3\n\tCMP.Z\t%L2,%L3\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0\n";
 +		default:
 +			gcc_unreachable();
 +		}
@@ -8809,8 +9063,13 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	"(GT)"
 +	[(set_attr "conditional" "yes")])
 +(define_cond_exec
++	[(geu (reg:CC CC_REG) (const_int 0))]
++	"(ZIP_NEW_CONDITION_CODE)"
++	"(NC)"
++	[(set_attr "conditional" "yes")])
++(define_cond_exec
 +	[(ge (reg:CC CC_REG) (const_int 0))]
-+	""
++	"(!ZIP_NEW_CONDITION_CODE)"
 +	"(GE)"
 +	[(set_attr "conditional" "yes")])
 +(define_cond_exec
@@ -9021,7 +9280,6 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;;	Op 3 is the jump label
 +;;
 +;;
-+;; #warning Need to adjust this so that the "LT" code doesnt get generated ...
 +;;
 +(define_expand "cbranch<mode>4"
 +	[(set (reg:CC CC_REG) (compare:CC (match_operand:ZI 1 "register_operand" "r")
@@ -9050,15 +9308,26 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			DONE;
 +		} else if((GET_CODE(operands[0])==GEU)&&(REG_P(operands[2]))) {
 +			//; fprintf(stderr, "CBRANCH:(GEU,?,REG,?)\n");
-+			emit_insn(gen_cmpsi_off(operands[2], operands[1],
++			if (ZIP_NEW_CONDITION_CODE) {
++				emit_insn(gen_cmpsi(operands[1], operands[2]));
++				emit_jump_insn(gen_cbranch_jmp_geu(operands[3]));
++			} else {
++				emit_insn(gen_cmpsi_off(operands[2], operands[1],
 +					GEN_INT(1)));
-+			emit_jump_insn(gen_cbranch_jmp_ltu(operands[3]));
++				emit_jump_insn(gen_cbranch_jmp_ltu(operands[3]));
++			}
 +			DONE;
 +		} else if ((GET_CODE(operands[0])==LE)&&(REG_P(operands[2]))) {
 +			//; fprintf(stderr, "CBRANCH:(LE,?,REG,?)\n");
 +			//; Swap operands, turn into a GTE compare
-+			emit_insn(gen_cmpsi(operands[2], operands[1]));
-+			emit_jump_insn(gen_cbranch_jmp_ge(operands[3]));
++			if (ZIP_NEW_CONDITION_CODE) {
++				emit_insn(gen_cmpsi_off(operands[1], operands[2],
++					GEN_INT(1)));
++				emit_jump_insn(gen_cbranch_jmp_lt(operands[3]));
++			} else {
++				emit_insn(gen_cmpsi(operands[2], operands[1]));
++				emit_jump_insn(gen_cbranch_jmp_ge(operands[3]));
++			}
 +			DONE;
 +		} // ; Otherwise ... just handle the branch normally
 +
@@ -9094,7 +9363,40 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +				emit_jump_insn(gen_cbranch_jmp_lt(operands[3]));
 +				DONE;
 +			}
++#if (ZIP_NEW_CONDITION_CODE != 0)
++		} else if (GET_CODE(operands[0])==GE) {
++			if ((CONST_INT_P(operands[2]))
++				&&(INTVAL(operands[2])<(1<<17)-2)) {
++				//; fprintf(stderr, "CBRANCH:(LE,?,#,?)\n");
++				emit_insn(gen_cmpsi(operands[1],
++						GEN_INT(INTVAL(operands[2])+1)));
++				emit_jump_insn(gen_cbranch_jmp_gt(operands[3]));
++				DONE;
++			//; Now for the controversial ones--where we add one
++			//; when it may or may not be permissable.  For now, we
++			//; just do it anyway and postpone the philosophical
++			//; discussion for later.
++			} else if (REG_P(operands[2])) {
++				emit_insn(gen_cmpsi_off(operands[1],
++						operands[2],GEN_INT(1)));
++				emit_jump_insn(gen_cbranch_jmp_gt(operands[3]));
++				DONE;
++			} else if ((GET_CODE(operands[2])==PLUS)
++				&&(REG_P(XEXP(operands[2],0)))
++				&&(CONST_INT_P(XEXP(operands[2],1)))
++				&&(INTVAL(XEXP(operands[2],1))<((1<<13)-2))) {
++				emit_insn(gen_cmpsi_off(operands[1],
++						XEXP(operands[2],0),
++					GEN_INT(INTVAL(XEXP(operands[2],1))+1)));
++				emit_jump_insn(gen_cbranch_jmp_gt(operands[3]));
++				DONE;
++			}
++#endif
 +		} else if (GET_CODE(operands[0])==LEU) {
++#if (ZIP_NEW_CONDITION_CODE != 0)
++			emit_insn(gen_cmpsi(operands[1], operands[2]));
++			emit_jump_insn(gen_cbranch_jmp_geu(operands[3]));
++#else
 +			if ((CONST_INT_P(operands[2]))
 +				&&(INTVAL(operands[2])<(1<<17)-2)) {
 +				//; fprintf(stderr, "CBRANCH:(LEU,?,#,?)\n");
@@ -9119,6 +9421,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +				emit_jump_insn(gen_cbranch_jmp_ltu(operands[3]));
 +				DONE;
 +			}
++#endif
 +		}}
 +	})
 +(define_insn "cbranch_jmp_eq"
@@ -9167,11 +9470,24 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
-+(define_insn "cbranch_jmp_ge"
++(define_expand "cbranch_jmp_ge"
++	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))])
++(define_insn "cbranch_jmp_ge_newcc"
 +	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
 +		 (label_ref (match_operand 0 "" ""))
 +		 (pc)))]
-+	""
++	"(ZIP_NEW_CONDITION_CODE)"
++	"BGT\t%0\n\tBZ\t%0"
++	[(set_attr "predicable" "no")
++		(set_attr "conditional" "yes")
++		(set_attr "ccresult" "unchanged")])
++(define_insn "cbranch_jmp_ge_oldcc"
++	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))]
++	"(!ZIP_NEW_CONDITION_CODE)"
 +	"BGE\t%0"
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
@@ -9185,13 +9501,39 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
-+(define_insn "cbranch_jmp_gtu"
++(define_expand "cbranch_jmp_gtu"
 +	[(set (pc) (if_then_else (gtu (reg:CC CC_REG) (const_int 0))
 +		 (label_ref (match_operand 0 "" ""))
-+		 (pc)))
-+	;(clobber (reg:CC CC_REG))
-+	]
-+	""	; Flip the condition, and then we can jump
++		 (pc)))])
++(define_insn "cbranch_jmp_gtu_newcc"
++	[(set (pc) (if_then_else (gtu (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))]
++	"(ZIP_NEW_CONDITION_CODE)"
++	;// We could flip the condition code, and then be able to jump.
++	;// The problem is that doing this adjusts the condition code, and
++	;// we aren't allowed to do that here.
++	;//
++	;// The problem here is the equals.  What do you do if A=B?  Our new
++	;// condition tests for A>=B, not A>B.  So ... how do you get rid of
++	;// the equals?  We do so here by branching around. (sigh)
++	"BZ\t.Lgtu%=\n\tBNC\t%0\n.Lgtu%=:"
++	[(set_attr "predicable" "no")
++		(set_attr "conditional" "yes")
++		(set_attr "ccresult" "unknown")])
++(define_insn "cbranch_jmp_gtu_oldcc"
++	[(set (pc) (if_then_else (gtu (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))]
++	"(!ZIP_NEW_CONDITION_CODE)"
++	;// We could flip the condition code, and then be able to jump.
++	;// The problem is that doing this adjusts the condition code, and
++	;// we aren't allowed to do that here.
++	;//
++	;// With the old condition code, things are worse.  Sure, we still need
++	;// to branch around, but it's worse 'cause we are always branching
++	;// around the conditional branch.  With the new condition code, we
++	;// only branch around on part of the unsupported condition.
 +	"BC\t.Lgtu%=\n\tBZ\t.Lgtu%=\n\tBRA\t%0\n.Lgtu%=:"
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
@@ -9206,17 +9548,28 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
-+(define_insn "cbranch_jmp_geu"
++(define_expand "cbranch_jmp_geu"
 +	[(set (pc) (if_then_else (geu (reg:CC CC_REG) (const_int 0))
 +		 (label_ref (match_operand 0 "" ""))
-+		 (pc)))
-+	;(clobber (reg:CC CC_REG))
-+	]
-+	""
++		 (pc)))])
++(define_insn "cbranch_jmp_geu_newcc"
++	[(set (pc) (if_then_else (geu (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))]
++	"(ZIP_NEW_CONDITION_CODE)"
++	"BNC\t%0"
++	[(set_attr "predicable" "no")
++		(set_attr "conditional" "yes")
++		(set_attr "ccresult" "unchanged")])
++(define_insn "cbranch_jmp_geu_oldcc"
++	[(set (pc) (if_then_else (geu (reg:CC CC_REG) (const_int 0))
++		 (label_ref (match_operand 0 "" ""))
++		 (pc)))]
++	"(!ZIP_NEW_CONDITION_CODE)"
 +	"BC\t.Lgeu%=\n\tBRA\t%0\n.Lgeu%=:"
 +	[(set_attr "predicable" "no")
 +		(set_attr "conditional" "yes")
-+		(set_attr "ccresult" "unknown")])
++		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranchdi4"
 +	[(set (pc) (if_then_else
 +		(match_operator 0 "ordered_comparison_operator"
@@ -9225,7 +9578,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +			(label_ref (match_operand 3 "" ""))
 +			(pc)))
 +	(clobber (reg:CC CC_REG))]
-+	""
++	"(ZIP_HAS_DI)"
 +	{
 +		switch(GET_CODE(operands[0])) {
 +		case EQ:
@@ -9233,20 +9586,32 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +		case NE:
 +			return "CMP\t%H2,%H1\n\tCMP.NZ\t%L2,%L1\n\tBNZ\t%3";
 +		case LE:
-+			return "CMP\t%H2,%H1\n\tBLT\t%3\n\tCMP.Z\t%L2,%L1\n\tBC\t%3\n\tBZ\t%3";
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CMP\t%H2,%H1\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L1,%L2\n\tBNC\t%3\n.Ldi%=:";
++			else
++			return "CMP\t%H2,%H1\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L2,%L1\n\tBC\t%3\n\tBZ\t%3\n.Ldi%=";
 +		case GT:
 +			return "CMP\t%H1,%H2\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L1,%L2\n\tBC\t%3\n.Ldi%=:";
 +		case LT:
 +			return "CMP\t%H2,%H1\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L2,%L1\n\tBC\t%3\n.Ldi%=:";
 +		case GE:
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CMP\t%H1,%H2\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L2,%L1\n\tBNC\t%3\n.Ldi%=:";
++			else
 +			return "CMP\t%H1,%H2\n\tBLT\t%3\n\tBNZ\t.Ldi%=\n\tCMP\t%L1,%L2\n\tBC\t%3\nBZ\t%3\n.Ldi%=:";
 +		case LTU:
 +			return "CMP\t%H2,%H1\n\tCMP.Z\t%L2,%L1\n\tBC\t%3\n";
 +		case LEU:
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CMP\t%H1,%H2\n\tBC\t.Ldi%=\n\tCMP\t%L1,%L2\n\tBNC\t%3\n.Ldi%=:";
++			else
 +			return "CMP\t%H2,%H1\n\tCMP.Z\t%L2,%L1\n\tBC\t%3\n\tBZ\t%3";
 +		case GTU:
-+			return "CMP\t%H1,%H2\n\tCMP.Z\t%L1,%L2\n\tBC\t%3\n";
++			return "CMP\t%H1,%H2\n\tBC\t%3\nBNZ\t%.Ldi%=\nCMP\t%L1,%L2\n\tBC\t%3\n.Ldi%=:";
 +		case GEU:
++			if (ZIP_NEW_CONDITION_CODE)
++			return "CMP\t%H2,%H1\n\tCMP.Z\t%L2,%L1\n\tBNC\t%3";
++			else
 +			return "CMP\t%H1,%H2\n\tCMP.Z\t%L1,%L2\n\tBC\t%3\nBZ\t%3";
 +		default:
 +			gcc_unreachable();
@@ -9608,48 +9973,60 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +(define_insn "*return"	; A "*" -- means it cannot be called from C
 +	[(return)]
 +	""
-+	"JMP	R0"
++	"RETN"
 +	[(set_attr "ccresult" "unchanged")])
 +(define_insn "simple_return"	; A "*" -- means it cannot be called from C
 +	[(simple_return)]
 +	""
-+	"JMP	R0"
++	"RETN"
 +	[(set_attr "ccresult" "unchanged")])
 +(define_insn "return_if_eq"
 +	[(set (pc) (if_then_else (eq (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
 +	"zip_use_return_insn()"
-+	"JMP.Z	R0"
++	"RETN.Z"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +(define_insn "return_if_ne"
 +	[(set (pc) (if_then_else (ne (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
 +	"zip_use_return_insn()"
-+	"JMP.NZ	R0"
++	"RETN.NZ"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +(define_insn "return_if_lt"
 +	[(set (pc) (if_then_else (lt (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
 +	"zip_use_return_insn()"
-+	"JMP.LT	R0"
++	"RETN.LT"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +(define_insn "return_if_gt"
 +	[(set (pc) (if_then_else (gt (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
 +	"zip_use_return_insn()"
-+	"JMP.GT	R0"
++	"RETN.GT"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++;(define_insn "return_if_gte"
++	;[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
++			;(return) (pc)))]
++	;"((ZIP_NEW_CONDITION_CODE)&&(zip_use_return_insn()))"
++	;"RETN.GT\n\tRETN.Z"
++	;[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +(define_insn "return_if_gte"
 +	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
-+	"zip_use_return_insn()"
-+	"JMP.GTE	R0"
++	"((!ZIP_NEW_CONDITION_CODE)&&(zip_use_return_insn()))"
++	"RETN.GTE"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +(define_insn "return_if_ltu"
 +	[(set (pc) (if_then_else (ltu (reg:CC CC_REG) (const_int 0))
 +			(return) (pc)))]
 +	"zip_use_return_insn()"
-+	"JMP.C	R0"
++	"RETN.C"
++	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
++(define_insn "return_if_geu"
++	[(set (pc) (if_then_else (geu (reg:CC CC_REG) (const_int 0))
++			(return) (pc)))]
++	"((ZIP_NEW_CONDITION_CODE)&&(zip_use_return_insn()))"
++	"RETN.NC"
 +	[(set_attr "ccresult" "unchanged") (set_attr "predicable" "no")])
 +;
 +;
@@ -9837,90 +10214,6 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +; and zip_reg(regno)--both depend upon a compile time constant to work.
 +;
 +;
-+
-+;
-+;
-+;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;; Floating point Op-codes
-+;;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;
-+;
-+;
-+(define_insn "addsf3"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(plus:SF (match_operand:SF 1 "register_operand" "0")
-+			(match_operand:SF 2 "register_operand" "r")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_FPU)"
-+	"FPADD	%2,%0"
-+	[(set_attr "ccresult" "unknown")])
-+(define_insn "subsf3"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(minus:SF (match_operand:SF 1 "register_operand" "0")
-+			(match_operand:SF 2 "register_operand" "r")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_FPU)"
-+	"FPSUB	%2,%0"
-+	[(set_attr "ccresult" "unknown")])
-+(define_insn "mulsf3"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(mult:SF (match_operand:SF 1 "register_operand" "0")
-+			(match_operand:SF 2 "register_operand" "r")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_FPU)"
-+	"FPMUL	%2,%0"
-+	[(set_attr "ccresult" "unknown")])
-+(define_insn "divsf3"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(div:SF (match_operand:SF 1 "register_operand" "0")
-+			(match_operand:SF 2 "register_operand" "r")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_FPU)"
-+	"FPDIV	%2,%0"
-+	[(set_attr "ccresult" "unknown")])
-+(define_expand "negsf2"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(neg:SF (match_operand:SF 1 "register_operand" "0")))
-+	]
-+	""
-+	{
-+		operands[0] = gen_rtx_SUBREG(SImode, operands[0], 0);
-+		if (can_create_pseudo_p()) {
-+			rtx tmp = gen_reg_rtx(SImode);
-+			emit_insn(gen_movsi_ldi(tmp,gen_int_mode(0x80000000,SImode)));
-+			emit_insn(gen_xorsi3(operands[0], operands[0], tmp));
-+			DONE;
-+		} else {
-+			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
-+			emit_insn(gen_iorsi3(operands[0], operands[0],
-+				gen_int_mode(1,SImode)));
-+			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
-+			DONE;
-+		}
-+	})
-+(define_expand "abssf2"
-+	[(set (match_operand:SF 0 "register_operand" "=r")
-+		(abs:SF (match_operand:SF 1 "register_operand" "0")))
-+	]
-+	""
-+	{
-+		operands[0] = gen_rtx_SUBREG(SImode, operands[0], 0);
-+		if (can_create_pseudo_p()) {
-+			rtx tmp = gen_reg_rtx(SImode);
-+			emit_insn(gen_movsi_ldi(tmp,gen_int_mode(0x7fffffff,SImode)));
-+			emit_insn(gen_andsi3(operands[0], operands[0], tmp));
-+			DONE;
-+		} else {
-+			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
-+			emit_insn(gen_andsi3(operands[0], operands[0],
-+				gen_int_mode(-2,SImode)));
-+			emit_insn(gen_zip_bitrev(operands[0],operands[0]));
-+			DONE;
-+		}
-+	})
 +;
 +;
 +;
@@ -9964,6 +10257,12 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +;
++;
++(include "zip-float.md")
++(include "zip-sync.md")
++(include "zip-peephole.md")
++;
++;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Unimplemented (or not yet implemented) RTL Codes
@@ -9972,30 +10271,117 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +;
-+;(define_insn "sync_compare_and_swapsi"
-+;	[(set ...
-+;		)]
-+;	"(ZIP_ATMOC)"
-+;	LOCK		(alu)		// Hmmm ... need to modify if I will
-+;	LOD	%1,%0	OP-VALID	// operate on the value before the store
-+;	CMP	%0,%2	DCD-valid
-+;	STO.Z	%2,%1	PF-valid
 +;
-+;(define_insn "sync_lock_test_and_setsi"
-+;	LOCK
-+;	LOD	%1,%0
-+;	STO	%0,%1
-+;
-+;(define_insn "sync_lock_releasesi"
-+;	STO	%1,%0
-+;
-+;
++;(define_insn "addvsi4"
++;	)
++;(define_insn "subvsi4"
++;	)
++;(define_insn "mulvsi4"
++;	)
++;(define_insn "umulvsi4"
++;	)
++;(define_insn "umulvsi4"
++;	)
 +;(define_insn "negvsi3"
 +;	"MOV	%1,%0
 +;	XOR	-1,%0
 +;	ADD	1,%0
 +;	BV	%2"
-+;	"")
++;	)
++;
++;(define_insn "ssum_widen
++;(define_insn "usum_widen
++;(define_insn "udot_prod"
++;(define_insn "maddsidi4"
++;(define_insn "umaddsidi4"
++;(define_insn "msubsidi4"
++;(define_insn "umsubsidi4"
++;
++;
++; STILL MISSING:
++;	SYSCALL(ID)
++;		MOV %ID,R0
++;		CLR	CC
++;	cmove	... the conditional move, created from a
++;	(set (match_op 0 "" "r") (if_then_else (condition) (a) (reg X))))
++;	pattern
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-modes.def gcc-5.3.0-zip/gcc/config/zip/zip-modes.def
+--- gcc-5.3.0-original/gcc/config/zip/zip-modes.def	1969-12-31 19:00:00.000000000 -0500
++++ gcc-5.3.0-zip/gcc/config/zip/zip-modes.def	2016-03-08 12:10:21.982586940 -0500
+@@ -0,0 +1,23 @@
++/*
++ * Commends in C-long comment form
++ * class
++ *	Mode = "SI"
++ *	PRECISION, BYTESIZE, COUNT ??
++ *	FORMAT
++ *	EXPR
++ *
++ * The manual says I need to define BITS_PER_UNIT here.
++ */
++// INT_MODE(QI, 1);
++// INT_MODE(HI, 1);
++// INT_MODE(SI, 1);
++// INT_MODE(DI, 2);
++
++// FLOAT_MODE(SF, 1, ieee_single_format);
++// FLOAT_MODE(DF, 2, ieee_single_format);
++
++// We cannot override machmodes.def from here.  Thus, even though our QI,
++// HI, and SI modes are all 1-byte, we cant set them that way here.  The
++// change needed to be made in machmodes.def.  Hence, here is a target
++// configuration change--in machmodes.def--that properly belonged in the 
++// config directory.
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-peephole.md gcc-5.3.0-zip/gcc/config/zip/zip-peephole.md
+--- gcc-5.3.0-original/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
++++ gcc-5.3.0-zip/gcc/config/zip/zip-peephole.md	2016-11-09 12:12:15.750820248 -0500
+@@ -0,0 +1,617 @@
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Filename:	zip-peephole.md
++;;
++;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++;;
++;; Purpose:	This is a machine description of a variety of peephole
++;;		optimizations which can be applied to the ZipCPU RTL
++;;	representation.
++;;
++;;
++;; Creator:	Dan Gisselquist, Ph.D.
++;;		Gisselquist Technology, LLC
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Copyright (C) 2015, Gisselquist Technology, LLC
++;;
++;; This program is free software (firmware): you can redistribute it and/or
++;; modify it under the terms of  the GNU General Public License as published
++;; by the Free Software Foundation, either version 3 of the License, or (at
++;; your option) any later version.
++;;
++;; This program is distributed in the hope that it will be useful, but WITHOUT
++;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++;; for more details.
++;;
++;; License:	GPL, v3, as defined and found on www.gnu.org,
++;;		http://www.gnu.org/licenses/gpl.html
++;;
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Peephole optimizations
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++;
++;
 +;
 +; Match:
 +;	CMP	R1,R0
@@ -10564,43 +10950,13 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip.md gcc-5.3.0-
 +;
 +;
 +; STILL MISSING:
-+;	SYSCALL(ID)
-+;		MOV %ID,R0
-+;		CLR	CC
-+;	cmove	... the conditional move, created from a
-+;	(set (match_op 0 "" "r") (if_then_else (condition) (a) (reg X))))
-+;	pattern
-diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-modes.def gcc-5.3.0-zip/gcc/config/zip/zip-modes.def
---- gcc-5.3.0-original/gcc/config/zip/zip-modes.def	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip-modes.def	2016-03-08 12:10:21.982586940 -0500
-@@ -0,0 +1,23 @@
-+/*
-+ * Commends in C-long comment form
-+ * class
-+ *	Mode = "SI"
-+ *	PRECISION, BYTESIZE, COUNT ??
-+ *	FORMAT
-+ *	EXPR
-+ *
-+ * The manual says I need to define BITS_PER_UNIT here.
-+ */
-+// INT_MODE(QI, 1);
-+// INT_MODE(HI, 1);
-+// INT_MODE(SI, 1);
-+// INT_MODE(DI, 2);
-+
-+// FLOAT_MODE(SF, 1, ieee_single_format);
-+// FLOAT_MODE(DF, 2, ieee_single_format);
-+
-+// We cannot override machmodes.def from here.  Thus, even though our QI,
-+// HI, and SI modes are all 1-byte, we cant set them that way here.  The
-+// change needed to be made in machmodes.def.  Hence, here is a target
-+// configuration change--in machmodes.def--that properly belonged in the 
-+// config directory.
++;
++;
++;
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-5.3.0-zip/gcc/config/zip/zip-protos.h
 --- gcc-5.3.0-original/gcc/config/zip/zip-protos.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-5.3.0-zip/gcc/config/zip/zip-protos.h	2016-09-13 15:32:55.403521585 -0400
-@@ -0,0 +1,81 @@
++++ gcc-5.3.0-zip/gcc/config/zip/zip-protos.h	2016-11-10 08:13:53.322577755 -0500
+@@ -0,0 +1,80 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-protos.h
@@ -10639,11 +10995,11 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-
 +#ifndef	ZIP_PROTOS_H
 +#define	ZIP_PROTOS_H
 +
-+extern	bool	zip_supported_condition(int c);
++extern	int	zip_supported_condition(int c);
 +extern	void	zip_expand_prologue(void);
 +extern	void	zip_expand_epilogue(void);
 +extern	void	zip_sibcall_epilogue(void);
-+extern	bool	zip_expand_movsicc(rtx,rtx,rtx,rtx);
++extern	int	zip_expand_movsicc(rtx,rtx,rtx,rtx);
 +extern	int	zip_initial_elimination_offset(int, int);
 +extern	void	zip_print_operand(FILE *, rtx, int);
 +extern	void	zip_print_operand_address(FILE *, rtx);
@@ -10657,8 +11013,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-
 +extern	bool	zip_function_ok_for_sibcall(tree, tree);
 +extern	int	zip_address_operand(rtx op);
 +extern	int	zip_const_address_operand(rtx op);
-+extern	bool	zip_gen_move_rtl(rtx, rtx);
-+extern	bool	zip_use_return_insn(void);
++extern	int	zip_use_return_insn(void);
 +extern const char *zip_set_zero_or_one(rtx, rtx);
 +extern const char *zip_movsicc(rtx, rtx, rtx, rtx);
 +
@@ -10682,6 +11037,313 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-protos.h gcc-
 +
 +#endif
 +
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config/zip/zip-sync.md gcc-5.3.0-zip/gcc/config/zip/zip-sync.md
+--- gcc-5.3.0-original/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
++++ gcc-5.3.0-zip/gcc/config/zip/zip-sync.md	2016-11-10 06:58:36.795045234 -0500
+@@ -0,0 +1,303 @@
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Filename:	zip-sync.md
++;;
++;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++;;
++;; Purpose:	This is that portion of the machine description of the Zip CPU
++;;		which is focused on atomic operations.
++;;
++;;
++;; Creator:	Dan Gisselquist, Ph.D.
++;;		Gisselquist Technology, LLC
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Copyright (C) 2015, Gisselquist Technology, LLC
++;;
++;; This program is free software (firmware): you can redistribute it and/or
++;; modify it under the terms of  the GNU General Public License as published
++;; by the Free Software Foundation, either version 3 of the License, or (at
++;; your option) any later version.
++;;
++;; This program is distributed in the hope that it will be useful, but WITHOUT
++;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++;; for more details.
++;;
++;; License:	GPL, v3, as defined and found on www.gnu.org,
++;;		http://www.gnu.org/licenses/gpl.html
++;;
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;;
++;
++;
++;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Atomic access Op-codes
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;
++;
++;
++; First, the basic atomic_ operators, add, sub, ior, and, and xor
++;
++(define_insn "atomic_addsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(const (match_operand 2 "" ""))		; Memory model used
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %0,%3\n\tADD %1,%3\n\tSTO %3,%0\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_subsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(const (match_operand 2 "" ""))		; Memory model used
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %0,%3\n\tSUB %1,%3\n\tSTO %3,%0\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_iorsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(const (match_operand 2 "" ""))		; Memory model used
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %0,%3\n\tOR %1,%3\n\tSTO %3,%0\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_andsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(const (match_operand 2 "" ""))		; Memory model used
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %0,%3\n\tAND %1,%3\n\tSTO %3,%0\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_xorsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(const (match_operand 2 "" ""))		; Memory model used
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %0,%3\n\tXOR %1,%3\n\tSTO %3,%0\n"
++	[(set_attr "predicable" "no")])
++;
++;
++; Given how the ZipCPU is put together, all LODs and STOs are atomic.  Hence,
++; we just expand these operators so that they can be used by the other already 
++; existent LOD/STO RTL operators.
++;
++(define_expand "atomic_loadsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(match_operand:SI 1 "zip_memory_operand_p" "Q"))])
++(define_expand "atomic_loaddi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(match_operand:SI 1 "zip_memory_operand_p" "Q"))])
++(define_expand "atomic_storesi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "=Q")
++		(match_operand:DI 1 "register_operand" "r"))])
++(define_expand "atomic_storedi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "=Q")
++		(match_operand:DI 1 "register_operand" "r"))])
++;
++;
++;
++;
++(define_insn "atomic_exchangesi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(match_operand:SI 1 "zip_memory_operand_p" "+Q"))
++	(set (match_dup 1) (match_operand:SI 2 "register_operand" "r"))
++	; (match_operand 3 "" "")		; Memory model used
++	]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tSTO %2,%1\n"
++	[(set_attr "predicable" "no")])
++;
++;
++;
++; Here's another set of the atomic operators, this time those that leave their
++; result in operand zero.
++;
++(define_insn "atomic_add_fetchsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (plus:SI (match_dup 1) (match_dup 2)))
++	; (match_operand 3 "" "")		; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tADD %2,%0\n\tSTO %0,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_sub_fetchsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tSUB %2,%0\n\tSTO %0,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_or_fetchsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (ior:SI (match_dup 1) (match_dup 2)))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tOR %2,%0\n\tSTO %0,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_and_fetchsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (and:SI (match_dup 1) (match_dup 2)))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tAND %2,%0\n\tSTO %0,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_xor_fetchsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (xor:SI (match_dup 1) (match_dup 2)))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tXOR %2,%0\n\tSTO %0,%1\n"
++	[(set_attr "predicable" "no")])
++;
++;
++;
++;
++(define_insn "atomic_fetch_addsi"
++	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++		(plus:SI (match_dup 1)
++			(match_operand:SI 2 "register_operand" "=r")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(match_dup 1))
++	(set (match_dup 2) (plus:SI (match_dup 1) (match_dup 2)))
++	; (match_operand 3 "" "")		; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tADD %0,%2\n\tSTO %2,%1\n"
++	[(set_attr "predicable" "no")])
++;(define_insn "atomic_fetch_subsi"
++;	[(set (match_operand:SI 0 "register_operand" "=r")
++;		(minus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++;			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++;	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
++;	(clobber (reg:CC CC_REG))]
++;	"(ZIP_ATOMIC)"
++;
++; HERE WE HAVE A PROBLEM ... swapping the arguments does not work for a 
++; subtract.  It creates the SUBR (subtract reverse) instruction, which is not
++; what the RTL names is supposed to capture.  Hence ... we cannot do this one.
++; If we could do two ALU instructions during the LOCK, then we might make
++; this work--but LOCK only provides for a single ALU instruction.
++;
++;	"LOCK\n\tLOD %1,%0\n\tSUB %2,%0\n\tSTO %0,%1\n"
++;	"LOCK\n\tLOD %1,%0\n\tSUB %0,%2\n\tSTO %2,%1\n"
++;	[(set_attr "predicable" "no")])
++(define_insn "atomic_fetch_orsi"
++	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++		(ior:SI (match_dup 1)
++			(match_operand:SI 2 "register_operand" "=r")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(match_dup 1))
++	(set (match_dup 2) (ior:SI (match_dup 1) (match_dup 2)))
++	; (match_operand 3 "" "")		; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tOR %0,%2\n\tSTO %2,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_fetch_andsi"
++	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++		(and:SI (match_dup 1)
++			(match_operand:SI 2 "register_operand" "=r")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(match_dup 1))
++	(set (match_dup 2) (and:SI (match_dup 1) (match_dup 2)))
++	; (match_operand 3 "" "")		; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tAND %0,%2\n\tSTO %2,%1\n"
++	[(set_attr "predicable" "no")])
++(define_insn "atomic_fetch_xorsi"
++	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++		(xor:SI (match_dup 1)
++			(match_operand:SI 2 "register_operand" "=r")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(match_dup 1))
++	(set (match_dup 2) (xor:SI (match_dup 1) (match_dup 2)))
++	; (match_operand 3 "" "")		; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLOD %1,%0\n\tXOR %0,%2\n\tSTO %2,%1\n"
++	[(set_attr "predicable" "no")])
++;
++;
++;
++;
++(define_insn "atomic_test_and_set"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(match_operand:SI 1 "zip_memory_operand_p" "+Q"))
++	(set (match_dup 1)
++		(if_then_else
++			(eq (match_dup 1)
++				(const_int 0))
++			(const_int 1)
++			(match_dup 1)))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 1) (const_int 0)))
++	(set (match_scratch:SI 3) (const_int 1))
++	(const (match_operand 2 "" ""))]	; Memory model used
++	"(ZIP_ATOMIC)"
++	"LDI	1,%3
++	LOCK
++	LOD	%1,%0
++	TST	%0
++	STO.Z	%3,%1\n"
++	[(set_attr "predicable" "no")])
++;
++;
++;
++(define_insn "atomic_compare_and_swapsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else
++			(eq (match_operand:SI 2 "zip_memory_operand_p" "+Q")
++				(match_operand:SI 3 "zip_opb_single_operand_p" "rO"))
++			(const_int 1)
++			(const_int 0)))
++	(set (match_operand:SI 1 "register_operand" "=r") (match_dup 2))
++	(set (match_dup 2) (if_then_else
++			(eq (match_dup 2) (match_dup 3))
++				(match_operand:SI 4 "register_operand" "r")
++				(match_dup 0)))]
++	"(ZIP_ATOMIC)"
++	"CLR %0
++	LOCK
++	LOD %2,%1
++	CMP %3,%1
++	STO.Z %4,%1
++	LDI.Z 1,%0"
++	[(set_attr "predicable" "no")])
++;
++;
++;
++;
++; STILL MISSING:
++;
++;	deprecated sync_* atomic functions
++;
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/config.gcc gcc-5.3.0-zip/gcc/config.gcc
 --- gcc-5.3.0-original/gcc/config.gcc	2015-09-10 10:17:53.000000000 -0400
 +++ gcc-5.3.0-zip/gcc/config.gcc	2016-02-14 00:53:37.389411987 -0500
@@ -11982,7 +12644,7 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/gcc/var-tracking.c gcc-5.3.0-zip
  							 get_insns ());
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/libgcc/config.host gcc-5.3.0-zip/libgcc/config.host
 --- gcc-5.3.0-original/libgcc/config.host	2015-10-01 08:01:18.000000000 -0400
-+++ gcc-5.3.0-zip/libgcc/config.host	2016-01-30 15:16:00.459883558 -0500
++++ gcc-5.3.0-zip/libgcc/config.host	2016-11-10 07:09:05.510509734 -0500
 @@ -195,6 +195,9 @@
  tic6x-*-*)
  	cpu_type=c6x
@@ -11993,16 +12655,34 @@ diff -Naur '--exclude=*.swp' gcc-5.3.0-original/libgcc/config.host gcc-5.3.0-zip
  esac
  
  # Common parts for widely ported systems.
-@@ -1300,6 +1303,9 @@
- 	echo "*** Configuration ${host} not supported" 1>&2
- 	exit 1
+@@ -1296,6 +1299,9 @@
+ 	tmake_file="$tmake_file nvptx/t-nvptx"
+ 	extra_parts="crt0.o"
  	;;
 +zip*)
 +	tmake_file="${tmake_file} t-softfp-sfdf t-softfp"
 +	;;
- esac
+ *)
+ 	echo "*** Configuration ${host} not supported" 1>&2
+ 	exit 1
+diff -Naur '--exclude=*.swp' gcc-5.3.0-original/libgcc/libgcc2.h gcc-5.3.0-zip/libgcc/libgcc2.h
+--- gcc-5.3.0-original/libgcc/libgcc2.h	2015-01-05 07:33:28.000000000 -0500
++++ gcc-5.3.0-zip/libgcc/libgcc2.h	2016-11-19 08:23:48.085519135 -0500
+@@ -113,10 +113,10 @@
+    because the sizes for those types can be configured to be anything.
+    Instead we use the following special type names.  */
  
- case ${host} in
+-typedef		 int QItype	__attribute__ ((mode (QI)));
+-typedef unsigned int UQItype	__attribute__ ((mode (QI)));
+-typedef		 int HItype	__attribute__ ((mode (HI)));
+-typedef unsigned int UHItype	__attribute__ ((mode (HI)));
++typedef		 int QItype	__attribute__ ((mode (SI)));
++typedef unsigned int UQItype	__attribute__ ((mode (SI)));
++typedef		 int HItype	__attribute__ ((mode (SI)));
++typedef unsigned int UHItype	__attribute__ ((mode (SI)));
+ #if MIN_UNITS_PER_WORD > 1
+ /* These typedefs are usually forbidden on dsp's with UNITS_PER_WORD 1.  */
+ typedef 	 int SItype	__attribute__ ((mode (SI)));
 diff -Naur '--exclude=*.swp' gcc-5.3.0-original/libgomp/configure.tgt gcc-5.3.0-zip/libgomp/configure.tgt
 --- gcc-5.3.0-original/libgomp/configure.tgt	2015-03-13 06:57:07.000000000 -0400
 +++ gcc-5.3.0-zip/libgomp/configure.tgt	2016-01-30 15:16:51.323521641 -0500
