@@ -86,8 +86,8 @@
 \project{ZipCPU}
 \title{Specification}
 \author{Dan Gisselquist, Ph.D.}
-\email{dgisselq (at) opencores.org}
-\revision{Rev.~1.0}
+\email{dgisselq (at) ieee.org}
+\revision{Rev.~1.1}
 \definecolor{webred}{rgb}{0.5,0,0}
 \definecolor{webgreen}{rgb}{0,0.4,0}
 \hypersetup{
@@ -122,6 +122,7 @@ with this program.  If not, see \hbox{$<$http://www.gnu.org/licenses/$>$} for
 a copy.
 \end{license}
 \begin{revisionhistory}
+1.1 & 11/28/2016 & Gisselquist & Moved the ZipSystem address to {\tt 0xff000000} base.\\\hline
 1.0 & 11/4/2016 & Gisselquist & Major rewrite,
 			includes compiler info\\\hline
 0.91& 7/16/2016 & Gisselquist & Described three more CC bits\\\hline
@@ -2509,11 +2510,11 @@ Here, in Tbl.~\ref{tbl:shi-timer},
 	\> {\tt zip->pic = DISABLEALL|SYSINT\_TMA;}\\
 	\> {\tt if (nclocks > 10) \{}\\
 	\> \hbox to 0.25in{}\= {\em // Set our timer to count down the given number of counts}\\
-	\> \> {\tt zip->tma = counts} \\
+	\> \> {\tt zip->tma = nclocks;} \\
 	\> \> {\tt zip->pic = EINT(SYSINT\_TMA);} \\
 	\> \> {\tt zip\_wait();} \\
 	\> \> {\tt zip->pic = CLEARPIC;} \\
-	\> {\tt \} }{\em // else anything less has likely already passed}
+	\> {\tt \} }{\em // else anything less has likely already passed} \\
 {\tt \}}\\
 \end{tabbing}
 \caption{Waiting on a timer}\label{tbl:shi-timer}
@@ -2738,7 +2739,7 @@ Tbl.~\ref{tbl:memcp-opt}.
 	after the initial pipeline delay}\\
 memcpy\_opt: \\
 \hbox to 0.35in{}\=\hbox to 1.4in{\tt CMP 4,R3}\= {\em ; Check for small short lengths, len $<$ 4}\\
-\>	{\tt BC memcpy\_finish}	\> {\em ; Jump to the end if so}\\
+\>	{\tt BC \_memcpy\_finish}	\> {\em ; Jump to the end if so}\\
 \hbox to 0.35in{}\=\hbox to 1.4in{\tt SUB 3,SP}\= {\em ; Otherwise, create a stack frame, storing the registers}\\
 \>	{\tt STO R5,(SP)}	\> {\em ; we will be using.  Note that this is a pipelined store, so}\\
 \>	{\tt STO R6,1(SP)}	\> {\em ; subsequent stores only cost 1 clock.}\\
@@ -2750,12 +2751,12 @@ memcpy\_opt: \\
 \>	{\tt LOD -3(R2),R5}	\> {\em ; registers, using a pipelined load.}\\
 \>	{\tt LOD -2(R2),R6}\\
 \>	{\tt LOD -1(R2),R7}\\
-{\tt mcopy\_next\_four\_chars:} \>\> {\em ; Here's the top of our copy loop}\\
+{\tt \_mcopy\_next\_four\_chars:} \>\> {\em ; Here's the top of our copy loop}\\
 \>	{\tt STO  R4,-4(R1)}	\> {\em ; Store four values, using a burst memory operation.}\\
 \>	{\tt STO  R5,-3(R1)}	\> {\em ; One clock for subsequent stores.}\\
 \>	{\tt STO  R6,-2(R1)}	\> {\em ; None of these effect the flags, that were set when}\\
 \>	{\tt STO  R7,-1(R1)}	\> {\em ; we last adjusted {\tt R3}}\\
-\>	{\tt BC  preend\_memcpy} \> {\em ; +4 stall cycles, but only when taken}\\
+\>	{\tt BC  \_preend\_memcpy} \> {\em ; +4 stall cycles, but only when taken}\\
 \>	{\tt ADD  4,R1}	\> {\em ; ALU ops don't stall during stores, so}\\
 \>	{\tt ADD  4,R2}	\> {\em ; increment our pointers here.} \\
 \>	{\tt SUB  4,R3} \> {\em ; Calculate whether or not we have a next round}\\
@@ -2763,14 +2764,14 @@ memcpy\_opt: \\
 \>	{\tt LOD  -3(R2),R5}\>	{\em ; Notice that these are also pipelined}\\
 \>	{\tt LOD  -2(R2),R6}\>	{\em ; loads, as before.}\\
 \>	{\tt LOD  -1(R2),R7}\>  {\em ; The four stall cycles, though, are concurrent w/ the branch.}\\
-\>	{\tt BRA  mcopy\_next\_char} \> {\em ; Early branching avoids the full memory pipeline stall} \\
-{\tt preend\_memcpy:}\\
+\>	{\tt BRA  \_mcopy\_next\_four\_chars} \> {\em ; Early branching avoids the full memory pipeline stall} \\
+{\tt \_preend\_memcpy:}\\
 \>	{\tt ADD  1,R3}	\>{\em ; R3 is now the remaining length, rather than one less than it}\\
 \>	{\tt LOD (SP),R5}  \> {\em ; Restore our saved registers, since the remainder of the routine}\\
 \>	{\tt LOD 1(SP),R6} \> {\em ; doesn't use these registers}\\
 \>	{\tt LOD 2(SP),R7} \> {\em ;}\\
 \>	{\tt ADD 3,SP}	\>{\em ; Adjust the stack pointer back to what it was}\\
-{\tt memcpy\_finish:}\>\>{\em ; At this point, there are $0\leq$ {\tt R3}$<4$ words left}\\
+{\tt \_memcpy\_finish:}\>\>{\em ; At this point, there are $0\leq$ {\tt R3}$<4$ words left}\\
 \>	{\tt CMP 1,R3} \> {\em ; Check if any ops are remaining }\\
 \>	{\tt JMP.LT R0} \> {\em ; Return now if nothing is left}\\
 \>	{\tt LOD (R1),R4} \> {\em ; Load and store the first item}\\
@@ -2915,9 +2916,9 @@ and do something more like Tbl.~\ref{tbl:memset-pipe}.
 \>	{\tt STO}\>{\tt R2,2(R4)} \\
 \>	{\tt STO}\>{\tt R2,3(R4)} \\
 \>	{\tt SUB}\>{\tt 4,R3} \> {\em; If there are zero left, this will be a -1 result}\\
-\>	{\tt JMP.C}\>{\tt prememset\_pipe\_tail}\> \hbox to 0.5in{}\= {\em; So we can use our LT condition}\\
+\>	{\tt BC}\>{\tt prememset\_pipe\_tail}\> \hbox to 0.5in{}\= {\em; So we can use our LT condition}\\
 \>	{\tt ADD}\>{\tt 4,R4} \> {\em ; Otherwise increment our pointer}\\
-\>	{\tt BRA}\>{\tt memset\_pipe\_loop} {\em ; and repeat using an early branchable instruction}\\
+\>	{\tt BRA}\>{\tt memset\_pipe\_unrolled} {\em ; and repeat using an early branchable instruction}\\
 {\tt prememset\_pipe\_tail:} \\
 \>    {\tt ADD}\>{\tt 1,R3}\>{\em ; Return our counts left to the run number}\\
 {\tt memset\_pipe\_tail:}\>\>\>{\em ; At this point, we have R3=0-3 remaining}\\
