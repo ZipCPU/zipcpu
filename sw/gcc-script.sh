@@ -1,5 +1,39 @@
 #!/bin/bash
-
+################################################################################
+##
+## Filename:	gcc-script.sh
+##
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+##
+## Purpose:	To handle all of the GCC configuration options properly.  This
+##		both runs the GCC configure script, as well as initially running
+##	make on the resulting configured directory.
+##
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2016, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
 if [[ ! -d gcc-5.3.0-zip ]]
 then
   tar -xjf ./gcc-5.3.0.tar.bz2 --transform s,gcc-5.3.0,gcc-5.3.0-zip,
@@ -15,7 +49,7 @@ set -e
 CLFS_HOST="x86_64-cross-linux-gnu"
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
-mkdir -p ${INSTALL_BASE}/cross-tools/bin
+mkdir -p ${INSTALL_BASE}/cross-tools
 mkdir -p ${INSTALL_BASE}/tools/lib
 mkdir -p ${INSTALL_BASE}/usr/include
 mkdir -p build-gcc
@@ -33,9 +67,6 @@ STRIP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-strip
 AS=as AR=ar ../gcc-5.3.0-zip/configure --with-gas      \
         --prefix=${INSTALL_BASE}/cross-tools           \
         --target=${CLFS_TARGET} --host=${CLFS_HOST}    \
-        --with-sysroot=${INSTALL_BASE}                 \
-        --with-lib-path=${INSTALL_BASE}/tools/lib      \
-        --with-local-prefix=${INSTALL_BASE}/usr        \
         --with-pkgversion=zip-gcc-`date +%y%m%d`       \
         --disable-shared --disable-multilib            \
         --disable-threads --disable-tls                \
