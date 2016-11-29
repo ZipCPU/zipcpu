@@ -238,8 +238,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/doc/reloc.texi binutils-
  
 diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.25/bfd/elf32-zip.c
 --- binutils-2.25-original/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/bfd/elf32-zip.c	2016-08-06 14:40:39.009138880 -0400
-@@ -0,0 +1,1303 @@
++++ binutils-2.25/bfd/elf32-zip.c	2016-11-23 14:54:39.441134495 -0500
+@@ -0,0 +1,1349 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -292,6 +292,10 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +		      asection *, bfd *, char **);
 +*/
 +#define	zip_relocation	bfd_elf_generic_reloc
++// static bfd_reloc_status_type
++// zip_relocation(bfd *, arelent *, asymbol *, void *, asection *,
++//		bfd *, char **error_messsage);
++
 +static bfd_reloc_status_type
 +zip_brev_relocation(bfd *, arelent *, asymbol *, void *, asection *,
 +		bfd *, char **error_messsage);
@@ -594,6 +598,43 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +  	cache_ptr->howto = &zip_elf_howto_table [r];
 +}
 +
++/*
++extern void	zip_symbol_dump(bfd *abfd, struct bfd_link_info *info);
++void	zip_symbol_dump(bfd *abfd, struct bfd_link_info *info) {
++	// struct	elf_link_hash_table	*hash;
++	struct	elf_link_hash_entry	*h;
++	const char *entry_under_test = "_sdram_image_end";
++	asection	*s;
++
++	// hash = (struct elf_link_hash_table *)abfd->link.hash;
++	h    = elf_link_hash_lookup(elf_hash_table(info), entry_under_test,
++		FALSE, FALSE, TRUE);
++	fprintf(stderr, "ZIP-SYMBOL-DEBUG()\n");
++	if (!h) {
++		fprintf(stderr, "\tHash table entry not found\n");
++	} else {
++		unsigned	v;
++		int		found = 0;
++
++		fprintf(stderr, "\tH->ROOT.ROOT.STRING = %s\n", h->root.root.string);
++		fprintf(stderr, "\tH->ROOT.U.DEF.VAL\t%08lx\n", h->root.u.def.value);
++		v = (unsigned)h->root.u.def.value;
++		fprintf(stderr, "\tVAL + 0x4e0000 = %08x\n", v+0x4e0000);
++
++		for(s = abfd->sections; s != NULL; s = s->next) {
++			if (h->root.u.def.section == s) {
++				fprintf(stderr, "\tSEC.OUTPUT_OFFSET = %08x\n",
++					(unsigned)s->output_offset);
++				fprintf(stderr, "\tSEC.VMA           = %08x\n",
++					(unsigned)s->output_section->vma);
++				found = 1;
++			}
++		} if (found == 0)
++			fprintf(stderr, "\tSECTION NOT FOUND\n");
++	}
++
++}*/
++
 +static bfd_boolean
 +zip_elf_relocate_section(bfd *output_bfd,
 +			struct bfd_link_info *info,
@@ -604,19 +645,19 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +			Elf_Internal_Sym *local_syms,
 +			asection **local_sections)
 +{
-+	Elf_Internal_Shdr	*symtab_hdr;
++	Elf_Internal_Shdr		*symtab_hdr;
 +	struct	elf_link_hash_entry	**sym_hashes;
-+	Elf_Internal_Rela	*rel, *relend;
++	Elf_Internal_Rela		*rel, *relend;
 +
 +	symtab_hdr = &elf_tdata(input_bfd)->symtab_hdr;
 +	sym_hashes = elf_sym_hashes(input_bfd);
-+	relend = relocs+input_section->reloc_count;
++	relend     = relocs+input_section->reloc_count;
 +
 +	for(rel=relocs; rel<relend; rel++) {
-+		reloc_howto_type *howto;
-+		unsigned long r_symndx;
-+		Elf_Internal_Sym	*sym;
-+		asection		*sec;
++		reloc_howto_type		*howto;
++		unsigned long			r_symndx;
++		Elf_Internal_Sym		*sym;
++		asection			*sec;
 +		struct elf_link_hash_entry	*h;
 +		bfd_vma				relocation;
 +		bfd_reloc_status_type		r;
@@ -644,7 +685,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +			relocation = _bfd_elf_rela_local_sym(output_bfd, sym, &sec, rel);
 +			name = bfd_elf_string_from_elf_section
 +				(input_bfd, symtab_hdr->sh_link, sym->st_name);
-+			name = (name == NULL) ? bfd_section_name(inpu_bfd, sec)
++			name = (name == NULL) ? bfd_section_name(input_bfd, sec)
 +					: name;
 +		} else {
 +			bfd_boolean unresolved_reloc, warned, ignored;
@@ -654,10 +695,11 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +				relocation, unresolved_reloc, warned, ignored);
 +		}
 +
-+		if ((sec != NULL)&&(discarded_section(sec)))
++		if ((sec != NULL)&&(discarded_section(sec))) {
 +			RELOC_AGAINST_DISCARDED_SECTION(info, input_bfd,
 +				input_section, rel, 1, relend, howto, 0,
 +				contents);
++		}
 +
 +		if (info->relocatable)
 +			continue;
@@ -668,16 +710,16 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +			} else {
 +				uint32_t	brev_reloc;
 +				bfd_byte	*location;
-+				bfd_vma		x;
++				bfd_vma		insn;
 +
 +				location = contents + rel->r_offset * bfd_octets_per_byte(input_bfd);
 +
 +				relocation += rel->r_addend;
 +				brev_reloc= zip_bitreverse(relocation);
-+				x = bfd_get_32(input_bfd, location);
-+				x = ((x & ~howto->dst_mask)
-+				|(((x & howto->src_mask)+brev_reloc)&howto->dst_mask));
-+				bfd_put_32(input_bfd, x, location);
++				insn = bfd_get_32(input_bfd, location);
++				insn = ((insn & ~howto->dst_mask)
++				|(((insn & howto->src_mask)+brev_reloc)&howto->dst_mask));
++				bfd_put_32(input_bfd, insn, location);
 +				r = bfd_reloc_ok;
 +			}
 +		} else if (howto->type == R_ZIP_MOV_PCREL) {
@@ -780,40 +822,55 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +	return r;
 +}
 +
++/*
 +static bfd_reloc_status_type
-+zip_brev_relocation(bfd *abfd ATTRIBUTE_UNUSED,
++zip_relocation(bfd *abfd,
 +		arelent *reloc_entry,
 +		asymbol *symbol,
-+		void *data ATTRIBUTE_UNUSED,
++		void *data,
 +		asection *input_section,
 +		bfd *output_bfd,
-+		char **error_messsage ATTRIBUTE_UNUSED)
++		char **error_message) {
++	return	bfd_elf_generic_reloc(abfd, reloc_entry, symbol, data,
++			input_section, output_bfd, error_message);
++}
++*/
++
++static bfd_reloc_status_type
++zip_brev_relocation(bfd *abfd,
++		arelent *reloc_entry,
++		asymbol *symbol,
++		void *data,
++		asection *input_section,
++		bfd *output_bfd,
++		char **error_message)
 +{
 +	bfd_vma	relocation;
 +	bfd_size_type octets = reloc_entry->address * bfd_octets_per_byte(abfd);
 +	bfd_vma output_base = 0;
 +	reloc_howto_type *howto = reloc_entry->howto;
 +
-+	if ((output_bfd != NULL)
-+		&&((symbol->flags & BSF_SECTION_SYM)==0)
-+		&&((! reloc_entry->howto->partial_inplace)
-+			|| (reloc_entry->addend == 0))) {
-+		reloc_entry->address += input_section->output_offset;
-+		return bfd_reloc_ok;
++	// If this isn't a final relocation, then just use the generic
++	// relocation function.
++	if (output_bfd != NULL) {
++		return zip_relocation(abfd, reloc_entry, symbol, data,
++			input_section, output_bfd, error_message);
 +	}
 +
 +	// Otherwise, we need to adjust our file itself with this value ...
++	// Check that our relocation lies within the file, and particularly
++	// the section we think it should.  (This should really be an assert...)
 +	if (reloc_entry->address > bfd_get_section_limit(abfd, input_section))
 +		return bfd_reloc_outofrange;
 +
-+	// Get symbol value */
++	// Get symbol value
 +	if (bfd_is_com_section(symbol->section))
 +		relocation = 0;
 +	else
 +		relocation = symbol->value;
 +
 +	/* Convert input-section relative symbol value to absolute */
-+	if (((output_bfd)&&(!howto->partial_inplace))
++	if ((!howto->partial_inplace)
 +			||(symbol->section->output_section == NULL))
 +		output_base = 0;
 +	else
@@ -825,37 +882,26 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +	relocation += reloc_entry->addend;
 +
 +	// BREV does not handle PC relative offsets
-+	// if howto->pcrel_offset ...
 +
-+	//
-+	if (output_bfd != NULL) {
-+		reloc_entry->addend = relocation;
-+		reloc_entry->address += input_section->output_offset;
-+		if (!howto->partial_inplace) {
-+			return bfd_reloc_ok;
-+		}
-+	}
-+
-+	// Ignore overflow checking ... we don't know (yet) whether or not we
-+	// even have an overflow at this point.   That is, if we could.  We're
-+	// encoding the top 16 (18) bits of a number, overflow is ... not a 
-+	// problem.
++	// Ignore overflow checking ... BREV handles the top 18 bits of a 32-bit
++	// number.  Overflow would mean overflowing the 32-bit address space--
++	// not possible.
 +	//
 +	// if howto->complain_on_overflow ...
 +
 +	// relocation >>= howto->rightshift;	// = 0
-+	// relocation <<= howto->bitpos;		// = 0
++	// relocation <<= howto->bitpos;	// = 0
 +
 +	// Logic (nearly) copied from reloc.c:bfd_perform_relocation
-+	unsigned	x = bfd_get_32(abfd, (bfd_byte *)data + octets);
++	unsigned	insn = bfd_get_32(abfd, (bfd_byte *)data + octets);
 +
 +	// Here's why we are going through this pain!
-+	x = zip_bitreverse((unsigned)x);
++	insn = zip_bitreverse((unsigned)insn);
 +
 +	// Now we can continue as before....
-+	x = ((x&(~howto->dst_mask))
-+		|(((x&howto->src_mask)+relocation)&howto->dst_mask));
-+	bfd_put_32(abfd, (bfd_vma)x, (bfd_byte *)data + octets);
++	insn = ((insn&(~howto->dst_mask))
++		|(((insn&howto->src_mask)+relocation)&howto->dst_mask));
++	bfd_put_32(abfd, (bfd_vma)insn, (bfd_byte *)data + octets);
 +
 +	return bfd_reloc_ok;
 +}
@@ -1545,7 +1591,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf32-zip.c binutils-2.2
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf.c binutils-2.25/bfd/elf.c
 --- binutils-2.25-original/bfd/elf.c	2014-12-23 03:47:10.000000000 -0500
-+++ binutils-2.25/bfd/elf.c	2016-05-10 14:24:12.768317271 -0400
++++ binutils-2.25/bfd/elf.c	2016-11-22 14:07:38.382090727 -0500
 @@ -9945,6 +9945,10 @@
  				     sym->st_value + addend);
  }
@@ -1570,7 +1616,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elf.c binutils-2.25/bfd/
      }
 diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/elflink.c binutils-2.25/bfd/elflink.c
 --- binutils-2.25-original/bfd/elflink.c	2014-12-23 03:47:10.000000000 -0500
-+++ binutils-2.25/bfd/elflink.c	2016-05-10 14:37:15.868226769 -0400
++++ binutils-2.25/bfd/elflink.c	2016-11-23 07:55:23.420806408 -0500
 @@ -1348,7 +1348,7 @@
  	return FALSE;
  
@@ -2400,6 +2446,1882 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/reloc.c binutils-2.25/bf
  
  ENDSENUM
    BFD_RELOC_UNUSED
+diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/st_name binutils-2.25/bfd/st_name
+--- binutils-2.25-original/bfd/st_name	1969-12-31 19:00:00.000000000 -0500
++++ binutils-2.25/bfd/st_name	2016-11-22 13:50:37.150210358 -0500
+@@ -0,0 +1,1872 @@
++aout-arm.c:  asection *output_section = sym->section->output_section;
++aout-cris.c:  asection *output_section = sym->section->output_section;
++aout-cris.c:  if ((sym->flags & BSF_SECTION_SYM) != 0)
++aout-cris.c:  else if ((sym->flags & BSF_SECTION_SYM) == 0)
++aout-cris.c:	  || (sym->flags & (BSF_GLOBAL | BSF_WEAK)) != 0)
++aout-ns32k.c:  asection *output_section = sym->section->output_section;
++bout.c:      asection *output_section = sym->section->output_section;
++bout.c:      BFD_ASSERT (IS_BALNAME (balsym->other));
++bout.c:      BFD_ASSERT (IS_BALNAME (balsym->other));
++bout.c:		     + output_addr (balsym->symbol.section)
++bout.c:		     + balsym->symbol.value + reloc_entry->addend
++coff64-rs6000.c:  sym->_n._n_n._n_zeroes = 0;
++coff64-rs6000.c:  sym->_n._n_n._n_offset = STRING_SIZE_SIZE + indx;
++coff64-rs6000.c:  ldsym->_l._l_l._l_zeroes = 0;
++coff64-rs6000.c:  ldsym->_l._l_l._l_offset = ldinfo->string_size + 2;
++coff64-rs6000.c:	  addend = - sym->n_value;
++coff64-rs6000.c:		       + sym->n_value
++coff64-rs6000.c:    arsym->file_offset = H_GET_64 (abfd, p);
++coff64-rs6000.c:      arsym->name = (char *) p;
++coff-arm.c:	  for (sec = abfd->sections, i = 1; i < sym->n_scnum; i++)
++coff-arm.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-arm.c:	addend = - sym->n_value;
++coff-arm.c:          if (sym != NULL && sym->n_scnum != 0)
++coff-arm.c:            addend += sym->n_value;
++coff-arm.c:		     + sym->n_value
++coff-arm.c:		   && sym->n_scnum > N_UNDEF)
++coff-arm.c:	      if (   sym->n_sclass == C_THUMBSTATFUNC
++coff-arm.c:		  || sym->n_sclass == C_THUMBEXTFUNC)
++coffgen.c:  if (sym->_n._n_n._n_zeroes != 0
++coffgen.c:      || sym->_n._n_n._n_offset == 0)
++coffgen.c:      memcpy (buf, sym->_n._n_name, SYMNMLEN);
++coffgen.c:      BFD_ASSERT (sym->_n._n_n._n_offset >= STRING_SIZE_SIZE);
++coffgen.c:      if (sym->_n._n_n._n_offset >= obj_coff_strings_len (abfd))
++coffgen.c:      return strings + sym->_n._n_n._n_offset;
++coffgen.c:  if (csym == NULL || csym->native == NULL
++coffgen.c:      || ! csym->native->is_sym)
++coffgen.c:  *psyment = csym->native->u.syment;
++coffgen.c:  if (csym->native->fix_value)
++coffgen.c:      || csym->native == NULL
++coffgen.c:      || ! csym->native->is_sym
++coffgen.c:      || indx >= csym->native->u.syment.n_numaux)
++coffgen.c:  ent = csym->native + indx + 1;
++coffgen.c:	      fprintf (file, "\n%s :", l->u.sym->name);
++coffgen.c:  else if (csym->native == NULL)
++coffgen.c:	  native->u.syment.n_flags = bfd_asymbol_bfd (& csym->symbol)->flags;
++coffgen.c:      csym->native = native;
++coffgen.c:    csym->native->u.syment.n_sclass = symbol_class;
++coff-i386.c:	&& coffsym->native->u.syment.n_scnum == 0)		\
++coff-i386.c:      cache_ptr->addend = - coffsym->native->u.syment.n_value;	\
++coff-i386.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++coff-i386.c:	 size (sym->n_value) as an addend.  The relocate_section
++coff-i386.c:      *addendp -= sym->n_value;
++coff-i386.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-i386.c:	*addendp -= sym->n_value;
++coff-i386.c:	  for (s = abfd->sections, i = 1; i < sym->n_scnum; i++)
++coff-i860.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++coff-i860.c:	 size (sym->n_value) as an addend.  The relocate_section
++coff-i860.c:      *addendp -= sym->n_value;
++coff-i960.c:        && coffsym->native->u.syment.n_scnum == 0)              \
++coff-i960.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-i960.c:	addend = - sym->n_value;
++coff-i960.c:		     + sym->n_value
++coff-i960.c:	    class_val = sym->n_sclass;
++coff-i960.c:		    BFD_ASSERT (sym->n_numaux == 2);
++coff-i960.c:		    bfd_coff_swap_aux_in (input_bfd, esyms, sym->n_type,
++coff-i960.c:					  sym->n_sclass, 1, sym->n_numaux,
++cofflink.c:	      if (! (sym->flags & BSF_LOCAL)
++cofflink.c:		  || (sym->flags & (BSF_SECTION_SYM | BSF_DEBUGGING_RELOC
++cofflink.c:		  || ((sym->flags & BSF_DEBUGGING)
++cofflink.c:		      && ! (sym->flags & BSF_FILE)))
++cofflink.c:      if (sym != NULL && sym->n_scnum != 0)
++cofflink.c:	addend = - sym->n_value;
++cofflink.c:	  if (sym != NULL && sym->n_scnum != 0)
++cofflink.c:	    addend += sym->n_value;
++cofflink.c:		     + sym->n_value);
++coff-m68k.c:	&& coffsym->native->u.syment.n_scnum == 0)		\
++coff-m68k.c:      cache_ptr->addend = - coffsym->native->u.syment.n_value;	\
++coff-m68k.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++coff-m68k.c:	 size (sym->n_value) as an addend.  The relocate_section
++coff-m68k.c:      *addendp -= sym->n_value;
++coff-mcore.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-mcore.c:	* addendp -= sym->n_value;
++coff-mcore.c:	      val = (sym->n_value
++coff-mcore.c:	      else if (   sym->_n._n_n._n_zeroes == 0
++coff-mcore.c:		       && sym->_n._n_n._n_offset != 0)
++coff-mcore.c:		my_name = obj_coff_strings (input_bfd) + sym->_n._n_n._n_offset;
++coff-mcore.c:		  strncpy (buf, sym->_n._n_name, SYMNMLEN);
++coff-ppc.c:		     + sym->n_value);
++coff-ppc.c:		strncpy (name, sym->_n._n_name, SYMNMLEN);
++coff-ppc.c:	    else if (sym->_n._n_n._n_zeroes == 0
++coff-ppc.c:		     && sym->_n._n_n._n_offset != 0)
++coff-ppc.c:	      name = obj_coff_strings (input_bfd) + sym->_n._n_n._n_offset;
++coff-ppc.c:		strncpy (buf, sym->_n._n_name, SYMNMLEN);
++coff-rs6000.c:	arsym->file_offset = H_GET_32 (abfd, p);
++coff-rs6000.c:	arsym->file_offset = H_GET_64 (abfd, p);
++coff-rs6000.c:      arsym->name = (char *) p;
++coff-rs6000.c:		 - (sym->n_value - xcoff_data (input_bfd)->toc));
++coff-rs6000.c:	  addend = - sym->n_value;
++coff-rs6000.c:		       + sym->n_value
++coff-rs6000.c:    strncpy (ldsym->_l._l_name, name, SYMNMLEN);
++coff-rs6000.c:      ldsym->_l._l_l._l_zeroes = 0;
++coff-rs6000.c:      ldsym->_l._l_l._l_offset = ldinfo->string_size + 2;
++coff-rs6000.c:      strncpy (sym->_n._n_name, name, SYMNMLEN);
++coff-rs6000.c:      sym->_n._n_n._n_zeroes = 0;
++coff-rs6000.c:      sym->_n._n_n._n_offset = STRING_SIZE_SIZE + indx;
++coff-sh.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++coff-sh.c:	 size (sym->n_value) as an addend.  The relocate_section
++coff-sh.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-sh.c:	*addendp -= sym->n_value;
++coff-sh.c:        && coffsym->native->u.syment.n_scnum == 0)              \
++coff-sh.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-sh.c:	addend = - sym->n_value;
++coff-sh.c:		     + sym->n_value
++coff-sh.c:	    else if (sym->_n._n_n._n_zeroes == 0
++coff-sh.c:		     && sym->_n._n_n._n_offset != 0)
++coff-sh.c:	      name = obj_coff_strings (input_bfd) + sym->_n._n_n._n_offset;
++coff-sh.c: 		strncpy (buf, sym->_n._n_name, SYMNMLEN);
++coff-tic80.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-tic80.c:	addend = - sym->n_value;
++coff-tic80.c:		     + sym->n_value);
++coff-x86_64.c:	&& coffsym->native->u.syment.n_scnum == 0)		\
++coff-x86_64.c:      cache_ptr->addend = - coffsym->native->u.syment.n_value;	\
++coff-x86_64.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++coff-x86_64.c:	 size (sym->n_value) as an addend.  The relocate_section
++coff-x86_64.c:      *addendp -= sym->n_value;
++coff-x86_64.c:      if (sym != NULL && sym->n_scnum != 0)
++coff-x86_64.c:	*addendp -= sym->n_value;
++coff-x86_64.c:	  for (s = abfd->sections, i = 1; i < sym->n_scnum; i++)
++dwarf2.c:  if (sym->flags & BSF_FUNCTION)
++dwarf2.c:  if (sym->flags & BSF_FUNCTION)
++ecoff.c:  asym->the_bfd = abfd;
++ecoff.c:  asym->value = ecoff_sym->value;
++ecoff.c:  asym->section = &bfd_debug_section;
++ecoff.c:  asym->udata.i = 0;
++ecoff.c:  switch (ecoff_sym->st)
++ecoff.c:	  asym->flags = BSF_DEBUGGING;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:    asym->flags = BSF_EXPORT | BSF_WEAK;
++ecoff.c:    asym->flags = BSF_EXPORT | BSF_GLOBAL;
++ecoff.c:      asym->flags = BSF_LOCAL;
++ecoff.c:      if (ecoff_sym->st == stProc
++ecoff.c:	  || ecoff_sym->st == stLabel
++ecoff.c:	asym->flags |= BSF_DEBUGGING;
++ecoff.c:  if (ecoff_sym->st == stProc || ecoff_sym->st == stStaticProc)
++ecoff.c:    asym->flags |= BSF_FUNCTION;
++ecoff.c:  switch (ecoff_sym->sc)
++ecoff.c:      asym->flags = BSF_LOCAL;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, _TEXT);
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, _DATA);
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, _BSS);
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:      asym->section = bfd_abs_section_ptr;
++ecoff.c:      asym->section = bfd_und_section_ptr;
++ecoff.c:      asym->flags = 0;
++ecoff.c:      asym->value = 0;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".sdata");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".sbss");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".rdata");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:      if (asym->value > ecoff_data (abfd)->gp_size)
++ecoff.c:	  asym->section = bfd_com_section_ptr;
++ecoff.c:	  asym->flags = 0;
++ecoff.c:      asym->section = &ecoff_scom_section;
++ecoff.c:      asym->flags = 0;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:      asym->section = bfd_und_section_ptr;
++ecoff.c:      asym->flags = 0;
++ecoff.c:      asym->value = 0;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".init");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->flags = BSF_DEBUGGING;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".fini");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      asym->section = bfd_make_section_old_way (abfd, ".rconst");
++ecoff.c:      asym->value -= asym->section->vma;
++ecoff.c:      switch (ECOFF_UNMARK_STAB (ecoff_sym->index))
++ecoff.c:	  asym->flags |= BSF_CONSTRUCTOR;
++ecoff.c:      if ((sym->flags & BSF_DEBUGGING) != 0
++ecoff.c:	  || (sym->flags & BSF_LOCAL) != 0
++ecoff.c:	  || (sym->flags & BSF_SECTION_SYM) != 0)
++ecoff.c:      esym->jmptbl = 0;
++ecoff.c:      esym->cobol_main = 0;
++ecoff.c:      esym->weakext = (sym->flags & BSF_WEAK) != 0;
++ecoff.c:      esym->reserved = 0;
++ecoff.c:      esym->ifd = ifdNil;
++ecoff.c:      esym->asym.st = stGlobal;
++ecoff.c:      esym->asym.sc = scAbs;
++ecoff.c:      esym->asym.reserved = 0;
++ecoff.c:      esym->asym.index = indexNil;
++ecoff.c:  if ((esym->asym.sc == scUndefined
++ecoff.c:       || esym->asym.sc == scSUndefined)
++ecoff.c:    esym->asym.sc = scAbs;
++ecoff.c:  if (esym->ifd != -1)
++ecoff.c:      BFD_ASSERT (esym->ifd < input_debug->symbolic_header.ifdMax);
++ecoff.c:	esym->ifd = input_debug->ifdmap[esym->ifd];
++ecoff.c:	      if ((sym->flags & BSF_SECTION_SYM) == 0)
++ecofflink.c:  esym->asym.iss = symhdr->issExtMax;
++elf32-arm.c:  if (ELF32_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-arm.c:      s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-arm.c:		      if (sym->st_shndx == SHN_UNDEF)
++elf32-arm.c:		      else if (sym->st_shndx == SHN_ABS)
++elf32-arm.c:		      else if (sym->st_shndx == SHN_COMMON)
++elf32-arm.c:			  bfd_section_from_elf_index (input_bfd, sym->st_shndx);
++elf32-arm.c:		      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-arm.c:			sym_value = sym->st_value;
++elf32-arm.c:		      st_type = ELF_ST_TYPE (sym->st_info);
++elf32-arm.c:							   sym->st_name);
++elf32-arm.c:      asection *sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-arm.c:	  && ELF_ST_BIND (isym->st_info) == STB_LOCAL)
++elf32-arm.c:	    hdr->sh_link, isym->st_name);
++elf32-arm.c:	    elf32_arm_section_map_add (sec, name[1], isym->st_value);
++elf32-arm.c:	  sym_type = ELF32_ST_TYPE (sym->st_info);
++elf32-arm.c:	      && ELF_ST_BIND (sym->st_info) != STB_WEAK)
++elf32-arm.c:		   (input_bfd, symtab_hdr->sh_link, sym->st_name),
++elf32-arm.c:			    + sym->st_value);
++elf32-arm.c:		  && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-arm.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-arm.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-arm.c:  switch (ELF_ST_TYPE (elf_sym->st_info))
++elf32-arm.c:      return ELF_ST_TYPE (elf_sym->st_info);
++elf32-arm.c:	return ELF_ST_TYPE (elf_sym->st_info);
++elf32-arm.c:	  && (h != NULL || ELF32_ST_TYPE (isym->st_info) == STT_GNU_IFUNC))
++elf32-arm.c:  return bfd_is_arm_special_symbol_name (sym->name,
++elf32-arm.c:	      if (ELF32_ST_TYPE (isym->st_info) == STT_GNU_IFUNC
++elf32-arm.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-arm.c:	    sym->st_value = 0;
++elf32-arm.c:	  sym->st_info = ELF_ST_INFO (ELF_ST_BIND (sym->st_info), STT_FUNC);
++elf32-arm.c:	  sym->st_target_internal = ST_BRANCH_TO_ARM;
++elf32-arm.c:	  sym->st_shndx = (_bfd_elf_section_from_bfd_section
++elf32-arm.c:	  sym->st_value = (h->plt.offset
++elf32-arm.c:    sym->st_shndx = SHN_ABS;
++elf32-arm.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf32-arm.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf32-avr.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-avr.c:               sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-avr.c:               symval = isym->st_value;
++elf32-avr.c:	  if (isym->st_shndx == sec_shndx
++elf32-avr.c:	      && isym->st_value > addr
++elf32-avr.c:	      && isym->st_value < toaddr)
++elf32-avr.c:	    isym->st_value -= count;
++elf32-avr.c:          sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-avr.c:          symval = isym->st_value;
++elf32-avr.c:			    if (isym->st_value == section_offset_of_ret_insn
++elf32-avr.c:				&& isym->st_shndx == sec_shndx)
++elf32-avr.c:				      (abfd, isym->st_shndx);
++elf32-avr.c:				    symval = isym->st_value;
++elf32-avr.c:          if (isym->st_shndx == SHN_UNDEF)
++elf32-avr.c:          else if (isym->st_shndx == SHN_ABS)
++elf32-avr.c:          else if (isym->st_shndx == SHN_COMMON)
++elf32-avr.c:            isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf32-avr.c:                      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-avr.c:                        sym_value = sym->st_value;
++elf32-avr.c:		      shndx = sym->st_shndx;
++elf32-bfin.c:						      sym->st_name);
++elf32-bfin.c:	    ad += sym->st_value;
++elf32-bfin.c:	    ad += sym->st_value;
++elf32-bfin.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-bfin.c:		  addend += sym->st_value;
++elf32-bfin.c:	  picrel->sym--;
++elf32-bfin.c:    sym->st_shndx = SHN_ABS;
++elf32-bfin.c:	  targetsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-cr16.c:      if (isym->st_shndx == sec_shndx
++elf32-cr16.c:          && isym->st_value > addr
++elf32-cr16.c:          && isym->st_value < toaddr)
++elf32-cr16.c:              addsym = isym->st_value;
++elf32-cr16.c:          isym->st_value -= count;
++elf32-cr16.c:                      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-cr16.c:          if (isym->st_shndx == SHN_UNDEF)
++elf32-cr16.c:          else if (isym->st_shndx == SHN_ABS)
++elf32-cr16.c:          else if (isym->st_shndx == SHN_COMMON)
++elf32-cr16.c:            isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf32-cr16.c:          if (isym->st_shndx == SHN_UNDEF)
++elf32-cr16.c:          else if (isym->st_shndx == SHN_ABS)
++elf32-cr16.c:          else if (isym->st_shndx == SHN_COMMON)
++elf32-cr16.c:            sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-cr16.c:          symval = (isym->st_value
++elf32-cr16.c:    sym->st_shndx = SHN_ABS;
++elf32-cr16.c:          targetsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-cr16c.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-cr16c.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-cr16c.c:  indx = elfsym->internal_elf_sym.st_shndx;
++elf32-cr16c.c:      asym->section = &cr16c_elf_fcom_section;
++elf32-cr16c.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-cr16c.c:      asym->section = &cr16c_elf_ncom_section;
++elf32-cr16c.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-cr16c.c:  unsigned int indx = sym->st_shndx;
++elf32-cr16c.c:      *valp = sym->st_size;
++elf32-cr16c.c:      *valp = sym->st_size;
++elf32-cr16c.c:  if (sym->st_shndx == SHN_COMMON)
++elf32-cr16c.c:	sym->st_shndx = SHN_CR16C_FCOMMON;
++elf32-cr16c.c:	sym->st_shndx = SHN_CR16C_NCOMMON;
++elf32-cris.c:	    for e.g. sym+0x40000000 (or actually sym-0xc0000000 in
++elf32-cris.c:		     (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-cris.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-cris.c:	    sym->st_value = 0;
++elf32-cris.c:    sym->st_shndx = SHN_ABS;
++elf32-crx.c:      if (isym->st_shndx == sec_shndx
++elf32-crx.c:	  && isym->st_value > addr
++elf32-crx.c:	  && isym->st_value < toaddr)
++elf32-crx.c:	      addsym = isym->st_value;
++elf32-crx.c:	  isym->st_value -= count;
++elf32-crx.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-crx.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-crx.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-crx.c:	    isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf32-crx.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-crx.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-crx.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-crx.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-crx.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-crx.c:	  symval = (isym->st_value
++elf32-d10v.c:			+ sym->st_value);
++elf32-d10v.c:	  if (ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elf32-d10v.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-epiphany.c:	  relocation = BASEADDR (sec) + sym->st_value;
++elf32-epiphany.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-fr30.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-frv.c:	    ad += sym->st_value;
++elf32-frv.c:	    ad += sym->st_value;
++elf32-frv.c:		ad += sym->st_value;
++elf32-frv.c:	    ad += sym->st_value;
++elf32-frv.c:		ad += sym->st_value;
++elf32-frv.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-frv.c:		  addend += sym->st_value;
++elf32-frv.c:  if (sym->st_shndx == SHN_COMMON
++elf32-frv.c:      && (int)sym->st_size <= (int)bfd_get_gp_size (abfd))
++elf32-frv.c:      *valp = sym->st_size;
++elf32-h8300.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-h8300.c:	  sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-h8300.c:	  symval = isym->st_value;
++elf32-h8300.c:		      = bfd_section_from_elf_index (abfd, last_sym->st_shndx);
++elf32-h8300.c:		    last_value = (last_sym->st_value
++elf32-h8300.c:      if (isym->st_shndx == sec_shndx
++elf32-h8300.c:	  && isym->st_value > addr
++elf32-h8300.c:	  && isym->st_value <= toaddr)
++elf32-h8300.c:	isym->st_value -= count;
++elf32-h8300.c:      if (isym->st_shndx == sec_shndx
++elf32-h8300.c:	  && isym->st_value == addr)
++elf32-h8300.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-h8300.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-h8300.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-h8300.c:	    isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf32-hppa.c:		  sr = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-hppa.c:		      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-hppa.c:			sym_value = sym->st_value;
++elf32-hppa.c:		      shndx = sym->st_shndx;
++elf32-hppa.c:						      sym->st_name);
++elf32-hppa.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-hppa.c:      sym->st_shndx = SHN_ABS;
++elf32-hppa.c:  if (ELF_ST_TYPE (elf_sym->st_info) == STT_PARISC_MILLI)
++elf32-i370.c:	      esym = (Elf32_External_Sym *) sdynsym->contents + dindx;
++elf32-i370.c:      elf_section_data (sdynsym->output_section)->this_hdr.sh_info =
++elf32-i370.c:							    sym->st_name);
++elf32-i386.c:	  if (ELF32_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-i386.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-i386.c:	      && ELF32_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-i386.c:	  if (ELF_ST_TYPE (isym->st_info) != STT_GNU_IFUNC
++elf32-i386.c:			+ sym->st_value);
++elf32-i386.c:	  st_size = sym->st_size;
++elf32-i386.c:	  if (ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elf32-i386.c:		   && ELF32_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf32-i386.c:	      h->root.u.def.value = sym->st_value;
++elf32-i386.c:						      sym->st_name);
++elf32-i386.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-i386.c:	    sym->st_value = 0;
++elf32-i386.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf32-i386.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf32-i860.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-ip2k.c:      if (isym->st_shndx == SHN_UNDEF)
++elf32-ip2k.c:      else if (isym->st_shndx == SHN_ABS)
++elf32-ip2k.c:      else if (isym->st_shndx == SHN_COMMON)
++elf32-ip2k.c:	sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ip2k.c:      return isym->st_value + BASEADDR (sym_sec);
++elf32-ip2k.c:              sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ip2k.c:              if (isym->st_shndx == shndx)
++elf32-ip2k.c:                  bfd_vma symval = BASEADDR (sym_sec) + isym->st_value
++elf32-ip2k.c:		  sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ip2k.c:		      bfd_vma symval = BASEADDR (sym_sec) + isym->st_value
++elf32-ip2k.c:      if (isym->st_shndx == shndx
++elf32-ip2k.c:	  && addr <= isym->st_value
++elf32-ip2k.c:	  && isym->st_value < endaddr)
++elf32-ip2k.c:	isym->st_value += count;
++elf32-ip2k.c:	  relocation = BASEADDR (sec) + sym->st_value;
++elf32-ip2k.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-iq2000.c:	      && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-iq2000.c:			+ sym->st_value);
++elf32-iq2000.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-lm32.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-lm32.c:	  if (sym == NULL || ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-lm32.c:                      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-lm32.c:          sym->st_shndx = SHN_UNDEF;
++elf32-lm32.c:    sym->st_shndx = SHN_ABS;
++elf32-m32c.c:			+ sym->st_value);
++elf32-m32c.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-m32c.c:	  name = (sym->st_name == 0) ? bfd_section_name (input_bfd, sec) : name;
++elf32-m32c.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-m32c.c:      switch (ELF_ST_TYPE (isym->st_info))
++elf32-m32c.c:      switch (ELF_ST_BIND (isym->st_info))
++elf32-m32c.c:      switch (ELF_ST_VISIBILITY (isym->st_other))
++elf32-m32c.c:      switch (isym->st_shndx)
++elf32-m32c.c:	      (unsigned long) isym->st_value,
++elf32-m32c.c:	      (unsigned long) isym->st_size,
++elf32-m32c.c:	      isym->st_name,
++elf32-m32c.c:					       isym->st_name),
++elf32-m32c.c:	      isym->st_info, st_info_str, st_info_stb_str,
++elf32-m32c.c:	      isym->st_other, st_other_str,
++elf32-m32c.c:	      isym->st_shndx, st_shndx_str);
++elf32-m32c.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-m32c.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-m32c.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-m32c.c:	    tsec = bfd_section_from_elf_index (ibfd, isym->st_shndx);
++elf32-m32c.c:		     + isym->st_value);
++elf32-m32c.c:      ssec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-m32c.c:      symval = isym->st_value;
++elf32-m32c.c:      if ((int) isym->st_shndx == sec_shndx
++elf32-m32c.c:	  && isym->st_value > addr
++elf32-m32c.c:	  && isym->st_value < toaddr)
++elf32-m32c.c:	  isym->st_value -= count;
++elf32-m32c.c:      if ((int) isym->st_shndx == sec_shndx
++elf32-m32c.c:	    && isym->st_value < addr
++elf32-m32c.c:	  && isym->st_value + isym->st_size > addr
++elf32-m32c.c:	  && isym->st_value + isym->st_size < toaddr)
++elf32-m32c.c:	  isym->st_size -= count;
++elf32-m32r.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf32-m32r.c:      asym->section = &m32r_elf_scom_section;
++elf32-m32r.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-m32r.c:  switch (sym->st_shndx)
++elf32-m32r.c:      *valp = sym->st_size;
++elf32-m32r.c:			    + sym->st_value);
++elf32-m32r.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-m32r.c:	  if (sym == NULL || ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-m32r.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-m32r.c:          sym->st_shndx = SHN_UNDEF;
++elf32-m32r.c:    sym->st_shndx = SHN_ABS;
++elf32-m32r.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-m68hc11.c:          is_far = isym->st_other & STO_M68HC12_FAR;
++elf32-m68hc11.c:          sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-m68hc11.c:	  symval = (isym->st_value
++elf32-m68hc11.c:          insn_group_value = isym->st_value;
++elf32-m68hc11.c:      if (isym->st_shndx == sec_shndx
++elf32-m68hc11.c:	  && isym->st_value > addr
++elf32-m68hc11.c:	  && isym->st_value <= toaddr)
++elf32-m68hc11.c:	isym->st_value -= count;
++elf32-m68hc1x.c:  if (sym->st_other & STO_M68HC12_FAR)
++elf32-m68hc1x.c:    h->other = ((isym->st_other & ~ELF_ST_VISIBILITY (-1))
++elf32-m68hc1x.c:                  is_far = (sym && (sym->st_other & STO_M68HC12_FAR));
++elf32-m68hc1x.c:		  if (sym->st_shndx >= elf_numsections (input_bfd))
++elf32-m68hc1x.c:		      hdr = elf_elfsections (input_bfd)[sym->st_shndx];
++elf32-m68hc1x.c:                                sym->st_name));
++elf32-m68hc1x.c:                  sym_value = sym->st_value;
++elf32-m68hc1x.c:			+ sym->st_value);
++elf32-m68hc1x.c:	  is_far = (sym && (sym->st_other & STO_M68HC12_FAR));
++elf32-m68hc1x.c:	  is_xgate_symbol = (sym && (sym->st_target_internal));
++elf32-m68hc1x.c:	  is_section_symbol = ELF_ST_TYPE (sym->st_info) & STT_SECTION;
++elf32-m68hc1x.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-m68hc1x.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-m68k.c:		      s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-m68k.c:	  sym_type = (sym != NULL) ? ELF32_ST_TYPE (sym->st_info) : h->type;
++elf32-m68k.c:			  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-m68k.c:						      sym->st_name);
++elf32-m68k.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-m68k.c:	  targetsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-m68k.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf32-m68k.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf32-mcore.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-mep.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-metag.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-metag.c:		  sr = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-metag.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-metag.c:      sym->st_shndx = SHN_ABS;
++elf32-metag.c:		      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-metag.c:			sym_value = sym->st_value;
++elf32-metag.c:		      shndx = sym->st_shndx;
++elf32-microblaze.c:	  if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-microblaze.c:	  addend += sec->output_offset + sym->st_value;
++elf32-microblaze.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-microblaze.c:          if (isym->st_shndx == SHN_UNDEF)
++elf32-microblaze.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-microblaze.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-microblaze.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-microblaze.c:		  if (isym->st_shndx == shndx
++elf32-microblaze.c:		      && ELF32_ST_TYPE (isym->st_info) == STT_SECTION)
++elf32-microblaze.c:                  if (isym->st_shndx == shndx
++elf32-microblaze.c:                      && (ELF32_ST_TYPE (isym->st_info) == STT_SECTION))
++elf32-microblaze.c:							+ isym->st_value,
++elf32-microblaze.c:		  if (isym->st_shndx == shndx
++elf32-microblaze.c:		      && (ELF32_ST_TYPE (isym->st_info) == STT_SECTION))
++elf32-microblaze.c:		  if (isym->st_shndx == shndx
++elf32-microblaze.c:		      && (ELF32_ST_TYPE (isym->st_info) == STT_SECTION))
++elf32-microblaze.c:		  if (isym->st_shndx == shndx
++elf32-microblaze.c:		      && (ELF32_ST_TYPE (isym->st_info) == STT_SECTION))
++elf32-microblaze.c:          if (isym->st_shndx == shndx)
++elf32-microblaze.c:              isym->st_value -= calc_fixup (isym->st_value, 0, sec);
++elf32-microblaze.c:              if (isym->st_size)
++elf32-microblaze.c:                isym->st_size -= calc_fixup (isym->st_value, isym->st_size, sec);
++elf32-microblaze.c:		    s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-microblaze.c:          sym->st_shndx = SHN_UNDEF;
++elf32-microblaze.c:          sym->st_value = 0;
++elf32-microblaze.c:    sym->st_shndx = SHN_ABS;
++elf32-microblaze.c:  if (sym->st_shndx == SHN_COMMON
++elf32-microblaze.c:      && sym->st_size <= elf_gp_size (abfd))
++elf32-microblaze.c:      *valp = sym->st_size;
++elf32-mips.c:    return (sym->flags & BSF_SECTION_SYM) == 0;
++elf32-mips.c:    return ((sym->flags & (BSF_GLOBAL | BSF_WEAK | BSF_GNU_UNIQUE)) != 0
++elf32-moxie.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-msp430.c:	      (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-msp430.c:    if (isym->st_shndx == sec_shndx && isym->st_value == addr)
++elf32-msp430.c:	  && lsym->st_shndx == sec_shndx)
++elf32-msp430.c:    if (isym->st_shndx == sec_shndx
++elf32-msp430.c:	&& isym->st_value > addr && isym->st_value < toaddr)
++elf32-msp430.c:      isym->st_value -= count;
++elf32-msp430.c:    if (isym->st_shndx == sec_shndx
++elf32-msp430.c:	&& isym->st_value >= addr && isym->st_value < sec_end)
++elf32-msp430.c:      isym->st_value += 4;
++elf32-msp430.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-msp430.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-msp430.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-msp430.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-msp430.c:	  symval = (isym->st_value
++elf32-msp430.c:	    if (isym->st_shndx == SHN_UNDEF)
++elf32-msp430.c:	    else if (isym->st_shndx == SHN_ABS)
++elf32-msp430.c:	    else if (isym->st_shndx == SHN_COMMON)
++elf32-msp430.c:	      sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-msp430.c:	    symval = (isym->st_value
++elf32-msp430.c:  return _bfd_elf_is_local_label_name (abfd, sym->name);
++elf32-mt.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-nds32.c:  switch (sym->st_shndx)
++elf32-nds32.c:      if (sym->st_size > elf_gp_size (abfd)
++elf32-nds32.c:	  || ELF_ST_TYPE (sym->st_info) == STT_TLS)
++elf32-nds32.c:      switch (sym->st_value)
++elf32-nds32.c:      *valp = sym->st_size;
++elf32-nds32.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-nds32.c:	    rel->r_addend += sec->output_offset + sym->st_value;
++elf32-nds32.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-nds32.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-nds32.c:	    sym->st_value = 0;
++elf32-nds32.c:    sym->st_shndx = SHN_ABS;
++elf32-nds32.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nds32.c:      if (isym->st_shndx == SHN_UNDEF)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_ABS)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_COMMON)
++elf32-nds32.c:	sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nds32.c:      symval = isym->st_value + sym_sec->output_section->vma
++elf32-nds32.c:      if (isym->st_shndx == SHN_UNDEF)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_ABS)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_COMMON)
++elf32-nds32.c:	sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nds32.c:      symval = isym->st_value + sym_sec->output_section->vma
++elf32-nds32.c:		+ sec->output_offset + sym->st_value);
++elf32-nds32.c:      if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-nds32.c:				      sym->st_value + rel->r_addend);
++elf32-nds32.c:				      sym->st_value) + rel->r_addend;
++elf32-nds32.c:      if (isym->st_shndx == SHN_UNDEF)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_ABS)
++elf32-nds32.c:      else if (isym->st_shndx == SHN_COMMON)
++elf32-nds32.c:	sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nds32.c:      if (isym->st_shndx == sec_shndx)
++elf32-nds32.c:	  if (isym->st_value <= sec->size)
++elf32-nds32.c:	      bfd_vma orig_addr = isym->st_value;
++elf32-nds32.c:	      ahead = get_nds32_elf_blank_total (&blank_t, isym->st_value, 1);
++elf32-nds32.c:	      isym->st_value -= ahead;
++elf32-nds32.c:	      if (ELF32_ST_TYPE (isym->st_info) == STT_FUNC
++elf32-nds32.c:		  && isym->st_size > 0)
++elf32-nds32.c:		isym->st_size -=
++elf32-nds32.c:		  (&blank_t, orig_addr + isym->st_size, 0) - ahead;
++elf32-nds32.c:      sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nds32.c:	  && ELF_ST_TYPE (isym->st_info) != STT_SECTION)
++elf32-nds32.c:					isym->st_value);
++elf32-nios2.c:		      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elf32-nios2.c:			sym_value = sym->st_value;
++elf32-nios2.c:		      shndx = sym->st_shndx;
++elf32-nios2.c:						      sym->st_name);
++elf32-nios2.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-nios2.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-nios2.c:	    sym->st_value = 0;
++elf32-nios2.c:    sym->st_shndx = SHN_ABS;
++elf32-nios2.c:  if (sym->st_shndx == SHN_COMMON
++elf32-nios2.c:      && sym->st_size <= elf_gp_size (abfd)
++elf32-nios2.c:      *valp = sym->st_size;
++elf32-or1k.c:            (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-or1k.c:                    s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-or1k.c:          sym->st_shndx = SHN_UNDEF;
++elf32-or1k.c:    sym->st_shndx = SHN_ABS;
++elf32-ppc.c:  lsect->sym->root.u.def.value = 0x8000;
++elf32-ppc.c:  if (sym->st_shndx == SHN_COMMON
++elf32-ppc.c:      && sym->st_size <= elf_gp_size (abfd))
++elf32-ppc.c:      *valp = sym->st_size;
++elf32-ppc.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf32-ppc.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf32-ppc.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-ppc.c:	  htab->sdata[0].sym->ref_regular = 1;
++elf32-ppc.c:	  htab->sdata[1].sym->ref_regular = 1;
++elf32-ppc.c:	  htab->sdata[0].sym->ref_regular = 1;
++elf32-ppc.c:	  htab->sdata[1].sym->ref_regular = 1;
++elf32-ppc.c:	      s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ppc.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ppc.c:		  is_ifunc = ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC;
++elf32-ppc.c:	      if (isym->st_shndx == SHN_UNDEF)
++elf32-ppc.c:	      else if (isym->st_shndx == SHN_ABS)
++elf32-ppc.c:	      else if (isym->st_shndx == SHN_COMMON)
++elf32-ppc.c:		tsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-ppc.c:	      toff = isym->st_value;
++elf32-ppc.c:	      sym_type = ELF_ST_TYPE (isym->st_info);
++elf32-ppc.c:		   && ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf32-ppc.c:		sym->st_shndx = SHN_UNDEF;
++elf32-ppc.c:		  sym->st_value = 0;
++elf32-ppc.c:		    sym->st_value = 0;
++elf32-ppc.c:		sym->st_shndx = (_bfd_elf_section_from_bfd_section
++elf32-ppc.c:		sym->st_value = (ent->glink_offset
++elf32-rl78.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-rl78.c:	  name = (sym->st_name == 0) ? bfd_section_name (input_bfd, sec) : name;
++elf32-rl78.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-rl78.c:			   + sym->st_value
++elf32-rl78.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-rl78.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-rl78.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-rl78.c:	    tsec = bfd_section_from_elf_index (ibfd, isym->st_shndx);
++elf32-rl78.c:		     + isym->st_value);
++elf32-rl78.c:      if (isym->st_shndx == sec_shndx
++elf32-rl78.c:	  && isym->st_value > addr
++elf32-rl78.c:	  && isym->st_value < toaddr)
++elf32-rl78.c:	isym->st_value -= count;
++elf32-rl78.c:      if (isym->st_shndx == sec_shndx
++elf32-rl78.c:	  && isym->st_value < addr
++elf32-rl78.c:	  && isym->st_value + isym->st_size > addr
++elf32-rl78.c:	  && isym->st_value + isym->st_size < toaddr)
++elf32-rl78.c:	isym->st_size -= count;
++elf32-rl78.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-rl78.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-rl78.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-rl78.c:					       isym->st_shndx);
++elf32-rl78.c:	  symval = isym->st_value;
++elf32-rl78.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elf32-rx.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-rx.c:	  name = (sym->st_name == 0) ? bfd_section_name (input_bfd, sec) : name;
++elf32-rx.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-rx.c:			   + sym->st_value
++elf32-rx.c:      if (isym->st_shndx == sec_shndx
++elf32-rx.c:	  && isym->st_value > addr
++elf32-rx.c:	  && isym->st_value < toaddr)
++elf32-rx.c:	isym->st_value -= count;
++elf32-rx.c:      if (isym->st_shndx == sec_shndx
++elf32-rx.c:	  && isym->st_value < addr
++elf32-rx.c:	  && isym->st_value + isym->st_size > addr
++elf32-rx.c:	  && isym->st_value + isym->st_size < toaddr)
++elf32-rx.c:	isym->st_size -= count;
++elf32-rx.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-rx.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-rx.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-rx.c:					       isym->st_shndx);
++elf32-rx.c:	  symval = isym->st_value;
++elf32-rx.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elf32-rx.c:      switch (ELF_ST_TYPE (isym->st_info))
++elf32-rx.c:      switch (ELF_ST_BIND (isym->st_info))
++elf32-rx.c:      switch (ELF_ST_VISIBILITY (isym->st_other))
++elf32-rx.c:      switch (isym->st_shndx)
++elf32-rx.c:	      (unsigned long) isym->st_value,
++elf32-rx.c:	      (unsigned long) isym->st_size,
++elf32-rx.c:	      isym->st_name,
++elf32-rx.c:					       isym->st_name),
++elf32-rx.c:	      isym->st_info, st_info_str, st_info_stb_str,
++elf32-rx.c:	      isym->st_other, st_other_str,
++elf32-rx.c:	      isym->st_shndx, st_shndx_str);
++elf32-s390.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-s390.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-s390.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-s390.c:	  if (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf32-s390.c:						      sym->st_name);
++elf32-s390.c:	      sym->st_shndx = SHN_UNDEF;
++elf32-s390.c:    sym->st_shndx = SHN_ABS;
++elf32-s390.c:		if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf32-s390.c:						isym->st_value
++elf32-score7.c:    global_got_dynindx = g->global_gotsym->dynindx;
++elf32-score7.c:      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION
++elf32-score7.c:        symbol += sym->st_value;
++elf32-score7.c:          && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score7.c:              if (ELF_ST_TYPE (sym->st_info) != STT_SECTION
++elf32-score7.c:                      relocation += sym->st_value;
++elf32-score7.c:                      && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score7.c:                  if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score7.c:              else if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score7.c:                                        howto, (bfd_signed_vma) (sec->output_offset + sym->st_value));
++elf32-score7.c:                                         ELF_ST_TYPE ((unsigned int) sym->st_info)), h, local_syms,
++elf32-score7.c:  switch (sym->st_shndx)
++elf32-score7.c:      if (sym->st_size > elf_gp_size (abfd))
++elf32-score7.c:      *valp = sym->st_size;
++elf32-score7.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf32-score7.c:      if (asym->value > elf_gp_size (abfd))
++elf32-score7.c:      asym->section = &score_elf_scom_section;
++elf32-score7.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-score7.c:  if (sym->st_shndx == SHN_COMMON && strcmp (input_sec->name, ".scommon") == 0)
++elf32-score7.c:    sym->st_shndx = SHN_SCORE_SCOMMON;
++elf32-score7.c:    i = elf_hash_table (info)->dynsymcount - g->global_gotsym->dynindx;
++elf32-score7.c:      sym->st_shndx = SHN_UNDEF;
++elf32-score7.c:      sym->st_value = (s->output_section->vma + s->output_offset + h->plt.offset);
++elf32-score7.c:  if (g->global_gotsym != NULL && h->dynindx >= g->global_gotsym->dynindx)
++elf32-score7.c:      value = sym->st_value;
++elf32-score7.c:    sym->st_shndx = SHN_ABS;
++elf32-score7.c:      sym->st_shndx = SHN_ABS;
++elf32-score7.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elf32-score7.c:      sym->st_value = 1;
++elf32-score7.c:      sym->st_shndx = SHN_ABS;
++elf32-score7.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elf32-score7.c:      sym->st_value = elf_gp (output_bfd);
++elf32-score7.c:                  dyn.d_un.d_val = g->global_gotsym->dynindx;
++elf32-score.c:    global_got_dynindx = g->global_gotsym->dynindx;
++elf32-score.c:                        + sym->st_value);
++elf32-score.c:              && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score.c:              if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-score.c:                                    howto, (bfd_signed_vma) (sec->output_offset + sym->st_value));
++elf32-score.c:                                         ELF_ST_TYPE ((unsigned int)sym->st_info)), h, local_sections,
++elf32-score.c:  switch (sym->st_shndx)
++elf32-score.c:      if (sym->st_size > elf_gp_size (abfd))
++elf32-score.c:      *valp = sym->st_size;
++elf32-score.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf32-score.c:      if (asym->value > elf_gp_size (abfd))
++elf32-score.c:      asym->section = &score_elf_scom_section;
++elf32-score.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-score.c:  if (sym->st_shndx == SHN_COMMON && strcmp (input_sec->name, ".scommon") == 0)
++elf32-score.c:    sym->st_shndx = SHN_SCORE_SCOMMON;
++elf32-score.c:    i = elf_hash_table (info)->dynsymcount - g->global_gotsym->dynindx;
++elf32-score.c:      sym->st_shndx = SHN_UNDEF;
++elf32-score.c:      sym->st_value = (s->output_section->vma + s->output_offset + h->plt.offset);
++elf32-score.c:  if (g->global_gotsym != NULL && h->dynindx >= g->global_gotsym->dynindx)
++elf32-score.c:      value = sym->st_value;
++elf32-score.c:    sym->st_shndx = SHN_ABS;
++elf32-score.c:      sym->st_shndx = SHN_ABS;
++elf32-score.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elf32-score.c:      sym->st_value = 1;
++elf32-score.c:      sym->st_shndx = SHN_ABS;
++elf32-score.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elf32-score.c:      sym->st_value = elf_gp (output_bfd);
++elf32-score.c:                  dyn.d_un.d_val = g->global_gotsym->dynindx;
++elf32-score.c:      if (sym->st_shndx == SHN_COMMON && strcmp (input_sec->name, ".scommon") == 0)
++elf32-score.c:        sym->st_shndx = SHN_SCORE_SCOMMON;
++elf32-score.c:  return (sym->st_shndx == SHN_COMMON || sym->st_shndx == SHN_SCORE_SCOMMON);
++elf32-sh64.c:  if (ELF_ST_TYPE (elf_sym->st_info) == STT_DATALABEL)
++elf32-sh64.c:  if (ELF_ST_TYPE (sym->st_info) == STT_DATALABEL
++elf32-sh64.c:      if (ELF_ST_TYPE (sym->st_info) == STT_DATALABEL)
++elf32-sh64.c:  if ((isym->st_other & ~ELF_ST_VISIBILITY (-1)) != 0)
++elf32-sh64.c:      other = (definition ? isym->st_other : h->other);
++elf32-sh.c:	  if (isym->st_shndx
++elf32-sh.c:	  symval = (isym->st_value
++elf32-sh.c:	      if (isym->st_shndx == sec_shndx
++elf32-sh.c:		  && (isym->st_value <= addr
++elf32-sh.c:		      || isym->st_value >= toaddr))
++elf32-sh.c:		      val += isym->st_value;
++elf32-sh.c:		      val = isym->st_value + irel->r_addend;
++elf32-sh.c:	  if (isym->st_shndx == sec_shndx
++elf32-sh.c:	      && (isym->st_value <= addr
++elf32-sh.c:		  || isym->st_value >= toaddr))
++elf32-sh.c:	      val += isym->st_value;
++elf32-sh.c:      if (isym->st_shndx == sec_shndx
++elf32-sh.c:	  && isym->st_value > addr
++elf32-sh.c:	  && isym->st_value < toaddr)
++elf32-sh.c:	isym->st_value -= count;
++elf32-sh.c:	    (input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-sh.c:			+ sym->st_value);
++elf32-sh.c:	  if ((sym->st_other & STO_SH5_ISA32) != 0)
++elf32-sh.c:	      if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-sh.c:					      + sym->st_value,
++elf32-sh.c:		   && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-sh.c:							 sym->st_value))
++elf32-sh.c:						       sym->st_value))
++elf32-sh.c:			    (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-sh.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-sh.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-sh.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-sh.c:	    isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf32-sh.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-sh.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-sh.c:    sym->st_shndx = SHN_ABS;
++elf32-sparc.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf32-sparc.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf32-spu.c:  if (sym->name != NULL
++elf32-spu.c:      && sym->section != bfd_abs_section_ptr
++elf32-spu.c:      && strncmp (sym->name, "_EAR_", 5) == 0)
++elf32-spu.c:    sym->flags |= BSF_KEEP;
++elf32-spu.c:	*symsecp = bfd_section_from_elf_index (ibfd, sym->st_shndx);
++elf32-spu.c:    sym_type = ELF_ST_TYPE (sym->st_info);
++elf32-spu.c:		    dest = sym->st_value;
++elf32-spu.c:      off = sym->st_value;
++elf32-spu.c:      size = sym->st_size;
++elf32-spu.c:  if (fun->u.sym->st_name == 0)
++elf32-spu.c:	       (unsigned long) fun->u.sym->st_value & 0xffffffff);
++elf32-spu.c:	    sym_type = ELF_ST_TYPE (sym->st_info);
++elf32-spu.c:	val = sym->st_value;
++elf32-spu.c:      if (fun->global || ELF_ST_BIND (fun->u.sym->st_info) == STB_GLOBAL)
++elf32-spu.c:	    sym->st_shndx = (_bfd_elf_section_from_bfd_section
++elf32-spu.c:	    sym->st_value = g->stub_addr;
++elf32-tic6x.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-tic6x.c:	  sym->st_value = 0;
++elf32-tic6x.c:    sym->st_shndx = SHN_ABS;
++elf32-tic6x.c:	      && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-tic6x.c:	      relocation = sec->output_offset + sym->st_value;
++elf32-tic6x.c:						      sym->st_name);
++elf32-tic6x.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-tic6x.c:  switch (sym->st_shndx)
++elf32-tic6x.c:      *valp = sym->st_size;
++elf32-tic6x.c:      (void) bfd_set_section_alignment (abfd, *secp, bfd_log2 (sym->st_value));
++elf32-tic6x.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf32-tic6x.c:      asym->section = &tic6x_elf_scom_section;
++elf32-tic6x.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-tic6x.c:  if (sym->st_shndx == SHN_COMMON && strcmp (input_sec->name, ".scommon") == 0)
++elf32-tic6x.c:    sym->st_shndx = SHN_TIC6X_SCOMMON;
++elf32-tilepro.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-tilepro.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-tilepro.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-tilepro.c:	    sym->st_value = 0;
++elf32-tilepro.c:    sym->st_shndx = SHN_ABS;
++elf32-v850.c:  return v850_elf_is_local_label_name (abfd, sym->name);
++elf32-v850.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-v850.c:  indx = elfsym->internal_elf_sym.st_shndx;
++elf32-v850.c:      asym->section = & v850_elf_scom_section;
++elf32-v850.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-v850.c:      asym->section = & v850_elf_tcom_section;
++elf32-v850.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-v850.c:      asym->section = & v850_elf_zcom_section;
++elf32-v850.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf32-v850.c:  unsigned int indx = sym->st_shndx;
++elf32-v850.c:      *valp = sym->st_size;
++elf32-v850.c:      *valp = sym->st_size;
++elf32-v850.c:      *valp = sym->st_size;
++elf32-v850.c:  if (sym->st_shndx == SHN_COMMON)
++elf32-v850.c:	sym->st_shndx = SHN_V850_SCOMMON;
++elf32-v850.c:	sym->st_shndx = SHN_V850_TCOMMON;
++elf32-v850.c:	sym->st_shndx = SHN_V850_ZCOMMON;
++elf32-v850.c:  sym->st_other &= ~(V850_OTHER_SDA | V850_OTHER_ZDA | V850_OTHER_TDA
++elf32-v850.c:		  symval = isym->st_value;
++elf32-v850.c:		  if (isym->st_shndx == SHN_UNDEF)
++elf32-v850.c:		  else if (isym->st_shndx == SHN_ABS)
++elf32-v850.c:		  else if (isym->st_shndx == SHN_COMMON)
++elf32-v850.c:		    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-v850.c:		  symval = (isym->st_value
++elf32-v850.c:		  if (isym->st_shndx == SHN_UNDEF)
++elf32-v850.c:		  else if (isym->st_shndx == SHN_ABS)
++elf32-v850.c:		  else if (isym->st_shndx == SHN_COMMON)
++elf32-v850.c:		    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf32-v850.c:		  symval = (isym->st_value
++elf32-v850.c:		      (abfd, symtab_hdr->sh_link, isym->st_name);
++elf32-v850.c:			     sym_sec->name, name, isym->st_name,
++elf32-v850.c:			     isym->st_value, irel->r_addend);
++elf32-vax.c:							    sym->st_name);
++elf32-vax.c:	  sym->st_shndx = SHN_UNDEF;
++elf32-vax.c:    sym->st_shndx = SHN_ABS;
++elf32-xgate.c:  sym->st_target_internal = 1;
++elf32-xstormy16.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf32-xstormy16.c:	  else if (isym->st_shndx == SHN_ABS)
++elf32-xstormy16.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf32-xstormy16.c:	    tsec = bfd_section_from_elf_index (ibfd, isym->st_shndx);
++elf32-xstormy16.c:		     + isym->st_value);
++elf32-xstormy16.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-xtensa.c:	  sym_type = ELF32_ST_TYPE (sym->st_info);
++elf32-xtensa.c:	      if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf32-xtensa.c:		  rel->r_addend += sec->output_offset + sym->st_value;
++elf32-xtensa.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf32-xtensa.c:      sym->st_shndx = SHN_UNDEF;
++elf32-xtensa.c:	sym->st_value = 0;
++elf32-xtensa.c:    sym->st_shndx = SHN_ABS;
++elf32-xtensa.c:      if (isym->st_shndx == sec_shndx)
++elf32-xtensa.c:	  bfd_vma orig_addr = isym->st_value;
++elf32-xtensa.c:	  isym->st_value -= removed_by_actions (&act, orig_addr, FALSE);
++elf32-xtensa.c:	  if (ELF32_ST_TYPE (isym->st_info) == STT_FUNC)
++elf32-xtensa.c:	    isym->st_size -=
++elf32-xtensa.c:	      removed_by_actions (&act, orig_addr + isym->st_size, FALSE);
++elf32-zip.c:				(input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-zip.c:					p = bfd_elf_string_from_elf_section(input_bfd, symtab_hdr->sh_link, sym->st_name);
++elf32-zip.c:if (sym) fprintf(stderr, "\tVALUE\t= %08lx\n", sym->st_value);
++elf32-zip.c:if (sym) fprintf(stderr, "\tVALUE\t\t= %08lx\n", sym->st_value);
++elf64-alpha.c:  if (sym->st_shndx == SHN_COMMON
++elf64-alpha.c:      && sym->st_size <= elf_gp_size (abfd))
++elf64-alpha.c:      *valp = sym->st_size;
++elf64-alpha.c:		| (isym->st_other & ~ELF_ST_VISIBILITY (-1)));
++elf64-alpha.c:	      symval = isym->st_value;
++elf64-alpha.c:	      if (isym->st_shndx == SHN_UNDEF)
++elf64-alpha.c:	      else if (isym->st_shndx == SHN_ABS)
++elf64-alpha.c:	      else if (isym->st_shndx == SHN_COMMON)
++elf64-alpha.c:	        info.tsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-alpha.c:	  info.other = isym->st_other;
++elf64-alpha.c:      if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf64-alpha.c:	      && ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elf64-alpha.c:						sym->st_value + ent->addend);
++elf64-alpha.c:		  ent->addend -= sym->st_value;
++elf64-alpha.c:	      other = sym->st_other;
++elf64-alpha.c:			    (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf64-alpha.c:			(input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf64-alpha.c:    sym->st_shndx = SHN_ABS;
++elf64-hppa.c:	  if (isym->st_shndx > highest_shndx
++elf64-hppa.c:	      && isym->st_shndx < SHN_LORESERVE)
++elf64-hppa.c:	    highest_shndx = isym->st_shndx;
++elf64-hppa.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elf64-hppa.c:	    hppa_info->section_syms[isym->st_shndx] = i;
++elf64-hppa.c:      sym->st_value = hh->st_value;
++elf64-hppa.c:      sym->st_shndx = hh->st_shndx;
++elf64-hppa.c:      hh->st_value = sym->st_value;
++elf64-hppa.c:      hh->st_shndx = sym->st_shndx;
++elf64-hppa.c:      sym->st_value = (hh->opd_offset
++elf64-hppa.c:      sym->st_shndx = _bfd_elf_section_from_bfd_section (output_bfd,
++elf64-hppa.c:  if (ELF_ST_TYPE (elf_sym->st_info) == STT_PARISC_MILLI)
++elf64-hppa.c:  unsigned int sec_index = sym->st_shndx;
++elf64-hppa.c:      *valp = sym->st_size;
++elf64-hppa.c:      *valp = sym->st_size;
++elf64-hppa.c:								sym->st_name);
++elf64-ia64-vms.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf64-ia64-vms.c:	  else if (isym->st_shndx == SHN_ABS)
++elf64-ia64-vms.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf64-ia64-vms.c:	  else if (isym->st_shndx == SHN_IA_64_ANSI_COMMON)
++elf64-ia64-vms.c:	    tsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-ia64-vms.c:	  toff = isym->st_value;
++elf64-ia64-vms.c:  if (sym->st_shndx == SHN_COMMON
++elf64-ia64-vms.c:      && sym->st_size <= elf_gp_size (abfd))
++elf64-ia64-vms.c:      *valp = sym->st_size;
++elf64-ia64-vms.c:	      && ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elf64-ia64-vms.c:						    sym->st_value
++elf64-ia64-vms.c:		      dynent->addend -= sym->st_value;
++elf64-ia64-vms.c:	    sym->st_shndx = SHN_UNDEF;
++elf64-ia64-vms.c:    sym->st_shndx = SHN_ABS;
++elf64-ia64-vms.c:      value = isym->st_value;
++elf64-ia64-vms.c:      bind = ELF_ST_BIND (isym->st_info);
++elf64-ia64-vms.c:	  if (isym->st_shndx != SHN_UNDEF && !common)
++elf64-ia64-vms.c:      if (isym->st_shndx == SHN_UNDEF)
++elf64-ia64-vms.c:      else if (isym->st_shndx == SHN_ABS)
++elf64-ia64-vms.c:      else if (isym->st_shndx == SHN_COMMON)
++elf64-ia64-vms.c:	  value = isym->st_size;
++elf64-ia64-vms.c:	  sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-ia64-vms.c:	      isym->st_shndx = SHN_UNDEF;
++elf64-ia64-vms.c:					      isym->st_name);
++elf64-ia64-vms.c:	    align = bfd_log2 (isym->st_value);
++elf64-ia64-vms.c:	      || (isym->st_value == 1 && old_alignment == 0))
++elf64-ia64-vms.c:		  common_align = bfd_log2 (isym->st_value);
++elf64-ia64-vms.c:	  if ((isym->st_size != 0 && isym->st_shndx != SHN_UNDEF)
++elf64-ia64-vms.c:		  && h->size != isym->st_size
++elf64-ia64-vms.c:		   (unsigned long) isym->st_size);
++elf64-ia64-vms.c:	      h->size = isym->st_size;
++elf64-ia64-vms.c:	  if (ELF_ST_TYPE (isym->st_info) != STT_NOTYPE
++elf64-ia64-vms.c:	      unsigned int type = ELF_ST_TYPE (isym->st_info);
++elf64-mips.c:      else if (bfd_is_abs_section (sym->section) && sym->value == 0)
++elf64-mips.c:      else if (bfd_is_abs_section (sym->section) && sym->value == 0)
++elf64-mmix.c:						  sym->st_name);
++elf64-mmix.c:	  if (sym != NULL && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf64-mmix.c:      && ELF_ST_TYPE (sym->st_info) != STT_SECTION
++elf64-mmix.c:      sym->st_value /= 8;
++elf64-mmix.c:      sym->st_shndx = SHN_REGISTER;
++elf64-mmix.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf64-mmix.c:      asym->section = &mmix_elf_reg_section;
++elf64-mmix.c:  if (sym->st_shndx == SHN_REGISTER)
++elf64-mmix.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf64-mmix.c:	  else if (isym->st_shndx == SHN_ABS)
++elf64-mmix.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf64-mmix.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-mmix.c:	  symval = (isym->st_value
++elf64-ppc.c:	+= PPC64_LOCAL_ENTRY_OFFSET (elfsym->internal_elf_sym.st_other);
++elf64-ppc.c:			      sym->section->id, sym->value + r->addend))
++elf64-ppc.c:			      sym->section->id, sym->value + r->addend))
++elf64-ppc.c:	      s->section = sym->section;
++elf64-ppc.c:	      s->value = sym->value + r->addend;
++elf64-ppc.c:  newsym->name = fh->elf.root.root.string + 1;
++elf64-ppc.c:  newsym->section = bfd_und_section_ptr;
++elf64-ppc.c:  newsym->value = 0;
++elf64-ppc.c:  newsym->flags = BSF_WEAK;
++elf64-ppc.c:  if (!_bfd_generic_link_add_one_symbol (info, abfd, newsym->name,
++elf64-ppc.c:					 newsym->flags, newsym->section,
++elf64-ppc.c:					 newsym->value, NULL, FALSE, FALSE,
++elf64-ppc.c:  if ((ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC
++elf64-ppc.c:       || ELF_ST_BIND (isym->st_info) == STB_GNU_UNIQUE)
++elf64-ppc.c:      if (!(ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC
++elf64-ppc.c:	    || ELF_ST_TYPE (isym->st_info) == STT_FUNC))
++elf64-ppc.c:	isym->st_info = ELF_ST_INFO (ELF_ST_BIND (isym->st_info), STT_FUNC);
++elf64-ppc.c:	  isym->st_shndx = SHN_UNDEF;
++elf64-ppc.c:  if ((STO_PPC64_LOCAL_MASK & isym->st_other) != 0)
++elf64-ppc.c:    h->other = ((isym->st_other & ~ELF_ST_VISIBILITY (-1))
++elf64-ppc.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-ppc.c:		dest = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-ppc.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-ppc.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-ppc.c:		  is_ifunc = ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC;
++elf64-ppc.c:		  sec = bfd_section_from_elf_index (opd_bfd, sym->st_shndx);
++elf64-ppc.c:		  val = sym->st_value;
++elf64-ppc.c:  if ((sym->flags & (BSF_SECTION_SYM | BSF_FILE | BSF_OBJECT
++elf64-ppc.c:  if (!(sym->flags & BSF_SYNTHETIC))
++elf64-ppc.c:  if (strcmp (sym->section->name, ".opd") == 0)
++elf64-ppc.c:      if (opd_entry_value (sym->section, sym->value,
++elf64-ppc.c:      if (sym->section != sec)
++elf64-ppc.c:      *code_off = sym->value;
++elf64-ppc.c:  for (sym = info->gc_sym_list; sym != NULL; sym = sym->next)
++elf64-ppc.c:	elf_link_hash_lookup (&htab->elf, sym->name, FALSE, FALSE, TRUE);
++elf64-ppc.c:      rsec = bfd_section_from_elf_index (sec->owner, sym->st_shndx);
++elf64-ppc.c:	  rsec = opd->func_sec[(sym->st_value + rel->r_addend) / 8];
++elf64-ppc.c:	*symsecp = bfd_section_from_elf_index (ibfd, sym->st_shndx);
++elf64-ppc.c:    off = sym->st_value;
++elf64-ppc.c:    ent.offset = sym->st_value;
++elf64-ppc.c:	sym_sec = bfd_section_from_elf_index (sec->owner, sym->st_shndx);
++elf64-ppc.c:      is_ifunc = ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC;
++elf64-ppc.c:		    value = sym->st_value;
++elf64-ppc.c:			value = sym->st_value;
++elf64-ppc.c:		val = sym->st_value;
++elf64-ppc.c:		  if (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf64-ppc.c:		  val = sym->st_value;
++elf64-ppc.c:		    val = sym->st_value;
++elf64-ppc.c:		      val = sym->st_value;
++elf64-ppc.c:		  if (h != NULL || sym->st_value != 0)
++elf64-ppc.c:	      if (sym->st_value != 0
++elf64-ppc.c:		  && bfd_section_from_elf_index (ibfd, sym->st_shndx) == toc)
++elf64-ppc.c:		  if (sym->st_value > toc->rawsize)
++elf64-ppc.c:		    i = sym->st_value >> 3;
++elf64-ppc.c:		      sym->st_value = (bfd_vma) i << 3;
++elf64-ppc.c:		  sym->st_value -= skip[i];
++elf64-ppc.c:	    sym_value = sym->st_value;
++elf64-ppc.c:		  adjust = opd->adjust[sym->st_value / 8];
++elf64-ppc.c:							     : sym->st_other))
++elf64-ppc.c:		      sym_value = sym->st_value;
++elf64-ppc.c:							    : sym->st_other);
++elf64-ppc.c:		  stub_entry->other = hash ? hash->elf.other : sym->st_other;
++elf64-ppc.c:	  sym_type = ELF64_ST_TYPE (sym->st_info);
++elf64-ppc.c:	      long adjust = opd->adjust[(sym->st_value + rel->r_addend) / 8];
++elf64-ppc.c:		  if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf64-ppc.c:						  : sym->st_other);
++elf64-ppc.c:			 : ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC);
++elf64-ppc.c:					      : sym->st_other);
++elf64-ppc.c:		      : ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)))
++elf64-ppc.c:			      : ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC))
++elf64-ppc.c:			  : ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf64-ppc.c:		  : ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf64-ppc.c:  value = elfsym->st_value - input_sec->output_offset;
++elf64-ppc.c:  elfsym->st_value += adjust;
++elf64-ppc.c:		sym->st_shndx = SHN_UNDEF;
++elf64-ppc.c:		  sym->st_value = 0;
++elf64-ppc.c:		    sym->st_value = 0;
++elf64-s390.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-s390.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-s390.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-s390.c:	  if (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf64-s390.c:						      sym->st_name);
++elf64-s390.c:	      sym->st_shndx = SHN_UNDEF;
++elf64-s390.c:    sym->st_shndx = SHN_ABS;
++elf64-s390.c:		if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-s390.c:						isym->st_value
++elf64-sh64.c:			 + sym->st_value)
++elf64-sh64.c:			| ((sym->st_other & STO_SH5_ISA32) != 0));
++elf64-sh64.c:	  if ((sym->st_other & STO_SH5_ISA32) != 0)
++elf64-sh64.c:	      if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf64-sh64.c:	      relocation |= ((sym->st_other & STO_SH5_ISA32) != 0);
++elf64-sh64.c:		   && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elf64-sh64.c:			    (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf64-sh64.c:  if (ELF_ST_TYPE (elf_sym->st_info) == STT_DATALABEL)
++elf64-sh64.c:  if (ELF_ST_TYPE (sym->st_info) == STT_DATALABEL
++elf64-sh64.c:      if (ELF_ST_TYPE (sym->st_info) == STT_DATALABEL)
++elf64-sh64.c:	  sym->st_shndx = SHN_UNDEF;
++elf64-sh64.c:    sym->st_shndx = SHN_ABS;
++elf64-sh64.c:  if ((isym->st_other & ~ELF_ST_VISIBILITY (-1)) != 0)
++elf64-sh64.c:      other = (definition ? isym->st_other : h->other);
++elf64-sparc.c:      else if (bfd_is_abs_section (sym->section) && sym->value == 0)
++elf64-sparc.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf64-sparc.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf64-sparc.c:  if (ELF_ST_TYPE (sym->st_info) == STT_REGISTER)
++elf64-sparc.c:      reg = (int)sym->st_value;
++elf64-sparc.c:             abfd, p->abfd, (int) sym->st_value,
++elf64-sparc.c:	  p->bind = ELF_ST_BIND (sym->st_info);
++elf64-sparc.c:	  p->shndx = sym->st_shndx;
++elf64-sparc.c:	      && ELF_ST_BIND (sym->st_info) == STB_GLOBAL)
++elf64-sparc.c:	    unsigned char type = ELF_ST_TYPE (sym->st_info);
++elf64-sparc.c:  if (ELF_ST_TYPE (elf_sym->st_info) == STT_REGISTER)
++elf64-sparc.c:  if (elfsym->internal_elf_sym.st_info
++elf64-sparc.c:      asym->flags |= BSF_GLOBAL;
++elf64-x86-64.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-x86-64.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf64-x86-64.c:	      && ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elf64-x86-64.c:	  if (ELF_ST_TYPE (isym->st_info) != STT_GNU_IFUNC
++elf64-x86-64.c:	  st_size = sym->st_size;
++elf64-x86-64.c:	      && ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elf64-x86-64.c:	      h->root.u.def.value = sym->st_value;
++elf64-x86-64.c:						      sym->st_name);
++elf64-x86-64.c:	  sym->st_shndx = SHN_UNDEF;
++elf64-x86-64.c:	    sym->st_value = 0;
++elf64-x86-64.c:  switch (sym->st_shndx)
++elf64-x86-64.c:      *valp = sym->st_size;
++elf64-x86-64.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf64-x86-64.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf64-x86-64.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elf64-x86-64.c:      asym->section = &_bfd_elf_large_com_section;
++elf64-x86-64.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elf64-x86-64.c:      asym->flags &= ~BSF_GLOBAL;
++elf64-x86-64.c:  return (sym->st_shndx == SHN_COMMON
++elf64-x86-64.c:	  || sym->st_shndx == SHN_X86_64_LCOMMON);
++elf64-x86-64.c:      if (sym->st_shndx == SHN_COMMON
++elf64-x86-64.c:      else if (sym->st_shndx == SHN_X86_64_LCOMMON
++elf.c:  unsigned int iname = isym->st_name;
++elf.c:  if (iname == 0 && ELF_ST_TYPE (isym->st_info) == STT_SECTION
++elf.c:      && isym->st_shndx < elf_numsections (abfd))
++elf.c:      iname = elf_elfsections (abfd)[isym->st_shndx]->sh_name;
++elf.c:  return ((sym->flags & (BSF_GLOBAL | BSF_WEAK | BSF_GNU_UNIQUE)) != 0
++elf.c:  if ((sym->flags & BSF_SECTION_SYM) == 0)
++elf.c:	   && bfd_is_abs_section (sym->section))
++elf.c:	  || !(sym->section->owner == abfd
++elf.c:	       || (sym->section->output_section->owner == abfd
++elf.c:		   && sym->section->output_offset == 0)
++elf.c:	       || bfd_is_abs_section (sym->section)));
++elf.c:      if ((sym->flags & BSF_SECTION_SYM) != 0
++elf.c:	  && sym->value == 0
++elf.c:	  && !bfd_is_abs_section (sym->section))
++elf.c:	  asection *sec = sym->section;
++elf.c:      sym->udata.i = i + 1;
++elf.c:	  sym->udata.i = i + 1;
++elf.c:      && isym->internal_elf_sym.st_shndx != 0
++elf.c:      && bfd_is_abs_section (isym->symbol.section))
++elf.c:      shndx = isym->internal_elf_sym.st_shndx;
++elf.c:      osym->internal_elf_sym.st_shndx = shndx;
++elf.c:  newsym->symbol.the_bfd = abfd;
++elf.c:  return &newsym->symbol;
++elf.c:	  if ((sym->flags & BSF_FILE) != 0)
++elf.c:		  && ((sym->flags & BSF_LOCAL) != 0
++elf.c:		+ sym->st_value);
++elf.c:      && ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elf.c:				    sym->st_value + rel->r_addend);
++elf.c:    return sym->st_value + addend;
++elf.c:				     sym->st_value + addend);
++elf.c:  if ((sym->flags & (BSF_SECTION_SYM | BSF_FILE | BSF_OBJECT
++elf.c:      || sym->section != sec)
++elf.c:  *code_off = sym->value;
++elf.c:  if (!(sym->flags & BSF_SYNTHETIC))
++elf-eh-frame.c:	  sym_sec = bfd_section_from_elf_index (abfd, sym->st_shndx);
++elflink.c:	       && ELF_ST_TYPE (sym->st_info) == STT_OBJECT)))
++elflink.c:      unsigned symvis = ELF_ST_VISIBILITY (isym->st_other);
++elflink.c:  bind = ELF_ST_BIND (sym->st_info);
++elflink.c:  newfunc = (ELF_ST_TYPE (sym->st_info) != STT_NOTYPE
++elflink.c:	     && bed->is_function_type (ELF_ST_TYPE (sym->st_info)));
++elflink.c:	   && ELF_ST_TYPE (sym->st_info) != h->type
++elflink.c:	   && ELF_ST_TYPE (sym->st_info) != STT_NOTYPE
++elflink.c:		  != (ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)))))
++elflink.c:      && ELF_ST_TYPE (sym->st_info) != h->type
++elflink.c:      && (ELF_ST_TYPE (sym->st_info) == STT_TLS || h->type == STT_TLS))
++elflink.c:	   && ELF_ST_VISIBILITY (sym->st_other) != STV_DEFAULT
++elflink.c:	      if (ELF_ST_VISIBILITY (sym->st_other) != STV_PROTECTED)
++elflink.c:      if (ELF_ST_VISIBILITY (sym->st_other) != STV_PROTECTED)
++elflink.c:      && sym->st_size > 0
++elflink.c:      && sym->st_size != h->size)
++elflink.c:	     (info, &h->root, abfd, bfd_link_hash_common, sym->st_size)))
++elflink.c:      if (sym->st_size > h->size)
++elflink.c:	h->size = sym->st_size; // Symbol sizes are in bytes, not octets
++elflink.c:      *pvalue = sym->st_size;
++elflink.c:	     (info, &h->root, abfd, bfd_link_hash_common, sym->st_size)))
++elflink.c:  if (ELF_ST_BIND (sym->st_info) != STB_GLOBAL
++elflink.c:      && ELF_ST_BIND (sym->st_info) < STB_LOOS)
++elflink.c:  if (bed->is_function_type (ELF_ST_TYPE (sym->st_info)))
++elflink.c:  if (sym->st_shndx == SHN_UNDEF)
++elflink.c:  if (sym->st_shndx >= SHN_LORESERVE && sym->st_shndx < SHN_ABS)
++elflink.c:					      isym->st_name);
++elflink.c:      value = isym->st_value; // Bytes
++elflink.c:      bind = ELF_ST_BIND (isym->st_info);
++elflink.c:	  if (isym->st_shndx != SHN_UNDEF && !common)
++elflink.c:      if (isym->st_shndx == SHN_UNDEF)
++elflink.c:      else if (isym->st_shndx == SHN_ABS)
++elflink.c:      else if (isym->st_shndx == SHN_COMMON)
++elflink.c:	  value = isym->st_size; // Bytes, not octets
++elflink.c:	  sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elflink.c:	      isym->st_shndx = SHN_UNDEF;
++elflink.c:					      isym->st_name);
++elflink.c:      if (isym->st_shndx == SHN_COMMON
++elflink.c:      else if (isym->st_shndx == SHN_COMMON
++elflink.c:	       && ELF_ST_TYPE (isym->st_info) == STT_TLS
++elflink.c:      if (ELF_ST_TYPE (isym->st_info) == STT_TLS
++elflink.c:		      || bed->is_function_type (ELF_ST_TYPE (isym->st_info)))))
++elflink.c:	      if (isym->st_shndx != SHN_UNDEF)
++elflink.c:		  && isym->st_shndx != SHN_UNDEF)
++elflink.c:		  && isym->st_shndx != SHN_UNDEF)
++elflink.c:	      && ELF_ST_VISIBILITY (isym->st_other) != STV_INTERNAL)
++elflink.c:	    isym->st_other = (STV_HIDDEN
++elflink.c:			      | (isym->st_other & ~ELF_ST_VISIBILITY (-1)));
++elflink.c:	  && !bed->is_function_type (ELF_ST_TYPE (isym->st_info))
++elflink.c:	    align = bfd_log2 (isym->st_value);
++elflink.c:		  common_align = bfd_log2 (isym->st_value);
++elflink.c:	  if (isym->st_size != 0
++elflink.c:	      && isym->st_shndx != SHN_UNDEF
++elflink.c:		  && h->size != isym->st_size
++elflink.c:		   (unsigned long) isym->st_size);
++elflink.c:	      h->size = isym->st_size;
++elflink.c:	  if (ELF_ST_TYPE (isym->st_info) != STT_NOTYPE
++elflink.c:	      unsigned int type = ELF_ST_TYPE (isym->st_info);
++elflink.c:	      h->target_internal = isym->st_target_internal;
++elflink.c:      ssym->st_name = (*ind)->st_name;
++elflink.c:      ssym->st_info = (*ind)->st_info;
++elflink.c:      ssym->st_other = (*ind)->st_other;
++elflink.c:							ssym->st_name);
++elflink.c:							ssym->st_name);
++elflink.c:	if (symtable1 [i].u.ssym->st_info != symtable2 [i].u.ssym->st_info
++elflink.c:	    || symtable1 [i].u.ssym->st_other != symtable2 [i].u.ssym->st_other
++elflink.c:    if (isym->st_shndx == shndx1)
++elflink.c:    if (isym->st_shndx == shndx2)
++elflink.c:					 symtable1[i].u.isym->st_name);
++elflink.c:					 symtable2[i].u.isym->st_name);
++elflink.c:    if (symtable1 [i].u.isym->st_info != symtable2 [i].u.isym->st_info
++elflink.c:	|| symtable1 [i].u.isym->st_other != symtable2 [i].u.isym->st_other
++elflink.c:      if (ELF_ST_BIND (sym->st_info) == STB_LOCAL)
++elflink.c:	  sym->st_shndx = SHN_ABS;
++elflink.c:	  sym->st_value = val;
++elflink.c:      if (ELF_ST_BIND (sym->st_info) != STB_LOCAL)
++elflink.c:						   sym->st_name);
++elflink.c:	      name, candidate, (unsigned long) sym->st_value);
++elflink.c:    elfsym->st_name = 0;
++elflink.c:    elfsym->st_name = 0;
++elflink.c:      elfsym->st_name = (unsigned long) _bfd_stringtab_add (flinfo->symstrtab,
++elflink.c:      if (elfsym->st_name == (unsigned long) -1)
++elflink.c:  if (sym->st_shndx >= (SHN_LORESERVE & 0xffff)
++elflink.c:      && sym->st_shndx < SHN_LORESERVE)
++elflink.c:	  if (ELF_ST_BIND (isym->st_info) == STB_LOCAL
++elflink.c:	      || isym->st_shndx == SHN_UNDEF)
++elflink.c:						  isym->st_name);
++elflink.c:	  if (ELF_ST_BIND (isym->st_info) != STB_LOCAL)
++elflink.c:      if (isym->st_shndx == SHN_UNDEF)
++elflink.c:      else if (isym->st_shndx == SHN_ABS)
++elflink.c:      else if (isym->st_shndx == SHN_COMMON)
++elflink.c:	  isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elflink.c:		   && ELF_ST_TYPE (isym->st_info) != STT_SECTION)
++elflink.c:	    isym->st_value =
++elflink.c:					  isym->st_value);
++elflink.c:      if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elflink.c:      if (isym->st_shndx != SHN_UNDEF
++elflink.c:	  && isym->st_shndx < SHN_LORESERVE
++elflink.c:					      isym->st_name);
++elflink.c:      if (ELF_ST_TYPE (isym->st_info) == STT_FILE)
++elflink.c:		  s_type = ELF_ST_TYPE (sym->st_info);
++elflink.c:    return bfd_section_from_elf_index (sec->owner, sym->st_shndx);
++elflink.c:  for (sym = info->gc_sym_list; sym != NULL; sym = sym->next)
++elflink.c:      h = elf_link_hash_lookup (elf_hash_table (info), sym->name,
++elflink.c:	  isec = bfd_section_from_elf_index (rcookie->abfd, isym->st_shndx);
++elflink.c:  return sym->st_shndx == SHN_COMMON;
++elf-m10200.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf-m10200.c:      if (isym->st_shndx == sec_shndx
++elf-m10200.c:	  && isym->st_value > addr
++elf-m10200.c:	  && isym->st_value < toaddr)
++elf-m10200.c:	isym->st_value -= count;
++elf-m10200.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf-m10200.c:	  else if (isym->st_shndx == SHN_ABS)
++elf-m10200.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf-m10200.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf-m10200.c:	  symval = (isym->st_value
++elf-m10200.c:      if (isym->st_shndx == sec_shndx
++elf-m10200.c:	  && isym->st_value == addr)
++elf-m10200.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf-m10200.c:	  else if (isym->st_shndx == SHN_ABS)
++elf-m10200.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf-m10200.c:	    isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf-m10300.c:		      if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:		      (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elf-m10300.c:      if (isym->st_shndx == sec_shndx
++elf-m10300.c:	  && isym->st_value > addr
++elf-m10300.c:	  && isym->st_value < toaddr)
++elf-m10300.c:	  if (isym->st_value < addr + count)
++elf-m10300.c:	    isym->st_value = addr;
++elf-m10300.c:	    isym->st_value -= count;
++elf-m10300.c:      else if (isym->st_shndx == sec_shndx
++elf-m10300.c:	       && ELF_ST_TYPE (isym->st_info) == STT_FUNC
++elf-m10300.c:	       && isym->st_value + isym->st_size > addr
++elf-m10300.c:	       && isym->st_value + isym->st_size < toaddr)
++elf-m10300.c:	isym->st_size -= count;
++elf-m10300.c:    if (isym->st_shndx == sec_shndx
++elf-m10300.c:	&& isym->st_value == addr)
++elf-m10300.c:			  if (isym->st_shndx == SHN_UNDEF)
++elf-m10300.c:			  else if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:			  else if (isym->st_shndx == SHN_COMMON)
++elf-m10300.c:							    isym->st_shndx);
++elf-m10300.c:							       isym->st_name);
++elf-m10300.c:			  if (ELF_ST_TYPE (isym->st_info) != STT_FUNC)
++elf-m10300.c:		      if (isym->st_shndx == sec_shndx
++elf-m10300.c:			  && ELF_ST_TYPE (isym->st_info) == STT_FUNC)
++elf-m10300.c:				  && hash->root.root.u.def.value == isym->st_value)
++elf-m10300.c:			  if (isym->st_shndx == SHN_UNDEF)
++elf-m10300.c:			  else if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:			  else if (isym->st_shndx == SHN_COMMON)
++elf-m10300.c:							    isym->st_shndx);
++elf-m10300.c:				       isym->st_name));
++elf-m10300.c:						 isym->st_value, contents);
++elf-m10300.c:			  hash->value = isym->st_value;
++elf-m10300.c:		  if (isym->st_shndx != sec_shndx)
++elf-m10300.c:		  if (isym->st_shndx == SHN_UNDEF)
++elf-m10300.c:		  else if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:		  else if (isym->st_shndx == SHN_COMMON)
++elf-m10300.c:		      = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf-m10300.c:						       isym->st_name);
++elf-m10300.c:							   isym->st_value,
++elf-m10300.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf-m10300.c:	  else if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf-m10300.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elf-m10300.c:						      isym->st_name);
++elf-m10300.c:	      symval = isym->st_value;
++elf-m10300.c:	      if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elf-m10300.c:	      if (ELF_ST_TYPE (isym->st_info) != STT_SECTION)
++elf-m10300.c:	    symval = (isym->st_value
++elf-m10300.c:	  if (isym->st_shndx == SHN_UNDEF)
++elf-m10300.c:	  else if (isym->st_shndx == SHN_ABS)
++elf-m10300.c:	  else if (isym->st_shndx == SHN_COMMON)
++elf-m10300.c:	    isec = bfd_section_from_elf_index (input_bfd, isym->st_shndx);
++elf-m10300.c:	sym->st_shndx = SHN_UNDEF;
++elf-m10300.c:    sym->st_shndx = SHN_ABS;
++elfn32-mips.c:    return (sym->flags & BSF_SECTION_SYM) == 0;
++elfn32-mips.c:    return ((sym->flags & (BSF_GLOBAL | BSF_WEAK | BSF_GNU_UNIQUE)) != 0
++elfnn-aarch64.c:		      hdr = elf_elfsections (input_bfd)[sym->st_shndx];
++elfnn-aarch64.c:		      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION)
++elfnn-aarch64.c:			sym_value = sym->st_value;
++elfnn-aarch64.c:		      st_type = ELF_ST_TYPE (sym->st_info);
++elfnn-aarch64.c:							   sym->st_name);
++elfnn-aarch64.c:      asection *sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfnn-aarch64.c:      if (sec != NULL && ELF_ST_BIND (isym->st_info) == STB_LOCAL)
++elfnn-aarch64.c:						  isym->st_name);
++elfnn-aarch64.c:	    elfNN_aarch64_section_map_add (sec, name[1], isym->st_value);
++elfnn-aarch64.c:	  sym_type = ELFNN_ST_TYPE (sym->st_info);
++elfnn-aarch64.c:	      && ELF_ST_BIND (sym->st_info) != STB_WEAK)
++elfnn-aarch64.c:		   (input_bfd, symtab_hdr->sh_link, sym->st_name),
++elfnn-aarch64.c:	      && ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elfnn-aarch64.c:	      h->root.u.def.value = sym->st_value;
++elfnn-aarch64.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elfnn-aarch64.c:	      && ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elfnn-aarch64.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elfnn-aarch64.c:		s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfnn-aarch64.c:  return bfd_is_aarch64_special_symbol_name (sym->name,
++elfnn-aarch64.c:	  sym->st_shndx = SHN_UNDEF;
++elfnn-aarch64.c:    sym->st_shndx = SHN_ABS;
++elfnn-ia64.c:	  if (isym->st_shndx == SHN_UNDEF)
++elfnn-ia64.c:	  else if (isym->st_shndx == SHN_ABS)
++elfnn-ia64.c:	  else if (isym->st_shndx == SHN_COMMON)
++elfnn-ia64.c:	  else if (isym->st_shndx == SHN_IA_64_ANSI_COMMON)
++elfnn-ia64.c:	    tsec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfnn-ia64.c:	  toff = isym->st_value;
++elfnn-ia64.c:	  symtype = ELF_ST_TYPE (isym->st_info);
++elfnn-ia64.c:  if (sym->st_shndx == SHN_COMMON
++elfnn-ia64.c:      && sym->st_size <= elf_gp_size (abfd))
++elfnn-ia64.c:      *valp = sym->st_size;
++elfnn-ia64.c:	      && ELF_ST_TYPE (sym->st_info) == STT_SECTION
++elfnn-ia64.c:						    sym->st_value
++elfnn-ia64.c:		      dynent->addend -= sym->st_value;
++elfnn-ia64.c:	    sym->st_shndx = SHN_UNDEF;
++elfnn-ia64.c:    sym->st_shndx = SHN_ABS;
++elfnn-ia64.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elfnn-ia64.c:      asym->section = bfd_com_section_ptr;
++elfnn-ia64.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elfnn-ia64.c:      asym->flags &= ~BSF_GLOBAL;
++elf-s390-common.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elf-s390-common.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elf-vxworks.c:      sym->st_info = ELF_ST_INFO (STB_WEAK, ELF_ST_TYPE (sym->st_info));
++elf-vxworks.c:    sym->st_info = ELF_ST_INFO (STB_GLOBAL, ELF_ST_TYPE (sym->st_info));
++elfxx-aarch64.c:  if ((ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC
++elfxx-aarch64.c:       || ELF_ST_BIND (sym->st_info) == STB_GNU_UNIQUE)
++elfxx-mips.c:    global_got_dynindx = htab->global_gotsym->dynindx;
++elfxx-mips.c:      sec = bfd_section_from_elf_index (ref->u.abfd, isym->st_shndx);
++elfxx-mips.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
++elfxx-mips.c:						 isym->st_value + ref->addend);
++elfxx-mips.c:						 isym->st_value) + ref->addend;
++elfxx-mips.c:	addend = isym->st_value + ref->addend;
++elfxx-mips.c:      if (ELF_ST_TYPE (sym->st_info) != STT_SECTION
++elfxx-mips.c:	symbol += sym->st_value;
++elfxx-mips.c:	  && ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elfxx-mips.c:      if (ELF_ST_IS_COMPRESSED (sym->st_other))
++elfxx-mips.c:						sym->st_name);
++elfxx-mips.c:      target_is_16_bit_code_p = ELF_ST_IS_MIPS16 (sym->st_other);
++elfxx-mips.c:      target_is_micromips_code_p = ELF_ST_IS_MICROMIPS (sym->st_other);
++elfxx-mips.c:  switch (elfsym->internal_elf_sym.st_shndx)
++elfxx-mips.c:      asym->section = &mips_elf_acom_section;
++elfxx-mips.c:      if (asym->value > elf_gp_size (abfd)
++elfxx-mips.c:	  || ELF_ST_TYPE (elfsym->internal_elf_sym.st_info) == STT_TLS
++elfxx-mips.c:      asym->section = &mips_elf_scom_section;
++elfxx-mips.c:      asym->value = elfsym->internal_elf_sym.st_size;
++elfxx-mips.c:      asym->section = bfd_und_section_ptr;
++elfxx-mips.c:	    asym->section = section;
++elfxx-mips.c:	    asym->value -= section->vma;
++elfxx-mips.c:	    asym->section = section;
++elfxx-mips.c:	    asym->value -= section->vma;
++elfxx-mips.c:  if (ELF_ST_TYPE (elfsym->internal_elf_sym.st_info) == STT_FUNC
++elfxx-mips.c:      && (asym->value & 1) != 0)
++elfxx-mips.c:      asym->value--;
++elfxx-mips.c:	elfsym->internal_elf_sym.st_other
++elfxx-mips.c:	  = ELF_ST_SET_MICROMIPS (elfsym->internal_elf_sym.st_other);
++elfxx-mips.c:	elfsym->internal_elf_sym.st_other
++elfxx-mips.c:	  = ELF_ST_SET_MIPS16 (elfsym->internal_elf_sym.st_other);
++elfxx-mips.c:      && (sym->st_shndx == SHN_ABS)
++elfxx-mips.c:  switch (sym->st_shndx)
++elfxx-mips.c:      if (sym->st_size > elf_gp_size (abfd)
++elfxx-mips.c:	  || ELF_ST_TYPE (sym->st_info) == STT_TLS
++elfxx-mips.c:      *valp = sym->st_size;
++elfxx-mips.c:  if (ELF_ST_IS_COMPRESSED (sym->st_other))
++elfxx-mips.c:  if (sym->st_shndx == SHN_COMMON
++elfxx-mips.c:    sym->st_shndx = SHN_MIPS_SCOMMON;
++elfxx-mips.c:  if (ELF_ST_IS_COMPRESSED (sym->st_other))
++elfxx-mips.c:    sym->st_value &= ~1;
++elfxx-mips.c:	  if (isym->st_shndx == SHN_UNDEF)
++elfxx-mips.c:	  else if (isym->st_shndx == SHN_ABS)
++elfxx-mips.c:	  else if (isym->st_shndx == SHN_COMMON)
++elfxx-mips.c:	      = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfxx-mips.c:	  symval = isym->st_value
++elfxx-mips.c:      if (ELF_ST_TYPE (sym->st_info) == STT_SECTION)
++elfxx-mips.c:	  sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elfxx-mips.c:	  sym->st_other = STO_PROTECTED;
++elfxx-mips.c:	    sym->st_shndx = SHN_MIPS_TEXT;
++elfxx-mips.c:	    sym->st_shndx = SHN_MIPS_DATA;
++elfxx-mips.c:      sym->st_shndx = SHN_UNDEF;
++elfxx-mips.c:	sym->st_other = ELF_ST_SET_MIPS_PLT (sym->st_other);
++elfxx-mips.c:	  sym->st_value = 0;
++elfxx-mips.c:	  sym->st_other = 0;
++elfxx-mips.c:      sym->st_shndx = SHN_UNDEF;
++elfxx-mips.c:      sym->st_value = (htab->sstubs->output_section->vma
++elfxx-mips.c:      sym->st_other = other;
++elfxx-mips.c:      sym->st_value = (hmips->fn_stub->output_section->vma
++elfxx-mips.c:      sym->st_size = hmips->fn_stub->size;
++elfxx-mips.c:      sym->st_other = ELF_ST_VISIBILITY (sym->st_other);
++elfxx-mips.c:      value = sym->st_value;
++elfxx-mips.c:			  e.d.h, NULL, sym->st_value, &entry, sgot)))
++elfxx-mips.c:		entry = sym->st_value;
++elfxx-mips.c:    sym->st_shndx = SHN_ABS;
++elfxx-mips.c:      sym->st_shndx = SHN_ABS;
++elfxx-mips.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elfxx-mips.c:      sym->st_value = 1;
++elfxx-mips.c:      sym->st_shndx = SHN_ABS;
++elfxx-mips.c:      sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elfxx-mips.c:      sym->st_value = elf_gp (output_bfd);
++elfxx-mips.c:	  sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elfxx-mips.c:	  sym->st_other = STO_PROTECTED;
++elfxx-mips.c:	  sym->st_value = 0;
++elfxx-mips.c:	  sym->st_shndx = SHN_MIPS_DATA;
++elfxx-mips.c:	  sym->st_info = ELF_ST_INFO (STB_GLOBAL, STT_SECTION);
++elfxx-mips.c:	  sym->st_other = STO_PROTECTED;
++elfxx-mips.c:	  sym->st_value = mips_elf_hash_table (info)->procedure_count;
++elfxx-mips.c:	  sym->st_shndx = SHN_ABS;
++elfxx-mips.c:      else if (sym->st_shndx != SHN_UNDEF && sym->st_shndx != SHN_ABS)
++elfxx-mips.c:	    sym->st_shndx = SHN_MIPS_TEXT;
++elfxx-mips.c:	    sym->st_shndx = SHN_MIPS_DATA;
++elfxx-mips.c:  if (ELF_ST_IS_MIPS16 (sym->st_other))
++elfxx-mips.c:      BFD_ASSERT (sym->st_value & 1);
++elfxx-mips.c:      sym->st_other -= STO_MIPS16;
++elfxx-mips.c:  else if (ELF_ST_IS_MICROMIPS (sym->st_other))
++elfxx-mips.c:      BFD_ASSERT (sym->st_value & 1);
++elfxx-mips.c:      sym->st_other -= STO_MICROMIPS;
++elfxx-mips.c:	sym->st_shndx = SHN_UNDEF;
++elfxx-mips.c:      MIPS_ELF_PUT_WORD (output_bfd, sym->st_value, sgot->contents + offset);
++elfxx-mips.c:  if (ELF_ST_IS_COMPRESSED (sym->st_other))
++elfxx-mips.c:    sym->st_value &= ~1;
++elfxx-mips.c:		  dyn.d_un.d_val = htab->global_gotsym->dynindx;
++elfxx-mips.c:  return _bfd_elf_is_local_label_name (abfd, sym->name);
++elfxx-mips.c:    if (isym->st_shndx == sec_shndx && isym->st_value > addr)
++elfxx-mips.c:      isym->st_value -= count;
++elfxx-mips.c:	  if (isym->st_shndx == SHN_UNDEF)
++elfxx-mips.c:	  else if (isym->st_shndx == SHN_ABS)
++elfxx-mips.c:	  else if (isym->st_shndx == SHN_COMMON)
++elfxx-mips.c:	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfxx-mips.c:	  symval = (isym->st_value
++elfxx-mips.c:	  target_is_micromips_code_p = ELF_ST_IS_MICROMIPS (isym->st_other);
++elfxx-mips.c:  if ((isym->st_other & ~ELF_ST_VISIBILITY (-1)) != 0)
++elfxx-mips.c:      other = (definition ? isym->st_other : h->other);
++elfxx-mips.c:      && ELF_MIPS_IS_OPTIONAL (isym->st_other))
++elfxx-mips.c:  return (sym->st_shndx == SHN_COMMON
++elfxx-mips.c:	  || sym->st_shndx == SHN_MIPS_ACOMMON
++elfxx-mips.c:	  || sym->st_shndx == SHN_MIPS_SCOMMON);
++elfxx-sparc.c:	  if (ELF_ST_TYPE (isym->st_info) == STT_GNU_IFUNC)
++elfxx-sparc.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfxx-sparc.c:	      && ELF_ST_TYPE (sym->st_info) == STT_GNU_IFUNC)
++elfxx-sparc.c:	      h->root.u.def.value = sym->st_value;
++elfxx-sparc.c:							    sym->st_name);
++elfxx-sparc.c:	  sym->st_shndx = SHN_UNDEF;
++elfxx-sparc.c:	    sym->st_value = 0;
++elfxx-sparc.c:    sym->st_shndx = SHN_ABS;
++elfxx-tilegx.c:		  s = bfd_section_from_elf_index (abfd, isym->st_shndx);
++elfxx-tilegx.c:		  (input_bfd, symtab_hdr->sh_link, sym->st_name));
++elfxx-tilegx.c:	  sym->st_shndx = SHN_UNDEF;
++elfxx-tilegx.c:	    sym->st_value = 0;
++elfxx-tilegx.c:    sym->st_shndx = SHN_ABS;
++i386lynx.c:  asection *output_section = sym->section->output_section;
++i386lynx.c:  asection *output_section = sym->section->output_section;
++linker.c:	  if (needed && arsym->file_offset == last_ar_offset)
++linker.c:	  h = bfd_link_hash_lookup (info->hash, arsym->name,
++linker.c:	      && CONST_STRNEQ (arsym->name, "__imp_"))
++linker.c:	    h = bfd_link_hash_lookup (info->hash, arsym->name + 6,
++linker.c:	  if (last_ar_offset != arsym->file_offset)
++linker.c:	      last_ar_offset = arsym->file_offset;
++linker.c:	  if (! (*checkfn) (element, info, h, arsym->name, &needed))
++linker.c:	      newsym->name = input_bfd->filename;
++linker.c:	      newsym->value = 0;
++linker.c:	      newsym->flags = BSF_LOCAL | BSF_FILE;
++linker.c:	      newsym->section = sec;
++linker.c:      if ((sym->flags & (BSF_INDIRECT
++linker.c:	  if (sym->udata.p != NULL)
++linker.c:	    h = (struct generic_link_hash_entry *) sym->udata.p;
++linker.c:	  else if ((sym->flags & BSF_CONSTRUCTOR) != 0)
++linker.c:		  sym->flags |= BSF_WEAK;
++linker.c:		  sym->flags |= BSF_GLOBAL;
++linker.c:		  sym->flags &=~ BSF_CONSTRUCTOR;
++linker.c:		  sym->value = h->root.u.def.value;
++linker.c:		  sym->section = h->root.u.def.section;
++linker.c:		  sym->flags |= BSF_WEAK;
++linker.c:		  sym->flags &=~ BSF_CONSTRUCTOR;
++linker.c:		  sym->value = h->root.u.def.value;
++linker.c:		  sym->section = h->root.u.def.section;
++linker.c:		  sym->value = h->root.u.c.size;
++linker.c:		  sym->flags |= BSF_GLOBAL;
++linker.c:		  if (! bfd_is_com_section (sym->section))
++linker.c:		      BFD_ASSERT (bfd_is_und_section (sym->section));
++linker.c:		      sym->section = bfd_com_section_ptr;
++linker.c:      else if ((sym->flags & (BSF_GLOBAL | BSF_WEAK)) != 0)
++linker.c:	      && (sym->flags & BSF_NOT_AT_END) != 0)
++linker.c:      else if (bfd_is_ind_section (sym->section))
++linker.c:      else if ((sym->flags & BSF_DEBUGGING) != 0)
++linker.c:      else if (bfd_is_und_section (sym->section)
++linker.c:	       || bfd_is_com_section (sym->section))
++linker.c:      else if ((sym->flags & BSF_LOCAL) != 0)
++linker.c:	  if ((sym->flags & BSF_WARNING) != 0)
++linker.c:		      || ! (sym->section->flags & SEC_MERGE))
++linker.c:      else if ((sym->flags & BSF_CONSTRUCTOR))
++linker.c:      else if (sym->flags == 0
++linker.c:	       && (sym->section->owner->flags & BFD_PLUGIN) != 0)
++linker.c:      if (!bfd_is_abs_section (sym->section)
++linker.c:					    sym->section->output_section))
++linker.c:      if (sym->section != NULL)
++linker.c:	  BFD_ASSERT ((sym->flags & BSF_CONSTRUCTOR) != 0);
++linker.c:	  sym->flags |= BSF_CONSTRUCTOR;
++linker.c:	  sym->section = bfd_abs_section_ptr;
++linker.c:	  sym->value = 0;
++linker.c:      sym->section = bfd_und_section_ptr;
++linker.c:      sym->value = 0;
++linker.c:      sym->section = bfd_und_section_ptr;
++linker.c:      sym->value = 0;
++linker.c:      sym->flags |= BSF_WEAK;
++linker.c:      sym->section = h->u.def.section;
++linker.c:      sym->value = h->u.def.value;
++linker.c:      sym->flags |= BSF_WEAK;
++linker.c:      sym->section = h->u.def.section;
++linker.c:      sym->value = h->u.def.value;
++linker.c:      sym->value = h->u.c.size;
++linker.c:      if (sym->section == NULL)
++linker.c:	sym->section = bfd_com_section_ptr;
++linker.c:      else if (! bfd_is_com_section (sym->section))
++linker.c:	  BFD_ASSERT (bfd_is_und_section (sym->section));
++linker.c:	  sym->section = bfd_com_section_ptr;
++linker.c:      sym->name = h->root.root.string;
++linker.c:      sym->flags = 0;
++linker.c:  sym->flags |= BSF_GLOBAL;
++linker.c:	  if ((sym->flags & (BSF_INDIRECT
++linker.c:	      /* sym->udata may have been set by
++linker.c:	      if (sym->udata.p != NULL)
++linker.c:		h = (struct bfd_link_hash_entry *) sym->udata.p;
++mach-o.c:  BFD_ASSERT (sym->symbols != NULL);
++mach-o.c:  for (j = 0; j < sym->nsyms; j++)
++mach-o.c:    alocation[j] = &sym->symbols[j].symbol;
++mach-o.c:      if (asym->n_type & BFD_MACH_O_N_STAB)
++mach-o.c:	name = bfd_get_stab_name (asym->n_type);
++mach-o.c:	switch (asym->n_type & BFD_MACH_O_N_TYPE)
++mach-o.c:               asym->n_type, name, asym->n_sect, asym->n_desc);
++mach-o.c:      if ((asym->n_type & BFD_MACH_O_N_STAB) == 0
++mach-o.c:	  && (asym->n_type & BFD_MACH_O_N_TYPE) == BFD_MACH_O_N_SECT)
++mach-o.c:  if (bfd_seek (abfd, sym->symoff, SEEK_SET) != 0)
++mach-o.c:  if (sym->nsyms > 0)
++mach-o.c:  for (i = 0; i < sym->nsyms; i++)
++mach-o.c:  sym->strsize = _bfd_stringtab_size (strtab);
++mach-o.c:  sym->stroff = mdata->filelen;
++mach-o.c:  mdata->filelen += sym->strsize;
++mach-o.c:  if (bfd_seek (abfd, sym->stroff, SEEK_SET) != 0)
++mach-o.c:  padlen = bfd_mach_o_pad4 (abfd, sym->strsize);
++mach-o.c:  sym->strsize += padlen;
++mach-o.c:  bfd_h_put_32 (abfd, sym->symoff, raw.symoff);
++mach-o.c:  bfd_h_put_32 (abfd, sym->nsyms, raw.nsyms);
++mach-o.c:  bfd_h_put_32 (abfd, sym->stroff, raw.stroff);
++mach-o.c:  bfd_h_put_32 (abfd, sym->strsize, raw.strsize);
++mach-o.c:  unsigned int symoff = sym->symoff + (i * symwidth);
++mach-o.c:  BFD_ASSERT (sym->strtab != NULL);
++mach-o.c:  if (stroff >= sym->strsize)
++mach-o.c:         (unsigned long) sym->strsize);
++mach-o.c:  s->symbol.name = sym->strtab + stroff;
++mach-o.c:  if (sym->strtab)
++mach-o.c:      if ((sym->stroff + sym->strsize) > b->size)
++mach-o.c:      sym->strtab = (char *) b->buffer + sym->stroff;
++mach-o.c:      sym->strtab = bfd_alloc (abfd, sym->strsize);
++mach-o.c:      if (sym->strtab == NULL)
++mach-o.c:      if (bfd_seek (abfd, sym->stroff, SEEK_SET) != 0
++mach-o.c:          || bfd_bread (sym->strtab, sym->strsize, abfd) != sym->strsize)
++mach-o.c:  if (sym == NULL || sym->symbols)
++mach-o.c:  sym->symbols = bfd_alloc (abfd, sym->nsyms * sizeof (bfd_mach_o_asymbol));
++mach-o.c:  if (sym->symbols == NULL)
++mach-o.c:  for (i = 0; i < sym->nsyms; i++)
++mach-o.c:      if (!bfd_mach_o_read_symtab_symbol (abfd, sym, &sym->symbols[i], i))
++mmo.c:	if ((mainsym->value
++mmo.c:	     + mainsym->section->output_section->vma
++mmo.c:	     + mainsym->section->output_offset)
++mmo.c:	    sprintf_vma (vmas_main, mainsym->value);
++nlm32-alpha.c:  if (sym->symbol.value < code_sec->size)
++nlm32-alpha.c:      sym->symbol.section = code_sec;
++nlm32-alpha.c:      sym->symbol.flags |= BSF_FUNCTION;
++nlm32-alpha.c:      sym->symbol.section = data_sec;
++nlm32-alpha.c:      sym->symbol.value -= code_sec->size;
++nlm32-alpha.c:  len = strlen (sym->name);
++nlm32-alpha.c:      || bfd_bwrite (sym->name, (bfd_size_type) len, abfd) != len)
++nlm32-i386.c:      addend = rel->addend + sym->value;
++nlm32-i386.c:  len = strlen (sym->name);
++nlm32-i386.c:      || bfd_bwrite (sym->name, (bfd_size_type) len, abfd) != len)
++nlm32-ppc.c:  len = strlen (sym->name);
++nlm32-ppc.c:      || bfd_bwrite (sym->name, (bfd_size_type) len, abfd) != len)
++nlm32-ppc.c:  if (sym->symbol.value & NLM_HIBIT)
++nlm32-ppc.c:      sym->symbol.value &= ~NLM_HIBIT;
++nlm32-ppc.c:      sym->symbol.flags |= BSF_FUNCTION;
++nlm32-ppc.c:      sym->symbol.section =
++nlm32-ppc.c:    sym->symbol.section =
++nlm32-ppc.c:  sym->symbol.value <<= 2;
++nlm32-sparc.c:  len = strlen (sym->name);
++nlm32-sparc.c:      || bfd_bwrite (sym->name, (bfd_size_type) len, abfd) != len)
++nlm32-sparc.c:	   __FUNCTION__, (unsigned long) value, strlen (sym->name), sym->name);
++nlm32-sparc.c:  len = strlen (sym->name);
++nlm32-sparc.c:      || bfd_bwrite (sym->name, (bfd_size_type) len, abfd) != len)
++pdp11.c:  asection *output_section = sym->section->output_section;
++pdp11.c:      H_PUT_8 (output_bfd, N_TEXT, outsym->e_type);
++pdp11.c:      PUT_WORD (output_bfd, strtab_index, outsym->e_strx);
++pdp11.c:		outsym->e_value);
++pdp11.c:      type = H_GET_8 (input_bfd, sym->e_type);
++pdp11.c:      name = strings + GET_WORD (input_bfd, sym->e_strx);
++pdp11.c:	  val = GET_WORD (input_bfd, sym->e_value);
++pdp11.c:	      val = GET_WORD (input_bfd, sym->e_value);
++pdp11.c:	      val = GET_WORD (input_bfd, sym->e_value);
++pdp11.c:		   + (GET_WORD (input_bfd, sym->e_value)
++pdp11.c:		  incl_type = H_GET_8 (input_bfd, incl_sym->e_type);
++pdp11.c:		      s = strings + GET_WORD (input_bfd, incl_sym->e_strx);
++pdp11.c:		      incl_type = H_GET_8 (input_bfd, incl_sym->e_type);
++pdp11.c:      H_PUT_8 (output_bfd, type, outsym->e_type);
++pdp11.c:      PUT_WORD (output_bfd, strtab_index, outsym->e_strx);
++pdp11.c:      PUT_WORD (output_bfd, val, outsym->e_value);
++pef.c:  sym->name = NULL;
++pef.c:  sym->value = 0;
++pef.c:  sym->the_bfd = abfd;
++pef.c:  sym->section = section;
++pef.c:  sym->flags = 0;
++pef.c:  sym->udata.i = 0;
++pef.c:      sym->value = pos - off.tb_offset - 4;
++pef.c:      sym->name = namebuf;
++pef.c:      for (s = sym->name; (*s != '\0'); s++)
++pe-mips.c:	&& coffsym->native->u.syment.n_scnum == 0)		\
++pe-mips.c:      cache_ptr->addend = - coffsym->native->u.syment.n_value;	\
++pe-mips.c:  if (sym != NULL && sym->n_scnum == 0 && sym->n_value != 0)
++pe-mips.c:	 size (sym->n_value) as an addend.  The relocate_section
++pe-mips.c:      *addendp -= sym->n_value;
++pe-mips.c:      if (sym != NULL && sym->n_scnum != 0)
++pe-mips.c:	*addendp -= sym->n_value;
++pe-mips.c:      if (sym != NULL && sym->n_scnum != 0)
++pe-mips.c:	addend = - sym->n_value;
++pe-mips.c:	  if (sym != NULL && sym->n_scnum != 0)
++pe-mips.c:	    addend += sym->n_value;
++pe-mips.c:		     + sym->n_value);
++plugin.c: switch (sym->def)
++riscix.c:  asection *output_section = sym->section->output_section;
++som.c:	      && (sym->flags & BSF_SECTION_SYM) == 0
++som.c:	      && (sym->flags & BSF_FUNCTION) == 0
++som.c:	      && ! bfd_is_com_section (sym->section))
++som.c:  if (sym->flags & BSF_SECTION_SYM)
++som.c:      if (bfd_is_com_section (sym->section))
++som.c:	       && bfd_is_und_section (sym->section)
++som.c:	       && sym->flags & BSF_FUNCTION)
++som.c:		   && (sym->flags & BSF_FUNCTION))
++som.c:		   && (sym->flags & BSF_FUNCTION)))
++som.c:	  if (bfd_is_abs_section (sym->section))
++som.c:	  else if (sym->section->flags & SEC_CODE)
++som.c:  if (bfd_is_com_section (sym->section))
++som.c:  else if (bfd_is_und_section (sym->section))
++som.c:  else if (sym->flags & (BSF_EXPORT | BSF_WEAK))
++som.c:  if (bfd_is_com_section (sym->section)
++som.c:      || bfd_is_und_section (sym->section)
++som.c:      || bfd_is_abs_section (sym->section))
++som.c:    info->symbol_info = sym->section->target_index;
++som.c:  info->symbol_value = sym->value + sym->section->vma;
++som.c:  if (sym->flags & BSF_WEAK)
++som.c:  if (som_section_data (sym->section)
++som.c:      && som_section_data (sym->section)->subspace_dict
++som.c:	= som_section_data (sym->section)->subspace_dict->is_comdat;
++som.c:	= som_section_data (sym->section)->subspace_dict->is_common;
++som.c:	= som_section_data (sym->section)->subspace_dict->dup_common;
++som.c:      sym->symbol.the_bfd = abfd;
++som.c:      sym->symbol.name = bfd_getb32 (bufp->name) + stringtab;
++som.c:      sym->symbol.value = bfd_getb32 (bufp->symbol_value);
++som.c:      sym->symbol.section = 0;
++som.c:      sym->symbol.flags = 0;
++som.c:	  sym->symbol.flags |= BSF_FUNCTION;
++som.c:	    sym->symbol.value & 0x3;
++som.c:	  sym->symbol.value &= ~0x3;
++som.c:	    sym->symbol.value & 0x3;
++som.c:	  sym->symbol.value &= ~0x3;
++som.c:	    sym->symbol.flags |= BSF_FUNCTION;
++som.c:	    sym->symbol.section = bfd_und_section_ptr;
++som.c:	    sym->symbol.section = bfd_com_section_ptr;
++som.c:	  sym->symbol.flags |= (BSF_EXPORT | BSF_GLOBAL);
++som.c:	    sym->symbol.section = bfd_und_section_ptr;
++som.c:	    sym->symbol.section = bfd_com_section_ptr;
++som.c:	  sym->symbol.flags |= (BSF_EXPORT | BSF_GLOBAL);
++som.c:	  sym->symbol.section = bfd_section_from_som_symbol (abfd, bufp);
++som.c:	  sym->symbol.value -= sym->symbol.section->vma;
++som.c:	  sym->symbol.flags |= BSF_LOCAL;
++som.c:	  sym->symbol.section = bfd_section_from_som_symbol (abfd, bufp);
++som.c:	  sym->symbol.value -= sym->symbol.section->vma;
++som.c:	sym->symbol.flags |= BSF_WEAK;
++som.c:      if (sym->symbol.name[0] == '$'
++som.c:	  && sym->symbol.name[strlen (sym->symbol.name) - 1] == '$'
++som.c:	  && !strcmp (sym->symbol.name, sym->symbol.section->name))
++som.c:	sym->symbol.flags |= BSF_SECTION_SYM;
++som.c:      else if (CONST_STRNEQ (sym->symbol.name, "L$0\002"))
++som.c:	  sym->symbol.flags |= BSF_SECTION_SYM;
++som.c:	  sym->symbol.name = sym->symbol.section->name;
++som.c:      else if (CONST_STRNEQ (sym->symbol.name, "L$0\001"))
++som.c:	sym->symbol.flags |= BSF_DEBUGGING;
++som.c:	  som_bfd_derive_misc_symbol_info (curr_bfd, &sym->symbol, &info);
++som.c:	  if (bfd_is_und_section (sym->symbol.section))
++som.c:	  *stringsize += strlen (sym->symbol.name) + 5;
++som.c:	  som_bfd_derive_misc_symbol_info (curr_bfd, &sym->symbol, &info);
++som.c:	  if (bfd_is_und_section (sym->symbol.section))
++som.c:          symbol_key = som_bfd_ar_symbol_hash (&sym->symbol);
++som.c:          if (bfd_is_com_section (sym->symbol.section))
++som.c:          bfd_putb32 (flags, curr_lst_sym->flags);
++som.c:          bfd_putb32 (p - strings + 4, curr_lst_sym->name);
++som.c:          bfd_putb32 (0, curr_lst_sym->qualifier_name);
++som.c:          bfd_putb32 (info.symbol_info, curr_lst_sym->symbol_info);
++som.c:                      curr_lst_sym->symbol_value);
++som.c:          bfd_putb32 (0, curr_lst_sym->symbol_descriptor);
++som.c:          curr_lst_sym->reserved = 0;
++som.c:          bfd_putb32 (som_index, curr_lst_sym->som_index);
++som.c:          bfd_putb32 (symbol_key, curr_lst_sym->symbol_key);
++som.c:          bfd_putb32 (0, curr_lst_sym->next_entry);
++som.c:          slen = strlen (sym->symbol.name);
++som.c:	  memcpy (p, sym->symbol.name, slen);
++sunos.c:  H_PUT_8 (output_bfd, type, outsym->e_type);
++sunos.c:  H_PUT_8 (output_bfd, 0, outsym->e_other);
++sunos.c:  H_PUT_16 (output_bfd, 0, outsym->e_desc);
++sunos.c:  PUT_WORD (output_bfd, h->dynstr_index, outsym->e_strx);
++sunos.c:  PUT_WORD (output_bfd, val, outsym->e_value);
++syms.c:  if ((sym->flags & (BSF_GLOBAL | BSF_WEAK | BSF_FILE | BSF_SECTION_SYM)) != 0)
++syms.c:  if (sym->name == NULL)
++syms.c:  return bfd_is_local_label_name (abfd, sym->name);
++syms.c:	      val += sym->value + sym->section->vma + r->addend;
++tekhex.c:	      writesym (&dst, sym->section->name);
++tekhex.c:	      writesym (&dst, sym->name);
++tekhex.c:	      writevalue (&dst, sym->value + sym->section->vma);
++vms-alpha.c:  if (h->sym->typ == EGSD__C_SYMG)
++vms-alpha.c:      if (h->sym->flags & EGSY__V_REL)
++vms-alpha.c:        return RELC_SHR_BASE + PRIV2 (h->sym->owner, shr_index);
++vms-alpha.c:  if (h->sym->typ == EGSD__C_SYM)
++vms-alpha.c:      if (h->sym->flags & EGSY__V_REL)
++vms-alpha.c:              if (h->sym->typ == EGSD__C_SYMG)
++vms-alpha.c:                    (info, abfd, h->sym->owner, h->sym->symbol_vector);
++vms-alpha.c:                  op1 = alpha_vms_get_sym_value (h->sym->section,
++vms-alpha.c:                                                 h->sym->value);
++vms-alpha.c:              if (h->sym->flags & EGSY__V_NORM)
++vms-alpha.c:                  if (h->sym->typ == EGSD__C_SYMG)
++vms-alpha.c:                      alpha_vms_add_fixup_ca (info, abfd, h->sym->owner);
++vms-alpha.c:                      op1 = h->sym->symbol_vector;
++vms-alpha.c:                      op1 = alpha_vms_get_sym_value (h->sym->code_section,
++vms-alpha.c:                                                     h->sym->code_value);
++vms-alpha.c:              if (h->sym->typ == EGSD__C_SYMG)
++vms-alpha.c:                  alpha_vms_add_fixup_lp (info, abfd, h->sym->owner);
++vms-alpha.c:                  op1 = h->sym->symbol_vector;
++vms-alpha.c:                  op1 = alpha_vms_get_sym_value (h->sym->code_section,
++vms-alpha.c:                                                 h->sym->code_value);
++vms-alpha.c:                  op2 = alpha_vms_get_sym_value (h->sym->section,
++vms-alpha.c:                                                h->sym->value);
++vms-alpha.c:          _bfd_vms_output_short (recwr, sym->flags);
++vms-alpha.c:          if (sym->code_section)
++vms-alpha.c:            ep = alpha_vms_get_sym_value (sym->code_section, sym->code_value);
++vms-alpha.c:              BFD_ASSERT (sym->code_value == 0);
++vms-alpha.c:          val = alpha_vms_get_sym_value (sym->section, sym->value);
++vms-alpha.c:            (recwr, sym->typ == EGSD__C_SYMG ? sym->symbol_vector : val);
++vms-alpha.c:          _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:	      code_address = sym->value;
++vms-alpha.c:	      ca_psindx = sym->section->target_index;
++vms-alpha.c:	      asection *sec = sym->section;
++vms-alpha.c:		  if (bfd_is_und_section (sym->section))
++vms-alpha.c:		      slen = strlen ((char *) sym->name);
++vms-alpha.c:			  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:			  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:		  else if (bfd_is_abs_section (sym->section))
++vms-alpha.c:		      _bfd_vms_output_long (recwr, (unsigned long) sym->value);
++vms-alpha.c:		      _bfd_vms_output_quad (recwr, rptr->addend + sym->value);
++vms-alpha.c:		  if (bfd_is_und_section (sym->section))
++vms-alpha.c:		      slen = strlen ((char *) sym->name);
++vms-alpha.c:			  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:			  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:		  else if (bfd_is_abs_section (sym->section))
++vms-alpha.c:		      _bfd_vms_output_quad (recwr, sym->value);
++vms-alpha.c:		      _bfd_vms_output_quad (recwr, rptr->addend + sym->value);
++vms-alpha.c:		  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:		  slen = strlen ((char *) sym->name);
++vms-alpha.c:		  _bfd_vms_output_counted (recwr, sym->name);
++vms-alpha.c:		    (recwr, (unsigned long) udata->bsym->section->target_index);
++vms-alpha.c:  sym->name = name;
++vms-alpha.c:  sym->section = sec;
++vms-alpha.c:  sym->flags = flags;
++vms-alpha.c:  sym->value = value;
++vms-alpha.c:	sec->name, sym->name);
++vms-alpha.c:      sym->name = sname;
++vms-alpha.c:      sym->section = sec;
++vms-alpha.c:      sym->flags = flags;
++vms-alpha.c:      sym->value = value;
++vms-alpha.c:      sym->udata.p = NULL;
++vms-alpha.c:      sym->namelen = len;
++vms-alpha.c:      memcpy (sym->name, h->root.root.string, len);
++vms-alpha.c:      sym->name[len] = 0;
++vms-alpha.c:      sym->owner = info->output_bfd;
++vms-alpha.c:      sym->typ = EGSD__C_SYMG;
++vms-alpha.c:      sym->data_type = 0;
++vms-alpha.c:      sym->flags = EGSY__V_DEF | EGSY__V_REL;
++vms-alpha.c:      sym->symbol_vector = h->root.u.def.value;
++vms-alpha.c:      sym->section = h->root.u.def.section;
++vms-alpha.c:      sym->value = h->root.u.def.value;
++xcofflink.c:  if ((ldsym->l_smtype & L_WEAK) == 0
++xcofflink.c:      h->ldsym->l_ifile = h->ldindx;
++xcofflink.c:  if (isym->n_sclass == C_STAT)
++xcofflink.c:  if (isym->n_sclass == C_HIDEXT
++xcofflink.c:  if (EXTERN_SYM_P (isym->n_sclass))
++xcofflink.c:      && !EXTERN_SYM_P (isym->n_sclass)
++xcofflink.c:      && (isym->n_sclass != C_HIDEXT || smtyp != XTY_SD))
++xcofflink.c:      && isym->n_scnum == N_DEBUG)
++xcofflink.c:	  && !EXTERN_SYM_P (isym->n_sclass)
++xcofflink.c:	  && (isym->n_sclass != C_HIDEXT || smtyp != XTY_SD)
++xcofflink.c:      hsym->flags |= (XCOFF_DEF_REGULAR | XCOFF_RTINIT);
++xcofflink.c:      ldsym->l_value = 0;		/* Will be filled in later.  */
++xcofflink.c:      ldsym->l_scnum = 2;		/* Data section.  */
++xcofflink.c:      ldsym->l_smtype = XTY_SD;		/* Csect section definition.  */
++xcofflink.c:      ldsym->l_smclas = 5;		/* .rw.  */
++xcofflink.c:      ldsym->l_ifile = 0;		/* Special system loader symbol.  */
++xcofflink.c:      ldsym->l_parm = 0;		/* NA.  */
++xcofflink.c:      hsym->ldindx = 3;
++xcofflink.c:      hsym->ldsym = ldsym;
++xcofflink.c:					 hsym->ldsym, hsym->root.root.string))
++xcofflink.c:      hsym->flags |= XCOFF_DEF_REGULAR | XCOFF_MARK;
++xcofflink.c:      hsym->root.type = bfd_link_hash_defined;
++xcofflink.c:      hsym->root.u.def.value = 0;
++xcofflink.c:	      ldsym->l_scnum = (*csectpp)->output_section->target_index;
++xcofflink.c:	      ldsym->l_value = (isymp->n_value
++xcofflink.c:	      ldsym->l_scnum = isymp->n_scnum;
++xcofflink.c:	      ldsym->l_value = isymp->n_value;
++xcofflink.c:	  ldsym->l_smtype = smtyp;
++xcofflink.c:	    ldsym->l_smtype |= L_IMPORT;
++xcofflink.c:	    ldsym->l_smtype |= L_EXPORT;
++xcofflink.c:	    ldsym->l_smtype |= L_ENTRY;
++xcofflink.c:	    ldsym->l_smtype |= L_WEAK;
++xcofflink.c:	  ldsym->l_smclas = aux.x_csect.x_smclas;
++xcofflink.c:	  if (ldsym->l_ifile == (bfd_size_type) -1)
++xcofflink.c:	    ldsym->l_ifile = 0;
++xcofflink.c:	  else if (ldsym->l_ifile == 0)
++xcofflink.c:	      if ((ldsym->l_smtype & L_IMPORT) == 0)
++xcofflink.c:		ldsym->l_ifile = 0;
++xcofflink.c:		    ldsym->l_ifile = 0;
++xcofflink.c:		      ldsym->l_ifile = xcoff_data (impbfd)->import_file_id;
++xcofflink.c:	  ldsym->l_parm = 0;
++xcofflink.c:	  ldsym->l_value = 0;
++xcofflink.c:	  ldsym->l_scnum = N_UNDEF;
++xcofflink.c:	  ldsym->l_smtype = XTY_ER;
++xcofflink.c:	  ldsym->l_value = (sec->output_section->vma
++xcofflink.c:	  ldsym->l_scnum = sec->output_section->target_index;
++xcofflink.c:	  ldsym->l_smtype = XTY_SD;
++xcofflink.c:	ldsym->l_smtype |= L_IMPORT;
++xcofflink.c:	ldsym->l_smtype |= L_EXPORT;
++xcofflink.c:	ldsym->l_smtype |= L_ENTRY;
++xcofflink.c:	ldsym->l_smtype = XTY_SD;
++xcofflink.c:      ldsym->l_smclas = h->smclas;
++xcofflink.c:      if (ldsym->l_smtype & L_IMPORT)
++xcofflink.c:	    ldsym->l_smclas = XMC_XO;
++xcofflink.c:	    ldsym->l_smclas = XMC_SV3264;
++xcofflink.c:	    ldsym->l_smclas = XMC_SV;
++xcofflink.c:	    ldsym->l_smclas = XMC_SV64;
++xcofflink.c:      if (ldsym->l_ifile == -(bfd_size_type) 1)
++xcofflink.c:	  ldsym->l_ifile = 0;
++xcofflink.c:      else if (ldsym->l_ifile == 0)
++xcofflink.c:	  if ((ldsym->l_smtype & L_IMPORT) == 0)
++xcofflink.c:	    ldsym->l_ifile = 0;
++xcofflink.c:	    ldsym->l_ifile = 0;
++xcofflink.c:	      ldsym->l_ifile = xcoff_data (impbfd)->import_file_id;
++xcofflink.c:      ldsym->l_parm = 0;
 diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/syms.c binutils-2.25/bfd/syms.c
 --- binutils-2.25-original/bfd/syms.c	2014-10-14 03:32:02.000000000 -0400
 +++ binutils-2.25/bfd/syms.c	2016-02-21 19:49:49.593989776 -0500
@@ -2439,7 +4361,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/bfd/targets.c binutils-2.25/
  /* Always support S-records, for convenience.  */
 diff -Naur '--exclude=*.swp' binutils-2.25-original/binutils/readelf.c binutils-2.25/binutils/readelf.c
 --- binutils-2.25-original/binutils/readelf.c	2014-12-23 03:47:10.000000000 -0500
-+++ binutils-2.25/binutils/readelf.c	2016-02-04 21:12:06.491473352 -0500
++++ binutils-2.25/binutils/readelf.c	2016-11-19 07:17:33.883109929 -0500
 @@ -154,6 +154,7 @@
  #include "elf/xgate.h"
  #include "elf/xstormy16.h"
@@ -2485,17 +4407,20 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/binutils/readelf.c binutils-
      default:
        error (_("Missing knowledge of 32-bit reloc types used in DWARF sections of machine number %d\n"),
  	     elf_header.e_machine);
-@@ -10896,6 +10906,9 @@
+@@ -10896,6 +10906,12 @@
      case EM_XTENSA_OLD:
      case EM_XTENSA:
        return reloc_type == 14; /* R_XTENSA_32_PCREL.  */
 +    case EM_ZIP:
-+#warning "This is probably a bug--I have no idea what I am doing"
-+      return reloc_type == 1; /* R_ZIP_VALUE  */
++	// ZipCPU doesn't normally use PC-Relative, and when it does it 
++	// certainly isn't a 32-bit PC-relative value.  Further, we don't
++	// support DWARF relocations (yet).  Hence, let's just return false
++	// here.
++	return FALSE;
      default:
        /* Do not abort or issue an error message here.  Not all targets use
  	 pc-relative 32-bit relocs in their DWARF debug information and we
-@@ -11092,6 +11105,7 @@
+@@ -11092,6 +11108,7 @@
      case EM_ALTERA_NIOS2: /* R_NIOS2_NONE.  */
      case EM_NIOS32:  /* R_NIOS_NONE.  */
      case EM_OR1K:    /* R_OR1K_NONE. */
@@ -2598,8 +4523,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/app.c binutils-2.25/gas/
  	     optimize the copying in the simple case without using the
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils-2.25/gas/config/tc-zip.c
 --- binutils-2.25-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.c	2016-11-03 13:48:17.213367383 -0400
-@@ -0,0 +1,2756 @@
++++ binutils-2.25/gas/config/tc-zip.c	2016-11-23 14:51:26.450401642 -0500
+@@ -0,0 +1,3001 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2669,7 +4594,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +const	char	EXP_CHARS[] = "eE";
 +
 +static int	vliw_mergable = 0; // tc_check_label, tc_frob_label
-+static int	zip_param_got = 0, zip_param_vliw = 0;
++static int	zip_param_got = 0,
++#ifdef	VLIW_OP_UNDER_TEST
++		zip_param_vliw = 1;
++#warning "VLIW_OP_UNDER_TEST is experimental"
++#else
++		zip_param_vliw = 0;
++#endif
 +
 +typedef	struct	{
 +	int	m_known;
@@ -2802,8 +4733,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	return r;
 +}
 +
-+const	int MACH_VUNKNOWN = 0, MACH_VKNOWN = 1, MACH_VUPPERKNOWN = 2;
-+const	int	use_machine = 1;
++static	const	int MACH_VUNKNOWN = 0, MACH_VKNOWN = 1, MACH_VUPPERKNOWN = 2,
++			MACH_VSYMKNOWN = 3;
++static	const	int	zip_use_machine = 1;
 +
 +static void
 +zip_clear_machine(MACHINEREGS *pzipm) {
@@ -2824,21 +4756,44 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +zip_advance_machine(MACHINEREGS *pzipm, ZIPIS *insn) {
 +	int		bval = insn->i_imm;
 +	int		bknown;
-+	MACHINEVALUE	*av;
++	MACHINEVALUE	*av, *bv;
 +
-+	if (!use_machine) {
-+		zip_clear_machine(pzipm);
++	if (!zip_use_machine) {
++		// zip_clear_machine(pzipm);
 +		return;
 +	}
++
++	// The next three instructions don't change any machine values
++	if((insn->i_op == ZIPO_STO)
++		||(insn->i_op == ZIPO_CMP)
++		||(insn->i_op == ZIPO_TST))
++		return;
 +
 +	//
 +	// What remains to be done is to include symbols into the machine
 +	// state.  For now, we state that anything with a symbol becomes
 +	// unknown.
 +	//
-+	if (insn->i_rp)
++	if ((insn->i_rp)&&(insn->i_areg<ZIP_CC)) {
 +		bknown = MACH_VUNKNOWN;
-+	else if (ZIP_RNONE == insn->i_breg)
++		if((insn->i_op==ZIPO_LDI)&&(insn->i_cnd == ZIPC_ALWAYS)) {
++			pzipm->r[insn->i_areg].m_known = MACH_VSYMKNOWN;
++			pzipm->r[insn->i_areg].m_value = insn->i_imm;
++			pzipm->r[insn->i_areg].m_addsy = insn->i_rp->r_sym;
++			pzipm->r[insn->i_areg].m_subsy = NULL;
++			return;
++		} else if ((insn->i_breg == ZIP_PC)&&(insn->i_op == ZIPO_MOV)
++				&&(insn->i_cnd == ZIPC_ALWAYS)) {
++			pzipm->r[insn->i_areg].m_known = MACH_VSYMKNOWN;
++			pzipm->r[insn->i_areg].m_value = insn->i_imm;
++			pzipm->r[insn->i_areg].m_addsy = insn->i_rp->r_sym;
++			pzipm->r[insn->i_areg].m_subsy = NULL;
++			return;
++		}
++	} else if (insn->i_rp) {
++		bknown = MACH_VUNKNOWN;
++	} else if (ZIP_RNONE == insn->i_breg)
++		// B-Op is an immediate only
 +		bknown = MACH_VKNOWN;
 +	else if (insn->i_breg >= ZIP_CC)
 +		bknown = MACH_VUNKNOWN;
@@ -2856,18 +4811,18 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		fprintf(stderr, "MACHINE, A-REG[%02x] out of bounds\n", insn->i_areg);
 +#endif
 +		return; // Nothing to do -- no change to machine
-+	} else if ((insn->i_areg == ZIP_PC)&&(insn->i_op != ZIPO_STO)) {
++	} else if (insn->i_areg == ZIP_PC) {
 +#ifdef	ZIP_DEBUG
 +		fprintf(stderr, "MACHINE, CLEAR ON JUMP\n");
 +#endif
 +		zip_clear_machine(pzipm);
 +		return;
-+	} else if ((insn->i_areg >= ZIP_CC)&&(insn->i_op == ZIPO_AND)) {
++	} else if ((insn->i_areg == ZIP_CC)&&(insn->i_op == ZIPO_AND)) {
 +#ifdef	ZIP_DEBUG
 +		fprintf(stderr, "MACHINE, CLEAR ON ANDing to CC\n");
 +#endif
 +		zip_clear_machine(pzipm);
-+	} else if ((insn->i_areg >= ZIP_CC)&&(
++	} else if ((insn->i_areg == ZIP_CC)&&(
 +			(insn->i_op == ZIPO_LDI)
 +			||(insn->i_op == ZIPO_LOD)
 +			||(insn->i_op == ZIPO_CLR)
@@ -2887,6 +4842,10 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	}
 +
 +	av = &pzipm->r[insn->i_areg];
++	if (insn->i_breg < ZIP_CC)
++		bv = &pzipm->r[insn->i_breg];
++	else
++		bv = NULL;
 +
 +	if (ZIPC_ALWAYS != insn->i_cnd) {
 +#ifdef	ZIP_DEBUG
@@ -2900,13 +4859,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			; // We'll catch this in a moment
 +		else
 +			av->m_known = MACH_VUNKNOWN;
-+	} else if ((insn->i_rp)&&(insn->i_op != ZIPO_LDI)
-+			&&(insn->i_op != ZIPO_MOV)) {
-+#ifdef	ZIP_DEBUG
-+		fprintf(stderr, "MACHINE, NOT AN LDI/MOV\n");
-+#endif
-+		if ((ZIPO_TST != insn->i_op)&&(ZIPO_CMP != insn->i_op))
-+			av->m_known = MACH_VUNKNOWN;
 +	} switch(insn->i_op) {
 +		case	ZIPO_SUB:
 +			av->m_known = (av->m_known==MACH_VKNOWN)
@@ -2916,7 +4868,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_AND:
-+			pzipm->r[insn->i_areg].m_value &= bval;
++			av->m_value &= bval;
 +			if ((bknown == MACH_VUPPERKNOWN)&&(bval == 0)) {
 +				if (av->m_known == MACH_VKNOWN)
 +					av->m_known = MACH_VUPPERKNOWN;
@@ -2933,16 +4885,20 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		case	ZIPO_OR:
 +			av->m_value |= bval;
 +			if (bknown == MACH_VUPPERKNOWN) {
-+				if (av->m_known != MACH_VUNKNOWN)
++				if (av->m_known == MACH_VKNOWN)
 +					av->m_known = MACH_VUPPERKNOWN;
++				else if (av->m_known != MACH_VUPPERKNOWN)
++					av->m_known = MACH_VUNKNOWN;
 +			} else if (bknown != MACH_VKNOWN)
 +				av->m_known = MACH_VUNKNOWN;
 +			break;
 +		case	ZIPO_XOR:
 +			av->m_value ^= bval;
 +			if (bknown == MACH_VUPPERKNOWN) {
-+				if (av->m_known != MACH_VUNKNOWN)
++				if (av->m_known == MACH_VKNOWN)
 +					av->m_known = MACH_VUPPERKNOWN;
++				else if (av->m_known != MACH_VUPPERKNOWN)
++					av->m_known = MACH_VUNKNOWN;
 +			} else if (bknown != MACH_VKNOWN)
 +				av->m_known = MACH_VUNKNOWN;
 +			break;
@@ -2955,13 +4911,11 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			fprintf(stderr, "MACHINE, LDI -> %02x\n", insn->i_areg);
 +#endif
 +			av->m_value = bval;
-+			if (insn->i_rp)
-+				av->m_known = MACH_VUNKNOWN;
-+			else if (insn->i_cnd != ZIPC_ALWAYS) {
++			if (insn->i_cnd != ZIPC_ALWAYS) {
 +				// if ((bknown)&&(bvalue == insn->i_imm))
 +					// pzipm->r[insn->i_areg].m_known = MACH_VKNOWN;
 +			} else {
-+				av->m_known = 1;
++				av->m_known = MACH_VKNOWN;
 +			} break;
 +		case	ZIPO_LDILO:
 +#ifdef	ZIP_DEBUG
@@ -2979,7 +4933,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			if (ZIPC_ALWAYS == insn->i_cnd)
 +				av->m_known = (bknown == MACH_VKNOWN)?MACH_VKNOWN:MACH_VUNKNOWN;
 +			else if ((bknown == MACH_VKNOWN)
-+				&&(av->m_known != MACH_VUNKNOWN)
++				&&(  (av->m_known == MACH_VKNOWN)
++				   ||(av->m_known == MACH_VUPPERKNOWN))
 +				&&((((zip_brev(bval)^av->m_value)&0x0ffff)==0)))
 +				av->m_known = MACH_VUPPERKNOWN;
 +			break;
@@ -2988,12 +4943,22 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			fprintf(stderr, "MACHINE, MOV -> %02x\n", insn->i_areg);
 +#endif
 +			av->m_value = bval;
-+			if (ZIPC_ALWAYS == insn->i_cnd)
++			if (ZIPC_ALWAYS == insn->i_cnd) {
 +				av->m_known = bknown;
-+			else if (((ZIPC_ALWAYS == insn->i_cnd)
-+					&&(av->m_known != MACH_VUNKNOWN)
-+					&&(bknown != MACH_VUNKNOWN))
-+					&&(((bval^av->m_value)&0xffff0000)==0))
++				if (bknown == MACH_VSYMKNOWN) {
++					if (!bv) { av->m_known = MACH_VUNKNOWN;}
++					else {
++					av->m_value = bv->m_value + insn->i_imm;
++					av->m_addsy = bv->m_addsy;
++					av->m_subsy = bv->m_subsy;
++					}
++				}
++			} else if (
++				((av->m_known == MACH_VKNOWN)
++				  ||(av->m_known == MACH_VUPPERKNOWN))
++				&&((bknown == MACH_VKNOWN)
++				  ||(bknown == MACH_VUPPERKNOWN))
++				&&(((bval^av->m_value)&0xffff0000)==0))
 +				av->m_known = MACH_VUPPERKNOWN;
 +			else
 +				av->m_known = MACH_VUNKNOWN;
@@ -3003,7 +4968,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			if (insn->i_cnd == ZIPC_ALWAYS)
 +				av->m_known = MACH_VKNOWN;
 +			else if ((av->m_value & 0xffff0000)==0) {
-+				if ((av->m_known != MACH_VUNKNOWN)
++				if (((av->m_known == MACH_VKNOWN)
++					||(av->m_known == MACH_VUPPERKNOWN))
 +					&&(((av->m_value ^ bval)&0xffff0000)==0))
 +					av->m_known = MACH_VUPPERKNOWN;
 +				else
@@ -3569,6 +5535,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			//	S_SET_VALUE(symbolP, frag_now_fix()) ???
 +			//	now_seg must be the current segment	
 +			//	S_SET_SETGMENT(symbolP, now_seg);
++		/*
 +		} else if((zip_param_got)&&(insn->i_breg == ZIP_GBL)) {
 +			// New GOT-relative relocation
 +			insn->i_rp =(ZIPRELOC *)xmalloc(sizeof(ZIPRELOC));
@@ -3576,6 +5543,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			insn->i_rp->r_pcrel = FALSE;
 +			insn->i_rp->r_fr_offset = 0;
 +			insn->i_rp->r_fix = NULL;
++		*/
 +		} else {
 +			insn->i_rp =(ZIPRELOC *)xmalloc(sizeof(ZIPRELOC));
 +			insn->i_rp->r_sym = sym;
@@ -3662,7 +5630,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		TWO_OP,		// Standard for most instructions
 +		IMM_OP,		// Immediate operand only
 +		BACKWARDS_TWO,	// Only used by STO REG,Off(REG)
-+		NO_OP,		// Used by NOOP, BUSY, HALT, RTU,LOCK,BREAK,etc
++		NO_OP,		// Used by NOOP, BUSY, HALT, RTU, LOCK, etc
 +		ONE_OR_TWO_OP,	// Only used by TST
 +		MAYBE_ONE_IMM,	// Only used by BREAK
 +		ONE_REGISTER,	// Only used by CLR, CLRF, and NOT
@@ -3735,8 +5703,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		insn->i_op = ZIPO_MPYSHI;
 +		insn_form = TWO_OP;
 +	} else if (strcasecmp(opstr, "BREV")==0) {
-+		insn->i_op = ZIPO_BREV;
-+		insn_form = TWO_OP;
++		insn->i_op = ZIPO_BREV;			// BREV b+Rb,Ra, or
++		insn_form = ONE_OR_TWO_OP;		// BREV Rx -> BREV Rx,Rx
 +	} else if (strcasecmp(opstr, "POPC")==0) {
 +		insn->i_op = ZIPO_POPC;
 +		insn_form = TWO_OP;
@@ -3751,8 +5719,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		insn_form = TWO_OP;
 +	} else if ((strcasecmp(opstr, "TST")==0)
 +		||(strcasecmp(opstr, "TEST")==0)) {
-+		insn->i_op = ZIPO_TST;
-+		insn_form = ONE_OR_TWO_OP;
++		insn->i_op = ZIPO_TST;			// TST b+Rb,Ra, or
++		insn_form = ONE_OR_TWO_OP;		// TST Rx -> TST -1,Rx
 +	} else if (strcasecmp(opstr, "LOD")==0) {
 +		insn->i_op = ZIPO_LOD;
 +		insn_form = TWO_OP;
@@ -3780,11 +5748,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	} else if (strcasecmp(opstr, "FPDIV")==0) {
 +		insn->i_op = ZIPO_FPDIV;
 +		insn_form = TWO_REGISTER;
-+	} else if (strcasecmp(opstr, "FPCVT")==0) {
-+		insn->i_op = ZIPO_FPCVT;
++	} else if ((strcasecmp(opstr, "FPI2F")==0)
++		||(strcasecmp(opstr, "FPCVT")==0)) {
++		insn->i_op = ZIPO_FPI2F;
 +		insn_form = TWO_OP;
-+	} else if (strcasecmp(opstr, "FPINT")==0) {
-+		insn->i_op = ZIPO_FPINT;
++	} else if ((strcasecmp(opstr, "FPF2I")==0)
++		||(strcasecmp(opstr, "FPINT")==0)) {
++		insn->i_op = ZIPO_FPF2I;
 +		insn_form = TWO_REGISTER;
 +	} else if ((strcasecmp(opstr, "NOP")==0)
 +			||(strcasecmp(opstr, "NOOP")==0)) {
@@ -3822,10 +5792,17 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		insn->i_op = ZIPO_BRA;
 +		insn->i_cnd = ZIPC_NZ;
 +		insn_form = OP_ADDRESS;
++#ifdef	OPT_NEW_CONDITION_CODE
++	} else if (strcasecmp(opstr, "BNC")==0) {
++		insn->i_op = ZIPO_BRA;
++		insn->i_cnd = ZIPC_NC;
++		insn_form = OP_ADDRESS;
++#else
 +	} else if (strcasecmp(opstr, "BGE")==0) {
 +		insn->i_op = ZIPO_BRA;
 +		insn->i_cnd = ZIPC_GE;
 +		insn_form = OP_ADDRESS;
++#endif
 +	} else if (strcasecmp(opstr, "BGT")==0) {
 +		insn->i_op = ZIPO_BRA;
 +		insn->i_cnd = ZIPC_GT;
@@ -3877,7 +5854,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			||(strcasecmp(opstr, "RTN")==0)) {
 +		insn->i_op = ZIPO_JMP;
 +		insn->i_areg = ZIP_PC;
-+		insn->i_breg = ZIP_R0;
++		insn->i_breg = ZIP_LR;
 +		insn->i_imm  = 0;
 +		insn_form = NO_OP;
 +	} else if (strcasecmp(opstr, "NOT")==0) {
@@ -3908,8 +5885,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +				insn->i_cnd = ZIPC_NZ;
 +			} else if (strcasecmp(cndp, "GT")==0) {
 +				insn->i_cnd = ZIPC_GT;
++#ifdef	OPT_NEW_CONDITION_CODE
++			} else if (strcasecmp(cndp, "NC")==0) {
++				insn->i_cnd = ZIPC_NC;
++#else
 +			} else if (strcasecmp(cndp, "GE")==0) {
 +				insn->i_cnd = ZIPC_GE;
++#endif
 +			} else if (strcasecmp(cndp, "C")==0) {
 +				insn->i_cnd = ZIPC_C;
 +			} else if (strcasecmp(cndp, "V")==0) {
@@ -3976,7 +5958,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			break;
 +		case ONE_OR_TWO_OP:
 +			// This is a reference to the test instruction, which
-+			// can either be TEST a,Rx, or TEST Rx.
++			// can either be
++			//	A. TEST a,Rx, or TEST Rx,.
++			// or	B. BRA  a,Rx, or BRA Rx,.
 +			if (NULL != right) {
 +				err = zip_parse_bop(left,insn);
 +				if (!err)
@@ -3985,8 +5969,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +					err = zip_parse_bop(left,insn);
 +			} else {
 +				zip_parse_reg(left, &insn->i_areg);
-+				insn->i_breg = ZIP_RNONE;
-+				insn->i_imm = -1;
++				if (insn->i_op == ZIPO_BREV) {
++					insn->i_breg = insn->i_areg;
++					insn->i_imm = 0;
++				} else {
++					insn->i_breg = ZIP_RNONE;
++					insn->i_imm = -1;
++				}
 +			} break;
 +		case ONE_REGISTER:
 +			// CLR, CLRF, or NOT
@@ -4056,8 +6045,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			if (insn->i_breg == ZIP_RNONE)
 +				insn->i_op = ZIPO_LDI;
 +			break;
-+		case ZIPO_FPCVT:
-+			break;
 +		case ZIPO_CMP: case ZIPO_TST:
 +			break;
 +		case ZIPO_LOD:
@@ -4066,7 +6053,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			break;
 +		case ZIPO_FPADD: case ZIPO_FPSUB:
 +		case ZIPO_FPMUL: case ZIPO_FPDIV:
-+		case ZIPO_FPINT:
++		case ZIPO_FPF2I: case ZIPO_FPI2F:
 +			if (0x0e == (insn->i_areg & 0x0f))
 +				err = "Floating point operations cannot result in CC or PC regs";
 +			else if (insn->i_rp)
@@ -4226,7 +6213,112 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		return 0;
 +	ZIP_OPCODE	opa, opb;
 +	ZIP_CONDITION	ac, bc;
++	int	imma, immb;
 +
++// The following is a possibility for merging two instructions into one.  It is
++// not the currently defined part of the ISA.  However, it constitutes a
++// proposed change to the ISA that, while not fully implemented, may yet be
++// implemented in the future.
++//
++// #define	VLIW_OP_UNDER_TEST
++#ifdef	VLIW_OP_UNDER_TEST
++
++	opa = (a>>22)&0x1f;
++	opb = (b>>22)&0x1f;
++
++	// 2. Can only merge if both are unconditional
++	ac = ((a>>19)&0x07);
++	bc = ((b>>19)&0x07);
++	if ((opa != ZIPO_LDI)&&(opa != ZIPO_LDIn)&&(ac != ZIPC_ALWAYS))
++		return 0;
++	if ((opb != ZIPO_LDI)&&(opb != ZIPO_LDIn)&&(bc != ZIPC_ALWAYS))
++		return 0;
++
++	// Only some instructions can be merged
++	switch(opa) {
++		case ZIPO_MOV: case ZIPO_LDI: case ZIPO_ADD: case ZIPO_SUB:
++		case ZIPO_LOD: case ZIPO_STO: case ZIPO_CMP: case ZIPO_AND:
++		case ZIPO_LDIn:
++			break;
++		default:
++			return 0;
++	} switch(opb) {
++		case ZIPO_MOV: case ZIPO_LDI: case ZIPO_ADD: case ZIPO_SUB:
++		case ZIPO_LOD: case ZIPO_STO: case ZIPO_CMP: case ZIPO_AND:
++		case ZIPO_LDIn:
++			break;
++		default:
++			return 0;
++	}
++	
++	imma = zip_non_vliw_immediate(a);
++	immb = zip_non_vliw_immediate(b);
++
++	if ((imma < -256)||(imma > 255))
++		return 0;
++	if ((immb < -256)||(immb > 255))
++		return 0;
++
++	int abreg = (a>>14)&0x01f;
++	int bbreg = (b>>14)&0x01f;
++
++	switch(opa) {
++		case ZIPO_MOV:
++			if ((imma < -2)||(imma > 1)) {
++				return 0;
++			} break;
++		case ZIPO_LDI: case ZIPO_LDIn:
++			if ((imma < -256)||(imma > 255)) {
++				return 0;
++			} break;
++		case ZIPO_ADD: case ZIPO_SUB: case ZIPO_CMP: case ZIPO_AND:
++			if (((abreg&0x10)==0)&&((imma < -128)||(imma > 127))) {
++				return 0;
++			} else if ((abreg&0x10)&&((imma < -4)||(imma > 3))) {
++				return 0;
++			} break;
++		case ZIPO_LOD: case ZIPO_STO:
++			if ((abreg&0x010)==0) {
++				return 0;
++			} else if((abreg== ZIP_uSP)&&((imma < -128)||(imma > 127))) {
++				return 0;
++			} else if ((abreg != ZIP_uSP)&&((imma < -4)||(imma > 3))) {
++				return 0;
++			} break; 
++		default:
++			return 0;
++	}
++
++	switch(opb) {
++		case ZIPO_MOV:
++			if ((immb < -2)||(immb > 1)) {
++				return 0;
++			} break;
++		case ZIPO_LDI: case ZIPO_LDIn:
++			if ((immb < -256)||(immb > 255)) {
++				return 0;
++			} break;
++		case ZIPO_ADD: case ZIPO_SUB: case ZIPO_CMP: case ZIPO_AND:
++			if (((bbreg&0x10)==0)&&((immb < -128)||(immb > 127))) {
++				return 0;
++			} else if ((bbreg&0x10)&&((immb < -4)||(immb > 3))) {
++				return 0;
++			} break;
++		case ZIPO_LOD: case ZIPO_STO:
++			if ((bbreg&0x010)==0) {
++				return 0;
++			} else if((bbreg== ZIP_uSP)&&((immb < -128)||(immb > 127))) {
++				return 0;
++			} else if ((bbreg != ZIP_uSP)&&((immb < -4)||(immb > 3))) {
++				return 0;
++			} break;
++		default:
++			return 0;
++	}
++
++fprintf(stderr, "\tYes, these can be merged\n");
++	return 1;
++#else
 +	opa = (a>>22)&0x1f;
 +	opb = (b>>22)&0x1f;
 +
@@ -4250,7 +6342,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +		return 0;
 +
 +	// 4. Immediates -- check whether they are compatible
-+	int	imma, immb;
 +
 +	switch(opa) {
 +		case ZIPO_MOV:
@@ -4311,6 +6402,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	}
 +
 +	return 1;
++#endif
 +}
 +
 +static unsigned
@@ -4318,7 +6410,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +{
 +	// 1. We already know we can merge these, so skip our can-merge checks
 +	ZIP_OPCODE	opa, opb;
-+	ZIP_CONDITION	ac, bc;
 +	unsigned int	retv = 0;
 +
 +	// Get our two opcodes
@@ -4327,6 +6418,82 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	if (opa == 0x017) opa = 0x016;
 +	if (opb == 0x017) opb = 0x016;
 +	retv = 0x80000000;
++#ifdef	VLIW_OP_UNDER_TEST
++	// Start with the destination registers
++	retv |= (a & 0x78000000);
++	retv |= (b & 0x78000000) >> (17);
++
++	// Then the new OpCodes
++	switch(opa) {
++	case ZIPO_SUB:	retv |= (ZIPV_SUB<<24); break;
++	case ZIPO_AND:	retv |= (ZIPV_AND<<24); break;
++	case ZIPO_ADD:	retv |= (ZIPV_ADD<<24); break;
++	case ZIPO_MOV:	retv |= (ZIPV_MOV<<24); break;
++	case ZIPO_CMP:	retv |= (ZIPV_CMP<<24); break;
++	case ZIPO_LDI:	retv |= (ZIPV_LDI<<24); break;
++	case ZIPO_LOD:	retv |= (ZIPV_LOD<<24); break;
++	case ZIPO_STO:	retv |= (ZIPV_STO<<24); break;
++	default: gas_assert(0);
++	}
++
++	switch(opb) {
++	case ZIPO_SUB:	retv |= (ZIPV_SUB<<8); break;
++	case ZIPO_AND:	retv |= (ZIPV_AND<<8); break;
++	case ZIPO_ADD:	retv |= (ZIPV_ADD<<8); break;
++	case ZIPO_MOV:	retv |= (ZIPV_MOV<<8); break;
++	case ZIPO_CMP:	retv |= (ZIPV_CMP<<8); break;
++	case ZIPO_LDI:	retv |= (ZIPV_LDI<<8); break;
++	case ZIPO_LOD:	retv |= (ZIPV_LOD<<8); break;
++	case ZIPO_STO:	retv |= (ZIPV_STO<<8); break;
++	default: gas_assert(0);
++	}
++
++	// The new VLIW has no condition codes
++
++	// Now for OpB, instruction A
++	if (opa == ZIPO_LDI)
++		retv |= (a & 0xff)<<16;
++	else if (opa == ZIPO_MOV) {
++		retv |= (a & 0x7)<<16;		// Offset
++		retv |= ((a>>18)&1)<<23;	// A-Reg bit
++	} else if(((opa == ZIPO_LOD)||(opa == ZIPO_STO))
++			&&(((opa>>27)&0x0f)==ZIP_SP)) {
++		retv |= (a & 0x07f)<<16;
++	} else if ((a>>18)&1) {
++		// OpB ... with a register
++		retv |= 1<<23;			// Using a register?
++		retv |= ((a>>14)&0x0f)<<19;	// OpB register
++		retv |= (a&0x07)<<16;		// OpB constant
++	} else {
++		// OpB ... with constant offsets only
++		retv |= (a&0x07f)<<16;
++	}
++
++
++	// Now for OpB, instruction B
++	if (opb == ZIPO_LDI)
++		retv |= (b & 0xff);
++	else if (opb == ZIPO_MOV) {
++		retv |= (b & 0x7);		// Offset
++		retv |= ((b>>18)&1)<<7;		// A-Reg bit
++	} else if(((opb == ZIPO_LOD)||(opb == ZIPO_STO))
++			&&(((opb>>27)&0x0f)==ZIP_SP)) {
++		retv |= (b & 0x07f);
++	} else if ((b>>18)&1) {
++		// OpB ... with a register
++		retv |= 1<<7;			// Using a register?
++		retv |= ((b>>14)&0x0f)<<3;	// OpB register
++		retv |= (b&0x07);		// OpB constant
++	} else {
++		// OpB ... with constant offsets only
++		retv |= (b&0x07f);
++	}
++
++
++
++#else
++	ZIP_CONDITION	ac, bc;
++
 +	retv |= (opa << 22) | (opb << 5);
 +
 +	// Get our two conditions
@@ -4365,6 +6532,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	else
 +		retv |= (b & 0x0f);
 +
++#endif
 +	return retv;
 +}
 +
@@ -4550,7 +6718,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			if (insn->i_rp)
 +				insn->i_rp->r_type = BFD_RELOC_NONE;
 +
-+		} else if ((pzipm)&&((!insn->i_rp)||(sym_known))
++		} else if ((zip_use_machine)&&(pzipm)&&((!insn->i_rp)||(sym_known))
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&(0==((immv^pzipm->r[insn->i_areg].m_value)
 +					& 0x0ffff0000))) {
@@ -4573,7 +6741,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +			//
 +			int known_bypass = 0, i;
 +
-+			if ((pzipm)&&(
++			if ((zip_use_machine)&&(pzipm)&&(
 +					((!insn->i_rp)
 +						&&(!fits_within(4,immv)))
 +					||((insn->i_rp)&&(sym_known)))) {
@@ -4749,7 +6917,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +				// address?
 +				insn->i_rp->r_type = BFD_RELOC_ZIP_MOV_OFFSET;
 +			}
-+		} else if ((pzipm)&&(insn->i_breg<ZIP_CC)&&(insn->i_areg<ZIP_CC)
++		} else if ((zip_use_machine)&&(pzipm)
++				&&(insn->i_breg<ZIP_CC)&&(insn->i_areg<ZIP_CC)
 +				&&(ZIPC_ALWAYS == insn->i_cnd)
 +				&&(pzipm->r[insn->i_breg].m_known==MACH_VKNOWN)
 +				&&(fits_within(4,pzipm->r[insn->i_breg].m_value
@@ -4890,7 +7059,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +	}
 +
 +	zip_assemble_insn_words(frag_now, now_seg, insn, 0, 0, &zipm);
-+	zip_advance_machine(&zipm, insn);
++	if (zip_use_machine)
++		zip_advance_machine(&zipm, insn);
 +#ifdef	ZIP_DEBUG
 +	zip_debug_machine(&zipm);
 +#endif
@@ -5358,8 +7528,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.c binutils
 +}
 diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils-2.25/gas/config/tc-zip.h
 --- binutils-2.25-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/gas/config/tc-zip.h	2016-11-03 13:50:09.140655412 -0400
-@@ -0,0 +1,218 @@
++++ binutils-2.25/gas/config/tc-zip.h	2016-11-17 20:51:18.562576280 -0500
+@@ -0,0 +1,233 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.h
@@ -5399,6 +7569,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +#define	TC_ZIPCPU
 +
 +#define	TC_ZIP	1
++// #define	VLIW_OP_UNDER_TEST
++// #define	OPT_NEW_CONDITION_CODE
 +
 +/*
 + * OCTETS_PER_BYTE and OCTETS_PER_BYTE_POWER help to define the minimal
@@ -5522,21 +7694,23 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +#define	md_number_to_chars	number_to_chars_bigendian
 +#endif
 +
-+// #define	TC_FORCE_RELOCATION(fixp)	zip_force_relocation(fixp)
-+// extern	int	zip_force_relocation(struct fix *);
-+
 +
 +#define	GLOBAL_OFFSET_TABLE_NAME	"_GLOBAL_OFFSET_TABLE_"
 +
 +//	typedef	unsigned int	ZIPI, ZIPA;
 +//	typedef	int	ZIPIMM;
 +
++// LR = Link Register, R0
++// FP = Frame Pointer, R12
++// SP = Stack Pointer, R13
++// CC = Condition Codes, R14
++// PC = Program Counter, R15
 +typedef	enum {
-+	ZIP_R0=0, ZIP_R1, ZIP_R2, ZIP_R3, ZIP_R4, ZIP_R5, ZIP_R6, ZIP_R7,
-+	ZIP_R8, ZIP_R9, ZIP_R10, ZIP_R11, ZIP_GBL,
++	ZIP_LR=0, ZIP_R1, ZIP_R2, ZIP_R3, ZIP_R4, ZIP_R5, ZIP_R6, ZIP_R7,
++	ZIP_R8, ZIP_R9, ZIP_R10, ZIP_R11, ZIP_FP,
 +		ZIP_SP, ZIP_CC, ZIP_PC,
-+	ZIP_uR0, ZIP_uR1, ZIP_uR2, ZIP_uR3, ZIP_uR4, ZIP_uR5, ZIP_uR6, ZIP_uR7,
-+	ZIP_uR8, ZIP_uR9, ZIP_uR10, ZIP_uR11, ZIP_uGBL,
++	ZIP_uLR, ZIP_uR1, ZIP_uR2, ZIP_uR3, ZIP_uR4, ZIP_uR5, ZIP_uR6, ZIP_uR7,
++	ZIP_uR8, ZIP_uR9, ZIP_uR10, ZIP_uR11, ZIP_uFP,
 +		ZIP_uSP, ZIP_uCC, ZIP_uPC,
 +	ZIP_RNONE=48
 +} ZIP_REG;
@@ -5545,23 +7719,29 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +
 +typedef	enum {
 +	ZIPC_ALWAYS, ZIPC_LT, ZIPC_Z, ZIPC_NZ,
-+	ZIPC_GT, ZIPC_GE, ZIPC_C, ZIPC_V
++	ZIPC_GT,
++#ifdef	OPT_NEW_CONDITION_CODE
++	ZIPC_NC,
++#else
++	ZIPC_GE,
++#endif
++	ZIPC_C, ZIPC_V
 +} ZIP_CONDITION;
 +
 +typedef	enum {
 +	// 16 ALU instructions
-+	ZIPO_SUB=0, ZIPO_AND, ZIPO_ADD, ZIPO_OR,	// 5'h000xx
-+	ZIPO_XOR, ZIPO_LSR, ZIPO_LSL, ZIPO_ASR,		// 5'h001xx
-+	ZIPO_LDIHI, ZIPO_LDILO, ZIPO_MPYU, ZIPO_MPYS,	// 5'h010xx
-+	ZIPO_BREV, ZIPO_POPC, ZIPO_ROL, ZIPO_MOV,	// 5'h011xx
-+	ZIPO_CMP, ZIPO_TST,				// 5'h1000x
-+	ZIPO_LOD, ZIPO_STO,				// 5'h1001w
-+	ZIPO_DIVU, ZIPO_DIVS,				// 5'h1010s
-+	ZIPO_LDI, ZIPO_LDIn,				// 5'h1011x
-+	// ZIPO_, ZIPO_DIVS,				// 5'h11000
-+	ZIPO_FPADD=0x18, ZIPO_FPSUB,			// 5'h1100x
-+	ZIPO_FPMUL, ZIPO_FPDIV,				// 5'h1101x
-+	ZIPO_FPCVT, ZIPO_FPINT,				// 5'h1110x
++	ZIPO_SUB=0, ZIPO_AND, ZIPO_ADD, ZIPO_OR,	//  5'h000xx
++	ZIPO_XOR, ZIPO_LSR, ZIPO_LSL, ZIPO_ASR,		//  5'h001xx
++	ZIPO_MPY, ZIPO_LDILO, ZIPO_MPYUHI, ZIPO_MPYSHI,	//  5'h010xx
++	ZIPO_BREV, ZIPO_POPC, ZIPO_ROL, ZIPO_MOV,	//  5'h011xx
++	ZIPO_CMP, ZIPO_TST,				//  5'h1000x
++	ZIPO_LOD, ZIPO_STO,				//  5'h1001w
++	ZIPO_DIVU, ZIPO_DIVS,				//  5'h1010s
++	ZIPO_LDI, ZIPO_LDIn,				//  5'h1011x
++	// ZIPO_, ZIPO_DIVS,				//  5'h11000
++	ZIPO_FPADD=0x18, ZIPO_FPSUB,			//  5'h1100x
++	ZIPO_FPMUL, ZIPO_FPDIV,				//  5'h1101x
++	ZIPO_FPI2F, ZIPO_FPF2I,				//  5'h1110x
 +	// Pseudo-ops
 +	ZIPO_NOOP, ZIPO_BREAK, ZIPO_LOCK,
 +	ZIPO_LINK, ZIPO_TRAP, ZIPO_CLR, ZIPO_CLRF,
@@ -5571,10 +7751,15 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/gas/config/tc-zip.h binutils
 +	ZIPO_STEP, ZIPO_JMP,  ZIPO_NOT, ZIPO_NEG
 +} ZIP_OPCODE;
 +
-+// If LONG_MPY is defined (or not) we then use these opcodes
-+#define	ZIPO_MPYUHI	ZIPO_MPYU
-+#define	ZIPO_MPYSHI	ZIPO_MPYS
-+#define	ZIPO_MPY	ZIPO_LDIHI
++#ifdef	VLIW_OP_UNDER_TEST
++typedef	enum {
++	// 8 instructions
++	ZIPV_SUB=0, ZIPV_AND, ZIPV_ADD, ZIPV_MOV,	// 3'h0xx
++	ZIPV_CMP, ZIPV_LDI, ZIPV_LOD, ZIPV_STO,		// 3'h1xx
++	// Pseudo-ops
++	ZIPV_BRA, ZIPV_CLR, ZIPV_RTN, ZIPV_JMP, ZIPV_LJMP
++} ZIP_VLIWCODE;
++#endif
 +
 +#endif
 +
@@ -6521,7 +8706,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/ld/emulparams/elf32zip.sh bi
 +
 diff -Naur '--exclude=*.swp' binutils-2.25-original/ld/ldlang.c binutils-2.25/ld/ldlang.c
 --- binutils-2.25-original/ld/ldlang.c	2014-10-15 03:43:36.000000000 -0400
-+++ binutils-2.25/ld/ldlang.c	2016-03-27 22:02:43.913871100 -0400
++++ binutils-2.25/ld/ldlang.c	2016-11-23 07:54:48.313061345 -0500
 @@ -4007,7 +4007,7 @@
  	      ++len;
  	    }
@@ -7422,8 +9607,8 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-dis.h binutils-2
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2.25/opcodes/zip-opc.c
 --- binutils-2.25-original/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.25/opcodes/zip-opc.c	2016-09-15 17:00:44.579304411 -0400
-@@ -0,0 +1,559 @@
++++ binutils-2.25/opcodes/zip-opc.c	2016-11-17 20:54:28.185320155 -0500
+@@ -0,0 +1,620 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.c
@@ -7479,7 +9664,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +};
 +
 +const	char	*zip_ccstr[8] = {
-+	"", ".LT", ".Z", ".NZ", ".GT", ".GE", ".C", ".V"
++	"", ".LT", ".Z", ".NZ", ".GT",
++#ifdef	OPT_NEW_CONDITION_CODE
++	".NC",
++#else
++	".GE",
++#endif
++	".C", ".V"
 +};
 +
 +static const ZOPCODE	zip_oplist_raw[] = {
@@ -7491,31 +9682,35 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "BUSY", 0xffc7ffff, 0x7883ffff, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
 +	{ "BRA",  0xfffc0000, 0x78800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BLT",  0xfffc0000, 0x78880000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
-+	{ "BZ",  0xfffc0000, 0x78900000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
++	{ "BZ",   0xfffc0000, 0x78900000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BNZ",  0xfffc0000, 0x78980000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BGT",  0xfffc0000, 0x78a00000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
++#ifdef	OPT_NEW_CONDITION_CODE
++	{ "BNC",  0xfffc0000, 0x78a80000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
++#else
 +	{ "BGE",  0xfffc0000, 0x78a80000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
-+	{ "BC",  0xfffc0000, 0x78b00000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
++#endif
++	{ "BC",   0xfffc0000, 0x78b00000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BRV",  0xfffc0000, 0x78b80000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	// CLRF ... an XOR w/ self instruction
 +	//	0.rrrr.00100.ccc.1.rrrr.iiiii---
 +	//	0rrr r001 00cc c1rr rr00 0000 0000 0000
-+	{ "CLRF", 0xffc7cfff, 0x01040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x09044000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x11048000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x1904c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x21050000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x29054000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x31058000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x3905c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x41060000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x49064000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x51068000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x5906c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x61070000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x69074000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x71078000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "CLRF", 0xffc7cfff, 0x7907c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
++	{ "CLRF", 0xffc7cfff, 0x01040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R0
++	{ "CLRF", 0xffc7cfff, 0x09044000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R1
++	{ "CLRF", 0xffc7cfff, 0x11048000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R2
++	{ "CLRF", 0xffc7cfff, 0x1904c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R3
++	{ "CLRF", 0xffc7cfff, 0x21050000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R4
++	{ "CLRF", 0xffc7cfff, 0x29054000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R5
++	{ "CLRF", 0xffc7cfff, 0x31058000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R6
++	{ "CLRF", 0xffc7cfff, 0x3905c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R7
++	{ "CLRF", 0xffc7cfff, 0x41060000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R8
++	{ "CLRF", 0xffc7cfff, 0x49064000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R9
++	{ "CLRF", 0xffc7cfff, 0x51068000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R10
++	{ "CLRF", 0xffc7cfff, 0x5906c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R11
++	{ "CLRF", 0xffc7cfff, 0x61070000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // R12
++	{ "CLRF", 0xffc7cfff, 0x69074000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // SP
++	{ "CLRF", 0xffc7cfff, 0x71078000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // CC
++	{ "CLRF", 0xffc7cfff, 0x7907c000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) }, // PC
 +	// CLR -- a LDI of zero
 +	//	0.rrrr.1011.iiiiiii--
 +	//	0rrr r101 1...
@@ -7576,31 +9771,18 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "ASR", 0x87c40000, 0x01c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "ASR", 0x87c40000, 0x01c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
 +	//
-+#ifdef	LONG_MPY
 +	{ "MPY",0x87c40000, 0x02000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "MPY",0x87c40000, 0x02040000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+#else
-+	{ "LDIHI",0x87c40000, 0x02000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
-+	{ "LDIHI",0x87c40000, 0x02040000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+#endif
 +	//
 +	{ "LDILO",0x87c40000, 0x02400000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "LDILO",0x87c40000, 0x02440000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
 +	//
-+#ifdef	LONG_MPY
 +	//
 +	{ "MPYUHI", 0x87c40000, 0x02800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "MPYUHI", 0x87c40000, 0x02840000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
 +	//
 +	{ "MPYSHI", 0x87c40000, 0x02c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "MPYSHI", 0x87c40000, 0x02c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+#else
-+	{ "MPYU", 0x87c40000, 0x02800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
-+	{ "MPYU", 0x87c40000, 0x02840000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+	//
-+	{ "MPYS", 0x87c40000, 0x02c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
-+	{ "MPYS", 0x87c40000, 0x02c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+#endif
 +	//
 +	{ "BREV", 0x87c40000, 0x03000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	{ "BREV", 0x87c40000, 0x03040000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
@@ -7651,9 +9833,9 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "FPSUB",0x87c43fff, 0x06440000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
 +	{ "FPMPY",0x87c43fff, 0x06840000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
 +	{ "FPDIV",0x87c43fff, 0x06c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
-+	{ "FPCVT",0x87c40000, 0x07000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
-+	{ "FPCVT",0x87c40000, 0x07040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
-+	{ "FPINT",0x87c40000, 0x07440000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
++	{ "FPI2F",0x87c40000, 0x07000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
++	{ "FPI2F",0x87c40000, 0x07040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
++	{ "FPF2I",0x87c40000, 0x07440000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_IMMFIELD(14,0), ZIP_BITFIELD(3,19) },
 +	//
 +	//
 +	//
@@ -7664,6 +9846,53 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	// 
 +	//	1.1111.00010.xcc.0iiii.xxxx.xxxxx.xxxxx
 +	//	1111.1000.10xc.c0ii.iixx.xxxx.xxxx.xxxx
++#ifdef	VLIW_OP_UNDER_TEST
++	// Mask, val, result, Ra, Rb, I, condition (no conditions for OP_UNDER_TEST)
++	// BRA: 1.1111.011.0.sssssss
++	{ "BRA", 0xff800000, 0xfb000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	// CLR: 1.rrrr.101.00000000
++	{ "CLR", 0x87800000, 0x85000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	// RTN: 1.1111.011.0.0000.000, MOV R0,Pc
++	{ "RTN", 0xffff0000, 0xfb000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	// JMP: 1.1111.011.0.rrrrsss
++	{ "JMP", 0xff800000, 0xfb000000, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	// LJSR: 1.000_0.011_.0.111_1.001 ?.1111.110.1.1111.000
++	{ "LJSR",0xffffffff, 0x83797ef8, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.000.0.sssssss
++	{ "SUB", 0x87800000, 0x80000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	// 1.rrrr.000.1.rrrrsss
++	{ "SUB", 0x87800000, 0x80800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.001.0.sssssss
++	// 1.rrrr.001.1.rrrrsss
++	{ "AND", 0x87800000, 0x81000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "AND", 0x87800000, 0x81800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.010.0.sssssss
++	// 1.rrrr.010.1.rrrrsss
++	{ "ADD", 0x87800000, 0x82000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "ADD", 0x87800000, 0x82800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.011.a.rrrrsss
++	{ "MOV", 0x87800000, 0x83000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "MOV", 0x87800000, 0x83800000, ZIP_URGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.100.0.sssssss
++	// 1.rrrr.100.1.rrrrsss
++	{ "CMP", 0x87800000, 0x84000000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "CMP", 0x87800000, 0x84800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	// 1.rrrr.101.ssssssss
++	{ "LDI", 0x87000000, 0x85000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
++	// 1.rrrr.110.0.sssssss
++	{ "LOD", 0x87800000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	// 1.rrrr.110.1.rrrrsss
++	{ "LOD", 0x87800000, 0x86800000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	// 1.rrrr.111.0.sssssss
++	{ "STO", 0x87800000, 0x87000000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	// 1.rrrr.111.1.rrrrsss
++	{ "STO", 0x87800000, 0x87800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++#else
 +	{ "BRA",  0xffd40000, 0xf8800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_OPUNUSED },
 +	{ "BLT",  0xffd40000, 0xf8840000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_OPUNUSED },
 +	{ "BZ",  0xffd40000, 0xf8900000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_OPUNUSED },
@@ -7702,27 +9931,14 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "ASR", 0x87c40000, 0x81c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
 +	{ "ASR", 0x87c40000, 0x81c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	//
-+#ifdef	LONG_MPY
 +	{ "MPY",0x87c40000, 0x82000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(5,14), ZIP_BITFIELD(2,19) },
-+#else
-+	{ "LDIHI",0x87c40000, 0x82000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(5,14), ZIP_BITFIELD(2,19) },
-+#endif
 +	{ "LDILO",0x87c40000, 0x82400000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(5,14), ZIP_BITFIELD(2,19) },
-+#ifdef	LONG_MPY
 +	//
 +	{ "MPYUHI", 0x87c40000, 0x82800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
 +	{ "MPYUHI", 0x87c40000, 0x82840000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	//
 +	{ "MPYSHI", 0x87c40000, 0x82c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
 +	{ "MPYSHI", 0x87c40000, 0x82c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
-+#else
-+	//
-+	{ "MPYU", 0x87c40000, 0x82800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
-+	{ "MPYU", 0x87c40000, 0x82840000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
-+	//
-+	{ "MPYS", 0x87c40000, 0x82c00000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
-+	{ "MPYS", 0x87c40000, 0x82c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
-+#endif
 +	// brev
 +	{ "BREV", 0x87c40000, 0x83000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
 +	{ "BREV", 0x87c40000, 0x83040000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
@@ -7770,13 +9986,14 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	//
 +	{ "FPDIV",0x87c40000, 0x86c40000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	//
-+	{ "FPCVT",0x87c40000, 0x87000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
-+	{ "FPCVT",0x87c40000, 0x87040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
++	{ "FPI2F",0x87c40000, 0x87000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,14), ZIP_BITFIELD(2,19) },
++	{ "FPI2F",0x87c40000, 0x87040000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	//
-+	{ "FPINT",0x87c40000, 0x87440000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
++	{ "FPF2I",0x87c40000, 0x87440000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(14), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	//
 +	//
 +	// Illegal instruction !!
++#endif
 +	{ "ILL", 0x00000000, 0x00000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,0), ZIP_OPUNUSED }
 +};
 +
@@ -7787,6 +10004,53 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	//	16-bit instructions, low side ... treat these as special
 +	//
 +	//
++#ifdef	VLIW_OP_UNDER_TEST
++	// Mask, val, result, Ra, Rb, I, condition (no conditions for OP_UNDER_TEST)
++	// BRA: 1.xxx_xxxx_xxxx_xxxx_?.111_1.011.0.sssssss
++	{ "BRA", 0x80007f80, 0x80007b00, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	// CLR: 1.xxx_xxxx_xxxx_xxxx_?.rrr_r.101.0000_0000
++	{ "CLR", 0x800007ff, 0x80000500, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	// RTN: 1.1111.011.0.0000.000, MOV R0,Pc
++	{ "RTN", 0x80007fff, 0x80007b00, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	// JMP: 1.1111.011.0.rrrrsss
++	{ "JMP", 0x80007f80, 0x80007b00, ZIP_REGFIELD(11),ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	// LJMP: 1.xxx_xxxx_xxxx_xxxx_?.111_1.110._1.111_1.000
++	{ "LJMP", 0x80007fff, 0x80007ef8, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.000.0.sssssss
++	{ "SUB", 0x80000780, 0x80000000, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	// 1.rrrr.000.1.rrrrsss
++	{ "SUB", 0x80000780, 0x80800080, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.001.0.sssssss
++	// 1.rrrr.001.1.rrrrsss
++	{ "AND", 0x80000780, 0x80000100, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	{ "AND", 0x80000780, 0x80000180, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.010.0.sssssss
++	// 1.rrrr.010.1.rrrrsss
++	{ "ADD", 0x80000780, 0x80000200, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	{ "ADD", 0x80000780, 0x80000280, ZIP_REGFIELD(11), ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.011.a.rrrrsss
++	{ "MOV", 0x80000780, 0x80000300, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	{ "MOV", 0x80000780, 0x80000380, ZIP_URGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	//
++	// 1.rrrr.100.0.sssssss
++	// 1.rrrr.100.1.rrrrsss
++	{ "CMP", 0x80000780, 0x80000400, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	{ "CMP", 0x80000780, 0x80000480, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	// 1.rrrr.101.ssssssss
++	{ "LDI", 0x80000700, 0x80000500, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,0), ZIP_OPUNUSED },
++	// 1.rrrr.110.0.sssssss
++	{ "LOD", 0x80000780, 0x80000600, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_SP, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	// 1.rrrr.110.1.rrrrsss
++	{ "LOD", 0x80000780, 0x80000680, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	// 1.rrrr.111.0.sssssss
++	{ "STO", 0x80000780, 0x80000700, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_SP, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	// 1.rrrr.111.1.rrrrsss
++	{ "STO", 0x80000780, 0x80000780, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++#else
 +	// Special case instructions.  These are general instructions, but with
 +	// special opcodes
 +	// Conditional branches
@@ -7794,7 +10058,7 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	//	1xxx.xxxx.xx1c.cxxx.xx11.1100.0100.iiii
 +	{ "BRA",  0x80203ff0, 0x80003c40, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
 +	{ "BLT",  0x80383ff0, 0x80283c40, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
-+	{ "BZ",  0x80383ff0, 0x80303c40, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
++	{ "BZ",   0x80383ff0, 0x80303c40, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
 +	{ "BNZ",  0x80383ff0, 0x80383c40, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
 +	//
 +	{ "LJMP", 0x80203fff, 0x80003e5f, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
@@ -7857,20 +10121,13 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "ASR", 0x802003f0, 0x802000e0, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
 +	{ "ASR", 0x800003f0, 0x800000f0, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	{ "ASR", 0x802003f0, 0x802000f0, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
-+#ifdef	LONG_MPY
 +	//
 +	{ "MPY",0x800003e0, 0x80000100, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_BITFIELD(2,19) },
 +	{ "MPY",0x802003e0, 0x80200100, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_OPUNUSED },
-+#else
-+	//
-+	{ "LDIHI",0x800003e0, 0x80000100, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_BITFIELD(2,19) },
-+	{ "LDIHI",0x802003e0, 0x80200100, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_OPUNUSED },
-+#endif
 +	// ldilo
 +	{ "LDILO",0x800003e0, 0x80000120, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_BITFIELD(2,19) },
 +	{ "LDILO",0x802003e0, 0x80200120, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(5,0), ZIP_OPUNUSED },
 +	//
-+#ifdef	LONG_MPY
 +	{ "MPYUHI", 0x800003f0, 0x80000140, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
 +	{ "MPYUHI", 0x802003f0, 0x80200140, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
 +	{ "MPYUHI", 0x800003f0, 0x80000150, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
@@ -7881,18 +10138,6 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "MPYSHI", 0x800003f0, 0x80000170, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	{ "MPYSHI", 0x802003f0, 0x80200170, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	//
-+#else
-+	{ "MPYU", 0x800003f0, 0x80000140, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
-+	{ "MPYU", 0x802003f0, 0x80200140, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
-+	{ "MPYU", 0x800003f0, 0x80000150, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
-+	{ "MPYU", 0x802003f0, 0x80200150, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	// ad
-+	{ "MPYS", 0x800003f0, 0x80000160, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
-+	{ "MPYS", 0x802003f0, 0x80200160, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
-+	{ "MPYS", 0x800003f0, 0x80000170, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
-+	{ "MPYS", 0x802003f0, 0x80200170, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	// mpe
-+#endif
 +	//
 +	{ "BREV", 0x800003f0, 0x80000180, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
 +	{ "BREV", 0x802003f0, 0x80200180, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
@@ -7964,13 +10209,14 @@ diff -Naur '--exclude=*.swp' binutils-2.25-original/opcodes/zip-opc.c binutils-2
 +	{ "FPDIV",0x802003f0, 0x80000370, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	{ "FPDIV",0x802003f0, 0x80200370, ZIP_REGFIELD(10), ZIP_REGFIELD(10), ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	// Convert to floating point
-+	{ "FPCVT",0x802003f0, 0x80000380, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
-+	{ "FPCVT",0x802003f0, 0x80200380, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
-+	{ "FPCVT",0x802003f0, 0x80000390, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "FPCVT",0x802003f0, 0x80200390, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
++	{ "FPI2F",0x802003f0, 0x80000380, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_OPUNUSED },
++	{ "FPI2F",0x802003f0, 0x80200380, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(4,0), ZIP_BITFIELD(2,19) },
++	{ "FPI2F",0x802003f0, 0x80000390, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "FPI2F",0x802003f0, 0x80200390, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
 +	// Convert to integer
-+	{ "FPINT",0x802003f0, 0x800003b0, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "FPINT",0x802003f0, 0x802003b0, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
++	{ "FPF2I",0x802003f0, 0x800003b0, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "FPF2I",0x802003f0, 0x802003b0, ZIP_REGFIELD(10), ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_BITFIELD(2,19) },
++#endif
 +	//
 +	//
 +	// Illegal instruction !!
