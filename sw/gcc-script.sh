@@ -46,6 +46,13 @@ fi
 
 set +h
 set -e
+if [[ $? != 0 ]]; then
+  echo "This build script only works for x86_64 machines"
+  echo "You will need to change the CLFS_HOST line if you wish to build"
+  echo "on any other type of host."
+  exit 1
+fi
+
 CLFS_HOST="x86_64-cross-linux-gnu"
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install

@@ -42,15 +42,22 @@ fi
 
 set +h
 set -e
+uname -a | grep x86 > /dev/null
+if [[ $? != 0 ]]; then
+  echo "This build script only works for x86_64 machines"
+  echo "You will need to change the CLFS_HOST line if you wish to build"
+  echo "on any other type of host."
+  exit 1
+fi
+
 CLFS_HOST="x86_64-cross-linux-gnu"
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
 mkdir -p ${INSTALL_BASE}/cross-tools
-mkdir -p ${INSTALL_BASE}/tools/lib
 mkdir -p build-gas
 cd build-gas
 AR=ar AS=as	\
-../binutils-2.25/configure --with-gas
+../binutils-2.25/configure --with-gas				\
 	--prefix=${INSTALL_BASE}/cross-tools			\
 	--host=${CLFS_HOST}	--target=${CLFS_TARGET}		\
 	--disable-nls		--disable-multilib		\

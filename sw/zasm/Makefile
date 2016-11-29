@@ -60,6 +60,7 @@ HFILES= asmdata.h twoc.h zopcodes.h zparser.h
 all:	$(OBJDIR)/ programs
 
 install: zasm zdump zpp
+	bash -c "if [[ ! -e $(INSTALLD) ]]; then mkdir -p $(INSTALLD); fi"
 	cp $^ $(INSTALLD)/
 
 programs:	$(PROGRAMS)
