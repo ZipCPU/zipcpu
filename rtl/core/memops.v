@@ -44,7 +44,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=24, IMPLEMENT_LOCK=0, AW=ADDRESS_WIDTH;
+	parameter	ADDRESS_WIDTH=32, IMPLEMENT_LOCK=0;
+	localparam	AW=ADDRESS_WIDTH;
 	input			i_clk, i_rst;
 	input			i_stb, i_lock;
 	// CPU interface
@@ -72,8 +73,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;
-	assign	lcl_stb = (i_stb)&&(i_addr[31:8]==24'hc00000)&&(i_addr[7:5]==3'h0);
-	assign	gbl_stb = (i_stb)&&((i_addr[31:8]!=24'hc00000)||(i_addr[7:5]!=3'h0));
+	assign	lcl_stb = (i_stb)&&(i_addr[31:24]==8'hff);
+	assign	gbl_stb = (i_stb)&&(i_addr[31:24]!=8'hff);
 
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;

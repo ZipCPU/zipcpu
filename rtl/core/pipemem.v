@@ -42,7 +42,8 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=32, IMPLEMENT_LOCK=0, AW=ADDRESS_WIDTH;
+	parameter	ADDRESS_WIDTH=32, IMPLEMENT_LOCK=0;
+	localparam	AW=ADDRESS_WIDTH;
 	input			i_clk, i_rst;
 	input			i_pipe_stb, i_lock;
 	// CPU interface
@@ -90,7 +91,7 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 	assign	nxt_rdaddr = rdaddr + 4'h1;
 
 	wire	gbl_stb, lcl_stb;
-	assign	lcl_stb = (i_addr[31:8]==24'hc00000)&&(i_addr[7:5]==3'h0);
+	assign	lcl_stb = (i_addr[31:24]==8'hff);
 	assign	gbl_stb = (~lcl_stb);
 			//= ((i_addr[31:8]!=24'hc00000)||(i_addr[7:5]!=3'h0));
 
