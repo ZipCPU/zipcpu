@@ -44,8 +44,7 @@ then
   cd ..
 fi
 
-set +h
-set -e
+uname -a | grep x86 > /dev/null
 if [[ $? != 0 ]]; then
   echo "This build script only works for x86_64 machines"
   echo "You will need to change the CLFS_HOST line if you wish to build"
@@ -53,7 +52,10 @@ if [[ $? != 0 ]]; then
   exit 1
 fi
 
+set +h
+set -e
 CLFS_HOST="x86_64-cross-linux-gnu"
+# CLFS_HOST="arm-unknown-linux-gnueabihf" # For a Raspberry Pi ??
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
 mkdir -p ${INSTALL_BASE}/cross-tools
@@ -87,10 +89,10 @@ AS=as AR=ar ../gcc-5.3.0-zip/configure --with-gas      \
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
 	|| PATH=$PATH:${INSTALL_BASE}/cross-tools/bin
-make || true
-cd gcc; make || true
-cd ../; make all-libcc1 || true
-cd libcc1; make || true
-cd ../gcc; make || true
-make install || true
+make $* || true
+cd gcc; make $* || true
+cd ../; make $* all-libcc1 || true
+cd libcc1; make $* || true
+cd ../gcc; make $* || true
+make $* install || true
 

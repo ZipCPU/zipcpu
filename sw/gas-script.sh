@@ -40,8 +40,6 @@ then
   cd ..
 fi
 
-set +h
-set -e
 uname -a | grep x86 > /dev/null
 if [[ $? != 0 ]]; then
   echo "This build script only works for x86_64 machines"
@@ -50,7 +48,10 @@ if [[ $? != 0 ]]; then
   exit 1
 fi
 
+set +h
+set -e
 CLFS_HOST="x86_64-cross-linux-gnu"
+# CLFS_HOST="arm-unknown-linux-gnueabihf" # For a Raspberry Pi
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
 mkdir -p ${INSTALL_BASE}/cross-tools
