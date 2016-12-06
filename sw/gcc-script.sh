@@ -34,14 +34,18 @@
 ################################################################################
 ##
 ##
-if [[ ! -d gcc-5.3.0-zip ]]
+if [[ ! -d gcc-6.2.0-zip ]]
 then
-  tar -xjf ./gcc-5.3.0.tar.bz2 --transform s,gcc-5.3.0,gcc-5.3.0-zip,
-  cd gcc-5.3.0-zip
-  patch -p1 <../gcc-5.3.0-specs-1.patch
-  rm gcc/config/rs6000/sysv4.h.orig
-  patch -p1 <../gcc-zippatch.patch
+  tar -xjf ./gcc-6.2.0.tar.bz2 --transform s,gcc-6.2.0,gcc-6.2.0-zip,
+  cd gcc-6.2.0-zip
+  patch -p1 <../gcc6-zippatch.patch
   cd ..
+  if [[ -d build-gcc ]]
+  then
+    # Remove any incomplete build projects from ... possibly other versions
+    # This way we can reuse the build directory
+    rm -rf build-gcc/
+  fi
 fi
 
 uname -a | grep x86 > /dev/null
@@ -73,22 +77,22 @@ OBJDUMP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-objdump
 READELF_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-readelf
 STRIP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-strip
 
-AS=as AR=ar ../gcc-5.3.0-zip/configure --with-gas      \
-        --prefix=${INSTALL_BASE}/cross-tools           \
-        --target=${CLFS_TARGET} --host=${CLFS_HOST}    \
-        --with-pkgversion=zip-gcc-`date +%y%m%d`       \
-        --disable-shared --disable-multilib            \
-        --disable-threads --disable-tls                \
-        --disable-libada --disable-libsanitizer        \
-        --disable-libssp --disable-libquadmath         \
-        --disable-libgomp --disable-libvtv             \
-        --enable-checking --disable-nls                \
-        --disable-sjlj-exceptions                      \
-        --disable-decimal-float --disable-fixed-point  \
+AS=as AR=ar ../gcc-6.2.0-zip/configure --with-gas	\
+        --prefix=${INSTALL_BASE}/cross-tools		\
+        --target=${CLFS_TARGET} --host=${CLFS_HOST}	\
+        --with-pkgversion=zip-gcc-`date +%y%m%d`	\
+        --disable-multilib				\
+        --disable-threads --disable-tls			\
+        --disable-libada --disable-libsanitizer		\
+        --disable-libssp --disable-libquadmath		\
+        --disable-libgomp --disable-libvtv		\
+        --enable-checking --disable-nls			\
+        --disable-sjlj-exceptions			\
+        --disable-decimal-float --disable-fixed-point	\
         --disable-lto --disable-canonical-system-headers
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
-	|| PATH=$PATH:${INSTALL_BASE}/cross-tools/bin
+	|| PATH=${INSTALL_BASE}/cross-tools/bin:$PATH
 make $* || true
 cd gcc; make $* || true
 cd ../; make $* all-libcc1 || true

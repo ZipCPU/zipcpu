@@ -90,16 +90,14 @@ binutils-pdf-install: binutils-pdf
 # Now let's try the same thing for GCC
 #
 #
-gcc-5.3.0-zip: gcc-5.3.0.tar.bz2 gcc-5.3.0-specs-1.patch gcc-zippatch.patch
-	rm -rf gcc-5.3.0-zip/
-	tar -xjf ./gcc-5.3.0.tar.bz2 --transform s,gcc-5.3.0,gcc-5.3.0-zip,
-	bash -c "cd gcc-5.3.0-zip; patch -p1 <../gcc-5.3.0-specs-1.patch"
-	rm gcc-5.3.0-zip/gcc/config/rs6000/sysv4.h.orig
-	bash -c "cd gcc-5.3.0-zip; patch -p1 <../gcc-zippatch.patch"
+gcc-6.2.0-zip: gcc-6.2.0.tar.bz2 gcc6-zippatch.patch
+	rm -rf gcc-6.2.0-zip/
+	tar -xjf ./gcc-6.2.0.tar.bz2 --transform s,gcc-6.2.0,gcc-6.2.0-zip,
+	bash -c "cd gcc-6.2.0-zip; patch -p1 <../gcc6-zippatch.patch"
 	rm -rf $(BUILDGCCD)
 	
 .PHONY: gcc
-gcc: gcc-5.3.0-zip
+gcc: gcc-6.2.0-zip
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
 	$(MAKE) --no-print-directory --directory=$(BUILDGCCD)/gcc
 
@@ -135,7 +133,7 @@ zasm-install: zasm
 .PHONY: clean
 clean:
 	rm -rf $(INSTALL)
-	rm -rf binutils-2.25 gcc-5.3.0-zip
+	rm -rf binutils-2.25 gcc-5.3.0-zip gcc-6.2.0-zip
 	rm -rf $(BUILDGASD) $(BUILDGCCD)
 	$(MAKE) --no-print-directory --directory=$(ZASMD) clean
 
