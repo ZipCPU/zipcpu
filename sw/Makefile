@@ -50,7 +50,7 @@
 #
 ################################################################################
 #
-basic-install: binutils-install gcc-install zasm-install
+basic-install: binutils-install gcc-install
 all: basic-install binutils-pdf-install gcc-pdf-install
 
 BINUTILSD=binutils-2.25
