@@ -14,7 +14,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -45,12 +45,6 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	output	reg		o_valid;
 	output	wire		o_busy;
 
-	// Rotate-left pre-logic
-	wire	[63:0]	w_rol_tmp;
-	assign	w_rol_tmp = { i_a, i_a } << i_b[4:0];
-	wire	[31:0]	w_rol_result;
-	assign	w_rol_result = w_rol_tmp[63:32]; // Won't set flags
-
 	// Shift register pre-logic
 	wire	[32:0]		w_lsr_result, w_asr_result, w_lsl_result;
 	wire	signed	[32:0]	w_pre_asr_input, w_pre_asr_shifted;
@@ -74,19 +68,6 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	begin : bit_reversal_cpuop
 		assign w_brev_result[k] = i_b[31-k];
 	end endgenerate
-
-	// Popcount pre-logic
-	wire	[31:0]	w_popc_result;
-	assign	w_popc_result[5:0]=
-		 ({5'h0,i_b[ 0]}+{5'h0,i_b[ 1]}+{5'h0,i_b[ 2]}+{5'h0,i_b[ 3]})
-		+({5'h0,i_b[ 4]}+{5'h0,i_b[ 5]}+{5'h0,i_b[ 6]}+{5'h0,i_b[ 7]})
-		+({5'h0,i_b[ 8]}+{5'h0,i_b[ 9]}+{5'h0,i_b[10]}+{5'h0,i_b[11]})
-		+({5'h0,i_b[12]}+{5'h0,i_b[13]}+{5'h0,i_b[14]}+{5'h0,i_b[15]})
-		+({5'h0,i_b[16]}+{5'h0,i_b[17]}+{5'h0,i_b[18]}+{5'h0,i_b[19]})
-		+({5'h0,i_b[20]}+{5'h0,i_b[21]}+{5'h0,i_b[22]}+{5'h0,i_b[23]})
-		+({5'h0,i_b[24]}+{5'h0,i_b[25]}+{5'h0,i_b[26]}+{5'h0,i_b[27]})
-		+({5'h0,i_b[28]}+{5'h0,i_b[29]}+{5'h0,i_b[30]}+{5'h0,i_b[31]});
-	assign	w_popc_result[31:6] = 26'h00;
 
 	// Prelogic for our flags registers
 	wire	z, n, v;
@@ -333,13 +314,11 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		4'b0101:{o_c,c } <= w_lsr_result[32:0];	// LSR
 		4'b0110:{c,o_c } <= w_lsl_result[32:0]; // LSL
 		4'b0111:{o_c,c } <= w_asr_result[32:0];	// ASR
-		4'b1000:   o_c   <= mpy_result[31:0]; // MPY
+		4'b1000:   o_c   <= w_brev_result;	// BREV
 		4'b1001:   o_c   <= { i_a[31:16], i_b[15:0] }; // LODILO
-		4'b1010:   o_c   <= mpy_result[63:32]; // MPYHU
-		4'b1011:   o_c   <= mpy_result[63:32]; // MPYHS
-		4'b1100:   o_c   <= w_brev_result;	// BREV
-		4'b1101:   o_c   <= w_popc_result;	// POPC
-		4'b1110:   o_c   <= w_rol_result;	// ROL
+		4'b1010:   o_c   <= mpy_result[63:32];	// MPYHU
+		4'b1011:   o_c   <= mpy_result[63:32];	// MPYHS
+		4'b1100:   o_c   <= mpy_result[31:0];	// MPY
 		default:   o_c   <= i_b;		// MOV, LDI
 		endcase
 	end else // if (mpydone)
