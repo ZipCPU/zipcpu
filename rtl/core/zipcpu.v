@@ -74,7 +74,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -130,7 +130,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		// CPU interface to the wishbone bus
 		o_wb_gbl_cyc, o_wb_gbl_stb,
 			o_wb_lcl_cyc, o_wb_lcl_stb,
-			o_wb_we, o_wb_addr, o_wb_data,
+			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data,
 			i_wb_err,
 		// Accounting/CPU usage interface
@@ -139,7 +139,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		, o_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=32,
+	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=8;
 `ifdef	OPT_MULTIPLY
 	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
@@ -179,6 +179,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we;
 	output	wire	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
+	output	wire	[3:0]	o_wb_sel;
 	// Wishbone interface -- inputs
 	input			i_wb_ack, i_wb_stall;
 	input		[31:0]	i_wb_data;
@@ -216,11 +217,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	reg		break_en, step, sleep, r_halted;
 	wire		break_pending, trap, gie, ubreak;
 	wire		w_clear_icache, ill_err_u;
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	reg		ill_err_i;
-`else
-	wire		ill_err_i;
-`endif
 	reg		ibus_err_flag;
 	wire		ubus_err_flag;
 	wire		idiv_err_flag, udiv_err_flag;
@@ -303,12 +300,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	reg	opA_alu, opA_mem;
 	reg	opB_alu, opB_mem;
 `endif
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	reg	op_illegal;
-`else
-	wire	op_illegal;
-	assign	op_illegal = 1'b0;
-`endif
 	wire	op_break;
 	wire	op_lock;
 
@@ -342,6 +334,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire			mem_busy, mem_rdbusy;
 	wire	[(AW-1):0]	mem_addr;
 	wire	[31:0]		mem_data, mem_result;
+	wire	[3:0]		mem_sel;
 
 	wire	div_ce, div_error, div_busy, div_valid;
 	wire	[31:0]	div_result;
@@ -690,26 +683,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	wire	[8:0]	w_cpu_info;
 	assign	w_cpu_info = {
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	1'b1,
-`else
-	1'b0,
-`endif
-`ifdef	OPT_MULTIPLY
-	1'b1,
-`else
-	1'b0,
-`endif
-`ifdef	OPT_DIVIDE
-	1'b1,
-`else
-	1'b0,
-`endif
-`ifdef	OPT_IMPLEMENT_FPU
-	1'b1,
-`else
-	1'b0,
-`endif
+	(IMPLEMENT_MPY    >0)? 1'b1:1'b0,
+	(IMPLEMENT_DIVIDE >0)? 1'b1:1'b0,
+	(IMPLEMENT_FPU    >0)? 1'b1:1'b0,
 `ifdef	OPT_PIPELINED
 	1'b1,
 `else
@@ -739,10 +716,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	wire	[31:0]	w_pcA_v;
 	generate
-	if (AW < 32)
-		assign	w_pcA_v = {{(32-AW){1'b0}}, (dcdA[4] == dcd_gie)?dcd_pc:upc };
+	if (AW < 30)
+		assign	w_pcA_v = {{(30-AW){1'b0}}, (dcdA[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
 	else
-		assign	w_pcA_v = (dcdA[4] == dcd_gie)?dcd_pc:upc;
+		assign	w_pcA_v = { (dcdA[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
 	endgenerate
 
 `ifdef	OPT_PIPELINED
@@ -788,24 +765,25 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	wire	[31:0]	w_opBnI, w_pcB_v;
 	generate
-	if (AW < 32)
-		assign	w_pcB_v = {{(32-AW){1'b0}}, (dcdB[4] == dcd_gie)?dcd_pc:upc };
+	if (AW < 30)
+		assign	w_pcB_v = {{(30-AW){1'b0}}, (dcdB[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
 	else
-		assign	w_pcB_v = (dcdB[4] == dcd_gie)?dcd_pc:upc;
+		assign	w_pcB_v = { ((dcdB[4] == dcd_gie)?dcd_pc:upc), 2'b00 };
 	endgenerate
 
 	assign	w_opBnI = (~dcdB_rd) ? 32'h00
 `ifdef	OPT_PIPELINED
 		: ((wr_reg_ce)&&(wr_reg_id == dcdB)) ? wr_gpreg_vl
 `endif
-		: ((dcdB_pc) ? w_pcB_v
 		: ((dcdB_cc) ? { w_cpu_info, w_opB[22:16], // w_opB[31:14],
 			1'b0, (dcdB[4])?w_uflags:w_iflags}
-		: w_opB));
+		: w_opB);
 
 	always @(posedge i_clk)
 `ifdef	OPT_PIPELINED
-		if (op_change_data_ce)
+		if ((op_change_data_ce)&&(dcdB_pc))
+			r_opB <= w_pcB_v + { dcdI[29:0], 2'b00 };
+		else if (op_change_data_ce)
 			r_opB <= w_opBnI + dcdI;
 		else if ((wr_reg_ce)&&(opB_id == wr_reg_id)&&(opB_rd))
 			r_opB <= wr_gpreg_vl;
@@ -831,17 +809,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		begin // Set the flag condition codes, bit order is [3:0]=VNCZ
 			case(dcdF[2:0])
 			3'h0:	r_opF <= 7'h00;	// Always
-			3'h1:	r_opF <= 7'h44;	// LT
-			3'h2:	r_opF <= 7'h11;	// Z
-			3'h3:	r_opF <= 7'h10;	// NE
-			3'h4:	r_opF <= 7'h50;	// GT (!N&!Z)
-`ifdef	OPT_NEW_CONDITION_CODE
-			3'h5:	r_opF <= 7'h20;	// NC
-`else
-			3'h5:	r_opF <= 7'h40;	// GE (!N)
-`endif
-			3'h6:	r_opF <= 7'h02;	// C
-			3'h7:	r_opF <= 7'h08;	// V
+			3'h1:	r_opF <= 7'h11;	// Z
+			3'h2:	r_opF <= 7'h44;	// LT
+			3'h3:	r_opF <= 7'h22;	// C
+			3'h4:	r_opF <= 7'h08;	// V
+			3'h5:	r_opF <= 7'h10;	// NE
+			3'h6:	r_opF <= 7'h40;	// GE (!N)
+			3'h7:	r_opF <= 7'h20;	// NC
 			endcase
 		end // Bit order is { (flags_not_used), VNCZ mask, VNCZ value }
 	assign	opF = { r_opF[3], r_opF[6:0] };
@@ -872,18 +846,11 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			//   wait until our operands are valid, then we aren't
 			//   valid yet until then.
 			opvalid<= (w_opvalid)||(dcd_illegal)&&(dcdvalid)||(dcd_early_branch);
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 			opvalid_alu <= (w_opvalid)&&((dcdALU)||(dcd_illegal)
 					||(dcd_early_branch));
 			opvalid_mem <= (dcdM)&&(~dcd_illegal)&&(w_opvalid);
 			opvalid_div <= (dcdDV)&&(~dcd_illegal)&&(w_opvalid);
 			opvalid_fpu <= (dcdFP)&&(~dcd_illegal)&&(w_opvalid);
-`else
-			opvalid_alu <= (dcdALU)&&(w_opvalid)||(dcd_early_branch);
-			opvalid_mem <= (dcdM)&&(w_opvalid);
-			opvalid_div <= (dcdDV)&&(w_opvalid);
-			opvalid_fpu <= (dcdFP)&&(w_opvalid);
-`endif
 		end else if ((adf_ce_unconditional)||(mem_ce))
 		begin
 			opvalid     <= 1'b0;
@@ -1270,7 +1237,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	alu_pc = op_pc;
 `endif
 
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	reg	r_alu_illegal;
 	initial	r_alu_illegal = 0;
 	always @(posedge i_clk)
@@ -1281,9 +1247,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else
 			r_alu_illegal <= 1'b0;
 	assign	alu_illegal = (r_alu_illegal);
-`else
-	assign	alu_illegal = 1'b0;
-`endif
 
 	initial	r_alu_pc_valid = 1'b0;
 	initial	mem_pc_valid = 1'b0;
@@ -1325,22 +1288,22 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 `ifdef	OPT_PIPELINED_BUS_ACCESS
 	pipemem	#(AW,IMPLEMENT_LOCK) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
-				(opn[0]), opB, opA, opR,
+				(opn[2:0]), opB, opA, opR,
 				mem_busy, mem_pipe_stalled,
 				mem_valid, bus_err, mem_wreg, mem_result,
 			mem_cyc_gbl, mem_cyc_lcl,
 				mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_addr, mem_data,
+				mem_we, mem_addr, mem_data, mem_sel,
 				mem_ack, mem_stall, mem_err, i_wb_data);
 			
 `else // PIPELINED_BUS_ACCESS
 	memops	#(AW,IMPLEMENT_LOCK) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
-				(opn[0]), opB, opA, opR,
+				(opn[2:0]), opB, opA, opR,
 				mem_busy,
 				mem_valid, bus_err, mem_wreg, mem_result,
 			mem_cyc_gbl, mem_cyc_lcl,
 				mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_addr, mem_data,
+				mem_we, mem_addr, mem_data, mem_sel,
 				mem_ack, mem_stall, mem_err, i_wb_data);
 	assign	mem_pipe_stalled = 1'b0;
 `endif // PIPELINED_BUS_ACCESS
@@ -1351,13 +1314,14 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wbdblpriarb	#(32,AW) pformem(i_clk, i_rst,
 		// Memory access to the arbiter, priority position
 		mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
-			mem_we, mem_addr, mem_data, mem_ack, mem_stall, mem_err,
+			mem_we, mem_addr, mem_data, mem_sel,
+			mem_ack, mem_stall, mem_err,
 		// Prefetch access to the arbiter
-		pf_cyc, 1'b0, pf_stb, 1'b0, pf_we, pf_addr, pf_data,
+		pf_cyc, 1'b0, pf_stb, 1'b0, pf_we, pf_addr, pf_data, 4'hf,
 			pf_ack, pf_stall, pf_err,
 		// Common wires, in and out, of the arbiter
 		o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb, 
-			o_wb_we, o_wb_addr, o_wb_data,
+			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_err);
 
 
@@ -1386,17 +1350,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//	bus instruction, so they don't need to be checked here.
 	//	Further, alu_wr includes (set_cond), so we don't need to
 	//	check for that here either.
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	assign	wr_reg_ce = (dbgv)||(mem_valid)
 				||((~clear_pipeline)&&(~alu_illegal)
 					&&(((alu_wr)&&(alu_valid))
 						||(div_valid)||(fpu_valid)));
-`else
-	assign	wr_reg_ce = (dbgv)||(mem_valid)
-				||((~clear_pipeline)
-					&&(((alu_wr)&&(alu_valid))
-						||(div_valid)||(fpu_valid)));
-`endif
 	// Which register shall be written?
 	//	COULD SIMPLIFY THIS: by adding three bits to these registers,
 	//		One or PC, one for CC, and one for GIE match
@@ -1579,10 +1536,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			// If we encounter a break instruction, if the break
 			//	enable isn't set.
 			||((master_ce)&&(break_pending)&&(~break_en))
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 			// On an illegal instruction
 			||((alu_illegal)&&(!clear_pipeline))
-`endif
 			// On division by zero.  If the divide isn't
 			// implemented, div_valid and div_error will be short
 			// circuited and that logic will be bypassed
@@ -1839,7 +1794,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	always @(posedge i_clk)
 		if ((wr_reg_ce)&&(wr_reg_id[4])&&(wr_write_pc))
-			r_upc <= wr_spreg_vl[(AW-1):0];
+			r_upc <= wr_spreg_vl[(AW+1):2];
 		else if ((alu_gie)&&
 				(((alu_pc_valid)&&(~clear_pipeline)&&(!alu_illegal))
 				||(mem_pc_valid)))
@@ -1851,7 +1806,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		if (i_rst)
 			ipc <= RESET_ADDRESS;
 		else if ((wr_reg_ce)&&(~wr_reg_id[4])&&(wr_write_pc))
-			ipc <= wr_spreg_vl[(AW-1):0];
+			ipc <= wr_spreg_vl[(AW+1):2];
 		else if ((~alu_gie)&&
 				(((alu_pc_valid)&&(~clear_pipeline)&&(!alu_illegal))
 				||(mem_pc_valid)))
@@ -1865,10 +1820,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else if ((w_release_from_interrupt)||((gie)&&(w_clear_icache)))
 			pf_pc <= upc;
 		else if ((wr_reg_ce)&&(wr_reg_id[4] == gie)&&(wr_write_pc))
-			pf_pc <= wr_spreg_vl[(AW-1):0];
+			pf_pc <= wr_spreg_vl[(AW+1):2];
 `ifdef	OPT_PIPELINED
 		else if ((dcd_early_branch)&&(~clear_pipeline))
-			pf_pc <= dcd_branch_pc + 1;
+			pf_pc <= dcd_branch_pc + 1'b1;
 		else if ((new_pc)||((~dcd_stalled)&&(pf_valid)))
 			pf_pc <= pf_pc + {{(AW-1){1'b0}},1'b1};
 `else
@@ -1911,15 +1866,15 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	[31:0]	w_debug_pc;
 	generate
 `ifdef	OPT_NO_USERMODE
-	if (AW<32)
-		assign	w_debug_pc = {{(32-AW){1'b0}},ipc};
+	if (AW<30)
+		assign	w_debug_pc = {{(30-AW){1'b0}},ipc, 2'b00 };
 	else
-		assign	w_debug_pc = ipc;
+		assign	w_debug_pc = { ipc, 2'b00 };
 `else
-	if (AW<32)
-		assign	w_debug_pc = {{(32-AW){1'b0}},(i_dbg_reg[4])?upc:ipc};
+	if (AW<30)
+		assign	w_debug_pc = {{(30-AW){1'b0}},(i_dbg_reg[4])?upc:ipc, 2'b00 };
 	else
-		assign	w_debug_pc = (i_dbg_reg[4])?upc:ipc;
+		assign	w_debug_pc = { (i_dbg_reg[4])?upc:ipc, 2'b00 };
 `endif
 	endgenerate
 	
