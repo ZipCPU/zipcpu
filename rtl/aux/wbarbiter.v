@@ -57,11 +57,11 @@
 `define	WBA_ALTERNATING
 module	wbarbiter(i_clk, i_rst, 
 	// Bus A
-	i_a_adr, i_a_dat, i_a_we, i_a_stb, i_a_cyc, o_a_ack, o_a_stall, o_a_err,
+	i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, o_a_ack, o_a_stall, o_a_err,
 	// Bus B
-	i_b_adr, i_b_dat, i_b_we, i_b_stb, i_b_cyc, o_b_ack, o_b_stall, o_b_err,
+	i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel, o_b_ack, o_b_stall, o_b_err,
 	// Both buses
-	o_adr, o_dat, o_we, o_stb, o_cyc, i_ack, i_stall, i_err);
+	o_cyc, o_stb, o_we, o_adr, o_dat, o_sel, i_ack, i_stall, i_err);
 	// 18 bits will address one GB, 4 bytes at a time.
 	// 19 bits will allow the ability to address things other than just
 	// the 1GB of memory we are expecting.
@@ -71,12 +71,14 @@ module	wbarbiter(i_clk, i_rst,
 	input				i_clk, i_rst;
 	input		[(AW-1):0]	i_a_adr, i_b_adr;
 	input		[(DW-1):0]	i_a_dat, i_b_dat;
+	input		[(DW/8-1):0]	i_a_sel, i_b_sel;
 	input				i_a_we, i_a_stb, i_a_cyc;
 	input				i_b_we, i_b_stb, i_b_cyc;
 	output	wire			o_a_ack, o_b_ack, o_a_stall, o_b_stall,
 					o_a_err, o_b_err;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
+	output	wire	[(DW/8-1):0]	o_sel;
 	output	wire			o_we, o_stb, o_cyc;
 	input				i_ack, i_stall, i_err;
 
@@ -159,11 +161,12 @@ module	wbarbiter(i_clk, i_rst,
 	// don't care.  Thus we trigger off whether or not 'A' owns the bus.
 	// If 'B' owns it all we care is that 'A' does not.  Likewise, if 
 	// neither owns the bus than the values on the various lines are
-	// irrelevant.
+	// irrelevant.  (This allows us to get two outputs per Xilinx 6-LUT)
+	assign o_stb = (o_cyc) && ((w_a_owner) ? i_a_stb : i_b_stb);
+	assign o_we  = (w_a_owner) ? i_a_we  : i_b_we;
 	assign o_adr = (w_a_owner) ? i_a_adr : i_b_adr;
 	assign o_dat = (w_a_owner) ? i_a_dat : i_b_dat;
-	assign o_we  = (w_a_owner) ? i_a_we  : i_b_we;
-	assign o_stb = (o_cyc) && ((w_a_owner) ? i_a_stb : i_b_stb);
+	assign o_sel = (w_a_owner) ? i_a_sel : i_b_sel;
 
 	// We cannot allow the return acknowledgement to ever go high if
 	// the master in question does not own the bus.  Hence we force it

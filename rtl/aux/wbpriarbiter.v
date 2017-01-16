@@ -27,7 +27,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, Gisselquist Technology, LLC
+// Copyright (C) 2015, 2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -47,11 +47,11 @@
 //
 module	wbpriarbiter(i_clk, 
 	// Bus A
-	i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, o_a_ack, o_a_stall, o_a_err,
+	i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, o_a_ack, o_a_stall, o_a_err,
 	// Bus B
-	i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, o_b_ack, o_b_stall, o_b_err,
+	i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel, o_b_ack, o_b_stall, o_b_err,
 	// Both buses
-	o_cyc, o_stb, o_we, o_adr, o_dat, i_ack, i_stall, i_err);
+	o_cyc, o_stb, o_we, o_adr, o_dat, o_sel, i_ack, i_stall, i_err);
 	parameter			DW=32, AW=32;
 	//
 	input				i_clk;
@@ -59,16 +59,19 @@ module	wbpriarbiter(i_clk,
 	input				i_a_cyc, i_a_stb, i_a_we;
 	input		[(AW-1):0]	i_a_adr;
 	input		[(DW-1):0]	i_a_dat;
+	input		[(DW/8-1):0]	i_a_sel;
 	output	wire			o_a_ack, o_a_stall, o_a_err;
 	// Bus B
 	input				i_b_cyc, i_b_stb, i_b_we;
 	input		[(AW-1):0]	i_b_adr;
 	input		[(DW-1):0]	i_b_dat;
+	input		[(DW/8-1):0]	i_b_sel;
 	output	wire			o_b_ack, o_b_stall, o_b_err;
 	// 
 	output	wire			o_cyc, o_stb, o_we;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
+	output	wire	[(DW/8-1):0]	o_sel;
 	input				i_ack, i_stall, i_err;
 
 	// Go high immediately (new cycle) if ...
@@ -96,6 +99,7 @@ module	wbpriarbiter(i_clk,
 	assign o_we  = (r_a_owner) ? i_a_we  : i_b_we;
 	assign o_adr = (r_a_owner) ? i_a_adr : i_b_adr;
 	assign o_dat = (r_a_owner) ? i_a_dat : i_b_dat;
+	assign o_sel = (r_a_owner) ? i_a_sel : i_b_sel;
 
 	// We cannot allow the return acknowledgement to ever go high if
 	// the master in question does not own the bus.  Hence we force it
