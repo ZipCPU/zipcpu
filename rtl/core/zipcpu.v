@@ -717,9 +717,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	[31:0]	w_pcA_v;
 	generate
 	if (AW < 30)
-		assign	w_pcA_v = {{(30-AW){1'b0}}, (dcdA[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
+		assign	w_pcA_v = {{(30-AW){1'b0}}, (dcdA[4] == dcd_gie)
+				? { dcd_pc, 2'b00 }
+				: {upc, uhalt_phase, 1'b0 } };
 	else
-		assign	w_pcA_v = { (dcdA[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
+		assign	w_pcA_v = { (dcdA[4] == dcd_gie)
+				? { dcd_pc, 2'b00 }
+				: { upc, uhalt_phase, 1'b0 } };
 	endgenerate
 
 `ifdef	OPT_PIPELINED
@@ -766,9 +770,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	[31:0]	w_opBnI, w_pcB_v;
 	generate
 	if (AW < 30)
-		assign	w_pcB_v = {{(30-AW){1'b0}}, (dcdB[4] == dcd_gie)?dcd_pc:upc, 2'b00 };
+		assign	w_pcB_v = {{(30-AW){1'b0}}, (dcdB[4] == dcd_gie)
+					? { dcd_pc, 2'b00 }
+					: { upc, uhalt_phase, 1'b0 } };
 	else
-		assign	w_pcB_v = { ((dcdB[4] == dcd_gie)?dcd_pc:upc), 2'b00 };
+		assign	w_pcB_v = { (dcdB[4] == dcd_gie)
+					? { dcd_pc, 2'b00 }
+					: { upc, uhalt_phase, 1'b0 } };
 	endgenerate
 
 	assign	w_opBnI = (~dcdB_rd) ? 32'h00
@@ -1872,9 +1880,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		assign	w_debug_pc = { ipc, 2'b00 };
 `else
 	if (AW<30)
-		assign	w_debug_pc = {{(30-AW){1'b0}},(i_dbg_reg[4])?upc:ipc, 2'b00 };
+		assign	w_debug_pc = {{(30-AW){1'b0}},(i_dbg_reg[4])
+				? { upc, uhalt_phase, 1'b0 }
+				: { ipc, ihalt_phase, 1'b0 } };
 	else
-		assign	w_debug_pc = { (i_dbg_reg[4])?upc:ipc, 2'b00 };
+		assign	w_debug_pc = { (i_dbg_reg[4])
+				? { upc, uhalt_phase, 1'b0 }
+				: { ipc, ihalt_phase, 1'b0 } };
 `endif
 	endgenerate
 	
