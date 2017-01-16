@@ -11,18 +11,15 @@
 #	respectively.
 #
 # Targets:
-#	make basic-install
-#		Attempts to build binutils, gcc, and the (now obsolete) zasm
-#		assembler, and to install them into INSTALL directory.  This is
-#		also the default target.
+#	make install
+#		Attempts to build binutils, gcc, and newlib, and to install 
+#		hem into INSTALL directory.  This is also the default target.
 #
 #	make all:
 #		Includes the basic-install target, but also the pdf
 #		documentation files that come with binutils and gcc.  Building
 #		this target will require a LaTeX distribution in addition to the
-#		needs of the other targets.  (These documents may also be found
-#		online, and have not been edited as part of the ZipCPU toolchain
-#		... (yet).)
+#		needs of the other targets.
 #
 #	make clean
 #
@@ -32,7 +29,7 @@
 #
 ################################################################################
 #
-# Copyright (C) 2015, Gisselquist Technology, LLC
+# Copyright (C) 2015-2017, Gisselquist Technology, LLC
 #
 # This program is free software (firmware): you can redistribute it and/or
 # modify it under the terms of  the GNU General Public License as published
@@ -50,34 +47,46 @@
 #
 ################################################################################
 #
-basic-install: binutils-install gcc-install
+bypass:
+	echo "This Makefile has not yet been updated as part of 8-bit support."
+	echo "Neither are the scripts, gas-script.sh, gcc-script.sh, and nlib-script.sh"
+	echo "ready for prime-time: they dont yet handle creating and adjusting"
+	echo "the required directories automatically (yet)."
+	echo
+	echo "Please debug this Makefile first, before trying to automatically run it"
+
+basic-install: binutils-install gcc-install nlib-install
 all: basic-install binutils-pdf-install gcc-pdf-install
 
-BINUTILSD=binutils-2.25
-BUILDGASD=build-gas
-BUILDGCCD=build-gcc
+BINUTILSD=binutils-2.27
+GCCD=gcc-6.2.0
+NLIBD=newlib-2.5.0
 INSTALL=`pwd`/install
 PDFD=$(INSTALL)/usr/doc
 ZASMD=zasm
+BUILDGASD=build-gas
+BUILDGCCD=build-gcc
+BUILDNLIB=build-nlib
+SUBMAKE=$(MAKE) --no-print-directory
 
-binutils-2.25: binutils-2.25.tar.bz2 binutils-2.25.patch
-	rm -rf binutils-2.25/
-	tar -xjf ./binutils-2.25.tar.bz2
-	bash -c "cd binutils-2.25; patch -p1 <../binutils-2.25.patch"
+$(BINUTILSD)-zip: $(BINUTILSD).tar.bz2 gas-zippatch.patch
+	rm -rf $(BINUTILSD)-zip/
+	tar -xjf ./$(BINUTILSD).tar.bz2 --transform s,$(BINUTILSD),$(BINUTILSD)-zip
+	bash -c "cd $(BINUTILSD)-zip; patch -p1 <../gas-zippatch.patch"
 	rm -rf $(BUILDGASD)
 
-.PHONY: binutils
-binutils: binutils-2.25
+.PHONY: binutils-zip
+binutils: $(BINUTILSD)
 	bash -c "if [ ! -e build-gas ]; then bash gas-script.sh; fi"
-	$(MAKE) --no-print-directory --directory=$(BUILDGASD)
+	$(SUBMAKE) --directory=$(BUILDGASD)
 
 .PHONY: binutils-install
 binutils-install: binutils
-	$(MAKE) --no-print-directory --directory=$(BUILDGASD) install
+	$(SUBMAKE) --directory=$(BUILDGASD) install
 
 .PHONY: binutils-pdf
 binutils-pdf: binutils
-	$(MAKE) --no-print-directory --directory=$(BUILDGASD) pdf
+	$(SUBMAKE) --directory=$(BUILDGASD) pdf
 
 .PHONY: binutils-pdf-install
 binutils-pdf-install: binutils-pdf
@@ -90,40 +99,72 @@ binutils-pdf-install: binutils-pdf
 # Now let's try the same thing for GCC
 #
 #
-gcc-6.2.0-zip: gcc-6.2.0.tar.bz2 gcc6-zippatch.patch
-	rm -rf gcc-6.2.0-zip/
-	tar -xjf ./gcc-6.2.0.tar.bz2 --transform s,gcc-6.2.0,gcc-6.2.0-zip,
-	bash -c "cd gcc-6.2.0-zip; patch -p1 <../gcc6-zippatch.patch"
+$(GCCD)-zip: $(GCCD).tar.bz2 gcc6-zippatch.patch
+	rm -rf $(GCCD)-zip/
+	tar -xjf ./$(GCCD).tar.bz2 --transform s,$(GCCD),$(GCCD)-zip,
+	bash -c "cd $(GCCD)-zip; patch -p1 <../gcc-zippatch.patch"
 	rm -rf $(BUILDGCCD)
 	
 .PHONY: gcc
-gcc: gcc-6.2.0-zip
+gcc: $(GCCD)-zip
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
-	$(MAKE) --no-print-directory --directory=$(BUILDGCCD)/gcc
+	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc
 
 .PHONY: gcc-install
 gcc-install: gcc
-	$(MAKE) --no-print-directory --directory=$(BUILDGCCD)/gcc install
+	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc install
 
 .PHONY: gcc-pdf
 gcc-pdf: gcc
-	$(MAKE) --no-print-directory --directory=$(BUILDGCCD) pdf
+	$(SUBMAKE) --directory=$(BUILDGCCD) pdf
 
 .PHONY: gcc-pdf-install
 gcc-pdf-install: gcc-pdf
 	mkdir -p $(PDFD)
 	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 
+
+#
+#
+# And repeat for newlib
+#
+#
+$(NLIBD)-zip: $(NLIBD).tar.bz2 gcc6-zippatch.patch
+	rm -rf $(NLIBD)-zip/
+	tar -xjf ./$(NLIBD).tar.bz2 --transform s,$(NLIBD),$(NLIBD)-zip,
+	bash -c "cd $(NLIBD)-zip; patch -p1 <../gcc-zippatch.patch"
+	rm -rf $(BUILDNLIB)
+	
+.PHONY: newlib
+newlib: $(NLIBD)-zip
+	bash -c "if [[ ! -e $(BUILDNLIB) ]]; then bash gcc-script.sh; fi"
+	$(SUBMAKE) --directory=$(BUILDNLIB)/gcc
+
+.PHONY: newlib-install
+newlib-install: newlib
+	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc install
+
+# .PHONY: newlib-pdf
+# newlib-pdf: gcc
+#	$(SUBMAKE) --directory=$(BUILDGCCD) pdf
+
+# .PHONY: gcc-pdf-install
+# gcc-pdf-install: gcc-pdf
+#	mkdir -p $(PDFD)
+#	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
+
+
+
 #
 #
 # Finally, can we build and install zasm?
 #
 #
-zasm:
-	$(MAKE) --no-print-directory --directory=$(ZASMD) all
+# zasm:
+#	$(SUBMAKE) --directory=$(ZASMD) all
 
-zasm-install: zasm
-	$(MAKE) --no-print-directory --directory=$(ZASMD) install
+# zasm-install: zasm
+#	$(SUBMAKE) --directory=$(ZASMD) install
 
 #
 #
@@ -133,7 +174,7 @@ zasm-install: zasm
 .PHONY: clean
 clean:
 	rm -rf $(INSTALL)
-	rm -rf binutils-2.25 gcc-5.3.0-zip gcc-6.2.0-zip
-	rm -rf $(BUILDGASD) $(BUILDGCCD)
-	$(MAKE) --no-print-directory --directory=$(ZASMD) clean
+	rm -rf $(BINUTILSD)-zip/ $(GCCD)-zip/ $(NLIBD)-zip/
+	rm -rf $(BUILDGASD) $(BUILDGCCD) $(BUILDNLIB)
+	# $(SUBMAKE) --no-print-directory --directory=$(ZASMD) clean
 

@@ -32,35 +32,33 @@
 ################################################################################
 ##
 ##
-if [[ ! -d binutils-2.25 ]]
-then
-  tar -xjf ./binutils-2.25.tar.bz2
-  cd binutils-2.25
-  patch -p1 <../binutils-2.25.patch
-  cd ..
-fi
-
-uname -a | grep x86 > /dev/null
-if [[ $? != 0 ]]; then
-  echo "This build script only works for x86_64 machines"
-  echo "You will need to change the CLFS_HOST line if you wish to build"
-  echo "on any other type of host."
-  exit 1
-fi
+VERSION=binutils-2.27
+# if [[ ! -d $VERSION/ ]]
+# then
+  # tar -xjf ./$VERSION.tar.bz2
+  # if [[ -e $VERSION.path ]];
+  # then
+    # cd $VERSION/
+    # patch -p1 <../$VERSION.patch
+    # cd ..
+  # else
+    # echo "ZipCPU patch not found"
+  # fi
+# fi
 
 set +h
 set -e
-CLFS_HOST="x86_64-cross-linux-gnu"
-# CLFS_HOST="arm-unknown-linux-gnueabihf" # For a Raspberry Pi
+CLFS_HOST=$MACHTYPE
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
 mkdir -p ${INSTALL_BASE}/cross-tools
 mkdir -p build-gas
+echo ../$VERSION-zip/configure
 cd build-gas
 AR=ar AS=as	\
-../binutils-2.25/configure --with-gas				\
+../$VERSION-zip/configure --with-gas				\
 	--prefix=${INSTALL_BASE}/cross-tools			\
-	--host=${CLFS_HOST}	--target=${CLFS_TARGET}		\
+	--target=${CLFS_TARGET}					\
 	--disable-nls		--disable-multilib		\
 	--enable-plugins	--enable-threads		\
 	--disable-werror

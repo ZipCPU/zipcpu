@@ -34,32 +34,31 @@
 ################################################################################
 ##
 ##
-if [[ ! -d gcc-6.2.0-zip ]]
-then
-  tar -xjf ./gcc-6.2.0.tar.bz2 --transform s,gcc-6.2.0,gcc-6.2.0-zip,
-  cd gcc-6.2.0-zip
-  patch -p1 <../gcc6-zippatch.patch
-  cd ..
-  if [[ -d build-gcc ]]
-  then
-    # Remove any incomplete build projects from ... possibly other versions
-    # This way we can reuse the build directory
-    rm -rf build-gcc/
-  fi
-fi
-
-uname -a | grep x86 > /dev/null
-if [[ $? != 0 ]]; then
-  echo "This build script only works for x86_64 machines"
-  echo "You will need to change the CLFS_HOST line if you wish to build"
-  echo "on any other type of host."
-  exit 1
-fi
+VERSION=gcc-6.2.0
+ZVERSION=gcc-6.2.0-zip
+# if [[ ! -d $ZVERSION ]]
+# then
+  # tar -xjf ./$VERSION.tar.bz2 --transform s,$VERSION,$ZVERSION,
+  # if [[ -e ../gcc-zippatch.path ]];
+  # then
+    # cd gcc-6.2.0-zip
+    # patch -p1 <../gcc6-zippatch.patch
+    # cd ..
+  # else
+    # echo "No Patch file!"
+    # exit -1;
+  # fi
+  # if [[ -d build-gcc ]]
+  # then
+    # # Remove any incomplete build projects from ... possibly other versions
+    # # This way we can reuse the build directory
+    # rm -rf build-gcc/
+  # fi
+# fi
 
 set +h
 set -e
-CLFS_HOST="x86_64-cross-linux-gnu"
-# CLFS_HOST="arm-unknown-linux-gnueabihf" # For a Raspberry Pi ??
+CLFS_HOST=$MACHTYPE
 CLFS_TARGET="zip"
 INSTALL_BASE=`pwd`/install
 mkdir -p ${INSTALL_BASE}/cross-tools
@@ -77,9 +76,9 @@ OBJDUMP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-objdump
 READELF_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-readelf
 STRIP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-strip
 
-AS=as AR=ar ../gcc-6.2.0-zip/configure --with-gas	\
+../$ZVERSION/configure --with-gas	\
         --prefix=${INSTALL_BASE}/cross-tools		\
-        --target=${CLFS_TARGET} --host=${CLFS_HOST}	\
+        --target=${CLFS_TARGET}				\
         --with-pkgversion=zip-gcc-`date +%y%m%d`	\
         --disable-multilib				\
         --disable-threads --disable-tls			\
@@ -89,14 +88,16 @@ AS=as AR=ar ../gcc-6.2.0-zip/configure --with-gas	\
         --enable-checking --disable-nls			\
         --disable-sjlj-exceptions			\
         --disable-decimal-float --disable-fixed-point	\
-        --disable-lto --disable-canonical-system-headers
+        --disable-lto --disable-canonical-system-headers \
+	--without-fp
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
 	|| PATH=${INSTALL_BASE}/cross-tools/bin:$PATH
-make $* || true
-cd gcc; make $* || true
-cd ../; make $* all-libcc1 || true
-cd libcc1; make $* || true
-cd ../gcc; make $* || true
-make $* install || true
+make
+# make $* || true
+# cd gcc; make $* || true
+# cd ../; make $* all-libcc1 || true
+# cd libcc1; make $* || true
+# cd ../gcc; make $* || true
+# make $* install || true
 
