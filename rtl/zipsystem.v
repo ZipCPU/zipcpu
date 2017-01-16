@@ -157,7 +157,7 @@
 //
 module	zipsystem(i_clk, i_rst,
 		// Wishbone master interface from the CPU
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
+		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 		// Incoming interrupts
 		i_ext_int,
@@ -170,7 +170,7 @@ module	zipsystem(i_clk, i_rst,
 		, o_cpu_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=32,
+	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=10, START_HALTED=1, EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
 			IMPLEMENT_MPY = `OPT_MULTIPLY,
@@ -195,6 +195,7 @@ module	zipsystem(i_clk, i_rst,
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
+	output	wire	[3:0]	o_wb_sel;
 	input			i_wb_ack, i_wb_stall;
 	input		[31:0]	i_wb_data;
 	input			i_wb_err;
@@ -671,6 +672,7 @@ module	zipsystem(i_clk, i_rst,
 	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb, 
 			cpu_we, cpu_dbg_we;
 	wire	[31:0]	cpu_data, wb_data;
+	wire	[3:0]	cpu_sel;
 	wire		cpu_ack, cpu_stall, cpu_err;
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(~cmd_addr[5])
@@ -690,7 +692,7 @@ module	zipsystem(i_clk, i_rst,
 				cpu_dbg_cc, cpu_break,
 			cpu_gbl_cyc, cpu_gbl_stb,
 				cpu_lcl_cyc, cpu_lcl_stb,
-				cpu_we, cpu_addr, cpu_data,
+				cpu_we, cpu_addr, cpu_data, cpu_sel,
 				cpu_ack, cpu_stall, wb_data,
 				cpu_err,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count
@@ -744,30 +746,32 @@ module	zipsystem(i_clk, i_rst,
 				cpu_ext_err;
 	wire	[(AW-1):0]	ext_addr;
 	wire	[31:0]		ext_odata;
+	wire	[3:0]		ext_sel;
 	wbpriarbiter #(32,AW) dmacvcpu(i_clk,
-			cpu_gbl_cyc, cpu_gbl_stb, cpu_we, cpu_addr, cpu_data,
+			cpu_gbl_cyc, cpu_gbl_stb, cpu_we, cpu_addr, cpu_data, cpu_sel,
 				cpu_ext_ack, cpu_ext_stall, cpu_ext_err,
-			dc_cyc, dc_stb, dc_we, dc_addr, dc_data,
+			dc_cyc, dc_stb, dc_we, dc_addr, dc_data, 4'hf,
 					dc_ack, dc_stall, dc_err,
-			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata,
+			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
 				ext_ack, ext_stall, ext_err);
 
 `ifdef	DELAY_EXT_BUS
 	busdelay #(AW,32) extbus(i_clk,
 			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata,
 				ext_ack, ext_stall, ext_idata, ext_err,
-			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 				i_wb_ack, i_wb_stall, i_wb_data, (i_wb_err)||(wdbus_int));
 `else
-	assign	o_wb_cyc   = ext_cyc;
-	assign	o_wb_stb   = ext_stb;
-	assign	o_wb_we    = ext_we;
-	assign	o_wb_addr  = ext_addr;
-	assign	o_wb_data  = ext_odata;
-	assign	ext_ack    = i_wb_ack;
-	assign	ext_stall  = i_wb_stall;
-	assign	ext_idata  = i_wb_data;
-	assign	ext_err    = (i_wb_err)||(wdbus_int);
+	assign	o_wb_cyc  = ext_cyc;
+	assign	o_wb_stb  = ext_stb;
+	assign	o_wb_we   = ext_we;
+	assign	o_wb_addr = ext_addr;
+	assign	o_wb_data = ext_odata;
+	assign	o_wb_sel  = ext_sel;
+	assign	ext_ack   = i_wb_ack;
+	assign	ext_stall = i_wb_stall;
+	assign	ext_idata = i_wb_data;
+	assign	ext_err   = (i_wb_err)||(wdbus_int);
 `endif
 
 	wire		tmr_ack;

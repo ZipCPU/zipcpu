@@ -35,7 +35,7 @@
 //
 module	zipbones(i_clk, i_rst,
 		// Wishbone master interface from the CPU
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
+		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 		// Incoming interrupts
 		i_ext_int,
@@ -48,7 +48,7 @@ module	zipbones(i_clk, i_rst,
 		, o_zip_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=32,
+	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=8, START_HALTED=0,
 			AW=ADDRESS_WIDTH;
 	input	i_clk, i_rst;
@@ -56,6 +56,7 @@ module	zipbones(i_clk, i_rst,
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
+	output	wire	[3:0]	o_wb_sel;
 	input			i_wb_ack, i_wb_stall;
 	input		[31:0]	i_wb_data;
 	input			i_wb_err;
@@ -174,7 +175,7 @@ module	zipbones(i_clk, i_rst,
 				cpu_dbg_cc, cpu_break,
 			o_wb_cyc, o_wb_stb,
 				cpu_lcl_cyc, cpu_lcl_stb,
-				o_wb_we, o_wb_addr, o_wb_data,
+				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 				i_wb_ack, i_wb_stall, i_wb_data,
 				(i_wb_err)||((cpu_lcl_cyc)&&(cpu_lcl_stb)),
 			cpu_op_stall, cpu_pf_stall, cpu_i_count
