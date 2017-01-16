@@ -42,14 +42,14 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_busy, o_valid, o_err, o_wreg, o_result,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
 			o_wb_stb_gbl, o_wb_stb_lcl,
-			o_wb_we, o_wb_addr, o_wb_data,
+			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=32, IMPLEMENT_LOCK=0;
+	parameter	ADDRESS_WIDTH=30, IMPLEMENT_LOCK=0;
 	localparam	AW=ADDRESS_WIDTH;
 	input			i_clk, i_rst;
 	input			i_stb, i_lock;
 	// CPU interface
-	input			i_op;
+	input		[2:0]	i_op;
 	input		[31:0]	i_addr;
 	input		[31:0]	i_data;
 	input		[4:0]	i_oreg;
@@ -67,6 +67,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	output	reg		o_wb_we;
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	reg	[31:0]	o_wb_data;
+	output	reg	[3:0]	o_wb_sel;
 	// Wishbone inputs
 	input			i_wb_ack, i_wb_stall, i_wb_err;
 	input		[31:0]	i_wb_data;
@@ -105,12 +106,36 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
 		else
 			o_wb_stb_lcl  <= lcl_stb; // Grab wishbone on new operation
+
+	reg	[3:0]	r_op;
 	always @(posedge i_clk)
 		if (i_stb)
 		begin
-			o_wb_we   <= i_op;
-			o_wb_data <= i_data;
-			o_wb_addr <= i_addr[(AW-1):0];
+			o_wb_we   <= i_op[0];
+			casez({ i_op[2:1], i_addr[1:0] }
+			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
+			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
+			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
+			4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
+			4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
+			4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
+			default: o_wb_data <= i_data;
+			endcase
+
+			o_wb_addr <= i_addr[(AW+1):2];
+			if (i_op[0] == 1'b0)
+				o_wb_sel <= 4'hf;
+			else casez({ i_op[2:1], i_addr[1:0] })
+			4'b01??: o_wb_sel <= 4'b1111;
+			4'b100?: o_wb_sel <= 4'b1100;
+			4'b101?: o_wb_sel <= 4'b0011;
+			4'b1100: o_wb_sel <= 4'b1000;
+			4'b1101: o_wb_sel <= 4'b0100;
+			4'b1110: o_wb_sel <= 4'b0010;
+			4'b1111: o_wb_sel <= 4'b0001;
+			default: o_wb_sel <= 4'b1111;
+			endcase
+			r_op <= { i_op[2:1] , i_addr[1:0] };
 		end
 
 	initial	o_valid = 1'b0;
@@ -126,7 +151,18 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wreg    <= i_oreg;
 	always @(posedge i_clk)
 		if (i_wb_ack)
-			o_result <= i_wb_data;
+		begin
+			casez(r_op)
+			4'b01??: o_result <= i_wb_data;
+			4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
+			4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
+			4'h1100: o_result <= { 24'h00, i_wb_data[31:24] };
+			4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
+			4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
+			4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+			default: o_result <= i_wb_data;
+			endcase
+		end
 
 	generate
 	if (IMPLEMENT_LOCK != 0)
