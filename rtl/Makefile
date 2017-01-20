@@ -61,23 +61,23 @@ VZIP := zipbones.v cpudefs.v					\
 VOBJ := obj_dir
 
 $(VOBJ)/Vzipsystem.cpp: $(VSRC)
-	verilator -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipsystem.v
+	verilator -trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipsystem.v
 $(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
 
 $(VOBJ)/Vzipbones.cpp: $(VZIP)
-	verilator -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipbones.v
+	verilator -trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipbones.v
 $(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
 
 $(VOBJ)/Vdiv.cpp: $(CORED)/div.v
-	verilator -cc -y $(CORED) $(CORED)/div.v
+	verilator -trace -cc -y $(CORED) $(CORED)/div.v
 $(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
 
 $(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
-	verilator -cc -y $(CORED) $(CORED)/cpuops.v
+	verilator -trace -cc -y $(CORED) $(CORED)/cpuops.v
 $(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
 
 $(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
-	verilator -cc  -y $(PRPHD) $(PRPHD)/zipmmu.v
+	verilator -trace -cc  -y $(PRPHD) $(PRPHD)/zipmmu.v
 $(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
 
 $(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
