@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -37,32 +37,52 @@
 #ifndef	TESTB_H
 #define	TESTB_H
 
+#include <verilated_vcd_c.h>
+
 template <class VA>	class TESTB {
 public:
 	VA	*m_core;
+	VerilatedVcdC*	m_trace;
 	unsigned long	m_tickcount;
 
-	TESTB(void) { m_core = new VA; }
-	virtual ~TESTB(void) { delete m_core; m_core = NULL; }
+	TESTB(void) {
+		m_core = new VA; m_trace = NULL;
+		Verilated::traceEverOn(true);
+	}
+	virtual ~TESTB(void) {
+		if (m_trace) m_trace->close();
+		delete m_core;
+		m_core = NULL;
+	}
+
+	virtual	void	opentrace(const char *vcdname) {
+		m_trace = new VerilatedVcdC;
+		m_core->trace(m_trace, 99);
+		m_trace->open(vcdname);
+	}
 
 	virtual	void	eval(void) {
 		m_core->eval();
 	}
 
 	virtual	void	tick(void) {
+		m_tickcount++;
+
+		eval();
+		if (m_trace) m_trace->dump(10*m_tickcount-2);
 		m_core->i_clk = 1;
 		eval();
+		if (m_trace) m_trace->dump(10*m_tickcount);
 		m_core->i_clk = 0;
 		eval();
+		if (m_trace) m_trace->dump(10*m_tickcount+5);
 
-		m_tickcount++;
 	}
 
 	virtual	void	reset(void) {
 		m_core->i_rst = 1;
 		tick();
 		m_core->i_rst = 0;
-		m_tickcount = 0l;
 		// printf("RESET\n");
 	}
 };

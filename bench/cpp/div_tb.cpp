@@ -220,6 +220,7 @@ int	main(int argc, char **argv) {
 	int	rcode = EXIT_SUCCESS;
 
 	tb->reset();
+	tb->opentrace("div_tb.vcd");
 	tb->divide(125,7);
 	tb->tick();
 	tb->divide(125,-7);
@@ -256,6 +257,8 @@ int	main(int argc, char **argv) {
 	tb->tick();
 	tb->divide(rand(),rand()/2);
 	*/
+
+	delete	tb;
 
 	printf("SUCCESS!\n");
 	exit(rcode);
