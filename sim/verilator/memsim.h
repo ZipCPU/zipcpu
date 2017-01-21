@@ -55,12 +55,12 @@ public:
 	void	load(const char *fname);
 	void	apply(const unsigned clk, const uchar wb_cyc, const uchar wb_stb,
 				const uchar wb_we,
-			const BUSW wb_addr, const BUSW wb_data, 
+			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
 			uchar &o_ack, uchar &o_stall, BUSW &o_data);
 	void	operator()(const unsigned clk, const uchar wb_cyc, const uchar wb_stb, const uchar wb_we,
-			const BUSW wb_addr, const BUSW wb_data, 
+			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
 			uchar &o_ack, uchar &o_stall, BUSW &o_data) {
-		apply(clk, wb_cyc, wb_stb, wb_we, wb_addr, wb_data, o_ack, o_stall, o_data);
+		apply(clk, wb_cyc, wb_stb, wb_we, wb_addr, wb_data, wb_sel, o_ack, o_stall, o_data);
 	}
 	BUSW &operator[](const BUSW addr) { return m_mem[addr&m_mask]; }
 };

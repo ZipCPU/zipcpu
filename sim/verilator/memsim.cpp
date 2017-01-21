@@ -82,15 +82,27 @@ void	MEMSIM::load(const char *fname) {
 
 void	MEMSIM::apply(const unsigned int clk, const unsigned char wb_cyc,
 			const unsigned char wb_stb, const unsigned char wb_we,
-			const BUSW wb_addr, const BUSW wb_data, 
+			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
 			unsigned char &o_ack, unsigned char &o_stall, BUSW &o_data) {
 	o_ack = m_nxt_ack;
 	o_data= m_nxt_data;
 	m_nxt_data = wb_data;
 	o_stall= 0;
 	if ((wb_cyc)&&(wb_stb)&&(clk)) {
-		if (wb_we)
-			m_mem[wb_addr & m_mask] = wb_data;
+		if (wb_we) {
+			unsigned mask = 0;
+			if (wb_sel&0x08)
+				mask |= 0xff000000;
+			if (wb_sel&0x04)
+				mask |= 0x00ff0000;
+			if (wb_sel&0x02)
+				mask |= 0x0000ff00;
+			if (wb_sel&0x01)
+				mask |= 0x000000ff;
+			m_mem[wb_addr & m_mask] = 
+				(m_mem[wb_addr & m_mask] & (~mask))
+				| (wb_data & mask);
+		}
 		m_nxt_ack = 1;
 		m_nxt_data = m_mem[wb_addr & m_mask];
 		// o_ack  = 1;
