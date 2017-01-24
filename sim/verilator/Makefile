@@ -111,23 +111,35 @@ all: zippy_tb pdump div_tb mpy_tb
 
 CXX	:= g++
 FLAGS	:= -Wall -Og -g
+OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
 VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
 VROOT   := $(VERILATOR_ROOT)
 INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I$(VROOT)/include -I$(ZASM)
-SOURCES := zippy_tb.cpp memsim.cpp twoc.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp
+ZSOURCES:= zippy_tb.cpp zipelf.cpp memsim.cpp twoc.cpp
+ZDSMSRCS:= zopcodes.cpp zparser.cpp
+ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZSOURCES) $(ZDSMSRCS)))
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
-# VLOBJS := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
+VLOBJS := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
-RAWLIB	:= $(VLIB) $(RTLD)/obj_dir/Vzipsystem__ALL.a
+RAWLIB	:= $(RTLD)/obj_dir/Vzipsystem__ALL.a
 LIBS	:= $(RAWLIB) -lncurses -lelf
 TESTF	:= $(ZASM)/z.out
 DHRYSTONEF := ../asm/zipdhry.z
 
-zippy_tb: $(SOURCES) $(RAWLIB) $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h
-zippy_tb: $(RTLD)/cpudefs.h
-	$(CXX) $(FLAGS) $(INCS) $(SOURCES) $(LIBS) -o $@
+$(OBJDIR)/%.o: %.cpp
+	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+
+$(OBJDIR)/%.o: $(ZASM)/%.cpp
+	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+
+$(OBJDIR)/%.o: $(VROOT)/include/%.cpp
+	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+
+zippy_tb: $(ZOBJS) $(VLOBJS) $(RAWLIB)
+zippy_tb: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h $(RTLD)/cpudefs.h
+	$(CXX) $(FLAGS) $(INCS) $(ZOBJS) $(VLOBJS) $(LIBS) -o $@
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a testb.h
 	$(CXX) $(FLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a -o $@
@@ -158,6 +170,26 @@ test: zippy_tb stest
 dhrystone: zippy_tb
 	./zippy_tb -a $(DHRYSTONEF)
 
+define	build-depends
+	@$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(ZSOURCES) > $(OBJDIR)/xdepends.txt
+	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
+endef
+
+tags: $(VLIB) $(ZSOURCES)
+	@ctags $(ZSOURCES) $(VLIB)
+
+.PHONY: depends
+depends: tags $(OBJDIR)/
+	$(build-depends)
+
+$(OBJDIR)/:
+	@bash -c "if [ ! -e $(OBJDIR) ]; then mkdir -p $(OBJDIR)/; fi"
+
+$(OBJDIR)/depends.txt: $(OBJDIR)/ depends
+
 .PHONY: clean
 clean:
+	rm -rf $(OBJDIR)/
 	rm ./zippy_tb pdump div_tb mpy_tb
+
+-include $(OBJDIR)/depends.txt
