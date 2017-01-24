@@ -94,6 +94,8 @@ public:
 
 	virtual	bool	interrupt(void) { return false; };
 	virtual	void	tick(void) {};
+
+	virtual	void	load(uint32_t addr, const char *buf, size_t ln) {}
 };
 
 class	UARTDEV : public SIMDEV {
@@ -107,7 +109,7 @@ public:
 		case 1:	return 0;
 		case 2:	return 0x100;
 		case 3:	return 0;
-		}
+		} return 0;
 	}
 		
 	virtual void sw(uint32_t addr, uint32_t vl) {
@@ -157,6 +159,11 @@ public:
 	virtual void sb(uint32_t addr, uint32_t vl) {
 		m_mem[addr] = vl;
 	}
+
+	void	load(uint32_t addr, const char *src, size_t n) {
+fprintf(stderr, "MEM:LOAD(%08x, %016lx, %ld)\n", addr, (unsigned long)src, n);
+		memcpy(&m_mem[addr], src, n);
+	}
 };
 
 class	ROMDEV : public MEMDEV {
@@ -167,113 +174,129 @@ public:
 	virtual	void	sw(uint32_t addr, uint32_t vl) {}
 	virtual	void	sh(uint32_t addr, uint32_t vl) {}
 	virtual	void	sb(uint32_t addr, uint32_t vl) {}
-
 	void	load(uint32_t addr, const char *src, size_t n) {
 		memcpy(&m_mem[addr], src, n);
 	}
 };
+
+#ifndef	L_OK
+#define	L_OK	8	// Okay for loads
+#endif
 
 class	SIMENTRY {
 public:
 	SIMDEV	*m_dev;
 	uint32_t m_addr, m_mask;
 	int	m_flags;
+	char	*m_name;
 };
 
 class	SIMBUS {
 	bool	m_buserr;
 	std::vector<SIMENTRY *>	m_devlist;
-	SIMDEV	*getdev(uint32_t addr) {
-		for(int i=0; i<m_devlist.size(); i++) {
+	int	getdev(uint32_t addr) {
+		for(size_t i=0; i<m_devlist.size(); i++) {
 			if ((addr&m_devlist[i]->m_mask)==m_devlist[i]->m_addr)
-				return m_devlist[i]->m_dev;
+				return i;
 		}
-		return NULL;
+
+		fprintf(stderr, "GETDEV(0x%08x) - not found\n", addr);
+		for(size_t i=0; i<m_devlist.size(); i++) {
+			fprintf(stderr, "ADDR(0x%08x) & 0x%08x = %08x != %08x\n",
+				addr, m_devlist[i]->m_mask,
+				addr & m_devlist[i]->m_mask,
+				m_devlist[i]->m_addr);
+		}
+
+		return -1;
 	}
-	SIMDEV	*getwrdev(uint32_t addr) {
-		for(int i=0; i<m_devlist.size(); i++) {
-			if ((addr&m_devlist[i]->m_mask)==m_devlist[i]->m_addr) {
-				if (m_devlist[i]->m_flags & W_OK)
-					return m_devlist[i]->m_dev;
-				break;
-			}
-		}
-		return NULL;
+	int	getwrdev(uint32_t addr) {
+		int	devid = getdev(addr);
+		if (m_devlist[devid]->m_flags & W_OK)
+			return devid;
+		return -1;
 	}
-	SIMDEV	*getexdev(uint32_t addr) {
-		for(int i=0; i<m_devlist.size(); i++) {
-			if ((addr&m_devlist[i]->m_mask)==m_devlist[i]->m_addr) {
-				if (m_devlist[i]->m_flags & X_OK)
-					return m_devlist[i]->m_dev;
-				break;
-			}
+	int	getexdev(uint32_t addr) {
+		int	devid = getdev(addr);
+		if (0 <= devid) {
+			if (m_devlist[devid]->m_flags & X_OK)
+				return devid;
+			fprintf(stderr, "Address in %s is not executable\n", m_devlist[devid]->m_name);
 		}
-		return NULL;
+		fprintf(stderr, "ExDEV not found (0x%08x), devid = %d\n", addr, devid);
+		return -1;
 	}
 public:
 	SIMBUS(void) { m_buserr = false; }
-	void	add(SIMDEV *dev, uint32_t addr, uint32_t mask, const char *p) {
+	void	add(SIMDEV *dev, uint32_t addr, uint32_t mask, const char *p, const char *name = "") {
 		SIMENTRY	*s = new SIMENTRY;
+
 		s->m_dev = dev;
 		s->m_addr= addr;
 		s->m_mask= mask;
+		s->m_name= strdup(name);
 		s->m_flags= 0;
 
-		if (strchr(p, 'w'))
+		if ((strchr(p, 'w'))||(strchr(p, 'W')))
 			s->m_flags |= W_OK;
-		else if (strchr(p, 'r'))
+		if ((strchr(p, 'r'))||(strchr(p, 'R')))
 			s->m_flags |= R_OK;
-		else if (strchr(p, 'x'))
+		if ((strchr(p, 'x'))||(strchr(p, 'X')))
 			s->m_flags |= X_OK;
+		if ((strchr(p, 'l'))||(strchr(p, 'L')))
+			s->m_flags |= L_OK;
 		m_devlist.push_back(s);
 	}
 
 	uint32_t	lb(uint32_t addr) {
-		SIMDEV	*dev;
-		if (dev = getdev(addr))
-			return dev->lb(addr);
+		int	devid;
+		if (0 <= (devid = getdev(addr)))
+			return m_devlist[devid]->m_dev->lb(addr & (~m_devlist[devid]->m_mask));
 		m_buserr = true;
 		return 0;
 	}
 	uint32_t	lh(uint32_t addr) {
-		SIMDEV	*dev;
-		if (dev = getdev(addr))
-			return dev->lh(addr & -2);
+		int	devid;
+		if (0 <= (devid = getdev(addr)))
+			return m_devlist[devid]->m_dev->lh(addr & ((~m_devlist[devid]->m_mask)&-2));
 		m_buserr = true;
 		return 0;
 	}
 	uint32_t	lw(uint32_t addr) {
-		SIMDEV	*dev;
-		if (dev = getdev(addr))
-			return dev->lw(addr & -4);
+		int	devid;
+		if (0 <= (devid = getdev(addr)))
+			return m_devlist[devid]->m_dev->lh(addr & ((~m_devlist[devid]->m_mask)&-4));
 		m_buserr = true;
 		return 0;
 	}
 	uint32_t	lx(uint32_t addr) {
-		SIMDEV	*dev;
-		if (dev = getexdev(addr))
-			return dev->lw(addr & -4);
+		int	devid;
+		if (0 <= (devid = getexdev(addr)))
+			return m_devlist[devid]->m_dev->lw(addr & ((~m_devlist[devid]->m_mask)&-4));
 		m_buserr = true;
 		return 0;
 	}
 	void	sb(uint32_t addr, uint32_t vl) {
-		SIMDEV	*dev;
-		if (dev = getwrdev(addr))
-			return dev->sb(addr, vl & 0x0ff);
+		int	devid;
+		if (0 <= (devid = getwrdev(addr))) {
+			return m_devlist[devid]->m_dev->sb(addr & (~m_devlist[devid]->m_mask), vl & 0x0ff);
+		} else {
+			fprintf(stderr, "No such address, %08x\n", addr);
+		}
 		m_buserr = true;
 		return;
 	}
 	void	sh(uint32_t addr, uint32_t vl) {
-		SIMDEV	*dev;
-		if (dev = getwrdev(addr))
-			return dev->sh(addr & -2, vl & 0x0ffff);
+		int	devid;
+		if (0 <= (devid = getwrdev(addr)))
+			return m_devlist[devid]->m_dev->sh(addr & -2 & (~m_devlist[devid]->m_mask), vl & 0x0ff);
 		m_buserr = true;
 		return;
 	}
 	void	sw(uint32_t addr, uint32_t vl) {
-		SIMDEV	*dev;
-		if (dev = getwrdev(addr))
-			return dev->sw(addr & -4, vl);
+		int	devid;
+		if (0 <= (devid = getwrdev(addr)))
+			return m_devlist[devid]->m_dev->sw(addr & -4 & (~m_devlist[devid]->m_mask), vl & 0x0ff);
 		m_buserr = true;
 		return;
 	}
@@ -286,8 +309,20 @@ public:
 	}
 
 	void	tick(void) {
-		for(int i=0; i<m_devlist.size(); i++)
-			tick();
+		for(size_t i=0; i<m_devlist.size(); i++)
+			m_devlist[i]->m_dev->tick();
+	}
+
+	void	load(uint32_t addr, const char *data, size_t len) {
+		int	devid;
+		if ((0 <= (devid = getdev(addr)))
+				&&(m_devlist[devid]->m_flags & L_OK))
+			m_devlist[devid]->m_dev->load(
+				addr & (~m_devlist[devid]->m_mask), data, len);
+		else {
+			fprintf(stderr, "DEVID = %d\n", devid);
+			m_buserr = true;
+		} return;
 	}
 };
 
@@ -397,13 +432,64 @@ public:
 			m_r[i] = 0;
 		m_gie = false;
 	}
-	
+
+	void	siminsn(uint32_t insn) {
+		// fprintf(stderr, "SIM-INSN(0x%08x)\n", insn);
+		if ((insn & 0x0fffff)==0x00100) {
+			// SIM Exit(0)
+			exit(0);
+		} else if ((insn & 0x0ffff0)==0x00310) {
+			// SIM Exit(User-Reg)
+			int	rcode;
+			rcode = m_r[(insn&0x0f)+16] & 0x0ff;
+			exit(rcode);
+		} else if ((insn & 0x0ffff0)==0x00300) {
+			// SIM Exit(Reg)
+			int	rcode;
+			rcode = m_r[(insn&0x0f)+rbase()] & 0x0ff;
+			exit(rcode);
+		} else if ((insn & 0x0ffff0)==0x00300) {
+			// SIM Exit(Imm)
+			int	rcode;
+			rcode = insn & 0x0ff;
+			exit(rcode);
+		} else if ((insn & 0x0fffff)==0x002ff) {
+			// Full/unconditional dump
+			fprintf(stderr, "SIM-DUMP\n");
+			dump();
+		} else if ((insn & 0x0ffff0)==0x00200) {
+			// Dump a register
+			int rid = (insn&0x0f)+rbase();
+			fprintf(stderr, "R[%2d] = 0x%08x\n", rid, m_r[rid]);
+		} else if ((insn & 0x0ffff0)==0x00210) {
+			// Dump a user register
+			int rid = (insn&0x0f)+16;
+			fprintf(stderr, "uR[%2d] = 0x%08x\n", rid, m_r[rid]);
+		} else if ((insn & 0x0ffff0)==0x00230) {
+			// SOUT[User Reg]
+			int rid = (insn&0x0f)+16;
+			fprintf(stderr, "%c", m_r[rid]&0x0ff);
+		} else if ((insn & 0x0fffe0)==0x00220) {
+			// SOUT[User Reg]
+			int rid = (insn&0x0f)+rbase();
+			fprintf(stderr, "%c", m_r[rid]&0x0ff);
+		} else if ((insn & 0x0fff00)==0x00400) {
+			// SOUT[Imm]
+			fprintf(stderr, "%c", insn&0x0ff);
+		} else { // if ((insn & 0x0f7c00000)==0x77800000)
+			uint32_t	imm = insn & 0x03fffff;
+			// Simm instruction that we dont recognize
+			// if (imm)
+			fprintf(stderr, "SIM 0x%08x\n", imm);
+		}
+	}
+
 	void	fullinsn(uint32_t insn) {
 		bool	wf, wb, fpu, noop, lock, wbreak, cmptst, mem,
 			sto, ldi, mov, div, execinsn;
-		bool	diverr, illegal, buserr;
+		bool	diverr, illegal;
 		uint32_t	av, bv, result, f, arg, brg, opc;
-		int32_t		iv, imm;
+		int32_t		imm;
 		int		rb, cnd;
 
 		m_jumped     = false;
@@ -413,13 +499,13 @@ public:
 			&= ~(CC_ILL|CC_BREAK|CC_BUSERR|CC_DIVERR);
 
 		opc = (insn >> 23) & 0x01f;
-		arg = (insn >> 28) & 0x0f;
+		arg = (insn >> 27) & 0x0f;
 		brg = (insn >> 14) & 0x0f;
 
 		cmptst=((opc&0x1e)==0x010);
 		mem = ((opc&0x1c) == 0x014)||((opc&0x1e) == 0x012);
 		sto = (mem)&&(opc&1);
-		fpu =(((opc&0x1c)==0x1c)	// Top four FPU ops
+		fpu =(((opc&0x1c)==0x1c)		// Top four FPU ops
 				||((opc&0x1e)==0x1a));	// Bottom two FPU ops
 		div =((opc&0x1e)==0x0e);
 		ldi =((opc&0x1e)==0x18);
@@ -473,7 +559,8 @@ public:
 			case 7: execinsn = ((ccodes & CC_C)==0);	// NC
 			default:	execinsn = true;	break;
 			}
-		}
+		} else
+			execinsn = true;
 
 		if ((mov)&&(!gie())) {
 			// Supervisor can read all registers
@@ -519,12 +606,7 @@ public:
 				} else if (fvr < 0.0)
 					f |= CC_N;
 			} else if (noop) {
-				if ((insn & 0x0f7ffff00)==0x77800100) {
-					// SIM Exit
-					exit(sbits(insn, 8));
-				} else if ((insn & 0xf7c00000)== 0x77800000) {
-					dump();
-				} // Otherwise it's a simple NOOP
+				siminsn(insn);
 			} else if (wbreak) {
 				wf = wb = false;
 				m_advance_pc = false;
@@ -689,9 +771,9 @@ public:
 			} if (wf)
 				ccodes(f);
 			if (wb) {
-				if (arg == 15+rbase())
+				if (arg == (uint32_t)(15+rbase()))
 					m_jumped = true;
-				else if (arg == 14+rbase()) {
+				else if (arg == (uint32_t)(14+rbase())) {
 					if (gie()) {
 						if ((result & CC_GIE)==0) {
 							result |= CC_TRAP;
@@ -771,7 +853,6 @@ public:
 		bool	igie = gie();
 		if (insn & 0x80000000) {
 			int		ibase = rbase();
-			uint32_t	pcv = pc();
 			cisinsn((insn>>16) & 0x0ffff);
 			if (m_advance_pc)
 				m_r[14+ibase] |= (CC_PHASE);
@@ -799,7 +880,7 @@ int main(int argc, char **argv) {
 	SIMBUS *bus;
 	bool	done;
 	ZIPMACHINE	*zipm;
-	ELFSECTION	**sections, **secpp, *secp;
+	ELFSECTION	**secpp, *secp;
 	uint32_t	entry;
 
 	if (argc > 1)
@@ -807,7 +888,7 @@ int main(int argc, char **argv) {
 	if (access(executable, R_OK)!=0) {
 		fprintf(stderr, "Cannot read %s\n", executable);
 		exit(EXIT_FAILURE);
-	} elfread(executable, entry, sections);
+	} elfread(executable, entry, secpp);
 
 	// Timer  at 0x0100?
 	// Buserr at 0x0101?
@@ -815,23 +896,27 @@ int main(int argc, char **argv) {
 	bus = new SIMBUS();
 	// BUSITEM net = new NETDEV();
 
-	bus->add(new UARTDEV(),  0x00000410, 0xfffffff0, "RW");// 4 words
+	bus->add(new UARTDEV(),  0x00000410, 0xfffffff0, "RW", "UART");// 4 words
 	// bus->add(new SDCDEV(12), 0x00000420, 0xfffffff0, "RW");// 4 words
 	// bus->add(net->ctrl,   0x00000440, 0xffffffe0, "RW");// 8 words
 	// bus->add(net->data,   0x00002000, 0xffffe000, "R"); // 8 words
 	// bus->add(net->data,   0x00003000, 0xffffe000, "R"); // 8 words
-	bus->add(new MEMDEV(17), 0x0020000, 0x7fe0000, "RWX");// Block RAM
-	bus->add(new ROMDEV(24), 0x1000000, 0x7000000, "RX"); // Flash
-	bus->add(new MEMDEV(26), 0x4000000, 0x4000000, "RWX");// SDRAM
+	bus->add(new MEMDEV(17), 0x0020000, 0x7fe0000, "RWX", "BlockRAM");// Block RAM
+	bus->add(new ROMDEV(24), 0x1000000, 0x7000000, "RXL", "Flash"); // Flash
+	bus->add(new MEMDEV(26), 0x4000000, 0x4000000, "RWX", "SDRAM");// SDRAM
 
+assert(secpp[0]->m_len != 0);
 	for(int s=0; secpp[s]->m_len; s++) {
 		secp = secpp[s];
-		for(int i=0; i<secp->m_len; i++)
-			bus->sb(secp->m_start+i, secp->m_data[i]);
+		bus->load(secp->m_start, (const char *)&secp->m_data[0], secp->m_len);
+		if (bus->error()) {
+			printf("LOAD: Error writing to mem @ 0x%08x\n", secp->m_start);
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	if(bus->error()) {
-		fprintf(stderr, "ERR: Executable file doesn\'t fit in simulator");
+		fprintf(stderr, "ERR: Executable file doesn\'t fit in simulator\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -840,8 +925,8 @@ int main(int argc, char **argv) {
 	zipm->init(bus);
 	zipm->m_r[15] = entry;
 	while(!done) {
-		uint32_t	insn = bus->lx(zipm->pc());
-		bool	vliw;
+		uint32_t	insn;
+		insn = bus->lx(zipm->pc());
 
 		if (bus->error()) {
 			if (zipm->gie()) {
@@ -850,6 +935,7 @@ int main(int argc, char **argv) {
 				continue;
 			} else {
 				zipm->m_r[14] |= CC_BUSERR;
+				fprintf(stderr, "IFetch BUSERR, %08x\n", zipm->pc());
 				zipm->dump();
 				exit(EXIT_FAILURE);
 			}

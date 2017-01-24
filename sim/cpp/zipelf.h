@@ -34,10 +34,12 @@
 #ifndef	ZIPELF_H
 #define	ZIPELF_H
 
+#include <stdint.h>
+
 class	ELFSECTION {
 public:
 	uint32_t	m_start, m_len;
-	uint32_t	m_data[1];
+	char		m_data[4];
 };
 
 bool	iself(const char *fname);

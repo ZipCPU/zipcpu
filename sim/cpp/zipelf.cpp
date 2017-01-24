@@ -62,19 +62,6 @@ iself(const char *fname)
 	return 	ret;
 }
 
-static unsigned
-byteswap(unsigned n)
-{
-	unsigned	r;
-
-	r = (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-
-	return r;
-}
-
 void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 {
 	Elf	*e;
@@ -157,6 +144,8 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 		exit(EXIT_FAILURE);
 	}
 
+assert(n != 0);
+
 	unsigned total_octets = 0, current_offset=0, current_section=0;
 	for(i=0; i<(int)n; i++) {
 		total_octets += sizeof(ELFSECTION *)+sizeof(ELFSECTION);
@@ -219,7 +208,7 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 		current_section++;
 
 		r[i]->m_start = phdr.p_vaddr;
-		r[i]->m_len   = phdr.p_filesz/ sizeof(uint32_t);
+		r[i]->m_len   = phdr.p_filesz;
 
 		current_offset += phdr.p_memsz + sizeof(ELFSECTION);
 
@@ -243,8 +232,8 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 		*/
 
 		if (dbg) for(unsigned j=0; j<r[i]->m_len; j++)
-			fprintf(stderr, "ADR[%04x] = %08x\n", r[i]->m_start+j,
-			r[i]->m_data[j]);
+			fprintf(stderr, "ADR[%04x] = %02x\n", r[i]->m_start+j,
+				r[i]->m_data[j] & 0x0ff);
 	}
 
 	r[i] = (ELFSECTION *)(&d[current_offset]);
