@@ -93,7 +93,8 @@ binutils-pdf-install: binutils-pdf
 	mkdir -p $(PDFD)
 	find $(BUILDGASD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 
-
+gas-check: binutils-install
+	$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
 #
 #
 # Now let's try the same thing for GCC
