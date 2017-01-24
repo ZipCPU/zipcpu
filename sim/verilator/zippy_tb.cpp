@@ -6,8 +6,8 @@
 //
 // Purpose:	A bench simulator for the CPU.  Eventually, you should be
 //		able to give this program the name of a piece of compiled
-//		code to load into memory.  For now, we hand assemble with the
-//		computers help.
+//	code to load into memory.  For now, we hand assemble with the computers
+//	help.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -1242,18 +1242,18 @@ public:
 		if (false) {
 			m_core->i_clk = 1;
 			m_mem(m_core->i_clk, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data,
+				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 			eval();
 			m_core->i_clk = 0;
 			m_mem(m_core->i_clk, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data,
+				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 			eval();
 			m_tickcount++;
 		} else {
 			m_mem(1, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data,
+				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 			if ((m_core->o_wb_cyc)&&(m_core->o_wb_stb)
 				&&((m_core->o_wb_addr & (~((1<<20)-1))) != 0x100000))
