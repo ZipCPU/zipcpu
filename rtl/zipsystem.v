@@ -187,8 +187,8 @@ module	zipsystem(i_clk, i_rst,
 `else
 			IMPLEMENT_FPU=0,
 `endif
-			IMPLEMENT_LOCK=1,
-			// Derived parameters
+			IMPLEMENT_LOCK=1;
+	localparam	// Derived parameters
 			AW=ADDRESS_WIDTH;
 	input	i_clk, i_rst;
 	// Wishbone master
@@ -260,11 +260,12 @@ module	zipsystem(i_clk, i_rst,
 	reg		dbg_ack;
 `ifdef	DELAY_DBG_BUS
 	wire		dbg_err, no_dbg_err;
+	wire	[3:0]	dbg_sel;
 	assign		dbg_err = 1'b0;
 	busdelay #(1,32) wbdelay(i_clk,
-		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
+		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data, 4'hf,
 			o_dbg_ack, o_dbg_stall, o_dbg_data, no_dbg_err,
-		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_idata,
+		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_idata, dbg_sel,
 			dbg_ack, dbg_stall, dbg_odata, dbg_err);
 `else
 	assign	dbg_cyc     = i_dbg_cyc;

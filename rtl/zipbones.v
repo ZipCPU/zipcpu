@@ -49,8 +49,8 @@ module	zipbones(i_clk, i_rst,
 `endif
 		);
 	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=8, START_HALTED=0,
-			AW=ADDRESS_WIDTH;
+			LGICACHE=8, START_HALTED=0;
+	localparam	AW=ADDRESS_WIDTH;
 	input	i_clk, i_rst;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
@@ -177,7 +177,7 @@ module	zipbones(i_clk, i_rst,
 				cpu_lcl_cyc, cpu_lcl_stb,
 				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 				i_wb_ack, i_wb_stall, i_wb_data,
-				(i_wb_err)||((cpu_lcl_cyc)&&(cpu_lcl_stb)),
+				(i_wb_err)||(cpu_lcl_cyc),
 			cpu_op_stall, cpu_pf_stall, cpu_i_count
 `ifdef	DEBUG_SCOPE
 			, o_zip_debug
