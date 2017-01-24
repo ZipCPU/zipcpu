@@ -225,8 +225,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-01-12 14:13:06.263830106 -0500
-@@ -0,0 +1,2423 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-01-18 21:36:57.765726840 -0500
+@@ -0,0 +1,2420 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -459,7 +459,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +static void
 +zip_operand_lossage(const char *msgid, rtx op) {
-+	fprintf(stderr, "Operand lossage??\n");
 +	debug_rtx(op);
 +	zip_debug_rtx(op);
 +	output_operand_lossage("%s", msgid);
@@ -1329,7 +1328,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +static tree
 +zip_builtin_decl(unsigned zip_builtin_code, bool initialize_p ATTRIBUTE_UNUSED)
 +{
-+fprintf(stderr, "Zip-BUILTIN-DECL\n");
 +  if (zip_builtin_code >= ZIP_BUILTIN_MAX)
 +    return error_mark_node;
 +
@@ -1342,7 +1340,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		machine_mode tmode ATTRIBUTE_UNUSED,
 +		int	ignore ATTRIBUTE_UNUSED)
 +{
-+fprintf(stderr, "Zip-EXPAND-BUILTIN\n");
 +	tree	fndecl = TREE_OPERAND(CALL_EXPR_FN(exp), 0);
 +	bool	nonvoid = (TREE_TYPE(TREE_TYPE(fndecl)) != void_type_node);
 +	enum	ZIP_BUILTIN_ID_CODE code=(enum ZIP_BUILTIN_ID_CODE)DECL_FUNCTION_CODE(fndecl);
@@ -7428,8 +7425,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-12 14:43:45.330231705 -0500
-@@ -0,0 +1,2560 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-19 14:20:45.981332780 -0500
+@@ -0,0 +1,2575 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -9541,7 +9538,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(clobber (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))]
 +	""
-+	"JSR\t%0"
++	{
++		if (REG_P(operands[0]))
++			return "JSR\t(%0)";
++		else
++			return "JSR\t%0";
++	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -9601,7 +9603,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(clobber (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))]
 +	""
-+	"JSR\t%0"
++	{
++		if (REG_P(operands[0]))
++			return "JSR\t(%0)";
++		else
++			return "JSR\t%0";
++	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -9636,7 +9643,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(clobber (reg:CC CC_REG))
 +		(simple_return)]
 +	""
-+	"JMP\t%0"
++	{
++		if (REG_P(operands[0]))
++			return "JMP\t(%0)";
++		else
++			return "JMP\t%0";
++	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -9774,33 +9786,33 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	MOV\tuR2,%3
 +	MOV\tuR3,%4
 +	SW\t%1,%0
-+	SW\t%2,1(%0)
-+	SW\t%3,2(%0)
-+	SW\t%4,3(%0)
++	SW\t%2,4(%0)
++	SW\t%3,8(%0)
++	SW\t%4,12(%0)
 +	MOV\tuR4,%1
 +	MOV\tuR5,%2
 +	MOV\tuR6,%3
 +	MOV\tuR7,%4
-+	SW\t%1,4(%0)
-+	SW\t%2,5(%0)
-+	SW\t%3,6(%0)
-+	SW\t%4,7(%0)
++	SW\t%1,16(%0)
++	SW\t%2,20(%0)
++	SW\t%3,24(%0)
++	SW\t%4,28(%0)
 +	MOV\tuR8,%1
 +	MOV\tuR9,%2
 +	MOV\tuR10,%3
 +	MOV\tuR11,%4
-+	SW\t%1,8(%0)
-+	SW\t%2,9(%0)
-+	SW\t%3,10(%0)
-+	SW\t%4,11(%0)
++	SW\t%1,32(%0)
++	SW\t%2,36(%0)
++	SW\t%3,40(%0)
++	SW\t%4,44(%0)
 +	MOV\tuR12,%1
 +	MOV\tuSP,%2
 +	MOV\tuCC,%3
 +	MOV\tuPC,%4
-+	SW\t%1,12(%0)
-+	SW\t%2,13(%0)
-+	SW\t%3,14(%0)
-+	SW\t%4,15(%0)"
++	SW\t%1,48(%0)
++	SW\t%2,52(%0)
++	SW\t%3,56(%0)
++	SW\t%4,60(%0)"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +;
 +; See the comment above about why operand 0, %0, *must* be a "+r" operand,
@@ -9816,33 +9828,33 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	(clobber (match_scratch:SI 4 "=r"))]
 +	"(!ZIP_USER)"
 +	"LW\t0(%0),%1
-+	LW\t1(%0),%2
-+	LW\t2(%0),%3
-+	LW\t3(%0),%4
++	LW\t4(%0),%2
++	LW\t8(%0),%3
++	LW\t12(%0),%4
 +	MOV\t%1,uR0
 +	MOV\t%2,uR1
 +	MOV\t%3,uR2
 +	MOV\t%4,uR3
-+	LW\t4(%0),%1
-+	LW\t5(%0),%2
-+	LW\t6(%0),%3
-+	LW\t7(%0),%4
++	LW\t16(%0),%1
++	LW\t20(%0),%2
++	LW\t24(%0),%3
++	LW\t28(%0),%4
 +	MOV\t%1,uR4
 +	MOV\t%2,uR5
 +	MOV\t%3,uR6
 +	MOV\t%4,uR7
-+	LW\t8(%0),%1
-+	LW\t9(%0),%2
-+	LW\t10(%0),%3
-+	LW\t11(%0),%4
++	LW\t32(%0),%1
++	LW\t36(%0),%2
++	LW\t40(%0),%3
++	LW\t44(%0),%4
 +	MOV\t%1,uR8
 +	MOV\t%2,uR9
 +	MOV\t%3,uR10
 +	MOV\t%4,uR11
-+	LW\t12(%0),%1
-+	LW\t13(%0),%2
-+	LW\t14(%0),%3
-+	LW\t15(%0),%4
++	LW\t48(%0),%1
++	LW\t52(%0),%2
++	LW\t56(%0),%3
++	LW\t60(%0),%4
 +	MOV\t%1,uR12
 +	MOV\t%2,uSP
 +	MOV\t%3,uCC

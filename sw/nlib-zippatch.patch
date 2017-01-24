@@ -4522,8 +4522,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-13 18:14:51.193287057 -0500
-@@ -0,0 +1,277 @@
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-23 14:07:13.911956631 -0500
+@@ -0,0 +1,279 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
@@ -4667,11 +4667,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +// entry function so that, should the kernel ever exit, it wouldn't exit on 
 +// any error but rather it would exit by halting the CPU.
 +//
-+asm("\t.section\t.start\n"
++asm("\t.section\t.start,\"ax\",@progbits\n"
 +	"\t.global\t_start\n"
 +"_start:"	"\t; Here's the global ZipCPU entry point upon reset/reboot\n"
 +	"\tLDI\t_top_of_stack,SP"	"\t; Set up our supervisor stack ptr\n"
-+	"\tMOV\t_kernel_exit(PC),uPC"	"\t; Set user PC pointer to somewhere valid\n"
++	"\tMOV\t_kernel_is_dead(PC),uPC" "\t; Set user PC pointer to somewhere valid\n"
 +#ifndef	SKIP_BOOTLOADER
 +	"\tMOV\t_after_bootloader(PC),R0" " ; JSR to the bootloader routine\n"
 +	"\tBRA\t_bootloader\n"
@@ -4679,10 +4679,12 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	"\tLDI\t_top_of_stack,SP"	"\t; Set up our supervisor stack ptr\n"
 +	"\tOR\t0x4000,CC"		"\t; Clear the data cache\n"
 +#endif
++#ifdef	USING_CPLUSPLUS
 +	"\tJSR\tinit"		"\t; Initialize any constructor code\n"
 +	//
 +	"\tLDI\tfini,R1"	"\t; \n"
 +	"\tJSR\t_atexit"	"\t; Initialize any constructor code\n"
++#endif
 +	//
 +	"\tCLR\tR1"			"\t; argc = 0\n"
 +	"\tMOV\t_argv(PC),R2"		"\t; argv = &0\n"
@@ -4803,8 +4805,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
 --- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-01-13 15:18:52.935460815 -0500
-@@ -0,0 +1,107 @@
++++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-01-19 13:31:29.339368943 -0500
+@@ -0,0 +1,110 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
 +# The authors hereby grant permission to use, copy, modify, distribute,
@@ -4867,8 +4869,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +CRT0_INSTALL  = install-crt0
 +
 +BASIC_BSP   = libzipbasic.a
-+BASIC_OBJS  = syscalls.c zipcpu.c
++BASIC_OBJS  = libboard-syscalls.o libboard-zipcpu.o
 +# SPECS = ${srcdir}/zip.specs
++
++libboard-%.o: %.c
++	${CC} ${CFLAGS} -o $@ -c $<
 +
 +# Host specific makefile fragment comes in here.
 +@host_makefile_frag@
@@ -4914,8 +4919,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-13 13:19:59.779247972 -0500
-@@ -0,0 +1,214 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-18 21:29:13.052582206 -0500
+@@ -0,0 +1,228 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -4949,6 +4954,17 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +//
++#include <sys/errno.h>
++#include <stdint.h>
++#include <sys/unistd.h>
++#include <sys/types.h>
++#include <sys/stat.h>
++#include <sys/times.h>
++#include <stdio.h>
++#include "board.h"
++#include "bootloader.h"
++#include "zipcpu.h"
++
 +void
 +_outbyte(char v) {
 +	// Reset the transmit interrupt
@@ -4957,12 +4973,14 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +	while((SYSPIC)&&(SYSINT_UARTTX)==0)
 +		;
 +	uint8_t c = v;
-+	_uart.u_tx = (unsigned)c;
++	_uart->u_tx = (unsigned)c;
 +}
 +
 +void
 +_exit(int rc) {
 +	asm volatile ("\tnexit\t%0": : "r"(rc));
++	while(1)
++		zip_halt();
 +}
 +
 +int
@@ -4994,7 +5012,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +{
 +	if ((STDOUT_FILENO == file)||(STDERR_FILENO == file)
 +		||(STDIN_FILENO == file)) {
-+		s_st->mode = S_IFCHR;
++		st->st_mode = S_IFCHR;
 +		return 0;
 +	} else {
 +		errno = EBADF;
@@ -5019,8 +5037,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +_isatty(int file)
 +{
 +	if ((STDIN_FILENO == file)
-+			||(STOUT_FILENO == file)
-+			||(STDERR_FILENO==file)
++			||(STDOUT_FILENO == file)
++			||(STDERR_FILENO==file))
 +		return 1;
 +	return 0;
 +}
@@ -5060,12 +5078,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +	if (STDIN_FILENO == file)
 +	{
 +		int	nr = 0, rv;
++		char	*chp = ptr;
 +		while(nr < len) {
 +			while( ((SYSPIC)&&(SYSINT_UARTRX)) == 0)
 +				;
-+			rv = _uart.u_rx;
++			rv = _uart->u_rx;
 +			if ((rv & -256)==0) {
-+				*ptr++ = (char)rv;
++				*chp++ = (char)rv;
 +				nr++;
 +			}
 +		}
@@ -5085,7 +5104,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +int
 +_stat(const char *path, struct stat *buf) {
-+	errno = EIO
++	errno = EIO;
 +	return -1;
 +}
 +
@@ -5098,7 +5117,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +int
 +_times(struct tms *buf) {
-+	errno = EACCESS;
++	errno = EACCES;
 +	return -1;
 +}
 +
@@ -5106,7 +5125,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +_write(int file, char *buf, int nbytes) {
 +	if ((STDOUT_FILENO == file)||(STDERR_FILENO == file)) {
 +		for(int i=0; i<nbytes; i++)
-+			outbyte(buf[i]);
++			_outbyte(buf[i]);
 +		return nbytes;
 +	}
 +
@@ -5455,12 +5474,12 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/new
  #undef _FVWRITE_IN_STREAMIO
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip/newlib/configure.host
 --- newlib-2.5.0/newlib/configure.host	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/configure.host	2017-01-13 08:17:03.208084260 -0500
++++ newlib-2.5.0-zip/newlib/configure.host	2017-01-18 21:26:04.993739019 -0500
 @@ -310,6 +310,9 @@
    z8k)
  	machine_dir=z8k
  	;;
-+  zip)
++  zip*)
 +	machine_dir=zip
 +	;;
    spu)

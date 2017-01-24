@@ -235,8 +235,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/reloc.texi binutils-2.27-zip/
  
 diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
 --- binutils-2.27/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-11 14:28:10.187387068 -0500
-@@ -0,0 +1,1270 @@
++++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-23 12:20:29.641716300 -0500
+@@ -0,0 +1,1160 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -321,6 +321,48 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +	 FALSE,			/* partial_inplace */
 +	 0x00000000,		/* src_mask */
 +	 0xffffffff,		/* dst_mask */
++	 FALSE),		/* pcrel_offset */
++
++  HOWTO (R_ZIP_BREV,		/* type -- LDIHI, but with bitreverse */
++	 0,			/* rightshift */
++	 2,			/* size (0 = byte, 1 = short, 2 = long) */
++	 16,			/* bitsize */
++	 FALSE,			/* pc_relative */
++	 0,			/* bitpos */
++	 complain_overflow_bitfield, /* complain_on_overflow */
++	 zip_brev_relocation,	 /* special_function--needed for the bitreverse */
++	 "R_ZIP_BREV",		/* name */
++	 FALSE,			/* partial_inplace */
++	 0,			/* src_mask */
++	 0x0003ffff,		/* dst_mask */
++	 FALSE),		/* pcrel_offset */
++
++  HOWTO (R_ZIP_LLO,		/* type */
++	 0,			/* rightshift */
++	 2,			/* size (0 = byte, 1 = short, 2 = long) */
++	 23,			/* bitsize */
++	 FALSE,			/* pc_relative */
++	 0,			/* bitpos */
++	 complain_overflow_dont, /* don't complain_on_overflow */
++	 zip_relocation,	 /* special_function */
++	 "R_ZIP_LLO",		/* name */
++	 FALSE,			/* partial_inplace */
++	 0,			/* src_mask */
++	 0x0000ffff,		/* dst_mask */
++	 FALSE),		/* pcrel_offset */
++
++  HOWTO (R_ZIP_LDI,		/* type */
++	 0,			/* rightshift */
++	 2,			/* size (0 = byte, 1 = short, 2 = long) */
++	 23,			/* bitsize */
++	 FALSE,			/* pc_relative */
++	 0,			/* bitpos */
++	 complain_overflow_signed, /* complain_on_overflow */
++	 zip_relocation,	 /* special_function */
++	 "R_ZIP_LDI",		/* name */
++	 FALSE,			/* partial_inplace */
++	 0,			/* src_mask */
++	 0x007fffff,		/* dst_mask */
 +	 FALSE),		/* pcrel_offset */
 +
 +  /* An 18 bit pc-relative relocation.  */
@@ -426,7 +468,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +	 FALSE,			/* partial_inplace */
 +	 0,			/* src_mask */
 +	 0x00001fff,		/* dst_mask */
-+	 TRUE),			/* pcrel_offset */
++	 TRUE)			/* pcrel_offset */
 +
 +  /* */
 +  //HOWTO (R_ZIP_MOV_GOTREL,	/* type */
@@ -443,47 +485,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +	 //0x00001fff,		/* dst_mask */
 +	 //FALSE),		/* pcrel_offset */
 +
-+  HOWTO (R_ZIP_LDI,		/* type */
-+	 0,			/* rightshift */
-+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-+	 23,			/* bitsize */
-+	 FALSE,			/* pc_relative */
-+	 0,			/* bitpos */
-+	 complain_overflow_signed, /* complain_on_overflow */
-+	 zip_relocation,	 /* special_function */
-+	 "R_ZIP_LDI",		/* name */
-+	 FALSE,			/* partial_inplace */
-+	 0,			/* src_mask */
-+	 0x007fffff,		/* dst_mask */
-+	 FALSE),		/* pcrel_offset */
-+
-+  HOWTO (R_ZIP_LLO,		/* type */
-+	 0,			/* rightshift */
-+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-+	 23,			/* bitsize */
-+	 FALSE,			/* pc_relative */
-+	 0,			/* bitpos */
-+	 complain_overflow_dont, /* don't complain_on_overflow */
-+	 zip_relocation,	 /* special_function */
-+	 "R_ZIP_LLO",		/* name */
-+	 FALSE,			/* partial_inplace */
-+	 0,			/* src_mask */
-+	 0x0000ffff,		/* dst_mask */
-+	 FALSE),		/* pcrel_offset */
-+
-+  HOWTO (R_ZIP_BREV,		/* type -- LDIHI, but with bitreverse */
-+	 0,			/* rightshift */
-+	 2,			/* size (0 = byte, 1 = short, 2 = long) */
-+	 16,			/* bitsize */
-+	 FALSE,			/* pc_relative */
-+	 0,			/* bitpos */
-+	 complain_overflow_bitfield, /* complain_on_overflow */
-+	 zip_brev_relocation,	 /* special_function--needed for the bitreverse */
-+	 "R_ZIP_BREV",		/* name */
-+	 FALSE,			/* partial_inplace */
-+	 0,			/* src_mask */
-+	 0x0003ffff,		/* dst_mask */
-+	 FALSE)			/* pcrel_offset */
 +};
 +
 +/* This structure is used to map BFD reloc codes to Zip ELF relocations */
@@ -704,7 +705,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +		struct	bfd_link_hash_entry *h) {
 +  bfd_vma size;
 +  asection *section;
-+
++fprintf(stderr, "ELF32-ZIP(DEFINE-COMMON-SYMBOL)\n");
 +  BFD_ASSERT (h != NULL && h->type == bfd_link_hash_common);
 +
 +  size = h->u.c.size * bfd_octets_per_byte(output_bfd);
@@ -811,16 +812,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +// Zip Defines
 +#define	TARGET_BIG_SYM	zip_elf32_vec
 +#define	TARGET_BIG_NAME	"elf32-zip"
-+
-+#ifdef TARGET_BYTES_BIG_ENDIAN
-+#if (TARGET_BYTES_BIG_ENDIAN == 0)
-+#undef	TARGET_BIG_SYM
-+#undef	TARGET_BIG_NAME
-+
-+#define	TARGET_LITTLE_SYM	zip_elf32_vec
-+#define	TARGET_LITTLE_NAME	"elf32-zip"
-+#endif
-+#endif
 +
 +#define	ELF_ARCH	bfd_arch_zip
 +// #define ELF_TARGET_ID		ZIP_ELF_DATA
@@ -1306,9 +1297,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +};
 +
 +/* Forward declaration for use when initialising alternative_target field.  */
-+#ifdef TARGET_LITTLE_SYM
-+extern const bfd_target TARGET_LITTLE_SYM;
-+#endif
 +
 +#ifdef TARGET_BIG_SYM
 +const bfd_target TARGET_BIG_SYM =
@@ -1409,104 +1397,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +};
 +#endif
 +
-+#ifdef TARGET_LITTLE_SYM
-+const bfd_target TARGET_LITTLE_SYM =
-+{
-+  /* name: identify kind of target */
-+  TARGET_LITTLE_NAME,
-+
-+  /* flavour: general indication about file */
-+  bfd_target_elf_flavour,
-+
-+  /* byteorder: data is little endian */
-+  BFD_ENDIAN_LITTLE,
-+
-+  /* header_byteorder: header is also little endian */
-+  BFD_ENDIAN_LITTLE,
-+
-+  /* object_flags: mask of all file flags */
-+  (HAS_RELOC | EXEC_P | HAS_LINENO | HAS_DEBUG | HAS_SYMS | HAS_LOCALS
-+   | DYNAMIC | WP_TEXT | D_PAGED | BFD_COMPRESS | BFD_DECOMPRESS
-+   | BFD_COMPRESS_GABI | BFD_CONVERT_ELF_COMMON | BFD_USE_ELF_STT_COMMON),
-+
-+  /* section_flags: mask of all section flags */
-+  (SEC_HAS_CONTENTS | SEC_ALLOC | SEC_LOAD | SEC_RELOC | SEC_READONLY
-+   | SEC_CODE | SEC_DATA | SEC_DEBUGGING | SEC_EXCLUDE | SEC_SORT_ENTRIES
-+   | SEC_SMALL_DATA | SEC_MERGE | SEC_STRINGS | SEC_GROUP),
-+
-+   /* leading_symbol_char: is the first char of a user symbol
-+      predictable, and if so what is it */
-+  elf_symbol_leading_char,
-+
-+  /* ar_pad_char: pad character for filenames within an archive header
-+     FIXME:  this really has nothing to do with ELF, this is a characteristic
-+     of the archiver and/or os and should be independently tunable */
-+  '/',
-+
-+  /* ar_max_namelen: maximum number of characters in an archive header
-+     FIXME:  this really has nothing to do with ELF, this is a characteristic
-+     of the archiver and should be independently tunable.  The System V ABI,
-+     Chapter 7 (Formats & Protocols), Archive section sets this as 15.  */
-+  15,
-+
-+  elf_match_priority,
-+
-+  /* Routines to byte-swap various sized integers from the data sections */
-+  bfd_getl64, bfd_getl_signed_64, bfd_putl64,
-+    bfd_getl32, bfd_getl_signed_32, bfd_putl32,
-+    bfd_getl16, bfd_getl_signed_16, bfd_putl16,
-+
-+  /* Routines to byte-swap various sized integers from the file headers */
-+  bfd_getl64, bfd_getl_signed_64, bfd_putl64,
-+    bfd_getl32, bfd_getl_signed_32, bfd_putl32,
-+    bfd_getl16, bfd_getl_signed_16, bfd_putl16,
-+
-+  /* bfd_check_format: check the format of a file being read */
-+  { _bfd_dummy_target,		/* unknown format */
-+    bfd_elf32_object_p,		/* assembler/linker output (object file) */
-+    bfd_elf32_archive_p,	/* an archive */
-+    bfd_elf32_core_file_p	/* a core file */
-+  },
-+
-+  /* bfd_set_format: set the format of a file being written */
-+  { bfd_false,
-+    bfd_elf32_mkobject,
-+    bfd_elf32_mkarchive,
-+    bfd_elf32_mkcorefile
-+  },
-+
-+  /* bfd_write_contents: write cached information into a file being written */
-+  { bfd_false,
-+    bfd_elf32_write_object_contents,
-+    bfd_elf32_write_archive_contents,
-+    bfd_elf32_write_corefile_contents,
-+  },
-+
-+  BFD_JUMP_TABLE_GENERIC (bfd_elf32),
-+  BFD_JUMP_TABLE_COPY (bfd_elf32),
-+  BFD_JUMP_TABLE_CORE (bfd_elf32),
-+#ifdef bfd_elf32_archive_functions
-+  BFD_JUMP_TABLE_ARCHIVE (bfd_elf32_archive),
-+#else
-+  BFD_JUMP_TABLE_ARCHIVE (_bfd_archive_coff),
-+#endif
-+  BFD_JUMP_TABLE_SYMBOLS (bfd_elf32),
-+  BFD_JUMP_TABLE_RELOCS (bfd_elf32),
-+  BFD_JUMP_TABLE_WRITE (bfd_elf32),
-+  BFD_JUMP_TABLE_LINK (bfd_elf32),
-+  BFD_JUMP_TABLE_DYNAMIC (bfd_elf32),
-+
-+  /* Alternative endian target.  */
-+#ifdef TARGET_BIG_SYM
-+  & TARGET_BIG_SYM,
-+#else
-+  NULL,
-+#endif
-+
-+  /* backend_data: */
-+  &elf32_bed
-+};
-+#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/bfd/libbfd.h binutils-2.27-zip/bfd/libbfd.h
 --- binutils-2.27/bfd/libbfd.h	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/bfd/libbfd.h	2017-01-04 22:04:11.000000000 -0500
@@ -1841,8 +1731,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-12 16:33:53.914953823 -0500
-@@ -0,0 +1,3042 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-23 20:40:12.768914591 -0500
+@@ -0,0 +1,3168 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2249,7 +2139,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		// Store's don't change any regs
 +		case	ZIPO_SW: case ZIPO_SH: case ZIPO_SB:
 +		case	ZIPO_SIM: case ZIPO_NOOP:
-+		case	ZIPO_SEXIT: case ZIPO_NEXIT:
 +		case	ZIPO_SDUMP: case ZIPO_NDUMP:
 +		case	ZIPO_BREAK: case ZIPO_LOCK:
 +		case	ZIPO_CMP:  case	ZIPO_TST:
@@ -2474,8 +2363,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_SIM:   fprintf(stderr, "%7s", "SIM");   break;
 +		case ZIPO_SDUMP: fprintf(stderr, "%7s", "SDUMP"); break;
 +		case ZIPO_SEXIT: fprintf(stderr, "%7s", "SEXIT"); break;
++		case ZIPO_SOUT:  fprintf(stderr, "%7s", "SOUT");  break;
 +		case ZIPO_NDUMP: fprintf(stderr, "%7s", "NDUMP"); break;
 +		case ZIPO_NEXIT: fprintf(stderr, "%7s", "NEXIT"); break;
++		case ZIPO_NOUT:  fprintf(stderr, "%7s", "OUT");   break;
++		//
++		case ZIPO_LJMP:	fprintf(stderr, "%7s", "LJMP"); break;
++		case ZIPO_LJSR:	fprintf(stderr, "%7s", "LJSR");   break;
 +		default:
 +			fprintf(stderr, "%d", insn->i_op); break;
 +	}
@@ -2515,6 +2409,21 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +}
 +#endif
 +
++static	ZIP_CONDITION
++zip_negate_condition(ZIP_CONDITION c) {
++	switch(c) {
++		case ZIPC_Z:	return ZIPC_NZ; break;
++		case ZIPC_LT:	return ZIPC_GE; break;
++		case ZIPC_C:	return ZIPC_NC; break;
++		case ZIPC_NZ:	return ZIPC_Z; break;
++		case ZIPC_GE:	return ZIPC_LT; break;
++		case ZIPC_NC:	return ZIPC_C; break;
++		case ZIPC_ALWAYS:	return ZIPC_ALWAYS; break;
++		default:
++			break;
++	} gas_assert((0)&&("Cannot negate condition\n"));
++	return ZIPC_ALWAYS;
++}
 +
 +static const char *zip_skip_white_spaces(const char *str) {
 +	if (!str)
@@ -2835,6 +2744,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_rp->r_pcrel = TRUE;
 +			insn->i_rp->r_fr_offset = 0;
 +			insn->i_rp->r_fix = NULL;
++			insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_PCREL;
 +			// symbol_make(name??)
 +			// symbol_find_or_make(name)
 +			// symbol_relc_make_sym
@@ -2884,6 +2794,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_rp->r_pcrel = FALSE;
 +			insn->i_rp->r_fr_offset = 0;
 +			insn->i_rp->r_fix = NULL;
++			if (insn->i_breg != ZIP_RNONE)
++				insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_OFFSET;
++			else
++				insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_IMM;
 +		}
 +	}
 +
@@ -2918,6 +2832,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		ONE_OR_TWO_OP,	// Only used by TST
 +		MAYBE_ONE_IMM,	// Only used by BREAK, NOOP, SIM
 +		MAYBE_ONE_REG,	// Only used by SDUMP, NDUMP
++		MAYBE_ONE_IMM_OR_REG,	// Only used by SEXIT, NEXIT, SOUT, NOUT
 +		ONE_REGISTER,	// Only used by CLR, CLRF, and NOT
 +		OP_ADDRESS,	// Only used by BRA, BRA.C, and LINK
 +		OP_B,		// Only used by TRAP and JMP
@@ -3100,6 +3015,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	} else if (strcasecmp(opstr, "BRA")==0) {
 +		insn->i_op = ZIPO_BRA;
 +		insn_form = OP_ADDRESS;
++	} else if (strcasecmp(opstr, "LJMP")==0) {
++		insn->i_op = ZIPO_LJMP;
++		insn->i_breg = ZIP_RNONE;
++		insn->i_imm  = 0;
++		insn_form = OP_ADDRESS;
 +	} else if (strcasecmp(opstr, "BZ")==0) {
 +		insn->i_op = ZIPO_BRA;
 +		insn->i_cnd = ZIPC_Z;
@@ -3174,6 +3094,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		insn->i_op = ZIPO_NEG;
 +		insn->i_imm = 0;
 +		insn_form = ONE_OR_TWO_OP;
++	} else if (strcasecmp(opstr, "LJSR")==0) {
++		insn->i_op   = ZIPO_LJSR;
++		insn->i_breg = ZIP_RNONE;
++		insn->i_imm  = 0;
++		insn_form    = OP_ADDRESS;
 +	} else if (strcasecmp(opstr, "JSR")==0) {
 +		insn->i_op = ZIPO_JSR;
 +		insn->i_imm = 0;
@@ -3197,7 +3122,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	} else if (strcasecmp(opstr, "SEXIT")==0) {
 +		insn->i_op = ZIPO_SEXIT;
 +		insn->i_imm= 0;
-+		insn_form = MAYBE_ONE_IMM;
++		insn_form = MAYBE_ONE_IMM_OR_REG;
++	} else if (strcasecmp(opstr, "SOUT")==0) {
++		insn->i_op = ZIPO_SOUT;
++		insn->i_imm= 0;
++		insn_form = MAYBE_ONE_IMM_OR_REG;
 +	} else if (strcasecmp(opstr, "NDUMP")==0) {
 +		insn->i_op = ZIPO_NDUMP;
 +		insn->i_imm= 0;
@@ -3205,7 +3134,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	} else if (strcasecmp(opstr, "NEXIT")==0) {
 +		insn->i_op = ZIPO_NEXIT;
 +		insn->i_imm= 0;
-+		insn_form = MAYBE_ONE_IMM;
++		insn_form = MAYBE_ONE_IMM_OR_REG;
++	} else if (strcasecmp(opstr, "NOUT")==0) {
++		insn->i_op = ZIPO_NOUT;
++		insn->i_imm= 0;
++		insn_form = MAYBE_ONE_IMM_OR_REG;
 +	} else {
 +		free(alt);
 +		return "Unrecognized op-code";
@@ -3261,6 +3194,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					err = "BREAK arguments can only be immediates";
 +			}
 +			break;
++		case MAYBE_ONE_IMM_OR_REG:
++			if (NULL != right)
++				err = "Wrong number of operands!";
++			else if (left) {
++				err = zip_parse_bop(left,insn);
++				if ((!err)&&(insn->i_breg != ZIP_RNONE)
++					&&(insn->i_imm != 0))
++					err = "EXIT arguments can only be immediates or register, not both";
++			}
++			break;
 +		case MAYBE_ONE_REG:
 +			if (NULL != right)
 +				err = "Wrong number of operands!";
@@ -3304,7 +3247,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				err = zip_parse_reg(left,&insn->i_areg);
 +			break;
 +		case OP_ADDRESS:
-+			// BRA instruction
++			// JSR or BRA instruction
 +			//	This is different from OP_B below, in that this
 +			//	form implies a PC relative addressing, which
 +			//	may not be clear from the operands given
@@ -3457,15 +3400,45 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			break;
 +		case ZIPO_SEXIT:
 +			insn->i_op = ZIPO_SIM;
-+			insn->i_imm = 0x100 + (insn->i_imm & 0x0ff);
++			if (insn->i_breg != ZIP_RNONE)
++				insn->i_imm = 0x300 + (insn->i_breg & 0x01f);
++			else
++				insn->i_imm = 0x100 + (insn->i_imm & 0x0ff);
++			insn->i_breg = ZIP_RNONE;
 +			break;
 +		case ZIPO_NEXIT:
 +			insn->i_op = ZIPO_NOOP;
-+			insn->i_imm = 0x100 + (insn->i_imm & 0x0ff);
++			if (insn->i_breg != ZIP_RNONE)
++				insn->i_imm = 0x300 + (insn->i_breg & 0x01f);
++			else
++				insn->i_imm = 0x100 + (insn->i_imm & 0x0ff);
++			insn->i_breg = ZIP_RNONE;
++			break;
++		case ZIPO_SOUT:
++			insn->i_op = ZIPO_SIM;
++			if (insn->i_breg != ZIP_RNONE)
++				insn->i_imm = 0x220 + (insn->i_breg & 0x01f);
++			else
++				insn->i_imm = 0x400 + (insn->i_imm & 0x0ff);
++			insn->i_breg = ZIP_RNONE;
++			break;
++		case ZIPO_NOUT:
++			insn->i_op = ZIPO_NOOP;
++			if (insn->i_breg != ZIP_RNONE)
++				insn->i_imm = 0x220 + (insn->i_breg & 0x01f);
++			else
++				insn->i_imm = 0x400 + (insn->i_imm & 0x0ff);
++			insn->i_breg = ZIP_RNONE;
 +			break;
 +		case ZIPO_SIM:
 +		case ZIPO_NOOP:
 +			break;
++		case ZIPO_LJMP: case ZIPO_LJSR:
++			if (insn->i_breg == ZIP_PC)
++				insn->i_breg = ZIP_RNONE;
++			if (insn->i_breg != ZIP_RNONE) {
++				err = "Indirect long jumps and long JSRs are not supported";
++			} break;
 +		case ZIPO_JSR:
 +			break;
 +		default:
@@ -3591,7 +3564,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		default:
 +			return 0;
 +	}
-+	
++
++	// Prohibit moves to/from user regs to merge
++	if ((opa == ZIPO_MOV)&&(a & 0x44000))
++		return 0;
++	if ((opb == ZIPO_MOV)&&(b & 0x44000))
++		return 0;
 +	imma = zip_non_vliw_immediate(a);
 +	immb = zip_non_vliw_immediate(b);
 +
@@ -4058,42 +4036,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_PCREL;
 +			// Tested--this works
 +		} else if ((!sym_known)||(!fits_within(18,immv))) {
-+			//
-+			// Long jump code
-+			// 
-+			// I expect this to be true, since we should always
-+			// be branching (or jumping) to a location defined by a
-+			// symbol.
-+#ifdef	ZIP_DEBUG
-+			fprintf(stderr, "BRA IMM = %08x = %d\n", immv, immv);
-+#endif
-+			if (insn->i_cnd == ZIPC_ALWAYS) {
-+				insn->i_naux = 1;
-+				insn->i_code=DBLREGOP(ZIPO_LW,ZIPC_ALWAYS,
-+					0,ZIP_PC,ZIP_PC); // Load into PC register
-+				insn->i_aux[0] = 0; // Value to load
-+				if (!insn->i_rp)
-+					as_bad("Out of bounds branch");
-+				else { // While we want a PC relative branch,
-+					// this isn't it.
-+					insn->i_rp->r_pcrel = FALSE;
-+					insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
-+				}
-+			} else {
-+				insn->i_naux = 2;
-+				insn->i_code=DBLREGOP(ZIPO_LW,insn->i_cnd,
-+					1,ZIP_PC,ZIP_PC); // Conditional load to PC
-+				insn->i_aux[0]=IMMOP(ZIPO_ADD,ZIPC_ALWAYS,
-+					1,ZIP_PC); // Skip an instruction
-+				insn->i_aux[1] = 0;
-+				if (!insn->i_rp)
-+					as_bad("Out of bounds branch");
-+				else { // While we want a PC relative branch,
-+					// this isn't it.
-+					insn->i_rp->r_pcrel = FALSE;
-+					insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
-+				}
-+			}
++			insn->i_op = ZIPO_LJMP;
++
++			zip_assemble_insn_words(fragP, seg, insn, relax_state, stretch, pzipm);			
++			insn->i_op = ZIPO_BRA;
 +		} else {
 +			//
 +			// We can fit, so short jump code ...
@@ -4106,7 +4052,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_rp->r_pcrel = TRUE;
 +			// No relocation is required--we just did it
 +			insn->i_rp->r_type = BFD_RELOC_NONE;
-+			// Tested--this works
 +		}
 +#ifdef	ZIP_DEBUG
 +		fprintf(stderr, "BRA %08lx->%08x(%d,%d) assembled into(%d) %08x : %08x : %08x\n",
@@ -4114,6 +4059,36 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_naux, insn->i_code,
 +			insn->i_aux[0], insn->i_aux[1]);
 +#endif
++		break;
++	case	ZIPO_LJMP:
++		//
++		// Long jump code
++		// 
++		// I expect this to be true, since we should always
++		// be branching (or jumping) to a location defined by a
++		// symbol.
++		if (insn->i_rp) {
++			insn->i_rp->r_pcrel = FALSE;
++			insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
++		} insn->i_breg = ZIP_RNONE;
++#ifdef	ZIP_DEBUG
++		fprintf(stderr, "LJMP IMM = %08x = %d\n", immv, immv);
++#endif
++		if (insn->i_cnd == ZIPC_ALWAYS) {
++			insn->i_naux = 1;
++			insn->i_code=DBLREGOP(ZIPO_LW,ZIPC_ALWAYS,
++				0,ZIP_PC,ZIP_PC); // Load into PC register
++			insn->i_aux[0] = 0; // Value to load
++		} else {
++			// A conditional long jump
++			insn->i_naux = 2;
++			insn->i_code=DBLREGOP(ZIPO_LW,insn->i_cnd,
++				1,ZIP_PC,ZIP_PC); // Conditional load to PC
++			insn->i_aux[0]=IMMOP(ZIPO_ADD,ZIPC_ALWAYS,
++				1,ZIP_PC); // Skip an instruction
++			insn->i_aux[1] = 0;
++		} if (!insn->i_rp)
++			insn->i_aux[insn->i_naux-1] = immv;
 +		break;
 +	case ZIPO_MOV:
 +		//
@@ -4235,19 +4210,17 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		insn->i_naux = 0;
 +		break;
 +	case	ZIPO_SDUMP: case ZIPO_NDUMP: case ZIPO_SEXIT: case ZIPO_NEXIT:
++	case	ZIPO_SOUT:  case ZIPO_NOUT:
++		// These instructions *should*ve been turned into NOOP and SIM
++		// instructions by now.  Getting here with them is therefore
++		// an error.
 +		gas_assert(0);
 +	case ZIPO_JSR:
 +		if ((zip_param_vliw)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(insn->i_rp)) {
-+			insn->i_naux = 1;
-+			insn->i_code = 0x80008000
-+				| (ZIPV_MOV<<24)
-+				| 0x00f90000	// MOV OpB = PC+1
-+				| 0x0f8f8	// (LW) into PC
-+				| (ZIPV_LW << 8); // The LW instruction
-+			insn->i_aux[0] = 0; // To be filled in with address value
-+			insn->i_rp->r_pcrel = FALSE;
-+			insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
++			insn->i_op = ZIPO_LJSR;
++			zip_assemble_insn_words(fragP, seg, insn, relax_state, stretch, pzipm);			
++			insn->i_op = ZIPO_JSR;
 +		} else if ((zip_param_vliw)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(insn->i_breg != ZIP_RNONE)
 +				&&(insn->i_imm == 0)) {
@@ -4292,29 +4265,68 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_aux[1] = NOOP_OPCODE;
 +				insn->i_rp->r_pcrel = TRUE;
 +				insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_PCREL;
-+			} else if (insn->i_cnd == ZIPC_ALWAYS) {
-+				// If unconditional
++			} else {
++				insn->i_op = ZIPO_LJSR;
++				zip_assemble_insn_words(fragP, seg, insn,
++					relax_state, stretch, pzipm);
++				insn->i_op = ZIPO_JSR;
++			}
++		} break;
++	case ZIPO_LJSR:
++		if (insn->i_rp)
++			immv += (int)(symv
++				- fragP->fr_address
++				- (insn->i_rp->r_fr_offset+sizeof(uint32_t)));
++		if (insn->i_rp) {
++			insn->i_rp->r_pcrel = FALSE;
++			insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
++		} insn->i_breg = ZIP_RNONE;
++		if (insn->i_cnd == ZIPC_ALWAYS) {
++			if (zip_param_vliw) {
++				insn->i_naux = 1;
++				insn->i_code = 0x80008000
++					| (ZIPV_MOV<<24)
++					| 0x00f90000	// MOV OpB = PC+1
++					| 0x0f8f8	// (LW) into PC
++					| (ZIPV_LW << 8); // The LW instruction
++				insn->i_aux[0] = 0; // To be filled in with address value
++			} else { // If unconditional
 +				// MOV 1(PC),R0
 +				// LW (PC),PC
 +				// _somewhere_
 +				insn->i_naux = 2;
 +				insn->i_code = SMPLMOV(insn->i_cnd, 1, ZIP_PC,
 +					ZIP_LR);
-+				insn->i_aux[0] = IMMOP(ZIPO_ADD, insn->i_cnd,
-+					immv, ZIP_PC);
-+				insn->i_aux[1] = NOOP_OPCODE;
-+				insn->i_rp->r_pcrel = TRUE;
-+				insn->i_rp->r_type = BFD_RELOC_NONE;
-+			} else {
-+				if (insn->i_cnd != ZIPC_ALWAYS)
-+					as_bad("LJSR instruction cannot handle conditions\n");
-+				// If conditional, naux = 3
-+				// BRA.!cnd (for whatever condition) +3
-+				// MOV 4(PC),R0
-+				// LW (PC),PC
-+				// address
++				insn->i_aux[0] = DBLREGOP(ZIPO_LW,ZIPC_ALWAYS,
++					0,ZIP_PC,ZIP_PC); // Load into PC register
++				insn->i_aux[1] = 0;
 +			}
-+		} break;
++		} else {
++			// If conditional, naux = 3
++			// BRA.!cnd (for whatever condition) +3
++			// MOV 4(PC),R0
++			// LW (PC),PC
++			// address
++			insn->i_naux = 3;
++			insn->i_aux[2] = 0;
++			if (insn->i_cnd != ZIPC_V) {
++				ZIP_CONDITION cnd =
++					zip_negate_condition(insn->i_cnd);
++				insn->i_code = IMMOP(ZIPO_ADD, cnd, 12, ZIP_PC);
++				insn->i_aux[0] = SMPLMOV(ZIPC_ALWAYS, 1, ZIP_PC,
++					ZIP_LR);
++				insn->i_aux[1] = DBLREGOP(ZIPO_LW, ZIPC_ALWAYS,
++					0,ZIP_PC,ZIP_PC); // Load into PC register
++			} else {
++				insn->i_code = SMPLMOV(ZIPC_V, 1, ZIP_PC,
++					ZIP_LR);
++				insn->i_aux[0] = DBLREGOP(ZIPO_LW, ZIPC_V,
++					0,ZIP_PC,ZIP_PC); // Load into PC register
++				insn->i_aux[1] = IMMOP(ZIPO_ADD, ZIPC_ALWAYS, 4, ZIP_PC);
++			}
++		} if (!insn->i_rp)
++			insn->i_aux[insn->i_naux-1] = immv;
++		break;
 +	default:
 +		if (insn->i_rp) {
 +			insn->i_rp->r_pcrel = FALSE;
@@ -4411,7 +4423,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		buf = &frag_now->fr_literal[frag_now_fix_octets() - 4];
 +		last_iword = (buf[3]&0x0ff)|((buf[2]&0x0ff)<<8)
 +			|((buf[1]&0x0ff)<<16)|((buf[0]&0x0ff)<<24);
-+
 +		if ((buf >= frag_now->fr_literal)
 +				&&(zip_can_merge(last_iword,insn->i_code))) {
 +			p = buf;
@@ -4423,6 +4434,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		}
 +	} else {
 +		int	i;
++		ZIPRELOC	*rp = insn->i_rp;
 +
 +		if ((insn->i_naux == 0)||(NULL == insn->i_rp)) {
 +			// If we have no need of any symbols, we come here.
@@ -4473,7 +4485,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		for(i=0; i< insn->i_naux; i++)
 +			md_number_to_chars(&p[sizeof(uint32_t)*(1+i)], insn->i_aux[i], sizeof(uint32_t));
 +
-+		if (insn->i_rp) {
++		if (rp) {
 +			vliw_mergable = FALSE;
 +		} else {
 +			vliw_mergable = (zip_param_vliw)&&(insn->i_naux == 0);
@@ -4532,7 +4544,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	unsigned int	iword, mask, final_fix;
 +
 +	final_fix = (fixP->fx_addsy == NULL) ? TRUE : FALSE;
-+	
++
 +	bfd_byte *buf = (bfd_byte *)&fixP->fx_frag->fr_literal[fixP->fx_where];
 +	iword = (buf[3]&0x0ff)|((buf[2]&0x0ff)<<8)
 +			|((buf[1]&0x0ff)<<16)|((buf[0]&0x0ff)<<24);
@@ -4561,8 +4573,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		md_number_to_chars((char *)buf, iword, sizeof(uint32_t));
 +		fixP->fx_done = final_fix;
 +		break;
-+	case BFD_RELOC_ZIP_OPB_OFFSET:
 +	case BFD_RELOC_ZIP_OPB_PCREL:
++		{
++		uint32_t	oval;
++		oval = *val;
++		oval = (*val>>2);
++		oval &= 0x03fff;
++		mask = 0x3fff; iword = (iword &(~mask))|((oval)&mask);
++		*val = oval;
++		md_number_to_chars((char *)buf, iword, sizeof(uint32_t));
++		fixP->fx_done = final_fix;
++		} break;
++	case BFD_RELOC_ZIP_OPB_OFFSET:
 +//	case BFD_RELOC_ZIP_OPB_GOTREL:
 +	case BFD_RELOC_14:
 +		// if (fixP->fx_r_type == BFD_RELOC_ZIP_OPB_OFFSET)
@@ -4672,13 +4694,15 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +
 +	relP = xmalloc(sizeof(arelent));
 +	gas_assert(relP != 0);
-+	relP->sym_ptr_ptr = (asymbol **)xmalloc(sizeof(asymbol *));
++	relP->sym_ptr_ptr  = (asymbol **)xmalloc(sizeof(asymbol *));
 +	*relP->sym_ptr_ptr = symbol_get_bfdsym(fixP->fx_addsy);
-+	relP->address = (fixP->fx_frag->fr_address + fixP->fx_where);
++	relP->address      = (fixP->fx_frag->fr_address + fixP->fx_where);
 +	// The addend value is added to the symbols value after the value is
 +	// is resolved.  It is useful for PC relative addressing, as well as
 +	// instructions giving offsets to symbols, such as LDI .x+50,R0. 
 +	relP->addend = fixP->fx_offset;
++	if (fixP->fx_r_type == BFD_RELOC_ZIP_OPB_PCREL)
++		relP->addend -= 4;
 +#ifdef	ZIP_DEBUG
 +	fprintf(stderr, "ADDEND = %08lx\n", relP->addend);
 +#endif
@@ -4691,6 +4715,17 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		as_fatal( _("Cannot generate relocation type for symbol %s, code %s"),
 +			name, bfd_get_reloc_code_name(fixP->fx_r_type));
 +	}
++#ifdef	ZIP_DEBUG
++	else {
++		const char *name;
++		name = S_GET_NAME(fixP->fx_addsy);
++		if (name == NULL)
++			name = _("<unknown>");
++		fprintf(stderr, "GENERATING-RELOC(%20s, %4d=0x%04x) for %s\n",
++			bfd_get_reloc_code_name(fixP->fx_r_type),
++			fixP->fx_r_type, fixP->fx_r_type, name);
++	}
++#endif
 +	return relP;
 +}
 +
@@ -4840,31 +4875,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_imm, // Fixed/known offset to the symbol
 +				insn->i_rp->r_pcrel, // T if PC-Relative reloc
 +				BFD_RELOC_ZIP_VALUE); // Reloc type
-+		} else if ((insn->i_op == ZIPO_JSR)&&(insn->i_naux == 1)) {
-+			if (insn->i_rp->r_pcrel) {
-+				// Use the MOV,R0, ADD #x,PC method
-+				fix_new(fragP,
-+				// where w/in frag?
-+				insn->i_rp->r_fr_offset+sizeof(uint32_t),
-+				4,		// 1,2, or 4 usually ... ??
-+				insn->i_rp->r_sym, // Add symbol,
-+				insn->i_imm, // Fixed/known offset to the symbol
-+				insn->i_rp->r_pcrel, // T if PC-Relative reloc
-+				insn->i_rp->r_type); // Reloc type
-+			} else {
++		} else if (insn->i_rp->r_type == BFD_RELOC_ZIP_VALUE) {
 +				// Use the VLIW LW (PC),PC method
 +				fix_new(fragP,
-+				insn->i_rp->r_fr_offset +insn->i_naux*sizeof(uint32_t),
-+				4,		// 1,2, or 4 usually ... ??
-+				insn->i_rp->r_sym, // Add symbol,
-+				insn->i_imm, // Fixed/known offset to the symbol
-+				insn->i_rp->r_pcrel, // T if PC-Relative reloc
-+				BFD_RELOC_ZIP_VALUE); // Reloc type
-+			}
-+		} else if ((insn->i_op == ZIPO_JSR)&&(insn->i_naux >= 2)) {
-+				// Use the LW (PC),PC method
-+				fix_new(fragP,
-+				insn->i_rp->r_fr_offset +insn->i_naux*sizeof(uint32_t),
++				insn->i_rp->r_fr_offset
++					+ insn->i_naux*sizeof(uint32_t),
 +				4,		// 1,2, or 4 usually ... ??
 +				insn->i_rp->r_sym, // Add symbol,
 +				insn->i_imm, // Fixed/known offset to the symbol
@@ -4876,8 +4891,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_rp->r_type);
 +#endif
 +			fix_new(fragP,
-+				insn->i_rp->r_fr_offset, // where w/in frag?
-+				4,		// 1,2, or 4 usually ... ??
++				// where w/in frag?
++				insn->i_rp->r_fr_offset+insn->i_naux * sizeof(uint32_t),
++				4,	// 1,2, or 4 usually ... ??
 +				insn->i_rp->r_sym, // Add symbol,
 +				insn->i_imm, // Fixed/known offset to the symbol
 +				insn->i_rp->r_pcrel, // T if PC-Relative reloc
@@ -4887,8 +4903,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +}
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
 --- binutils-2.27/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.h	2017-01-11 15:38:46.901722658 -0500
-@@ -0,0 +1,185 @@
++++ binutils-2.27-zip/gas/config/tc-zip.h	2017-01-23 17:54:57.654064564 -0500
+@@ -0,0 +1,187 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.h
@@ -5062,8 +5078,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip
 +	ZIPO_HALT, ZIPO_WAIT, ZIPO_RTU, ZIPO_BUSY,
 +	ZIPO_STEP, ZIPO_JMP,  ZIPO_NOT, ZIPO_NEG,
 +	//
-+	ZIPO_SDUMP, ZIPO_NDUMP, ZIPO_SEXIT, ZIPO_NEXIT,
-+	ZIPO_JSR
++	ZIPO_SDUMP, ZIPO_NDUMP,
++	ZIPO_SOUT,  ZIPO_NOUT,
++	ZIPO_SEXIT, ZIPO_NEXIT,
++	ZIPO_JSR,   ZIPO_LJSR, ZIPO_LJMP
 +} ZIP_OPCODE;
 +
 +typedef	enum {
@@ -5965,8 +5983,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d
 --- binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d	2017-01-10 11:14:37.971583560 -0500
-@@ -0,0 +1,32 @@
++++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d	2017-01-19 07:44:20.265671647 -0500
+@@ -0,0 +1,41 @@
 +#as:
 +#objdump: -dr
 +#name: Special instruction(s) test
@@ -5988,21 +6006,30 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +  20:	7f c0 01 00 	NEXIT      
 +  24:	7f c0 01 fc 	NEXIT      \$-4
 +  28:	7f c0 01 f0 	NEXIT      \$-16
-+  2c:	7f c4 00 23 	NSIM       \$262179
-+  30:	7f 80 00 00 	SIM        
-+  34:	7f 80 02 00 	SDUMP      R0
-+  38:	7f 80 02 07 	SDUMP      R7
-+  3c:	7f 80 02 03 	SDUMP      R3
-+  40:	7f 80 02 14 	SDUMP      uR4
-+  44:	7f 80 01 17 	SEXIT      \$23
-+  48:	7f 80 01 e9 	SEXIT      \$-23
-+  4c:	7f 80 01 00 	SEXIT      
-+  50:	7f 84 00 23 	SIM        \$262179
-+  54:	7f 87 0f 23 	SIM        \$462627
++  2c:	7f c0 03 07 	NEXIT      R7
++  30:	7f c4 00 23 	NSIM       \$262179
++  34:	7f 80 00 00 	SIM +$
++  38:	7f 80 02 00 	SDUMP      R0
++  3c:	7f 80 02 07 	SDUMP      R7
++  40:	7f 80 02 03 	SDUMP      R3
++  44:	7f 80 02 14 	SDUMP      uR4
++  48:	7f 80 01 17 	SEXIT      \$23
++  4c:	7f 80 01 e9 	SEXIT      \$-23
++  50:	7f 80 01 00 	SEXIT      
++  54:	7f 80 03 0f 	SEXIT      PC
++  58:	7f 80 03 0e 	SEXIT      CC
++  5c:	7f 84 00 23 	SIM        \$262179
++  60:	7f 87 0f 23 	SIM        \$462627
++  64:	7f 80 04 61 	SOUT       \$97
++  68:	7f c0 04 62 	NOUT       \$98
++  6c:	7f 80 02 22 	SOUT       R2
++  70:	7f c0 02 27 	NOUT       R7
++  74:	7f 80 02 33 	SOUT       uR3
++  78:	7f c0 02 38 	NOUT       uR8
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s
 --- binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.s	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s	2017-01-09 16:45:43.597436699 -0500
-@@ -0,0 +1,26 @@
++++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s	2017-01-19 07:18:13.405003668 -0500
+@@ -0,0 +1,35 @@
 +	.text
 +
 +specials_test:
@@ -6017,6 +6044,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +	nexit	0
 +	nexit	-4
 +	nexit	240
++	nexit	R7
 +	noop	0x40023
 +	snoop
 +	sdump
@@ -6026,8 +6054,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +	sexit	23
 +	sexit	-23
 +	sexit	0
++	sexit	PC
++	sexit	CC
 +	snoop	0x40023
 +	sim	0x70f23
++	sout	'a'
++	nout	'b'
++	sout	R2
++	nout	R7
++	sout	uR3
++	nout	uR8
 +
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.d
 --- binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.d	1969-12-31 19:00:00.000000000 -0500
@@ -6267,7 +6303,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/common.h binutils-2.27-zi
  /* Values for e_version.  */
 diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/zip.h binutils-2.27-zip/include/elf/zip.h
 --- binutils-2.27/include/elf/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/include/elf/zip.h	2017-01-04 22:01:23.000000000 -0500
++++ binutils-2.27-zip/include/elf/zip.h	2017-01-18 18:19:33.764898333 -0500
 @@ -0,0 +1,58 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6282,7 +6318,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/zip.h binutils-2.27-zip/i
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2017, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -6313,14 +6349,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/zip.h binutils-2.27-zip/i
 +START_RELOC_NUMBERS(elf_zip_reloc_type)
 +  RELOC_NUMBER (R_ZIP_NONE,        0)
 +  RELOC_NUMBER (R_ZIP_VALUE,       1)
-+  RELOC_NUMBER (R_ZIP_BRANCH,      2)
-+  RELOC_NUMBER (R_ZIP_OPB_IMM,     3)
-+  RELOC_NUMBER (R_ZIP_OPB_OFFSET,  4)
-+  RELOC_NUMBER (R_ZIP_MOV_OFFSET,  5)
-+  RELOC_NUMBER (R_ZIP_LDI,         6)
-+  RELOC_NUMBER (R_ZIP_LLO,         7)
-+  RELOC_NUMBER (R_ZIP_BREV,        8)
-+  RELOC_NUMBER (R_ZIP_OPB_PCREL,   9)
++  RELOC_NUMBER (R_ZIP_BREV,        2)
++  RELOC_NUMBER (R_ZIP_LLO,         3)
++  RELOC_NUMBER (R_ZIP_LDI,         4)
++  RELOC_NUMBER (R_ZIP_BRANCH,      5)
++  RELOC_NUMBER (R_ZIP_OPB_IMM,     6)
++  RELOC_NUMBER (R_ZIP_OPB_OFFSET,  7)
++  RELOC_NUMBER (R_ZIP_OPB_PCREL,   8)
++  RELOC_NUMBER (R_ZIP_MOV_OFFSET,  9)
 +  RELOC_NUMBER (R_ZIP_MOV_PCREL,  10)
 +  // RELOC_NUMBER (R_ZIP_OPB_GOTREL, 11)
 +  // RELOC_NUMBER (R_ZIP_MOV_GOTREL, 12)
@@ -7046,8 +7082,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-12 21:33:44.910977213 -0500
-@@ -0,0 +1,341 @@
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-19 07:38:01.580390119 -0500
+@@ -0,0 +1,352 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.c
@@ -7240,22 +7276,33 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	// 0.111x.00000.xxx.xxx.xxxx.xxxx.xxxx.xxxx
 +	// 0111.x111.11.xxx.xxx.xxxx.xxxx.xxxx.xxxx
 +	// SNOOP = SIM w/ no argument(s)
-+	{ "SIM", 0xf7ffffff, 0x77800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "SEXIT",0xf7ffffff, 0x77800100, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "SEXIT",0xf7ffff00, 0x77800100, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,0), ZIP_OPUNUSED },
-+	{ "SDUMP",0xf7ffffff, 0x778002ff, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "SDUMP",0xf7fffff0, 0x77800200, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "SDUMP",0xf7fffff0, 0x77800210, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "SDUMP",0xf7ffff00, 0x77800200, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,0), ZIP_OPUNUSED },
-+	{ "SIM",   0xf7c00000, 0x77800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
-+	{ "NOOP",  0xf7ffffff, 0x77c00000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NEXIT",0xf7ffffff,0x77c00100,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NEXIT",0xf7ffff00,0x77c00100,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,0), ZIP_OPUNUSED },
-+	{ "NDUMP",0xf7ffffff,0x77c002ff,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NDUMP",0xf7fffff0,0x77c00200,ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NDUMP",0xf7fffff0,0x77c00210,ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NDUMP",0xf7ffff00,0x77c00200,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "NSIM",0xf7c00000,0x77c00000,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
++	{ "SIM",  0xf7ffffff, 0x77800000, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SEXIT",0xf7ffffff, 0x77800100, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SEXIT",0xf7fffff0, 0x77800310, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SEXIT",0xf7ffffe0, 0x77800300, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SEXIT",0xf7ffff00, 0x77800100, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD( 8,0), ZIP_OPUNUSED },
++	{ "SDUMP",0xf7ffffff, 0x778002ff, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SDUMP",0xf7fffff0, 0x77800200, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SDUMP",0xf7fffff0, 0x77800210, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SOUT", 0xf7fffff0, 0x77800230, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SOUT", 0xf7ffffe0, 0x77800220, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "SOUT", 0xf7ffff00, 0x77800400, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD( 8,0), ZIP_OPUNUSED },
++	{ "SDUMP",0xf7ffff00, 0x77800200, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD( 8,0), ZIP_OPUNUSED },
++	{ "SIM",  0xf7c00000, 0x77800000, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
++	{ "NOOP", 0xf7ffffff, 0x77c00000, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NEXIT",0xf7ffffff, 0x77c00100, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NEXIT",0xf7ffff00, 0x77c00100, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD( 8,0), ZIP_OPUNUSED },
++	{ "NEXIT",0xf7fffff0, 0x77c00310, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NEXIT",0xf7ffffe0, 0x77c00300, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NDUMP",0xf7ffffff, 0x77c002ff, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NDUMP",0xf7fffff0, 0x77c00200, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NDUMP",0xf7fffff0, 0x77c00210, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++
++	{ "NOUT", 0xf7fffff0, 0x77c00230, ZIP_OPUNUSED, ZIP_URGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NOUT", 0xf7ffffe0, 0x77c00220, ZIP_OPUNUSED, ZIP_REGFIELD(0), ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NOUT", 0xf7ffff00, 0x77c00400, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD( 8,0), ZIP_OPUNUSED },
++	{ "NDUMP",0xf7ffff00, 0x77c00200, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_OPUNUSED,       ZIP_OPUNUSED },
++	{ "NSIM", 0xf7c00000, 0x77c00000, ZIP_OPUNUSED, ZIP_OPUNUSED,    ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
 +	//
 +	//
 +	// 0rrr.r11f.ffcc.cxrr.rrii.iiii.iiii.iiii
