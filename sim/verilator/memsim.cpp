@@ -43,9 +43,10 @@
 
 MEMSIM::MEMSIM(const unsigned int nwords) {
 	unsigned int	nxt;
+
 	for(nxt=1; nxt < nwords; nxt<<=1)
 		;
-	m_len = nxt; m_mask = nxt-1;
+	m_len = nxt>>2; m_mask = nxt-1;
 	m_mem = new BUSW[m_len];
 	m_nxt_ack = 0;
 }
@@ -90,18 +91,18 @@ void	MEMSIM::apply(const unsigned int clk, const unsigned char wb_cyc,
 	o_stall= 0;
 	if ((wb_cyc)&&(wb_stb)&&(clk)) {
 		if (wb_we) {
-			unsigned mask = 0;
+			unsigned bmask = 0;
 			if (wb_sel&0x08)
-				mask |= 0xff000000;
+				bmask |= 0xff000000;
 			if (wb_sel&0x04)
-				mask |= 0x00ff0000;
+				bmask |= 0x00ff0000;
 			if (wb_sel&0x02)
-				mask |= 0x0000ff00;
+				bmask |= 0x0000ff00;
 			if (wb_sel&0x01)
-				mask |= 0x000000ff;
+				bmask |= 0x000000ff;
 			m_mem[wb_addr & m_mask] = 
-				(m_mem[wb_addr & m_mask] & (~mask))
-				| (wb_data & mask);
+				(m_mem[wb_addr & m_mask] & (~bmask))
+				| (wb_data & bmask);
 		}
 		m_nxt_ack = 1;
 		m_nxt_data = m_mem[wb_addr & m_mask];
