@@ -108,7 +108,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	wire	[31:0]	iword;
 
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	reg	[15:0]	r_nxt_half;
 	assign	iword = (o_phase)
 				// set second half as a NOOP ... but really 
@@ -128,33 +128,34 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		assign	w_ljmp = 1'b0;
 	endgenerate
 
-	wire	[4:0]	w_vliw_op;
-`ifdef	OPT_VLIW
+	reg	[4:0]	w_cis_op;
+`ifdef	OPT_CIS
 	always @(iword)
 		if (!iword[31])
-			w_vliw_op = w_op;
+			w_cis_op <= w_op;
 		else case(iword[26:24])
-		3'h0: w_vliw_op = 5'h00;
-		3'h1: w_vliw_op = 5'h01;
-		3'h2: w_vliw_op = 5'h02;
-		3'h3: w_vliw_op = 5'h10;
-		3'h4: w_vliw_op = 5'h12;
-		3'h5: w_vliw_op = 5'h13;
-		3'h6: w_vliw_op = 5'h18;
-		3'h7: w_vliw_op = 5'h0d;
+		3'h0: w_cis_op <= 5'h00;
+		3'h1: w_cis_op <= 5'h01;
+		3'h2: w_cis_op <= 5'h02;
+		3'h3: w_cis_op <= 5'h10;
+		3'h4: w_cis_op <= 5'h12;
+		3'h5: w_cis_op <= 5'h13;
+		3'h6: w_cis_op <= 5'h18;
+		3'h7: w_cis_op <= 5'h0d;
 		endcase
 `else
-	assign	w_vliw_op = w_op;
+	always @(iword)
+		w_cis_op <= w_op;
 `endif
 		
 	assign	w_op= iword[26:22];
-	assign	w_mov    = (w_vliw_op      == 5'h0d);
-	assign	w_ldi    = (w_vliw_op[4:1] == 4'hc);
-	assign	w_brev   = (w_vliw_op      == 5'h8);
-	assign	w_cmptst = (w_vliw_op[4:1] == 4'h8);
-	assign	w_ldilo  = (w_vliw_op[4:0] == 5'h9);
-	assign	w_ALU    = (!w_vliw_op[4]) // anything with [4]==0, but ...
-				&&(w_vliw_op[3:1] != 3'h7); // not the divide
+	assign	w_mov    = (w_cis_op      == 5'h0d);
+	assign	w_ldi    = (w_cis_op[4:1] == 4'hc);
+	assign	w_brev   = (w_cis_op      == 5'h8);
+	assign	w_cmptst = (w_cis_op[4:1] == 4'h8);
+	assign	w_ldilo  = (w_cis_op[4:0] == 5'h9);
+	assign	w_ALU    = (!w_cis_op[4]) // anything with [4]==0, but ...
+				&&(w_cis_op[3:1] != 3'h7); // not the divide
 
 
 	// w_dcdR (4 LUTs)
@@ -205,9 +206,9 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			{ (iword[21:19]==3'h0), iword[21:19] };
 
 	// 1 LUT
-	assign	w_mem    = (w_vliw_op[4:3] == 2'b10)&&(w_vliw_op[2:1] !=2'b00);
-	assign	w_sto     = (w_mem)&&( w_vliw_op[0]);
-	assign	w_lod     = (w_mem)&&(!w_vliw_op[0]);
+	assign	w_mem    = (w_cis_op[4:3] == 2'b10)&&(w_cis_op[2:1] !=2'b00);
+	assign	w_sto     = (w_mem)&&( w_cis_op[0]);
+	assign	w_lod     = (w_mem)&&(!w_cis_op[0]);
 	// 1 LUT
 	assign	w_div     = (!iword[31])&&(w_op[4:1] == 4'h7);
 	// 2 LUTs
@@ -265,7 +266,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			: { {(23-14){iword[13]}}, iword[13:0] }
 			));
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	wire	[7:0]	w_halfbits;
 	assign	w_halfbits = iword[23:16];
 
@@ -281,12 +282,12 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign	w_Iz = (w_I == 0);
 
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	//
 	// The o_phase parameter is special.  It needs to let the software
 	// following know that it cannot break/interrupt on an o_phase asserted
 	// instruction, lest the break take place between the first and second
-	// half of a VLIW instruction.  To do this, o_phase must be asserted
+	// half of a CIS instruction.  To do this, o_phase must be asserted
 	// when the first instruction half is valid, but not asserted on either
 	// a 32-bit instruction or the second half of a 2x16-bit instruction.
 	reg	r_phase;
@@ -315,7 +316,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			o_illegal <= 1'b0;
 		else if (i_ce)
 		begin
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 			o_illegal <= (i_illegal);
 `else
 			o_illegal <= ((i_illegal) || (i_instruction[31]));
@@ -348,7 +349,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	always @(posedge i_clk)
 		if (i_ce)
 		begin
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 			if (~o_phase)
 			begin
 				o_gie<= i_gie;
@@ -410,7 +411,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
 				||(IMPLEMENT_FPU==0));
 `endif
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 			r_nxt_half <= { iword[31], iword[14:0] };
 `endif
 		end

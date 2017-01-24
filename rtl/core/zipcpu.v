@@ -107,14 +107,14 @@
 `define	CPU_CC_REG	4'he
 `define	CPU_PC_REG	4'hf
 `define	CPU_CLRCACHE_BIT 14	// Set to clear the I-cache, automatically clears
-`define	CPU_PHASE_BIT	13	// Set if we are executing the latter half of a VLIW
+`define	CPU_PHASE_BIT	13	// Set if we are executing the latter half of a CIS
 `define	CPU_FPUERR_BIT	12	// Floating point error flag, set on error
 `define	CPU_DIVERR_BIT	11	// Divide error flag, set on divide by zero
 `define	CPU_BUSERR_BIT	10	// Bus error flag, set on error
 `define	CPU_TRAP_BIT	9	// User TRAP has taken place
 `define	CPU_ILL_BIT	8	// Illegal instruction
 `define	CPU_BREAK_BIT	7
-`define	CPU_STEP_BIT	6	// Will step one or two (VLIW) instructions
+`define	CPU_STEP_BIT	6	// Will step one (or two CIS) instructions
 `define	CPU_GIE_BIT	5
 `define	CPU_SLEEP_BIT	4
 // Compile time defines
@@ -607,8 +607,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	dcdvalid = r_dcdvalid;
 `endif
 
-`ifdef	OPT_NEW_INSTRUCTION_SET
-
 	// If not pipelined, there will be no opvalid_ anything, and the
 	idecode #(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
 			IMPLEMENT_FPU)
@@ -625,25 +623,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			dcd_early_branch,
 			dcd_branch_pc, dcd_ljmp,
 			dcd_pipe);
-`else
-	idecode_deprecated
-		#(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
-			IMPLEMENT_FPU)
-		instruction_decoder(i_clk, (i_rst)||(clear_pipeline),
-			dcd_ce, dcd_stalled, instruction, instruction_gie,
-			instruction_pc, pf_valid, pf_illegal, dcd_phase,
-			dcd_illegal, dcd_pc, dcd_gie, 
-			{ dcdR_cc, dcdR_pc, dcdR },
-			{ dcdA_cc, dcdA_pc, dcdA },
-			{ dcdB_cc, dcdB_pc, dcdB },
-			dcdI, dcd_zI, dcdF, dcdF_wr, dcdOp,
-			dcdALU, dcdM, dcdDV, dcdFP, dcd_break, dcd_lock,
-			dcdR_wr,dcdA_rd, dcdB_rd,
-			dcd_early_branch,
-			dcd_branch_pc,
-			dcd_pipe);
-	assign	dcd_ljmp = 1'b0;
-`endif
 
 `ifdef	OPT_PIPELINED_BUS_ACCESS
 	reg		r_op_pipe;
@@ -707,7 +686,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `else
 	1'b0,
 `endif
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	1'b1
 `else
 	1'b0
@@ -1003,7 +982,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `endif
 	assign	opFl = (op_gie)?(w_uflags):(w_iflags);
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	reg	r_op_phase;
 	initial	r_op_phase = 1'b0;
 	always @(posedge i_clk)
@@ -1181,7 +1160,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			alF_wr <= 1'b0;
 		end
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	reg	r_alu_phase;
 	initial	r_alu_phase = 1'b0;
 	always @(posedge i_clk)
@@ -1752,7 +1731,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		assign	ufpu_err_flag = 1'b0;
 	end endgenerate
 
-`ifdef	OPT_VLIW
+`ifdef	OPT_CIS
 	reg		r_ihalt_phase;
 
 	initial	r_ihalt_phase = 0;
