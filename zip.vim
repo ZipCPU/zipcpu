@@ -73,13 +73,14 @@ syn match zipDecimal		"\$\=[1-9_][0-9_]*\>"
 " syn match zipFloat		"\$\=[0-9_]*\.[0-9_]*\([eE][+-]\=[0-9_]*\)\=\>"
 
 "simple instructions
-syn keyword zipopcode sub and add or xor lsr lsl asr lhi llo ldihi ldilo
-syn keyword zipopcode mpyu mpys divu divs
-syn keyword zipopcode brev popc rol mov cmp tst lod sto ldi
+syn keyword zipopcode sub and add or xor lsr lsl asr
+syn keyword zipopcode brev ldilo mpyuhi mpyshi mpy mov divu divs
+syn keyword zipopcode cmp tst lw sw lh sh lb sb ldi
+syn keyword zipopcode fpadd fpsub fpmul fpdiv fpi2f fpf2i
 syn keyword zipopcode noop break brk lock
-syn keyword zipopcode fpadd fpsub fpmul fpdiv dpcvt fpint
-syn keyword zipopcode bz beq bnz bc brc brv bv bra blt bgt bge
-syn keyword zipopcode clr halt wait clrf jmp ljmp not trap busy neg rtu
+syn keyword zipopcode bz beq bnz bne bc bnc bv bra blt bge ljmp jsr ljsr
+syn keyword zipopcode clr halt wait jmp ljmp not trap busy neg rtu retn
+syn keyword zipopcode sim sexit nexit sdump ndump snoop sdump
 
 "delimiters
 
@@ -90,11 +91,11 @@ syn match zipoperators "[()#,]"
 "TODO
 syn match zipTodo      "\(TODO\|XXX\|FIXME\|NOTE\)"
 
-syn keyword zipCondition z ne nz ge gt lt n c v
+syn keyword zipCondition z ne nz ge lt n nc c v
 
 "The regex for different zip registers are given below
 syn match zipregisters "[us]\=R\([0-9]\|1[0-5]\)\>"
-syn keyword zipregisters gbl sp cc pc usp ucc upc
+syn keyword zipregisters gbl sp cc pc lr fp ulr ufp usp ucc upc
 "floating point classes
 
 "Data allocation syntax
