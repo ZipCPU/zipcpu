@@ -112,7 +112,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		if (i_stb)
 		begin
 			o_wb_we   <= i_op[0];
-			casez({ i_op[2:1], i_addr[1:0] }
+			casez({ i_op[2:1], i_addr[1:0] })
 			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
 			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
 			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
