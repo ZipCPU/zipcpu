@@ -13,7 +13,7 @@
 #
 ################################################################################
 #
-# Copyright (C) 2015-2016, Gisselquist Technology, LLC
+# Copyright (C) 2015-2017, Gisselquist Technology, LLC
 #
 # This program is free software (firmware): you can redistribute it and/or
 # modify it under the terms of  the GNU General Public License as published
@@ -60,24 +60,26 @@ VZIP := zipbones.v cpudefs.v					\
 
 VOBJ := obj_dir
 
+VERILATE=verilator --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
+
 $(VOBJ)/Vzipsystem.cpp: $(VSRC)
-	verilator -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipsystem.v
+	$(VERILATE) zipsystem.v
 $(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
 
 $(VOBJ)/Vzipbones.cpp: $(VZIP)
-	verilator -cc -y $(CORED) -y $(PRPHD) -y $(AUXD) zipbones.v
+	$(VERILATE) zipbones.v
 $(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
 
 $(VOBJ)/Vdiv.cpp: $(CORED)/div.v
-	verilator -cc -y $(CORED) $(CORED)/div.v
+	$(VERILATE) $(CORED)/div.v
 $(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
 
 $(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
-	verilator -cc -y $(CORED) $(CORED)/cpuops.v
+	$(VERILATE) $(CORED)/cpuops.v
 $(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
 
 $(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
-	verilator -cc  -y $(PRPHD) $(PRPHD)/zipmmu.v
+	$(VERILATE) $(PRPHD)/zipmmu.v
 $(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
 
 $(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
