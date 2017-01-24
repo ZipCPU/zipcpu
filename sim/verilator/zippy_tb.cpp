@@ -51,6 +51,7 @@
 #include "cpudefs.h"
 
 #include "testb.h"
+#include "zipelf.h"
 // #include "twoc.h"
 // #include "qspiflashsim.h"
 #include "memsim.h"
@@ -74,9 +75,13 @@
 
 #define	MAXERR		10000
 
-#define	LGRAMLEN	20
-#define	RAMBASE		0x100000
-#define	MEMWORDS	(1<<LGRAMLEN)
+#define	LGFLASHLEN	24
+#define	FLASHBASE	0x1000000
+#define	FLASHWORDS	(1<<LGFLASHLEN)
+
+#define	LGRAMLEN	26
+#define	RAMBASE		0x4000000
+#define	RAMWORDS	(1<<LGRAMLEN)
 
 class	SPARSEMEM {
 public:
@@ -116,7 +121,7 @@ public:
 	ZIPSTATE	m_state;
 	VerilatedVcdC*	m_trace;
 
-	ZIPPY_TB(void) : m_mem_size(MEMWORDS), m_mem(m_mem_size) {
+	ZIPPY_TB(void) : m_mem_size(RAMWORDS), m_mem(m_mem_size) {
 		if (false) {
 			m_dbgfp = fopen("dbg.txt", "w");
 			dbg_flag = true;
@@ -1792,281 +1797,6 @@ void	get_value(ZIPPY_TB *tb) {
 }
 
 
-bool	iself(const char *fname) {
-	FILE	*fp;
-	bool	ret = true;
-	fp = fopen(fname, "rb");
-
-	if (!fp)	return false;
-	if (0x7f != fgetc(fp))	ret = false;
-	if ('E'  != fgetc(fp))	ret = false;
-	if ('L'  != fgetc(fp))	ret = false;
-	if ('F'  != fgetc(fp))	ret = false;
-	fclose(fp);
-	return 	ret;
-}
-
-long	fgetwords(FILE *fp) {
-	// Return the number of words in the current file, and return the 
-	// file as though it had never been adjusted
-	long	fpos, flen;
-	fpos = ftell(fp);
-	if (0 != fseek(fp, 0l, SEEK_END)) {
-		fprintf(stderr, "ERR: Could not determine file size\n");
-		perror("O/S Err:");
-		exit(-2);
-	} flen = ftell(fp);
-	if (0 != fseek(fp, fpos, SEEK_SET)) {
-		fprintf(stderr, "ERR: Could not seek on file\n");
-		perror("O/S Err:");
-		exit(-2);
-	} flen /= sizeof(ZIPI);
-	return flen;
-}
-
-class	SECTION {
-public:
-	unsigned	m_start, m_len;
-	ZIPI		m_data[1];
-};
-
-SECTION	**singlesection(int nwords) {
-	fprintf(stderr, "NWORDS = %d\n", nwords);
-	size_t	sz = (2*(sizeof(SECTION)+sizeof(SECTION *))
-		+(nwords-1)*(sizeof(ZIPI)));
-	char	*d = (char *)malloc(sz);
-	SECTION **r = (SECTION **)d;
-	memset(r, 0, sz);
-	r[0] = (SECTION *)(&d[2*sizeof(SECTION *)]);
-	r[0]->m_len   = nwords;
-	r[1] = (SECTION *)(&r[0]->m_data[r[0]->m_len]);
-	r[0]->m_start = 0;
-	r[1]->m_start = 0;
-	r[1]->m_len   = 0;
-
-	return r;
-}
-
-SECTION **rawsection(const char *fname) {
-	SECTION		**secpp, *secp;
-	unsigned	num_words;
-	FILE		*fp;
-	int		nr;
-
-	fp = fopen(fname, "r");
-	if (fp == NULL) {
-		fprintf(stderr, "Could not open: %s\n", fname);
-		exit(-1);
-	}
-
-	if ((num_words=fgetwords(fp)) > MEMWORDS) {
-		fprintf(stderr, "File overruns Block RAM\n");
-		exit(-1);
-	}
-	secpp = singlesection(num_words);
-	secp = secpp[0];
-	secp->m_start = RAMBASE;
-	secp->m_len = num_words;
-	nr= fread(secp->m_data, sizeof(ZIPI), num_words, fp);
-	if (nr != (int)num_words) {
-		fprintf(stderr, "Could not read entire file\n");
-		perror("O/S Err:");
-		exit(-2);
-	} assert(secpp[1]->m_len == 0);
-
-	return secpp;
-}
-
-unsigned	byteswap(unsigned n) {
-	unsigned	r;
-
-	r = (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-	r = (r<<8) | (n&0x0ff); n>>= 8;
-
-	return r;
-}
-
-#include <libelf.h>
-#include <gelf.h>
-
-void	elfread(const char *fname, unsigned &entry, SECTION **&sections) {
-	Elf	*e;
-	int	fd, i;
-	size_t	n;
-	char	*id;
-	Elf_Kind	ek;
-	GElf_Ehdr	ehdr;
-	GElf_Phdr	phdr;
-	const	bool	dbg = false;
-
-	if (elf_version(EV_CURRENT) == EV_NONE) {
-		fprintf(stderr, "ELF library initialization err, %s\n", elf_errmsg(-1));
-		perror("O/S Err:");
-		exit(EXIT_FAILURE);
-	} if ((fd = open(fname, O_RDONLY, 0)) < 0) {
-		fprintf(stderr, "Could not open %s\n", fname);
-		perror("O/S Err:");
-		exit(EXIT_FAILURE);
-	} if ((e = elf_begin(fd, ELF_C_READ, NULL))==NULL) {
-		fprintf(stderr, "Could not run elf_begin, %s\n", elf_errmsg(-1));
-		exit(EXIT_FAILURE);
-	}
-
-	ek = elf_kind(e);
-	if (ek == ELF_K_ELF) {
-		; // This is the kind of file we should expect
-	} else if (ek == ELF_K_AR) {
-		fprintf(stderr, "Cannot run an archive!\n");
-		exit(EXIT_FAILURE);
-	} else if (ek == ELF_K_NONE) {
-		;
-	} else {
-		fprintf(stderr, "Unexpected ELF file kind!\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (gelf_getehdr(e, &ehdr) == NULL) {
-		fprintf(stderr, "getehdr() failed: %s\n", elf_errmsg(-1));
-		exit(EXIT_FAILURE);
-	} if ((i=gelf_getclass(e)) == ELFCLASSNONE) {
-		fprintf(stderr, "getclass() failed: %s\n", elf_errmsg(-1));
-		exit(EXIT_FAILURE);
-	} if ((id = elf_getident(e, NULL)) == NULL) {
-		fprintf(stderr, "getident() failed: %s\n", elf_errmsg(-1));
-		exit(EXIT_FAILURE);
-	} if (i != ELFCLASS32) {
-		fprintf(stderr, "This is a 64-bit ELF file, ZipCPU ELF files are all 32-bit\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (dbg) {
-	printf("    %-20s 0x%jx\n", "e_type", (uintmax_t)ehdr.e_type);
-	printf("    %-20s 0x%jx\n", "e_machine", (uintmax_t)ehdr.e_machine);
-	printf("    %-20s 0x%jx\n", "e_version", (uintmax_t)ehdr.e_version);
-	printf("    %-20s 0x%jx\n", "e_entry", (uintmax_t)ehdr.e_entry);
-	printf("    %-20s 0x%jx\n", "e_phoff", (uintmax_t)ehdr.e_phoff);
-	printf("    %-20s 0x%jx\n", "e_shoff", (uintmax_t)ehdr.e_shoff);
-	printf("    %-20s 0x%jx\n", "e_flags", (uintmax_t)ehdr.e_flags);
-	printf("    %-20s 0x%jx\n", "e_ehsize", (uintmax_t)ehdr.e_ehsize);
-	printf("    %-20s 0x%jx\n", "e_phentsize", (uintmax_t)ehdr.e_phentsize);
-	printf("    %-20s 0x%jx\n", "e_shentsize", (uintmax_t)ehdr.e_shentsize);
-	printf("\n");
-	}
-
-
-	// Check whether or not this is an ELF file for the ZipCPU ...
-	if (ehdr.e_machine != 0x0dadd) {
-		fprintf(stderr, "This is not a ZipCPU ELF file\n");
-		exit(EXIT_FAILURE);
-	}
-
-	// Get our entry address
-	entry = ehdr.e_entry;
-
-
-	// Now, let's go look at the program header
-	if (elf_getphdrnum(e, &n) != 0) {
-		fprintf(stderr, "elf_getphdrnum() failed: %s\n", elf_errmsg(-1));
-		exit(EXIT_FAILURE);
-	}
-
-	unsigned total_octets = 0, current_offset=0, current_section=0;
-	for(i=0; i<(int)n; i++) {
-		total_octets += sizeof(SECTION *)+sizeof(SECTION);
-
-		if (gelf_getphdr(e, i, &phdr) != &phdr) {
-			fprintf(stderr, "getphdr() failed: %s\n", elf_errmsg(-1));
-			exit(EXIT_FAILURE);
-		}
-
-		if (dbg) {
-		printf("    %-20s 0x%x\n", "p_type",   phdr.p_type);
-		printf("    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
-		printf("    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
-		printf("    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
-		printf("    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
-		printf("    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
-		printf("    %-20s 0x%x [", "p_flags",  phdr.p_flags);
-
-		if (phdr.p_flags & PF_X)	printf(" Execute");
-		if (phdr.p_flags & PF_R)	printf(" Read");
-		if (phdr.p_flags & PF_W)	printf(" Write");
-		printf("]\n");
-		printf("    %-20s 0x%jx\n", "p_align", phdr.p_align);
-		}
-
-		total_octets += phdr.p_memsz;
-	}
-
-	char	*d = (char *)malloc(total_octets + sizeof(SECTION)+sizeof(SECTION *));
-	memset(d, 0, total_octets);
-
-	SECTION **r = sections = (SECTION **)d;
-	current_offset = (n+1)*sizeof(SECTION *);
-	current_section = 0;
-
-	for(i=0; i<(int)n; i++) {
-		r[i] = (SECTION *)(&d[current_offset]);
-
-		if (gelf_getphdr(e, i, &phdr) != &phdr) {
-			fprintf(stderr, "getphdr() failed: %s\n", elf_errmsg(-1));
-			exit(EXIT_FAILURE);
-		}
-
-		if (dbg) {
-		printf("    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
-		printf("    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
-		printf("    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
-		printf("    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
-		printf("    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
-		printf("    %-20s 0x%x [", "p_flags",  phdr.p_flags);
-
-		if (phdr.p_flags & PF_X)	printf(" Execute");
-		if (phdr.p_flags & PF_R)	printf(" Read");
-		if (phdr.p_flags & PF_W)	printf(" Write");
-		printf("]\n");
-
-		printf("    %-20s 0x%jx\n", "p_align", phdr.p_align);
-		}
-
-		current_section++;
-
-		r[i]->m_start = phdr.p_vaddr;
-		r[i]->m_len   = phdr.p_filesz/ sizeof(ZIPI);
-
-		current_offset += phdr.p_memsz + sizeof(SECTION);
-
-		// Now, let's read in our section ...
-		if (lseek(fd, phdr.p_offset, SEEK_SET) < 0) {
-			fprintf(stderr, "Could not seek to file position %08lx\n", phdr.p_offset);
-			perror("O/S Err:");
-			exit(EXIT_FAILURE);
-		} if (phdr.p_filesz > phdr.p_memsz)
-			phdr.p_filesz = 0;
-		if (read(fd, r[i]->m_data, phdr.p_filesz) != (int)phdr.p_filesz) {
-			fprintf(stderr, "Didnt read entire section\n");
-			perror("O/S Err:");
-			exit(EXIT_FAILURE);
-		}
-
-		// Next, we need to byte swap it from big to little endian
-		for(unsigned j=0; j<r[i]->m_len; j++)
-			r[i]->m_data[j] = byteswap(r[i]->m_data[j]);
-
-		if (dbg) for(unsigned j=0; j<r[i]->m_len; j++)
-			fprintf(stderr, "ADR[%04x] = %08x\n", r[i]->m_start+j,
-			r[i]->m_data[j]);
-	}
-
-	r[i] = (SECTION *)(&d[current_offset]);
-	r[current_section]->m_start = 0;
-	r[current_section]->m_len   = 0;
-
-	elf_end(e);
-	close(fd);
-}
 
 void	usage(void) {
 	printf("USAGE: zippy_tb [-a] <testfile.out>\n");
@@ -2138,12 +1868,12 @@ int	main(int argc, char **argv) {
 				}
 			} else if (access(argv[argn], R_OK)==0) {
 				if (iself(argv[argn])) {
-					SECTION **secpp = NULL, *secp;
+					ELFSECTION **secpp = NULL, *secp;
 					elfread(argv[argn], entry, secpp);
 					for(int i=0; secpp[i]->m_len; i++) {
 						secp = secpp[i];
 						assert(secp->m_start >= RAMBASE);
-						assert(secp->m_start+secp->m_len <= RAMBASE+MEMWORDS);
+						assert(secp->m_start+secp->m_len <= RAMBASE+RAMWORDS);
 						memcpy(&tb->m_mem[secp->m_start-RAMBASE],
 							&secp->m_data,
 							secp->m_len*sizeof(ZIPI));
