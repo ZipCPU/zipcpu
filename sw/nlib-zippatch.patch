@@ -4522,8 +4522,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-23 14:07:13.911956631 -0500
-@@ -0,0 +1,279 @@
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-24 14:35:42.693850658 -0500
+@@ -0,0 +1,284 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
@@ -4725,9 +4725,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +void	_bootloader(void) {
 +	int *sdend = _sdram_image_end, *bsend = _bss_image_end;
 +	if (sdend < _sdram)
-+		sdend = _sdram;
++		sdend = _sdram;	// R7
 +	if (bsend < sdend)
-+		bsend = sdend;
++		bsend = sdend;	// R6
 +
 +#ifdef	USE_DMA
 +	zip->z_dma.d_ctrl= DMACLEAR;
@@ -4768,6 +4768,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +#else
 +	int	*rdp = _kernel_image_start, *wrp = _blkram;
 +
++	if ((unsigned int)_blkram < 0x04)
++		wrp = _sdram;
++
 +	//
 +	// Load any part of the image into block RAM, but *only* if there's a
 +	// block RAM section in the image.  Based upon our LD script, the
@@ -4775,7 +4778,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// It starts at _kernel_image_start --- our last valid address within
 +	// the flash address region.
 +	//
-+	if (_kernel_image_end != _blkram) {
++	if (_kernel_image_end != _kernel_image_start) {
++		int	nlen = _kernel_image_end - wrp;
 +		for(int i=0; i< _kernel_image_end - _blkram; i++)
 +			*wrp++ = *rdp++;
 +	}
@@ -4786,7 +4790,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// As with the last pointer, this one is also created for us by the
 +	// linker.
 +	// 
-+	wrp = _sdram;
++	if (_blkram == NULL)
++		wrp = _sdram;
 +	for(int i=0; i< sdend - _sdram; i++)
 +		*wrp++ = *rdp++;
 +
@@ -4919,8 +4924,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-18 21:29:13.052582206 -0500
-@@ -0,0 +1,228 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-24 18:29:25.544315503 -0500
+@@ -0,0 +1,230 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -4960,6 +4965,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +#include <sys/types.h>
 +#include <sys/stat.h>
 +#include <sys/times.h>
++#include <reent.h>
 +#include <stdio.h>
 +#include "board.h"
 +#include "bootloader.h"
@@ -4967,13 +4973,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +void
 +_outbyte(char v) {
-+	// Reset the transmit interrupt
-+	SYSPIC = SYSINT_UARTTX;
-+	// It'll set itself again as soon as a value can be written
-+	while((SYSPIC)&&(SYSINT_UARTTX)==0)
++	// Depend upon the WBUART, not the PIC
++	while(_uart->u_tx & 0x100)
 +		;
 +	uint8_t c = v;
-+	_uart->u_tx = (unsigned)c;
++	*((volatile uint32_t *)&_uart->u_tx) = (unsigned)c;
 +}
 +
 +void
@@ -4984,8 +4988,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +}
 +
 +int
-+_close(int file) {
-+	errno = EBADF;
++_close_r(struct _reent *reent, int file) {
++	reent->_errno = EBADF;
 +
 +	return -1;	/* Always fails */
 +}
@@ -4994,47 +4998,47 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +char	**environ = __env;
 +
 +int
-+_execve(const char *name, char * const *argv, char * const *env)
++_execve_r(struct _reent *reent, const char *name, char * const *argv, char * const *env)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_fork(void)
++_fork_r(struct _reent *reent)
 +{
-+	errno = EAGAIN;
++	reent->_errno = EAGAIN;
 +	return -1;
 +}
 +
 +int
-+_fstat(int file, struct stat *st)
++_fstat_r(struct _reent *reent, int file, struct stat *st)
 +{
 +	if ((STDOUT_FILENO == file)||(STDERR_FILENO == file)
 +		||(STDIN_FILENO == file)) {
 +		st->st_mode = S_IFCHR;
 +		return 0;
 +	} else {
-+		errno = EBADF;
++		reent->_errno = EBADF;
 +		return -1;
 +	}
 +}
 +
 +int
-+_getpid(void)
++_getpid_r(struct _reent *reent)
 +{
 +	return 1;
 +}
 +
 +int
-+_gettimeofday(struct timeval *ptimeval, void *ptimezone)
++_gettimeofday(struct _reent *reent, struct timeval *ptimeval, void *ptimezone)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_isatty(int file)
++_isatty_r(struct _reent *reent, int file)
 +{
 +	if ((STDIN_FILENO == file)
 +			||(STDOUT_FILENO == file)
@@ -5044,35 +5048,35 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +}
 +
 +int
-+_kill(int pid, int sig)
++_kill_r(struct _reent *reent, int pid, int sig)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_link(const char *existing, const char *new)
++_link_r(struct _reent *reent, const char *existing, const char *new)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
++	return -1;
++}
++
++_off_t
++_lseek_r(struct _reent *reent, int file, _off_t ptr, int dir)
++{
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_lseek(int file, _off_t ptr, int dir)
++_open(struct _reent *reent, char *file, int flags, int mode)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_open(char *file, int flags, int mode)
-+{
-+	errno = ENOSYS;
-+	return -1;
-+}
-+
-+int
-+_read(int file, void *ptr, size_t len)
++_read_r(struct _reent *reent, int file, void *ptr, size_t len)
 +{
 +#ifdef	_ZIP_HAS_UART
 +	if (STDIN_FILENO == file)
@@ -5096,22 +5100,22 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +}
 +
 +int
-+_readlink(const char *path, char *buf, size_t bufsize)
++_readlink_r(struct _reent *reent, const char *path, char *buf, size_t bufsize)
 +{
-+	errno = ENOSYS;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_stat(const char *path, struct stat *buf) {
-+	errno = EIO;
++_stat_r(struct _reent *reent, const char *path, struct stat *buf) {
++	reent->_errno = EIO;
 +	return -1;
 +}
 +
 +int
-+_unlink(const char *path)
++_unlink_r(struct _reent *reent, const char *path)
 +{
-+	errno = EIO;
++	reent->_errno = EIO;
 +	return -1;
 +}
 +
@@ -5122,14 +5126,17 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +}
 +
 +int
-+_write(int file, char *buf, int nbytes) {
-+	if ((STDOUT_FILENO == file)||(STDERR_FILENO == file)) {
++_write_r(struct _reent * reent, int fd, const void *buf, size_t nbytes) {
++asm("SDUMP R2");
++	if ((STDOUT_FILENO == fd)||(STDERR_FILENO == fd)) {
++asm("SDUMP R4");
++		const	char *cbuf = buf;
 +		for(int i=0; i<nbytes; i++)
-+			_outbyte(buf[i]);
++			_outbyte(cbuf[i]);
 +		return nbytes;
 +	}
 +
-+	errno = EBADF;
++	reent->_errno = EBADF;
 +	return -1;
 +}
 +
@@ -5142,7 +5149,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int	*heap = _top_of_heap;
 +
 +void *
-+_sbrk(int sz) {
++_sbrk_r(struct _reent *reent, int sz) {
 +	int	*prev = heap;
 +
 +	heap += sz;
@@ -5474,7 +5481,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/new
  #undef _FVWRITE_IN_STREAMIO
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip/newlib/configure.host
 --- newlib-2.5.0/newlib/configure.host	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/configure.host	2017-01-18 21:26:04.993739019 -0500
++++ newlib-2.5.0-zip/newlib/configure.host	2017-01-24 17:00:42.409422806 -0500
 @@ -310,6 +310,9 @@
    z8k)
  	machine_dir=z8k
@@ -5485,7 +5492,19 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    spu)
  	stdio_dir=
  	libm_machine_dir=spu
-@@ -851,6 +854,9 @@
+@@ -565,6 +568,11 @@
+   z8k-*-coff)
+ 	sys_dir=z8ksim
+ 	;;
++  zip*)
++#	sys_dir=zip	# But ... I don't have a directory in newlib/libc/sys
++	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED "
++#        have_crt0="yes"
++	;;
+ esac
+ 
+ # Host specific flag settings -- usually for features that are not
+@@ -851,6 +859,9 @@
    z8k-*-*)
  	syscall_dir=syscalls
  	;;
@@ -10920,6 +10939,45 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newli
 +	LW	52(sp),sp
 +	LDI	1,R1
 +	RETN
+diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdio/fvwrite.c newlib-2.5.0-zip/newlib/libc/stdio/fvwrite.c
+--- newlib-2.5.0/newlib/libc/stdio/fvwrite.c	2016-12-22 21:33:54.000000000 -0500
++++ newlib-2.5.0-zip/newlib/libc/stdio/fvwrite.c	2017-01-24 16:34:36.919255552 -0500
+@@ -57,13 +57,17 @@
+   char *nl;
+   int nlknown, nldist;
+ 
++asm("SOUT \'2\'");
++
+   if ((len = uio->uio_resid) == 0)
+     return 0;
+ 
++asm("SOUT \'3\'");
+   /* make sure we can write */
+   if (cantwrite (ptr, fp))
+     return EOF;
+ 
++asm("SOUT \'4\'");
+   iov = uio->uio_iov;
+   len = 0;
+ 
+diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdio/puts.c newlib-2.5.0-zip/newlib/libc/stdio/puts.c
+--- newlib-2.5.0/newlib/libc/stdio/puts.c	2016-12-22 21:33:54.000000000 -0500
++++ newlib-2.5.0-zip/newlib/libc/stdio/puts.c	2017-01-24 16:33:22.787591146 -0500
+@@ -93,11 +93,14 @@
+   uio.uio_iov = &iov[0];
+   uio.uio_iovcnt = 2;
+ 
++asm("SOUT \'0\'");
++
+   _REENT_SMALL_CHECK_INIT (ptr);
+   fp = _stdout_r (ptr);
+   CHECK_INIT (ptr, fp);
+   _newlib_flockfile_start (fp);
+   ORIENT (fp, -1);
++asm("SOUT \'1\'");
+   result = (__sfvwrite_r (ptr, fp, &uio) ? EOF : '\n');
+   _newlib_flockfile_end (fp);
+   return result;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c
 --- newlib-2.5.0/newlib/libc/stdlib/mallocr.c	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c	2017-01-12 15:02:26.321526300 -0500
