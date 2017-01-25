@@ -235,8 +235,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/reloc.texi binutils-2.27-zip/
  
 diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
 --- binutils-2.27/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-23 12:20:29.641716300 -0500
-@@ -0,0 +1,1160 @@
++++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-24 13:54:25.214097101 -0500
+@@ -0,0 +1,1134 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -699,36 +699,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +	return TRUE;
 +}
 +
-+static bfd_boolean
-+zip_define_common_symbol(bfd *output_bfd,
-+		struct bfd_link_info *info ATTRIBUTE_UNUSED,
-+		struct	bfd_link_hash_entry *h) {
-+  bfd_vma size;
-+  asection *section;
-+fprintf(stderr, "ELF32-ZIP(DEFINE-COMMON-SYMBOL)\n");
-+  BFD_ASSERT (h != NULL && h->type == bfd_link_hash_common);
-+
-+  size = h->u.c.size * bfd_octets_per_byte(output_bfd);
-+  section = h->u.c.p->section;
-+  h->u.c.p->alignment_power = 0;
-+
-+  /* Change the symbol from common to defined.  */
-+  h->type = bfd_link_hash_defined;
-+  h->u.def.section = section;
-+	// section->size is in octets, not bytes
-+  h->u.def.value = section->size/bfd_octets_per_byte(output_bfd);
-+
-+  /* Increase the size of the section.  */
-+  section->size += size;
-+
-+  /* Make sure the section is allocated in memory, and make sure that
-+     it is no longer a common section.  */
-+  section->flags |= SEC_ALLOC;
-+  section->flags &= ~SEC_IS_COMMON;
-+  return TRUE;
-+}
-+#define bfd_elf32_bfd_define_common_symbol	zip_define_common_symbol
-+
 +static uint32_t
 +zip_bitreverse(uint32_t v) {
 +	unsigned r = 0, b;
@@ -819,6 +789,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +
 +#define	ELF_MAXPAGESIZE		0x1000
 +#define	ARCH_SIZE		32
++
++
++#define bfd_elf32_bfd_define_common_symbol	bfd_generic_define_common_symbol
++
 +
 +#define	bfd_elf32_bfd_reloc_type_lookup	zip_elf_reloc_type_lookup
 +#define	bfd_elf32_bfd_reloc_name_lookup	zip_elf_reloc_name_lookup
@@ -1731,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-23 20:40:12.768914591 -0500
-@@ -0,0 +1,3168 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-24 16:10:05.045751132 -0500
+@@ -0,0 +1,3219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -1802,14 +1776,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +// Characters that may be used for an exponent in floating point numbers
 +const	char	EXP_CHARS[] = "eE";
 +
-+static int	vliw_mergable = 0; // tc_check_label, tc_frob_label
++static int	cis_mergable = 0; // tc_check_label, tc_frob_label
 +
 +// zip_param_got is a flag that we'll set to know if we need to reference a 
 +// global offset table.  Since nothing we've done has yet needed that table,
 +// we'll keep this undefined for now.
 +//
 +// static int	zip_param_got = 0;
-+static int	zip_param_vliw = 1;
++static int	zip_param_cis = 1;
 +static int	zip_param_small = 0;
 +static int	zip_param_use_machine  = 0;
 +
@@ -1828,7 +1802,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +static void zip_clear_machine(MACHINEREGS *pzipm);
 +
 +void	md_begin(void) {
-+	vliw_mergable = FALSE;
++	cis_mergable = FALSE;
 +	//
 +	record_alignment(text_section, 2);
 +	record_alignment(data_section, 2);
@@ -2204,7 +2178,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 + *		converted to LDILO/LDIHI pairs and never converted back to
 + *		LDI's--even when the final value is known.
 + *
-+ *	-vliw	Attempt to compress instructions into the VLIW instruction
++ *	-cis	Attempt to compress instructions into the CIS instruction
 + *		set.
 + *
 + *	(Something for stating the starting address of the routine in memory...)
@@ -2218,8 +2192,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 + *	
 + *
 + */
-+#define	OPTION_VLIW	(OPTION_MD_BASE+1)
-+#define	OPTION_NOVLIW	(OPTION_MD_BASE+2)
++#define	OPTION_CIS	(OPTION_MD_BASE+1)
++#define	OPTION_NOCIS	(OPTION_MD_BASE+2)
 +#define	OPTION_ZIPM	(OPTION_MD_BASE+3)
 +#define	OPTION_NOZIPM	(OPTION_MD_BASE+4)
 +#define	OPTION_GOT	(OPTION_MD_BASE+5)
@@ -2228,8 +2202,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +const char	*md_shortopts = "";
 +struct	option	md_longopts[] =
 +{
-+	{ "vliw",   no_argument, NULL, OPTION_VLIW },
-+	{ "novliw", no_argument, NULL, OPTION_NOVLIW },
++	{ "cis",   no_argument, NULL, OPTION_CIS },
++	{ "nocis", no_argument, NULL, OPTION_NOCIS },
 +	{ "zipm",   no_argument, NULL, OPTION_ZIPM },
 +	{ "nozipm", no_argument, NULL, OPTION_NOZIPM },
 +	{ "small",  no_argument, NULL, OPTION_SMALL },
@@ -2249,8 +2223,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		return 1;
 +	switch(c) {
 +		case 0: return 1;
-+		case OPTION_VLIW:   zip_param_vliw = 1; return 1; break;
-+		case OPTION_NOVLIW: zip_param_vliw = 0; return 1; break;
++		case OPTION_CIS:   zip_param_cis = 1; return 1; break;
++		case OPTION_NOCIS: zip_param_cis = 0; return 1; break;
 +		case OPTION_ZIPM:   zip_param_use_machine = 1; return 1; break;
 +		case OPTION_NOZIPM: zip_param_use_machine = 0; return 1; break;
 +		// case OPTION_GOT : zip_param_got  = 1; return 1; break;
@@ -2264,7 +2238,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +{
 +	fprintf(stream, _("Zip CPU options:\n"));
 +	fprintf(stream, _("\n"
-+"-vliw\t\tAttempt to compress instructions into two instructions per word.\n"));
++"-cis\t\tAttempt to compress instructions into two instructions per word.\n"));
 +	//fprintf(stream, _(
 +// "-got\t\tGenerate position independent code by referencing all symbols\n"
 +// "\t\tthrough a Global Offset Table.\n"));
@@ -2370,6 +2344,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		//
 +		case ZIPO_LJMP:	fprintf(stderr, "%7s", "LJMP"); break;
 +		case ZIPO_LJSR:	fprintf(stderr, "%7s", "LJSR");   break;
++		//
++		case ZIPO_SEXTH:fprintf(stderr, "%7s", "SEXTH");   break;
++		case ZIPO_SEXTB:fprintf(stderr, "%7s", "SEXTB");   break;
 +		default:
 +			fprintf(stderr, "%d", insn->i_op); break;
 +	}
@@ -2833,9 +2810,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		MAYBE_ONE_IMM,	// Only used by BREAK, NOOP, SIM
 +		MAYBE_ONE_REG,	// Only used by SDUMP, NDUMP
 +		MAYBE_ONE_IMM_OR_REG,	// Only used by SEXIT, NEXIT, SOUT, NOUT
++		MAYBE_OPB,	// Only used by TRAP
 +		ONE_REGISTER,	// Only used by CLR, CLRF, and NOT
 +		OP_ADDRESS,	// Only used by BRA, BRA.C, and LINK
-+		OP_B,		// Only used by TRAP and JMP
++		OP_B,		// Only used by JMP
 +		TWO_REGISTER,	// Only used by FP instructions
 +		ILLEGAL_FORM	// Never used, for debugging only
 +	} FORMTYPE;
@@ -2901,7 +2879,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		if (cndp)
 +			*cndp++ = '\0';
 +	}
-+
 +	if (strcasecmp(opstr, "SUB")==0) {
 +		insn->i_op = ZIPO_SUB;
 +		insn_form = TWO_OP;
@@ -3008,7 +2985,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	// Now for some derived instructions
 +	} else if (strcasecmp(opstr, "TRAP")==0) {
 +		insn->i_op = ZIPO_TRAP;
-+		insn_form = OP_B;
++		insn_form = MAYBE_OPB;
 +	} else if (strcasecmp(opstr, "CLR")==0) {
 +		insn->i_op = ZIPO_CLR;
 +		insn_form = ONE_REGISTER;
@@ -3135,6 +3112,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		insn->i_op = ZIPO_NEXIT;
 +		insn->i_imm= 0;
 +		insn_form = MAYBE_ONE_IMM_OR_REG;
++	} else if (strcasecmp(opstr, "SEXTB")==0) {
++		insn->i_op = ZIPO_SEXTB;
++		insn->i_imm= 0;
++		insn_form = ONE_REGISTER;
++	} else if (strcasecmp(opstr, "SEXTH")==0) {
++		insn->i_op = ZIPO_SEXTH;
++		insn->i_imm= 0;
++		insn_form = ONE_REGISTER;
 +	} else if (strcasecmp(opstr, "NOUT")==0) {
 +		insn->i_op = ZIPO_NOUT;
 +		insn->i_imm= 0;
@@ -3211,8 +3196,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				err = zip_parse_bop(left,insn);
 +				if ((!err)&&(insn->i_breg != ZIP_RNONE)&&(insn->i_imm))
 +					err = "xDUMP instructions can handle immediates or registers, not both";
-+			}
-+			break;
++			} else {
++				insn->i_breg = ZIP_RNONE;
++				insn->i_imm  = 0;
++			} break;
 +		case NO_OP:
 +			if ((NULL != left)||(NULL != right))
 +				err = "Wrong number of operands!";
@@ -3267,6 +3254,15 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			}
 +			
 +			break;
++		case MAYBE_OPB:
++			// JMP or TRAP instruction
++			if (NULL != right)
++				err = "Instruction opcode expects only one operand";
++			else if (NULL == left) {
++				insn->i_breg = ZIP_RNONE;
++				insn->i_imm = 0;
++				break;
++			} // Fall through
 +		case OP_B: // Operand B only (A is implied)
 +			// JMP or TRAP instruction
 +			if (NULL != right)
@@ -3332,9 +3328,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			break;
 +		case ZIPO_TRAP:
 +			insn->i_areg = ZIP_CC;
-+			if (insn->i_breg == ZIP_RNONE)
-+				insn->i_op = ZIPO_LDI;
-+			else
++			if (insn->i_breg == ZIP_RNONE) {
++				if (insn->i_cnd == ZIPC_ALWAYS)
++					insn->i_op = ZIPO_LDI;
++				else if (fits_within(16, insn->i_imm))
++					insn->i_op = ZIPO_LDILO;
++				else if (fits_within(18, zip_brev(insn->i_imm)))
++					insn->i_op = ZIPO_BREV;
++				else
++					err = "TRAP immediate not supported";
++			} else
 +				insn->i_op = ZIPO_MOV;
 +			break;
 +		case ZIPO_CLR:
@@ -3388,7 +3391,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_imm = (int)insn->i_breg + 0x0200;
 +				insn->i_breg = ZIP_RNONE;
 +			} else
-+				insn->i_imm = 0x200 + (insn->i_imm & 0x0ff);
++				insn->i_imm = 0x2ff;
 +			break;
 +		case ZIPO_NDUMP:
 +			insn->i_op = ZIPO_NOOP;
@@ -3441,6 +3444,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			} break;
 +		case ZIPO_JSR:
 +			break;
++		case ZIPO_SEXTB: case ZIPO_SEXTH:
++			break;
 +		default:
 +			return "Internal error -- unrecognized internal opcode";
 +			break;
@@ -3478,16 +3483,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +
 +
 +/*
-+ *	VLIW support code
++ *	CIS support code
 + *
-+ *	Assuming that the instruction (a) is not a VLIW instruction, this looks
++ *	Assuming that the instruction (a) is not a CIS instruction, this looks
 + *	up the immediate value encoded in the instruction.  The purpose is to
 + *	determine whether or not this instruction can be merged with the 
-+ *	previous (or next) instruction in VLIW mode.
++ *	previous (or next) instruction in CIS mode.
 + *
 + */
 +static int
-+zip_non_vliw_immediate(const unsigned a)
++zip_non_cis_immediate(const unsigned a)
 +{
 +	ZIP_OPCODE	op = (ZIP_OPCODE)((a>>22)&0x1f);
 +	int		imm;
@@ -3526,7 +3531,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +zip_can_merge(const unsigned a, const unsigned b)
 +{
 +	// Can't merge instructions if merging isnt turned on
-+	if (!zip_param_vliw)
++	if (!zip_param_cis)
 +		return 0;
 +
 +	// 1. Can't merge anything that's already merged
@@ -3570,8 +3575,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		return 0;
 +	if ((opb == ZIPO_MOV)&&(b & 0x44000))
 +		return 0;
-+	imma = zip_non_vliw_immediate(a);
-+	immb = zip_non_vliw_immediate(b);
++	imma = zip_non_cis_immediate(a);
++	immb = zip_non_cis_immediate(b);
 +
 +	if (!fits_within(8,imma)) {
 +		// fprintf(stderr, "As immediate is out of range\n");
@@ -3583,6 +3588,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +
 +	// if abreg & 0x010, or bbreg & 0x010, then the register is being
 +	// used.
++	int aareg = (a>>27)&0x00f;
 +	int abreg = (a>>14)&0x01f;
 +	int bbreg = (b>>14)&0x01f;
 +
@@ -3590,12 +3596,19 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_MOV:
 +			if (!fits_within(3,imma))
 +				return 0;
++			if (aareg == ZIP_CC)
++				return 0;
 +			break;
 +		case ZIPO_LDI: case ZIPO_LDIn:
 +			if (!fits_within(8,imma))
 +				return 0;
++			if (aareg == ZIP_CC)
++				return 0;
 +			break;
-+		case ZIPO_ADD: case ZIPO_SUB: case ZIPO_CMP: case ZIPO_AND:
++		case ZIPO_ADD: case ZIPO_SUB: case ZIPO_AND:
++			if (aareg == ZIP_CC)
++				return 0;
++		case ZIPO_CMP:
 +			if ((abreg&0x10)==0) {
 +				if (!fits_within(7,imma)) {
 +					return 0;
@@ -3605,6 +3618,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					return 0;
 +			} break;
 +		case ZIPO_LW: case ZIPO_SW:
++			if (aareg == ZIP_CC)
++				return 0;
 +			if ((abreg&0x010)==0) {
 +				return 0;
 +			} else if (abreg== 0x10 + ZIP_SP) {
@@ -3699,7 +3714,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	default: gas_assert(0);
 +	}
 +
-+	// The new VLIW has no condition codes
++	// The new CIS has no condition codes
 +
 +	// Now for OpB, instruction A
 +	if (opa == ZIPO_LDI)
@@ -3752,7 +3767,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	// On any symbol, we need to make sure that we can jump to this
 +	// address, therefore we cannot merge the previous instruction with
 +	// another one that might follow.
-+	vliw_mergable = FALSE;
++	cis_mergable = FALSE;
 +	//
 +	// Likewise, our shadow virtual machine values may be ... unknown
 +	// upon any jump to this location.  Hence, we declare them unknown
@@ -3991,7 +4006,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					(immv&0x0ffff), insn->i_areg);
 +				if (insn->i_rp)
 +					insn->i_rp->r_type = BFD_RELOC_ZIP_LDI;
-+				else if ((zip_param_vliw)&&(zip_can_merge(insn->i_code, insn->i_aux[0]))) {
++				else if ((zip_param_cis)&&(zip_can_merge(insn->i_code, insn->i_aux[0]))) {
 +					insn->i_code = zip_insn_merge(insn->i_code, insn->i_aux[0]);
 +					insn->i_naux = 0;
 +				}
@@ -4215,13 +4230,23 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		// instructions by now.  Getting here with them is therefore
 +		// an error.
 +		gas_assert(0);
++	case ZIPO_SEXTB: {
++		insn->i_naux = 1;
++		insn->i_code   = IMMOP(ZIPO_LSL, insn->i_cnd, 24, insn->i_areg);
++		insn->i_aux[0] = IMMOP(ZIPO_ASR, insn->i_cnd, 24, insn->i_areg);
++		} break;
++	case ZIPO_SEXTH: {
++		insn->i_naux = 1;
++		insn->i_code   = IMMOP(ZIPO_LSL, insn->i_cnd, 16, insn->i_areg);
++		insn->i_aux[0] = IMMOP(ZIPO_ASR, insn->i_cnd, 16, insn->i_areg);
++		} break;
 +	case ZIPO_JSR:
-+		if ((zip_param_vliw)&&(insn->i_cnd == ZIPC_ALWAYS)
++		if ((zip_param_cis)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(insn->i_rp)) {
 +			insn->i_op = ZIPO_LJSR;
 +			zip_assemble_insn_words(fragP, seg, insn, relax_state, stretch, pzipm);			
 +			insn->i_op = ZIPO_JSR;
-+		} else if ((zip_param_vliw)&&(insn->i_cnd == ZIPC_ALWAYS)
++		} else if ((zip_param_cis)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(insn->i_breg != ZIP_RNONE)
 +				&&(insn->i_imm == 0)) {
 +			insn->i_naux = 1;
@@ -4282,7 +4307,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			insn->i_rp->r_type = BFD_RELOC_ZIP_VALUE;
 +		} insn->i_breg = ZIP_RNONE;
 +		if (insn->i_cnd == ZIPC_ALWAYS) {
-+			if (zip_param_vliw) {
++			if (zip_param_cis) {
 +				insn->i_naux = 1;
 +				insn->i_code = 0x80008000
 +					| (ZIPV_MOV<<24)
@@ -4414,7 +4439,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	//	  md_number_to_chars(f, insn->insn_code, 4); // ???
 +	//
 +	//
-+	if ((!insn->i_rp)&&(vliw_mergable)&&(insn->i_naux == 0)
++	if ((!insn->i_rp)&&(cis_mergable)&&(insn->i_naux == 0)
 +			&&(frag_now_fix_octets()>=4)) {
 +		// ZIPI	lcode = md_number_from_chars(p, 4);
 +		unsigned int	last_iword;
@@ -4486,9 +4511,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			md_number_to_chars(&p[sizeof(uint32_t)*(1+i)], insn->i_aux[i], sizeof(uint32_t));
 +
 +		if (rp) {
-+			vliw_mergable = FALSE;
++			cis_mergable = FALSE;
 +		} else {
-+			vliw_mergable = (zip_param_vliw)&&(insn->i_naux == 0);
++			cis_mergable = (zip_param_cis)&&(insn->i_naux == 0);
 +		}
 +	}
 +#ifdef	ZIP_DEBUG
@@ -4876,7 +4901,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_rp->r_pcrel, // T if PC-Relative reloc
 +				BFD_RELOC_ZIP_VALUE); // Reloc type
 +		} else if (insn->i_rp->r_type == BFD_RELOC_ZIP_VALUE) {
-+				// Use the VLIW LW (PC),PC method
++				// Use the CIS LW (PC),PC method
 +				fix_new(fragP,
 +				insn->i_rp->r_fr_offset
 +					+ insn->i_naux*sizeof(uint32_t),
@@ -4903,8 +4928,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +}
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
 --- binutils-2.27/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.h	2017-01-23 17:54:57.654064564 -0500
-@@ -0,0 +1,187 @@
++++ binutils-2.27-zip/gas/config/tc-zip.h	2017-01-24 15:59:39.640740398 -0500
+@@ -0,0 +1,188 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.h
@@ -5081,6 +5106,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip
 +	ZIPO_SDUMP, ZIPO_NDUMP,
 +	ZIPO_SOUT,  ZIPO_NOUT,
 +	ZIPO_SEXIT, ZIPO_NEXIT,
++	ZIPO_SEXTB, ZIPO_SEXTH,
 +	ZIPO_JSR,   ZIPO_LJSR, ZIPO_LJMP
 +} ZIP_OPCODE;
 +
@@ -5983,7 +6009,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d
 --- binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d	2017-01-19 07:44:20.265671647 -0500
++++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d	2017-01-24 08:03:32.892847657 -0500
 @@ -0,0 +1,41 @@
 +#as:
 +#objdump: -dr
@@ -5998,7 +6024,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +   0:	7f 00 00 00 	BRK        
 +   4:	7f 00 00 11 	BRK        \$17
 +   8:	7f c0 00 00 	NOOP       
-+   c:	7f c0 02 00 	NDUMP      R0
++   c:	7f c0 02 ff 	NDUMP *$
 +  10:	7f c0 02 07 	NDUMP      R7
 +  14:	7f c0 02 03 	NDUMP      R3
 +  18:	7f c0 02 14 	NDUMP      uR4
@@ -6009,7 +6035,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +  2c:	7f c0 03 07 	NEXIT      R7
 +  30:	7f c4 00 23 	NSIM       \$262179
 +  34:	7f 80 00 00 	SIM +$
-+  38:	7f 80 02 00 	SDUMP      R0
++  38:	7f 80 02 ff 	SDUMP *$
 +  3c:	7f 80 02 07 	SDUMP      R7
 +  40:	7f 80 02 03 	SDUMP      R3
 +  44:	7f 80 02 14 	SDUMP      uR4
@@ -7082,8 +7108,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-19 07:38:01.580390119 -0500
-@@ -0,0 +1,352 @@
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-24 10:05:20.363497973 -0500
+@@ -0,0 +1,360 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.c
@@ -7156,6 +7182,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "BGE",  0xfffc0000, 0x78b00000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BNC",  0xfffc0000, 0x78b80000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BRA",  0xffc40000, 0x78800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
++	// Changes/updates to CC, based upon LDI
++	{ "TRAP", 0xfffffff0, 0x76000000, ZIP_OPUNUSED,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "TRAP", 0xff800000, 0x76000000, ZIP_OPUNUSED,ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	// BREV based traps
++	{ "TRAP", 0xffc7ffff, 0x72000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
++	// LDILO based traps
++	{ "TRAP",0xffc4ffff, 0x72400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
++	{ "TRAP",0xffc40000, 0x72400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_BITFIELD(3,19) },
 +	// CLR -- a LDI of zero
 +	//	0.rrrr.1100.iiiiiii--
 +	//	0rrr r110 0...

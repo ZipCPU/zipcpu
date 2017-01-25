@@ -2665,7 +2665,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-01-12 13:36:08.342685353 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-01-24 16:02:58.003668632 -0500
 @@ -0,0 +1,545 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -3072,7 +3072,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +				sprintf(tmp, "CMP\t0,%%H1\n"
 +					"\tBLT\t.Lcmpgt%%=\n"
 +					"\tBNZ\t%%3\n"
-+					"\tCMP\t%ld,%L1\n"
++					"\tCMP\t%ld,%%L1\n"
 +					"\tBNC\t%%3\n"
 +					".Lcmpgt%%=:", value+1l);
 +				return ggc_alloc_string(tmp, -1);
@@ -7425,7 +7425,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-19 14:20:45.981332780 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-24 16:01:13.164235008 -0500
 @@ -0,0 +1,2575 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -7937,28 +7937,28 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(zero_extend:SI
 +			(match_operand:QI 1 "register_operand" "0")))]
 +	""
-+	"AND\t-256,%0"
++	"AND\t255,%0"
 +	[(set_attr "predicable" "yes") (set_attr "ccresult" "set")])
 +(define_insn "zero_extendhisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(zero_extend:SI
 +			(match_operand:HI 1 "register_operand" "0")))]
 +	""
-+	"AND\t-65536,%0"
++	"AND\t65535,%0"
 +	[(set_attr "predicable" "yes") (set_attr "ccresult" "set")])
 +(define_insn "extendqisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(sign_extend:SI
 +			(match_operand:QI 1 "register_operand" "0")))]
 +	""
-+	"TEST\t128,%0\n\tOR.NZ\t-256,%0"
++	"SEXTB %0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +(define_insn "extendhisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(sign_extend:SI
 +			(match_operand:HI 1 "register_operand" "0")))]
 +	""
-+	"TEST\t32768,%0\n\tOR.NZ\t-65536,%0"
++	"SEXTH %0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -11392,203 +11392,3 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/reload1.c gcc-6.2.0-zip/gcc/reload1.c
  /* This file contains the reload pass of the compiler, which is
     run after register allocation has been done.  It checks that
     each insn is valid (operands required to be in registers really
-diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/testsuite/lib/target-supports.exp gcc-6.2.0-zip/gcc/testsuite/lib/target-supports.exp
---- gcc-6.2.0/gcc/testsuite/lib/target-supports.exp	2016-07-05 13:54:02.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/testsuite/lib/target-supports.exp	2016-12-31 16:59:52.719091392 -0500
-@@ -545,6 +545,11 @@
- 	return 0
-     }
- 
-+    # ZipCPU doesnt support profiling (yet).
-+    if { [istarget zip*] } {
-+	return 0
-+    }
-+
-     # cygwin does not support -p.
-     if { [istarget *-*-cygwin*] && $test_what == "-p" } {
- 	return 0
-@@ -1090,6 +1095,12 @@
- 	}]
-     }
- 
-+    # No real hardware FPU support for ZipCPU yet --- even though the
-+    # instruction set supports it, the CPU just isn't ready (yet).
-+    if { [istarget zip*] } {
-+        return 0
-+    }
-+
-     # This proc is actually checking the availabilty of FPU
-     # support for doubles, so on the RX we must fail if the
-     # 64-bit double multilib has been selected.
-diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/tree-ssa-math-opts.c gcc-6.2.0-zip/gcc/tree-ssa-math-opts.c
---- gcc-6.2.0/gcc/tree-ssa-math-opts.c	2016-04-04 11:42:19.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/tree-ssa-math-opts.c	2016-12-31 17:02:24.405602214 -0500
-@@ -983,7 +983,7 @@
-     {
-       if (val & 1)
- 	{
--	  digit = val & ((1 << POWI_WINDOW_SIZE) - 1);
-+	  digit = val & ((1l << POWI_WINDOW_SIZE) - 1);
- 	  result += powi_lookup_cost (digit, cache)
- 		    + POWI_WINDOW_SIZE + 1;
- 	  val >>= POWI_WINDOW_SIZE;
-@@ -1023,7 +1023,7 @@
-     }
-   else if (n & 1)
-     {
--      digit = n & ((1 << POWI_WINDOW_SIZE) - 1);
-+      digit = n & ((1l << POWI_WINDOW_SIZE) - 1);
-       op0 = powi_as_mults_1 (gsi, loc, type, n - digit, cache);
-       op1 = powi_as_mults_1 (gsi, loc, type, digit, cache);
-     }
-@@ -1957,7 +1957,7 @@
- };
- 
- #define BITS_PER_MARKER 8
--#define MARKER_MASK ((1 << BITS_PER_MARKER) - 1)
-+#define MARKER_MASK ((1l << BITS_PER_MARKER) - 1)
- #define MARKER_BYTE_UNKNOWN MARKER_MASK
- #define HEAD_MARKER(n, size) \
-   ((n) & ((uint64_t) MARKER_MASK << (((size) - 1) * BITS_PER_MARKER)))
-@@ -1993,7 +1993,7 @@
-   /* Zero out the extra bits of N in order to avoid them being shifted
-      into the significant bits.  */
-   if (size < 64 / BITS_PER_MARKER)
--    n->n &= ((uint64_t) 1 << (size * BITS_PER_MARKER)) - 1;
-+    n->n &= ((uint64_t) 1l << (size * BITS_PER_MARKER)) - 1;
- 
-   switch (code)
-     {
-@@ -2020,7 +2020,7 @@
-     }
-   /* Zero unused bits for size.  */
-   if (size < 64 / BITS_PER_MARKER)
--    n->n &= ((uint64_t) 1 << (size * BITS_PER_MARKER)) - 1;
-+    n->n &= ((uint64_t) 1l << (size * BITS_PER_MARKER)) - 1;
-   return true;
- }
- 
-@@ -2067,7 +2067,7 @@
-   n->n = CMPNOP;
- 
-   if (size < 64 / BITS_PER_MARKER)
--    n->n &= ((uint64_t) 1 << (size * BITS_PER_MARKER)) - 1;
-+    n->n &= ((uint64_t) 1l << (size * BITS_PER_MARKER)) - 1;
- 
-   return true;
- }
-@@ -2372,7 +2372,7 @@
- 	      {
- 		/* If STMT casts to a smaller type mask out the bits not
- 		   belonging to the target type.  */
--		n->n &= ((uint64_t) 1 << (type_size * BITS_PER_MARKER)) - 1;
-+		n->n &= ((uint64_t) 1l << (type_size * BITS_PER_MARKER)) - 1;
- 	      }
- 	    n->type = type;
- 	    if (!n->base_addr)
-@@ -2489,7 +2489,7 @@
-     {
-       uint64_t mask;
- 
--      mask = ((uint64_t) 1 << (n->range * BITS_PER_MARKER)) - 1;
-+      mask = ((uint64_t) 1l << (n->range * BITS_PER_MARKER)) - 1;
-       cmpxchg >>= (64 / BITS_PER_MARKER - n->range) * BITS_PER_MARKER;
-       cmpnop &= mask;
-     }
-diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/varasm.c gcc-6.2.0-zip/gcc/varasm.c
---- gcc-6.2.0/gcc/varasm.c	2016-03-31 11:30:33.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/varasm.c	2016-12-31 17:03:08.629193673 -0500
-@@ -2771,7 +2771,7 @@
- 
-   /* Put out the first word with the specified alignment.  */
-   if (reverse)
--    elt = flip_storage_order (SImode, gen_int_mode (data[nelts - 1], SImode));
-+    elt = flip_storage_order (word_mode, gen_int_mode (data[nelts - 1], SImode));
-   else
-     elt = GEN_INT (data[0]);
-   assemble_integer (elt, MIN (nunits, units_per), align, 1);
-@@ -2783,7 +2783,7 @@
-   for (int i = 1; i < nelts; i++)
-     {
-       if (reverse)
--	elt = flip_storage_order (SImode,
-+	elt = flip_storage_order (word_mode,
- 				  gen_int_mode (data[nelts - 1 - i], SImode));
-       else
- 	elt = GEN_INT (data[i]);
-diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config/zip/sfp-machine.h gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h
---- gcc-6.2.0/libgcc/config/zip/sfp-machine.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h	2017-01-12 11:20:20.689570913 -0500
-@@ -0,0 +1,35 @@
-+#ifndef	ZIP_SFP_MACHINE_H
-+#define	ZIP_SFP_MACHINE_H
-+
-+#define	_FP_W_TYPE_SIZE	32
-+#define	_FP_W_TYPE	unsigned int
-+#define	_FP_WS_TYPE	signed int
-+#define	_FP_I_TYPE	int
-+
-+#define	_FP_QNANNEGATEDP	0
-+
-+/* Someone please check this.  --- copied from one of many other places  */
-+#define _FP_CHOOSENAN(fs, wc, R, X, Y, OP)                      \
-+  do {                                                          \
-+    if ((_FP_FRAC_HIGH_RAW_##fs(X) & _FP_QNANBIT_##fs)          \
-+        && !(_FP_FRAC_HIGH_RAW_##fs(Y) & _FP_QNANBIT_##fs))     \
-+      {                                                         \
-+        R##_s = Y##_s;                                          \
-+        _FP_FRAC_COPY_##wc(R,Y);                                \
-+      }                                                         \
-+    else                                                        \
-+      {                                                         \
-+        R##_s = X##_s;                                          \
-+        _FP_FRAC_COPY_##wc(R,X);                                \
-+      }                                                         \
-+    R##_c = FP_CLS_NAN;                                         \
-+  } while (0)
-+
-+/* Not checked.  */
-+#define _FP_TININESS_AFTER_ROUNDING 0
-+
-+#ifndef	__BYTE_ORDER
-+#define	__BYTE_ORDER	__BIG_ENDIAN
-+#endif
-+
-+#endif
-diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config.host gcc-6.2.0-zip/libgcc/config.host
---- gcc-6.2.0/libgcc/config.host	2016-05-17 02:15:52.000000000 -0400
-+++ gcc-6.2.0-zip/libgcc/config.host	2016-12-31 17:04:27.672487496 -0500
-@@ -197,6 +197,9 @@
- tic6x-*-*)
- 	cpu_type=c6x
- 	;;
-+zip*)
-+	cpu_type=zip
-+	;;
- esac
- 
- # Common parts for widely ported systems.
-@@ -1328,6 +1331,10 @@
- 	tmake_file="$tmake_file nvptx/t-nvptx"
- 	extra_parts="crt0.o"
- 	;;
-+zip*)
-+	tmake_file="$tmake_file t-softfp-sfdf t-softfp"
-+	extra_parts="crt0.o"
-+	;;
- *)
- 	echo "*** Configuration ${host} not supported" 1>&2
- 	exit 1
-diff -Naur '--exclude=*.swp' gcc-6.2.0/libgomp/configure.tgt gcc-6.2.0-zip/libgomp/configure.tgt
---- gcc-6.2.0/libgomp/configure.tgt	2015-09-03 12:20:35.000000000 -0400
-+++ gcc-6.2.0-zip/libgomp/configure.tgt	2016-12-31 17:06:26.795473062 -0500
-@@ -161,6 +161,9 @@
- 	    config_path="rtems posix"
- 	fi
- 	;;
-+  zip*)
-+	config_path="bsd posix"
-+	;;
- 
-   *)
- 	;;
