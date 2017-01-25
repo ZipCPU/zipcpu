@@ -207,7 +207,7 @@ assert(n != 0);
 
 		current_section++;
 
-		r[i]->m_start = phdr.p_vaddr;
+		r[i]->m_start = phdr.p_paddr;
 		r[i]->m_len   = phdr.p_filesz;
 
 		current_offset += phdr.p_memsz + sizeof(ELFSECTION);
