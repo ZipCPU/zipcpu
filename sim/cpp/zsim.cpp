@@ -56,8 +56,8 @@
 #define	CC_GIE		(1<<5)
 #define	CC_SLEEP	(1<<4)
 #define	CC_V		(1<<3)
-#define	CC_C		(1<<2)
-#define	CC_N		(1<<1)
+#define	CC_N		(1<<2)
+#define	CC_C		(1<<1)
 #define	CC_Z		(1   )
 
 class	SIMDEV {
@@ -104,20 +104,20 @@ public:
 	UARTDEV(void) { m_setup = 868; }
 
 	virtual	uint32_t	lw(uint32_t addr) {
-		switch(addr&3) {
-		case 0:	return m_setup;
-		case 1:	return 0;
-		case 2:	return 0x100;
-		case 3:	return 0;
+		switch(addr&0x0c) {
+		case  0: return m_setup;
+		case  4: return 0;
+		case  8: return 0x100;
+		case 12: return 0;
 		} return 0;
 	}
 		
 	virtual void sw(uint32_t addr, uint32_t vl) {
-		switch(addr&3) {
-		case 0:	m_setup = vl & 0x3fffffff; break;
-		case 1:	break;
-		case 2:	break;
-		case 3:	putchar(vl & 0x0ff);
+		switch(addr&0x0c) {
+		case  0: m_setup = vl & 0x3fffffff; break;
+		case  4: break;
+		case  8: break;
+		case 12: putchar(vl & 0x0ff);
 		}
 	}
 };
@@ -145,10 +145,11 @@ public:
 	}
 
 	virtual void sw(uint32_t addr, uint32_t vl) {
-		m_mem[(addr&-4)  ] = (vl >>24)&0x0ff;
-		m_mem[(addr&-4)+1] = (vl >>16)&0x0ff;
-		m_mem[(addr&-4)+2] = (vl >> 8)&0x0ff;
-		m_mem[(addr&-4)+3] = (vl     )&0x0ff;
+		uint32_t maddr = addr & -4;
+		m_mem[(maddr)  ] = (vl >>24)&0x0ff;
+		m_mem[(maddr)+1] = (vl >>16)&0x0ff;
+		m_mem[(maddr)+2] = (vl >> 8)&0x0ff;
+		m_mem[(maddr)+3] = (vl     )&0x0ff;
 	}
 
 	virtual void sh(uint32_t addr, uint32_t vl) {
@@ -161,7 +162,6 @@ public:
 	}
 
 	void	load(uint32_t addr, const char *src, size_t n) {
-fprintf(stderr, "MEM:LOAD(%08x, %016lx, %ld)\n", addr, (unsigned long)src, n);
 		memcpy(&m_mem[addr], src, n);
 	}
 };
@@ -195,25 +195,30 @@ class	SIMBUS {
 	bool	m_buserr;
 	std::vector<SIMENTRY *>	m_devlist;
 	int	getdev(uint32_t addr) {
-		for(size_t i=0; i<m_devlist.size(); i++) {
-			if ((addr&m_devlist[i]->m_mask)==m_devlist[i]->m_addr)
+		for(size_t i=0; i<m_devlist.size(); i++)
+			if ((addr&m_devlist[i]->m_mask)==m_devlist[i]->m_addr){
 				return i;
 		}
 
+		/*
 		fprintf(stderr, "GETDEV(0x%08x) - not found\n", addr);
 		for(size_t i=0; i<m_devlist.size(); i++) {
 			fprintf(stderr, "ADDR(0x%08x) & 0x%08x = %08x != %08x\n",
 				addr, m_devlist[i]->m_mask,
 				addr & m_devlist[i]->m_mask,
 				m_devlist[i]->m_addr);
-		}
+		} */
 
 		return -1;
 	}
 	int	getwrdev(uint32_t addr) {
 		int	devid = getdev(addr);
-		if (m_devlist[devid]->m_flags & W_OK)
-			return devid;
+		if (0 <= devid) {
+			if (m_devlist[devid]->m_flags & W_OK)
+				return devid;
+fprintf(stderr, "ADDRESS %08x in %s is not writable!!\n", addr, m_devlist[devid]->m_name);
+		}
+else fprintf(stderr, "ADDRESS %08x not found\n", addr);
 		return -1;
 	}
 	int	getexdev(uint32_t addr) {
@@ -265,7 +270,7 @@ public:
 	uint32_t	lw(uint32_t addr) {
 		int	devid;
 		if (0 <= (devid = getdev(addr)))
-			return m_devlist[devid]->m_dev->lh(addr & ((~m_devlist[devid]->m_mask)&-4));
+			return m_devlist[devid]->m_dev->lw(addr & ((~m_devlist[devid]->m_mask)&-4));
 		m_buserr = true;
 		return 0;
 	}
@@ -289,14 +294,14 @@ public:
 	void	sh(uint32_t addr, uint32_t vl) {
 		int	devid;
 		if (0 <= (devid = getwrdev(addr)))
-			return m_devlist[devid]->m_dev->sh(addr & -2 & (~m_devlist[devid]->m_mask), vl & 0x0ff);
+			return m_devlist[devid]->m_dev->sh(addr & -2 & (~m_devlist[devid]->m_mask), vl & 0x0ffff);
 		m_buserr = true;
 		return;
 	}
 	void	sw(uint32_t addr, uint32_t vl) {
 		int	devid;
 		if (0 <= (devid = getwrdev(addr)))
-			return m_devlist[devid]->m_dev->sw(addr & -4 & (~m_devlist[devid]->m_mask), vl & 0x0ff);
+			return m_devlist[devid]->m_dev->sw(addr & -4 & (~m_devlist[devid]->m_mask), vl);
 		m_buserr = true;
 		return;
 	}
@@ -333,6 +338,8 @@ public:
 	SIMBUS		*m_bus;
 
 	void dump() {
+		fflush(stderr);
+		fflush(stdout);
 		printf("ZIPM--DUMP: ");
 		if (gie())
 			printf("Interrupts-enabled\n");
@@ -376,6 +383,8 @@ public:
 		printf("uCC : %08x ",(m_r[30]|CC_GIE));
 		printf("uPC : %08x\n",m_r[31]);
 		printf("\n");
+		fflush(stderr);
+		fflush(stdout);
 	}
 
 	void	ccodes(uint32_t newflags) {
@@ -411,10 +420,10 @@ public:
 		return v;
 	}
 	bool	jumped(void)	{ return m_jumped; };
-	void	pc_advance(void) {
-		m_r[15+rbase()] += 4;
-		m_r[15+rbase()] &= -4;
-	} 
+	void	pc_advance(bool pcgie) {
+		m_r[15+((pcgie)?16:0)] += 4;
+		m_r[15+((pcgie)?16:0)] &= -4;
+	} void	pc_advance(void) { pc_advance(gie()); }
 	uint32_t	pc(void)	{
 		return m_r[15+rbase()];
 	}
@@ -448,7 +457,7 @@ public:
 			int	rcode;
 			rcode = m_r[(insn&0x0f)+rbase()] & 0x0ff;
 			exit(rcode);
-		} else if ((insn & 0x0ffff0)==0x00300) {
+		} else if ((insn & 0x0fff00)==0x00100) {
 			// SIM Exit(Imm)
 			int	rcode;
 			rcode = insn & 0x0ff;
@@ -492,13 +501,18 @@ public:
 		int32_t		imm;
 		int		rb, cnd;
 
+		// fprintf(stderr, "INSN(@0x%08x, %08x)\n", pc(), insn);
 		m_jumped     = false;
 		m_advance_pc = true;
+		illegal      = false;
+		noop         = false;
+		lock         = false;
+		wbreak       = false;
 
 		m_r[14+rbase()]
 			&= ~(CC_ILL|CC_BREAK|CC_BUSERR|CC_DIVERR);
 
-		opc = (insn >> 23) & 0x01f;
+		opc = (insn >> 22) & 0x01f;
 		arg = (insn >> 27) & 0x0f;
 		brg = (insn >> 14) & 0x0f;
 
@@ -521,14 +535,17 @@ public:
 		rb = (mov)||(((insn>>18)&1)&&(!ldi));
 
 		// WriteBack
-		wb = (cmptst)&&(!sto);
+		wb = (!cmptst)&&(!sto);
 
 		// Do we write flags back?
-		wf  = ((opc&0x0e)!=0x08)&&((opc&0x1e)!= 0x0e)
-			&&((opc&0x01c)!=0x014)
-			&&((opc&0x01c)!=0x014);
-		if ((arg & 0x0e)==0x0e)
-			wf = false;
+		wf = true;
+		if (ldi)	wf = false;
+		if (mov)	wf = false;
+		if (mem)	wf = false;
+		if (opc==0x08)	wf = false;	// BREV
+		if (opc==0x09)	wf = false;	// LDILO
+		if ((!cmptst)&&((arg & 0x0e)==0x0e)) // Writes to CC or PC
+			wf = false;		// dont set the flags.
 
 		cnd = (ldi) ? 0 : ((insn >> 19) & 7);
 
@@ -550,13 +567,13 @@ public:
 				wf = false;
 			int	ccodes = cc() & 0x0f;
 			switch(cnd) {
-			case 1: execinsn =  (ccodes & CC_Z);
-			case 2: execinsn =  (ccodes & CC_N);
-			case 3: execinsn =  (ccodes & CC_C);
-			case 4: execinsn =  (ccodes & CC_V);
-			case 5: execinsn = ((ccodes & CC_Z)==0);	// NZ
-			case 6: execinsn = ((ccodes & CC_N)==0);	// GE
-			case 7: execinsn = ((ccodes & CC_C)==0);	// NC
+			case 1: execinsn =  (ccodes & CC_Z); break;
+			case 2: execinsn =  (ccodes & CC_N); break;
+			case 3: execinsn =  (ccodes & CC_C); break;
+			case 4: execinsn =  (ccodes & CC_V); break;
+			case 5: execinsn = ((ccodes & CC_Z)==0); break;	// NZ
+			case 6: execinsn = ((ccodes & CC_N)==0); break;	// GE
+			case 7: execinsn = ((ccodes & CC_C)==0); break;	// NC
 			default:	execinsn = true;	break;
 			}
 		} else
@@ -565,7 +582,7 @@ public:
 		if ((mov)&&(!gie())) {
 			// Supervisor can read all registers
 			arg |= (insn&0x40000)?0x10:0;
-			brg |= (insn&0x04000)?0x10:0;
+			brg |= (insn&0x02000)?0x10:0;
 		} else {
 			arg |= (gie())?0x10:0;
 			brg |= (gie())?0x10:0;
@@ -574,12 +591,19 @@ public:
 
 		bv = imm;
 		if (rb) {
-			if (((brg&0x0f)==15)&&(gie())) // PC
-				bv = (imm << 2) + m_r[brg] + 4;
-			else
+			if ((brg&0x0f)==15) { // PC 
+				bv = (imm << 2) + m_r[brg];
+				if (gie()) {
+					if (brg & 0x010)
+						bv += 4;
+				} else if ((brg & 0x10)==0)
+					bv += 4;
+			} else
 				bv += m_r[brg];
 		}
 		av = m_r[arg];
+		if ((int)arg == 15 + rbase())
+			av += 4;
 
 		if (execinsn) {
 			f = 0;	// Resulting flags
@@ -606,7 +630,8 @@ public:
 				} else if (fvr < 0.0)
 					f |= CC_N;
 			} else if (noop) {
-				siminsn(insn);
+				if (insn != 0x7fc00000)
+					siminsn(insn);
 			} else if (wbreak) {
 				wf = wb = false;
 				m_advance_pc = false;
@@ -622,45 +647,53 @@ public:
 				// Do nothing to lock the bus in a simulation
 				assert((0)&&("No lock function implemented"));
 			} else {
+				uint32_t	presign = (av>>31)&1, nsgn;
 				switch(opc) {
-				case  0: {
+				case  0: case 16: { // SUB, or CMP
 					result = av - bv;
 					if (av < bv)
 						f |= CC_C;
-					if (((int)av<0)&&((int)bv>0)&&((int)result>0))
-						f |= CC_V;
-					else if (((int)av>0)&&((int)bv<0)&&((int)result<0))
+					nsgn = (result >> 31)&1;
+					if (presign != nsgn)
 						f |= CC_V;
 					} break;
-				case  1: result = bv & av; break;
-				case  2: {
+				case  1: case 17: result = bv & av; break;//AND or TST
+				case  2: { // ADD
 					result = bv + av;
-						if (result<(uint64_t)bv+(uint64_t)av)
+					if (result<(uint64_t)bv+(uint64_t)av)
 						f |= CC_C;
-					if (((int)av>0)&&((int)bv>0)&&((int)result < 0))
-						f |= CC_V;
-					else if (((int)av<0)&&((int)bv<0)&&((int)result > 0))
+					nsgn = (result >> 31)&1;
+					if (presign != nsgn)
 						f |= CC_V;
 					} break;
-				case  3: result = bv | av; break;
-				case  4: result = bv ^ av; break;
-				case  5: {
+				case  3: result = bv | av; break; // OR
+				case  4: result = bv ^ av; break; // XOR
+				case  5: { // LSR
+					uint32_t nsgn;
 					if (bv >= 32)
 						result = 0;
 					else
 						result = ((uint32_t)av >> bv);
+					nsgn = (result >> 31)&1;
+					if (presign != nsgn)
+						f |= CC_V;
+
 					if ((bv !=0)&&(bv<33)&&(av&(1<<(bv-1))))
 						f |= CC_C;
 					} break;
-				case  6: {
+				case  6: { // LSL
+					uint32_t nsgn;
 					if (bv >= 32)
 						result = 0;
 					else
 						result = av << bv;
+					nsgn = (result >> 31)&1;
+					if (presign != nsgn)
+						f |= CC_V;
 					if((bv !=0)&&(bv<33)&&(av&(1<<(33-bv))))
 						f |= CC_C;
 					} break;
-				case  7: {
+				case  7: { // ASR
 					if ((bv >= 32)&&(av & 0x80000000))
 						result = -1;
 					else if (bv >= 32)
@@ -682,48 +715,50 @@ public:
 							f |= CC_C;
 					}
 					} break;
-				case  8: result = bitreverse(bv);	break;
-				case  9: result = (av&0xffff0000)|(bv&0x0ffff);	break;
-				case 10: {
+				case  8: result = bitreverse(bv);	break; // BREV
+				case  9: result = (av&0xffff0000)|(bv&0x0ffff);	break; // LDILO
+				case 10: { // MPYUHI
 					uint64_t ulv = av * bv;
 					result = (ulv >> 32);
 					} break;
-				case 11: {
+				case 11: { // MPYSHI
 					int64_t	lv = av * bv;
 					result = (lv >> 32);
 					} break;
-				case 12: {
+				case 12: { // MPY
 					int64_t ulv = av * bv;
-					bool	sn = (av<0)^(bv<0);
+					// bool	sn = (av<0)^(bv<0);
 					result = (int32_t)(ulv & 0x0ffffffff);
-					if (((result&0x80000000)?1:0)
-							^ ((sn)?1:0))
-						f |= CC_V;
+					//if (((result&0x80000000)?1:0)
+					//		^ ((sn)?1:0))
+					//	f |= CC_V;
 					} break;
-				case 13: result = bv;		break;
-				case 14: {
+				case 13: result = bv;		break; // MOV
+				case 14: { // DIVU
 					if (bv == 0)
 						diverr = true;
 					else
 						result = (uint32_t)av
 							/ (uint32_t)bv;
 					} break;
-				case 15: {
+				case 15: { // DIVS
 					if (bv == 0)
 						diverr = true;
 					else
 						result =(int32_t)av/(int32_t)bv;
 					} break;
-				case 16: result = av - bv;	break;
-				case 17: result = av & bv;	break;
-				case 18: result = m_bus->lw(bv);break;
-				case 19: m_bus->sw(bv, av);	break;
-				case 20: result = m_bus->lh(bv);break;
-				case 21: m_bus->sh(bv, av);	break;
-				case 22: result = m_bus->lb(bv);break;
-				case 23: m_bus->sb(bv, av);	break;
-				case 24: result = bv;		break;
-				case 25: result = bv;		break;
+				// case 16: result = av - bv;	break;
+				// case 17: result = av & bv;	break;
+				case 18: result = m_bus->lw(bv);
+					break;// LW
+				case 19:
+					m_bus->sw(bv, av);	break;// SW
+				case 20: result = m_bus->lh(bv);break;// LH
+				case 21: m_bus->sh(bv, av);	break;// SH
+				case 22: result = m_bus->lb(bv);break;// LB
+				case 23: m_bus->sb(bv, av);	break;// SB
+				case 24: result = bv;		break;// LDI
+				case 25: result = bv;		break;// LDI
 				default: illegal = true;
 				}
 				if (result == 0)
@@ -795,13 +830,22 @@ public:
 							|CC_FPUERR));
 					}
 				}
+				// fprintf(stderr, "\tREG[%02x] = %08x\n", arg, result);
 				m_r[arg] = result;
-				if (((m_gie)?1:0)^((result&CC_GIE)?1:0)) {
+				if ((int)arg == 15+rbase())
+					m_advance_pc = false;
+				if (((int)arg==14+rbase())&&(((m_gie)?1:0)^((result&CC_GIE)?1:0))) {
 					gie((result&CC_GIE)?true:false);
 					// Prevent us from advancing the PC
 					m_jumped = true;
 					// m_advance_pc = true;
 				}
+				// Some CC bits are constant.  Keep them that
+				// way.
+				m_r[14   ] &= (~CC_GIE);
+				m_r[14+16] |= ( CC_GIE);
+				m_r[15   ] &= -4;
+				m_r[15+16] &= -4;
 			}
 		}
 	}
@@ -812,14 +856,14 @@ public:
 
 		cisop = (insn >> 8) & 0x07;
 		switch(cisop) {
-		case 0: fullop =  0; break;
-		case 1: fullop =  1; break;
-		case 2: fullop =  2; break;
-		case 3: fullop = 16; break;
-		case 4: fullop = 18; break;
-		case 5: fullop = 19; break;
-		case 6: fullop = 24; break;
-		case 7: fullop = 13; break;
+		case 0: fullop =  0; break; // SUB
+		case 1: fullop =  1; break; // AND
+		case 2: fullop =  2; break; // ADD
+		case 3: fullop = 16; break; // CMP
+		case 4: fullop = 18; break; // LW
+		case 5: fullop = 19; break; // SW
+		case 6: fullop = 24; break; // LDI
+		case 7: fullop = 13; break; // MOV
 		}
 
 		dr = (insn>>11) & 0x0f;
@@ -830,19 +874,20 @@ public:
 			fullinsn(0x80000000 | (dr<<27) | (fullop<<22) | imm);
 		} else if (fullop == 13) {
 			// MOV
-			br = (insn >> 3);
+			br = (insn >> 3) & 0x0f;
 			imm = sbits(insn, 3) & 0x01fff;
 			fullinsn(0x80000000 | (dr << 27) | (fullop<<22) | (br<<14) | imm);
 		} else if (insn & 0x80) {
 			// Uses a breg
-			br = (insn >> 3);
+			br = (insn >> 3) & 0x0f;
 			imm = sbits(insn, 3) & 0x3fff;
-			fullinsn(0x80004000 | (dr << 27) | (fullop<<22) | (br<<14) | imm);
+			fullinsn(0x80040000 | (dr << 27) | (fullop<<22) | (br<<14) | imm);
 		} else if ((fullop == 18)||(fullop == 19)) {
 			// Load or store, breg is assumed to be SP
+// 0x04844000
 			br = 13;
 			imm = sbits(insn, 7) & 0x3fff;
-			fullinsn(0x80004000 | (dr << 27) | (fullop<<22) | (br<<14) | imm);
+			fullinsn(0x80040000 | (dr << 27) | (fullop<<22) | (br<<14) | imm);
 		} else {
 			imm = sbits(insn, 7) & 0x03ffff;
 			fullinsn(0x80000000 | (dr << 27) | (fullop<<22) | imm);
@@ -850,6 +895,7 @@ public:
 	}
 
 	void	execute(uint32_t insn) {
+		/// fprintf(stderr, "EXEC-INSN(@0x%08x - %08x)\n", pc(), insn);
 		bool	igie = gie();
 		if (insn & 0x80000000) {
 			int		ibase = rbase();
@@ -860,14 +906,14 @@ public:
 				cisinsn(insn & 0x0ffff);
 				m_r[14+ibase] &= ~(CC_PHASE);
 			} if (m_advance_pc)
-				pc_advance();
+				pc_advance(igie);
 			m_jumped = false;
 		} else {
 			m_r[14+rbase()] &= ~(CC_PHASE);
 			fullinsn(insn);
 
 			if (m_advance_pc)
-				pc_advance();
+				pc_advance(igie);
 
 			if ((gie())&&(cc() & CC_STEP))
 				gie(false);
@@ -903,15 +949,17 @@ int main(int argc, char **argv) {
 	// bus->add(net->data,   0x00003000, 0xffffe000, "R"); // 8 words
 	bus->add(new MEMDEV(17), 0x0020000, 0x7fe0000, "RWX", "BlockRAM");// Block RAM
 	bus->add(new ROMDEV(24), 0x1000000, 0x7000000, "RXL", "Flash"); // Flash
-	bus->add(new MEMDEV(26), 0x4000000, 0x4000000, "RWX", "SDRAM");// SDRAM
+	bus->add(new MEMDEV(26), 0x4000000, 0xfc000000, "RWX", "SDRAM");// SDRAM
 
 assert(secpp[0]->m_len != 0);
 	for(int s=0; secpp[s]->m_len; s++) {
 		secp = secpp[s];
+fprintf(stderr, "Attempting to LOAD->(%08x, ..., %d)\n",
+secp->m_start, secp->m_len);
 		bus->load(secp->m_start, (const char *)&secp->m_data[0], secp->m_len);
 		if (bus->error()) {
-			printf("LOAD: Error writing to mem @ 0x%08x\n", secp->m_start);
-			exit(EXIT_FAILURE);
+			fprintf(stderr, "LOAD: Error writing to mem @ 0x%08x\n", secp->m_start);
+			// exit(EXIT_FAILURE);
 		}
 	}
 
@@ -945,13 +993,15 @@ assert(secpp[0]->m_len != 0);
 		}
 
 		if (zipm->halted()) {
+			fflush(stderr);
+			fflush(stdout);
 			printf("CPU HALT\n");
 			done = true;
 			break;
 		}
 
 		bus->tick();
-		if (bus->interrupt()) {
+		if ((bus->interrupt())&&(zipm->gie())) {
 			zipm->gie(false);
 			zipm->sleep(false);
 		}
