@@ -17,8 +17,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/config.sub newlib-2.5.0-zip/config.sub
  	# We use `pc' rather than `unknown'
  	# because (1) that's what they normally are, and
 diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
---- newlib-2.5.0/configure	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/configure	2017-01-11 11:08:28.420105662 -0500
+--- newlib-2.5.0/configure	2017-01-25 16:28:45.185137728 -0500
++++ newlib-2.5.0-zip/configure	2017-01-25 16:27:07.029658533 -0500
 @@ -3549,6 +3549,9 @@
    ft32-*-*)
      noconfigdirs="$noconfigdirs ${libgcj}"
@@ -49,6 +49,101 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
+@@ -6773,7 +6782,7 @@
+ # might be empty or "-g".  We don't require a C++ compiler, so CXXFLAGS
+ # might also be empty (or "-g", if a non-GCC C++ compiler is in the path).
+ # We want to ensure that TARGET libraries (which we know are built with
+-# gcc) are built with "-O3 -g", so include those options when setting
++# gcc) are built with "-O2 -g", so include those options when setting
+ # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
+ if test "x$CFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+@@ -6781,8 +6790,8 @@
+   else
+     CFLAGS_FOR_TARGET=$CFLAGS
+     case " $CFLAGS " in
+-      *" -O3 "*) ;;
+-      *) CFLAGS_FOR_TARGET="-O3 $CFLAGS_FOR_TARGET" ;;
++      *" -O2 "*) ;;
++      *) CFLAGS_FOR_TARGET="-O2 $CFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -6798,8 +6807,8 @@
+   else
+     CXXFLAGS_FOR_TARGET=$CXXFLAGS
+     case " $CXXFLAGS " in
+-      *" -O3 "*) ;;
+-      *) CXXFLAGS_FOR_TARGET="-O3 $CXXFLAGS_FOR_TARGET" ;;
++      *" -O2 "*) ;;
++      *) CXXFLAGS_FOR_TARGET="-O2 $CXXFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CXXFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -6972,7 +6981,7 @@
+     ;;
+ esac
+ 
+-# If --enable-target-optspace always use -Os instead of -O3 to build
++# If --enable-target-optspace always use -Os instead of -O2 to build
+ # the target libraries, similarly if it is not specified, use -Os
+ # on selected platforms.
+ ospace_frag=/dev/null
+diff -Naur '--exclude=*.swp' newlib-2.5.0/configure.ac newlib-2.5.0-zip/configure.ac
+--- newlib-2.5.0/configure.ac	2016-12-22 21:33:54.000000000 -0500
++++ newlib-2.5.0-zip/configure.ac	2017-01-25 16:27:52.713416459 -0500
+@@ -1,4 +1,4 @@
+-#   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
++3   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
+ #   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
+ #   2014, 2015, 2016 Free Software Foundation, Inc.
+ #
+@@ -2377,16 +2377,16 @@
+ # might be empty or "-g".  We don't require a C++ compiler, so CXXFLAGS
+ # might also be empty (or "-g", if a non-GCC C++ compiler is in the path).
+ # We want to ensure that TARGET libraries (which we know are built with
+-# gcc) are built with "-O2 -g", so include those options when setting
++# gcc) are built with "-O3 -g", so include those options when setting
+ # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
+ if test "x$CFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+-    CFLAGS_FOR_TARGET="-g -O2"
++    CFLAGS_FOR_TARGET="-g -O3"
+   else
+     CFLAGS_FOR_TARGET=$CFLAGS
+     case " $CFLAGS " in
+-      *" -O2 "*) ;;
+-      *) CFLAGS_FOR_TARGET="-O2 $CFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CFLAGS_FOR_TARGET="-O3 $CFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -2398,12 +2398,12 @@
+ 
+ if test "x$CXXFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+-    CXXFLAGS_FOR_TARGET="-g -O2"
++    CXXFLAGS_FOR_TARGET="-O3"
+   else
+     CXXFLAGS_FOR_TARGET=$CXXFLAGS
+     case " $CXXFLAGS " in
+-      *" -O2 "*) ;;
+-      *) CXXFLAGS_FOR_TARGET="-O2 $CXXFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CXXFLAGS_FOR_TARGET="-O3 $CXXFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CXXFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -2576,7 +2576,7 @@
+     ;;
+ esac
+ 
+-# If --enable-target-optspace always use -Os instead of -O2 to build
++# If --enable-target-optspace always use -Os instead of -O3 to build
+ # the target libraries, similarly if it is not specified, use -Os
+ # on selected platforms.
+ ospace_frag=/dev/null
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/configure newlib-2.5.0-zip/libgloss/configure
 --- newlib-2.5.0/libgloss/configure	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/libgloss/configure	2017-01-11 11:12:49.779795431 -0500
@@ -98,7 +193,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
 --- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-01-13 18:13:57.202045891 -0500
++++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-01-25 15:58:13.514597060 -0500
 @@ -0,0 +1,133 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -209,11 +304,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +	SDCARD	b_sd;
 +} ZIPBASICBOARD;
 +
-+static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x200;
++static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
 +#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x280;
++static	volatile WBUART		*const _uart   = (WBUART *)0x140;
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x2c0;
++static	volatile SDCARD		*const _sdcard = (SDCARD *)0x1a00;
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
@@ -235,7 +330,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-01-13 18:13:57.202045891 -0500
++++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-01-25 15:58:13.514597060 -0500
 @@ -0,0 +1,133 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -346,11 +441,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +	SDCARD	b_sd;
 +} ZIPBASICBOARD;
 +
-+static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x200;
++static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
 +#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x280;
++static	volatile WBUART		*const _uart   = (WBUART *)0x140;
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x2c0;
++static	volatile SDCARD		*const _sdcard = (SDCARD *)0x1a00;
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
@@ -422,7 +517,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0
 +#endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure newlib-2.5.0-zip/libgloss/zip/configure
 --- newlib-2.5.0/libgloss/zip/configure	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/configure	2017-01-13 15:18:21.429569474 -0500
++++ newlib-2.5.0-zip/libgloss/zip/configure	2017-01-26 07:40:47.545551439 -0500
 @@ -0,0 +1,3892 @@
 +#! /bin/sh
 +# Guess values for system-dependent variables and create Makefiles.
@@ -2836,13 +2931,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure newlib-2.5.0-zi
 +  CFLAGS=$ac_save_CFLAGS
 +elif test $ac_cv_prog_cc_g = yes; then
 +  if test "$GCC" = yes; then
-+    CFLAGS="-g -O2"
++    CFLAGS="-O3"
 +  else
 +    CFLAGS="-g"
 +  fi
 +else
 +  if test "$GCC" = yes; then
-+    CFLAGS="-O2"
++    CFLAGS="-O3"
 +  else
 +    CFLAGS=
 +  fi
@@ -2850,9 +2945,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure newlib-2.5.0-zi
 +  if test "$ac_test_CFLAGS" = set; then
 +    CFLAGS="$ac_save_CFLAGS"
 +  elif test $ac_cv_prog_cc_g = yes; then
-+    CFLAGS="-g -O2"
++    CFLAGS="-O3"
 +  else
-+    CFLAGS="-O2"
++    CFLAGS="-O3"
 +  fi
 +else
 +  GCC=
@@ -4522,8 +4617,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-24 14:35:42.693850658 -0500
-@@ -0,0 +1,284 @@
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-25 10:43:40.814187756 -0500
+@@ -0,0 +1,282 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
@@ -4768,7 +4863,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +#else
 +	int	*rdp = _kernel_image_start, *wrp = _blkram;
 +
-+	if ((unsigned int)_blkram < 0x04)
++	if ((((int)wrp) & -4)==0)
 +		wrp = _sdram;
 +
 +	//
@@ -4790,8 +4885,6 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// As with the last pointer, this one is also created for us by the
 +	// linker.
 +	// 
-+	if (_blkram == NULL)
-+		wrp = _sdram;
 +	for(int i=0; i< sdend - _sdram; i++)
 +		*wrp++ = *rdp++;
 +
@@ -4810,8 +4903,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
 --- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-01-19 13:31:29.339368943 -0500
-@@ -0,0 +1,110 @@
++++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-01-26 07:39:52.797914884 -0500
+@@ -0,0 +1,112 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
 +# The authors hereby grant permission to use, copy, modify, distribute,
@@ -4868,7 +4961,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	then echo ${objroot}/../binutils/objcopy ; \
 +	else t='$(program_transform_name)'; echo objcopy | sed -e $$t ; fi`
 +
-+CFLAGS= -g
++CFLAGS=-O3
 +
 +CRT0	      = crt0.o
 +CRT0_INSTALL  = install-crt0
@@ -4879,6 +4972,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +
 +libboard-%.o: %.c
 +	${CC} ${CFLAGS} -o $@ -c $<
++crt0.o:
++	${CC} ${CFLAGS} -fno-builtin -o $@ -c $<
 +
 +# Host specific makefile fragment comes in here.
 +@host_makefile_frag@
@@ -4924,8 +5019,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-24 18:29:25.544315503 -0500
-@@ -0,0 +1,230 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-26 12:04:37.175130244 -0500
+@@ -0,0 +1,228 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -5127,9 +5222,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +int
 +_write_r(struct _reent * reent, int fd, const void *buf, size_t nbytes) {
-+asm("SDUMP R2");
 +	if ((STDOUT_FILENO == fd)||(STDERR_FILENO == fd)) {
-+asm("SDUMP R4");
 +		const	char *cbuf = buf;
 +		for(int i=0; i<nbytes; i++)
 +			_outbyte(cbuf[i]);
@@ -5467,6 +5560,27 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +#endif
 +
 +#endif
+diff -Naur '--exclude=*.swp' newlib-2.5.0/Makefile.in newlib-2.5.0-zip/Makefile.in
+--- newlib-2.5.0/Makefile.in	2016-12-22 21:33:54.000000000 -0500
++++ newlib-2.5.0-zip/Makefile.in	2017-01-25 16:25:56.402031673 -0500
+@@ -364,7 +364,7 @@
+ 
+ # Flags to pass to stage2 and later makes.  They are defined
+ # here so that they can be overridden by Makefile fragments.
+-BOOT_CFLAGS= -g -O2
++BOOT_CFLAGS=-O3
+ BOOT_LDFLAGS=
+ BOOT_ADAFLAGS= -gnatpg
+ 
+@@ -584,7 +584,7 @@
+ LIBCFLAGS_FOR_TARGET = $(CFLAGS_FOR_TARGET)
+ LIBCXXFLAGS_FOR_TARGET = $(CXXFLAGS_FOR_TARGET) -fno-implicit-templates
+ LDFLAGS_FOR_TARGET = @LDFLAGS_FOR_TARGET@
+-GOCFLAGS_FOR_TARGET = -O2 -g
++GOCFLAGS_FOR_TARGET = -O3
+ 
+ FLAGS_FOR_TARGET = @FLAGS_FOR_TARGET@
+ SYSROOT_CFLAGS_FOR_TARGET = @SYSROOT_CFLAGS_FOR_TARGET@
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/newlib/acconfig.h
 --- newlib-2.5.0/newlib/acconfig.h	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/newlib/acconfig.h	2017-01-11 21:52:21.443297363 -0500
@@ -5481,7 +5595,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/new
  #undef _FVWRITE_IN_STREAMIO
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip/newlib/configure.host
 --- newlib-2.5.0/newlib/configure.host	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/configure.host	2017-01-24 17:00:42.409422806 -0500
++++ newlib-2.5.0-zip/newlib/configure.host	2017-01-25 10:26:38.562136630 -0500
 @@ -310,6 +310,9 @@
    z8k)
  	machine_dir=z8k
@@ -5492,19 +5606,20 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    spu)
  	stdio_dir=
  	libm_machine_dir=spu
-@@ -565,6 +568,11 @@
+@@ -565,6 +568,12 @@
    z8k-*-coff)
  	sys_dir=z8ksim
  	;;
 +  zip*)
 +#	sys_dir=zip	# But ... I don't have a directory in newlib/libc/sys
 +	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED "
++	newlib_cflags="${newlib_cflags} -DNO_FLOATING_POINT"
 +#        have_crt0="yes"
 +	;;
  esac
  
  # Host specific flag settings -- usually for features that are not
-@@ -851,6 +859,9 @@
+@@ -851,6 +860,9 @@
    z8k-*-*)
  	syscall_dir=syscalls
  	;;
@@ -10939,45 +11054,6 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newli
 +	LW	52(sp),sp
 +	LDI	1,R1
 +	RETN
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdio/fvwrite.c newlib-2.5.0-zip/newlib/libc/stdio/fvwrite.c
---- newlib-2.5.0/newlib/libc/stdio/fvwrite.c	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/stdio/fvwrite.c	2017-01-24 16:34:36.919255552 -0500
-@@ -57,13 +57,17 @@
-   char *nl;
-   int nlknown, nldist;
- 
-+asm("SOUT \'2\'");
-+
-   if ((len = uio->uio_resid) == 0)
-     return 0;
- 
-+asm("SOUT \'3\'");
-   /* make sure we can write */
-   if (cantwrite (ptr, fp))
-     return EOF;
- 
-+asm("SOUT \'4\'");
-   iov = uio->uio_iov;
-   len = 0;
- 
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdio/puts.c newlib-2.5.0-zip/newlib/libc/stdio/puts.c
---- newlib-2.5.0/newlib/libc/stdio/puts.c	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/stdio/puts.c	2017-01-24 16:33:22.787591146 -0500
-@@ -93,11 +93,14 @@
-   uio.uio_iov = &iov[0];
-   uio.uio_iovcnt = 2;
- 
-+asm("SOUT \'0\'");
-+
-   _REENT_SMALL_CHECK_INIT (ptr);
-   fp = _stdout_r (ptr);
-   CHECK_INIT (ptr, fp);
-   _newlib_flockfile_start (fp);
-   ORIENT (fp, -1);
-+asm("SOUT \'1\'");
-   result = (__sfvwrite_r (ptr, fp, &uio) ? EOF : '\n');
-   _newlib_flockfile_end (fp);
-   return result;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c
 --- newlib-2.5.0/newlib/libc/stdlib/mallocr.c	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c	2017-01-12 15:02:26.321526300 -0500
