@@ -42,7 +42,7 @@ MEMORY
 _flash	= ORIGIN(flash);
 _blkram	= 0;
 _sdram	= ORIGIN(sdram);
-_top_of_stack = ORIGIN(sdram) + LENGTH(sdram) - 1;
+_top_of_stack = ORIGIN(sdram) + LENGTH(sdram) - 4;
 
 SECTIONS
 {
