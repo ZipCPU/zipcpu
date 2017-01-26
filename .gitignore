@@ -1,2 +1,7 @@
 obj_dir/*
 obj_dir
+obj-pc/*
+obj-pc
+obj-zip/*
+obj-zip
+.*.swp
