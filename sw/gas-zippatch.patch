@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-24 16:10:05.045751132 -0500
-@@ -0,0 +1,3219 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-26 09:54:26.511526167 -0500
+@@ -0,0 +1,3238 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2565,6 +2565,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			else
 +				insn->i_imm = (int)(v);
 +			ptr = (const char *)end;
++
++			// Permit a string of Num [[+-] Num]*
++			// This is necessary for the DI instructions within the
++			// compiler.
++			while( ((*ptr == '+')||(*ptr == '-'))
++				&&(isdigit(ptr[1])) ) {
++				sgn = (*ptr == '-');
++				v = strtoul(&ptr[1], &end, 0);
++				if (sgn) v = -v;
++				insn->i_imm += (int)v;
++				ptr = (const char *)end;
++			}
 +		} else if ((*ptr)&&(
 +				(isalpha(*ptr))
 +				||('*'==*ptr)
@@ -2599,6 +2611,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +
 +	const	char *err = NULL;
 +
++	if ((*ptr == '+')&&(ptr[1] == '('))
++		ptr++;
 +	if ((*ptr)&&(*ptr == '(')) {
 +		// Form #3: Number(register)
 +		char *end = strchr(ptr+1, ')');
@@ -3297,6 +3311,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_MPY:
 +			break;
 +		case ZIPO_LDILO:
++			gas_assert(fits_within(16, insn->i_imm));
 +			insn->i_imm &= 0x0ffff;
 +			break;
 +		case ZIPO_DIVU: case ZIPO_DIVS:
@@ -4193,6 +4208,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		*/
 +
 +		if (insn->i_op == ZIPO_MOV) { // If we haven't changed insns,
++			gas_assert(fits_within(13, insn->i_imm));
 +			insn->i_code = SMPLMOV(insn->i_cnd, immv, insn->i_breg,
 +					insn->i_areg);
 +			//
@@ -4210,7 +4226,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		insn->i_naux = 1;
 +		if (insn->i_rp)
 +			as_bad("NEG cannot handle symbols");
-+		insn->i_code = DBLREGOP(ZIPO_MOV, insn->i_cnd,
++		gas_assert(fits_within(13, -1+insn->i_imm));
++		insn->i_code = SMPLMOV(insn->i_cnd,
 +			(-1+immv), insn->i_breg, insn->i_areg);
 +		insn->i_code &= 0xfffbdfff;
 +		insn->i_aux[0] = IMMOP(ZIPO_XOR, insn->i_cnd, -1,
@@ -4376,6 +4393,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		} if (insn->i_breg != ZIP_RNONE) {
 +			if (insn->i_breg == ZIP_PC)
 +				immv >>= 2;
++			gas_assert(fits_within(14, insn->i_imm));
 +			insn->i_code = DBLREGOP(insn->i_op, insn->i_cnd,
 +				immv, insn->i_breg, insn->i_areg);
 +			if (insn->i_rp) {
@@ -4388,6 +4406,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_OFFSET;
 +			}
 +		} else {
++			gas_assert(fits_within(18, insn->i_imm));
 +			insn->i_code = IMMOP(insn->i_op, insn->i_cnd,
 +				immv, insn->i_areg);
 +			if (insn->i_rp)
@@ -6621,8 +6640,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2017-01-12 21:43:39.294658855 -0500
-@@ -0,0 +1,434 @@
++++ binutils-2.27-zip/opcodes/zip-dis.c	2017-01-25 10:40:38.655587378 -0500
+@@ -0,0 +1,442 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -7019,12 +7038,20 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		zipi_to_double_string(vma, iword, nxtword, astr, bstr,&refaddr);
 +
 +	if (bstr[0])
-+		(*info->fprintf_func)(info->stream, "%-25s | %s", astr,bstr);
-+	else
-+		(*info->fprintf_func)(info->stream, "%s", astr);
++		sprintf(astr, "%-25s | %s", astr,bstr);
++
++	// Remove any trailing spaces
++	unsigned ln = strlen(astr);
++	while((ln > 0)&&(isspace(astr[ln-1])))
++		astr[--ln] = '\0';
++
++	(*info->fprintf_func)(info->stream, "%s", astr);
 +
 +	if ((info->print_address_func)&&(refaddr != 0)) {
-+		(*info->fprintf_func)(info->stream, "\t// ");
++		if (ln < 25)
++			(*info->fprintf_func)(info->stream, "%*s", 25-ln, "");
++			
++		(*info->fprintf_func)(info->stream, " // ");
 +		(*info->print_address_func)(refaddr, info);
 +	}
 +
@@ -7108,8 +7135,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-24 10:05:20.363497973 -0500
-@@ -0,0 +1,360 @@
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-26 10:42:27.019279859 -0500
+@@ -0,0 +1,361 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.c
@@ -7305,8 +7332,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "LDI",  0x87800000, 0x06000000, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(23,0), ZIP_OPUNUSED },
 +	// 0111.x111.00.xxxxxxxx
 +	{ "BRK",   0xf7ffffff, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "BRK",   0xf7fc0000, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
-+	{ "LOCK",  0xf7f80000, 0x76400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "BRK",   0xf7c00000, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
++	{ "LOCK",  0xf7ffffff, 0x77400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "LOCK",  0xf7c00000, 0x77400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
 +	// 0.111x.00000.xxx.xxx.xxxx.xxxx.xxxx.xxxx
 +	// 0111.x111.11.xxx.xxx.xxxx.xxxx.xxxx.xxxx
 +	// SNOOP = SIM w/ no argument(s)
@@ -7387,7 +7415,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	//
 +	// 1.rrrr.011.a.rrrrsss
 +	{ "CMP", 0x87800000, 0x83000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
-+	{ "CMP", 0x87800000, 0x83800000, ZIP_URGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "CMP", 0x87800000, 0x83800000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.100.0.sssssss
 +	// 1.rrrr.100.1.rrrrsss
@@ -7403,7 +7431,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "MOV", 0x87800000, 0x87800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// 1.rrrr.111.1.rrrrsss
 +	// Illegal instruction !!
-+	{ "ILLV", 0x80000000, 0x00000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,16), ZIP_OPUNUSED },
++	{ "ILLV", 0x80000000, 0x80000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,16), ZIP_OPUNUSED },
 +	// Global illegal instruction
 +	{ "ILL", 0x00000000, 0x00000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,0), ZIP_OPUNUSED }
 +};
@@ -7444,7 +7472,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	//
 +	// 1.rrrr.011.a.rrrrsss
 +	{ "CMP", 0x80000780, 0x80000300, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
-+	{ "CMP", 0x80000780, 0x80000380, ZIP_URGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	{ "CMP", 0x80000780, 0x80000380, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.100.0.sssssss
 +	// 1.rrrr.100.1.rrrrsss
