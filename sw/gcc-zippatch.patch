@@ -150,7 +150,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cgraphbuild.c gcc-6.2.0-zip/gcc/cgrap
  {
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/combine.c gcc-6.2.0-zip/gcc/combine.c
 --- gcc-6.2.0/gcc/combine.c	2016-08-08 06:06:15.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/combine.c	2017-01-12 11:11:15.752857639 -0500
++++ gcc-6.2.0-zip/gcc/combine.c	2017-01-25 16:53:07.873527826 -0500
 @@ -103,6 +103,15 @@
  #include "rtl-iter.h"
  #include "print-rtl.h"
@@ -225,8 +225,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-01-18 21:36:57.765726840 -0500
-@@ -0,0 +1,2420 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-01-26 11:55:45.230538872 -0500
+@@ -0,0 +1,2450 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -358,6 +358,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +#define	ZIP_ALL_DEBUG_OFF	false
 +#define	ZIP_ALL_DEBUG_ON	false
++#define	ZIPDEBUGFLAG(A,B)	const bool A = 			\
++		((ZIP_ALL_DEBUG_ON)||(B))&&(!ZIP_ALL_DEBUG_OFF)
 +
 +enum ZIP_BUILTIN_ID_CODE {
 +	ZIP_BUILTIN_RTU,
@@ -2018,7 +2020,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +int
 +zip_pd_opb_operand(rtx op)
 +{
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "ZIP-OPB(predicate) for OPERAND\n");
 +	return zip_legitimate_opb(op, false); //, !can_create_pseudo_p());
@@ -2027,7 +2029,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +int
 +zip_ct_address_operand(rtx op)
 +{
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "ZIP-ADDRESS(constraint) for OPERAND\n");
 +	return zip_legitimate_opb(op, !can_create_pseudo_p());
@@ -2035,7 +2037,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +int
 +zip_const_address_operand(rtx x) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS?\n");
 +	if (dbg) zip_debug_rtx(x);
@@ -2068,7 +2070,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +int
 +zip_ct_const_address_operand(rtx x) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "ZIP-CONST-ADDRESS(constraint)\n");
 +	return zip_const_address_operand(x);
@@ -2076,7 +2078,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +int
 +zip_pd_const_address_operand(rtx x) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "ZIP-CONST-ADDRESS(predicate)\n");
 +	return zip_const_address_operand(x);
@@ -2086,7 +2088,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +static	bool
 +zip_legitimate_address_p(machine_mode mode ATTRIBUTE_UNUSED, rtx x, bool strict)
 +{
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "Zip-LEGITIMATE-ADDRESS-P\n");
 +	if (dbg) zip_debug_rtx(x);
@@ -2102,7 +2104,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +static	rtx
 +zip_legitimize_address(rtx x, rtx oldx ATTRIBUTE_UNUSED, machine_mode mode ATTRIBUTE_UNUSED) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
++
 +
 +	if (dbg) zip_debug_rtx_pfx("LEGITIMIZE: ", x);
 +	if (zip_legitimate_address_p(mode, x, !can_create_pseudo_p()))
@@ -2145,21 +2148,22 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +#endif
 +
 +const char *zip_set_zero_or_one(rtx condition, rtx dst) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
++
 +	if (dbg) fprintf(stderr, "ZIP::SET-ZERO-OR-ONE\n");
 +	if (dbg) zip_debug_rtx_pfx("CND", condition);
 +	if (dbg) zip_debug_rtx_pfx("REG", dst);
 +	switch(GET_CODE(condition)) {
-+	case EQ:	return "LDI\t0,%0\n\tLDILO.Z\t1,%0";
-+	case NE:	return "LDI\t0,%0\n\tLDILO.NZ\t1,%0";
-+	case LT:	return "LDI\t0,%0\n\tLDILO.LT\t1,%0";
-+	case GT:	return "LDI\t1,%0\n\tLDILO.LT\t1,%0\n\tLDILO.Z\t1,%0";
-+	case LE:	return "LDI\t0,%0\n\tLDILO.LT\t1,%0\n\tLDILO.Z\t1,%0";
-+	case GE:	return "LDI\t0,%0\n\tLDILO.GE\t1,%0";
-+	case LTU:	return "LDI\t0,%0\n\tLDILO.C\t1,%0";
-+	case GEU:	return "LDI\t0,%0\n\tLDILO.NC\t1,%0";
-+	case GTU:	return "LDI\t1,%0\n\tLDILO.C\t0,%0\n\tLDILO.Z\t0,%0";
-+	case LEU:	return "LDI\t0,%0\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0";
++	case EQ:	return "LDI\t0,%0\n\tLDILO.Z\t1,%0\t; set01_eq";
++	case NE:	return "LDI\t0,%0\n\tLDILO.NZ\t1,%0\t; set01_ne";
++	case LT:	return "LDI\t0,%0\n\tLDILO.LT\t1,%0\t; set01_lt";
++	case GT:	return "LDI\t1,%0\n\tLDILO.LT\t1,%0\n\tLDILO.Z\t1,%0\t; set01_gt";
++	case LE:	return "LDI\t0,%0\n\tLDILO.LT\t1,%0\n\tLDILO.Z\t1,%0\t; set01_le";
++	case GE:	return "LDI\t0,%0\n\tLDILO.GE\t1,%0\t; set01_ge";
++	case LTU:	return "LDI\t0,%0\n\tLDILO.C\t1,%0\t; set01_ltu";
++	case GEU:	return "LDI\t0,%0\n\tLDILO.NC\t1,%0\t; set01_geu";
++	case GTU:	return "LDI\t1,%0\n\tLDILO.C\t0,%0\n\tLDILO.Z\t0,%0\t; set01_gtu";
++	case LEU:	return "LDI\t0,%0\n\tLDILO.C\t1,%0\n\tLDILO.Z\t1,%0\t; set01_leu";
 +	default:
 +		zip_debug_rtx(condition);
 +		internal_error("CSTORE Unsupported condition");
@@ -2190,7 +2194,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +int
 +zip_expand_movdi(rtx dst, rtx src) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
++
 +	if (dbg) fprintf(stderr, "\nZIP::MOVDI\n");
 +	if (dbg) zip_debug_rtx_pfx("DST", dst);
 +	if (dbg) zip_debug_rtx_pfx("SRC", src);
@@ -2318,12 +2323,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	// MOV #->REG (An LDI instruction, but for HIwords)
 +	if ((CONST_INT_P(src))&&(REG_P(dst))) {
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- IMM->REG\n");
++		HOST_WIDE_INT v = INTVAL(src);
 +		emit_insn(gen_movsi(
 +			gen_rtx_SUBREG(SImode, dst, 0),
-+			GEN_INT(INTVAL(src)>>32)));
++			GEN_INT(v>>32)));
 +		emit_insn(gen_movsi(
 +			gen_rtx_SUBREG(SImode, dst, 4),
-+			GEN_INT(INTVAL(src)&0x0ffffffff)));
++			GEN_INT((HOST_WIDE_INT)((int)(v)))));
 +		return 1;
 +	} else if ((CONST_INT_P(src))&&(MEM_P(dst))&&(can_create_pseudo_p())) {
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- IMM->MEM\n");
@@ -2340,7 +2346,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +int
 +zip_expand_movsicc(rtx dst, rtx condition, rtx iftrue, rtx iffalse) {
 +	rtx_insn *insn;
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
++
 +	if (dbg) fprintf(stderr, "ZIP::MOVSICC\n");
 +	if (dbg) zip_debug_rtx_pfx("DST", dst);
 +	if (dbg) zip_debug_rtx_pfx("CND", condition);
@@ -2483,10 +2490,33 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +}
 +
 +const char *
-+zip_addsicc(rtx dst, rtx condition, rtx ifsrc, rtx addv ATTRIBUTE_UNUSED) {
++zip_addsicc(rtx dst, rtx condition, rtx ifsrc, rtx addv) {
 +	// We know upon entry that REG_P(dst) must be true
 +	if (!REG_P(dst))
 +		internal_error("%s","ADDSICC into something other than register");
++
++	if ((REG_P(dst))&&(REG_P(ifsrc))&&(REG_P(addv))
++		&&(REGNO(dst)!=REGNO(ifsrc))) {
++		switch (GET_CODE(condition)) {
++		case EQ: return "MOV.Z\t%2,%0\n\tADD.Z\t%3,%0";
++		case NE: return "MOV.NZ\t%2,%0\n\tADD.NZ\t%3,%0";
++		case LT: return "MOV.LT\t%2,%0\n\tADD.LT\t%3,%0";
++
++		case LE: return "MOV.LT\t%3,%0\n\tMOV.Z\t%3,%0\n\tADD.LT\t%3,%0\n\tADD.Z\t%3,%0";
++		case GE: return "MOV.GE\t%2,%0\n\tADD.GE\t%3,%0";
++
++		case GT: return "BLT\t%.Laddsi%=\n\tBZ\t%%.Laddsi%=\n\tMOV\t%2,%0\n\tADD\t%3,%0\n.Laddsi%=:";
++		case LTU: return "MOV.C\t%2,%0\n\tADD.C\t%3,%0";
++
++		case LEU: return "MOV.C\t%2,%0\n\tMOV.Z\t%2,%0\n\tADD.C\t%3,%0\n\tADD.Z\t%3,%0";
++		case GEU: return "MOV.NC\t%2,%0\n\tADD.NC\t%3,%0";
++		case GTU: return "BZ\t%.Laddsi%=\n\tMOV.NC\t%3,%0\n\tADD.NC\t%3,%0\n.Laddsi%=:";
++		default:
++			internal_error("%s", "Zip/No usable addsi expansion");
++			break;
++		}
++	}
++
 +	if ((REG_P(ifsrc))&&(REGNO(dst)==REGNO(ifsrc))) {
 +		switch (GET_CODE(condition)) {
 +		case EQ: return "ADD.Z\t%3,%0";
@@ -2665,8 +2695,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-01-24 16:02:58.003668632 -0500
-@@ -0,0 +1,545 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-01-25 16:42:26.004744826 -0500
+@@ -0,0 +1,541 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-di.md
@@ -2706,14 +2736,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +;
 +;
 +;
-+(define_insn_and_split "movdi"
++(define_expand "movdi"
 +	[(set (match_operand:DI 0 "nonimmediate_operand" "")
 +		(match_operand:DI 1 "general_operand" ""))]
 +	"(ZIP_HAS_DI)"
-+	"#"
-+	""
-+	[(set (match_operand:DI 0 "nonimmediate_operand" "")
-+		(match_operand:DI 1 "general_operand" ""))]
 +	{
 +		if (zip_expand_movdi(operands[0], operands[1]))
 +			DONE;
@@ -7425,8 +7451,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-24 16:01:13.164235008 -0500
-@@ -0,0 +1,2575 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-26 11:54:40.746950307 -0500
+@@ -0,0 +1,2700 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -8850,7 +8876,124 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +					[(reg:CC CC_REG) (const_int 0)])
 +			(const_int 1) (const_int 0)))]
 +	""
-+	)
++	{
++		if (!zip_supported_condition(GET_CODE(operands[1]))) {
++		extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; Two branches give us no end of difficulty when implementing.
++		//; Let's check for these two branch codes, and swap the 
++		//; comparison to simplify them.
++		//; fprintf(stderr, "CBRANCH\n");
++		//; zip_debug_rtx_pfx("- CMP: ", operands[0]);
++		//; zip_debug_rtx_pfx("- A  : ", operands[1]);
++		//; zip_debug_rtx_pfx("- B  : ", operands[2]);
++		//; zip_debug_rtx_pfx("- JMP: ", operands[3]);
++		//; Can we do better if we reverse some compares?
++		//;
++		//; We have GE, LT, LTU, and GEU conditions
++		//; Figure out how to create the other conditions from
++		//; these.
++		if (GET_CODE(operands[1])==GTU) {
++			if (REG_P(operands[3])) {
++				//; Reverse the comparison
++				rtx	tmp;
++				tmp = operands[3];
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],LTU);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(INTVAL(operands[3])>-(1<<17)+2)) {
++				//; A >  #
++				//; A >= #+1
++				//;
++				//; Add one to the integer constant,
++				//; And use a GEU comparison
++				operands[3] = GEN_INT(INTVAL(operands[3])+1);
++				PUT_CODE(operands[1],GEU);
++			} else if ((CONST_INT_P(operands[3]))
++					&&(can_create_pseudo_p())) {
++				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
++				emit_insn(gen_movsi(tmp,operands[3]));
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],LTU);
++			}
++		} else if (GET_CODE(operands[1]) == LEU) {
++			if (REG_P(operands[3])) {
++				//; Reverse the comparison
++				rtx	tmp;
++				tmp = operands[3];
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],GEU);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(INTVAL(operands[3])==0)) {
++				PUT_CODE(operands[1],EQ);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(INTVAL(operands[3])<(1<<17))) {
++				//; A <  #
++				//; A <= #-1
++				//;
++				//; Subtract one from the integer constant,
++				//; And use a LTU comparison
++				operands[3] = GEN_INT(INTVAL(operands[3])-1);
++				PUT_CODE(operands[1],LTU);
++			} else if ((CONST_INT_P(operands[3]))
++					&&(can_create_pseudo_p())) {
++				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
++				emit_insn(gen_movsi(tmp,operands[3]));
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],GEU);
++			}
++		} else if (GET_CODE(operands[1]) == LE) {
++			if (REG_P(operands[3])) {
++				//; Reverse the comparison
++				rtx	tmp;
++				tmp = operands[3];
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],GE);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(INTVAL(operands[3])<(1<<17)-2)) {
++				//; A <= #
++				//; A <  #+1
++				//;
++				//; Add one to the integer constant,
++				//; And use a LT comparison
++				operands[3] = GEN_INT(INTVAL(operands[3])+1);
++				PUT_CODE(operands[1],LT);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(can_create_pseudo_p())) {
++				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
++				emit_insn(gen_movsi(tmp,operands[3]));
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],GE);
++			}
++		} else if (GET_CODE(operands[1]) == GT) {
++			if (REG_P(operands[3])) {
++				//; Reverse the comparison
++				rtx	tmp;
++				tmp = operands[3];
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],LT);
++			} else if ((CONST_INT_P(operands[3]))
++				&&(INTVAL(operands[3])<(1<<17)-2)) {
++				//; Add one to the integer constant,
++				//; And use a GE comparison
++				operands[3] = GEN_INT(INTVAL(operands[3])+1);
++				PUT_CODE(operands[1],LE);
++			} else if ((CONST_INT_P(operands[3]))
++					&&(can_create_pseudo_p())) {
++				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
++				emit_insn(gen_movsi(tmp,operands[3]));
++				operands[3] = operands[2];
++				operands[2] = tmp;
++				PUT_CODE(operands[1],LT);
++			}
++		}
++	}})
 +;
 +;
 +;
@@ -9018,7 +9161,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	[(set (match_operand:SI 0 "register_operand" "=r,r")
 +		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
 +			[(reg:CC CC_REG) (const_int 0)])
-+			(plus:SI (match_operand:SI 2 "register_operand" "0,r")
++			(plus:SI (match_operand:SI 2 "register_operand" "r,r")
 +				(match_operand:SI 3 "nonmemory_operand" "rO,M"))
 +			(match_operand:SI 4 "register_operand" "0,0")))]
 +	""
@@ -9128,10 +9271,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
 +				&&(INTVAL(operands[2])>-(1<<17)+2)) {
++				//; A >  B
++				//; A >= B+1
 +				//; Add one to the integer constant,
-+				//; And use a GTU comparison
++				//; And use a GEU comparison
 +				emit_insn(gen_cmpsi(operands[1],
-+					GEN_INT(INTVAL(operands[2])-1)));
++					GEN_INT(INTVAL(operands[2])+1)));
 +				emit_jump_insn(gen_cbranch_jmp_geu(operands[3]));
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
@@ -9152,6 +9297,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
 +				&&(INTVAL(operands[2])<(1<<17)-2)) {
++				//; A <= B
++				//; A <  B+1
 +				//; Add one to the integer constant,
 +				//; And use a GTU comparison
 +				emit_insn(gen_cmpsi(operands[1],
@@ -9174,11 +9321,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +				emit_jump_insn(gen_cbranch_jmp_gte(operands[3]));
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
-+				&&(INTVAL(operands[2])<(1<<17)-2)) {
++				&&(INTVAL(operands[2])>-(1<<17)+1)) {
++				//; A <  B
++				//; A <= B-1
 +				//; Add one to the integer constant,
 +				//; And use a GTU comparison
 +				emit_insn(gen_cmpsi(operands[1],
-+					GEN_INT(INTVAL(operands[2])+1)));
++					GEN_INT(INTVAL(operands[2])-1)));
 +				emit_jump_insn(gen_cbranch_jmp_lt(operands[3]));
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
@@ -9198,6 +9347,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
 +				&&(INTVAL(operands[2])<(1<<17)-2)) {
++				//; A >  B
++				//; A >= B+1
 +				//; Add one to the integer constant,
 +				//; And use a GTU comparison
 +				emit_insn(gen_cmpsi(operands[1],
@@ -10009,8 +10160,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-modes.def gcc-6.2.0-zi
 +#define	BITS_PER_UNIT	8
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-6.2.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-01-10 14:16:45.239561972 -0500
-@@ -0,0 +1,617 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-01-25 09:55:52.610224761 -0500
+@@ -0,0 +1,644 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-peephole.md
@@ -10549,14 +10700,41 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +(define_peephole2
 +	[(set (match_operand:SI 0 "register_operand")
 +		(match_operand:SI 1 "register_operand"))
-+	(parallel [(set (match_dup 0)
++	(parallel [(set (match_operand:SI 3 "register_operand")
 +			(and:SI (match_dup 0)
 +				(match_operand:SI 2 "zip_opb_single_operand_p")))
 +		(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))])
 +	]
-+	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(2, REGNO(operands[0])))"
++	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(2, REGNO(operands[0])))&&(peep2_regno_dead_p(2, REGNO(operands[3])))"
 +	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
 +			(const_int 0)))])
++;
++(define_peephole2
++	[(set (match_operand:SI 0 "register_operand")
++		(match_operand:SI 1 "register_operand"))
++	(parallel [(set (match_operand:SI 3 "register_operand")
++			(and:SI (match_dup 0)
++				(match_operand:SI 2 "zip_opb_single_operand_p")))
++		(clobber (reg:CC CC_REG))])
++	(set (reg:CC CC_REG) (compare:CC (match_dup 3) (const_int 0)))
++	]
++	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(3, REGNO(operands[0])))&&(peep2_regno_dead_p(3, REGNO(operands[3])))"
++	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
++			(const_int 0)))])
++;
++(define_peephole2
++	[(set (match_operand:SI 0 "register_operand")
++		(match_operand:SI 1 "register_operand"))
++	(set (match_operand:SI 3 "register_operand")
++			(and:SI (match_dup 0)
++				(match_operand:SI 2 "zip_opb_single_operand_p")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 3) (const_int 0)))
++	]
++	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(3, REGNO(operands[0])))&&(peep2_regno_dead_p(3, REGNO(operands[3])))"
++	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
++			(const_int 0)))])
++;
++;
 +;
 +; Match:
 +;	(call ...
@@ -10715,7 +10893,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-6.2.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2017-01-11 10:11:36.119260710 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2017-01-26 09:43:03.328142057 -0500
 @@ -0,0 +1,310 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -10772,7 +10950,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tADD %1,%3\n\tSW %3,%0\n"
++	"LOCK\n\tLW %0,%3\n\tADD %1,%3\n\tSW %3,%0"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_subsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
@@ -10782,7 +10960,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tSUB %1,%3\n\tSW %3,%0\n"
++	"LOCK\n\tLW %0,%3\n\tSUB %1,%3\n\tSW %3,%0"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_iorsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
@@ -10792,7 +10970,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tOR %1,%3\n\tSW %3,%0\n"
++	"LOCK\n\tLW %0,%3\n\tOR %1,%3\n\tSW %3,%0"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_andsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
@@ -10802,7 +10980,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tAND %1,%3\n\tSW %3,%0\n"
++	"LOCK\n\tLW %0,%3\n\tAND %1,%3\n\tSW %3,%0"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_xorsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
@@ -10812,7 +10990,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tXOR %1,%3\n\tSW %3,%0\n"
++	"LOCK\n\tLW %0,%3\n\tXOR %1,%3\n\tSW %3,%0"
 +	[(set_attr "predicable" "no")])
 +;
 +;
@@ -10831,13 +11009,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(match_operand:DI 1 "zip_memory_operand_p" "Q"))]
 +	"(ZIP_HAS_DI)"
-+	"LOCK\n\tLW (%1),%H0\n\tLW 1+%1,%L0\n"
++	"LOCK\n\tLW %1,%H0\n\tLW 1+%1,%L0\t; atomic_loaddi"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +(define_insn "atomic_storedi"
 +	[(set (match_operand:DI 0 "zip_memory_operand_p" "=Q")
 +		(match_operand:DI 1 "register_operand" "r"))]
 +	"(ZIP_HAS_DI)"
-+	"LOCK\n\tSW %H0,(%1)\n\tSW %L0,1+%1"
++	"LOCK\n\tSW %H0,%1\n\tSW %L0,1+%1\t; atomic_storedi"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +;
 +;
@@ -10850,7 +11028,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tSW %2,%1\n"
++	"LOCK\n\tLW %1,%0\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
 +;
 +;
@@ -10866,7 +11044,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tADD %2,%0\n\tSW %0,%1\n"
++	"LOCK\n\tLW %1,%0\n\tADD %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_sub_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10875,7 +11053,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1\n"
++	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_or_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10884,7 +11062,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(set (match_dup 1) (ior:SI (match_dup 1) (match_dup 2)))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tOR %2,%0\n\tSW %0,%1\n"
++	"LOCK\n\tLW %1,%0\n\tOR %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_and_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10893,7 +11071,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(set (match_dup 1) (and:SI (match_dup 1) (match_dup 2)))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tAND %2,%0\n\tSW %0,%1\n"
++	"LOCK\n\tLW %1,%0\n\tAND %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_xor_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10902,7 +11080,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	(set (match_dup 1) (xor:SI (match_dup 1) (match_dup 2)))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tXOR %2,%0\n\tSW %0,%1\n"
++	"LOCK\n\tLW %1,%0\n\tXOR %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
 +;
 +;
@@ -10918,7 +11096,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tADD %0,%2\n\tSW %2,%1\n"
++	"LOCK\n\tLW %1,%0\n\tADD %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
 +;(define_insn "atomic_fetch_subsi"
 +;	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10934,8 +11112,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +; If we could do two ALU instructions during the LOCK, then we might make
 +; this work--but LOCK only provides for a single ALU instruction.
 +;
-+;	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1\n"
-+;	"LOCK\n\tLW %1,%0\n\tSUB %0,%2\n\tSW %2,%1\n"
++;	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1"
++;	"LOCK\n\tLW %1,%0\n\tSUB %0,%2\n\tSW %2,%1"
 +;	[(set_attr "predicable" "no")])
 +(define_insn "atomic_fetch_orsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
@@ -10947,7 +11125,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tOR %0,%2\n\tSW %2,%1\n"
++	"LOCK\n\tLW %1,%0\n\tOR %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_fetch_andsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
@@ -10959,7 +11137,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tAND %0,%2\n\tSW %2,%1\n"
++	"LOCK\n\tLW %1,%0\n\tAND %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
 +(define_insn "atomic_fetch_xorsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
@@ -10971,7 +11149,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %1,%0\n\tXOR %0,%2\n\tSW %2,%1\n"
++	"LOCK\n\tLW %1,%0\n\tXOR %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
 +;
 +;
@@ -10994,7 +11172,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	LOCK
 +	LW	%1,%0
 +	TST	%0
-+	SW.Z	%3,%1\n"
++	SW.Z	%3,%1"
 +	[(set_attr "predicable" "no")])
 +;
 +;
