@@ -40,6 +40,7 @@
 #include <assert.h>
 #include <string.h>
 #include <vector>
+#include <ctype.h>
 #include "twoc.h"
 #include "zipelf.h"
 
@@ -67,15 +68,23 @@ public:
 
 	virtual	uint32_t	lb(uint32_t addr) {
 		uint32_t v = lw(addr&-4);
+
+		// fprintf(stderr, "\tLH(%08x) -> %08x", addr, v);
 		v >>= (8*(3-(addr&3)));
+		// fprintf(stderr, " -> %08x", v);
 		v &= 0x0ff;
+		// fprintf(stderr, " -> %02x\n", v);
 		return v;
 	}
 	virtual	uint32_t	lh(uint32_t addr) {
 		uint32_t v = lw(addr&-4);
-		if (addr&2)
+
+		// fprintf(stderr, "\tLH(%08x) -> %08x", addr, v);
+		if ((addr&2)==0)
 			v >>= 16;
+		// fprintf(stderr, " -> %08x", v);
 		v &= 0x0ffff;
+		// fprintf(stderr, " -> %04x\n", v);
 		return v;
 	}
 
@@ -100,8 +109,9 @@ public:
 
 class	UARTDEV : public SIMDEV {
 	uint32_t	m_setup;
+	bool		m_debug;
 public:
-	UARTDEV(void) { m_setup = 868; }
+	UARTDEV(void) { m_setup = 868; m_debug = false; }
 
 	virtual	uint32_t	lw(uint32_t addr) {
 		switch(addr&0x0c) {
@@ -113,6 +123,8 @@ public:
 	}
 		
 	virtual void sw(uint32_t addr, uint32_t vl) {
+		if (m_debug) fprintf(stderr,
+			"UART->SW(%08x, %08x)\n", addr, vl);
 		switch(addr&0x0c) {
 		case  0: m_setup = vl & 0x3fffffff; break;
 		case  4: break;
@@ -126,9 +138,11 @@ public:
 class	MEMDEV : public SIMDEV {
 protected:
 	char	*m_mem;
+	bool	m_dbg;
 public:
 	MEMDEV(int nbits) {
 		m_mem = new char[(1<<nbits)];
+		m_dbg = false;
 	}
 
 	virtual	uint32_t	lw(uint32_t addr) {
@@ -141,6 +155,10 @@ public:
 		d = m_mem[addr+3];
 		v = (a<<24)|(b<<16)|(c<<8)|d;
 
+		if (m_dbg) fprintf(stderr,
+			"\tReading %08x -> %02x:%02x:%02x:%02x -> v=%08x\n", addr,
+			a, b, c, d, v);
+
 		return v;
 	}
 
@@ -150,15 +168,31 @@ public:
 		m_mem[(maddr)+1] = (vl >>16)&0x0ff;
 		m_mem[(maddr)+2] = (vl >> 8)&0x0ff;
 		m_mem[(maddr)+3] = (vl     )&0x0ff;
+
+		if (m_dbg)
+			fprintf(stderr,
+				"\tSW %08x <- %08x - %02x:%02x:%02x:%02x\n",
+				addr, vl, m_mem[(maddr)  ] & 0x0ff,
+				m_mem[(maddr)+1] & 0x0ff,
+				m_mem[(maddr)+2] & 0x0ff,
+				m_mem[(maddr)+3] & 0x0ff);
 	}
 
 	virtual void sh(uint32_t addr, uint32_t vl) {
-		m_mem[(addr&-2)  ] = (vl >> 8)&0x0ff;
-		m_mem[(addr&-2)+1] = (vl     )&0x0ff;
+		uint32_t maddr = addr & -2;
+		m_mem[(maddr)  ] = (vl >> 8)&0x0ff;
+		m_mem[(maddr)+1] = (vl     )&0x0ff;
+		if (m_dbg)
+			fprintf(stderr, "\tSH %08x <- %04x - %02x:%02x\n",
+				addr, vl & 0x0ffff, m_mem[(maddr)  ] & 0x0ff,
+				m_mem[(maddr)+1] & 0x0ff);
 	}
 
 	virtual void sb(uint32_t addr, uint32_t vl) {
 		m_mem[addr] = vl;
+		if (m_dbg)
+			fprintf(stderr, "\tSB %08x <- %02x\n",
+				addr, vl & 0x0ff);
 	}
 
 	void	load(uint32_t addr, const char *src, size_t n) {
@@ -332,10 +366,22 @@ public:
 };
 
 class	ZIPMACHINE {
+	bool		m_gie, m_jumped, m_advance_pc, m_locked;
+	int		m_lockcount;
+	unsigned long	m_icount;
 public:
 	uint32_t	m_r[32];
-	bool		m_gie, m_jumped, m_advance_pc;
 	SIMBUS		*m_bus;
+	FILE		*m_mapf;
+
+	ZIPMACHINE(void) {
+		m_locked = false; m_lockcount = 0;
+		m_mapf = NULL;
+		m_bus = NULL;
+		m_gie = false;
+		m_jumped= m_advance_pc = false;
+		m_icount = 0;
+	}
 
 	void dump() {
 		fflush(stderr);
@@ -393,6 +439,7 @@ public:
 
 	int	rbase(void) { return m_gie?16:0; }
 	bool	gie()		{ return m_gie; };
+	bool	locked()	{ return m_locked; };
 	bool	sleeping()	{
 		return (gie())&&(m_r[14+16]&CC_SLEEP)?true:false;
 	};
@@ -472,8 +519,8 @@ public:
 			fprintf(stderr, "R[%2d] = 0x%08x\n", rid, m_r[rid]);
 		} else if ((insn & 0x0ffff0)==0x00210) {
 			// Dump a user register
-			int rid = (insn&0x0f)+16;
-			fprintf(stderr, "uR[%2d] = 0x%08x\n", rid, m_r[rid]);
+			int rid = (insn&0x0f);
+			fprintf(stderr, "uR[%2d] = 0x%08x\n", rid, m_r[rid+16]);
 		} else if ((insn & 0x0ffff0)==0x00230) {
 			// SOUT[User Reg]
 			int rid = (insn&0x0f)+16;
@@ -500,14 +547,52 @@ public:
 		uint32_t	av, bv, result, f, arg, brg, opc;
 		int32_t		imm;
 		int		rb, cnd;
+		const bool	dbg = false;
 
-		// fprintf(stderr, "INSN(@0x%08x, %08x)\n", pc(), insn);
+		m_icount ++ ;
+
+		if (dbg) {
+			fprintf(stderr, "%8ld INSN(@0x%08x, %08x)", m_icount, pc(), insn);
+			if (m_mapf) {
+				// bool	dbg = pc() == 0x040003cc;
+				char	line[512], needle[512], *ptr = NULL,*lp;
+				sprintf(needle, "%08x", pc());
+				rewind(m_mapf);
+				while(NULL != (lp = fgets(line, sizeof(line), m_mapf))) {
+					while((*lp)&&(isspace(*lp)))
+						lp++;
+					if ((*lp != '0')||(tolower(*lp) == 'x'))
+						continue;
+					// if (dbg)fprintf(stderr, "\tMAP (%s?) %s\n", needle, lp);
+					if (NULL != (ptr = strstr(lp, needle))){
+						break;
+					}
+				} if (ptr) {
+					if (strlen(ptr) > 8)
+						ptr += 8;
+					while((*ptr)&&(isspace(*ptr)))
+						ptr++;
+					int ln = strlen(ptr);
+					while((ln > 0)&&(isspace(ptr[ln-1])))
+						ptr[--ln] = '\0';
+					fprintf(stderr, "\t%s", ptr);
+				} else if (0x7b400000 == (insn&0x7fffffff))
+					fprintf(stderr, "\treturn");
+			} else fprintf(stderr, "\tNO-MAPF");
+			fprintf(stderr, "\n");
+		}
 		m_jumped     = false;
 		m_advance_pc = true;
 		illegal      = false;
 		noop         = false;
 		lock         = false;
 		wbreak       = false;
+
+		if (m_locked) {
+			m_lockcount--;
+			if (m_lockcount <= 0)
+				m_locked = false;
+		}
 
 		m_r[14+rbase()]
 			&= ~(CC_ILL|CC_BREAK|CC_BUSERR|CC_DIVERR);
@@ -644,8 +729,8 @@ public:
 					exit(EXIT_FAILURE);
 				}
 			} else if (lock) {
-				// Do nothing to lock the bus in a simulation
-				assert((0)&&("No lock function implemented"));
+				m_locked = true;
+				m_lockcount = 3;
 			} else {
 				uint32_t	presign = (av>>31)&1, nsgn;
 				switch(opc) {
@@ -830,7 +915,8 @@ public:
 							|CC_FPUERR));
 					}
 				}
-				// fprintf(stderr, "\tREG[%02x] = %08x\n", arg, result);
+				if (dbg) fprintf(stderr,
+					"\tREG[%02x] = %08x\n", arg, result);
 				m_r[arg] = result;
 				if ((int)arg == 15+rbase())
 					m_advance_pc = false;
@@ -942,7 +1028,7 @@ int main(int argc, char **argv) {
 	bus = new SIMBUS();
 	// BUSITEM net = new NETDEV();
 
-	bus->add(new UARTDEV(),  0x00000410, 0xfffffff0, "RW", "UART");// 4 words
+	bus->add(new UARTDEV(),  0x00000140, 0xfffffff0, "RW", "UART");// 4 words
 	// bus->add(new SDCDEV(12), 0x00000420, 0xfffffff0, "RW");// 4 words
 	// bus->add(net->ctrl,   0x00000440, 0xffffffe0, "RW");// 8 words
 	// bus->add(net->data,   0x00002000, 0xffffe000, "R"); // 8 words
@@ -954,8 +1040,9 @@ int main(int argc, char **argv) {
 assert(secpp[0]->m_len != 0);
 	for(int s=0; secpp[s]->m_len; s++) {
 		secp = secpp[s];
-fprintf(stderr, "Attempting to LOAD->(%08x, ..., %d)\n",
-secp->m_start, secp->m_len);
+		if (false) fprintf(stderr,
+			"Attempting to LOAD->(%08x, ..., %d)\n",
+			secp->m_start, secp->m_len);
 		bus->load(secp->m_start, (const char *)&secp->m_data[0], secp->m_len);
 		if (bus->error()) {
 			fprintf(stderr, "LOAD: Error writing to mem @ 0x%08x\n", secp->m_start);
@@ -970,6 +1057,8 @@ secp->m_start, secp->m_len);
 
 	done = false;
 	zipm = new ZIPMACHINE;
+	if (access("map.txt", R_OK)==0)
+		zipm->m_mapf = fopen("map.txt","r");
 	zipm->init(bus);
 	zipm->m_r[15] = entry;
 	while(!done) {
@@ -1001,7 +1090,7 @@ secp->m_start, secp->m_len);
 		}
 
 		bus->tick();
-		if ((bus->interrupt())&&(zipm->gie())) {
+		if ((bus->interrupt())&&(zipm->gie())&&(!zipm->locked())) {
 			zipm->gie(false);
 			zipm->sleep(false);
 		}
