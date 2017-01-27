@@ -1021,6 +1021,10 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Cannot read %s\n", executable);
 		exit(EXIT_FAILURE);
 	} elfread(executable, entry, secpp);
+	if (0 == secpp[0]->m_len) {
+		fprintf(stderr, "Executable file has no contents!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	// Timer  at 0x0100?
 	// Buserr at 0x0101?
@@ -1037,7 +1041,6 @@ int main(int argc, char **argv) {
 	bus->add(new ROMDEV(24), 0x1000000, 0x7000000, "RXL", "Flash"); // Flash
 	bus->add(new MEMDEV(26), 0x4000000, 0xfc000000, "RWX", "SDRAM");// SDRAM
 
-assert(secpp[0]->m_len != 0);
 	for(int s=0; secpp[s]->m_len; s++) {
 		secp = secpp[s];
 		if (false) fprintf(stderr,
