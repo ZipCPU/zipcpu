@@ -91,7 +91,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	// this will cost a minimum of 132 6-LUTs.
 
 	wire	this_is_a_multiply_op;
-	assign	this_is_a_multiply_op = (i_ce)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'h8));
+	assign	this_is_a_multiply_op = (i_ce)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
 
 	generate
 	if (IMPLEMENT_MPY == 0)
