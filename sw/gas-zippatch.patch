@@ -7135,7 +7135,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-01-26 10:42:27.019279859 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-02 09:05:31.159835296 -0500
 @@ -0,0 +1,361 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7391,7 +7391,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	// CLR: 1.rrrr.110.00000000
 +	{ "CLR", 0x87ff0000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	// RTN: 1.1111.111.0.0000.000, MOV R0,Pc
-+	{ "RTN", 0xffff0000, 0xff000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "RTN", 0xffff0000, 0xff800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	// JMP: 1.1111.111.0.rrrrsss
 +	{ "JMP", 0xff800000, 0xff000000, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// LJSR: 1.000_0.011_.0.111_1.001 ?.1111.110.1.1111.000
@@ -7449,7 +7449,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	// CLR: 1.xxx_xxxx_xxxx_xxxx_?.rrr_r.101.0000_0000
 +	{ "CLR", 0x800007ff, 0x80000600, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	// RTN: 1.1111.111.0.0000.000, MOV R0,Pc
-+	{ "RTN", 0x80007fff, 0x80007f00, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "RTN", 0x80007fff, 0x80007f80, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	// JMP: 1.1111.111.0.rrrrsss
 +	{ "JMP", 0x80007f80, 0x80007f00, ZIP_REGFIELD(11),ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
 +	// LJMP: 1.xxx_xxxx_xxxx_xxxx_?.111_1.100._1.111_1.000
@@ -7479,8 +7479,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "LW", 0x80000780, 0x80000400, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_SP, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
 +	{ "LW", 0x80000780, 0x80000480, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
 +	// 1.rrrr.101.ssssssss
-+	{ "SW", 0x80000700, 0x80000500, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_SP, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
-+	{ "SW", 0x80000700, 0x80000580, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
++	{ "SW", 0x80000780, 0x80000500, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_SP, ZIP_IMMFIELD(7,0), ZIP_OPUNUSED },
++	{ "SW", 0x80000780, 0x80000580, ZIP_OPUNUSED, ZIP_REGFIELD(11), ZIP_REGFIELD(3), ZIP_IMMFIELD(3,0), ZIP_OPUNUSED },
 +	// 1.rrr_r.110.ssssssss
 +	{ "LDI", 0x80000700, 0x80000600, ZIP_REGFIELD(11), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,0), ZIP_OPUNUSED },
 +	// 1.rrr_r.111_.x.rrr_rsss

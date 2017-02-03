@@ -18,7 +18,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/config.sub gcc-6.2.0-zip/config.sub
  	# because (1) that's what they normally are, and
 diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
 --- gcc-6.2.0/configure	2016-03-17 18:54:19.000000000 -0400
-+++ gcc-6.2.0-zip/configure	2017-01-10 12:41:56.610065986 -0500
++++ gcc-6.2.0-zip/configure	2017-01-27 15:56:45.388452663 -0500
 @@ -3548,6 +3548,9 @@
    ft32-*-*)
      noconfigdirs="$noconfigdirs ${libgcj}"
@@ -49,6 +49,48 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
+@@ -6785,16 +6794,16 @@
+ # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
+ if test "x$CFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+-    CFLAGS_FOR_TARGET="-g -O2"
++    CFLAGS_FOR_TARGET="-O3"
+   else
+     CFLAGS_FOR_TARGET=$CFLAGS
+     case " $CFLAGS " in
+-      *" -O2 "*) ;;
+-      *) CFLAGS_FOR_TARGET="-O2 $CFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CFLAGS_FOR_TARGET="-O3 $CFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+-      *) CFLAGS_FOR_TARGET="-g $CFLAGS_FOR_TARGET" ;;
++      *) CFLAGS_FOR_TARGET="$CFLAGS_FOR_TARGET" ;;
+     esac
+   fi
+ fi
+@@ -6802,16 +6811,16 @@
+ 
+ if test "x$CXXFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+-    CXXFLAGS_FOR_TARGET="-g -O2"
++    CXXFLAGS_FOR_TARGET="-O3"
+   else
+     CXXFLAGS_FOR_TARGET=$CXXFLAGS
+     case " $CXXFLAGS " in
+-      *" -O2 "*) ;;
+-      *) CXXFLAGS_FOR_TARGET="-O2 $CXXFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CXXFLAGS_FOR_TARGET="-O3 $CXXFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CXXFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+-      *) CXXFLAGS_FOR_TARGET="-g $CXXFLAGS_FOR_TARGET" ;;
++      *) CXXFLAGS_FOR_TARGET="$CXXFLAGS_FOR_TARGET" ;;
+     esac
+   fi
+ fi
 diff -Naur '--exclude=*.swp' gcc-6.2.0/configure.ac gcc-6.2.0-zip/configure.ac
 --- gcc-6.2.0/configure.ac	2016-03-17 18:54:19.000000000 -0400
 +++ gcc-6.2.0-zip/configure.ac	2017-01-10 12:43:23.819301273 -0500
@@ -150,7 +192,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cgraphbuild.c gcc-6.2.0-zip/gcc/cgrap
  {
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/combine.c gcc-6.2.0-zip/gcc/combine.c
 --- gcc-6.2.0/gcc/combine.c	2016-08-08 06:06:15.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/combine.c	2017-01-25 16:53:07.873527826 -0500
++++ gcc-6.2.0-zip/gcc/combine.c	2017-02-03 09:25:19.676720321 -0500
 @@ -103,6 +103,15 @@
  #include "rtl-iter.h"
  #include "print-rtl.h"
@@ -225,8 +267,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-01-26 11:55:45.230538872 -0500
-@@ -0,0 +1,2450 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-03 09:25:40.524425340 -0500
+@@ -0,0 +1,2516 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -975,6 +1017,31 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	}
 +}
 +
++rtx
++zip_return_addr_rtx(int count, rtx frame ATTRIBUTE_UNUSED)
++{
++	//
++	// Don't try to compute anything other than frame zero.
++	//
++	if (count != 0)
++		return NULL_RTX;
++
++	// Make sure we've computed our frame, do we need to save registers?
++	zip_compute_frame();
++
++	if (zip_save_reg(zip_R0)) {
++		if (cfun->machine->fp_needed)
++			return gen_rtx_MEM(SImode, frame_pointer_rtx);
++		else
++			return gen_rtx_MEM(SImode, gen_rtx_PLUS(Pmode,
++					stack_pointer_rtx,
++					GEN_INT(cfun->machine->sp_fp_offset)));
++	} else {
++		return gen_rtx_REG(Pmode, zip_R0);
++
++	}
++}
++
 +/* Implement RETURN_ADDR_RTX(COUNT, FRAMEADDR).
 + *
 + * We currently only support calculating the return address for the current
@@ -1184,7 +1251,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +void	zip_canonicalize_comparison(int *code, rtx *op0, rtx *op1,
 +		bool preserve_op0)
 +{
-+	const bool	dbg=((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
++	bool	reverse = false;
 +
 +	if (dbg) fprintf(stderr, "CANONICALIZE ...%s\n", (preserve_op0)?"(Preserve Op0)":"");
 +	if (dbg) zip_debug_rtx_pfx("CODE", gen_rtx_fmt_ee((rtx_code)*code, VOIDmode, gen_rtx_REG(CCmode,zip_CC), const0_rtx));
@@ -1203,36 +1271,76 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	// GTU	->	LTU w/ swapped operands
 +	// LEU	->	GEU w/ swapped operands
 +	//
-+#warning "This needs more thought"
-+	if ((*code == LE)||(*code == GT)||(*code == LEU)||(*code == GTU)) {
-+		if (!preserve_op0) {
-+			rtx tem = *op0;
-+			*op0 = *op1;
-+			*op1 = tem;
-+			*code = (int)swap_condition((enum rtx_code)*code);
-+		}
 +
-+		int offset = 1; // (*code == GTU) ? 1 : -1;
-+		bool	swap = false;
++	if ((CONST_INT_P(*op0))||(GET_CODE(*op0) == PLUS)) {
++		rtx	tmp = *op0;
++		*op0 = *op1;
++		*op1 = tmp;
++		*code = (int)swap_condition((enum rtx_code)*code);
++	}
 +
-+		if (CONST_INT_P(*op1)) {
-+			*op1 = GEN_INT(INTVAL(*op1)+offset);
-+			swap = true;
-+		} else if (REG_P(*op1)) {
-+			*op1 = plus_constant(GET_MODE(*op1), *op1, offset, true);
-+			swap = true;
-+		} else if ((GET_CODE(*op1)==PLUS)&&(CONST_INT_P(XEXP(*op1,1)))){
-+			*op1 = plus_constant(GET_MODE(*op1),XEXP(*op1,0),
-+				INTVAL(XEXP(*op1,1))+offset);
-+			swap = true;
-+		} if (swap) {
-+			if (*code == LE)
-+				(*code)= LT;
-+			else if (*code == LEU)
-+				(*code)= LTU;
-+			else // (*code == GTU)
-+				(*code) = GEU;
++	if (*code == GTU) {
++		if (REG_P(*op1)) {
++			//; Reverse the comparison
++			reverse = true;
++		} else if (CONST_INT_P(*op1)) {
++			//; A >  B
++			//; A >= B+1
++			//; Add one to the integer constant,
++			//; And use a GEU comparison
++			*code = GEU;
++			*op1 = GEN_INT(INTVAL(*op1)+1);
++		} else {
++			//; Reverse the comparison
++			reverse = true;
 +		}
++	} else if (*code == LEU) {
++		if (REG_P(*op1)) {
++			reverse = true;
++		} else if (CONST_INT_P(*op1)) {
++			//; A <= B
++			//; A <  B+1
++			//; Add one to the integer constant,
++			//; And use a GTU comparison
++			*op1 = GEN_INT(INTVAL(*op1)+1);
++			*code = LTU;
++		} else {
++			reverse = true;
++		}
++	} else if (*code == LE) {
++		if (REG_P(*op1)) {
++			reverse = true;
++		} else if (CONST_INT_P(*op1)) {
++			//; A <  B
++			//; A <= B-1
++			//; Add one to the integer constant,
++			//; And use a GTU comparison
++			*op1 = GEN_INT(INTVAL(*op1)-1);
++			*code = LT;
++		} else {
++			reverse = true;
++		}
++	} else if (*code == GT) {
++		if (REG_P(*op1)) {
++			//; Reverse the comparison
++			reverse = true;
++		} else if (CONST_INT_P(*op1)) {
++			//; A >  B
++			//; A >= B+1
++			//; Add one to the integer constant,
++			//; And use a GTU comparison
++			*op1 = GEN_INT(INTVAL(*op1)+1);
++		} else {
++			reverse = true;
++		}
++	}
++
++	if (reverse) {
++		rtx tem = *op0;
++		*op0 = *op1;
++		*op1 = tem;
++
++		*code = (int)swap_condition((enum rtx_code)*code);
 +	}
 +}
 +
@@ -1397,9 +1505,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +static	bool
 +zip_libgcc_floating_mode_supported_p(enum machine_mode mode)
 +{
-+	if (ZIP_FPU)
-+		return ((mode)==SFmode);
-+	return false;
++	return ((mode)==SFmode)||((mode)==DFmode);
 +}
 +
 +static	int
@@ -2327,9 +2433,11 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		emit_insn(gen_movsi(
 +			gen_rtx_SUBREG(SImode, dst, 0),
 +			GEN_INT(v>>32)));
++		v <<= (sizeof(HOST_WIDE_INT)-4)*8;
++		v >>= (sizeof(HOST_WIDE_INT)-4)*8;
 +		emit_insn(gen_movsi(
 +			gen_rtx_SUBREG(SImode, dst, 4),
-+			GEN_INT((HOST_WIDE_INT)((int)(v)))));
++			GEN_INT(v)));
 +		return 1;
 +	} else if ((CONST_INT_P(src))&&(MEM_P(dst))&&(can_create_pseudo_p())) {
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- IMM->MEM\n");
@@ -3382,8 +3490,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/config/zip/zip.h
 --- gcc-6.2.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-01-12 08:46:22.530991983 -0500
-@@ -0,0 +1,4065 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-01-27 22:26:17.286102624 -0500
+@@ -0,0 +1,4073 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -3458,6 +3566,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +#define	zip_FP		12
 +#define	zip_GOT		11
 +// #define	zip_AP		10	// We're using a PSEUDO REG instead
++#define	zip_R5		5	// Used for the static chain, if it exists
 +#define	zip_R1		1
 +#define	zip_R0		0
 +
@@ -3647,6 +3756,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +	builtin_define("__IEEE_BIG_ENDIAN");			\
 +	builtin_define("_LDBL_EQ_DBL");				\
 +	if (ZIP_FPU) builtin_define("__ZIPFPU__");		\
++	else builtin_define("_SOFT_FLOAT");			\
 +	if (ZIP_ATOMIC) builtin_define("__ZIPATOMIC__");	\
 +	}
 +	// If (zip_param_has_fpu)  builtin_define("__ZIPFPU__");
@@ -4762,10 +4872,14 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * always be the correct address when COUNT is nonzero, but may be NULL_RTX if
 + * there is no way to determine the return address of other frames.
 + *
-+ * ZipCPU --- I have no idea how we'd do this, so let's just return NULL_RTX.
++ * ZipCPU --- Our answer for the current frame is ... it depends.  If we can
++ * force the use of a frame in every debug context, we could compute this for
++ * COUNT != 0.  For now, we'll just look at the registers we save and return
++ * where the return address is in the current frame.  To do that, though, we
++ * need some help from C.
 + */
 +#undef	RETURN_ADDR_RTX
-+#define	RETURN_ADDR_RTX(COUNT,FRAMEADDR)	NULL_RTX
++#define	RETURN_ADDR_RTX(COUNT,FRAMEADDR)	zip_return_addr_rtx(COUNT,FRAMEADDR)
 +
 +/* RETURN_ADDR_IN_PREVIOUS_FRAME ... Define this macro to nonzero value if the
 + * return address of a particular stack frame is accessed from the frame pointer
@@ -4863,7 +4977,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + *
 + * Typcally this is the location in the call frame at which the normal return
 + * address is stored.  For targets that return by popping an address of the 
-+ * stack, this might be a memory address just below the target callf rame
++ * stack, this might be a memory address just below the target call frame
 + * rather than inside the current call frame.  If defined,
 + * EH_RETURN_STACKADJ_RTX will have already been assigned, so it may be used
 + * to calculate the location of the target call frame.
@@ -5021,10 +5135,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * these register are the same, STATIC_CHAIN_INCOMING_REGNUM need not be
 + * defined.
 + *
-+ * ZipCPU doesn't have register windows, so we don't need to define this.
++ * ZipCPU --- even without register windows, we still need to pick an
++ * (arbitrary) register to pass the pointer to the static chain in the case of
++ * nested functions.  Let's arbitrarily pick R5, and ... see how that works for
++ * us.
 + */
-+#warning "I have no reason to believe this will even work"
-+#define	STATIC_CHAIN_REGNUM	zip_GOT
++#define	STATIC_CHAIN_REGNUM	zip_R5
 +
 +/* TARGET_STATIC_CHAIN ... This hook replaces the use of STATIC_CHAIN_REGNUM et
 + * al for targets that may use different static chain locations for different
@@ -7451,8 +7567,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-01-26 11:54:40.746950307 -0500
-@@ -0,0 +1,2700 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-02-03 09:27:44.546686161 -0500
+@@ -0,0 +1,2731 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -7977,14 +8093,14 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(sign_extend:SI
 +			(match_operand:QI 1 "register_operand" "0")))]
 +	""
-+	"SEXTB %0"
++	"SEXTB\t%0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +(define_insn "extendhisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(sign_extend:SI
 +			(match_operand:HI 1 "register_operand" "0")))]
 +	""
-+	"SEXTH %0"
++	"SEXTH\t%0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -9249,7 +9365,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	{
 +		if (true) {
-+		extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
 +		//; Two branches give us no end of difficulty when implementing.
 +		//; Let's check for these two branch codes, and swap the 
 +		//; comparison to simplify them.
@@ -9547,7 +9663,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	{
 +		if (MEM_P(operands[0])) {
-+			// This should always be the case
++			;// extern void zip_debug_rtx(const_rtx);
++			;//
++			;// fprintf(stderr, "CALL: ");
++			;// zip_debug_rtx(operands[0]);
++			;//
++			;//
++			;// This should always be the case
 +			rtx addr = XEXP(operands[0],0);
 +			if (zip_const_address_operand_p(addr, SImode)) {
 +				//; fprintf(stderr, "Generating gen_void_call_const()\n");
@@ -9555,14 +9677,16 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +						operands[1]));
 +			} else if ((MEM_P(addr))&&(zip_address_operand(
 +							XEXP(addr,0)))) {
++				fprintf(stderr, "ERR: ZIP.MD::CALL INDIRECT\n");
 +				emit_call_insn(gen_void_call_mem(XEXP(addr,0),
 +								 operands[1]));
++				gcc_assert(0);
 +			} else {
-+				emit_call_insn(gen_void_call_var(addr,
++				emit_call_insn(gen_void_call_var(operands[0],
 +								 operands[1]));
 +			}
 +			DONE;
-+		}
++		} else FAIL;
 +	})
 +;
 +(define_expand "sibcall"
@@ -9574,7 +9698,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	{
 +		if (MEM_P(operands[0])) {
-+			// This should always be the case
++			;// extern void zip_debug_rtx(const_rtx);
++			;//
++			;// fprintf(stderr, "CALL: ");
++			;// zip_debug_rtx(operands[0]);
++			;//
++			;//
++			;// This should always be the case
 +			rtx addr = XEXP(operands[0],0);
 +			if (zip_const_address_operand_p(addr, SImode)) {
 +				//; fprintf(stderr, "Generating gen_void_call_const()\n");
@@ -9582,14 +9712,16 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +						operands[1]));
 +			} else if ((MEM_P(addr))&&(zip_address_operand(
 +							XEXP(addr,0)))) {
++				fprintf(stderr, "ERR: ZIP.MD::SIBCALL INDIRECT\n");
 +				emit_call_insn(gen_void_sibcall_mem(XEXP(addr,0),
 +								 operands[1]));
++				gcc_assert(0);
 +			} else {
-+				emit_call_insn(gen_void_sibcall_var(addr,
++				emit_call_insn(gen_void_sibcall_var(operands[0],
 +								 operands[1]));
 +			}
 +			DONE;
-+		}
++		} else FAIL;
 +	}) ; "BAR\t%0\n"
 +;
 +(define_insn "void_sibcall_const"
@@ -9613,7 +9745,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +; #warning "This predicate is appropriate for non-moves, but not for JMPs"
 +(define_insn "void_sibcall_var"
-+	[(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++	[(call (match_operand:SI 0 "zip_memory_operand_p" "")
 +			(match_operand 1 "const_int_operand" "n"))
 +		(use (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))
@@ -9634,17 +9766,25 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	{
 +		if (MEM_P(operands[1])) {
++			;// extern void zip_debug_rtx(const_rtx);
++			;//
++			;// fprintf(stderr, "SIBCALL/V: ");
++			;// zip_debug_rtx(operands[1]);
++			;//
++			;//
++			;// This should always be the case
 +			rtx addr = XEXP(operands[1],0);
 +			if (zip_const_address_operand_p(addr, SImode)) {
 +				emit_call_insn(gen_reg_sibcall_const(addr, operands[2]));
 +			} else if ((MEM_P(addr))&&(zip_address_operand(XEXP(addr,0)))) {
++				fprintf(stderr, "ERR: ZIP.MD::SIBCALL-VALUE() INDIRECT\n");
 +				emit_call_insn(gen_reg_sibcall_mem(XEXP(addr,0), operands[2]));
++				gcc_assert(0);
 +			} else {
-+				//; fprintf(stderr, "ZIP.MD::CALL-VALUE() INDIRECT\n");
-+				emit_call_insn(gen_reg_sibcall_var(addr, operands[2]));
++				emit_call_insn(gen_reg_sibcall_var(operands[1], operands[2]));
 +			}
 +			DONE;
-+		}
++		} else FAIL;
 +	})
 +;
 +;
@@ -9684,7 +9824,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +; #warning "This predicate is appropriate for non-moves, but not for JMPs"
 +(define_insn "void_call_var"
-+	[(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++	[(call (match_operand:SI 0 "zip_memory_operand_p" "")
 +			(match_operand 1 "const_int_operand" "n"))
 +		(clobber (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))]
@@ -9706,26 +9846,28 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	(clobber (reg:CC CC_REG))])]
 +	""
 +	{
-+		//; extern void zip_debug_rtx(const_rtx);
-+		//; fprintf(stderr, "ZIP.MD::CALL-VALUE()\n");
-+		//; zip_debug_rtx(operands[1]);
 +		if (MEM_P(operands[1])) {
-+			//; fprintf(stderr, "ZIP.MD::CALL-VALUE() MEM_P\n");
-+			//; zip_debug_rtx(operands[1]);
++			;// extern void zip_debug_rtx(const_rtx);
++			;//
++			;// fprintf(stderr, "CALL/V: ");
++			;// zip_debug_rtx(operands[1]);
++			;//
++			;//
 +			//; This should always be the case
 +			rtx addr = XEXP(operands[1],0);
 +			if (zip_const_address_operand_p(addr, SImode)) {
 +				//; fprintf(stderr, "Generating gen_reg_call_const()\n");
 +				emit_call_insn(gen_reg_call_const(addr, operands[2]));
 +			} else if ((MEM_P(addr))&&(zip_address_operand(XEXP(addr,0)))) {
-+				//; fprintf(stderr, "ZIP.MD::CALL-VALUE() INDIRECT\n");
++				fprintf(stderr, "ERR: ZIP.MD::CALL-VALUE() INDIRECT\n");
 +				emit_call_insn(gen_reg_call_mem(XEXP(addr,0), operands[2]));
++				gcc_assert(0);
 +			} else {
 +				//; fprintf(stderr, "ZIP.MD::CALL-VALUE() INDIRECT\n");
-+				emit_call_insn(gen_reg_call_var(addr, operands[2]));
++				emit_call_insn(gen_reg_call_var(operands[1], operands[2]));
 +			}
 +			DONE;
-+		}
++		} else FAIL;
 +	})
 +(define_insn "reg_call_const"
 +	[(set (reg:SI RTNV_REG)
@@ -9749,12 +9891,17 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +; #warning "This predicate is appropriate for non-moves, but not for JMPs"
 +(define_insn "reg_call_var"
 +	[(set (reg:SI RTNV_REG)
-+		(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++		(call (match_operand:SI 0 "zip_memory_operand_p" "")
 +			(match_operand 1 "const_int_operand" "n")))
 +		(clobber (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))]
 +	""
 +	{
++		;// extern void zip_debug_rtx(const_rtx);
++
++		;// fprintf(stderr, "CALL-V/REG: ");
++		;// zip_debug_rtx(operands[0]);
++
 +		if (REG_P(operands[0]))
 +			return "JSR\t(%0)";
 +		else
@@ -9788,7 +9935,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +; #warning "This predicate is appropriate for non-moves, but not for JMPs"
 +(define_insn "reg_sibcall_var"
 +	[(set (reg:SI RTNV_REG)
-+		(call (mem:SI (match_operand:SI 0 "zip_address_operand_p" ""))
++		(call (match_operand:SI 0 "zip_memory_operand_p" "")
 +			(match_operand 1 "const_int_operand" "n")))
 +		(use (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))
@@ -11696,17 +11843,32 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/varasm.c gcc-6.2.0-zip/gcc/varasm.c
  	elt = GEN_INT (data[i]);
 diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config/zip/sfp-machine.h gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h
 --- gcc-6.2.0/libgcc/config/zip/sfp-machine.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h	2017-01-12 11:20:20.689570913 -0500
-@@ -0,0 +1,35 @@
++++ gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h	2017-01-27 12:27:05.094921759 -0500
+@@ -0,0 +1,53 @@
 +#ifndef	ZIP_SFP_MACHINE_H
 +#define	ZIP_SFP_MACHINE_H
++
++#define	__BIG_ENDIAN	4321
++#define	__BYTE_ORDER	__BIG_ENDIAN
 +
 +#define	_FP_W_TYPE_SIZE	32
 +#define	_FP_W_TYPE	unsigned int
 +#define	_FP_WS_TYPE	signed int
-+#define	_FP_I_TYPE	int
++#define	_FP_I_TYPE	long
++
++#define	_FP_MUL_MEAT_S(R,X,Y) _FP_MUL_MEAT_1_wide(_FP_WFRACBITS_S,R,X,Y,umul_ppmm)
++#define	_FP_MUL_MEAT_D(R,X,Y) _FP_MUL_MEAT_2_wide(_FP_WFRACBITS_D,R,X,Y,umul_ppmm)
++
++#define	_FP_DIV_MEAT_S(R,X,Y)	_FP_DIV_MEAT_1_loop(S,R,X,Y)
++#define	_FP_DIV_MEAT_D(R,X,Y)	_FP_DIV_MEAT_2_udiv(D,R,X,Y)
++
++#define	_FP_NANFRAC_S	((_FP_QNANBIT_S<<1)-1)
++#define	_FP_NANFRAC_D	((_FP_QNANBIT_D<<1)-1), -1
 +
 +#define	_FP_QNANNEGATEDP	0
++#define	_FP_NANSIGN_S		0
++#define	_FP_NANSIGN_D		0
++#define	_FP_KEEPNANFRACP	1
 +
 +/* Someone please check this.  --- copied from one of many other places  */
 +#define _FP_CHOOSENAN(fs, wc, R, X, Y, OP)                      \
@@ -11732,10 +11894,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config/zip/sfp-machine.h gcc-6.2.0
 +#define	__BYTE_ORDER	__BIG_ENDIAN
 +#endif
 +
++#define	strong_alias(name, aliasname) _stong_alias(name, aliasname)
++#define	_strong_alias(name, aliasname)	\
++	extern __typeof(name) aliasname __attribute__ ((alias (#name)));
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config.host gcc-6.2.0-zip/libgcc/config.host
 --- gcc-6.2.0/libgcc/config.host	2016-05-17 02:15:52.000000000 -0400
-+++ gcc-6.2.0-zip/libgcc/config.host	2016-12-31 17:04:27.672487496 -0500
++++ gcc-6.2.0-zip/libgcc/config.host	2017-01-27 12:28:31.470410459 -0500
 @@ -197,6 +197,9 @@
  tic6x-*-*)
  	cpu_type=c6x
@@ -11751,12 +11916,54 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config.host gcc-6.2.0-zip/libgcc/c
  	extra_parts="crt0.o"
  	;;
 +zip*)
-+	tmake_file="$tmake_file t-softfp-sfdf t-softfp"
-+	extra_parts="crt0.o"
++	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl t-softfp"
++	# extra_parts="crt0.o"
 +	;;
  *)
  	echo "*** Configuration ${host} not supported" 1>&2
  	exit 1
+diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/configure gcc-6.2.0-zip/libgcc/configure
+--- gcc-6.2.0/libgcc/configure	2016-04-11 15:45:35.000000000 -0400
++++ gcc-6.2.0-zip/libgcc/configure	2017-01-27 15:53:43.141531475 -0500
+@@ -3805,13 +3805,13 @@
+   CFLAGS=$ac_save_CFLAGS
+ elif test $ac_cv_prog_cc_g = yes; then
+   if test "$GCC" = yes; then
+-    CFLAGS="-g -O2"
++    CFLAGS="-O3"
+   else
+     CFLAGS="-g"
+   fi
+ else
+   if test "$GCC" = yes; then
+-    CFLAGS="-O2"
++    CFLAGS="-O3"
+   else
+     CFLAGS=
+   fi
+diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/Makefile.in gcc-6.2.0-zip/libgcc/Makefile.in
+--- gcc-6.2.0/libgcc/Makefile.in	2016-02-25 07:23:52.000000000 -0500
++++ gcc-6.2.0-zip/libgcc/Makefile.in	2017-01-27 15:54:32.241240828 -0500
+@@ -229,8 +229,8 @@
+ 
+ # Options to use when compiling libgcc2.a.
+ #
+-LIBGCC2_DEBUG_CFLAGS = -g
+-LIBGCC2_CFLAGS = -O2 $(LIBGCC2_INCLUDES) $(GCC_CFLAGS) $(HOST_LIBGCC2_CFLAGS) \
++LIBGCC2_DEBUG_CFLAGS =
++LIBGCC2_CFLAGS = -O3 $(LIBGCC2_INCLUDES) $(GCC_CFLAGS) $(HOST_LIBGCC2_CFLAGS) \
+ 		 $(LIBGCC2_DEBUG_CFLAGS) -DIN_LIBGCC2 \
+ 		 -fbuilding-libgcc -fno-stack-protector \
+ 		 $(INHIBIT_LIBC_CFLAGS)
+@@ -284,7 +284,7 @@
+ 		  $(INCLUDES) @set_have_cc_tls@ @set_use_emutls@
+ 
+ # Options to use when compiling crtbegin/end.
+-CRTSTUFF_CFLAGS = -O2 $(GCC_CFLAGS) $(INCLUDES) $(MULTILIB_CFLAGS) -g0 \
++CRTSTUFF_CFLAGS = -O3 $(GCC_CFLAGS) $(INCLUDES) $(MULTILIB_CFLAGS) -g0 \
+   $(NO_PIE_CFLAGS) -finhibit-size-directive -fno-inline -fno-exceptions \
+   -fno-zero-initialized-in-bss -fno-toplevel-reorder -fno-tree-vectorize \
+   -fbuilding-libgcc -fno-stack-protector $(FORCE_EXPLICIT_EH_REGISTRY) \
 diff -Naur '--exclude=*.swp' gcc-6.2.0/libgomp/configure.tgt gcc-6.2.0-zip/libgomp/configure.tgt
 --- gcc-6.2.0/libgomp/configure.tgt	2015-09-03 12:20:35.000000000 -0400
 +++ gcc-6.2.0-zip/libgomp/configure.tgt	2016-12-31 17:06:26.795473062 -0500

@@ -193,7 +193,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
 --- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-01-25 15:58:13.514597060 -0500
++++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-02-02 16:33:36.882890943 -0500
 @@ -0,0 +1,133 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -294,21 +294,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +	BASICIO	b_io;
 +	int	_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
 +	SCOPE	b_s[2];
-+	int	_SKIP_TO_UART[	(0x080-0x40-2*sizeof(SCOPE))];
++	// int	_SKIP_TO_UART[	(0x050-0x40-2*sizeof(SCOPE))];
 +	WBUART	b_uart;
-+	int	_SKIP_TO_RTC[	(0x0c0-0x80-sizeof(WBUART))];
++	// int	_SKIP_TO_RTC[	(0x060-0x50-sizeof(WBUART))];
 +	RTCLIGHT	b_rtc;
-+	int	_SKIP_TO_FLCTL[	(0x100-0x0c0-sizeof(RTCLIGHT))];
++	// int	_SKIP_TO_FLCTL[	(0x070-0x060-sizeof(RTCLIGHT))];
 +	FLASHCONTROL	b_flash;
-+	int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
++	//int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
 +	SDCARD	b_sd;
 +} ZIPBASICBOARD;
 +
 +static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
 +#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x140;
++static	volatile WBUART		*const _uart   = (WBUART *)0x150;
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x1a00;
++static	volatile SDCARD		*const _sdcard = (SDCARD *)0x180;
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
@@ -330,7 +330,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-01-25 15:58:13.514597060 -0500
++++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-02-02 16:33:36.882890943 -0500
 @@ -0,0 +1,133 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -431,21 +431,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +	BASICIO	b_io;
 +	int	_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
 +	SCOPE	b_s[2];
-+	int	_SKIP_TO_UART[	(0x080-0x40-2*sizeof(SCOPE))];
++	// int	_SKIP_TO_UART[	(0x050-0x40-2*sizeof(SCOPE))];
 +	WBUART	b_uart;
-+	int	_SKIP_TO_RTC[	(0x0c0-0x80-sizeof(WBUART))];
++	// int	_SKIP_TO_RTC[	(0x060-0x50-sizeof(WBUART))];
 +	RTCLIGHT	b_rtc;
-+	int	_SKIP_TO_FLCTL[	(0x100-0x0c0-sizeof(RTCLIGHT))];
++	// int	_SKIP_TO_FLCTL[	(0x070-0x060-sizeof(RTCLIGHT))];
 +	FLASHCONTROL	b_flash;
-+	int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
++	//int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
 +	SDCARD	b_sd;
 +} ZIPBASICBOARD;
 +
 +static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
 +#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x140;
++static	volatile WBUART		*const _uart   = (WBUART *)0x150;
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x1a00;
++static	volatile SDCARD		*const _sdcard = (SDCARD *)0x180;
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
@@ -4617,7 +4617,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-25 10:43:40.814187756 -0500
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-27 08:59:28.240660156 -0500
 @@ -0,0 +1,282 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -4774,7 +4774,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	"\tLDI\t_top_of_stack,SP"	"\t; Set up our supervisor stack ptr\n"
 +	"\tOR\t0x4000,CC"		"\t; Clear the data cache\n"
 +#endif
-+#ifdef	USING_CPLUSPLUS
++#ifdef	__USE_INIT_FINIT
 +	"\tJSR\tinit"		"\t; Initialize any constructor code\n"
 +	//
 +	"\tLDI\tfini,R1"	"\t; \n"
@@ -5019,7 +5019,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-01-26 12:04:37.175130244 -0500
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-02-02 22:16:34.930823309 -0500
 @@ -0,0 +1,228 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
