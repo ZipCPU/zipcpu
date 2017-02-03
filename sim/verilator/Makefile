@@ -110,7 +110,7 @@
 all: zippy_tb pdump div_tb mpy_tb
 
 CXX	:= g++
-FLAGS	:= -Wall -Og -g
+CFLAGS	:= -Wall -Og -g
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
@@ -129,30 +129,30 @@ TESTF	:= $(ZASM)/z.out
 DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
 
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
-	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
 
 $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
-	$(CXX) $(FLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
 
 zippy_tb: $(ZOBJS) $(VLOBJS) $(RAWLIB)
 zippy_tb: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h $(RTLD)/cpudefs.h
-	$(CXX) $(FLAGS) $(INCS) $(ZOBJS) $(VLOBJS) $(LIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(ZOBJS) $(VLOBJS) $(LIBS) -o $@
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a testb.h
-	$(CXX) $(FLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a -o $@
 
 mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a testb.h
-	$(CXX) $(FLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a -o $@
 
 zipmmu_tb: zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a
-	$(CXX) $(FLAGS) $(INCS) -I ../rtl/obj_dir zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(INCS) -I ../rtl/obj_dir zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a -o $@
 
 pdump: pdump.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp 
 pdump: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h twoc.cpp
-	$(CXX) $(FLAGS) $(INCS) pdump.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp twoc.cpp -lelf -o $@
+	$(CXX) $(CFLAGS) $(INCS) pdump.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp twoc.cpp -lelf -o $@
 
 .PHONY: stest
 stest: zippy_tb
@@ -173,6 +173,7 @@ dhrystone: zippy_tb
 define	build-depends
 	@$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(ZSOURCES) > $(OBJDIR)/xdepends.txt
 	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
+	@rm $(OBJDIR)/xdepends.txt
 endef
 
 tags: $(VLIB) $(ZSOURCES)
