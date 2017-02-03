@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	idecode.v
 //
@@ -17,7 +17,7 @@
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
@@ -31,14 +31,20 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 //
+// You should have received a copy of the GNU General Public License along
+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// target there if the PDF file isn't present.)  If not, see
+// <http://www.gnu.org/licenses/> for a copy.
+//
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 //
 //
+`define	CPU_SP_REG	4'hd
 `define	CPU_CC_REG	4'he
 `define	CPU_PC_REG	4'hf
 //
@@ -56,7 +62,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		o_op, o_ALU, o_M, o_DV, o_FP, o_break, o_lock,
 		o_wR, o_rA, o_rB,
 		o_early_branch, o_branch_pc, o_ljmp,
-		o_pipe
+		o_pipe,
+		o_sim, o_sim_immv
 		);
 	parameter	ADDRESS_WIDTH=24, IMPLEMENT_MPY=1, EARLY_BRANCHING=1,
 			IMPLEMENT_DIVIDE=1, IMPLEMENT_FPU=0, AW = ADDRESS_WIDTH;
@@ -82,6 +89,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	output	wire	[(AW-1):0]	o_branch_pc;
 	output	wire		o_ljmp;
 	output	wire		o_pipe;
+	output	reg		o_sim		/* verilator public_flat */;
+	output	reg	[22:0]	o_sim_immv	/* verilator public_flat */;
 
 	wire	dcdA_stall, dcdB_stall, dcdF_stall;
 	wire			o_dcd_early_branch;
@@ -128,8 +137,24 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		assign	w_ljmp = 1'b0;
 	endgenerate
 
-	reg	[4:0]	w_cis_op;
 `ifdef	OPT_CIS
+`ifdef	VERILATOR
+	wire	[4:0]	w_cis_op;
+	always @(iword)
+		if (!iword[31])
+			w_cis_op = w_op;
+		else case(iword[26:24])
+		3'h0: w_cis_op = 5'h00;
+		3'h1: w_cis_op = 5'h01;
+		3'h2: w_cis_op = 5'h02;
+		3'h3: w_cis_op = 5'h10;
+		3'h4: w_cis_op = 5'h12;
+		3'h5: w_cis_op = 5'h13;
+		3'h6: w_cis_op = 5'h18;
+		3'h7: w_cis_op = 5'h0d;
+		endcase
+`else
+	reg	[4:0]	w_cis_op;
 	always @(iword)
 		if (!iword[31])
 			w_cis_op <= w_op;
@@ -143,6 +168,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		3'h6: w_cis_op <= 5'h18;
 		3'h7: w_cis_op <= 5'h0d;
 		endcase
+`endif
 `else
 	always @(iword)
 		w_cis_op <= w_op;
@@ -173,7 +199,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
-	assign	w_noop   = (!iword[31])&&(w_op[4:0] == 5'h1f)&&(
+	assign	w_noop   = (!iword[31])&&(w_cis_op[4:0] == 5'h1f)&&(
 			((IMPLEMENT_FPU>0)&&(w_dcdR[3:1] == 3'h7))
 			||(IMPLEMENT_FPU==0));
 
@@ -182,7 +208,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign w_dcdB[4] = ((!iword[31])&&(w_mov)&&(~i_gie))?iword[13]:i_gie;
 	assign w_dcdB[3:0]= (iword[31])
 				? (((!iword[23])&&(iword[26:25]==2'b10))
-					? 4'hc : iword[22:19])
+					? `CPU_SP_REG : iword[22:19])
 				: iword[17:14];
 
 	// 0 LUTs
@@ -194,8 +220,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign	w_dcdA_pc = w_dcdR_pc;
 	assign	w_dcdA_cc = w_dcdR_cc;
 	// 2 LUTs, 1 delays each
-	assign	w_dcdB_pc = (w_dcdB[3:0] == `CPU_PC_REG);
-	assign	w_dcdB_cc = (w_dcdB[3:0] == `CPU_CC_REG);
+	assign	w_dcdB_pc = (w_rB)&&(w_dcdB[3:0] == `CPU_PC_REG);
+	assign	w_dcdB_cc = (w_rB)&&(w_dcdB[3:0] == `CPU_CC_REG);
 
 	// Under what condition will we execute this
 	// instruction?  Only the load immediate instruction
@@ -210,14 +236,14 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign	w_sto     = (w_mem)&&( w_cis_op[0]);
 	assign	w_lod     = (w_mem)&&(!w_cis_op[0]);
 	// 1 LUT
-	assign	w_div     = (!iword[31])&&(w_op[4:1] == 4'h7);
+	assign	w_div     = (!iword[31])&&(w_cis_op[4:1] == 4'h7);
 	// 2 LUTs
-	assign	w_fpu   = (!iword[31])&&(w_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
+	assign	w_fpu   = (!iword[31])&&(w_cis_op[4:3] == 2'b11)
+				&&(w_dcdR[3:1] != 3'h7)&&(w_cis_op[2:1] != 2'b00);
 	//
 	// rA - do we need to read register A?
 	assign	w_rA = // Floating point reads reg A
-			((w_fpu)&&(w_op[4:1] != 4'hf))
+			((w_fpu)&&(w_cis_op[4:1] != 4'hf))
 			// Divide's read A
 			||(w_div)
 			// ALU read's A, unless it's a MOV to A
@@ -228,16 +254,19 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			// Test/compares
 			||(w_cmptst);
 	// rB -- do we read a register for operand B?  Specifically, do we
-	// need to stall if the register is not (yet) ready?
+	// add the registers value to the immediate to create opB?
 	assign	w_rB     = (w_mov)
-				||((!iword[31])&&(iword[18])&&(~w_ldi))
-				||(( iword[31])&&(iword[23])&&(~w_ldi));
+				||((!iword[31])&&(iword[18])&&(!w_ldi))
+				||(( iword[31])&&(iword[23])&&(!w_ldi))
+				// If using compressed instruction sets,
+				// we *always* read on memory operands.
+				||(( iword[31])&&(w_mem));
 	// wR -- will we be writing our result back?
 	// wR_n = !wR
 	// 1 LUT: All but STO, NOOP/BREAK/LOCK, and CMP/TST write back to w_dcdR
 	assign	w_wR_n   = (w_sto)
-				||((!iword[31])&&(w_op[4:3]==2'b11)
-					&&(w_op[2:1]!=2'b00)
+				||((!iword[31])&&(w_cis_op[4:3]==2'b11)
+					&&(w_cis_op[2:1]!=2'b00)
 					&&(w_dcdR[3:1]==3'h7))
 				||(w_cmptst);
 	assign	w_wR     = ~w_wR_n;
@@ -297,7 +326,10 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			||(o_early_branch)||(w_ljmp_dly))
 			r_phase <= 1'b0;
 		else if ((i_ce)&&(i_pf_valid))
-			r_phase <= (o_phase)? 1'b0:(i_instruction[31]);
+			r_phase <= (o_phase)? 1'b0
+				: ((i_instruction[31])&&(i_pf_valid));
+		else if (i_ce)
+			r_phase <= 1'b0;
 	// Phase is '1' on the first instruction of a two-part set
 	// But, due to the delay in processing, it's '1' when our output is
 	// valid for that first part, but that'll be the same time we
@@ -321,7 +353,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 `else
 			o_illegal <= ((i_illegal) || (i_instruction[31]));
 `endif
-			if ((IMPLEMENT_MPY==0)&&((w_op[4:1]==4'h5)||(w_op[4:0]==5'h0c)))
+			if ((IMPLEMENT_MPY==0)&&((w_cis_op[4:1]==4'h5)||(w_cis_op[4:0]==5'h0c)))
 				o_illegal <= 1'b1;
 
 			if ((IMPLEMENT_DIVIDE==0)&&(w_div))
@@ -333,15 +365,15 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			if ((IMPLEMENT_FPU==0)&&(w_fpu))
 				o_illegal <= 1'b1;
 
-			if ((w_op[4:3]==2'b11)&&(w_op[2:1]!=2'b00)
+			if ((w_cis_op[4:3]==2'b11)&&(w_cis_op[2:1]!=2'b00)
 				&&(w_dcdR[3:1]==3'h7)
 				&&(
-					(w_op[2:0] != 3'h4)	// BREAK
+					(w_cis_op[2:0] != 3'h4)	// BREAK
 `ifdef	OPT_PIPELINED
-					&&(w_op[2:0] != 3'h5)	// LOCK
+					&&(w_cis_op[2:0] != 3'h5)	// LOCK
 `endif
 					// SIM instructions are always illegal
-					&&(w_op[2:0] != 3'h7)))	// NOOP
+					&&(w_cis_op[2:0] != 3'h7)))	// NOOP
 				o_illegal <= 1'b1;
 		end
 
@@ -381,7 +413,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			// o_FP plus these four bits uniquely defines the FP
 			// instruction, o_DV plus the bottom of these defines
 			// the divide, etc.
-			o_op <= (w_ldi)||(w_noop)? 4'hd:w_op[3:0];
+			o_op <= ((w_ldi)||(w_noop))? 4'hd : w_cis_op[3:0];
 
 			// Default values
 			o_dcdR <= { w_dcdR_cc, w_dcdR_pc, w_dcdR};
@@ -403,17 +435,26 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			o_DV   <=  w_div;
 			o_FP   <=  w_fpu;
 
-			o_break <= (w_op[4:0]==5'b11001)&&(
+			o_break <= (!iword[31])&&(w_op[4:0]==5'h1c)&&(
 				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
 				||(IMPLEMENT_FPU==0));
 `ifdef	OPT_PIPELINED
-			r_lock  <= (w_op[4:0]==5'b11010)&&(
+			r_lock  <= (!iword[31])&&(w_op[4:0]==5'h1d)&&(
 				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
 				||(IMPLEMENT_FPU==0));
 `endif
 `ifdef	OPT_CIS
 			r_nxt_half <= { iword[31], iword[14:0] };
 `endif
+
+`ifdef	VERILATOR
+			// Support the SIM instruction(s)
+			o_sim <= (!iword[31])&&(w_op[4:1] == 4'hf)
+				&&(w_dcdR[3:1] == 3'h7);
+`else
+			o_sim <= 1'b0;
+`endif
+			o_sim_immv <= iword[22:0];
 		end
 
 `ifdef	OPT_PIPELINED
@@ -444,9 +485,10 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			if (r_ljmp)
 				// LOD (PC),PC
 				r_early_branch <= 1'b1;
-			else if ((~iword[31])&&(iword[30:27]==`CPU_PC_REG)&&(w_cond[3]))
+			else if ((!iword[31])&&(iword[30:27]==`CPU_PC_REG)
+					&&(w_cond[3]))
 			begin
-				if ((w_op[4:0]==5'h02)&&(~iword[18]))
+				if ((w_op[4:0]==5'h02)&&(!iword[18]))
 					// Add x,PC
 					r_early_branch     <= 1'b1;
 				else
@@ -493,26 +535,26 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	initial	r_pipe = 1'b0;
 	always @(posedge i_clk)
 		if (i_ce)
-			r_pipe <= (r_valid)&&(i_pf_valid)&&(~i_instruction[31])
+			r_pipe <= (r_valid)&&((i_pf_valid)||(o_phase))
 				// Both must be memory operations
 				&&(w_mem)&&(o_M)
 				// Both must be writes, or both stores
-				&&(o_op[0] ==i_instruction[22])
+				&&(o_op[0] == w_cis_op[0])
 				// Both must be register ops
-				&&(i_instruction[18])
+				&&(w_rB)
 				// Both must use the same register for B
-				&&(i_instruction[17:14] == o_dcdB[3:0])
+				&&(w_dcdB[3:0] == o_dcdB[3:0])
 				// But ... the result can never be B
 				&&((o_op[0])
-					||(i_instruction[17:14] != o_dcdA[3:0]))
+					||(w_dcdB[3:0] != o_dcdA[3:0]))
 				// Needs to be to the mode, supervisor or user
 				&&(i_gie == o_gie)
 				// Same condition, or no condition before
 				&&((i_instruction[21:19]==o_cond[2:0])
 					||(o_cond[2:0] == 3'h0))
 				// Same immediate
-				&&((i_instruction[13:2]==r_I[13:2])
-					||({1'b0, i_instruction[13:2]}==(r_I[13:2]+12'h1)));
+				&&((w_I[13:2]==r_I[13:2])
+					||({1'b0, w_I[13:2]}==(r_I[13:2]+12'h1)));
 	assign o_pipe = r_pipe;
 `else
 	assign o_pipe = 1'b0;

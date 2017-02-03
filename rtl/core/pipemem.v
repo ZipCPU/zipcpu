@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	pipemem.v
 //
@@ -15,7 +15,7 @@
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
-///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
@@ -29,11 +29,16 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 //
+// You should have received a copy of the GNU General Public License along
+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// target there if the PDF file isn't present.)  If not, see
+// <http://www.gnu.org/licenses/> for a copy.
+//
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
-///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 //
 module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
@@ -140,19 +145,19 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 			// o_wb_we <= i_op
 		end
 	always @(posedge i_clk)
-		if(!i_wb_stall)
+		if ((!cyc)||(!i_wb_stall))
 		begin
 			o_wb_addr <= i_addr[(AW+1):2];
-			if (i_op[0]) // Always select everything on reads
-				o_wb_sel <= 4'b1111;
+			if (!i_op[0]) // Always select everything on reads
+				o_wb_sel <= 4'b1111;	// Op is even
 			else casez({ i_op[2:1], i_addr[1:0] })
-				4'b100?: o_wb_sel <= 4'b1100;
-				4'b101?: o_wb_sel <= 4'b0011;
-				4'b1100: o_wb_sel <= 4'b1000;
-				4'b1101: o_wb_sel <= 4'b0100;
-				4'b1110: o_wb_sel <= 4'b0010;
-				4'b1111: o_wb_sel <= 4'b0001;
-				default: o_wb_sel <= 4'b1111;
+				4'b100?: o_wb_sel <= 4'b1100;	// Op = 5
+				4'b101?: o_wb_sel <= 4'b0011;	// Op = 5
+				4'b1100: o_wb_sel <= 4'b1000;	// Op = 5
+				4'b1101: o_wb_sel <= 4'b0100;	// Op = 7
+				4'b1110: o_wb_sel <= 4'b0010;	// Op = 7
+				4'b1111: o_wb_sel <= 4'b0001;	// Op = 7
+				default: o_wb_sel <= 4'b1111;	// Op = 7
 			endcase
 
 			casez({ i_op[2:1], i_addr[1:0] })
