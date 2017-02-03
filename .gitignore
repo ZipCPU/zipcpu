@@ -5,3 +5,12 @@ obj-pc
 obj-zip/*
 obj-zip
 .*.swp
+.swp
+*.o
+*.vcd
+.gitignore
+tags
+tmp
+a.out
+nlib-debug.txt
+map.txt
