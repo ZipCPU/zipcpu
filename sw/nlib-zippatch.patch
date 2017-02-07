@@ -5629,6 +5629,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    *)
  	newlib_cflags="${newlib_cflags} -DMISSING_SYSCALL_NAMES"
  	syscall_dir=
+diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/include/machine/setjmp.h newlib-2.5.0-zip/newlib/libc/include/machine/setjmp.h
+--- newlib-2.5.0/newlib/libc/include/machine/setjmp.h	2016-12-22 21:33:54.000000000 -0500
++++ newlib-2.5.0-zip/newlib/libc/include/machine/setjmp.h	2017-02-06 17:42:10.748982467 -0500
+@@ -349,6 +349,11 @@
+ #define _JBTYPE unsigned long
+ #endif
+ 
++#ifdef __ZIPCPU__
++#define _JBLEN 10
++#define _JBTYPE unsigned int
++#endif
++
+ #ifdef __RX__
+ #define _JBLEN 0x44
+ #endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/include/sys/config.h newlib-2.5.0-zip/newlib/libc/include/sys/config.h
 --- newlib-2.5.0/newlib/libc/include/sys/config.h	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/newlib/libc/include/sys/config.h	2017-01-12 14:45:33.624732766 -0500
@@ -10976,8 +10991,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.h newli
 +#endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S
 --- newlib-2.5.0/newlib/libc/machine/zip/setjmp.S	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S	2017-01-13 09:42:01.490140905 -0500
-@@ -0,0 +1,76 @@
++++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S	2017-02-06 17:40:50.561372408 -0500
+@@ -0,0 +1,68 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	setjmp.S
@@ -11011,47 +11026,39 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newli
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +//
-+.align  4
-+.global setjmp
-+.type   setjmp,@function
++	.text
++	.align  4
++	.global setjmp
++	.type   setjmp,@function
 +setjmp:
 +	SW	r0,(r1)
-+	SW	r2,4(r1)
-+	SW	r3,8(r1)
-+	SW	r4,12(r1)
-+	SW	r5,16(r1)
-+	SW	r6,20(r1)
-+	SW	r7,24(r1)
-+	SW	r8,28(r1)
-+	SW	r9,32(r1)
-+	SW	r10,36(r1)
-+	SW	r11,40(r1)
-+	SW	r12,44(r1)
-+	SW	cc,48(r1)
-+	SW	sp,52(r1)
++	SW	r5,4(r1)
++	SW	r6,8(r1)
++	SW	r7,12(r1)
++	SW	r8,16(r1)
++	SW	r9,20(r1)
++	SW	r10,24(r1)
++	SW	r11,28(r1)
++	SW	r12,32(r1)
++	SW	sp,36(r1)
 +	CLR	R1
 +	RETN
 +
 +
-+.align  4
-+.global longjmp
-+.type   longjmp,@function
++	.align  4
++	.global longjmp
++	.type   longjmp,@function
 +longjmp:
-+	MOV	r1,sp	// If we use SP, the following can be done in thumb
-+	LW	(sp),r0
-+	LW	4(sp),r2
-+	LW	8(sp),r3
-+	LW	12(sp),r4
-+	LW	16(sp),r5
-+	LW	20(sp),r6
-+	LW	24(sp),r7
-+	LW	28(sp),r8
-+	LW	32(sp),r9
-+	LW	36(sp),r10
-+	LW	40(sp),r11
-+	LW	44(sp),r12
-+	LW	48(sp),cc
-+	LW	52(sp),sp
++	LW	(r1),r0
++	LW	4(r1),r5
++	LW	8(r1),r6
++	LW	12(r1),r7
++	LW	16(r1),r8
++	LW	20(r1),r9
++	LW	24(r1),r10
++	LW	28(r1),r11
++	LW	32(r1),r12
++	LW	36(r1),sp
 +	LDI	1,R1
 +	RETN
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c
