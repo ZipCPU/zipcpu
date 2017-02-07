@@ -1032,7 +1032,7 @@ int main(int argc, char **argv) {
 	bus = new SIMBUS();
 	// BUSITEM net = new NETDEV();
 
-	bus->add(new UARTDEV(),  0x00000140, 0xfffffff0, "RW", "UART");// 4 words
+	bus->add(new UARTDEV(),  0x00000150, 0xfffffff0, "RW", "UART");// 4 words
 	// bus->add(new SDCDEV(12), 0x00000420, 0xfffffff0, "RW");// 4 words
 	// bus->add(net->ctrl,   0x00000440, 0xffffffe0, "RW");// 8 words
 	// bus->add(net->data,   0x00002000, 0xffffe000, "R"); // 8 words
