@@ -129,7 +129,7 @@ $(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch
 	rm -rf $(BUILDGCCD)
 	touch $(GCCD)-zip/nonce.txt
 
-$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt
+$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt gas-install
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
 	touch $(BUILDGCCD)/nonce.txt
 
