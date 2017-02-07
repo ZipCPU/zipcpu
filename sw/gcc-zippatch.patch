@@ -18,18 +18,53 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/config.sub gcc-6.2.0-zip/config.sub
  	# because (1) that's what they normally are, and
 diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
 --- gcc-6.2.0/configure	2016-03-17 18:54:19.000000000 -0400
-+++ gcc-6.2.0-zip/configure	2017-01-27 15:56:45.388452663 -0500
-@@ -3548,6 +3548,9 @@
++++ gcc-6.2.0-zip/configure	2017-02-06 21:54:22.244807700 -0500
+@@ -3548,6 +3548,44 @@
    ft32-*-*)
      noconfigdirs="$noconfigdirs ${libgcj}"
      ;;
 +  zip*)
 +    noconfigdirs="$noconfigdirs ${libgcj}"
++    noconfigdirs="$noconfigdirs target-boehm-gc"
++    noconfigdirs="$noconfigdirs target-libgfortran"
++    # noconfigdirs="$noconfigdirs target-libsanitizer"
++    # noconfigdirs="$noconfigdirs target-libada"
++    # noconfigdirs="$noconfigdirs target-libatomic"
++    # noconfigdirs="$noconfigdirs target-libcilkrts"
++    # noconfigdirs="$noconfigdirs target-libitm"
++    # noconfigdirs="$noconfigdirs target-libquadmath"
++    # noconfigdirs="$noconfigdirs target-libstdc++-v3"
++    # noconfigdirs="$noconfigdirs target-libssp"
++    # noconfigdirs="$noconfigdirs target-libgo"
++    # noconfigdirs="$noconfigdirs target-libgomp"
++    # noconfigdirs="$noconfigdirs target-libvtv"
++    # noconfigdirs="$noconfigdirs target-libobjc"
++	# target-libgcc
++	#	target-liboffloadmic
++	#	target-libmpx	# Only gets enabled by request
++	#	target-libbacktrace
++	#	${libgcj}
++	#	target-boehm-gc
++	#	target-libada
++	#	target-libatomic
++	#	target-libcilkrts
++	#	target-libgfortran
++	#	target-libgo
++	#	target-libgomp
++	#	target-libitm
++	#	target-libobjc
++	#	target-libquadmath
++	#	target-libsanitizer
++	#	target-libstdc++-v3
++	#	target-libssp
++	#	target-libvtv
++	# target-libgloss
++	# target-newlib
 +    ;;
    *-*-lynxos*)
      noconfigdirs="$noconfigdirs ${libgcj}"
      ;;
-@@ -3575,6 +3578,9 @@
+@@ -3575,6 +3613,9 @@
      *-*-aix*)
  	noconfigdirs="$noconfigdirs target-libgo"
  	;;
@@ -39,7 +74,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
      esac
  fi
  
-@@ -3971,6 +3977,9 @@
+@@ -3971,6 +4012,9 @@
    vax-*-*)
      noconfigdirs="$noconfigdirs target-newlib target-libgloss"
      ;;
@@ -49,7 +84,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
-@@ -6785,16 +6794,16 @@
+@@ -6785,16 +6829,16 @@
  # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
  if test "x$CFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
@@ -70,7 +105,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure gcc-6.2.0-zip/configure
      esac
    fi
  fi
-@@ -6802,16 +6811,16 @@
+@@ -6802,16 +6846,16 @@
  
  if test "x$CXXFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
@@ -267,8 +302,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-03 09:25:40.524425340 -0500
-@@ -0,0 +1,2516 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-06 18:45:11.663109265 -0500
+@@ -0,0 +1,2513 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -2238,10 +2273,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +void
 +zip_asm_output_def(FILE *stream, const char *name, const char *value)
 +{
-+	assemble_name(stream, name);
-+	fprintf(stream, "\t.equ ");
-+	assemble_name(stream, value);
-+	fputc('\n', stream);
++	fprintf(stream, "\t.equ %s, %s\n", name, value);
 +}
 +
 +#define	USE_SUBREG
@@ -3490,8 +3522,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/config/zip/zip.h
 --- gcc-6.2.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-01-27 22:26:17.286102624 -0500
-@@ -0,0 +1,4073 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-02-06 21:42:57.906185780 -0500
+@@ -0,0 +1,4085 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -3667,10 +3699,17 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + *
 + * If this macro is not defined, a default is provided that loads the standard
 + * C library from the usual place.  See 'gcc.c'.
++ *
++ * ZipCPU ... We need this at its default value.  It is necessary to build
++ * the various GCC libraries that depend upon one another and newlib.  Hence,
++ * as an example we *must* include the library containing strnlen or libgfortran
++ * will not.  Alternatively, we might figure out how to pass arguments to the
++ * compiler via the configure process ... but we'll just allow this to have its
++ * default value for now.
 + */
-+#undef	LIB_SPEC
++// #undef	LIB_SPEC
 +// #define	LIB_SPEC	"%{!g:-lc} %{g:-lg} -lzip"
-+#define	LIB_SPEC	""
++// #define	LIB_SPEC	""
 +
 +/* LIBGCC_SPEC ... Another C string constant that tells the GCC driver program
 + * hoow and when to place a reference to 'libgcc.a' into the linker command
@@ -4954,8 +4993,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + *
 + * You must define this macro if you want to support call frame exception 
 + * handling like that provided by DWARF 2.
++ *
++ * ZipCPU -- We copy much of our definition from Moxie.
 + */
-+#define	EH_RETURN_DATA_REGNO(N)	(((N<ZIP_FIRST_ARG_REGNO)||(N>ZIP_LAST_ARG_REGNO))?(N-1):INVALID_REGNUM)
++#define	EH_RETURN_DATA_REGNO(N)	((N<3)?(N+ZIP_FIRST_ARG_REGNO):INVALID_REGNUM)
 +
 +/* EH_RETURN_STACKADJ_RTX ... A C expression whose value is RTL representing
 + * a location in which to store a stack adjustment to be applied before function
@@ -4984,8 +5025,11 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + *
 + * If you want to support call frame exception handling, you must define either
 + * this macro or the eh_return instruction pattern.
++ *
++ * ZipCPU --- We again copy from Moxie
 + */
-+// #warning "I don't know what to do here."
++#define	EH_RETURN_HANDLER_RTX	\
++	gen_frame_mem(Pmode, plus_constant(Pmode, frame_pointer_rtx, UNITS_PER_WORD))
 +
 +/*
 + *
@@ -11040,8 +11084,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-6.2.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2017-01-26 09:43:03.328142057 -0500
-@@ -0,0 +1,310 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2017-02-06 17:15:16.132599010 -0500
+@@ -0,0 +1,562 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-sync.md
@@ -11089,55 +11133,104 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +;
 +; First, the basic atomic_ operators, add, sub, ior, and, and xor
 +;
-+(define_insn "atomic_addsi"
++(define_expand "atomic_addsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
 +		(plus:SI (match_dup 0)
 +			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(const (match_operand 2 "" ""))		; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(match_operand 2 "" "")			; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tADD %1,%3\n\tSW %3,%0"
++	{
++		emit_insn(gen_reissue_atomic_addsi(operands[0],
++			operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_addsi"
++	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"LOCK\n\tLW %0,%2\n\tADD %1,%2\n\tSW %2,%0"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_subsi"
++(define_expand "atomic_subsi"
++	[(match_operand:SI 0 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
++	(match_operand 2 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_subsi(operands[0],
++			operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_subsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
 +		(minus:SI (match_dup 0)
 +			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(const (match_operand 2 "" ""))		; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tSUB %1,%3\n\tSW %3,%0"
++	"LOCK\n\tLW %0,%2\n\tSUB %1,%2\n\tSW %2,%0"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_iorsi"
++(define_expand "atomic_iorsi"
++	[(match_operand:SI 0 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
++	(match_operand 2 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_iorsi(operands[0],
++			operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_iorsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
 +		(ior:SI (match_dup 0)
 +			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(const (match_operand 2 "" ""))		; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tOR %1,%3\n\tSW %3,%0"
++	"LOCK\n\tLW %0,%2\n\tOR %1,%2\n\tSW %2,%0"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_andsi"
++(define_expand "atomic_andsi"
++	[(match_operand:SI 0 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
++	(match_operand 2 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_andsi(operands[0], operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_andsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
 +		(and:SI (match_dup 0)
 +			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(const (match_operand 2 "" ""))		; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tAND %1,%3\n\tSW %3,%0"
++	"LOCK\n\tLW %0,%2\n\tAND %1,%2\n\tSW %2,%0"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_xorsi"
++(define_expand "atomic_xorsi"
++	[(match_operand:SI 0 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
++	(match_operand 2 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_xorsi(operands[0], operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_xorsi"
 +	[(set (match_operand:SI 0 "zip_memory_operand_p" "+Q")
 +		(xor:SI (match_dup 0)
 +			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(const (match_operand 2 "" ""))		; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tXOR %1,%3\n\tSW %3,%0"
++	"LOCK\n\tLW %0,%2\n\tXOR %1,%2\n\tSW %2,%0"
 +	[(set_attr "predicable" "no")])
 +;
 +;
@@ -11146,33 +11239,102 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +; Hence, we just expand these operators so that they can be used by the other
 +; already existent LOD/STO RTL operators.
 +;
-+(define_expand "atomic_loadsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(match_operand:SI 1 "zip_memory_operand_p" "Q"))])
-+(define_expand "atomic_storesi"
-+	[(set (match_operand:DI 0 "zip_memory_operand_p" "=Q")
-+		(match_operand:DI 1 "register_operand" "r"))])
-+(define_insn "atomic_loaddi"
++(define_expand "atomic_load<mode>"
++	[(set (match_operand:ZI 0 "register_operand" "=r")
++		(match_operand:ZI 1 "zip_memory_operand_p" "Q"))
++	(match_operand 2 "" "")]
++	""
++	{
++		switch(GET_MODE(operands[0])) {
++		case	QImode:
++			emit_insn(gen_movqi(operands[0], operands[1]));
++			DONE;
++			break;
++		case	HImode:
++			emit_insn(gen_movhi(operands[0], operands[1]));
++			DONE;
++			break;
++		case	SImode:
++			emit_insn(gen_movsi(operands[0], operands[1]));
++			DONE;
++			break;
++		default:
++			break;
++		} FAIL;
++	})
++(define_expand "atomic_store<mode>"
++	[(set (match_operand:ZI 0 "zip_memory_operand_p" "=Q")
++		(match_operand:ZI 1 "register_operand" "r"))
++	(match_operand 2 "" "")]
++	""
++	{
++		switch(GET_MODE(operands[0])) {
++		case	QImode:
++			emit_insn(gen_movqi(operands[0], operands[1]));
++			DONE;
++			break;
++		case	HImode:
++			emit_insn(gen_movhi(operands[0], operands[1]));
++			DONE;
++			break;
++		case	SImode:
++			emit_insn(gen_movsi(operands[0], operands[1]));
++			DONE;
++			break;
++		default:
++			break;
++		} FAIL;
++	})
++(define_expand "atomic_loaddi"
++	[(match_operand:DI 0 "register_operand" "=r")
++	(match_operand:DI 1 "zip_memory_operand_p" "Q")
++	(match_operand 2 "" "")]
++	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_loaddi(operands[0], operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_loaddi"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(match_operand:DI 1 "zip_memory_operand_p" "Q"))]
-+	"(ZIP_HAS_DI)"
++	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%H0\n\tLW 1+%1,%L0\t; atomic_loaddi"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+(define_insn "atomic_storedi"
++(define_expand "atomic_storedi"
++	[(match_operand:DI 0 "zip_memory_operand_p" "=Q")
++	(match_operand:DI 1 "register_operand" "r")
++	(match_operand 2 "" "")]
++	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_storedi(operands[0], operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_storedi"
 +	[(set (match_operand:DI 0 "zip_memory_operand_p" "=Q")
 +		(match_operand:DI 1 "register_operand" "r"))]
-+	"(ZIP_HAS_DI)"
++	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
 +	"LOCK\n\tSW %H0,%1\n\tSW %L0,1+%1\t; atomic_storedi"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +;
 +;
 +;
 +;
-+(define_insn "atomic_exchangesi"
++(define_expand "atomic_exchangesi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "register_operand" "r")
++	(match_operand 3 "" "")			; Memory model used
++	]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_exchangesi(operands[0],
++			operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_exchangesi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(match_operand:SI 1 "zip_memory_operand_p" "+Q"))
 +	(set (match_dup 1) (match_operand:SI 2 "register_operand" "r"))
-+	; (match_operand 3 "" "")		; Memory model used
 +	]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tSW %2,%1"
@@ -11183,17 +11345,40 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +; Here's another set of the atomic operators, this time those that leave their
 +; result in operand zero.
 +;
-+(define_insn "atomic_add_fetchsi"
++(define_expand "atomic_add_fetchsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(match_operand 3 "" "")		;// Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_add_fetchsi(operands[0],
++			operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_add_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(plus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
 +	(set (match_dup 1) (plus:SI (match_dup 1) (match_dup 2)))
-+	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tADD %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_sub_fetchsi"
++(define_expand "atomic_sub_fetchsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(match_operand 3 "" "")
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_sub_fetchsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_sub_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(minus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
@@ -11202,7 +11387,19 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_or_fetchsi"
++(define_expand "atomic_or_fetchsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(match_operand 3 "" "")
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_or_fetchsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_or_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(ior:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
@@ -11211,7 +11408,19 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tOR %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_and_fetchsi"
++(define_expand "atomic_and_fetchsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(match_operand 3 "" "")
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_and_fetchsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_and_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(and:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
@@ -11220,7 +11429,19 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tAND %2,%0\n\tSW %0,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_xor_fetchsi"
++(define_expand "atomic_xor_fetchsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(match_operand 3 "" "")			;// Memory model
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_xor_fetchsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_xor_fetchsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(xor:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
@@ -11233,36 +11454,66 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +;
 +;
 +;
-+(define_insn "atomic_fetch_addsi"
++(define_expand "atomic_fetch_addsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +		(plus:SI (match_dup 1)
 +			(match_operand:SI 2 "register_operand" "=r")))
 +	(set (match_operand:SI 0 "register_operand" "=r")
 +		(match_dup 1))
 +	(set (match_dup 2) (plus:SI (match_dup 1) (match_dup 2)))
-+	; (match_operand 3 "" "")		; Memory model used
++	(match_operand 3 "" "")				; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_fetch_addsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_fetch_addsi"
++	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++		(plus:SI (match_dup 1)
++			(match_operand:SI 2 "register_operand" "=r")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(match_dup 1))
++	(set (match_dup 2) (plus:SI (match_dup 1) (match_dup 2)))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tADD %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
-+;(define_insn "atomic_fetch_subsi"
-+;	[(set (match_operand:SI 0 "register_operand" "=r")
-+;		(minus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
-+;			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+;	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
-+;	(clobber (reg:CC CC_REG))]
-+;	"(ZIP_ATOMIC)"
-+;
-+; HERE WE HAVE A PROBLEM ... swapping the arguments does not work for a 
-+; subtract.  It creates the SUBR (subtract reverse) instruction, which is not
-+; what the RTL names is supposed to capture.  Hence ... we cannot do this one.
-+; If we could do two ALU instructions during the LOCK, then we might make
-+; this work--but LOCK only provides for a single ALU instruction.
-+;
-+;	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1"
-+;	"LOCK\n\tLW %1,%0\n\tSUB %0,%2\n\tSW %2,%1"
-+;	[(set_attr "predicable" "no")])
-+(define_insn "atomic_fetch_orsi"
++(define_expand "atomic_fetch_subsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_fetch_subsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_fetch_subsi"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_operand:SI 1 "zip_memory_operand_p" "+Q")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
++	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	"NEG %2,%3\n\tLOCK\n\tLW %1,%0\n\tADD %0,%3\n\tSW %3,%1"
++	[(set_attr "predicable" "no")])
++(define_expand "atomic_fetch_orsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "register_operand" "=r")
++	(match_operand 3 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_fetch_orsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_fetch_orsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +		(ior:SI (match_dup 1)
 +			(match_operand:SI 2 "register_operand" "=r")))
@@ -11274,19 +11525,42 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tOR %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_fetch_andsi"
++(define_expand "atomic_fetch_andsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "register_operand" "=r")
++	(match_operand 3 "" "")				; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_fetch_andsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_fetch_andsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +		(and:SI (match_dup 1)
 +			(match_operand:SI 2 "register_operand" "=r")))
 +	(set (match_operand:SI 0 "register_operand" "=r")
 +		(match_dup 1))
 +	(set (match_dup 2) (and:SI (match_dup 1) (match_dup 2)))
-+	; (match_operand 3 "" "")		; Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tAND %0,%2\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")])
-+(define_insn "atomic_fetch_xorsi"
++(define_expand "atomic_fetch_xorsi"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:SI 1 "zip_memory_operand_p" "+Q")
++	(match_operand:SI 2 "register_operand" "=r")
++	(match_operand 3 "" "")			; Memory model used
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_fetch_xorsi(
++			operands[0], operands[1], operands[2]));
++		DONE;
++	})
++(define_insn "reissue_atomic_fetch_xorsi"
 +	[(set (match_operand:SI 1 "zip_memory_operand_p" "+Q")
 +		(xor:SI (match_dup 1)
 +			(match_operand:SI 2 "register_operand" "=r")))
@@ -11302,29 +11576,51 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +;
 +;
 +;
-+(define_insn "atomic_test_and_set"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(match_operand:SI 1 "zip_memory_operand_p" "+Q"))
-+	(set (match_dup 1)
-+		(if_then_else
-+			(eq (match_dup 1)
-+				(const_int 0))
-+			(const_int 1)
-+			(match_dup 1)))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 1) (const_int 0)))
-+	(set (match_scratch:SI 3) (const_int 1))
-+	(const (match_operand 2 "" ""))]	; Memory model used
++(define_expand "atomic_test_and_set"
++	[(match_operand:SI 0 "register_operand" "=r")
++	(match_operand:QI 1 "zip_memory_operand_p" "+Q")
++	(match_operand 2 "" "")]	; Memory model used
 +	"(ZIP_ATOMIC)"
-+	"LDI	1,%3
++	{
++		emit_insn(gen_reissue_atomic_test_and_set(
++			operands[0], operands[1]));
++		DONE;
++	})
++(define_insn "reissue_atomic_test_and_set"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(zero_extend:SI
++			(match_operand:QI 1 "zip_memory_operand_p" "+Q")))
++	(set (match_dup 1) (const_int 1))
++	(clobber (match_scratch:SI 2 "=r"))]	; Scratch register
++	"(ZIP_ATOMIC)"
++	"LDI	1,%2
 +	LOCK
-+	LW	%1,%0
-+	TST	%0
-+	SW.Z	%3,%1"
++	LB	%1,%0
++	SB	%2,%1"
 +	[(set_attr "predicable" "no")])
 +;
 +;
 +;
-+(define_insn "atomic_compare_and_swapsi"
++(define_expand "atomic_compare_and_swapsi"
++	[(match_operand:SI 0 "register_operand" "=r")	;; bool output
++	(match_operand:SI 1 "register_operand" "=r")	;; val output
++	(match_operand:SI 2 "zip_memory_operand_p" "+Q")	;; memory
++	(match_operand:SI 3 "zip_opb_single_operand_p" "rO") ;; Expected
++	(match_operand:SI 4 "register_operand" "r")	;; Desired
++	(match_operand 5 "const_int_operand" "")	; is_weak
++	(match_operand 6 "const_int_operand" "")	; mem model on success
++	(match_operand 7 "const_int_operand" "")	; mem model on failure
++	]
++	"(ZIP_ATOMIC)"
++	{
++		emit_insn(gen_reissue_atomic_compare_and_swapsi(
++			operands[0], operands[1],
++			operands[2], operands[3],
++			operands[4]));
++		DONE;
++	})
++
++(define_insn "reissue_atomic_compare_and_swapsi"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(if_then_else
 +			(eq (match_operand:SI 2 "zip_memory_operand_p" "+Q")
@@ -11341,7 +11637,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +	LOCK
 +	LW %2,%1
 +	CMP %3,%1
-+	SW.Z %4,%1
++	SW %4,%1
 +	LDI.Z 1,%0"
 +	[(set_attr "predicable" "no")])
 +;
@@ -11380,12 +11676,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config.gcc gcc-6.2.0-zip/gcc/config.g
  	exit 1
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cse.c gcc-6.2.0-zip/gcc/cse.c
 --- gcc-6.2.0/gcc/cse.c	2016-02-04 04:56:13.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/cse.c	2016-12-31 16:41:58.078280698 -0500
-@@ -42,6 +42,15 @@
++++ gcc-6.2.0-zip/gcc/cse.c	2017-02-06 21:46:10.525049918 -0500
+@@ -42,6 +42,16 @@
  #include "dbgcnt.h"
  #include "rtl-iter.h"
  
 +
++// #define	DO_ZIP_DEBUGS
 +#ifdef	DO_ZIP_DEBUGS
 +#include <stdio.h>
 +#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s;%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
@@ -11448,7 +11745,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/emit-rtl.c gcc-6.2.0-zip/gcc/emit-rtl
  struct target_rtl *this_target_rtl = &default_target_rtl;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/final.c gcc-6.2.0-zip/gcc/final.c
 --- gcc-6.2.0/gcc/final.c	2016-01-22 11:44:10.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/final.c	2017-01-12 14:12:37.330093174 -0500
++++ gcc-6.2.0-zip/gcc/final.c	2017-02-06 15:35:15.410085646 -0500
 @@ -79,6 +79,16 @@
  #include "rtl-iter.h"
  #include "print-rtl.h"
@@ -11681,16 +11978,18 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/loop-iv.c gcc-6.2.0-zip/gcc/loop-iv.c
  	  delta = simplify_gen_binary (MINUS, mode, tmp1, delta);
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
 --- gcc-6.2.0/gcc/optabs.c	2016-02-16 10:15:40.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/optabs.c	2016-12-31 16:54:03.445749450 -0500
-@@ -43,6 +43,15 @@
++++ gcc-6.2.0-zip/gcc/optabs.c	2017-02-06 21:52:12.905985278 -0500
+@@ -43,6 +43,17 @@
  #include "optabs-tree.h"
  #include "libfuncs.h"
  
 +
++// #define	DO_ZIP_DEBUGS
 +#ifdef	DO_ZIP_DEBUGS
 +#include <stdio.h>
-+#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s;%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
++#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s:%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
 +extern	void	zip_debug_rtx(const_rtx);
++extern	void	zip_debug_rtx_pfx(const char *,const_rtx);
 +#else
 +#define	ZIP_DEBUG_LINE(STR,RTX)
 +#endif
@@ -11698,9 +11997,45 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
  static void prepare_float_lib_cmp (rtx, rtx, enum rtx_code, rtx *,
  				   machine_mode *);
  static rtx expand_unop_direct (machine_mode, optab, rtx, rtx, int);
+@@ -6985,6 +6996,15 @@
+ maybe_gen_insn (enum insn_code icode, unsigned int nops,
+ 		struct expand_operand *ops)
+ {
++#ifdef	DO_ZIP_DEBUGS
++fprintf(stderr, "ICODE = %d\n", icode);
++fprintf(stderr, "NOPS  = %d\n", nops);
++for(int i=0; i<nops; i++) {
++	char	str[5];
++	sprintf(str, "%d", i);
++	zip_debug_rtx_pfx(str, ops[i].value);
++}
++#endif
+   gcc_assert (nops == (unsigned int) insn_data[(int) icode].n_generator_args);
+   if (!maybe_legitimize_operands (icode, 0, nops, ops))
+     return NULL;
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/recog.c gcc-6.2.0-zip/gcc/recog.c
+--- gcc-6.2.0/gcc/recog.c	2016-01-29 13:47:17.000000000 -0500
++++ gcc-6.2.0-zip/gcc/recog.c	2017-02-06 15:47:48.493946049 -0500
+@@ -40,6 +40,16 @@
+ #include "reload.h"
+ #include "tree-pass.h"
+ 
++
++// #define	DO_ZIP_DEBUGS
++#ifdef	DO_ZIP_DEBUGS
++#include <stdio.h>
++#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s:%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
++extern	void	zip_debug_rtx(const_rtx);
++#else
++#define	ZIP_DEBUG_LINE(STR,RTX)
++#endif
++
+ #ifndef STACK_POP_CODE
+ #if STACK_GROWS_DOWNWARD
+ #define STACK_POP_CODE POST_INC
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/reload1.c gcc-6.2.0-zip/gcc/reload1.c
 --- gcc-6.2.0/gcc/reload1.c	2016-03-18 04:25:57.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/reload1.c	2017-01-12 15:05:19.075896975 -0500
++++ gcc-6.2.0-zip/gcc/reload1.c	2017-02-06 15:54:21.067740343 -0500
 @@ -42,6 +42,15 @@
  #include "dumpfile.h"
  #include "rtl-iter.h"
