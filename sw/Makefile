@@ -13,17 +13,17 @@
 # Targets:
 #
 #	make all:
-#		Includes the install target, but also the pdf
-#		documentation files that come with binutils and gcc.  Building
-#		this target will require a LaTeX distribution in addition to the
-#		needs of the other targets.
-#
-#		This is the default target
+#		Includes the install target, but also the pdf documentation
+#		files that come with binutils and gcc.  Building this target
+#		will require a LaTeX distribution in addition to the needs of
+#		the other targets.  Since the PDFs can be found on line,
+#		building them is not really necessary, but may be quite useful.
 #
 #	make install
 #		Attempts to build binutils, gcc, and newlib, and to install 
-#		them into the local install directory.  This is also the
-#		default target.
+#		them into the local install directory.
+#
+#		This is the default target
 #
 #	make binutils
 #	make gcc
@@ -65,9 +65,9 @@
 ################################################################################
 #
 .PHONY: all basic-install install build
-all: gas-install binutils-pdf-install gcc-install gcc-pdf-install newlib-install
-basic-install: gas-install gcc-install newlib-install
 install: basic-install
+all: basic-install binutils-pdf-install gcc-pdf-install
+basic-install: gas-install gcc-install newlib-install
 build: gas gcc-all nlib
 
 BINUTILSD=binutils-2.27
@@ -80,6 +80,7 @@ BUILDGASD=build-gas
 BUILDGCCD=build-gcc
 BUILDNLIB=build-nlib
 SUBMAKE=$(MAKE) --no-print-directory
+ZIPINCD=$(INSTALL)/cross-tools/zip/include
 
 $(BINUTILSD)-zip/nonce.txt: $(BINUTILSD).tar.bz2 gas-zippatch.patch
 	rm -rf $(BINUTILSD)-zip/
@@ -104,9 +105,14 @@ binutils-install: binutils
 binutils-pdf: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) pdf
 
+$(PDFD)/:
+	bash -c "if [[ ! -d $(PDFD) ]]; then mkdir -p $(PDFD); fi"
+
+.PHONY:
+pdfd: $(PDFD)/
+
 .PHONY: binutils-pdf-install
-binutils-pdf-install: binutils-pdf
-	mkdir -p $(PDFD)
+binutils-pdf-install: binutils-pdf $(PDFD)/
 	find $(BUILDGASD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 
 .PHONY: gas
@@ -116,7 +122,7 @@ gas: binutils
 gas-install: binutils-install
 
 gas-check: binutils-install
-	$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
+	+$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
 #
 #
 # Now let's try the same thing for GCC
@@ -133,21 +139,49 @@ $(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt gas-install
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
 	touch $(BUILDGCCD)/nonce.txt
 
+#
+#
+# GCC must be done in two parts: The host files first, which don't depend
+# upon a built compiler, and then all the libraries that depend upon the
+# built compiler.
+#
+#
+gcc-host: $(BUILDGCCD)/nonce.txt
+	+$(SUBMAKE) --directory=$(BUILDGCCD) all-host
+.PHONY: zip-gcc
+zip-gcc: gcc-host
+
+gcc-install-host: $(BUILDGCCD)/nonce.txt gcc-host
+	+$(SUBMAKE) --directory=$(BUILDGCCD) install-host
+
+.PHONY: zip-gcc-install
+zip-gcc-install: gcc-install-host
+
+$(INSTALL)/cross-tools/bin/zip-gcc: zip-gcc-install
+
+$(INSTALL)/cross-tools/bin/zip-cc: zip-gcc-install
+	bash -c "cd $(INSTALL)/cross-tools/bin; if [[ ! -e zip-cc ]]; then ln -s zip-gcc zip-cc; fi"
+
+.PHONY: gcc-pdf-install
+#
+#
+# Now for the second part of GCC.  This part depends upon newlib as well as
+# GCC proper.
+#
+#
 .PHONY: gcc
-gcc: $(BUILDGCCD)/nonce.txt gas-install $(BUILDNLIB)/nonce.txt
-	$(SUBMAKE) --directory=$(BUILDGCCD)
+gcc: $(BUILDGCCD)/nonce.txt gas-install newlib-install
+	+$(SUBMAKE) --directory=$(BUILDGCCD)
 
 .PHONY: gcc-install
 gcc-install: gcc
-	$(SUBMAKE) --directory=$(BUILDGCCD) install
+	+$(SUBMAKE) --directory=$(BUILDGCCD) install
 
 .PHONY: gcc-pdf
 gcc-pdf: $(BUILDGCCD)/nonce.txt
-	$(SUBMAKE) --directory=$(BUILDGCCD) pdf
+	+$(SUBMAKE) --directory=$(BUILDGCCD) pdf
 
-.PHONY: gcc-pdf-install
-gcc-pdf-install: gcc-pdf
-	mkdir -p $(PDFD)
+gcc-pdf-install: gcc-pdf $(PDFD)/
 	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 
 
@@ -164,16 +198,17 @@ $(NLIBD)-zip/nonce.txt: $(NLIBD).tar.gz nlib-zippatch.patch
 	touch $(NLIBD)-zip/nonce.txt
 
 $(BUILDNLIB)/nonce.txt: $(NLIBD)-zip/nonce.txt $(BUILDGASD)/nonce.txt
-	bash -c "if [[ ! -e $(BUILDNLIB) ]]; then bash nlib-script.sh; fi"
+	bash nlib-script.sh
 	touch $(BUILDNLIB)/nonce.txt
 
 .PHONY: newlib
-newlib: $(BUILDNLIB)/nonce.txt
-	$(SUBMAKE) --directory=$(BUILDNLIB)
+newlib: $(BUILDNLIB)/nonce.txt zip-gcc-install
+newlib: $(INSTALL)/cross-tools/bin/zip-cc
+	+$(SUBMAKE) --directory=$(BUILDNLIB)
 
 .PHONY: newlib-install
 newlib-install: newlib
-	$(SUBMAKE) --directory=$(BUILDNLIB) install
+	+$(SUBMAKE) --directory=$(BUILDNLIB) install
 
 
 # Some abbreviations for targets
