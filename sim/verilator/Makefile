@@ -116,7 +116,8 @@ ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
 VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
 VROOT   := $(VERILATOR_ROOT)
-INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I$(VROOT)/include -I$(ZASM)
+VINCS	:= -I$(VROOT)/include -I$(VROOT)/include/vltstd
+INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I$(ZASM) $(VINCS)
 ZSOURCES:= zippy_tb.cpp zipelf.cpp memsim.cpp twoc.cpp
 ZDSMSRCS:= zopcodes.cpp zparser.cpp
 ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZSOURCES) $(ZDSMSRCS)))
@@ -129,13 +130,13 @@ TESTF	:= $(ZASM)/z.out
 DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c $^ -o $@
+	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 zippy_tb: $(ZOBJS) $(VLOBJS) $(RAWLIB)
 zippy_tb: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h $(RTLD)/cpudefs.h
@@ -171,7 +172,7 @@ dhrystone: zippy_tb
 	./zippy_tb -a $(DHRYSTONEF)
 
 define	build-depends
-	@$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(ZSOURCES) > $(OBJDIR)/xdepends.txt
+	$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(ZSOURCES) > $(OBJDIR)/xdepends.txt
 	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
 	@rm $(OBJDIR)/xdepends.txt
 endef
@@ -191,6 +192,6 @@ $(OBJDIR)/depends.txt: $(OBJDIR)/ depends
 .PHONY: clean
 clean:
 	rm -rf $(OBJDIR)/
-	rm ./zippy_tb pdump div_tb mpy_tb
+	rm -rf ./zippy_tb pdump div_tb mpy_tb
 
 -include $(OBJDIR)/depends.txt
