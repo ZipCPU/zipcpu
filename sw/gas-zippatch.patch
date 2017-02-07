@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-01-26 09:54:26.511526167 -0500
-@@ -0,0 +1,3238 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-07 14:00:46.850675002 -0500
+@@ -0,0 +1,3239 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -3311,7 +3311,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_MPY:
 +			break;
 +		case ZIPO_LDILO:
-+			gas_assert(fits_within(16, insn->i_imm));
++			if (!fits_within(16, insn->i_imm))
++				gas_assert((insn->i_imm & (~0x0ffff))==0);
 +			insn->i_imm &= 0x0ffff;
 +			break;
 +		case ZIPO_DIVU: case ZIPO_DIVS:
