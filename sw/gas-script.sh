@@ -62,5 +62,3 @@ AR=ar AS=as	\
 	--enable-plugins	--enable-threads		\
 	--disable-werror
 
-make pdf
-make install-pdf
