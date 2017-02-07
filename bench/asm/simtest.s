@@ -258,6 +258,9 @@ breaksupervisor:
 	mov	upc,r1
 	cmp	r0,r1	
 	bnz	test_failure
+#endif
+;
+;
 ;
 ;#ifdef	TRAP_TEST
 traptest:

@@ -51,32 +51,55 @@
 .PHONY: all
 all: rtl sw
 
-MAKE := `which make`
+MAKE := make	# Was `which make`
+SUBMAKE := $(MAKE) --no-print-directory
 
 .PHONY: doc
 doc:
-	@echo "Building docs"; cd doc; $(MAKE) --no-print-directory
+	@echo "Building docs"; cd doc;
+	+@$(SUBMAKE) --directory=doc/
 
 .PHONY: rtl
 rtl:
-	@echo "Building rtl for Verilator"; cd rtl; $(MAKE) --no-print-directory
+	@echo "Building rtl for Verilator";
+	+@$(SUBMAKE) --directory=rtl/
 
 .PHONY: sw
 sw:
-	@echo "Building toolchain"; $(MAKE) --no-print-directory --directory=sw/
+	@echo "Building toolchain";
+	+@$(SUBMAKE) --directory=sw/
 
-.PHONY: bench
-bench:	rtl sw
-	@echo "Building in bench/rtl"; cd bench/rtl; $(MAKE) --no-print-directory
-	@echo "Building in bench/cpp"; cd bench/cpp; $(MAKE) --no-print-directory
-#	@echo "Building in bench/asm"; cd bench/asm; $(MAKE) --no-print-directory
+.PHONY: sim
+sim:	cppsim vsim
 
-.PHONY: test
-test: sw rtl
-	@echo "Building zasm test"; cd sw/zasm; $(MAKE) test --no-print-directory
-	@echo "Bench test"; cd bench/cpp; $(MAKE) test --no-print-directory
+cppsim:
+	@echo "Building in C++ simulator";
+	+@$(SUBMAKE) --directory=sim/cpp
 
-.PHONY: dhrystone
-dhrystone: sw bench
-	@echo "Building Asm Dhrystone"; cd bench/asm; $(MAKE) zipdhry.z --no-print-directory
-	@echo "Running Dhrystone"; cd bench/cpp; $(MAKE) dhrystone --no-print-directory
+vsim: rtl
+	@echo "Building Verilator simulator";
+	+@$(SUBMAKE) --directory=sim/verilator
+
+clean:
+	+@$(SUBMAKE) --directory=rtl
+	+@$(SUBMAKE) --directory=sw
+	+@$(SUBMAKE) --directory=sim/cpp
+	+@$(SUBMAKE) --directory=sim/verilator
+	+@$(SUBMAKE) --directory=bench/asm
+	+@$(SUBMAKE) --directory=bench/cpp
+
+# .PHONY: bench
+# bench: rtl sw
+	# @echo "Building in bench/rtl"; $(SUBMAKE) --directory=bench/rtl
+	# @echo "Building in bench/cpp"; $(SUBMAKE) --directory=bench/cpp
+	# @echo "Building in bench/asm"; $(SUBMAKE) --directory=bench/asm
+
+# .PHONY: test
+# test: sw rtl
+	# @echo "Building zasm test"; cd sw/zasm; $(MAKE) test --no-print-directory
+	# @echo "Bench test"; cd bench/cpp; $(MAKE) test --no-print-directory
+
+# .PHONY: dhrystone
+# dhrystone: sw bench
+	# @echo "Building Asm Dhrystone"; $(SUBMAKE) zipdhry.z --no-print-directory
+	# @echo "Running Dhrystone"; cd bench/cpp; $(SUBMAKE) dhrystone --no-print-directory

@@ -50,4 +50,6 @@ _start:
 	SOUT	'\r'
 	SOUT	'\n'
 	SEXIT	0
-
+	;; And in case someone tries to run this on a *real* ZipCPU, as
+	;; opposed to just the simulator, we'll just halt here.
+	HALT

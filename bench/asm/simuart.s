@@ -33,7 +33,7 @@
 ;;
 	.section .start,"ax",@progbits
 	.global	_start
-	.equ	uart, 0x410
+	.equ	uart, 0x150
 _start:
 	ldi	string,r2
 	ldi	uart,r3
@@ -47,8 +47,6 @@ keep_waiting:
 	TST	1,R5
 	BNZ	keep_waiting
 	SW	r4,12(r3)
-	; SOUT	r4
-	SDUMP	r4
 	ADD	1,r2
 	BRA	next_char
 	
