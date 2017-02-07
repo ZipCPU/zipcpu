@@ -28,5 +28,3 @@ PATH=$PATH:${INSTALL_BASE}/cross-tools/bin:${GCC_BASE}/gcc
 ../$VERSION-zip/configure --prefix=${INSTALL_BASE}/cross-tools	\
         --target=${CLFS_TARGET}	--host=$MACHTYPE --without-fp
 
-make
-
