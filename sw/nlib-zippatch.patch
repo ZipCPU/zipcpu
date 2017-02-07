@@ -4913,7 +4913,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
 --- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-01-26 07:39:52.797914884 -0500
++++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-07 14:42:35.770732599 -0500
 @@ -0,0 +1,112 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
@@ -4983,7 +4983,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +libboard-%.o: %.c
 +	${CC} ${CFLAGS} -o $@ -c $<
 +crt0.o:
-+	${CC} ${CFLAGS} -fno-builtin -o $@ -c $<
++	${CC} ${CFLAGS} -fno-builtin -o $@ -c $(srcdir)/crt0.c
 +
 +# Host specific makefile fragment comes in here.
 +@host_makefile_frag@
