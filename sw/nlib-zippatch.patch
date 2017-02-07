@@ -17,7 +17,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/config.sub newlib-2.5.0-zip/config.sub
  	# We use `pc' rather than `unknown'
  	# because (1) that's what they normally are, and
 diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
---- newlib-2.5.0/configure	2017-01-25 16:28:45.185137728 -0500
+--- newlib-2.5.0/configure	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/configure	2017-01-25 16:27:07.029658533 -0500
 @@ -3549,6 +3549,9 @@
    ft32-*-*)
@@ -49,46 +49,56 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
-@@ -6773,7 +6782,7 @@
- # might be empty or "-g".  We don't require a C++ compiler, so CXXFLAGS
- # might also be empty (or "-g", if a non-GCC C++ compiler is in the path).
- # We want to ensure that TARGET libraries (which we know are built with
--# gcc) are built with "-O3 -g", so include those options when setting
-+# gcc) are built with "-O2 -g", so include those options when setting
+@@ -4723,13 +4732,13 @@
+   CFLAGS=$ac_save_CFLAGS
+ elif test $ac_cv_prog_cc_g = yes; then
+   if test "$GCC" = yes; then
+-    CFLAGS="-g -O2"
++    CFLAGS="-O3"
+   else
+     CFLAGS="-g"
+   fi
+ else
+   if test "$GCC" = yes; then
+-    CFLAGS="-O2"
++    CFLAGS="-O3"
+   else
+     CFLAGS=
+   fi
+@@ -5071,13 +5080,13 @@
+   CXXFLAGS=$ac_save_CXXFLAGS
+ elif test $ac_cv_prog_cxx_g = yes; then
+   if test "$GXX" = yes; then
+-    CXXFLAGS="-g -O2"
++    CXXFLAGS="-O3"
+   else
+     CXXFLAGS="-g"
+   fi
+ else
+   if test "$GXX" = yes; then
+-    CXXFLAGS="-O2"
++    CXXFLAGS="-O3"
+   else
+     CXXFLAGS=
+   fi
+@@ -6777,7 +6786,7 @@
  # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
  if test "x$CFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
-@@ -6781,8 +6790,8 @@
+-    CFLAGS_FOR_TARGET="-g -O2"
++    CFLAGS_FOR_TARGET="-O3"
    else
      CFLAGS_FOR_TARGET=$CFLAGS
      case " $CFLAGS " in
--      *" -O3 "*) ;;
--      *) CFLAGS_FOR_TARGET="-O3 $CFLAGS_FOR_TARGET" ;;
-+      *" -O2 "*) ;;
-+      *) CFLAGS_FOR_TARGET="-O2 $CFLAGS_FOR_TARGET" ;;
-     esac
-     case " $CFLAGS " in
-       *" -g "* | *" -g3 "*) ;;
-@@ -6798,8 +6807,8 @@
+@@ -6794,7 +6803,7 @@
+ 
+ if test "x$CXXFLAGS_FOR_TARGET" = x; then
+   if test "x${is_cross_compiler}" = xyes; then
+-    CXXFLAGS_FOR_TARGET="-g -O2"
++    CXXFLAGS_FOR_TARGET="-O3"
    else
      CXXFLAGS_FOR_TARGET=$CXXFLAGS
      case " $CXXFLAGS " in
--      *" -O3 "*) ;;
--      *) CXXFLAGS_FOR_TARGET="-O3 $CXXFLAGS_FOR_TARGET" ;;
-+      *" -O2 "*) ;;
-+      *) CXXFLAGS_FOR_TARGET="-O2 $CXXFLAGS_FOR_TARGET" ;;
-     esac
-     case " $CXXFLAGS " in
-       *" -g "* | *" -g3 "*) ;;
-@@ -6972,7 +6981,7 @@
-     ;;
- esac
- 
--# If --enable-target-optspace always use -Os instead of -O3 to build
-+# If --enable-target-optspace always use -Os instead of -O2 to build
- # the target libraries, similarly if it is not specified, use -Os
- # on selected platforms.
- ospace_frag=/dev/null
 diff -Naur '--exclude=*.swp' newlib-2.5.0/configure.ac newlib-2.5.0-zip/configure.ac
 --- newlib-2.5.0/configure.ac	2016-12-22 21:33:54.000000000 -0500
 +++ newlib-2.5.0-zip/configure.ac	2017-01-25 16:27:52.713416459 -0500
