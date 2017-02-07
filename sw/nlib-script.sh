@@ -8,17 +8,6 @@ then
   exit;
 fi
 
-if [[ ! -d $VERSION/ ]]
-then
-  tar -xvzf $VERSION.tar.gz
-fi
-
-# if [[ ! -d $VERSION-zip ]]
-# then
-#  tar -xvzf $VERSION.tar.gz --transform s,$VERSION,$VERSION-zip,
-#  echo patch ... something here
-# fi
-
 if [[ -d build-nlib ]]
 then
   rm -rf build-nlib 
