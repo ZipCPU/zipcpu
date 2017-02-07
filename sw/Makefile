@@ -6,22 +6,39 @@
 #
 # Purpose:	This makefile attempts to build the ZipCPU toolchain.  This 
 #		includes binutils and GCC.  (Eventually, it will include the
-#	standard library as well ...)  Configuration options for binutils and
-#	GCC can be found in the gas-script.sh and gcc-script.sh files
-#	respectively.
+#	standard library as well ...)  Configuration options for binutils, GCC,
+#	and newlib can be found (and set) in the gas-script.sh, gcc-script.sh,
+#	and nlib-script.sh files respectively.
 #
 # Targets:
-#	make install
-#		Attempts to build binutils, gcc, and newlib, and to install 
-#		hem into INSTALL directory.  This is also the default target.
 #
 #	make all:
-#		Includes the basic-install target, but also the pdf
+#		Includes the install target, but also the pdf
 #		documentation files that come with binutils and gcc.  Building
 #		this target will require a LaTeX distribution in addition to the
 #		needs of the other targets.
 #
+#		This is the default target
+#
+#	make install
+#		Attempts to build binutils, gcc, and newlib, and to install 
+#		them into the local install directory.  This is also the
+#		default target.
+#
+#	make binutils
+#	make gcc
+#	make newlib
+#		Builds the respective packages
+#
+#	make binutils-install
+#	make gcc-install
+#	make newlib-install
+#		Installs the respective packages into the install directory,
+#		building them first if necessary.
+#
 #	make clean
+#		Removes all build products--to include the source directories
+#		that are built from patched tarballs.
 #
 #
 # Creator:	Dan Gisselquist, Ph.D.
@@ -47,16 +64,11 @@
 #
 ################################################################################
 #
-bypass:
-	echo "This Makefile has not yet been updated as part of 8-bit support."
-	echo "Neither are the scripts, gas-script.sh, gcc-script.sh, and nlib-script.sh"
-	echo "ready for prime-time: they dont yet handle creating and adjusting"
-	echo "the required directories automatically (yet)."
-	echo
-	echo "Please debug this Makefile first, before trying to automatically run it"
-
-basic-install: binutils-install gcc-install nlib-install
-all: basic-install binutils-pdf-install gcc-pdf-install
+.PHONY: all basic-install install build
+all: gas-install binutils-pdf-install gcc-install gcc-pdf-install newlib-install
+basic-install: gas-install gcc-install newlib-install
+install: basic-install
+build: gas gcc-all nlib
 
 BINUTILSD=binutils-2.27
 GCCD=gcc-6.2.0
@@ -69,15 +81,19 @@ BUILDGCCD=build-gcc
 BUILDNLIB=build-nlib
 SUBMAKE=$(MAKE) --no-print-directory
 
-$(BINUTILSD)-zip: $(BINUTILSD).tar.bz2 gas-zippatch.patch
+$(BINUTILSD)-zip/nonce.txt: $(BINUTILSD).tar.bz2 gas-zippatch.patch
 	rm -rf $(BINUTILSD)-zip/
-	tar -xjf ./$(BINUTILSD).tar.bz2 --transform s,$(BINUTILSD),$(BINUTILSD)-zip
-	bash -c "cd $(BINUTILSD)-zip; patch -p1 <../gas-zippatch.patch"
+	tar -xjf ./$(BINUTILSD).tar.bz2 --transform s,$(BINUTILSD),$(BINUTILSD)-zip,
+	-bash -c "cd $(BINUTILSD)-zip; patch -p1 <../gas-zippatch.patch"
 	rm -rf $(BUILDGASD)
+	touch $(BINUTILSD)-zip/nonce.txt
 
-.PHONY: binutils-zip
-binutils: $(BINUTILSD)
+$(BUILDGASD)/nonce.txt: $(BINUTILSD)-zip/nonce.txt
 	bash -c "if [ ! -e build-gas ]; then bash gas-script.sh; fi"
+	touch $(BUILDGASD)/nonce.txt
+
+.PHONY: binutils
+binutils: $(BUILDGASD)/nonce.txt
 	$(SUBMAKE) --directory=$(BUILDGASD)
 
 .PHONY: binutils-install
@@ -93,6 +109,12 @@ binutils-pdf-install: binutils-pdf
 	mkdir -p $(PDFD)
 	find $(BUILDGASD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 
+.PHONY: gas
+gas: binutils
+
+.PHONY: gas-install
+gas-install: binutils-install
+
 gas-check: binutils-install
 	$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
 #
@@ -100,23 +122,27 @@ gas-check: binutils-install
 # Now let's try the same thing for GCC
 #
 #
-$(GCCD)-zip: $(GCCD).tar.bz2 gcc6-zippatch.patch
+$(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch
 	rm -rf $(GCCD)-zip/
 	tar -xjf ./$(GCCD).tar.bz2 --transform s,$(GCCD),$(GCCD)-zip,
-	bash -c "cd $(GCCD)-zip; patch -p1 <../gcc-zippatch.patch"
+	-bash -c "cd $(GCCD)-zip; patch -p1 <../gcc-zippatch.patch"
 	rm -rf $(BUILDGCCD)
-	
-.PHONY: gcc
-gcc: $(GCCD)-zip
+	touch $(GCCD)-zip/nonce.txt
+
+$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
-	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc
+	touch $(BUILDGCCD)/nonce.txt
+
+.PHONY: gcc
+gcc: $(BUILDGCCD)/nonce.txt gas-install $(BUILDNLIB)/nonce.txt
+	$(SUBMAKE) --directory=$(BUILDGCCD)
 
 .PHONY: gcc-install
 gcc-install: gcc
-	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc install
+	$(SUBMAKE) --directory=$(BUILDGCCD) install
 
 .PHONY: gcc-pdf
-gcc-pdf: gcc
+gcc-pdf: $(BUILDGCCD)/nonce.txt
 	$(SUBMAKE) --directory=$(BUILDGCCD) pdf
 
 .PHONY: gcc-pdf-install
@@ -130,31 +156,30 @@ gcc-pdf-install: gcc-pdf
 # And repeat for newlib
 #
 #
-$(NLIBD)-zip: $(NLIBD).tar.bz2 gcc6-zippatch.patch
+$(NLIBD)-zip/nonce.txt: $(NLIBD).tar.gz nlib-zippatch.patch
 	rm -rf $(NLIBD)-zip/
-	tar -xjf ./$(NLIBD).tar.bz2 --transform s,$(NLIBD),$(NLIBD)-zip,
-	bash -c "cd $(NLIBD)-zip; patch -p1 <../gcc-zippatch.patch"
+	tar -xzf ./$(NLIBD).tar.gz --transform s,$(NLIBD),$(NLIBD)-zip,
+	-bash -c "cd $(NLIBD)-zip; patch -p1 <../nlib-zippatch.patch"
 	rm -rf $(BUILDNLIB)
-	
+	touch $(NLIBD)-zip/nonce.txt
+
+$(BUILDNLIB)/nonce.txt: $(NLIBD)-zip/nonce.txt $(BUILDGASD)/nonce.txt
+	bash -c "if [[ ! -e $(BUILDNLIB) ]]; then bash nlib-script.sh; fi"
+	touch $(BUILDNLIB)/nonce.txt
+
 .PHONY: newlib
-newlib: $(NLIBD)-zip
-	bash -c "if [[ ! -e $(BUILDNLIB) ]]; then bash gcc-script.sh; fi"
-	$(SUBMAKE) --directory=$(BUILDNLIB)/gcc
+newlib: $(BUILDNLIB)/nonce.txt
+	$(SUBMAKE) --directory=$(BUILDNLIB)
 
 .PHONY: newlib-install
 newlib-install: newlib
-	$(SUBMAKE) --directory=$(BUILDGCCD)/gcc install
-
-# .PHONY: newlib-pdf
-# newlib-pdf: gcc
-#	$(SUBMAKE) --directory=$(BUILDGCCD) pdf
-
-# .PHONY: gcc-pdf-install
-# gcc-pdf-install: gcc-pdf
-#	mkdir -p $(PDFD)
-#	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
+	$(SUBMAKE) --directory=$(BUILDNLIB) install
 
 
+# Some abbreviations for targets
+.PHONY: nlib nlib-install
+nlib: newlib
+nlib-install: newlib-install
 
 #
 #
