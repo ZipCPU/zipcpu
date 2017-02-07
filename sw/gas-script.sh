@@ -33,18 +33,17 @@
 ##
 ##
 VERSION=binutils-2.27
-# if [[ ! -d $VERSION/ ]]
-# then
-  # tar -xjf ./$VERSION.tar.bz2
-  # if [[ -e $VERSION.path ]];
-  # then
-    # cd $VERSION/
-    # patch -p1 <../$VERSION.patch
-    # cd ..
-  # else
-    # echo "ZipCPU patch not found"
-  # fi
-# fi
+if [[ ! -d $VERSION-zip/ ]]
+then
+  tar -xjf ./$VERSION.tar.bz2 --transform s,$VERSION,$VERSION-zip,
+  if [[ -e gas-zippatch.patch ]]
+  then
+    patch -p1 <../gas-zippatch.patch
+    cd ..
+  else
+    echo "ZipCPU binutils patch not found"
+  fi
+fi
 
 set +h
 set -e
