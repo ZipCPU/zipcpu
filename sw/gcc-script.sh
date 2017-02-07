@@ -67,37 +67,14 @@ mkdir -p ${INSTALL_BASE}/usr/include
 mkdir -p build-gcc
 cd build-gcc
 
-AR_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ar
-AS_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-as
-LD_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ld
-NM_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-nm
-OBJCOPY_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-objcopy
-OBJDUMP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-objdump
-READELF_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-readelf
-STRIP_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-strip
-
-../$ZVERSION/configure --with-gas	\
+../$ZVERSION/configure --with-gas			\
         --prefix=${INSTALL_BASE}/cross-tools		\
         --target=${CLFS_TARGET}				\
         --with-pkgversion=zip-gcc-`date +%y%m%d`	\
         --disable-multilib				\
         --disable-threads --disable-tls			\
-        --disable-libada --disable-libsanitizer		\
-        --disable-libssp --disable-libquadmath		\
-        --disable-libgomp --disable-libvtv		\
         --enable-checking --disable-nls			\
-        --disable-sjlj-exceptions			\
-        --disable-decimal-float --disable-fixed-point	\
-        --disable-lto --disable-canonical-system-headers \
-	--without-fp
+        --without-fp --with-newlib
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
 	|| PATH=${INSTALL_BASE}/cross-tools/bin:$PATH
-make
-# make $* || true
-# cd gcc; make $* || true
-# cd ../; make $* all-libcc1 || true
-# cd libcc1; make $* || true
-# cd ../gcc; make $* || true
-# make $* install || true
-
