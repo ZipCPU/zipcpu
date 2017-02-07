@@ -68,6 +68,8 @@ mkdir -p build-gcc
 cd build-gcc
 
 AS_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-as
+AR_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ar
+NM_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-nm
 LD_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ld
 
 ../$ZVERSION/configure --with-gas			\
