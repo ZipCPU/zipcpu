@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-07 14:00:46.850675002 -0500
-@@ -0,0 +1,3239 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-11 07:29:40.994593814 -0500
+@@ -0,0 +1,3241 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -3487,15 +3487,15 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	return err;
 +}
 +
-+#define	NOOPGROUP(OP,IMM) ((0x78000000)|((((OP)+0x1c-ZIPO_BREAK)&0x01f)<<22)|(IMM & 0x003fffff))
-+#define	DBLREGOP(OP,CND,IMM,B,A) (((OP&0x01f)<<22)|((A&0x0f)<<27)	\
-+			| ((CND&0x07)<<19)|(1<<18)|((B&0x0f)<<14)	\
-+			| (IMM & 0x03fff))
-+#define	SMPLMOV(CND,IMM,B,A)	(((ZIPO_MOV&0x01f)<<22)|((A&0x0f)<<27)	\
-+			| ((CND&0x07)<<19)|((B&0x0f)<<14)|(IMM & 0x01fff))
-+#define	IMMOP(OP,CND,IMM,A)	(((OP&0x01f)<<22)|((A&0x0f)<<27)	\
-+			| ((CND&0x07)<<19)|(IMM & 0x03ffff))
-+#define	LDIOP(IMM,A)	((ZIPO_LDI<<22)|((A&0x0f)<<27)|(IMM & 0x07fffff))
++#define	NOOPGROUP(OP,IMM) ((0x78000000)|((((OP)+0x1c-ZIPO_BREAK)&0x01f)<<22)|((IMM) & 0x003fffff))
++#define	DBLREGOP(OP,CND,IMM,B,A) ((((OP)&0x01f)<<22)|(((A)&0x0f)<<27)	\
++			| (((CND)&0x07)<<19)|(1<<18)|(((B)&0x0f)<<14)	\
++			| ((IMM) & 0x03fff))
++#define	SMPLMOV(CND,IMM,B,A)	(((ZIPO_MOV&0x01f)<<22)|(((A)&0x0f)<<27)	\
++			| (((CND)&0x07)<<19)|(((B)&0x0f)<<14)|((IMM) & 0x01fff))
++#define	IMMOP(OP,CND,IMM,A)	((((OP)&0x01f)<<22)|(((A)&0x0f)<<27)	\
++			| (((CND)&0x07)<<19)|((IMM) & 0x03ffff))
++#define	LDIOP(IMM,A)	((ZIPO_LDI<<22)|(((A)&0x0f)<<27)|((IMM) & 0x07fffff))
 +
 +
 +/*
@@ -4267,6 +4267,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		} else if ((zip_param_cis)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(insn->i_breg != ZIP_RNONE)
 +				&&(insn->i_imm == 0)) {
++			// JSR (Register)
 +			insn->i_naux = 1;
 +			insn->i_code = 0x80008000
 +				| (ZIPV_MOV<<24)
@@ -4279,6 +4280,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			gas_assert(!insn->i_rp);
 +		} else if ((!insn->i_rp)&&(insn->i_breg != ZIP_RNONE)) {
 +			gas_assert(fits_within(13,immv));
++			// JSR offset+register, implemented as two moves
 +			insn->i_naux = 1;
 +			insn->i_code = SMPLMOV(insn->i_cnd, 1, ZIP_PC, ZIP_LR);
 +			insn->i_aux[0] = SMPLMOV(insn->i_cnd, immv, insn->i_breg, ZIP_PC);
@@ -4288,27 +4290,21 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				immv += (int)(symv
 +					- fragP->fr_address
 +					- (insn->i_rp->r_fr_offset+sizeof(uint32_t)));
-+			if ((sym_known)&&(fits_within(18,immv))) {
++			if ((zip_param_small)||((sym_known)&&(fits_within(18,immv-4)))) {
 +				// MOV.C 1(PC),R0
 +				// BRA.C _somewhere_
 +				insn->i_naux = 1;
 +				insn->i_code = SMPLMOV(insn->i_cnd, 1, ZIP_PC,
 +					ZIP_LR);
++				// Bias the branch by -4, since we're one word
++				// into this instruction
 +				insn->i_aux[0] = IMMOP(ZIPO_ADD, insn->i_cnd,
-+					immv, ZIP_PC);
++					immv-4, ZIP_PC);
 +				insn->i_aux[1] = NOOP_OPCODE;
 +				insn->i_rp->r_pcrel = TRUE;
 +				insn->i_rp->r_type = BFD_RELOC_NONE;
-+			} else if (zip_param_small) {
-+				insn->i_naux = 1;
-+				insn->i_code = SMPLMOV(insn->i_cnd, 1, ZIP_PC,
-+					ZIP_LR);
-+				insn->i_aux[0] = IMMOP(ZIPO_ADD, insn->i_cnd,
-+					0, ZIP_PC);
-+				insn->i_aux[1] = NOOP_OPCODE;
-+				insn->i_rp->r_pcrel = TRUE;
-+				insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_PCREL;
 +			} else {
++				// If all else fails, call for a long JSR
 +				insn->i_op = ZIPO_LJSR;
 +				zip_assemble_insn_words(fragP, seg, insn,
 +					relax_state, stretch, pzipm);
@@ -4394,7 +4390,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		} if (insn->i_breg != ZIP_RNONE) {
 +			if (insn->i_breg == ZIP_PC)
 +				immv >>= 2;
-+			gas_assert(fits_within(14, insn->i_imm));
++			if (!fits_within(14, insn->i_imm)) {
++				fprintf(stderr, "ERR: (%d) 0x%08x does not fit within 18 bits!\n", insn->i_imm, insn->i_imm);
++				gas_assert(fits_within(14, insn->i_imm));
++			}
 +			insn->i_code = DBLREGOP(insn->i_op, insn->i_cnd,
 +				immv, insn->i_breg, insn->i_areg);
 +			if (insn->i_rp) {
@@ -4407,7 +4406,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					insn->i_rp->r_type = BFD_RELOC_ZIP_OPB_OFFSET;
 +			}
 +		} else {
-+			gas_assert(fits_within(18, insn->i_imm));
++			if (!fits_within(18, insn->i_imm)) {
++				fprintf(stderr, "ERR: (%d) 0x%08x does not fit within 18 bits!\n", insn->i_imm, insn->i_imm);
++				gas_assert(fits_within(18, insn->i_imm));
++			}
 +			insn->i_code = IMMOP(insn->i_op, insn->i_cnd,
 +				immv, insn->i_areg);
 +			if (insn->i_rp)
@@ -6641,8 +6643,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2017-01-25 10:40:38.655587378 -0500
-@@ -0,0 +1,442 @@
++++ binutils-2.27-zip/opcodes/zip-dis.c	2017-02-10 12:43:50.058279559 -0500
+@@ -0,0 +1,443 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -6656,7 +6658,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2017, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -6714,7 +6716,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// is found in the next word
 +	if (iword==0x7c87c000)
 +		return 1;
-+	// Now, the VLIW form ... an
++	// Now, the CIS form ... an
 +	// Unconditional LJMP in the second half word
 +	if ((iword&0x80007fff)==0x80007cf8)
 +		return 1;
@@ -6735,7 +6737,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	return 0;
 +}
 +
-+
 +static	inline	int
 +THREEWORD_LJSR(uint32_t iword, uint32_t nxtword) {
 +	// First word moves the return address to R0
@@ -6748,15 +6749,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +}
 +
 +static	inline	int
-+VLIW_JSR(uint32_t iword __attribute__((unused)) ) {
-+	// MOV 4(PC),R0	<- doesn't fit in VLIW! but MOV 4(PC),R0 becomes MOV1(PC
-+	// LOD (PC),PC
++CIS_JSR(uint32_t iword __attribute__((unused)) ) {
++	// MOV 1(PC) | LOD (PC),PC
 +	//
 +	// 1.0000.111.1.1111.001
 +	//			1.1111.100.1.1111.000
 +	if (iword == 0x87f9fcf8)
 +		return 1;
-+	// There is no code for this without VLIW_OP_UNDER_TEST
++	// There is no code for this without CIS_OP_UNDER_TEST
 +	return 0;
 +}
 +
@@ -6771,7 +6771,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// MOV 2(PC),PC
 +	if (iword == 0x0343c002)
 +		return 1;
-+	if (VLIW_JSR(iword))
++	if (CIS_JSR(iword))
 +		return 1;
 +	// The conditional LJMP is three words, which we don't handle ...
 +	// Any BREV command could be the beginning of a twoword instruction
@@ -6854,7 +6854,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		sprintf(line, "%s0x%08x", line, *refaddr);
 +
 +		return;
-+	} else if (VLIW_JSR(ins)) {
++	} else if (CIS_JSR(ins)) {
 +		*refaddr = nxtword;
 +		sprintf(line, "%-11s", "JSR");
 +		sprintf(line, "%s0x%08x", line, *refaddr);
@@ -6864,13 +6864,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		int	cv = zip_getbits(ins, ZIP_BITFIELD(3,19));
 +		int	dv = zip_getbits(ins, ZIP_REGFIELD(27));
 +		int	iv = zip_sbits(ins, 13);
++		uint32_t	ref;
 +
-+		*refaddr = (iv<<2) + addr + 4;
++		ref = (iv<<2) + addr + 4;
 +
 +		sprintf(line, "%s%s", "MOV", zip_ccstr[cv]);
 +		sprintf(line, "%-11s", line);
-+		sprintf(line, "%s0x%08x", line, *refaddr);
++		sprintf(line, "%s0x%08x", line, ref);
 +		sprintf(line, "%s,%s", line, zip_regstr[dv]);
++
++		*refaddr = ref;
 +		return;
 +	}
 +
@@ -7032,7 +7035,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		if ((*info->read_memory_func)(vma, ibytes, 12, info) ==0)
 +			refaddr = (ibytes[8]<<24)|(ibytes[9]<<16)|(ibytes[10]<<8)|(ibytes[11]);
 +		sprintf(&astr[strlen(astr)], "@0x%08x", refaddr);
-+	} else if (VLIW_JSR(iword)) {
++	} else if (CIS_JSR(iword)) {
 +		refaddr = nxtword;
 +		sprintf(astr, "%-11s0x%08x", "JSR", refaddr);
 +	} else
@@ -7059,7 +7062,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// Normal LOD (PC),PC = 0x7c87c000
 +	//	1'b0, 4'hf, 5'h12, 3'h0, 1'b1, 4'hf, 14'h00
 +	//	0111 1100 1000 0111 1100 0000 0000 0000
-+	// or VLIW  x | LOD (PC),PC
++	// or CIS  x | LOD (PC),PC
 +	//	1'b1, 4'hx 5'hx 1'b0 2'bx 5'hx 4'hf 5'h12 1'b1 4'hf
 +	//	1xxx xxxx xx0x xxxx xx11 1110 0101 1111
 +	//	0x80203fff mask, val = 0x80003e5f
@@ -7073,7 +7076,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		return 8;
 +	if (TWOWORD_JSR(iword,nxtword))
 +		return 8;
-+	if (VLIW_JSR(iword))
++	if (CIS_JSR(iword))
 +		return 8;
 +	return 4;
 +}
@@ -7136,7 +7139,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-02 09:05:31.159835296 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-07 21:58:48.935026600 -0500
 @@ -0,0 +1,361 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7423,7 +7426,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "LW", 0x87800000, 0x84000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	{ "LW", 0x87800000, 0x84800000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// 1.rrrr.101.ssssssss
-+	{ "SW", 0x87000000, 0x85000000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "SW", 0x87800000, 0x85000000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	// 1.rrrr.110.0.sssssss
 +	{ "SW", 0x87800000, 0x85800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// 1.rrrr.110.iiiiiiii
@@ -7501,8 +7504,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.h binutils-2.27-zip/opcodes/zip-opc.h
 --- binutils-2.27/opcodes/zip-opc.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.h	2017-01-05 09:08:54.000000000 -0500
-@@ -0,0 +1,83 @@
++++ binutils-2.27-zip/opcodes/zip-opc.h	2017-02-10 17:48:01.761470841 -0500
+@@ -0,0 +1,77 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.h
@@ -7545,17 +7548,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.h binutils-2.27-zip/o
 +
 +// MACROS used in the instruction definition list.
 +#define	ZIP_OPUNUSED	-1
-+#define	ZIP_BITFIELD(LN,MN) (((LN&0x0ff)<<8)+(MN&0x0ff)) // A generic bitfield
-+#define	ZIP_REGFIELD(MN) (0x00000400 +(MN&0x0ff)) // Normal register field
-+#define	ZIP_URGFIELD(MN) (0x0100400 +(MN&0x0ff))	// User register field
-+#define	ZIP_IMMFIELD(LN,MN) (0x40000000 + (((LN&0x0ff)<<8)+(MN&0x0ff))) // Sgn extnd
++#define	ZIP_BITFIELD(LN,MN)	(((LN&0x0ff)<<8)+(MN&0x0ff)) // A generic bitfield
++#define	ZIP_REGFIELD(MN)	(0x00000400 +(MN&0x0ff)) // Normal register field
++#define	ZIP_URGFIELD(MN)	(0x0100400 +(MN&0x0ff))	// User register field
++#define	ZIP_IMMFIELD(LN,MN)	(0x40000000 + (((LN&0x0ff)<<8)+(MN&0x0ff))) // Sgn extnd
 +#define	ZIP_SP	0xd0000
-+//
-+#define	ZIP_VLIW	(0x80000000)
-+#define	ZIP_VHI(X)	(ZIP_VLIW|((X)<<16))
-+#define	ZIP_VLO(X)	(ZIP_VLIW|(X))
-+#define	ZIP_OPC(X)	((X)<<22)
-+#define	ZIP_CND(X)	((X)<<19)
 +
 +typedef	uint32_t	ZIPI;	// A Zip CPU instruction
 +
