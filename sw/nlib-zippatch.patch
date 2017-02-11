@@ -5433,7 +5433,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +#endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip/libgloss/zip/zipsys.h
 --- newlib-2.5.0/libgloss/zip/zipsys.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipsys.h	2017-01-13 11:12:52.497372109 -0500
++++ newlib-2.5.0-zip/libgloss/zip/zipsys.h	2017-02-10 17:53:46.439360330 -0500
 @@ -0,0 +1,135 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5528,7 +5528,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +#define	SYSINT_AUX	0x0020
 +//
 +#define	SYSINT(INTID)	(1<<(INTID))
-+// #define	ALTINT(INTID)	(1<<(INTID-6))
++#define	ALTINT(INTID)	(1<<(INTID))
 +
 +#ifdef	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
 +#define	ALTINT_UIC	ALTINT(0)

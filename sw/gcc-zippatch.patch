@@ -302,8 +302,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-06 18:45:11.663109265 -0500
-@@ -0,0 +1,2513 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-10 17:39:36.384624381 -0500
+@@ -0,0 +1,2659 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -546,7 +546,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +/* The PRINT_OPERAND_ADDRESS worker.   */
 +void
 +zip_print_operand_address(FILE *file, rtx x) {
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) zip_debug_rtx(x);
 +	switch(GET_CODE(x)) {
@@ -713,6 +713,31 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	// Use a GCC global to determine our answer
 +	if (cfun->calls_alloca)
 +		return true;
++
++	// If the stack frame is too large to access saved registers with
++	// immediate offsets, then we *must* use a frame pointer
++	unsigned stack_size = 36;
++	stack_size += (ACCUMULATE_OUTGOING_ARGS ? crtl->outgoing_args_size : 0);
++
++	//
++	// if cfun->machine->size_for_adjusting_sp might ever be larger than
++	//	 zip_max_anchor_offset, then we MUST have a frame pointer.
++	//
++	// cfun->machine->size_for_adjusting_sp =
++	//		get_frame_size
++	//		+ saved_reg_size (will always be <= 36)
++	//		+ outgoing_args_size;
++	//		+ pretend_args_size;
++
++	if(crtl->args.pretend_args_size > 0)
++		stack_size += crtl->args.pretend_args_size;
++	stack_size += get_frame_size();
++	// Align our attempted stack size
++	stack_size = ((stack_size+3)&-4);
++
++	// Now here's our test
++	if (stack_size >= zip_max_anchor_offset)
++		return true;
 +	return (frame_pointer_needed);
 +/*
 +*/
@@ -762,7 +787,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +zip_compute_frame(void) {
 +	int	regno;
 +	int	args_size;
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "ZIP-COMPUTE-FRAME: %s\n", current_function_name());
 +	// gcc_assert(crtl);
@@ -779,6 +804,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	}
 +
 +	cfun->machine->local_vars_size = get_frame_size();
++
++	// Force frame alignment of the local variable section
++	cfun->machine->local_vars_size += 3;
++	cfun->machine->local_vars_size &= -4;
 +
 +	// Save callee-saved registers. 
 +	cfun->machine->saved_reg_size = 0;
@@ -822,54 +851,171 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +}
 +
 +void
-+zip_expand_prologue(void) {
++zip_save_registers(rtx basereg_rtx, int sp_offset_to_first_register) {
++	rtx	insn;
++	ZIPDEBUGFLAG(dbg, false);
++
++	// Compute Frame has already been calculated before coming into here
++	//
++	// zip_compute_frame();
++	if (dbg)  fprintf(stderr, "PROLOGUE::SAVE-REGISTER\n");
++
++	int offset = 0, regno;
++	for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
++		if (zip_save_reg(regno)) {
++			if (dbg) fprintf(stderr,
++				"PROLOGUE::SAVE-REGISTER Saving R%d in %d+%d(SP)\n",
++				regno, sp_offset_to_first_register, offset);
++			insn=emit_insn(gen_movsi_sto_off(
++				basereg_rtx,
++				GEN_INT(sp_offset_to_first_register +offset),
++				gen_rtx_REG(SImode, regno)));
++			RTX_FRAME_RELATED_P(insn) = 1;
++			offset += 4;
++		}
++	} if (dbg)  fprintf(stderr, "%d registers saved%s\n", offset,
++		(crtl->saves_all_registers)?", should be all of them":", less than all");
++
++}
++
++/*
++ * zip_expand_small_prologue()
++ *
++ * To be used when the sp_fp_offset is less then zip_max_opb_offset.
++ *
++ *
++ * Approach:
++ *	SUB size_for_adjusting_sp,SP
++ *	SW REG,0(SP)
++ *	SW REG,4(SP)
++ *	SW REG,8(SP)
++ *	....
++ *	SW REG,#(SP)
++ *
++ * and if we need a frame register, we'll either do ...
++ *	MOV sp_fp_offset+SP,FP
++ * or if the offset is too large, we'll do ...
++ *	MOV SP,FP
++ *	ADD sp_fp_offset,FP
++ *
++ */
++void
++zip_expand_small_prologue(void) {
++	ZIPDEBUGFLAG(dbg, false);
 +	rtx	insn;
 +
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	zip_compute_frame();
++
++	if (dbg)  fprintf(stderr, "PROLOGUE:::EXPAND-SMALL-PROLOGUE(SP-FP offset is %d)\n",
++		cfun->machine->sp_fp_offset);
++
++	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx,
++			stack_pointer_rtx,
++			gen_int_mode(cfun->machine->size_for_adjusting_sp,
++				SImode)));
++	RTX_FRAME_RELATED_P(insn) = 1;
++
++	zip_save_registers(stack_pointer_rtx, cfun->machine->sp_fp_offset);
++
++	if (cfun->machine->fp_needed) {
++		if (dbg)  fprintf(stderr, "PROLOGUE:::EXPAND-SMALL-PROLOGUE(FP-NEEDED)\n");
++		if (dbg) zip_debug_rtx(stack_pointer_rtx);
++		if (dbg) zip_debug_rtx(frame_pointer_rtx);
++		if (cfun->machine->sp_fp_offset < zip_max_mov_offset) {
++			if (dbg)  fprintf(stderr,
++				"PROLOGUE:::EXPAND-SMALL-PROLOGUE() "
++				"gen_movsi_reg_off(FP, SP, %d), %d < %ld\n",
++				cfun->machine->sp_fp_offset,
++				cfun->machine->sp_fp_offset,
++				zip_max_mov_offset);
++			insn = emit_insn(gen_movsi_reg_off(frame_pointer_rtx,
++				stack_pointer_rtx,
++				GEN_INT(cfun->machine->sp_fp_offset)));
++			RTX_FRAME_RELATED_P(insn) = 1;
++		} else {
++			rtx	fp_rtx;
++
++			fp_rtx = gen_rtx_REG(SImode, zip_FP);
++
++			insn = emit_insn(gen_movsi(fp_rtx, stack_pointer_rtx));
++			RTX_FRAME_RELATED_P(insn) = 1;
++
++			insn = emit_insn(gen_addsi3_reg_clobber(fp_rtx, fp_rtx,
++				GEN_INT(cfun->machine->sp_fp_offset)));
++			RTX_FRAME_RELATED_P(insn) = 1;
++		}
++	}
++}
++
++/*
++ * zip_expand_large_prologue()
++ *
++ * The prologue function will be called when the size_for_adjusting_sp is too
++ * large to fit into a single OPB-immediate as part of a subtract.
++ *
++ * Approach:
++ *	SUB (size_for_adjusting_sp-sp_fp_offset),SP
++ *	SW R0,(SP)
++ *	SW R5,4(SP)
++ *	SW R6,8SP)
++ *	SW R7,(SP)
++ *	...
++ *	SW FP,(SP)
++ *
++ *	LDI sp_fp_offset,FP
++ *	SUB FP,SP
++ *	ADD SP,FP
++ */
++void
++zip_expand_large_prologue(void) {
++	ZIPDEBUGFLAG(dbg, false);
++	rtx	insn, fp_rtx;
++
++	gcc_assert(cfun->machine->fp_needed);
++
++	if (dbg)	fprintf(stderr, "PROLOGUE::expand-large(%d-%d)\n",
++				cfun->machine->size_for_adjusting_sp,
++				cfun->machine->sp_fp_offset);
++	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx, stack_pointer_rtx,
++		gen_int_mode(cfun->machine->size_for_adjusting_sp
++				-cfun->machine->sp_fp_offset, SImode)));
++	RTX_FRAME_RELATED_P(insn) = 1;
++
++	zip_save_registers(stack_pointer_rtx, 0);
++
++	fp_rtx = gen_rtx_REG(SImode, zip_FP);
++
++	insn = emit_insn(gen_movsi(fp_rtx,
++		gen_int_mode(cfun->machine->sp_fp_offset, SImode)));
++	RTX_FRAME_RELATED_P(insn) = 1;
++
++	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx,
++			stack_pointer_rtx, fp_rtx));
++	RTX_FRAME_RELATED_P(insn) = 1;
++
++	insn = emit_insn(gen_addsi3_reg_clobber(fp_rtx, fp_rtx, stack_pointer_rtx));
++	RTX_FRAME_RELATED_P(insn) = 1;
++}
++
++void
++zip_expand_prologue(void) {
++	ZIPDEBUGFLAG(dbg, false);
++
 +	zip_compute_frame();
 +
 +	if (dbg)  fprintf(stderr, "PROLOGUE: Computing Prologue instructions\n");
 +	if (dbg)  fprintf(stderr, "PROLOGUE: SP-FP offset is %d\n", 
 +			cfun->machine->sp_fp_offset);
 +	if (cfun->machine->size_for_adjusting_sp != 0) {
-+		insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx,
-+				stack_pointer_rtx,
-+			gen_int_mode(cfun->machine->size_for_adjusting_sp,
-+				SImode)));
-+			// cfun->machine->sp_fp_offset
-+
-+		RTX_FRAME_RELATED_P(insn) = 1;
-+	}
-+
-+	{
-+		int offset = 0, regno;
-+		for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
-+			if (zip_save_reg(regno)) {
-+				if (dbg) fprintf(stderr,
-+					"PROLOGUE: Saving R%d in %d+%d(SP)\n",
-+					regno, cfun->machine->sp_fp_offset,
-+					offset);
-+				insn=emit_insn(gen_movsi_sto_off(
-+					stack_pointer_rtx,
-+					GEN_INT(cfun->machine->sp_fp_offset
-+						+offset),
-+					gen_rtx_REG(SImode, regno)));
-+				RTX_FRAME_RELATED_P(insn) = 1;
-+				offset += 4;
-+			}
++		if (cfun->machine->size_for_adjusting_sp <= zip_max_anchor_offset) {
++			if (dbg)  fprintf(stderr, "PROLOGUE: "
++					"%d <= %ld, so going small\n",
++					cfun->machine->size_for_adjusting_sp,
++					zip_max_opb_imm);
++			zip_expand_small_prologue();
++		} else {
++			zip_expand_large_prologue();
 +		}
-+		if (dbg)  fprintf(stderr, "%d registers saved%s\n", offset,
-+			(crtl->saves_all_registers)?", should be all of them":", less than all");
-+	}
-+
-+	if (cfun->machine->fp_needed) {
-+		if (dbg) zip_debug_rtx(stack_pointer_rtx);
-+		if (dbg) zip_debug_rtx(frame_pointer_rtx);
-+		insn = emit_insn(gen_movsi_reg_off(frame_pointer_rtx,
-+				stack_pointer_rtx,
-+				GEN_INT(cfun->machine->sp_fp_offset)));
-+		RTX_FRAME_RELATED_P(insn) = 1;
-+		if (dbg)  fprintf(stderr, "sp_fp_offset is %d\n", cfun->machine->sp_fp_offset);
 +	}
 +}
 +
@@ -891,42 +1037,42 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +}
 +
 +/* As per the notes in M68k.c, quote the function epilogue should not depend
-+ * upon the current stack pointer.  It should use the frame poitner only,
++ * upon the current stack pointer.  It should use the frame pointer only,
 + * if there is a frame pointer.  This is mandatory because of alloca; we also
 + * take advantage of it to omit stack adjustments before returning ...
 + *
 + * Let's see if we can use their approach here.
 + *
 + * We can't.  Consider our choices:
-+ *	LOD (FP),R0
-+ *	LOD 1(FP),R4
-+ *	LOD 2(FP),R5
-+ *	LOD 3(FP),R6
-+ *	LOD 4(FP),FP
++ *	LW (FP),R0
++ *	LW 4(FP),R4
++ *	LW 8(FP),R5
++ *	LW 12(FP),R6
++ *	LW 16(FP),FP
 + *	... Then what is the stack pointer?
 + * or 
-+ *	LOD (FP),R0
-+ *	LOD 1(FP),R4
-+ *	LOD 2(FP),R5
-+ *	LOD 3(FP),R6
++ *	LW (FP),R0
++ *	LW 4(FP),R4
++ *	LW 8(FP),R5
++ *	LW 12(FP),R6
 + *	MOV FP,SP
-+ *	LOD 4(SP),FP
++ *	LW 16(SP),FP
 + *	... Which suffers unnecessary pipeline stalls, and certainly doesn't
 + *	exploit our pipeline memory function
 + * or
 + *	MOV FP,SP
-+ *	LOD (SP),R0
-+ *	LOD 1(SP),R4
-+ *	LOD 2(SP),R5
-+ *	LOD 3(SP),R6
-+ *	LOD 4(SP),FP
++ *	LW (SP),R0
++ *	LW 4(SP),R4
++ *	LW 8(SP),R5
++ *	LW 12(SP),R6
++ *	LW 16(SP),FP
 + * Which will be our choice.  Note that we do use the stack pointer, eventually.
 + *
 + */
 +void
 +zip_expand_epilogue(void) {
 +	int	regno, offset;
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +	rtx	insn;
 +
 +	zip_compute_frame();
@@ -951,7 +1097,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		if (dbg) fprintf(stderr, "EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
 +		for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
 +			if (zip_save_reg(regno)) {
-+				if (dbg) fprintf(stderr, "EPILOG::RESTORING R%d\n", regno);
++				if (dbg) fprintf(stderr, "EPILOG::RESTORING R%d from SP+%d\n", regno, offset);
 +				rtx reg = gen_rtx_REG(SImode, regno);
 +				insn = emit_insn(gen_movsi_lod_off(
 +						reg,
@@ -993,7 +1139,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +void
 +zip_sibcall_epilogue(void) {
 +	int	regno, offset;
-+	const bool	dbg = ((ZIP_ALL_DEBUG_ON)||(false))&&(!ZIP_ALL_DEBUG_OFF);
++	ZIPDEBUGFLAG(dbg, false);
 +	rtx	insn;
 +
 +	zip_compute_frame();
@@ -7611,7 +7757,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-02-03 09:27:44.546686161 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-02-11 09:25:19.263282471 -0500
 @@ -0,0 +1,2731 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -8041,7 +8187,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +(define_insn "mov<mode>_lod_off" ; used by epilogue code
 +	[(set (match_operand:ZI 0 "register_operand" "=r")
 +		(mem:ZI (plus:SI (match_operand:SI 1 "register_operand" "r")
-+			(match_operand:SI 2 "const_int_operand" "N"))))]
++			(match_operand:SI 2 "zip_opb_immv_p" "N"))))]
 +	""
 +	"L<sz>\t%2(%1),%0"
 +	[(set_attr "predicable" "yes") (set_attr "ccresult" "unchanged")])
@@ -8058,7 +8204,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +(define_insn "mov<mode>_sto_off" ; used by prologue code
 +	[(set (mem:ZI (plus:SI
 +			(match_operand:SI 0 "register_operand" "r")
-+			(match_operand:SI 1 "const_int_operand" "N")))
++			(match_operand:SI 1 "zip_opb_immv_p" "N")))
 +		(match_operand:ZI 2 "register_operand" "r"))]
 +	""
 +	"S<sz>\t%2,%1(%0)"
@@ -9481,13 +9627,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +				emit_jump_insn(gen_cbranch_jmp_gte(operands[3]));
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
-+				&&(INTVAL(operands[2])>-(1<<17)+1)) {
-+				//; A <  B
-+				//; A <= B-1
++				&&(INTVAL(operands[2])<(1<<17)-2)) {
++				//; A <= B
++				//; A <  B+1
 +				//; Add one to the integer constant,
 +				//; And use a GTU comparison
 +				emit_insn(gen_cmpsi(operands[1],
-+					GEN_INT(INTVAL(operands[2])-1)));
++					GEN_INT(INTVAL(operands[2])+1)));
 +				emit_jump_insn(gen_cbranch_jmp_lt(operands[3]));
 +				DONE;
 +			} else if ((CONST_INT_P(operands[2]))
