@@ -22,11 +22,23 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 ## Current Status
 
-Very few changes have been made to the CPU recently.  It appears to have
-stabilized--both in its instruction set as well as in its implementation.
+The ZipCPU is supported by a full build toolchain, found here in this
+[repository](tree/master/sw).  This includes binutils, gcc, and a zipdbg
+debugger.  GDB has not (yet) been ported to the ZipCPU, neither does the CPU
+support any C libraries.  Still, an
+[Operating Sysem](../s6soc/tree/master/sw/zipos) has been built using the 
+ZipCUP with some success.
 
-The CPU does have a toolchain to support it, found here in this repository.
-This includes binutils, gcc, and a zipdbg debugger.  GDB has not been ported
-to the ZipCPU, neither does the CPU support any C libraries.  Still, an
-Operating Sysem has been built with it with some success.
+Very few changes have been made to the master branch of the CPU recently.
+You might even consider it to be a stable version.
+
+However, a *lot* of work is taking place on the
+[8-bit byte branch](tree/branch8b).  You might consider this to be the current
+development branch for the next major version.  The fundamental characteristic
+of the CPU on that branch, though, is four new opcodes offering the CPU
+8-bit byte access to bus.  Once the branch stabilizes, and once it has been
+proven on the various projects I have that use the ZipCPU such as the
+[S6SoC](../s6soc/tree/branch8b), [XuLA2-LX25 SoC](../xulalx25soc/tree/branch8b),
+and [OpenArty](../openarty/tree/branch8b), then that branch will be merged into
+the mainline.
 
