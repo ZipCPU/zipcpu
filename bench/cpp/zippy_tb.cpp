@@ -214,9 +214,9 @@ public:
 		for(int i=0; i<16; i++)
 			m_state.m_uR[i] = m_core->v__DOT__thecpu__DOT__regset[i+16];
 		m_state.m_uR[14] = (m_state.m_uR[14]&0xffffe000)|m_core->v__DOT__thecpu__DOT__w_uflags;
-		m_state.m_uR[15] = m_core->v__DOT__thecpu__DOT__upc;
+		m_state.m_uR[15] = m_core->v__DOT__thecpu__DOT__r_upc;
 
-		m_state.m_gie = m_core->v__DOT__thecpu__DOT__gie;
+		m_state.m_gie = m_core->v__DOT__thecpu__DOT__r_gie;
 		m_state.m_pc  = (m_state.m_gie) ? (m_state.m_uR[15]):(m_state.m_sR[15]);
 		m_state.m_sp  = (m_state.m_gie) ? (m_state.m_uR[13]):(m_state.m_sR[13]);
 
@@ -432,7 +432,7 @@ public:
 			(m_core->v__DOT__cmd_addr)&0x3f,
 			(m_core->v__DOT__thecpu__DOT__master_ce)? "*CE*" :"(ce)",
 			(m_core->v__DOT__cpu_reset)? "*RST*" :"(rst)");
-		if (m_core->v__DOT__thecpu__DOT__gie)
+		if (m_core->v__DOT__thecpu__DOT__r_gie)
 			attroff(A_BOLD);
 		else
 			attron(A_BOLD);
@@ -487,7 +487,7 @@ public:
 			:" "));
 		ln++;
 
-		if (m_core->v__DOT__thecpu__DOT__gie)
+		if (m_core->v__DOT__thecpu__DOT__r_gie)
 			attron(A_BOLD);
 		else
 			attroff(A_BOLD);
@@ -660,7 +660,7 @@ public:
 #endif
 			m_core->v__DOT__thecpu__DOT__pf_valid,
 			//m_core->v__DOT__thecpu__DOT__instruction_gie,
-			m_core->v__DOT__thecpu__DOT__gie,
+			m_core->v__DOT__thecpu__DOT__r_gie,
 			0,
 			m_core->v__DOT__thecpu__DOT__instruction_pc,
 			true); ln++;
@@ -923,7 +923,7 @@ public:
 		ln++;
 		unsigned int cc = m_state.m_sR[14];
 		if (m_dbgfp) fprintf(m_dbgfp, "CC = %08x, gie = %d\n", cc,
-			m_core->v__DOT__thecpu__DOT__gie);
+			m_core->v__DOT__thecpu__DOT__r_gie);
 		gie = (cc & 0x020);
 		if (gie)
 			attroff(A_BOLD);
@@ -1035,7 +1035,7 @@ public:
 			1,
 #endif
 			m_core->v__DOT__thecpu__DOT__pf_valid,
-			m_core->v__DOT__thecpu__DOT__gie,
+			m_core->v__DOT__thecpu__DOT__r_gie,
 			0,
 			m_core->v__DOT__thecpu__DOT__instruction_pc,
 			true); ln++;
@@ -1108,7 +1108,7 @@ public:
 	}
 
 	void	tick(void) {
-		int gie = m_core->v__DOT__thecpu__DOT__gie;
+		int gie = m_core->v__DOT__thecpu__DOT__r_gie;
 		/*
 		m_core->i_qspi_dat = m_flash(m_core->o_qspi_cs_n,
 						m_core->o_qspi_sck,
@@ -1175,7 +1175,7 @@ public:
 				m_core->v__DOT__thecpu__DOT__alu_wr,
 				m_core->v__DOT__thecpu__DOT__alu_reg,
 				m_core->v__DOT__thecpu__DOT__ipc,
-				m_core->v__DOT__thecpu__DOT__upc);
+				m_core->v__DOT__thecpu__DOT__r_upc);
 				
 		if ((m_dbgfp)&&(!gie)&&(m_core->v__DOT__thecpu__DOT__w_release_from_interrupt)) {
 			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d\n",
@@ -1253,12 +1253,12 @@ public:
 				m_core->i_wb_err = 0;
 			TESTB<Vzipsystem>::tick();
 		}
-		if ((m_dbgfp)&&(gie != m_core->v__DOT__thecpu__DOT__gie)) {
+		if ((m_dbgfp)&&(gie != m_core->v__DOT__thecpu__DOT__r_gie)) {
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
 				(gie)?"User":"Supervisor",
 				(gie)?"Supervisor":"User",
 				m_core->v__DOT__thecpu__DOT__ipc,
-				m_core->v__DOT__thecpu__DOT__upc,
+				m_core->v__DOT__thecpu__DOT__r_upc,
 				m_core->v__DOT__thecpu__DOT__pf_pc);
 		} if (m_dbgfp) {
 #ifdef	OPT_TRADITIONAL_PFCACHE
@@ -1394,7 +1394,7 @@ public:
 	}
 
 	bool	test_success(void) {
-		return ((!m_core->v__DOT__thecpu__DOT__gie)
+		return ((!m_core->v__DOT__thecpu__DOT__r_gie)
 			&&(m_core->v__DOT__thecpu__DOT__sleep));
 	}
 
@@ -1505,8 +1505,8 @@ public:
 	bool	test_failure(void) {
 		if (m_core->v__DOT__thecpu__DOT__sleep)
 			return 0;
-		else if (m_core->v__DOT__thecpu__DOT__gie)
-			return (m_mem[m_core->v__DOT__thecpu__DOT__upc] == 0x7bc3dfff);
+		else if (m_core->v__DOT__thecpu__DOT__r_gie)
+			return (m_mem[m_core->v__DOT__thecpu__DOT__r_upc] == 0x7bc3dfff);
 		else if (m_mem[m_core->v__DOT__thecpu__DOT__ipc] == 0x7883ffff)
 			return true; // ADD to PC instruction
 		else // MOV to PC instruction
@@ -1725,7 +1725,7 @@ void	get_value(ZIPPY_TB *tb) {
 			switch(ra) {
 			case 15:
 				tb->m_core->v__DOT__thecpu__DOT__ipc = v;
-				if (!tb->m_core->v__DOT__thecpu__DOT__gie) {
+				if (!tb->m_core->v__DOT__thecpu__DOT__r_gie) {
 					tb->m_core->v__DOT__thecpu__DOT__pf_pc = v;
 					tb->m_core->v__DOT__thecpu__DOT__new_pc = 1;
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
@@ -1738,8 +1738,8 @@ void	get_value(ZIPPY_TB *tb) {
 				}
 				break;
 			case 31:
-				tb->m_core->v__DOT__thecpu__DOT__upc = v; 
-				if (tb->m_core->v__DOT__thecpu__DOT__gie) {
+				tb->m_core->v__DOT__thecpu__DOT__r_upc = v; 
+				if (tb->m_core->v__DOT__thecpu__DOT__r_gie) {
 					tb->m_core->v__DOT__thecpu__DOT__pf_pc = v;
 					tb->m_core->v__DOT__thecpu__DOT__new_pc = 1;
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
@@ -2184,7 +2184,7 @@ int	main(int argc, char **argv) {
 			/*
 			printf("PC = %08x:%08x (%08x)\n",
 				tb->m_core->v__DOT__thecpu__DOT__ipc,
-				tb->m_core->v__DOT__thecpu__DOT__upc,
+				tb->m_core->v__DOT__thecpu__DOT__r_upc,
 				tb->m_core->v__DOT__thecpu__DOT__alu_pc);
 			*/
 
