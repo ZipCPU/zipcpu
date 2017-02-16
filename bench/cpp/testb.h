@@ -37,6 +37,8 @@
 #ifndef	TESTB_H
 #define	TESTB_H
 
+#include <stdio.h>
+#include <stdint.h>
 #include <verilated_vcd_c.h>
 
 template <class VA>	class TESTB {
@@ -45,8 +47,8 @@ public:
 	VerilatedVcdC*	m_trace;
 	unsigned long	m_tickcount;
 
-	TESTB(void) {
-		m_core = new VA; m_trace = NULL;
+	TESTB(void) : m_trace(NULL), m_tickcount(0l) {
+		m_core = new VA;
 		Verilated::traceEverOn(true);
 	}
 	virtual ~TESTB(void) {
@@ -61,6 +63,13 @@ public:
 		m_trace->open(vcdname);
 	}
 
+	virtual	void	closetrace(void) {
+		if (m_trace) {
+			m_trace->close();
+			m_trace = NULL;
+		}
+	}
+
 	virtual	void	eval(void) {
 		m_core->eval();
 	}
@@ -68,8 +77,9 @@ public:
 	virtual	void	tick(void) {
 		m_tickcount++;
 
+		//if((m_trace)&&(m_tickcount)) m_trace->dump(10*m_tickcount-4);
 		eval();
-		if (m_trace) m_trace->dump(10*m_tickcount-2);
+		if ((m_trace)&&(m_tickcount)) m_trace->dump(10*m_tickcount-2);
 		m_core->i_clk = 1;
 		eval();
 		if (m_trace) m_trace->dump(10*m_tickcount);
