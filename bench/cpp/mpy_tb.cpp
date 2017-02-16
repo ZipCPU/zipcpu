@@ -149,20 +149,17 @@ public:
 	// implementation wouldn't have this problem.
 	//
 	void	tick(void) {
-		bool	debug = true;
+		bool	debug = false;
 
-		m_core->i_clk = 0;
-		m_core->eval();
+		// Insist that we are never both busy and producing a valid
+		// result at the same time.  One or the other may be true,
+		// but never both.
+		assert((!m_core->o_busy)||(!m_core->o_valid));
+		//
+		TESTB<Vcpuops>::tick();
+
 		if (debug)
 			dbgdump();
-#if(OPT_MULTIPLY == 1)
-		m_core->i_clk = 0;
-		m_core->eval();
-#endif
-		assert((!m_core->o_busy)||(!m_core->o_valid));
-		TESTB<Vcpuops>::tick();
-		m_core->i_clk = 0;
-		m_core->eval();
 	}
 
 	//
@@ -193,8 +190,12 @@ public:
 	// to be cleared.
 	//
 	unsigned	op(int op, int a, int b) {
+		// Make sure we start witht he core idle
 		if (m_core->o_valid)
 			clear_ops();
+
+		// Set the arguments to the CPUOPS core to get a multiple
+		// started
 		m_core->i_ce    = 1;
 		m_core->i_op    = op;
 		m_core->i_a     = a;
@@ -202,20 +203,30 @@ public:
 
 		unsigned long now = m_tickcount;
 
+		// Tick once to get it going
 		tick();
+
+		// Clear the input arguments to the multiply
 		m_core->i_ce    = 0;
 		m_core->i_a     = 0;
 		m_core->i_b     = 0;
 
+		// Wait for the result to be valid
 		while(!m_core->o_valid)
 			tick();
-if(1) {
+
+		// Check that we used the number of clock ticks we said we'd
+		// be using.  OPT_MULTIPLY is *supposed* to be equal to this
+		// number.
 		if((m_tickcount - now)!=OPT_MULTIPLY) {
 			printf("%ld ticks seen, %d ticks expected\n",
 				m_tickcount-now, OPT_MULTIPLY);
 			dbgdump();
-		} assert((m_tickcount - now)==OPT_MULTIPLY);
-}
+			printf("TEST-FAILURE!\n");
+			closetrace();
+			exit(EXIT_FAILURE);
+		}
+
 		return m_core->o_c;
 	}
 
@@ -248,15 +259,18 @@ if(1) {
 		u = op(OP_MPYUHI, a, b);
 		tick();
 
+		// Let's check our answers, and see if we got the right results
 		if ((r ^ sv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #1\n");
 			printf("Comparing 0x%08x to 0x%016lx\n", r, sv);
 			printf("TEST-FAILURE!\n");
+			closetrace();
 			exit(EXIT_FAILURE);
 		} if ((r ^ uv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #2\n");
 			printf("Comparing 0x%08x to 0x%016lx\n", r, uv);
 			printf("TEST-FAILURE!\n");
+			closetrace();
 			exit(EXIT_FAILURE);
 		}
 
@@ -264,11 +278,13 @@ if(1) {
 			printf("TEST FAILURE(MPYSHI), MPY #3\n");
 			printf("Comparing 0x%08x to 0x%016lx\n", s, sv);
 			printf("TEST-FAILURE!\n");
+			closetrace();
 			exit(EXIT_FAILURE);
 		} if ((u^(uv>>32))&0x0ffffffffu) {
 			printf("TEST FAILURE(MPYUHI), MPY #4\n");
 			printf("Comparing 0x%08x to 0x%016lx\n", u, uv);
 			printf("TEST-FAILURE!\n");
+			closetrace();
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -298,6 +314,7 @@ int	main(int argc, char **argv) {
 	// Now, create a test bench.
 	CPUOPS_TB	*tb = new CPUOPS_TB();
 	int	rcode = EXIT_SUCCESS;
+	// tb->opentrace("mpy_tb.vcd");
 
 	// Get us started by a couple of clocks past reset.  This isn't that
 	// unreasonable, since the CPU needs to load up the pipeline before
