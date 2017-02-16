@@ -158,4 +158,7 @@ dhrystone: zippy_tb
 
 .PHONY: clean
 clean:
-	rm ./zippy_tb pdump div_tb mpy_tb
+	rm -f mpy_tb.vcd div_tb.vcd
+	rm -f pdump div_tb mpy_tb
+	rm ./zippy_tb
+
