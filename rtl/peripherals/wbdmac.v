@@ -168,7 +168,7 @@ module wbdmac(i_clk, i_rst,
 
 	reg	last_read_request, last_read_ack,
 		last_write_request, last_write_ack;
-	reg	trigger, abort;
+	reg	trigger, abort, user_halt;
 
 	initial	dma_state = `DMA_IDLE;
 	initial	o_interrupt = 1'b0;
@@ -193,7 +193,7 @@ module wbdmac(i_clk, i_rst,
 		begin
 			case(i_swb_addr)
 			2'b00: begin
-				if ((i_swb_data[27:16] == 12'hfed)
+				if ((i_swb_data[31:16] == 16'h0fed)
 						&&(cfg_len_nonzero))
 					dma_state <= `DMA_WAIT;
 				cfg_blocklen_sub_one
@@ -221,6 +221,8 @@ module wbdmac(i_clk, i_rst,
 		nread      <= 0;
 		if (abort)
 			dma_state <= `DMA_IDLE;
+		else if (user_halt)
+			dma_state <= `DMA_IDLE;
 		else if (trigger)
 			dma_state <= `DMA_READ_REQ;
 		end
@@ -240,11 +242,14 @@ module wbdmac(i_clk, i_rst,
 						+ {{(AW-1){1'b0}},1'b1};
 		end
 
+		if (user_halt)
+			dma_state <= `DMA_READ_ACK;
 		if (i_mwb_err)
 		begin
 			cfg_len <= 0;
 			dma_state <= `DMA_IDLE;
 		end
+
 		if (abort)
 			dma_state <= `DMA_IDLE;
 		if (i_mwb_ack)
@@ -266,6 +271,8 @@ module wbdmac(i_clk, i_rst,
 			nread <= nread+1;
 			if (last_read_ack) // (nread+1 == nracks)
 				dma_state  <= `DMA_PRE_WRITE;
+			if (user_halt)
+				dma_state <= `DMA_IDLE;
 			if (cfg_incs)
 				cfg_raddr  <= cfg_raddr
 						+ {{(AW-1){1'b0}},1'b1};
@@ -303,6 +310,8 @@ module wbdmac(i_clk, i_rst,
 			nwacks <= nwacks+1;
 			cfg_len <= cfg_len +{(AW){1'b1}}; // -1
 		end
+		if (user_halt)
+			dma_state <= `DMA_WRITE_ACK;
 		if (abort)
 			dma_state <= `DMA_IDLE;
 		end
@@ -465,6 +474,13 @@ module wbdmac(i_clk, i_rst,
 		abort <= (i_rst)||((i_swb_stb)&&(i_swb_we)
 			&&(i_swb_addr == 2'b00)
 			&&(i_swb_data == 32'hffed0000));
+
+	initial	user_halt = 1'b0;
+	always @(posedge i_clk)
+		user_halt <= ((user_halt)&&(dma_state != `DMA_IDLE))
+			||((i_swb_stb)&&(i_swb_we)&&(dma_state != `DMA_IDLE)
+				&&(i_swb_addr == 2'b00)
+				&&(i_swb_data == 32'hafed0000));
 
 endmodule
 
