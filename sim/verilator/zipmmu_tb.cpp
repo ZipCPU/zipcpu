@@ -36,7 +36,9 @@
 //
 #include <stdio.h>
 
-#include "verilated.h"
+#include <verilated.h>
+#include <verilated_vcd_c.h>
+#include "testb.h"
 #include "Vzipmmu_tb.h"
 
 #define	MMUFLAG_RONW	8 // Read only (not writeable)
@@ -47,15 +49,13 @@
 const int	BOMBCOUNT = 32,
 		LGMEMSIZE = 15;
 
-class	ZIPMMU_TB {
+class	ZIPMMU_TB : public TESTB<Vzipmmu_tb> {
 	long		m_tickcount;
-	Vzipmmu_tb	*m_core;
 	bool		m_bomb, m_miss, m_err, m_debug;
 	int		m_last_tlb_index;
 public:
 
 	ZIPMMU_TB(void) {
-		m_core = new Vzipmmu_tb;
 		m_debug = true;
 		m_last_tlb_index = 0;
 	}
@@ -141,16 +141,16 @@ public:
 	}
 
 	void reset(void) {
-		m_core->i_reset    = 1;
+		m_core->i_rst    = 1;
 		m_core->i_ctrl_cyc_stb = 0;
 		m_core->i_wbm_cyc  = 0;
 		m_core->i_wbm_stb  = 0;
 		tick();
-		m_core->i_reset  = 0;
+		m_core->i_rst  = 0;
 	}
 
 	void wb_tick(void) {
-		m_core->i_reset  = 0;
+		m_core->i_rst  = 0;
 		m_core->i_ctrl_cyc_stb = 0;
 		m_core->i_wbm_cyc  = 0;
 		m_core->i_wbm_stb  = 0;

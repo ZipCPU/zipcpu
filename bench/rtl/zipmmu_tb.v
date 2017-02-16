@@ -31,7 +31,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
-module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
+module zipmmu_tb(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 				i_wb_addr, i_wb_data,
 			o_rtn_stall, o_rtn_ack, o_rtn_err,
 				o_rtn_miss, o_rtn_data);
@@ -39,7 +39,7 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 			MEMORY_ADDRESS_WIDTH=15;
 	localparam	AW= CPU_ADDRESS_WIDTH,
 			MAW= MEMORY_ADDRESS_WIDTH;
-	input			i_clk, i_reset;
+	input			i_clk, i_rst;
 	//
 	input			i_ctrl_cyc_stb;
 	//
@@ -69,7 +69,7 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	// mut = Module Under Test
 	//
 	zipmmu	#(.ADDRESS_WIDTH(CPU_ADDRESS_WIDTH))
-		mut(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb,
+		mut(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb,
 			i_wb_we, i_wb_addr, i_wb_data,
 			mem_cyc, mem_stb, mem_we, mem_addr,
 					mem_idata,
