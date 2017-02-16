@@ -77,9 +77,9 @@ syn keyword zipopcode sub and add or xor lsr lsl asr lhi llo ldihi ldilo
 syn keyword zipopcode mpyu mpys divu divs
 syn keyword zipopcode brev popc rol mov cmp tst lod sto ldi
 syn keyword zipopcode noop break brk lock
-syn keyword zipopcode fpadd fpsub fpmul fpdiv dpcvt fpint
-syn keyword zipopcode bz beq bnz bc brc brv bv bra blt bgt bge
-syn keyword zipopcode clr halt wait clrf jmp ljmp not trap busy neg rtu
+syn keyword zipopcode fpadd fpsub fpmul fpdiv fpi2f fpf2i
+syn keyword zipopcode bz beq bnz bne bc bv bra blt bgt bge
+syn keyword zipopcode clr halt wait jmp ljmp not trap busy neg rtu ljsr jsr
 
 "delimiters
 
@@ -94,7 +94,7 @@ syn keyword zipCondition z ne nz ge gt lt n c v
 
 "The regex for different zip registers are given below
 syn match zipregisters "[us]\=R\([0-9]\|1[0-5]\)\>"
-syn keyword zipregisters gbl sp cc pc usp ucc upc
+syn keyword zipregisters gbl sp cc pc lr fp ulr ufp usp ucc upc
 "floating point classes
 
 "Data allocation syntax
