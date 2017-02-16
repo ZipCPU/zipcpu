@@ -614,7 +614,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	dcdvalid = r_dcdvalid;
 `endif
 
-`ifdef	OPT_NEW_INSTRUCTION_SET
 
 	// If not pipelined, there will be no opvalid_ anything, and the
 	idecode #(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
@@ -632,25 +631,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			dcd_early_branch,
 			dcd_branch_pc, dcd_ljmp,
 			dcd_pipe);
-`else
-	idecode_deprecated
-		#(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
-			IMPLEMENT_FPU)
-		instruction_decoder(i_clk, (i_rst)||(clear_pipeline),
-			dcd_ce, dcd_stalled, instruction, instruction_gie,
-			instruction_pc, pf_valid, pf_illegal, dcd_phase,
-			dcd_illegal, dcd_pc, dcd_gie, 
-			{ dcdR_cc, dcdR_pc, dcdR },
-			{ dcdA_cc, dcdA_pc, dcdA },
-			{ dcdB_cc, dcdB_pc, dcdB },
-			dcdI, dcd_zI, dcdF, dcdF_wr, dcdOp,
-			dcdALU, dcdM, dcdDV, dcdFP, dcd_break, dcd_lock,
-			dcdR_wr,dcdA_rd, dcdB_rd,
-			dcd_early_branch,
-			dcd_branch_pc,
-			dcd_pipe);
-	assign	dcd_ljmp = 1'b0;
-`endif
 
 `ifdef	OPT_PIPELINED_BUS_ACCESS
 	reg		r_op_pipe;
@@ -1987,12 +1967,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			o_break, i_wb_err, pf_pc[1:0],
 			flags,
 			pf_valid, dcdvalid, opvalid, alu_valid, mem_valid,
-			op_ce, alu_ce, mem_ce,L
-     8097 40008026:      JMP 0x00008026
-     8098 58010000:      FLAGS 58010000 CE[D   ] V[    ] MCE GIE
-     8099 58050000:      FLAGS 58050000 CE[D   ] V[P   ] MCE GIE
-     8100 5805a000:      FLAGS 5805a000 CE[DO  ] V[PD  ] MCE GIE
-
+			op_ce, alu_ce, mem_ce,
 			//
 			master_ce, opvalid_alu, opvalid_mem,
 			//
