@@ -77,8 +77,9 @@ public:
 	virtual	void	tick(void) {
 		m_tickcount++;
 
+		//if((m_trace)&&(m_tickcount)) m_trace->dump(10*m_tickcount-4);
 		eval();
-		if (m_trace) m_trace->dump(10*m_tickcount-2);
+		if ((m_trace)&&(m_tickcount)) m_trace->dump(10*m_tickcount-2);
 		m_core->i_clk = 1;
 		eval();
 		if (m_trace) m_trace->dump(10*m_tickcount);

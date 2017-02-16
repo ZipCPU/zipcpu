@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -37,6 +37,8 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
+//
+//
 #ifndef	MEMSIM_H
 #define	MEMSIM_H
 
@@ -53,14 +55,18 @@ public:
 	MEMSIM(const unsigned int nwords);
 	~MEMSIM(void);
 	void	load(const char *fname);
-	void	apply(const unsigned clk, const uchar wb_cyc, const uchar wb_stb,
+	void	load(const unsigned addr, const char *buf,const unsigned len);
+	void	apply(const uchar wb_cyc, const uchar wb_stb,
 				const uchar wb_we,
-			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
+			const BUSW wb_addr, const BUSW wb_data,
+				const uchar wb_sel,
 			uchar &o_ack, uchar &o_stall, BUSW &o_data);
-	void	operator()(const unsigned clk, const uchar wb_cyc, const uchar wb_stb, const uchar wb_we,
-			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
+	void	operator()(const uchar wb_cyc, const uchar wb_stb,
+				const uchar wb_we,
+			const BUSW wb_addr, const BUSW wb_data,
+				const uchar wb_sel,
 			uchar &o_ack, uchar &o_stall, BUSW &o_data) {
-		apply(clk, wb_cyc, wb_stb, wb_we, wb_addr, wb_data, wb_sel, o_ack, o_stall, o_data);
+		apply(wb_cyc, wb_stb, wb_we, wb_addr, wb_data, wb_sel, o_ack, o_stall, o_data);
 	}
 	BUSW &operator[](const BUSW addr) { return m_mem[addr&m_mask]; }
 };

@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -37,8 +37,13 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
+//
+//
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
+#include <stdint.h>
+#include "byteswap.h"
 #include "memsim.h"
 
 MEMSIM::MEMSIM(const unsigned int nwords) {
@@ -46,7 +51,7 @@ MEMSIM::MEMSIM(const unsigned int nwords) {
 
 	for(nxt=1; nxt < nwords; nxt<<=1)
 		;
-	m_len = nxt>>2; m_mask = nxt-1;
+	m_len = nxt; m_mask = nxt-1;
 	m_mem = new BUSW[m_len];
 	m_nxt_ack = 0;
 }
@@ -81,28 +86,41 @@ void	MEMSIM::load(const char *fname) {
 		m_mem[nr] = 0l;
 }
 
-void	MEMSIM::apply(const unsigned int clk, const unsigned char wb_cyc,
-			const unsigned char wb_stb, const unsigned char wb_we,
-			const BUSW wb_addr, const BUSW wb_data, const int wb_sel,
-			unsigned char &o_ack, unsigned char &o_stall, BUSW &o_data) {
-	o_ack = m_nxt_ack;
+void	MEMSIM::load(const unsigned addr, const char *buf, const unsigned len) {
+	memcpy(&m_mem[addr], buf, len);
+	byteswapbuf((len>>2), &m_mem[addr]);
+}
+
+void	MEMSIM::apply(const uchar wb_cyc,
+			const uchar wb_stb, const uchar wb_we,
+			const BUSW wb_addr, const BUSW wb_data, const uchar wb_sel,
+			uchar &o_ack, uchar &o_stall, BUSW &o_data) {
+	unsigned	sel = 0;
+
+	if (wb_sel&0x8)
+		sel |= 0x0ff000000;
+	if (wb_sel&0x4)
+		sel |= 0x000ff0000;
+	if (wb_sel&0x2)
+		sel |= 0x00000ff00;
+	if (wb_sel&0x1)
+		sel |= 0x0000000ff;
+
+	o_ack = (m_nxt_ack) && (wb_cyc);
 	o_data= m_nxt_data;
 	m_nxt_data = wb_data;
+	m_nxt_ack  = 0;
 	o_stall= 0;
-	if ((wb_cyc)&&(wb_stb)&&(clk)) {
+	if ((wb_cyc)&&(wb_stb)) {
 		if (wb_we) {
-			unsigned bmask = 0;
-			if (wb_sel&0x08)
-				bmask |= 0xff000000;
-			if (wb_sel&0x04)
-				bmask |= 0x00ff0000;
-			if (wb_sel&0x02)
-				bmask |= 0x0000ff00;
-			if (wb_sel&0x01)
-				bmask |= 0x000000ff;
-			m_mem[wb_addr & m_mask] = 
-				(m_mem[wb_addr & m_mask] & (~bmask))
-				| (wb_data & bmask);
+			if (sel == 0xffffffffu)
+				m_mem[wb_addr & m_mask] = wb_data;
+			else {
+				uint32_t memv = m_mem[wb_addr & m_mask];
+				memv &= ~sel;
+				memv |= (wb_data & sel);
+				m_mem[wb_addr & m_mask] = memv;
+			}
 		}
 		m_nxt_ack = 1;
 		m_nxt_data = m_mem[wb_addr & m_mask];
@@ -116,14 +134,6 @@ void	MEMSIM::apply(const unsigned int clk, const unsigned char wb_cyc,
 					fprintf(gbl_dbgfp, "MEMSIM::BUS = MEM[%08x] = %08x\n", wb_addr&m_mask, m_nxt_data);
 			}
 		}
-		/*
-		printf("MEMBUS -- ACK %s 0x%08x - 0x%08x\n",
-			(wb_we)?"WRITE":"READ",
-			wb_addr, o_data);
-		*/
-	} else if (clk) {
-		m_nxt_ack   = 0;
-		o_stall = 0;
 	}
 }
 
