@@ -74,7 +74,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	input			i_pf_valid, i_illegal;
 	output	wire		o_phase;
 	output	reg		o_illegal;
-	output	reg	[(AW-1):0]	o_pc;
+	output	reg	[AW:0]	o_pc;
 	output	reg		o_gie;
 	output	reg	[6:0]	o_dcdR, o_dcdA, o_dcdB;
 	output	wire	[31:0]	o_I;
@@ -113,14 +113,14 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	wire	[3:0]	w_cond;
 	wire		w_wF, w_mem, w_sto, w_lod, w_div, w_fpu;
 	wire		w_wR, w_rA, w_rB, w_wR_n;
-	wire		w_ljmp, w_ljmp_dly;
+	wire		w_ljmp, w_ljmp_dly, w_cis_ljmp;
 	wire	[31:0]	iword;
 
 
 `ifdef	OPT_CIS
 	reg	[15:0]	r_nxt_half;
 	assign	iword = (o_phase)
-				// set second half as a NOOP ... but really 
+				// set second half as a NOOP ... but really
 				// shouldn't matter
 			? { r_nxt_half[15:0], i_instruction[15:0] }
 			: i_instruction;
@@ -130,11 +130,29 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 
 	generate
 	if (EARLY_BRANCHING != 0)
+	begin
+`ifdef	OPT_CIS
+		reg	r_pre_ljmp;
+		always @(posedge i_clk)
+		if ((i_rst)||(o_early_branch))
+			r_pre_ljmp <= 1'b0;
+		else if ((i_ce)&&(i_pf_valid))
+			r_pre_ljmp <= (!o_phase)&&(i_instruction[31])
+				&&(i_instruction[14:0] == 15'h7cf8);
+		else if (i_ce)
+			r_pre_ljmp <= 1'b0;
+
+		assign	w_cis_ljmp = r_pre_ljmp;
+`else
+		assign	w_cis_ljmp = 1'b0;
+`endif
 		// 0.1111.10010.000.1.1111.000000000...
 		// 0111.1100.1000.0111.11000....
 		assign	w_ljmp = (iword == 32'h7c87c000);
-	else
+	end else begin
+		assign	w_cis_ljmp = 1'b0;
 		assign	w_ljmp = 1'b0;
+	end
 	endgenerate
 
 `ifdef	OPT_CIS
@@ -173,7 +191,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	always @(iword)
 		w_cis_op <= w_op;
 `endif
-		
+
 	assign	w_op= iword[26:22];
 	assign	w_mov    = (w_cis_op      == 5'h0d);
 	assign	w_ldi    = (w_cis_op[4:1] == 4'hc);
@@ -199,7 +217,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
-	assign	w_noop   = (!iword[31])&&(w_cis_op[4:0] == 5'h1f)&&(
+	assign	w_noop   = (!iword[31])&&(w_op[4:0] == 5'h1f)&&(
 			((IMPLEMENT_FPU>0)&&(w_dcdR[3:1] == 3'h7))
 			||(IMPLEMENT_FPU==0));
 
@@ -236,19 +254,19 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign	w_sto     = (w_mem)&&( w_cis_op[0]);
 	assign	w_lod     = (w_mem)&&(!w_cis_op[0]);
 	// 1 LUT
-	assign	w_div     = (!iword[31])&&(w_cis_op[4:1] == 4'h7);
+	assign	w_div     = (!iword[31])&&(w_op[4:1] == 4'h7);
 	// 2 LUTs
-	assign	w_fpu   = (!iword[31])&&(w_cis_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_cis_op[2:1] != 2'b00);
+	assign	w_fpu   = (!iword[31])&&(w_op[4:3] == 2'b11)
+				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
 	//
 	// rA - do we need to read register A?
 	assign	w_rA = // Floating point reads reg A
 			((w_fpu)&&(w_cis_op[4:1] != 4'hf))
 			// Divide's read A
 			||(w_div)
-			// ALU read's A, unless it's a MOV to A
-			// This includes BREV/LDILO
-			||((w_ALU)&&(!w_brev)&&(!w_ldilo)&&(!w_mov))
+			// ALU ops read A,
+			//	except for MOV's and BREV's which don't
+			||((w_ALU)&&(!w_brev)&&(!w_mov))
 			// STO's read A
 			||(w_sto)
 			// Test/compares
@@ -272,7 +290,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	assign	w_wR     = ~w_wR_n;
 	//
 	// wF -- do we write flags when we are done?
-	//	
+	//
 	assign	w_wF     = (w_cmptst)
 			||((w_cond[3])&&((w_fpu)||(w_div)
 				||((w_ALU)&&(!w_mov)&&(!w_ldilo)&&(!w_brev)
@@ -382,12 +400,15 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		if (i_ce)
 		begin
 `ifdef	OPT_CIS
-			if (~o_phase)
-			begin
+			if (!o_phase)
 				o_gie<= i_gie;
-				// i.e. dcd_pc+1
-				o_pc <= i_pc+{{(AW-1){1'b0}},1'b1};
-			end
+
+			if ((iword[31])&&(!o_phase))
+				o_pc <= { i_pc, 1'b1 };
+			else if ((iword[31])&&(i_pf_valid))
+				o_pc <= { i_pc, 1'b0 };
+			else
+				o_pc <= { i_pc + 1'b1, 1'b0 };
 `else
 			o_gie<= i_gie;
 			o_pc <= i_pc+{{(AW-1){1'b0}},1'b1};
@@ -408,7 +429,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			//	the ALU.  Likewise, the two compare instructions
 			//	CMP and TST becomes SUB and AND here as well.
 			// We keep only the bottom four bits, since we've
-			// already done the rest of the decode necessary to 
+			// already done the rest of the decode necessary to
 			// settle between the other instructions.  For example,
 			// o_FP plus these four bits uniquely defines the FP
 			// instruction, o_DV plus the bottom of these defines
@@ -425,7 +446,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			r_I    <= w_I;
 			o_zI   <= w_Iz;
 
-			// Turn a NOOP into an ALU operation--subtract in 
+			// Turn a NOOP into an ALU operation--subtract in
 			// particular, although it doesn't really matter as long
 			// as it doesn't take longer than one clock.  Note
 			// also that this depends upon not setting any registers
@@ -473,6 +494,10 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		always @(posedge i_clk)
 			if (i_rst)
 				r_ljmp <= 1'b0;
+`ifdef	OPT_CIS
+			else if ((i_ce)&&(o_phase))
+				r_ljmp <= w_cis_ljmp;
+`endif
 			else if ((i_ce)&&(i_pf_valid))
 				r_ljmp <= (w_ljmp);
 		assign	o_ljmp = r_ljmp;
@@ -569,7 +594,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			r_valid <= 1'b1;
 		else if (~i_stalled)
 			r_valid <= 1'b0;
-			
+
 
 	assign	o_I = { {(32-22){r_I[22]}}, r_I[21:0] };
 
