@@ -92,7 +92,7 @@ module	wbdblpriarb(i_clk, i_rst,
 	input		[(DW-1):0]	i_b_dat;
 	input		[(DW/8-1):0]	i_b_sel;
 	output	wire			o_b_ack, o_b_stall, o_b_err;
-	// 
+	//
 	output	wire			o_cyc_a,o_cyc_b, o_stb_a, o_stb_b, o_we;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
@@ -101,14 +101,14 @@ module	wbdblpriarb(i_clk, i_rst,
 
 	// All of our logic is really captured in the 'r_a_owner' register.
 	// This register determines who owns the bus.  If no one is requesting
-	// the bus, ownership goes to A on the next clock.  Otherwise, if B is 
+	// the bus, ownership goes to A on the next clock.  Otherwise, if B is
 	// requesting the bus and A is not, then ownership goes to not A on
 	// the next clock.  (Sounds simple ...)
 	//
 	// The CYC logic is here to make certain that, by the time we determine
 	// who the bus owner is, we can do so based upon determined criteria.
-	assign o_cyc_a = (~i_rst)&&((r_a_owner) ? i_a_cyc_a : i_b_cyc_a);
-	assign o_cyc_b = (~i_rst)&&((r_a_owner) ? i_a_cyc_b : i_b_cyc_b);
+	assign o_cyc_a = ((r_a_owner) ? i_a_cyc_a : i_b_cyc_a);
+	assign o_cyc_b = ((r_a_owner) ? i_a_cyc_b : i_b_cyc_b);
 	reg	r_a_owner;
 	initial	r_a_owner = 1'b1;
 	always @(posedge i_clk)
@@ -118,9 +118,33 @@ module	wbdblpriarb(i_clk, i_rst,
 			r_a_owner <= ((i_b_cyc_a)||(i_b_cyc_b))? 1'b0:1'b1;
 
 
+	assign o_we    = (r_a_owner) ? i_a_we    : i_b_we;
+`ifdef	ZERO_ON_IDLE
+	//
+	// ZERO_ON_IDLE uses more logic than the alternative.  It should be
+	// useful for reducing power, as these circuits tend to drive wires
+	// all the way across the design, but it may also slow down the master
+	// clock.  I've used it as an option when using VERILATOR, 'cause
+	// zeroing things on idle can make them stand out all the more when
+	// staring at wires and dumps and such.
+	//
+	assign	o_cyc = ((o_cyc_a)||(o_cyc_b));
+	assign	o_stb = (o_cyc)&&((o_stb_a)||(o_stb_b));
+	assign o_stb_a = (r_a_owner) ? (i_a_stb_a)&&(o_cyc_a) : (i_b_stb_a)&&(o_cyc_a);
+	assign o_stb_b = (r_a_owner) ? (i_a_stb_b)&&(o_cyc_b) : (i_b_stb_b)&&(o_cyc_b);
+	assign o_adr   = ((o_stb_a)|(o_stb_b))?((r_a_owner) ? i_a_adr   : i_b_adr):0;
+	assign o_dat   = (o_stb)?((r_a_owner) ? i_a_dat   : i_b_dat):0;
+	assign o_sel   = (o_stb)?((r_a_owner) ? i_a_sel   : i_b_sel):0;
+	assign o_a_ack   = (o_cyc)&&( r_a_owner) ? i_ack   : 1'b0;
+	assign o_b_ack   = (o_cyc)&&(~r_a_owner) ? i_ack   : 1'b0;
+	assign	o_a_stall = (o_cyc)&&( r_a_owner) ? i_stall : 1'b1;
+	assign	o_b_stall = (o_cyc)&&(~r_a_owner) ? i_stall : 1'b1;
+	assign	o_a_err = (o_cyc)&&( r_a_owner) ? i_err : 1'b0;
+	assign	o_b_err = (o_cyc)&&(~r_a_owner) ? i_err : 1'b0;
+`else
 	// Realistically, if neither master owns the bus, the output is a
 	// don't care.  Thus we trigger off whether or not 'A' owns the bus.
-	// If 'B' owns it all we care is that 'A' does not.  Likewise, if 
+	// If 'B' owns it all we care is that 'A' does not.  Likewise, if
 	// neither owns the bus than the values on these various lines are
 	// irrelevant.
 	assign o_stb_a = (r_a_owner) ? i_a_stb_a : i_b_stb_a;
@@ -147,6 +171,7 @@ module	wbdblpriarb(i_clk, i_rst,
 	//
 	assign	o_a_err = ( r_a_owner) ? i_err : 1'b0;
 	assign	o_b_err = (~r_a_owner) ? i_err : 1'b0;
+`endif
 
 endmodule
 
