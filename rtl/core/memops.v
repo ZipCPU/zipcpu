@@ -50,7 +50,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=30, IMPLEMENT_LOCK=0;
+	parameter	ADDRESS_WIDTH=30, IMPLEMENT_LOCK=0, WITH_LOCAL_BUS=0;
 	localparam	AW=ADDRESS_WIDTH;
 	input			i_clk, i_rst;
 	input			i_stb, i_lock;
@@ -80,8 +80,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;
-	assign	lcl_stb = (i_stb)&&(i_addr[31:24]==8'hff);
-	assign	gbl_stb = (i_stb)&&(i_addr[31:24]!=8'hff);
+	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff);
+	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff));
 
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
@@ -119,19 +119,27 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		begin
 			o_wb_we   <= i_op[0];
 			casez({ i_op[2:1], i_addr[1:0] })
+`ifdef	ZERO_ON_IDLE
 			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
 			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
 			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
 			4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
 			4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
 			4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
+`else
+			4'b10??: o_wb_data <= { (2){ i_data[15:0] } };
+			4'b11??: o_wb_data <= { (4){ i_data[7:0] } };
+`endif
 			default: o_wb_data <= i_data;
 			endcase
 
 			o_wb_addr <= i_addr[(AW+1):2];
+`ifdef	SET_SEL_ON_READ
 			if (i_op[0] == 1'b0)
 				o_wb_sel <= 4'hf;
-			else casez({ i_op[2:1], i_addr[1:0] })
+			else
+`endif
+			casez({ i_op[2:1], i_addr[1:0] })
 			4'b01??: o_wb_sel <= 4'b1111;
 			4'b100?: o_wb_sel <= 4'b1100;
 			4'b101?: o_wb_sel <= 4'b0011;
@@ -143,6 +151,15 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			endcase
 			r_op <= { i_op[2:1] , i_addr[1:0] };
 		end
+`ifdef	ZERO_ON_IDLE
+		else if ((!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
+		begin
+			o_wb_we   <= 1'b0;
+			o_wb_addr <= 0;
+			o_wb_data <= 32'h0;
+			o_wb_sel  <= 4'h0;
+		end
+`endif
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
@@ -156,19 +173,21 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		if (i_stb)
 			o_wreg    <= i_oreg;
 	always @(posedge i_clk)
-		if (i_wb_ack)
-		begin
-			casez(r_op)
-			4'b01??: o_result <= i_wb_data;
-			4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
-			4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
-			4'h1100: o_result <= { 24'h00, i_wb_data[31:24] };
-			4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
-			4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
-			4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
-			default: o_result <= i_wb_data;
-			endcase
-		end
+`ifdef	ZERO_ON_IDLE
+		if (!i_wb_ack)
+			o_result <= 32'h0;
+		else
+`endif
+		casez(r_op)
+		4'b01??: o_result <= i_wb_data;
+		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
+		4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
+		4'h1100: o_result <= { 24'h00, i_wb_data[31:24] };
+		4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
+		4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
+		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+		default: o_result <= i_wb_data;
+		endcase
 
 	generate
 	if (IMPLEMENT_LOCK != 0)
