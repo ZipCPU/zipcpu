@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-11 07:29:40.994593814 -0500
-@@ -0,0 +1,3241 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-17 16:39:42.146031035 -0500
+@@ -0,0 +1,3267 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2648,6 +2648,28 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			*lbl = '\0'; // Label wasn't a symbol, so let's clear it
 +		} else {
 +			// Number/label+Register
++			while((('+' == *ptr)||('-' == *ptr))
++					&&(ptr[1])
++					&&((isdigit(ptr[1]))
++					||((ptr[0] == '+')
++						&&(ptr[1] == '-')
++						&&(ptr[2])
++						&&(isdigit(ptr[2]))))) {
++				char *end;
++
++				if ((*ptr == '+')&&(isdigit(ptr[1])))
++					insn->i_imm += strtoul(ptr, &end, 0);
++				else if ((*ptr == '+')&&(ptr[1] == '-')
++						&&(isdigit(ptr[2])))
++					insn->i_imm -= strtoul(ptr+2, &end, 0);
++				else if ((*ptr == '-')&&(isdigit(ptr[1])))
++					insn->i_imm -= strtoul(ptr+1, &end, 0);
++				else {
++					fprintf(stderr, "GAS: Cannot comprehend %s\n", ptr);
++					gas_assert((0)&&("Should never get here"));
++				}
++				ptr = (const char *)end;
++			}
 +			if (('+' == *ptr)&&((err = zip_parse_reg(ptr+1, &insn->i_breg))==NULL)) {
 +				// Let's skip to the end of the register
 +				ptr++;
@@ -2655,6 +2677,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +					ptr++;
 +				while(isdigit(*ptr))
 +					ptr++;
++			} else if (('(' == *ptr)&&((err = zip_parse_reg(ptr+1, &insn->i_breg))==NULL)) {
++				ptr++;
++				while((*ptr)&&(')' != *ptr))
++					ptr++;
++				ptr++;
 +			} else {
 +				// OOps!! Must've been a label + number
 +				err = NULL;
@@ -3415,7 +3442,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_imm = (int)insn->i_breg + 0x0200;
 +				insn->i_breg = ZIP_RNONE;
 +			} else
-+				insn->i_imm = 0x200 + (insn->i_imm & 0x0ff);
++				insn->i_imm = 0x2ff;
 +			break;
 +		case ZIPO_SEXIT:
 +			insn->i_op = ZIPO_SIM;
@@ -4268,14 +4295,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				&&(insn->i_breg != ZIP_RNONE)
 +				&&(insn->i_imm == 0)) {
 +			// JSR (Register)
-+			insn->i_naux = 1;
++			insn->i_naux = 0;
 +			insn->i_code = 0x80008000
 +				| (ZIPV_MOV<<24)
 +				| 0x00f90000	// MOV OpB = PC+1
 +				| 0x0f880	// MOV into PC
 +				| ((insn->i_breg&0x0f)<<3)
 +				| (ZIPV_MOV << 8); // The LW instruction
-+			insn->i_aux[0] = 0; // To be filled in with address value
 +
 +			gas_assert(!insn->i_rp);
 +		} else if ((!insn->i_rp)&&(insn->i_breg != ZIP_RNONE)) {
@@ -4325,7 +4351,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				insn->i_naux = 1;
 +				insn->i_code = 0x80008000
 +					| (ZIPV_MOV<<24)
-+					| 0x00f90000	// MOV OpB = PC+1
++					| 0x00fa0000	// MOV OpB = PC+2
 +					| 0x0f8f8	// (LW) into PC
 +					| (ZIPV_LW << 8); // The LW instruction
 +				insn->i_aux[0] = 0; // To be filled in with address value
@@ -6643,8 +6669,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2017-02-10 12:43:50.058279559 -0500
-@@ -0,0 +1,443 @@
++++ binutils-2.27-zip/opcodes/zip-dis.c	2017-02-18 12:48:10.626349391 -0500
+@@ -0,0 +1,458 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -6671,7 +6697,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -6749,14 +6775,26 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +}
 +
 +static	inline	int
++TWOWORD_CIS_JSR(uint32_t iword) {
++	// MOV 2(PC) | LOD (PC),PC
++	//
++	// 1.0000.111.1.1111.010
++	//			1.1111.100.1.1111.000
++	if (iword == 0x87fafcf8)
++		return 1;
++	return 0;
++}
++
++static	inline	int
 +CIS_JSR(uint32_t iword __attribute__((unused)) ) {
-+	// MOV 1(PC) | LOD (PC),PC
++	if (TWOWORD_CIS_JSR(iword))
++		return 1;
++	// MOV 1(PC) | MOV Rx,PC
 +	//
 +	// 1.0000.111.1.1111.001
-+	//			1.1111.100.1.1111.000
-+	if (iword == 0x87f9fcf8)
++	//			1.1111.111.1.xxxx.000
++	if ((iword&0xffffff87) == 0x87f9ff80)
 +		return 1;
-+	// There is no code for this without CIS_OP_UNDER_TEST
 +	return 0;
 +}
 +
@@ -6771,7 +6809,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// MOV 2(PC),PC
 +	if (iword == 0x0343c002)
 +		return 1;
-+	if (CIS_JSR(iword))
++	if (TWOWORD_CIS_JSR(iword))
 +		return 1;
 +	// The conditional LJMP is three words, which we don't handle ...
 +	// Any BREV command could be the beginning of a twoword instruction
@@ -6854,11 +6892,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		sprintf(line, "%s0x%08x", line, *refaddr);
 +
 +		return;
-+	} else if (CIS_JSR(ins)) {
++	} else if (TWOWORD_CIS_JSR(ins)) {
 +		*refaddr = nxtword;
 +		sprintf(line, "%-11s", "JSR");
 +		sprintf(line, "%s0x%08x", line, *refaddr);
-+
++		return;
++	} else if (CIS_JSR(ins)) {
++		int ra = zip_getbits(ins, ZIP_REGFIELD(3));
++		sprintf(line, "%-11s%s", "JSR", zip_regstr[ra]);
 +		return;
 +	} else if (OFFSET_PC_MOV(ins)) {
 +		int	cv = zip_getbits(ins, ZIP_BITFIELD(3,19));
@@ -6999,7 +7040,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +zipi_to_double_string(const uint32_t addr, const ZIPI ins, const ZIPI nxtword, char *la, char *lb, uint32_t *refaddr) {
 +	zipi_to_halfstring(addr, ins, nxtword, la, zip_oplist, refaddr);
 +	if (lb) {
-+		if (ins & 0x80000000) {
++		if ((ins & 0x80000000)&&(!CIS_JSR(ins))) {
 +			zipi_to_halfstring(addr, ins, nxtword,
 +					lb, zip_opbottomlist, refaddr);
 +			*refaddr = 0;
@@ -7035,7 +7076,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		if ((*info->read_memory_func)(vma, ibytes, 12, info) ==0)
 +			refaddr = (ibytes[8]<<24)|(ibytes[9]<<16)|(ibytes[10]<<8)|(ibytes[11]);
 +		sprintf(&astr[strlen(astr)], "@0x%08x", refaddr);
-+	} else if (CIS_JSR(iword)) {
++	} else if (TWOWORD_CIS_JSR(iword)) {
 +		refaddr = nxtword;
 +		sprintf(astr, "%-11s0x%08x", "JSR", refaddr);
 +	} else
@@ -7076,7 +7117,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		return 8;
 +	if (TWOWORD_JSR(iword,nxtword))
 +		return 8;
-+	if (CIS_JSR(iword))
++	if (TWOWORD_CIS_JSR(iword))
 +		return 8;
 +	return 4;
 +}
@@ -7139,8 +7180,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-07 21:58:48.935026600 -0500
-@@ -0,0 +1,361 @@
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-18 12:48:38.206182730 -0500
+@@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-opc.c
@@ -7154,7 +7195,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -7167,7 +7208,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -7190,7 +7231,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	"sR0", "sR1", "sR2", "sR3",
 +	"sR4", "sR5", "sR6", "sR7",
 +	"sR8", "sR9", "sR10","sR11",
-+	"sR12","sSP", "sCC", "sPC", "ILL"
++	"sR12","sSP", "sCC", "sPC", "rILL"
 +};
 +
 +const	char	*zip_ccstr[8] = {
@@ -7433,6 +7474,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	{ "LDI", 0x87000000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
 +	// 1.rrrr.111.1.sssssss
 +	{ "MOV", 0x87800000, 0x87800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	//
 +	// 1.rrrr.111.1.rrrrsss
 +	// Illegal instruction !!
 +	{ "ILLV", 0x80000000, 0x80000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,16), ZIP_OPUNUSED },
