@@ -32,7 +32,7 @@
 ################################################################################
 #
 .PHONY: all
-all: zipsystem zipbones cpudefs.h div zipmmu cpuops
+all: zipsystem zipbones cpudefs.h div zipmmu cpuops pfcache
 
 CORED:= core
 PRPHD:= peripherals
@@ -57,8 +57,9 @@ VZIP := zipbones.v cpudefs.v					\
 		$(CORED)/div.v					\
 	$(AUXD)/busdelay.v $(AUXD)/wbdblpriarb.v		\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-
 VOBJ := obj_dir
+SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
+
 
 VERILATE=verilator --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
 
@@ -82,23 +83,30 @@ $(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
 	$(VERILATE) $(PRPHD)/zipmmu.v
 $(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
 
+$(VOBJ)/Vpfcache.cpp: $(CORED)/pfcache.v
+	$(VERILATE) $(CORED)/pfcache.v
+$(VOBJ)/Vpfcache.h: $(VOBJ)/Vpfcache.cpp
+
 $(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
-	cd $(VOBJ); make --no-print-directory -f Vzipsystem.mk
+	$(SUBMAKE) Vzipsystem.mk
 
 $(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
-	cd $(VOBJ); make --no-print-directory -f Vzipbones.mk
+	$(SUBMAKE) Vzipbones.mk
 
 $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
-	cd $(VOBJ); make --no-print-directory -f Vdiv.mk
+	$(SUBMAKE) Vdiv.mk
 
 $(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
-	cd $(VOBJ); make --no-print-directory -f Vcpuops.mk
+	$(SUBMAKE) Vcpuops.mk
 
 $(VOBJ)/Vzipmmu__ALL.a: $(VOBJ)/Vzipmmu.cpp $(VOBJ)/Vzipmmu.h
-	cd $(VOBJ); make --no-print-directory -f Vzipmmu.mk
+	$(SUBMAKE) Vzipmmu.mk
+
+$(VOBJ)/Vpfcache__ALL.a: $(VOBJ)/Vpfcache.cpp $(VOBJ)/Vpfcache.h
+	$(SUBMAKE) Vpfcache.mk
 
 # $(VOBJ)/V%__ALL.a: $(VOBJ)/V%.cpp $(VOBJ)/V%.h
-#	cd $(VOBJ); make --no-print-directory -f V%.mk
+#	$(SUBMAKE) V%.mk
 
 cpudefs.h: cpudefs.v
 	@echo "Building cpudefs.h"
@@ -122,6 +130,9 @@ cpuops: $(VOBJ)/Vcpuops__ALL.a cpudefs.h
 
 .PHONY: zipmmu
 zipmmu: $(VOBJ)/Vzipmmu__ALL.a
+
+.PHONY: pfcache
+pfcache: $(VOBJ)/Vpfcache__ALL.a
 
 .PHONY: clean
 clean:
