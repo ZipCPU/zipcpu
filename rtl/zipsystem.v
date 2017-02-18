@@ -77,7 +77,7 @@
 // for more details.
 //
 // You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //
@@ -176,7 +176,7 @@ module	zipsystem(i_clk, i_rst,
 		, o_cpu_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
+	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=10, START_HALTED=1, EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
 			IMPLEMENT_MPY = `OPT_MULTIPLY,
@@ -227,16 +227,16 @@ module	zipsystem(i_clk, i_rst,
 	wire		ctri_int, tma_int, tmb_int, tmc_int, jif_int, dmac_int;
 	wire		mtc_int, moc_int, mpc_int, mic_int,
 			utc_int, uoc_int, upc_int, uic_int;
+
+	assign	main_int_vector[5:0] = { ctri_int, tma_int, tmb_int, tmc_int,
+					jif_int, dmac_int };
+
 	generate
 	if (EXTERNAL_INTERRUPTS < 9)
-		assign	main_int_vector = { {(9-EXTERNAL_INTERRUPTS){1'b0}},
-					i_ext_int, ctri_int,
-					tma_int, tmb_int, tmc_int,
-					jif_int, dmac_int };
+		assign	main_int_vector[14:6] = { {(9-EXTERNAL_INTERRUPTS){1'b0}},
+					i_ext_int };
 	else
-		assign	main_int_vector = { i_ext_int[8:0], ctri_int,
-					tma_int, tmb_int, tmc_int,
-					jif_int, dmac_int };
+		assign	main_int_vector[14:6] = i_ext_int[8:0];
 	endgenerate
 	generate
 	if (EXTERNAL_INTERRUPTS <= 9)
@@ -258,7 +258,7 @@ module	zipsystem(i_clk, i_rst,
 					i_ext_int[(EXTERNAL_INTERRUPTS-1):9] };
 `endif
 	endgenerate
-		
+
 
 	// Delay the debug port by one clock, to meet timing requirements
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_stall;
