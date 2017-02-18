@@ -134,7 +134,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		, o_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=30'h0100000, ADDRESS_WIDTH=30,
+	parameter [31:0] RESET_ADDRESS=32'h0100000;
+	parameter	ADDRESS_WIDTH=30,
 			LGICACHE=8;
 `ifdef	OPT_MULTIPLY
 	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
@@ -157,7 +158,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `else
 	parameter	EARLY_BRANCHING = 0;
 `endif
+	parameter	WITH_LOCAL_BUS = 1;
 	localparam	AW=ADDRESS_WIDTH;
+	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
 	input			i_clk, i_rst, i_interrupt;
 	// Debug interface -- inputs
 	input			i_halt, i_clear_pf_cache;
@@ -260,7 +263,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 				dcd_pipe, dcd_ljmp;
 	reg		r_dcd_valid;
 	wire		dcd_valid;
-	wire	[(AW-1):0]	dcd_pc;
+	wire	[AW:0]	dcd_pc /* verilator public_flat */;
 	wire	[31:0]	dcd_I;
 	wire		dcd_zI;	// true if dcd_I == 0
 	wire	dcd_A_stall, dcd_B_stall, dcd_F_stall;
@@ -376,7 +379,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//
 	//	MASTER: clock enable.
 	//
-	assign	master_ce = (~i_halt)&&(~o_break)&&(~sleep);
+	assign	master_ce = ((~i_halt)||(alu_phase))&&(~o_break)&&(~sleep);
 
 
 	//
@@ -402,7 +405,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//
 	//	PIPELINE STAGE #3 :: Read Operands
 	//		Calculate stall conditions
-	wire	op_lock_stall;
+	wire	prelock_stall;
 `ifdef	OPT_PIPELINED
 	reg	cc_invalid_for_dcd;
 	always @(posedge i_clk)
@@ -424,7 +427,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			//	include those as well here.
 			// This also includes whether or not the divide or
 			// floating point units are busy.
-			(alu_stall)
+			(((op_valid_alu)||(op_valid_div)||(op_valid_fpu))
+				&&(!adf_ce_unconditional))
 			//
 			// Stall if we are going into memory with an operation
 			//	that cannot be pipelined, and the memory is
@@ -445,7 +449,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 				// CC register
 				||(dcd_F_stall)
 			);
-	assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(~op_stall)&&(~clear_pipeline);
+	assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(!op_stall);
 
 
 	// BUT ... op_ce is too complex for many of the data operations.  So
@@ -475,7 +479,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//	the ALU.
 `ifdef	OPT_PIPELINED
 	assign	alu_stall = (((~master_ce)||(mem_rdbusy)||(alu_busy))&&(op_valid_alu)) //Case 1&2
-			||((op_valid)&&(op_lock)&&(op_lock_stall))
+			||(prelock_stall)
 			||((op_valid)&&(op_break))
 			||(wr_reg_ce)&&(wr_write_cc)
 			||(div_busy)||(fpu_busy);
@@ -509,6 +513,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `ifdef	OPT_PIPELINED_BUS_ACCESS
 	assign	mem_stalled = (~master_ce)||(alu_busy)||((op_valid_mem)&&(
 				(mem_pipe_stalled)
+				||(prelock_stall)
 				||((~op_pipe)&&(mem_busy))
 				||(div_busy)
 				||(fpu_busy)
@@ -556,7 +561,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	initial	r_dcd_valid = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))
+		if (clear_pipeline)
 			r_dcd_valid <= 1'b0;
 		else if (dcd_ce)
 			r_dcd_valid <= (pf_valid)||(pf_illegal);
@@ -569,19 +574,21 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	pf_stalled;
 	assign	pf_stalled = (dcd_stalled)||(dcd_phase);
 `ifdef	OPT_TRADITIONAL_PFCACHE
+	wire	[(AW-1):0]	pf_request_address;
+	assign	pf_request_address = ((dcd_early_branch)&&(!clear_pipeline))
+				? dcd_branch_pc:pf_pc[(AW+1):2];
 	pfcache #(LGICACHE, ADDRESS_WIDTH)
 		pf(i_clk, i_rst, (new_pc)||((dcd_early_branch)&&(~clear_pipeline)),
 					w_clear_icache,
 				// dcd_pc,
 				(!pf_stalled),
-				((dcd_early_branch)&&(~clear_pipeline))
-					? dcd_branch_pc:pf_pc[(AW+1):2],
+				pf_request_address,
 				pf_instruction, pf_instruction_pc, pf_valid,
 				pf_cyc, pf_stb, pf_we, pf_addr, pf_data,
 					pf_ack, pf_stall, pf_err, i_wb_data,
 				pf_illegal);
 `else
-	pipefetch	#(RESET_ADDRESS, LGICACHE, ADDRESS_WIDTH)
+	pipefetch	#(RESET_BUS_ADDRESS, LGICACHE, ADDRESS_WIDTH)
 			pf(i_clk, i_rst, (new_pc)||(dcd_early_branch),
 					w_clear_icache, (!pf_stalled),
 					(new_pc)?pf_pc[(AW+1):2]:dcd_branch_pc,
@@ -599,7 +606,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	initial	r_dcd_valid = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline)||(w_clear_icache))
+		if ((clear_pipeline)||(w_clear_icache))
 			r_dcd_valid <= 1'b0;
 		else if (dcd_ce)
 			r_dcd_valid <= ((dcd_phase)||(pf_valid))
@@ -612,7 +619,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	// If not pipelined, there will be no op_valid_ anything, and the
 	idecode #(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
 			IMPLEMENT_FPU)
-		instruction_decoder(i_clk, (i_rst)||(clear_pipeline),
+		instruction_decoder(i_clk, (clear_pipeline),
 			(~dcd_valid)||(~op_stall), dcd_stalled, pf_instruction, pf_gie,
 			pf_instruction_pc, pf_valid, pf_illegal, dcd_phase,
 			dcd_illegal, dcd_pc, dcd_gie,
@@ -641,7 +648,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	// However ... we need to know this before this clock, hence this is
 	// calculated in the instruction decoder.
 	always @(posedge i_clk)
-		if (op_ce)
+		if (clear_pipeline)
+			r_op_pipe <= 1'b0;
+		else if (op_ce)
 			r_op_pipe <= dcd_pipe;
 		else if (mem_ce) // Clear us any time an op_ is clocked in
 			r_op_pipe <= 1'b0;
@@ -698,7 +707,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	wire	[31:0]	w_pcA_v;
 	assign	w_pcA_v[(AW+1):0] = { (dcd_A[4] == dcd_gie)
-				? { dcd_pc, 2'b00 }
+				? { dcd_pc[AW:1], 2'b00 }
 				: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
 	generate
 	if (AW < 30)
@@ -720,7 +729,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	always @(posedge i_clk)
 `ifdef	OPT_PIPELINED
-		if (op_change_data_ce)
+		if (op_ce)
 `endif
 		begin
 `ifdef	OPT_PIPELINED
@@ -748,7 +757,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	wire	[31:0]	w_op_BnI, w_pcB_v;
 	assign	w_pcB_v[(AW+1):0] = { (dcd_B[4] == dcd_gie)
-					? { dcd_pc, 2'b00 }
+					? { dcd_pc[AW:1], 2'b00 }
 					: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
 	generate
 	if (AW < 30)
@@ -765,9 +774,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	always @(posedge i_clk)
 `ifdef	OPT_PIPELINED
-		if ((op_change_data_ce)&&(dcd_Bpc)&&(dcd_rB))
+		if ((op_ce)&&(dcd_Bpc)&&(dcd_rB))
 			r_op_Bv <= w_pcB_v + { dcd_I[29:0], 2'b00 };
-		else if (op_change_data_ce)
+		else if (op_ce)
 			r_op_Bv <= w_op_BnI + dcd_I;
 		else if ((wr_reg_ce)&&(op_Bid == wr_reg_id)&&(op_rB))
 			r_op_Bv <= wr_gpreg_vl;
@@ -812,7 +821,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	initial	op_valid_div = 1'b0;
 	initial	op_valid_fpu = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))
+		if (clear_pipeline)
 		begin
 			op_valid     <= 1'b0;
 			op_valid_alu <= 1'b0;
@@ -858,10 +867,11 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	initial	r_op_break = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)	r_op_break <= 1'b0;
-		else if (op_ce)	r_op_break <= (dcd_break);
-		else if ((clear_pipeline)||(~op_valid))
-				r_op_break <= 1'b0;
+		if ((i_rst)||(clear_pipeline))	r_op_break <= 1'b0;
+		else if (op_ce)
+			r_op_break <= (dcd_break);
+		else if (!op_valid)
+			r_op_break <= 1'b0;
 	assign	op_break = r_op_break;
 `else
 	assign	op_break = dcd_break;
@@ -871,40 +881,28 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	generate
 	if (IMPLEMENT_LOCK != 0)
 	begin
-		reg	r_op_lock, r_op_lock_stall;
-
-		initial	r_op_lock_stall = 1'b0;
-		always @(posedge i_clk)
-			if (i_rst)
-				r_op_lock_stall <= 1'b0;
-			else
-				r_op_lock_stall <= (~op_valid)||(~op_lock)
-						||(~dcd_valid)||(~pf_valid);
-
-		assign	op_lock_stall = r_op_lock_stall;
+		reg	r_op_lock;
 
 		initial	r_op_lock = 1'b0;
 		always @(posedge i_clk)
-			if ((i_rst)||(clear_pipeline))
+			if (clear_pipeline)
 				r_op_lock <= 1'b0;
 			else if (op_ce)
-				r_op_lock <= (dcd_lock)&&(~clear_pipeline);
+				r_op_lock <= (dcd_valid)&&(dcd_lock)&&(~clear_pipeline);
 		assign	op_lock = r_op_lock;
 
 	end else begin
-		assign	op_lock_stall = 1'b0;
 		assign	op_lock = 1'b0;
 	end endgenerate
 
 `else
-	assign op_lock_stall = 1'b0;
 	assign op_lock       = 1'b0;
 `endif
 
 `ifdef	OPT_ILLEGAL_INSTRUCTION
 	initial	op_illegal = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))
+		if (clear_pipeline)
 			op_illegal <= 1'b0;
 		else if(op_ce)
 `ifdef	OPT_PIPELINED
@@ -972,7 +970,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			r_op_gie <= dcd_gie;
 
 			//
-			op_pc  <= (dcd_early_branch)?dcd_branch_pc:dcd_pc;
+			op_pc  <= (dcd_early_branch)?dcd_branch_pc:dcd_pc[AW:1];
 		end
 	assign	op_opn = r_op_opn;
 	assign	op_R = r_op_R;
@@ -992,7 +990,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `endif
 	// With no pipelining, there is no early branching.  We keep it
 	always @(posedge i_clk)
-		op_pc <= (dcd_early_branch)?dcd_branch_pc:dcd_pc;
+		op_pc <= (dcd_early_branch)?dcd_branch_pc:dcd_pc[AW:1];
 `endif
 	assign	op_Fl = (op_gie)?(w_uflags):(w_iflags);
 
@@ -1000,10 +998,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	reg	r_op_phase;
 	initial	r_op_phase = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))
+		if (clear_pipeline)
 			r_op_phase <= 1'b0;
 		else if (op_change_data_ce)
-			r_op_phase <= dcd_phase;
+			r_op_phase <= (dcd_phase)&&((!dcd_wR)||(!dcd_Rpc));
 	assign	op_phase = r_op_phase;
 `else
 	assign	op_phase = 1'b0;
@@ -1114,14 +1112,14 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//	PIPELINE STAGE #4 :: Apply Instruction
 	//
 	//
-	cpuops	#(IMPLEMENT_MPY) doalu(i_clk, (i_rst)||(clear_pipeline),
+	cpuops	#(IMPLEMENT_MPY) doalu(i_clk, (clear_pipeline),
 			alu_ce, op_opn, op_Av, op_Bv,
 			alu_result, alu_flags, alu_valid, alu_busy);
 
 	generate
 	if (IMPLEMENT_DIVIDE != 0)
 	begin
-		div thedivide(i_clk, (i_rst)||(clear_pipeline), div_ce, op_opn[0],
+		div thedivide(i_clk, (clear_pipeline), div_ce, op_opn[0],
 			op_Av, op_Bv, div_busy, div_valid, div_error, div_result,
 			div_flags);
 	end else begin
@@ -1241,7 +1239,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	reg	r_alu_illegal;
 	initial	r_alu_illegal = 0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))
+		if (clear_pipeline)
 			r_alu_illegal <= 1'b0;
 		else if (alu_ce)
 			r_alu_illegal <= op_illegal;
@@ -1252,9 +1250,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	initial	r_alu_pc_valid = 1'b0;
 	initial	mem_pc_valid = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (clear_pipeline)
 			r_alu_pc_valid <= 1'b0;
-		else if (adf_ce_unconditional)//Includes&&(~alu_clear_pipeline)
+		else if ((adf_ce_unconditional)&&(!op_phase)) //Includes&&(~alu_clear_pipeline)
 			r_alu_pc_valid <= 1'b1;
 		else if (((~alu_busy)&&(~div_busy)&&(~fpu_busy))||(clear_pipeline))
 			r_alu_pc_valid <= 1'b0;
@@ -1270,17 +1268,43 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	generate
 	if (IMPLEMENT_LOCK != 0)
 	begin
+		reg	r_prelock_stall;
+
+		initial	r_prelock_stall = 1'b0;
+		always @(posedge i_clk)
+			if (clear_pipeline)
+				r_prelock_stall <= 1'b0;
+			else if ((op_valid)&&(op_lock)&&(op_ce))
+				r_prelock_stall <= 1'b1;
+			else if ((op_valid)&&(dcd_valid)&&(pf_valid))
+				r_prelock_stall <= 1'b0;
+
+		assign	prelock_stall = r_prelock_stall;
+
+		reg	r_prelock_primed;
+		always @(posedge i_clk)
+			if (clear_pipeline)
+				r_prelock_primed <= 1'b0;
+			else if (r_prelock_stall)
+				r_prelock_primed <= 1'b1;
+			else if ((adf_ce_unconditional)||(mem_ce))
+				r_prelock_primed <= 1'b0;
+
 		reg	[1:0]	r_bus_lock;
 		initial	r_bus_lock = 2'b00;
 		always @(posedge i_clk)
-			if (i_rst)
+			if (clear_pipeline)
 				r_bus_lock <= 2'b00;
-			else if ((op_ce)&&(op_lock))
-				r_bus_lock <= 2'b11;
-			else if ((|r_bus_lock)&&((~op_valid_mem)||(~op_ce)))
-				r_bus_lock <= r_bus_lock + 2'b11;
+			else if ((op_valid)&&((adf_ce_unconditional)||(mem_ce)))
+			begin
+				if (r_prelock_primed)
+					r_bus_lock <= 2'b10;
+				else if (r_bus_lock != 2'h0)
+					r_bus_lock <= r_bus_lock + 2'b11;
+			end
 		assign	bus_lock = |r_bus_lock;
 	end else begin
+		assign	prelock_stall = 1'b0;
 		assign	bus_lock = 1'b0;
 	end endgenerate
 `else
@@ -1298,7 +1322,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 				mem_ack, mem_stall, mem_err, i_wb_data);
 
 `else // PIPELINED_BUS_ACCESS
-	memops	#(AW,IMPLEMENT_LOCK) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
+	memops	#(AW,IMPLEMENT_LOCK,WITH_LOCAL_BUS) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
 				(op_opn[2:0]), op_Bv, op_Av, op_R,
 				mem_busy,
 				mem_valid, bus_err, mem_wreg, mem_result,
@@ -1318,7 +1342,16 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			mem_we, mem_addr, mem_data, mem_sel,
 			mem_ack, mem_stall, mem_err,
 		// Prefetch access to the arbiter
-		pf_cyc, 1'b0, pf_stb, 1'b0, pf_we, pf_addr, pf_data, 4'hf,
+		//
+		// At a first glance, we might want something like:
+		//
+		// pf_cyc, 1'b0, pf_stb, 1'b0, pf_we, pf_addr, pf_data, 4'hf,
+		//
+		// However, we know that the prefetch will not generate any
+		// writes.  Therefore, the write specific lines (mem_data and
+		// mem_sel) can be shared with the memory in order to ease
+		// timing and LUT usage.
+		pf_cyc,1'b0,pf_stb, 1'b0, pf_we, pf_addr, mem_data, mem_sel,
 			pf_ack, pf_stall, pf_err,
 		// Common wires, in and out, of the arbiter
 		o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
@@ -1449,7 +1482,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	initial	r_break_pending = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline)||(~op_valid))
+		if ((clear_pipeline)||(~op_valid))
 			r_break_pending <= 1'b0;
 		else if (op_break)
 			r_break_pending <= (~alu_busy)&&(~div_busy)&&(~fpu_busy)&&(~mem_busy)&&(!wr_reg_ce);
@@ -1805,7 +1838,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	always @(posedge i_clk)
 		if (i_rst)
-			ipc <= { RESET_ADDRESS, 2'b00 };
+			ipc <= { RESET_BUS_ADDRESS, 2'b00 };
 		else if ((wr_reg_ce)&&(~wr_reg_id[4])&&(wr_write_pc))
 			ipc <= { wr_spreg_vl[(AW+1):2], 2'b00 };
 		else if ((!alu_gie)&&(!alu_phase)&&
@@ -1815,7 +1848,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	always @(posedge i_clk)
 		if (i_rst)
-			pf_pc <= { RESET_ADDRESS, 2'b00 };
+			pf_pc <= { RESET_BUS_ADDRESS, 2'b00 };
 		else if ((w_switch_to_interrupt)||((~gie)&&(w_clear_icache)))
 			pf_pc <= { ipc[(AW+1):2], 2'b00 };
 		else if ((w_release_from_interrupt)||((gie)&&(w_clear_icache)))
