@@ -39,14 +39,14 @@
 #		Runs the test in "step" mode as described above.
 #
 #	itest
-#		Runs the test file in interactive mode.  The CPU will not 
+#		Runs the test file in interactive mode.  The CPU will not
 #		execute any instructions without user interaction.  This is
 #		useful for actually debugging the test.  The other two modes
 #		are useful for quickly determining that the CPU does (or
 #		doesn't) work.
 #
 #	dhrystone
-#		Runs a hand-optimized version of the dhrystone benchmark.  
+#		Runs a hand-optimized version of the dhrystone benchmark.
 #		Using the instructions at the top of the dhrystone assembly
 #		file, you should be able to convert the result to DMIPS or even
 #		DMIPS/MHz.
@@ -63,6 +63,8 @@
 #		cpuops (ALU) unit separate from the rest of the CPU.  For more
 #		details, look at the usage statement wtihin mpy_tb.
 #
+#	pfcache_tb
+#
 #	zipmmu_tb
 #		Like div_tb, this is another raw component test bench.  In this
 #		case, zipmmu_tb tests whether or not the MMU works when
@@ -74,7 +76,7 @@
 #		so configured by default.)  This file will be name pfile.bin.
 #		pdump is a very simple program designed to read this file and
 #		produce some (very raw) information from it.  To use this,
-#		type pdump and the name of the executable file, such as 
+#		type pdump and the name of the executable file, such as
 #		../asm/zipdhry.z, and examine how many times each instruction
 #		was executed, and how many stalls took place between each
 #		instruction and the next.
@@ -89,7 +91,7 @@
 #
 ################################################################################
 #
-# Copyright (C) 2015-2016, Gisselquist Technology, LLC
+# Copyright (C) 2015-2017, Gisselquist Technology, LLC
 #
 # This program is free software (firmware): you can redistribute it and/or
 # modify it under the terms of  the GNU General Public License as published
@@ -107,24 +109,29 @@
 #
 ################################################################################
 #
-all: zippy_tb pdump div_tb mpy_tb
+all: zippy_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
 
 CXX	:= g++
 CFLAGS	:= -Wall -Og -g
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
+RTLOBJD := $(RTLD)/obj_dir
+BENCHOBJD:= ../../bench/rtl/obj_dir
 VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
 VROOT   := $(VERILATOR_ROOT)
 VINCS	:= -I$(VROOT)/include -I$(VROOT)/include/vltstd
-INCS	:= -I$(RTLD)/obj_dir/ -I$(RTLD) -I$(ZASM) $(VINCS)
-ZSOURCES:= zippy_tb.cpp zipelf.cpp memsim.cpp twoc.cpp
-ZDSMSRCS:= zopcodes.cpp zparser.cpp
-ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZSOURCES) $(ZDSMSRCS)))
+INCS	:= -I$(RTLOBJD) -I$(RTLD) -I$(ZASM) $(VINCS)
+ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
+SOURCES := $(ZLIBSRCS) pdump.cpp zippy_tb.cpp memsim.cpp
+ZDSMSRCS:= zopcodes.cpp
+ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZLIBSRCS) $(ZDSMSRCS)))
+SIMSRCS := zippy_tb.cpp memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
+SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
 VLOBJS := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
-RAWLIB	:= $(RTLD)/obj_dir/Vzipsystem__ALL.a
+RAWLIB	:= $(RTLOBJD)/Vzipsystem__ALL.a
 LIBS	:= $(RAWLIB) -lncurses -lelf
 TESTF	:= $(ZASM)/z.out
 DHRYSTONEF := ../asm/zipdhry.z
@@ -138,22 +145,25 @@ $(OBJDIR)/%.o: $(ZASM)/%.cpp
 $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
-zippy_tb: $(ZOBJS) $(VLOBJS) $(RAWLIB)
-zippy_tb: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h $(RTLD)/cpudefs.h
-	$(CXX) $(CFLAGS) $(INCS) $(ZOBJS) $(VLOBJS) $(LIBS) -o $@
+zippy_tb: $(SIMOBJS) $(VLOBJS) $(RAWLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(SIMOBJS) $(VLOBJS) $(RAWLIB) $(LIBS) -o $@
 
-div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vdiv__ALL.a -o $@
+div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
 
-mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLD)/obj_dir/Vcpuops__ALL.a -o $@
+mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
 
-zipmmu_tb: zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(INCS) -I ../rtl/obj_dir zipmmu_tb.cpp $(VLIB) ../rtl/obj_dir/Vzipmmu_tb__ALL.a -o $@
+zipmmu_tb: zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
+	$(CXX) $(CFLAGS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
 
-pdump: pdump.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp 
-pdump: $(ZASM)/zopcodes.h $(ZASM)/zparser.h testb.h twoc.cpp
-	$(CXX) $(CFLAGS) $(INCS) pdump.cpp $(ZASM)/zopcodes.cpp $(ZASM)/zparser.cpp twoc.cpp -lelf -o $@
+pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
+pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
+	$(CXX) $(CFLAGS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
+
+pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
+pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
+	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
 
 .PHONY: stest
 stest: zippy_tb
@@ -172,13 +182,14 @@ dhrystone: zippy_tb
 	./zippy_tb -a $(DHRYSTONEF)
 
 define	build-depends
-	$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(ZSOURCES) > $(OBJDIR)/xdepends.txt
+	@echo "Building dependencies"
+	@$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(SOURCES) > $(OBJDIR)/xdepends.txt
 	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
 	@rm $(OBJDIR)/xdepends.txt
 endef
 
-tags: $(VLIB) $(ZSOURCES)
-	@ctags $(ZSOURCES) $(VLIB)
+tags: $(VLIB) $(SOURCES)
+	@ctags $(SOURCES) $(VLIB)
 
 .PHONY: depends
 depends: tags $(OBJDIR)/
