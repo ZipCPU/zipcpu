@@ -219,7 +219,10 @@ int	main(int argc, char **argv) {
 	DIV_TB	*tb = new DIV_TB();
 	int	rcode = EXIT_SUCCESS;
 
+	// tb->opentrace("divtrace.vcd");
+
 	tb->reset();
+	tb->divu((unsigned)-1,10);
 	tb->divide(125,7);
 	tb->tick();
 	tb->divide(125,-7);
