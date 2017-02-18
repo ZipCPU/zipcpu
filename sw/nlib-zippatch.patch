@@ -4913,8 +4913,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
 --- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-07 14:42:35.770732599 -0500
-@@ -0,0 +1,112 @@
++++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-18 12:50:02.769671801 -0500
+@@ -0,0 +1,114 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
 +# The authors hereby grant permission to use, copy, modify, distribute,
@@ -4973,17 +4973,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +
 +CFLAGS=-O3
 +
++BASIC_BSP   = libzipbasic.a
++BASIC_OBJS  = libboard-syscalls.o libboard-zipcpu.o crt0.o
++# SPECS = ${srcdir}/zip.specs
++
 +CRT0	      = crt0.o
 +CRT0_INSTALL  = install-crt0
 +
-+BASIC_BSP   = libzipbasic.a
-+BASIC_OBJS  = libboard-syscalls.o libboard-zipcpu.o
-+# SPECS = ${srcdir}/zip.specs
-+
-+libboard-%.o: %.c
-+	${CC} ${CFLAGS} -o $@ -c $<
-+crt0.o:
-+	${CC} ${CFLAGS} -fno-builtin -o $@ -c $(srcdir)/crt0.c
 +
 +# Host specific makefile fragment comes in here.
 +@host_makefile_frag@
@@ -4994,6 +4990,12 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +$(BASIC_BSP): $(BASIC_OBJS)
 +	$(AR) $(ARFLAGS) $@ $?
 +	$(RANLIB) $@
++
++libboard-%.o: %.c
++	${CC} ${CFLAGS} -o $@ -c $<
++crt0.o:
++	${CC} ${CFLAGS} -fno-builtin -o $@ -c $(srcdir)/crt0.c
++
 +
 +syscalls.o: $(srcdir)/syscalls.c $(srcdir)/boards/zipbasic.h $(srcdir)/zipcpu.h
 +syscalls.o: $(srcdir)/zipsys.h
