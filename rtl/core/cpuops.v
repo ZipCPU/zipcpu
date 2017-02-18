@@ -71,13 +71,18 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 
 	// Prelogic for our flags registers
 	wire	z, n, v;
-	reg	c, pre_sign, set_ovfl;
+	reg	c, pre_sign, set_ovfl, keep_sgn_on_ovfl;
 	always @(posedge i_clk)
 		if (i_ce) // 1 LUT
-			set_ovfl =(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
+			set_ovfl<=(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 				||((i_op==4'h2)&&(i_a[31] == i_b[31])) // ADD
 				||(i_op == 4'h6) // LSL
 				||(i_op == 4'h5)); // LSR
+	always @(posedge i_clk)
+		if (i_ce) // 1 LUT
+			keep_sgn_on_ovfl<=
+				(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
+				||((i_op==4'h2)&&(i_a[31] == i_b[31]))); // ADD
 
 	wire	[63:0]	mpy_result; // Where we dump the multiply result
 	reg	mpyhi;		// Return the high half of the multiply
@@ -338,8 +343,9 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	assign	z = (o_c == 32'h0000);
 	assign	n = (o_c[31]);
 	assign	v = (set_ovfl)&&(pre_sign != o_c[31]);
+	wire	vx = (keep_sgn_on_ovfl)&&(pre_sign != o_c[31]);
 
-	assign	o_f = { v, n, c, z };
+	assign	o_f = { v, n^vx, c, z };
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
