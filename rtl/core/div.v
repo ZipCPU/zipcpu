@@ -4,7 +4,66 @@
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	Provide an Integer divide capability to the Zip CPU.
+// Purpose:	Provide an Integer divide capability to the Zip CPU.  Provides
+//		for both signed and unsigned divide.
+//
+// Steps:
+//	i_rst	The DIVide unit starts in idle.  It can also be placed into an
+//	idle by asserting the reset input.
+//
+//	i_wr	When i_rst is asserted, a divide begins.  On the next clock:
+//
+//	  o_busy is set high so everyone else knows we are at work and they can
+//		wait for us to complete.
+//
+//	  pre_sign is set to true if we need to do a signed divide.  In this
+//		case, we take a clock cycle to turn the divide into an unsigned
+//		divide.
+//
+//	  o_quotient, a place to store our result, is initialized to all zeros.
+//
+//	  r_dividend is set to the numerator
+//
+//	  r_divisor is set to 2^31 * the denominator (shift left by 31, or add
+//		31 zeros to the right of the number.
+//
+//	pre_sign When true (clock cycle after i_wr), a clock cycle is used
+//		to take the absolute value of the various arguments (r_dividend
+//		and r_divisor), and to calculate what sign the output result
+//		should be.
+//
+//
+//	At this point, the divide is has started.  The divide works by walking
+//	through every shift of the 
+//
+//		    DIVIDEND	over the
+//		DIVISOR
+//
+//	If the DIVISOR is bigger than the dividend, the divisor is shifted
+//	right, and nothing is done to the output quotient.
+//
+//		    DIVIDEND
+//		 DIVISOR
+//
+//	This repeats, until DIVISOR is less than or equal to the divident, as in
+//
+//		DIVIDEND
+//		DIVISOR
+//
+//	At this point, if the DIVISOR is less than the dividend, the 
+//	divisor is subtracted from the dividend, and the DIVISOR is again
+//	shifted to the right.  Further, a '1' bit gets set in the output
+//	quotient.
+//
+//	Once we've done this for 32 clocks, we've accumulated our answer into
+//	the output quotient, and we can proceed to the next step.  If the
+//	result will be signed, the next step negates the quotient, otherwise
+//	it returns the result.
+//
+//	On the clock when we are done, o_busy is set to false, and o_valid set
+//	to true.  (It is a violation of the ZipCPU internal protocol for both
+//	busy and valid to ever be true on the same clock.  It is also a 
+//	violation for busy to be false with valid true thereafter.)
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
