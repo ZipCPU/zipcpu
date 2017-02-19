@@ -227,7 +227,7 @@ public:
 		// Pre-Calculate the answer we *should* get from the divide
 		ans = (d==0)?0:	(n / d);
 
-		divtest((uint32_t)n, (uint32_t)d, (uint32_t)ans, true);
+		divtest((uint32_t)n, (uint32_t)d, (uint32_t)ans, false);
 	}
 
 	// divide() is just another name for a signed divide--just switch to
