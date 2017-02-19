@@ -427,7 +427,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			//	include those as well here.
 			// This also includes whether or not the divide or
 			// floating point units are busy.
-			(((op_valid_alu)||(op_valid_div)||(op_valid_fpu))
+			(alu_stall)
+			||(((op_valid_div)||(op_valid_fpu))
 				&&(!adf_ce_unconditional))
 			//
 			// Stall if we are going into memory with an operation
