@@ -108,7 +108,7 @@
 //
 //
 // OPT_IMPLEMENT_FPU will (one day) control whether or not the floating point
-// unit (once I have one) is built and included into the ZipCPU by default. 
+// unit (once I have one) is built and included into the ZipCPU by default.
 // At that time, if this option is set then a parameter will be set that
 // causes the floating point unit to be included.  (This parameter may
 // still be overridden, as with any parameter ...)  If the floating point unit
@@ -122,11 +122,11 @@
 //
 //
 //
-// OPT_SINGLE_FETCH controls whether or not the prefetch has a cache, and 
+// OPT_SINGLE_FETCH controls whether or not the prefetch has a cache, and
 // whether or not it can issue one instruction per clock.  When set, the
 // prefetch has no cache, and only one instruction is fetched at a time.
-// This effectively sets the CPU so that only one instruction is ever 
-// in the pipeline at once, and hence you may think of this as a "kill 
+// This effectively sets the CPU so that only one instruction is ever
+// in the pipeline at once, and hence you may think of this as a "kill
 // pipeline" option.  However, since the pipelined fetch component uses so
 // much area on the FPGA, this is an important option to use in trimming down
 // used area if necessary.  Hence, it needs to be maintained for that purpose.
@@ -135,7 +135,7 @@
 //
 // We can either pipeline our fetches, or issue one fetch at a time.  Pipelined
 // fetches are more complicated and therefore use more FPGA resources, while
-// single fetches will cause the CPU to stall for about 5 stalls each 
+// single fetches will cause the CPU to stall for about 5 stalls each
 // instruction cycle, effectively reducing the instruction count per clock to
 // about 0.2.  However, the area cost may be worth it.  Consider:
 //
@@ -160,9 +160,9 @@
 //
 //
 //
-// OPT_PIPELINED is the natural result and opposite of using the single 
+// OPT_PIPELINED is the natural result and opposite of using the single
 // instruction fetch unit.  If you are not using that unit, the ZipCPU will
-// be pipelined.  The option is defined here more for readability than 
+// be pipelined.  The option is defined here more for readability than
 // anything else, since OPT_PIPELINED makes more sense than OPT_SINGLE_FETCH,
 // well ... that and it does a better job of explaining what is going on.
 //
