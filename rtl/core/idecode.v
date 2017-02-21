@@ -173,7 +173,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		endcase
 `else
 	reg	[4:0]	w_cis_op;
-	always @(iword)
+	always @(iword,w_op)
 		if (!iword[31])
 			w_cis_op <= w_op;
 		else case(iword[26:24])
