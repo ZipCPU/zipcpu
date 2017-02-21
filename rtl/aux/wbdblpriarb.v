@@ -128,6 +128,7 @@ module	wbdblpriarb(i_clk, i_rst,
 	// zeroing things on idle can make them stand out all the more when
 	// staring at wires and dumps and such.
 	//
+	wire	o_cyc, o_stb;
 	assign	o_cyc = ((o_cyc_a)||(o_cyc_b));
 	assign	o_stb = (o_cyc)&&((o_stb_a)||(o_stb_b));
 	assign o_stb_a = (r_a_owner) ? (i_a_stb_a)&&(o_cyc_a) : (i_b_stb_a)&&(o_cyc_a);
