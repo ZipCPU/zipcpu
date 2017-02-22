@@ -203,16 +203,17 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
 --- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-02-02 16:33:36.882890943 -0500
-@@ -0,0 +1,133 @@
++++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-02-21 16:49:14.639211315 -0500
+@@ -0,0 +1,190 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
 +//
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
-+// Purpose:	
-+//
++// Purpose:	A description of the hardware and I/O parts and pieces specific
++//		to the ZipBasic distribution, for the purpose of writing
++//	ZipCPU software that will run on the board.
 +//
 +// Creator:	Dan Gisselquist, Ph.D.
 +//		Gisselquist Technology, LLC
@@ -231,6 +232,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
 +//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
++//
 +// License:	GPL, v3, as defined and found on www.gnu.org,
 +//		http://www.gnu.org/licenses/gpl.html
 +//
@@ -240,6 +246,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +//
 +#ifndef	ZIPBASIC_H
 +#define	ZIPBASIC_H
++
++#include <stdint.h>
 +
 +// We have the full ZIP System installed
 +#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
@@ -254,6 +262,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +} BASICIO;
 +
 +#define	UART_PARITY_NONE	0
++#define	UART_HWFLOW_OFF		0x40000000
 +#define	UART_PARITY_ODD		0x04000000
 +#define	UART_PARITY_EVEN	0x05000000
 +#define	UART_PARITY_SPACE	0x06000000
@@ -272,24 +281,37 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +#define	UART_TX_BUSY		0x0100
 +#define	UART_TX_BREAK		0x0200
 +
-+typedef	struct	{
++typedef	struct	WBUART_S {
 +	unsigned	u_setup;
 +	unsigned	u_fifo;
 +	unsigned	u_rx, u_tx;
 +} WBUART;
 +
 +
-+#define	SCOPE_NO_RESET	0x80000000
-+#define	SCOPE_TRIGGER	(SCOPE_NO_RESET|0x08000000)
-+#define	SCOPE_MANUAL	SCOPE_TRIGGER
-+#define	SCOPE_DISABLE	0x04000000	// Disable the scope trigger
-+typedef	struct	{
++#define	WBSCOPE_NO_RESET	0x80000000
++#define	WBSCOPE_TRIGGER	(WBSCOPE_NO_RESET|0x08000000)
++#define	WBSCOPE_MANUAL	WBSCOPE_TRIGGER
++#define	WBSCOPE_DISABLE	0x04000000	// Disable the scope trigger
++typedef	struct	WBSCOPE_S {
 +	unsigned	s_ctrl, s_data;
-+} SCOPE;
++} WBSCOPE;
 +
 +typedef	struct	{
 +	unsigned	r_clock, r_stopwatch, r_timer, r_alarm;
 +} RTCLIGHT;
++
++
++#define	SD_SETAUX	0x0ff
++#define	SD_READAUX	0x0bf
++#define	SD_CMD		0x040
++#define	SD_FIFO_OP	0x0800	// Read only
++#define	SD_WRITEOP	0x0c00	// Write to the FIFO
++#define	SD_ALTFIFO	0x1000
++#define	SD_BUSY		0x4000
++#define	SD_ERROR	0x8000
++#define	SD_CLEARERR	0x8000
++#define	SD_READ_SECTOR	((SD_CMD|SD_CLEARERR|SD_FIFO_OP)+17)
++#define	SD_WRITE_SECTOR	((SD_CMD|SD_CLEARERR|SD_WRITEOP)+24)
 +
 +typedef	struct	{
 +	unsigned	sd_ctrl, sd_data, sd_fifo[2];
@@ -301,31 +323,55 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +
 +
 +typedef	struct {
-+	BASICIO	b_io;
-+	int	_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
-+	SCOPE	b_s[2];
-+	// int	_SKIP_TO_UART[	(0x050-0x40-2*sizeof(SCOPE))];
-+	WBUART	b_uart;
-+	// int	_SKIP_TO_RTC[	(0x060-0x50-sizeof(WBUART))];
++	BASICIO		b_io;
++	char		_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
++	WBSCOPE		b_s[2];
++	WBUART		b_uart;
 +	RTCLIGHT	b_rtc;
-+	// int	_SKIP_TO_FLCTL[	(0x070-0x060-sizeof(RTCLIGHT))];
 +	FLASHCONTROL	b_flash;
-+	//int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
-+	SDCARD	b_sd;
++	SDCARD		b_sd;
 +} ZIPBASICBOARD;
 +
-+static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
-+#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x150;
++#define	PERIPHERAL_ADDR	((ZIPBASICBOARD *)0x100)
++
++static	volatile ZIPBASICBOARD	*const _sys =(PERIPHERAL_ADDR);
++
++#define	_ZIP_HAS_WBUART
++static	volatile WBUART		*const _uart   = &(PERIPHERAL_ADDR)->b_uart;
++#define	_ZIP_HAS_WBUARTX
++#define	_uarttx		_uart->u_tx
++#define	_ZIP_HAS_WBUARTRX
++#define	_uartrx	_	uart->u_rx
++#define	_ZIP_HAS_UARTSETUP
++#define	_uartsetup	_uart->u_setup
++
++#define	_ZIP_HAS_RTC
++static	volatile RTCLIGHT	*const _rtcdev = &(PERIPHERAL_ADDR)->b_rtc;
++#define	_ZIP_HAS_RTCDATE
++static	volatile uint32_t	*const _rtcdate = &((PERIPHERAL_ADDR)->b_io.i_date);
++
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x180;
++static	volatile SDCARD		*const _sdcard = &((PERIPHERAL_ADDR)->b_sd);
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
++#define	ALTPIC		zip->z_zpic
++#define	COUNTER		zip->z_m.ac_ck
 +
++#define	BKRAM	(void *)0
++#define	FLASH	(void *)0x01000000
++#define	SDRAM	(void *)0x10000000
 +#define	CLOCKFREQHZ	100000000	// 100 MHz
++#define	CLOCKFREQ_HZ	CLOCKFREQHZ
++//
++#define	MEMLEN		0
++#define	FLASHLEN	0x01000000
++#define	SDRAMLEN	0x10000000
 +
 +// Finally, let's assign some of our interrupts:
++//
++// We're allowed nine interrupts to the master interrupt controller in the
++// ZipSys
 +#define	SYSINT_PPS	SYSINT(6)
 +#define	SYSINT_UARTRX	SYSINT(7)
 +#define	SYSINT_UARTTX	SYSINT(8)
@@ -335,21 +381,33 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +#define	SYSINT_FLASH	SYSINT(12)
 +#define	SYSINT_SCOPE	SYSINT(13)
 +#define	SYSINT_RTC	SYSINT(14)
++
++// DMA Interrupt parameters
++#define	DMA_ONPPS	DMA_ONINT(6)
++#define	DMA_ONUARTRX	DMA_ONINT(7)
++#define	DMA_ONUARTTX	DMA_ONINT(8)
++#define	DMA_ONUARTRXF	DMA_ONINT(9)
++#define	DMA_ONUARTTXF	DMA_ONINT(10)
++#define	DMA_ONSDCARD	DMA_ONINT(11)
++#define	DMA_ONFLASH	DMA_ONINT(12)
++#define	DMA_ONSCOPE	DMA_ONINT(13)
++#define	DMA_ONRTC	DMA_ONINT(14)
 +
 +#endif
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-02-02 16:33:36.882890943 -0500
-@@ -0,0 +1,133 @@
++++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-02-21 16:49:14.639211315 -0500
+@@ -0,0 +1,190 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
 +//
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
-+// Purpose:	
-+//
++// Purpose:	A description of the hardware and I/O parts and pieces specific
++//		to the ZipBasic distribution, for the purpose of writing
++//	ZipCPU software that will run on the board.
 +//
 +// Creator:	Dan Gisselquist, Ph.D.
 +//		Gisselquist Technology, LLC
@@ -368,6 +426,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
 +//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
++//
 +// License:	GPL, v3, as defined and found on www.gnu.org,
 +//		http://www.gnu.org/licenses/gpl.html
 +//
@@ -377,6 +440,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +//
 +#ifndef	ZIPBASIC_H
 +#define	ZIPBASIC_H
++
++#include <stdint.h>
 +
 +// We have the full ZIP System installed
 +#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
@@ -391,6 +456,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +} BASICIO;
 +
 +#define	UART_PARITY_NONE	0
++#define	UART_HWFLOW_OFF		0x40000000
 +#define	UART_PARITY_ODD		0x04000000
 +#define	UART_PARITY_EVEN	0x05000000
 +#define	UART_PARITY_SPACE	0x06000000
@@ -409,24 +475,37 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +#define	UART_TX_BUSY		0x0100
 +#define	UART_TX_BREAK		0x0200
 +
-+typedef	struct	{
++typedef	struct	WBUART_S {
 +	unsigned	u_setup;
 +	unsigned	u_fifo;
 +	unsigned	u_rx, u_tx;
 +} WBUART;
 +
 +
-+#define	SCOPE_NO_RESET	0x80000000
-+#define	SCOPE_TRIGGER	(SCOPE_NO_RESET|0x08000000)
-+#define	SCOPE_MANUAL	SCOPE_TRIGGER
-+#define	SCOPE_DISABLE	0x04000000	// Disable the scope trigger
-+typedef	struct	{
++#define	WBSCOPE_NO_RESET	0x80000000
++#define	WBSCOPE_TRIGGER	(WBSCOPE_NO_RESET|0x08000000)
++#define	WBSCOPE_MANUAL	WBSCOPE_TRIGGER
++#define	WBSCOPE_DISABLE	0x04000000	// Disable the scope trigger
++typedef	struct	WBSCOPE_S {
 +	unsigned	s_ctrl, s_data;
-+} SCOPE;
++} WBSCOPE;
 +
 +typedef	struct	{
 +	unsigned	r_clock, r_stopwatch, r_timer, r_alarm;
 +} RTCLIGHT;
++
++
++#define	SD_SETAUX	0x0ff
++#define	SD_READAUX	0x0bf
++#define	SD_CMD		0x040
++#define	SD_FIFO_OP	0x0800	// Read only
++#define	SD_WRITEOP	0x0c00	// Write to the FIFO
++#define	SD_ALTFIFO	0x1000
++#define	SD_BUSY		0x4000
++#define	SD_ERROR	0x8000
++#define	SD_CLEARERR	0x8000
++#define	SD_READ_SECTOR	((SD_CMD|SD_CLEARERR|SD_FIFO_OP)+17)
++#define	SD_WRITE_SECTOR	((SD_CMD|SD_CLEARERR|SD_WRITEOP)+24)
 +
 +typedef	struct	{
 +	unsigned	sd_ctrl, sd_data, sd_fifo[2];
@@ -438,31 +517,55 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +
 +
 +typedef	struct {
-+	BASICIO	b_io;
-+	int	_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
-+	SCOPE	b_s[2];
-+	// int	_SKIP_TO_UART[	(0x050-0x40-2*sizeof(SCOPE))];
-+	WBUART	b_uart;
-+	// int	_SKIP_TO_RTC[	(0x060-0x50-sizeof(WBUART))];
++	BASICIO		b_io;
++	char		_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
++	WBSCOPE		b_s[2];
++	WBUART		b_uart;
 +	RTCLIGHT	b_rtc;
-+	// int	_SKIP_TO_FLCTL[	(0x070-0x060-sizeof(RTCLIGHT))];
 +	FLASHCONTROL	b_flash;
-+	//int	_SKIP_TO_SDCARD[(0x140-0x100-sizeof(FLASHCONTROL))];
-+	SDCARD	b_sd;
++	SDCARD		b_sd;
 +} ZIPBASICBOARD;
 +
-+static	volatile ZIPBASICBOARD	*const _sys = (ZIPBASICBOARD *)0x100;
-+#define	_ZIP_HAS_UART
-+static	volatile WBUART		*const _uart   = (WBUART *)0x150;
++#define	PERIPHERAL_ADDR	((ZIPBASICBOARD *)0x100)
++
++static	volatile ZIPBASICBOARD	*const _sys =(PERIPHERAL_ADDR);
++
++#define	_ZIP_HAS_WBUART
++static	volatile WBUART		*const _uart   = &(PERIPHERAL_ADDR)->b_uart;
++#define	_ZIP_HAS_WBUARTX
++#define	_uarttx		_uart->u_tx
++#define	_ZIP_HAS_WBUARTRX
++#define	_uartrx	_	uart->u_rx
++#define	_ZIP_HAS_UARTSETUP
++#define	_uartsetup	_uart->u_setup
++
++#define	_ZIP_HAS_RTC
++static	volatile RTCLIGHT	*const _rtcdev = &(PERIPHERAL_ADDR)->b_rtc;
++#define	_ZIP_HAS_RTCDATE
++static	volatile uint32_t	*const _rtcdate = &((PERIPHERAL_ADDR)->b_io.i_date);
++
 +#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = (SDCARD *)0x180;
++static	volatile SDCARD		*const _sdcard = &((PERIPHERAL_ADDR)->b_sd);
 +
 +#define	SYSTIMER	zip->z_tma
 +#define	SYSPIC		zip->z_pic
++#define	ALTPIC		zip->z_zpic
++#define	COUNTER		zip->z_m.ac_ck
 +
++#define	BKRAM	(void *)0
++#define	FLASH	(void *)0x01000000
++#define	SDRAM	(void *)0x10000000
 +#define	CLOCKFREQHZ	100000000	// 100 MHz
++#define	CLOCKFREQ_HZ	CLOCKFREQHZ
++//
++#define	MEMLEN		0
++#define	FLASHLEN	0x01000000
++#define	SDRAMLEN	0x10000000
 +
 +// Finally, let's assign some of our interrupts:
++//
++// We're allowed nine interrupts to the master interrupt controller in the
++// ZipSys
 +#define	SYSINT_PPS	SYSINT(6)
 +#define	SYSINT_UARTRX	SYSINT(7)
 +#define	SYSINT_UARTTX	SYSINT(8)
@@ -472,6 +575,17 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +#define	SYSINT_FLASH	SYSINT(12)
 +#define	SYSINT_SCOPE	SYSINT(13)
 +#define	SYSINT_RTC	SYSINT(14)
++
++// DMA Interrupt parameters
++#define	DMA_ONPPS	DMA_ONINT(6)
++#define	DMA_ONUARTRX	DMA_ONINT(7)
++#define	DMA_ONUARTTX	DMA_ONINT(8)
++#define	DMA_ONUARTRXF	DMA_ONINT(9)
++#define	DMA_ONUARTTXF	DMA_ONINT(10)
++#define	DMA_ONSDCARD	DMA_ONINT(11)
++#define	DMA_ONFLASH	DMA_ONINT(12)
++#define	DMA_ONSCOPE	DMA_ONINT(13)
++#define	DMA_ONRTC	DMA_ONINT(14)
 +
 +#endif
 +
@@ -4627,8 +4741,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-01-27 08:59:28.240660156 -0500
-@@ -0,0 +1,282 @@
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-02-21 16:48:24.891606509 -0500
+@@ -0,0 +1,288 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
@@ -4798,9 +4912,14 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	//
 +"_graceful_kernel_exit:"	"\t; Halt on any return from main--gracefully\n"
 +	"\tJSR\texit\n"	"\t; Call the _exit as part of exiting\n"
++"\t.global\t_exit\n"
 +"_exit:\n"
-+	"\tNEXIT\t0\n"		"\t; If in simulation, call an exit function\n"
-+	"\tHALT\n"
++#ifdef	_ZIP_HAS_WBUART
++	"\tLW 0x15c,R2\n"	"\t; Wait for the serial port to clear\n"
++	"\tTEST 0x100,R2\n"
++	"\tBNZ _exit\n"
++#endif
++	"\tNEXIT\tR1\n"		"\t; If in simulation, call an exit function\n"
 +"_kernel_is_dead:"		"\t; Halt the CPU\n"
 +	"\tHALT\n"		"\t; We should *never* continue following a\n"
 +	"\tBRA\t_kernel_is_dead" "\t; halt, do something useful if so ??\n"
@@ -4873,7 +4992,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +#else
 +	int	*rdp = _kernel_image_start, *wrp = _blkram;
 +
-+	if ((((int)wrp) & -4)==0)
++	if (BKRAM == NULL)
 +		wrp = _sdram;
 +
 +	//
@@ -4884,9 +5003,10 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// the flash address region.
 +	//
 +	if (_kernel_image_end != _kernel_image_start) {
-+		int	nlen = _kernel_image_end - wrp;
-+		for(int i=0; i< _kernel_image_end - _blkram; i++)
++		while(wrp < _kernel_image_end)
 +			*wrp++ = *rdp++;
++		if (_kernel_image_end <= _sdram)
++			wrp = _sdram;
 +	}
 +
 +	//
@@ -4913,8 +5033,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
 --- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-18 12:50:02.769671801 -0500
-@@ -0,0 +1,114 @@
++++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-21 16:51:32.166122654 -0500
+@@ -0,0 +1,116 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
 +# The authors hereby grant permission to use, copy, modify, distribute,
@@ -4974,7 +5094,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +CFLAGS=-O3
 +
 +BASIC_BSP   = libzipbasic.a
-+BASIC_OBJS  = libboard-syscalls.o libboard-zipcpu.o crt0.o
++BASIC_OBJS  = libboard-syscalls.o libboard-zipcpu.o crt0.o libboard-udiv.o libboard-umod.o
 +# SPECS = ${srcdir}/zip.specs
 +
 +CRT0	      = crt0.o
@@ -4999,6 +5119,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +
 +syscalls.o: $(srcdir)/syscalls.c $(srcdir)/boards/zipbasic.h $(srcdir)/zipcpu.h
 +syscalls.o: $(srcdir)/zipsys.h
++udiv.o: $(srcdir)/udiv.h
++umod.o: $(srcdir)/umod.h
 +zipcpu.o:   $(srcdir)/zipcpu.c
 +crt0.o:     $(srcdir)/crt0.c $(srcdir)/boards/zipbasic.h $(srcdir)/zipcpu.h
 +crt0.o:     $(srcdir)/zipsys.h
@@ -5031,8 +5153,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-02-02 22:16:34.930823309 -0500
-@@ -0,0 +1,228 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-02-21 16:47:14.172169605 -0500
+@@ -0,0 +1,326 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -5080,18 +5202,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +void
 +_outbyte(char v) {
++#ifdef	_ZIP_HAS_WBUART
 +	// Depend upon the WBUART, not the PIC
-+	while(_uart->u_tx & 0x100)
++	while(_uart->u_fifo & 0x010000)
 +		;
 +	uint8_t c = v;
-+	*((volatile uint32_t *)&_uart->u_tx) = (unsigned)c;
-+}
-+
-+void
-+_exit(int rc) {
-+	asm volatile ("\tnexit\t%0": : "r"(rc));
-+	while(1)
-+		zip_halt();
++	_uarttx = (unsigned)c;
++#else
++#ifdef	_ZIP_HAS_UARTTX
++	// Depend upon the WBUART, not the PIC
++	while(UARTTX & 0x100)
++		;
++	uint8_t c = v;
++	UARTTX = (unsigned)c;
++#endif
++#endif
 +}
 +
 +int
@@ -5114,7 +5239,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int
 +_fork_r(struct _reent *reent)
 +{
-+	reent->_errno = EAGAIN;
++	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
@@ -5125,6 +5250,10 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +		||(STDIN_FILENO == file)) {
 +		st->st_mode = S_IFCHR;
 +		return 0;
++#ifdef	_ZIP_HAS_SDCARD_NOTYET
++	} else if (SDCARD_FILENO == file) {
++		st->st_mode = S_IFBLK;
++#endif
 +	} else {
 +		reent->_errno = EBADF;
 +		return -1;
@@ -5140,6 +5269,70 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int
 +_gettimeofday(struct _reent *reent, struct timeval *ptimeval, void *ptimezone)
 +{
++#ifdef	_ZIP_HAS_RTC
++	if (ptimeval) {
++		uint32_t	now, date;
++		unsigned	s, m, h, tod;
++
++		now = _rtcdev->r_clock;
++
++#ifdef	_ZIP_HAS_RTDATE
++		unsigned	d, y, c, yy, days_since_epoch;
++		int		ly;
++
++		date= *_rtdate;
++
++		d = ( date     &0x0f)+((date>> 4)&0x0f)*10;
++		m = ((date>> 8)&0x0f)+((date>>12)&0x0f)*10;
++		y = ((date>>16)&0x0f)+((date>>20)&0x0f)*10;
++		c = ((date>>24)&0x0f)+((date>>28)&0x0f)*10;
++
++		ly = 0;
++		if ((y&3)==0) {
++			if (y!=0)
++				ly = 1;
++			else if ((y&3)==0)
++				ly = 1;
++		}
++
++		days_since_epoch = d;
++		if (m>1) {
++			days_since_epoch += 31;
++			if (m>2) {
++				days_since_epoch += 28;
++				if (ly) days_since_epoch++;
++				if (m>3)  { days_since_epoch += 31;
++				if (m>4)  { days_since_epoch += 30;
++				if (m>5)  { days_since_epoch += 31;
++				if (m>6)  { days_since_epoch += 30;
++				if (m>7)  { days_since_epoch += 31;
++				if (m>8)  { days_since_epoch += 31;
++				if (m>9)  { days_since_epoch += 30;
++				if (m>10) { days_since_epoch += 31;
++				if (m>11)   days_since_epoch += 30;
++		}}}}}}}}}}
++
++		for(yy=1970; yy<(c*100+y); yy++) {
++			if ((yy&3)==0)
++				days_since_epoch += 366;
++			else
++				days_since_epoch += 365;
++		}
++
++		ptimeval->tv_sec  = days_since_epoch * 86400l;
++#else
++		ptimeval->tv_sec  = 0;
++#endif
++
++		s = ( now     &0x0f)+((now>> 4)&0x0f)*10;
++		m = ((now>> 8)&0x0f)+((now>>12)&0x0f)*10;
++		h = ((now>>16)&0x0f)+((now>>20)&0x0f)*10;
++		tod = (h * 60 + m) * 60;
++		ptimeval->tv_sec += tod;
++
++		ptimeval->tv_usec = 0;
++	}
++#endif
 +	reent->_errno = ENOSYS;
 +	return -1;
 +}
@@ -5171,13 +5364,32 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +_off_t
 +_lseek_r(struct _reent *reent, int file, _off_t ptr, int dir)
 +{
++#ifdef	_ZIP_HAS_SDCARD_NOTYET
++	if (SDCARD_FILENO == file) {
++		switch(dir) {
++		case SEEK_SET:	rootfs_offset = ptr;
++		case SEEK_CUR:	rootfs_offset += ptr;
++		case SEEK_END:	rootfs_offset = rootfs->nsectors * rootfs->sectorsize - ptr;
++		default:
++			reent->_errno = EINVAL; return -1;
++		} return rootfs_offset;
++	}
++#endif
 +	reent->_errno = ENOSYS;
 +	return -1;
 +}
 +
 +int
-+_open(struct _reent *reent, char *file, int flags, int mode)
++_open_r(struct _reent *reent, const char *file, int flags, int mode)
 +{
++#ifdef	_ZIP_HAS_SDCARD_NOTYET
++	if (strcmp(file, "/dev/sdcard")==0) {
++		return SDCARD_FILENO;
++	} else {
++		reent->_errno = EACCES;
++		return -1;
++	}
++#endif
 +	reent->_errno = ENOSYS;
 +	return -1;
 +}
@@ -5185,21 +5397,24 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int
 +_read_r(struct _reent *reent, int file, void *ptr, size_t len)
 +{
-+#ifdef	_ZIP_HAS_UART
++#ifdef	_ZIP_HAS_UARTRX
 +	if (STDIN_FILENO == file)
 +	{
 +		int	nr = 0, rv;
 +		char	*chp = ptr;
 +		while(nr < len) {
-+			while( ((SYSPIC)&&(SYSINT_UARTRX)) == 0)
-+				;
-+			rv = _uart->u_rx;
-+			if ((rv & -256)==0) {
-+				*chp++ = (char)rv;
-+				nr++;
-+			}
++			do {
++				rv = _uartrx;
++			} while(rv & 0x0100);
++			*chp++ = (char)rv;
++			nr++;
 +		}
 +		return nr;
++	}
++#endif
++#ifdef	_ZIP_HAS_SDCARD_NOTYET
++	if (SDCARD_FILENO == file)
++	{
 +	}
 +#endif
 +	errno = ENOSYS;
@@ -5240,6 +5455,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +			_outbyte(cbuf[i]);
 +		return nbytes;
 +	}
++#ifdef	_ZIP_HAS_SDCARD_NOTYET
++	if (SDCARD_FILENO == file)
++	{
++	}
++#endif
 +
 +	reent->_errno = EBADF;
 +	return -1;
@@ -5259,6 +5479,305 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +	heap += sz;
 +	return	prev;
++}
++
+diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/libgloss/zip/udiv.c
+--- newlib-2.5.0/libgloss/zip/udiv.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.5.0-zip/libgloss/zip/udiv.c	2017-02-21 13:26:22.491163000 -0500
+@@ -0,0 +1,229 @@
++////////////////////////////////////////////////////////////////////////////////
++//
++// Filename: 	udiv.c
++//
++// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++//
++// Purpose:	This is a temporary file--a crutch if you will--until a similar
++//		capability is merged into GCC.  Right now, GCC has no way of
++//	dividing two 64-bit numbers, and this routine provides that capability.
++//
++//
++// Creator:	Dan Gisselquist, Ph.D.
++//		Gisselquist Technology, LLC
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++//
++// This program is free software (firmware): you can redistribute it and/or
++// modify it under the terms of  the GNU General Public License as published
++// by the Free Software Foundation, either version 3 of the License, or (at
++// your option) any later version.
++//
++// This program is distributed in the hope that it will be useful, but WITHOUT
++// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++// for more details.
++//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
++//
++// License:	GPL, v3, as defined and found on www.gnu.org,
++//		http://www.gnu.org/licenses/gpl.html
++//
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++//
++#include <stdint.h>
++
++
++
++#ifdef	__ZIPCPU__
++#include "zipcpu.h"
++#else
++uint32_t zip_bitrev(const uint32_t a) {
++	uint32_t	r, b = a;
++	r = 0;
++	for(int i=0; i<32; i++) {
++		r = (r<<1) | (b&1);
++		b >>= 1;
++	} return r;
++}
++#endif
++
++extern	int	cltz(unsigned long);
++
++#ifdef	__ZIPCPU__
++#define	ASMCLTZ
++#endif
++
++#ifdef	ASMCLTZ
++asm("\t.section\t.text\n\t.global\tcltz\n"
++"\t.type\tcltz,@function\n"
++"cltz:\n"
++	"\tMOV	R1,R3\n"
++	"\tCLR	R1\n"
++	"\tCMP	0,R3\n"
++	"\tMOV.Z R2,R3\n"
++	"\tADD.Z 32,R1\n"
++	"\tBREV	R3\n"
++	"\tTEST	0x0ffff,R3\n"
++	"\tADD.Z 16,R1\n"
++	"\tLSR.Z 16,R3\n"
++	"\tTEST	0x0ff,R3\n"
++	"\tADD.Z 8,R1\n"
++	"\tLSR.Z 8,R3\n"
++	"\tTEST	0x0f,R3\n"
++	"\tADD.Z 4,R1\n"
++	"\tLSR.Z 4,R3\n"
++	"\tTEST	0x03,R3\n"
++	"\tADD.Z 2,R1\n"
++	"\tLSR.Z 2,R3\n"
++	"\tTEST	0x01,R3\n"
++	"\tADD.Z 1,R1\n"
++	"\tRETN\n");
++#else
++int	__attribute__((noinline))
++cltz(unsigned long v) {
++	uint32_t	hv;
++	int		cnt = 0;
++
++	hv = v >> 32;
++	if (hv == 0) {
++		cnt += 32;
++		hv = v & 0x0ffffffff;
++	}
++
++	hv = zip_bitrev(hv);
++	if ((hv & 0x0ffff)==0) {
++		cnt += 16;
++		hv = hv >> 16;
++	}
++	if ((hv & 0x0ff)==0) {
++		cnt += 8;
++		hv = hv >> 8;
++	}
++	if ((hv & 0x0f)==0) {
++		cnt += 4;
++		hv = hv >> 4;
++	}
++	if ((hv & 0x03)==0) {
++		cnt += 2;
++		hv = hv >> 2;
++	}
++	if ((hv & 0x01)==0)
++		cnt ++;
++	return cnt;
++}
++#endif
++
++#ifdef	__ZIPCPU__
++__attribute((noinline))
++#endif
++unsigned long __udivdi3(unsigned long a, unsigned long b) {
++	unsigned long	r;
++
++	if (a < b)
++		return 0;
++	if (((b>>32)==0)&&((a>>32)==0)) {
++		uint32_t	ia, ib, ir;
++
++		ia = (uint32_t) a;
++		ib = (uint32_t) b;
++		ir = ia / ib;
++		r = (unsigned long)ir;
++		return r;
++	}
++
++	int	la = cltz(a), lb = cltz(b);
++	a <<= la;
++	unsigned long	m;
++	if ((lb - la < 32)&&(((b<<la)&0x0ffffffff)==0)) {
++		// Problem is now to divide
++		//	[a * 2^(la-32)] / [b * 2^(la-32)] * 2^(la-la)
++		//
++		uint32_t	ia, ib, ir;
++		b <<= la;
++		ia = (uint32_t)(a>>32);
++		ib = (uint32_t)(b>>32);
++		ir = ia / ib;
++		r = ir;
++		return r;
++	} else {
++		// Problem is now to divide
++		//	[a * 2^(la)] / [b * 2^(lb)] * 2^(lb-la)
++		//
++		r = 0;
++		b <<= lb;
++		m = (1ul<<(lb-la));
++		while(m > 0) {
++			if (a >= b) {
++				r |= m;
++				a -= b;
++			}
++			m>>= 1;
++			b >>= 1;
++		} return r;
++	}
++}
++
++//
++// A possible assembly version of __divdi3
++//
++//	SUB	8,SP
++//	SW	R0,(SP)
++//	SW	R5,4(SP)
++//	LDI	0,R5
++//	CMP	0,R1
++//	BGE	.La_is_nonneg
++//	XOR	1,R5
++//	XOR	-1,R1
++//	XOR	-1,R2
++//	ADD	1,R2
++//	ADD.C	1,R1
++//.La_is_nonneg
++//	CMP	0,R3
++//	BGE	.Lb_is_nonneg
++//	XOR	1,R5
++//	XOR	-1,R3
++//	XOR	-1,R3
++//	ADD	1,R4
++//	ADD.C	1,R3
++//.Lb_is_nonneg
++//	TEST	R5
++//	MOV	.Lnegate_upon_return(PC),R0
++//	MOV.Z	.Lsimple_return(PC),R0
++//	BRA	__udivdi3
++//.Lnegate_upon_return
++//	XOR	-1,R2
++//	XOR	-1,R1
++//	ADD	1,R2
++//	ADD.C	1,R1
++//.Lsimple_return
++//
++//	LW	(SP),R0,(SP)
++//	LW	4(SP),R5)
++//	ADD	8,SP
++//	RETN
++//
++long __divdi3(long a, long b) {
++	int	s = 0;
++	long	r;
++
++	if (a < 0) {
++		s = 1; a = -a;
++	}
++
++	if (b < 0) {
++		s ^= 1; b = -b;
++	}
++
++	r = (long)__udivdi3((unsigned long)a, (unsigned long)b);
++	if (s)
++		r = -r;
++	return r;
++}
+diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/libgloss/zip/umod.c
+--- newlib-2.5.0/libgloss/zip/umod.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-2.5.0-zip/libgloss/zip/umod.c	2017-02-21 13:26:22.491163000 -0500
+@@ -0,0 +1,62 @@
++////////////////////////////////////////////////////////////////////////////////
++//
++// Filename: 	umod.c
++//
++// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++//
++// Purpose:	This is a temporary file--a crutch if you will--until a similar
++//		capability is merged into GCC.  Right now, GCC has no way of
++//	taking the module of two 64-bit numbers, and this routine provides that
++//	capability.
++//
++//	This routine is required by and used by newlib's printf in order to
++//	print decimal numbers (%d) to an IO stream.
++//
++//	Once gcc is properly patched, this will be removed from the 
++//	repository.
++//
++// Creator:	Dan Gisselquist, Ph.D.
++//		Gisselquist Technology, LLC
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++// Copyright (C) 2017, Gisselquist Technology, LLC
++//
++// This program is free software (firmware): you can redistribute it and/or
++// modify it under the terms of  the GNU General Public License as published
++// by the Free Software Foundation, either version 3 of the License, or (at
++// your option) any later version.
++//
++// This program is distributed in the hope that it will be useful, but WITHOUT
++// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++// for more details.
++//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
++//
++// License:	GPL, v3, as defined and found on www.gnu.org,
++//		http://www.gnu.org/licenses/gpl.html
++//
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++//
++#include <stdint.h>
++
++
++unsigned long __udivdi3(unsigned long, unsigned long);
++
++__attribute((noinline))
++unsigned long __umoddi3(unsigned long a, unsigned long b) {
++	unsigned long	r;
++
++	// Return a modulo b, or a%b in C syntax
++	r = __udivdi3(a, b);
++	r = r * b;
++	r = a - r;
++	return r;
 +}
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip/libgloss/zip/zipcpu.c
