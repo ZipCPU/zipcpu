@@ -15,7 +15,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -41,8 +41,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include <string.h>
 #include <ctype.h>
+
 #include <ncurses.h>
 
 #include "verilated.h"
@@ -54,9 +55,9 @@
 #include "zipelf.h"
 // #include "twoc.h"
 // #include "qspiflashsim.h"
+#include "byteswap.h"
 #include "memsim.h"
 #include "zopcodes.h"
-#include "zparser.h"
 
 #define	CMD_REG		0
 #define	CMD_DATA	1
@@ -75,13 +76,17 @@
 
 #define	MAXERR		10000
 
+/*
+// We are just a raw CPU with memory.  There is no flash.
 #define	LGFLASHLEN	24
-#define	FLASHBASE	0x1000000
+#define	FLASHBASE	0x01000000
 #define	FLASHWORDS	(1<<LGFLASHLEN)
+*/
 
-#define	LGRAMLEN	26
-#define	RAMBASE		0x4000000
-#define	RAMWORDS	(1<<LGRAMLEN)
+#define	LGRAMLEN	28
+#define	RAMBASE		0x10000000
+#define	RAMLEN		(1<<(LGRAMLEN))
+#define	RAMWORDS	((RAMLEN)>>2)
 
 class	SPARSEMEM {
 public:
@@ -115,15 +120,14 @@ public:
 	MEMSIM		m_mem;
 	// QSPIFLASHSIM	m_flash;
 	FILE		*m_dbgfp, *m_profile_fp;
-	bool		dbg_flag, bomb, m_show_user_timers;
+	bool		dbg_flag, m_bomb, m_show_user_timers;
 	int		m_cursor;
 	unsigned long	m_last_instruction_tickcount;
 	ZIPSTATE	m_state;
-	VerilatedVcdC*	m_trace;
 
 	ZIPPY_TB(void) : m_mem_size(RAMWORDS), m_mem(m_mem_size) {
-		if (false) {
-			m_dbgfp = fopen("dbg.txt", "w");
+		if (true) {
+			m_dbgfp = fopen("debug.txt", "w");
 			dbg_flag = true;
 			gbl_dbgfp = m_dbgfp;
 		} else {
@@ -133,15 +137,13 @@ public:
 		}
 
 		if(true) {
-			Verilated::traceEverOn(true);
-			m_trace = new VerilatedVcdC;
-			m_core->trace(m_trace, 99);
-			m_trace->open("trace.vcd");
+			// TESTB<Vzipsystem>::opentrace("trace.vcd");
+			opentrace("trace.vcd");
 		} else {
 			m_trace = NULL;
 		}
 
-		bomb = false;
+		m_bomb = false;
 		m_cursor = 0;
 		m_show_user_timers = false;
 
@@ -236,7 +238,7 @@ public:
 
 		m_state.m_p[0] = m_core->v__DOT__pic_data;
 		m_state.m_p[1] = m_core->v__DOT__watchdog__DOT__r_value;
-		if (!m_show_user_timers) {	
+		if (!m_show_user_timers) {
 			m_state.m_p[2] = m_core->v__DOT__watchbus__DOT__r_value;
 		} else {
 			m_state.m_p[2] = m_core->v__DOT__r_wdbus_data;
@@ -279,7 +281,7 @@ public:
 		/*
 		if ((id == 14)||(id == 14+16)) {
 			//char	buf[64];
-			//fprintf(fp, " %s:", 
+			//fprintf(fp, " %s:",
 			fprintf(fp, " %s: 0x%08x ", n, v);
 		} else
 		*/
@@ -323,19 +325,19 @@ public:
 			printw("Stl ");
 		else
 			printw("    ");
-		printw("%s: 0x%08x", lbl, pc);
+		printw("%s%c 0x%08x", lbl, (phase)?'/':':', pc);
 
 		if (valid) {
 			if (gie) attroff(A_BOLD);
 			else	attron(A_BOLD);
-			zipi_to_string(m_mem[pc], la, lb);
-			if ((phase)||((m_mem[pc]&0x80000000)==0))
+			zipi_to_double_string(pc, m_mem[pc>>2], la, lb);
+			if (((m_mem[pc>>2]&0x80000000)==0)||(phase))
 				printw("  %-24s", la);
 			else
 				printw("  %-24s", lb);
 		} else {
 			attroff(A_BOLD);
-			printw("  (0x%08x)%28s", m_mem[pc],"");
+			printw("  (0x%08x)%28s", m_mem[pc>>2],"");
 		}
 		attroff(A_BOLD);
 	}
@@ -356,11 +358,11 @@ public:
 			fprintf(m_dbgfp, "Stl ");
 		else
 			fprintf(m_dbgfp, "    ");
-		fprintf(m_dbgfp, "0x%08x:  ", pc);
+		fprintf(m_dbgfp, "0x%08x%s:  ", pc, (phase)?"/P":"  ");
 
 		if (valid) {
-			zipi_to_string(m_mem[pc], la, lb);
-			if ((phase)||((m_mem[pc]&0x80000000)==0))
+			zipi_to_double_string(pc, m_mem[pc>>2], la, lb);
+			if ((phase)||((m_mem[pc>>2]&0x80000000)==0))
 				fprintf(m_dbgfp, "  %-24s", la);
 			else
 				fprintf(m_dbgfp, "  %-24s", lb);
@@ -390,23 +392,15 @@ public:
 		if (m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_early_branch)
 			printw(" 0x%08x", m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_branch_pc);
 		else	printw(" %10s", "");
-		printw(" %s", 
+		printw(" %s",
 			(m_core->v__DOT__thecpu__DOT____Vcellinp__pf____pinNumber3)?"-> P3":"     ");
 #endif
-			
-		/*
-		showval(ln, 1, "TRAP", m_core->v__DOT__trap_data);
-			mvprintw(ln, 17, "%s%s",
-				((m_core->v__DOT__sys_cyc)
-				&&(m_core->v__DOT__sys_we)
-				&&(m_core->v__DOT__sys_addr == 0))?"W":" ",
-				(m_core->v__DOT__trap_int)?"I":" ");
-		*/
+
 		showval(ln, 0, "PIC ", m_state.m_p[0], (m_cursor==0));
 		showval(ln,20, "WDT ", m_state.m_p[1], (m_cursor==1));
 		// showval(ln,40, "CACH", m_core->v__DOT__manualcache__DOT__cache_base, (m_cursor==2));
 
-		if (!m_show_user_timers) {	
+		if (!m_show_user_timers) {
 		showval(ln,40, "WBUS", m_core->v__DOT__watchbus__DOT__r_value, false);
 		} else {
 		showval(ln,40, "UBUS", m_core->v__DOT__r_wdbus_data, false);
@@ -420,8 +414,8 @@ public:
 		showval(ln,40, "TMRC", m_state.m_p[6], (m_cursor==6));
 		showval(ln,60, "JIF ", m_state.m_p[7], (m_cursor==7));
 
-	
-		if (!m_show_user_timers) {	
+
+		if (!m_show_user_timers) {
 			ln++;
 			showval(ln, 0, "MTSK", m_state.m_p[12], (m_cursor==8));
 			showval(ln,20, "MOST", m_state.m_p[13], (m_cursor==9));
@@ -570,7 +564,7 @@ public:
 			(m_core->v__DOT__thecpu__DOT__pf_cyc)?"CYC":"   ",
 			(m_core->v__DOT__thecpu__DOT__pf_stb)?"STB":"   ",
 			"  ", // (m_core->v__DOT__thecpu__DOT__pf_we )?"WE":"  ",
-			(m_core->v__DOT__thecpu__DOT__pf_addr),
+			(m_core->v__DOT__thecpu__DOT__pf_addr<<2),
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
 			(m_core->v__DOT__thecpu__DOT__pf_ack)?"ACK":"   ",
 			"   ",//(m_core->v__DOT__thecpu__DOT__pf_stall)?"STL":"   ",
@@ -592,7 +586,7 @@ public:
 			(m_core->v__DOT__thecpu__DOT__pf_cyc)?"CYC":"   ",
 			(m_core->v__DOT__thecpu__DOT__pf_stb)?"STB":"   ",
 			"  ", // (m_core->v__DOT__thecpu__DOT__pf_we )?"WE":"  ",
-			(m_core->v__DOT__thecpu__DOT__pf_addr),
+			(m_core->v__DOT__thecpu__DOT__pf_addr<<2),
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
 			(m_core->v__DOT__thecpu__DOT__pf_ack)?"ACK":"   ",
 			(pfstall())?"STL":"   ",
@@ -605,7 +599,7 @@ public:
 			(m_core->v__DOT__thecpu__DOT__mem_stb_gbl)?"GSB"
 				:((m_core->v__DOT__thecpu__DOT__mem_stb_lcl)?"LSB":"   "),
 			(m_core->v__DOT__thecpu__DOT__mem_we )?"WE":"  ",
-			(m_core->v__DOT__thecpu__DOT__mem_addr),
+			(m_core->v__DOT__thecpu__DOT__mem_addr<<2),
 			(m_core->v__DOT__thecpu__DOT__mem_data),
 			(m_core->v__DOT__thecpu__DOT__mem_ack)?"ACK":"   ",
 			(m_core->v__DOT__thecpu__DOT__mem_stall)?"STL":"   ",
@@ -626,14 +620,14 @@ public:
 			(m_core->o_wb_cyc)?"CYC":"   ",
 			(m_core->o_wb_stb)?"STB":"   ",
 			(m_core->o_wb_we )?"WE":"  ",
-			(m_core->o_wb_addr),
+			(m_core->o_wb_addr<<2),
 			(m_core->o_wb_data),
 			(m_core->i_wb_ack)?"ACK":"   ",
 			(m_core->i_wb_stall)?"STL":"   ",
 			(m_core->i_wb_data),
 			(m_core->i_wb_err)?"(ER!)":"     "); ln+=2;
 #ifdef	OPT_PIPELINED_BUS_ACCESS
-		mvprintw(ln-1, 0, "Mem CE: %d = %d%d%d%d%d, stall: %d = %d%d(%d|%d%d|..)",			
+		mvprintw(ln-1, 0, "Mem CE: %d = %d%d%d%d%d, stall: %d = %d%d(%d|%d%d|..)",
 			(m_core->v__DOT__thecpu__DOT__mem_ce),
 			(m_core->v__DOT__thecpu__DOT__master_ce),	//1
 			(m_core->v__DOT__thecpu__DOT__op_valid_mem),	//0
@@ -676,8 +670,8 @@ public:
 			//m_core->v__DOT__thecpu__DOT__instruction_gie,
 			m_core->v__DOT__thecpu__DOT__r_gie,
 			0,
-			m_core->v__DOT__thecpu__DOT__pf_instruction_pc,
-			true); ln++;
+			(m_core->v__DOT__thecpu__DOT__pf_instruction_pc)<<2,
+			false); ln++;
 			// m_core->v__DOT__thecpu__DOT__pf_pc); ln++;
 
 		showins(ln, "Dc",
@@ -688,8 +682,8 @@ public:
 #else
 			0,
 #endif
-			m_core->v__DOT__thecpu__DOT__dcd_pc-1,
-#ifdef	OPT_VLIW
+			(m_core->v__DOT__thecpu__DOT__dcd_pc-1)<<2,
+#ifdef	OPT_CIS
 			m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__r_phase
 #else
 			false
@@ -709,7 +703,7 @@ public:
 			m_core->v__DOT__thecpu__DOT__r_op_gie,
 			m_core->v__DOT__thecpu__DOT__op_stall,
 			op_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 			m_core->v__DOT__thecpu__DOT__r_op_phase
 #else
 			false
@@ -736,7 +730,7 @@ public:
 				0,
 #endif
 				alu_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_alu_phase
 #else
 				false
@@ -753,7 +747,7 @@ public:
 				0,
 #endif
 				alu_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_alu_phase
 #else
 				false
@@ -790,12 +784,6 @@ public:
 			(m_core->v__DOT__thecpu__DOT__alu_wF)?"FL":"  ",
 			(m_core->v__DOT__thecpu__DOT__wr_flags_ce)?"W":" ",
 			(m_core->v__DOT__thecpu__DOT__alu_flags));
-		/*
-		mvprintw(ln-3, 48, "dcdI : 0x%08x",
-			m_core->v__DOT__thecpu__DOT__dcdI);
-		mvprintw(ln-2, 48, "r_opB: 0x%08x",
-			m_core->v__DOT__thecpu__DOT__opB);
-		*/
 		mvprintw(ln-3, 48, "Op(%x)%8x,%8x->",
 			m_core->v__DOT__thecpu__DOT__r_op_opn,
 			m_core->v__DOT__thecpu__DOT__op_Aid,
@@ -817,7 +805,7 @@ public:
 			(m_core->v__DOT__thecpu__DOT__mem_we)?"Wr ":"Rd ",
 			(mem_stalled())?"PIPE":"    ",
 			(m_core->v__DOT__thecpu__DOT__mem_valid)?"V":" ",
-			zop_regstr[(m_core->v__DOT__thecpu__DOT__mem_wreg&0x1f)^0x10]);
+			zip_regstr[(m_core->v__DOT__thecpu__DOT__mem_wreg&0x1f)^0x10]);
 	}
 
 	void	show_user_timers(bool v) {
@@ -965,7 +953,7 @@ public:
 		dispreg(ln,20, "sSP ", m_state.m_sR[13], (m_cursor==25));
 
 		if (true) {
-			mvprintw(ln,40, "%ssCC : 0x%08x", 
+			mvprintw(ln,40, "%ssCC : 0x%08x",
 				(m_cursor==26)?">":" ", cc);
 		} else {
 			mvprintw(ln,40, "%ssCC :%s%s%s%s%s%s%s",
@@ -1064,8 +1052,8 @@ public:
 			0,
 #endif
 			m_core->v__DOT__thecpu__DOT__dcd_pc-1,
-#ifdef	OPT_VLIW
-			m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__r_phase
+#ifdef	OPT_CIS
+			m_core->v__DOT__thecpu__DOT__dcd_phase
 #else
 			false
 #endif
@@ -1077,8 +1065,8 @@ public:
 			m_core->v__DOT__thecpu__DOT__r_op_gie,
 			m_core->v__DOT__thecpu__DOT__op_stall,
 			op_pc(),
-#ifdef	OPT_VLIW
-			m_core->v__DOT__thecpu__DOT__r_alu_phase
+#ifdef	OPT_CIS
+			m_core->v__DOT__thecpu__DOT__r_op_phase
 #else
 			false
 #endif
@@ -1095,7 +1083,7 @@ public:
 				0,
 #endif
 				alu_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_alu_phase
 #else
 				false
@@ -1112,7 +1100,7 @@ public:
 				0,
 #endif
 				alu_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_alu_phase
 #else
 				false
@@ -1129,19 +1117,35 @@ public:
 						m_core->o_qspi_dat);
 		*/
 
-		int stb = m_core->o_wb_stb;
+		int stb = m_core->o_wb_stb, mask = (RAMBASE-1);
+		unsigned addr = m_core->o_wb_addr<<2;
+
 		m_core->i_wb_err = 0;
-		if ((m_core->o_wb_addr & (-1<<20))!=(1<<20))
+		if ((addr & (~mask))!=RAMBASE)
 			stb = 0;
 		if ((m_core->o_wb_cyc)&&(m_core->o_wb_stb)&&(!stb)) {
 			m_core->i_wb_ack = 1;
 			m_core->i_wb_err = 1;
-			bomb = true;
-			if (m_dbgfp) fprintf(m_dbgfp, "BOMB!! (Attempting to access %08x/%08x->%08x)\n", m_core->o_wb_addr,
-				(-1<<20), ((m_core->o_wb_addr)&(-1<<20)));
+			m_bomb = true;
+			if (m_dbgfp) fprintf(m_dbgfp,
+				"BOMB!! (Attempting to access %08x/%08x->%08x)\n",
+				addr, RAMBASE, ((addr)&(~mask)));
+		} else if ((!m_core->o_wb_cyc)&&(m_core->o_wb_stb)) {
+			if (m_dbgfp) fprintf(m_dbgfp,
+				"BOMB!! (Strobe high, CYC low)\n");
+			m_bomb = true;
 		}
 
 		if ((dbg_flag)&&(m_dbgfp)) {
+			fprintf(m_dbgfp, "BUS  %s %s %s @0x%08x/[0x%08x 0x%08x] %s %s\n",
+				(m_core->o_wb_cyc)?"CYC":"   ",
+				(m_core->o_wb_stb)?"STB":"   ",
+				(m_core->o_wb_we)?"WE":"  ",
+				(m_core->o_wb_addr<<2),
+				(m_core->o_wb_data),
+				(m_core->i_wb_data),
+				(m_core->i_wb_stall)?"STALL":"     ",
+				(m_core->i_wb_ack)?"ACK":"   ");
 			fprintf(m_dbgfp, "DBG  %s %s %s @0x%08x/%d[0x%08x] %s %s [0x%08x] %s %s %s%s%s%s%s%s%s%s%s\n",
 				(m_core->i_dbg_cyc)?"CYC":"   ",
 				(m_core->i_dbg_stb)?"STB":
@@ -1167,8 +1171,8 @@ public:
 				(m_core->v__DOT__sys_cyc)?"CYC":"   ",
 				(m_core->v__DOT__sys_stb)?"STB":"   ",
 				(m_core->v__DOT__sys_we)?"WE":"  ",
-				(m_core->v__DOT__sys_addr),
-				(m_core->v__DOT__dbg_addr),
+				(m_core->v__DOT__sys_addr<<2),
+				(m_core->v__DOT__dbg_addr<<2),
 				(m_core->v__DOT__sys_data),
 				(m_core->v__DOT__dbg_ack)?"ACK":"   ",
 				(m_core->v__DOT__wb_data));
@@ -1190,14 +1194,14 @@ public:
 				m_core->v__DOT__thecpu__DOT__alu_reg,
 				m_core->v__DOT__thecpu__DOT__ipc,
 				m_core->v__DOT__thecpu__DOT__r_upc);
-				
+
 		if ((m_dbgfp)&&(!gie)&&(m_core->v__DOT__thecpu__DOT__w_release_from_interrupt)) {
 			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d\n",
 				m_core->v__DOT__genblk9__DOT__pic__DOT__r_interrupt,
 				m_core->v__DOT__thecpu__DOT__wr_reg_ce,
 				m_core->v__DOT__thecpu__DOT__wr_reg_id,
 				m_core->v__DOT__thecpu__DOT__wr_spreg_vl,
-				m_core->v__DOT__cmd_addr,
+				m_core->v__DOT__cmd_addr<<2,
 				m_core->v__DOT__dbg_idata,
 				m_core->v__DOT__thecpu__DOT__master_ce,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
@@ -1208,7 +1212,7 @@ public:
 				m_core->v__DOT__thecpu__DOT__wr_reg_ce,
 				m_core->v__DOT__thecpu__DOT__wr_reg_id,
 				m_core->v__DOT__thecpu__DOT__wr_spreg_vl,
-				m_core->v__DOT__cmd_addr,
+				m_core->v__DOT__cmd_addr<<2,
 				m_core->v__DOT__dbg_idata,
 				m_core->v__DOT__thecpu__DOT__master_ce,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
@@ -1243,40 +1247,14 @@ public:
 		if (m_dbgfp)
 			fprintf(m_dbgfp, "-----------  TICK (%08x) ----------%s\n",
 				m_core->v__DOT__jiffies__DOT__r_counter,
-				(bomb)?" BOMBED!!":"");
-		if (false) {
-			m_core->i_clk = 1;
-			m_mem(m_core->i_clk, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
-				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
-			eval();
-			m_core->i_clk = 0;
-			m_mem(m_core->i_clk, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
-				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
-			eval();
-			m_tickcount++;
-		} else {
-			m_mem(1, m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
-				m_core->o_wb_addr & ((1<<20)-1), m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
-				m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
-			if ((m_core->o_wb_cyc)&&(m_core->o_wb_stb)
-				&&((m_core->o_wb_addr & (~((1<<20)-1))) != 0x100000))
-				m_core->i_wb_err = 1;
-			else
-				m_core->i_wb_err = 0;
+				(m_bomb)?" BOMBED!!":"");
+		m_mem(m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
+			m_core->o_wb_addr & mask, m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
+			m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 
-			eval();
-			if (m_trace)	m_trace->dump(10*m_tickcount-2);
-			m_core->i_clk = 1;
-			eval();
-			if (m_trace)	m_trace->dump(10*m_tickcount);
-			m_core->i_clk = 0;
-			eval();
-			if (m_trace)	m_trace->dump(10*m_tickcount+5);
-			// TESTB<Vzipsystem>::tick();
-			m_tickcount++;
-		}
+
+		TESTB<Vzipsystem>::tick();
+
 		if ((m_dbgfp)&&(gie != m_core->v__DOT__thecpu__DOT__r_gie)) {
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
 				(gie)?"User":"Supervisor",
@@ -1307,8 +1285,8 @@ public:
 #else
 				0,
 #endif
-				m_core->v__DOT__thecpu__DOT__dcd_pc-1,
-#ifdef	OPT_VLIW
+				(m_core->v__DOT__thecpu__DOT__dcd_pc-1)<<2,
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__r_phase,
 #else
 				false,
@@ -1319,13 +1297,23 @@ public:
 				false
 #endif
 				);
+			if (m_dbgfp) {
+				fprintf(m_dbgfp, "\t\t\tR[%2d] = (*Dc=%d%s)[ A[%2d], B[%2d] + %08x], dcd_pc = %08x\n",
+					m_core->v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber14,
+					m_core->v__DOT__thecpu__DOT__dcd_opn,
+					(m_core->v__DOT__thecpu__DOT__dcd_M)?"M":" ",
+					m_core->v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber15&0x0f,
+					m_core->v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber16&0x0f,
+					m_core->v__DOT__thecpu__DOT__dcd_I,
+					m_core->v__DOT__thecpu__DOT__dcd_pc);
+			}
 			dbgins("Op - ",
 				op_ce(),
 				m_core->v__DOT__thecpu__DOT__op_valid,
 				m_core->v__DOT__thecpu__DOT__r_op_gie,
 				m_core->v__DOT__thecpu__DOT__op_stall,
 				op_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_op_phase,
 #else
 				false,
@@ -1336,6 +1324,13 @@ public:
 				false
 #endif
 				);
+			if (m_dbgfp) {
+				fprintf(m_dbgfp, "\t\t\t(*OP=%d)[ A = 0x%08x , B = 0x%08x ], op_pc= %08x\n",
+					m_core->v__DOT__thecpu__DOT__r_op_opn,
+					m_core->v__DOT__thecpu__DOT__op_Av,
+					m_core->v__DOT__thecpu__DOT__op_Bv,
+					m_core->v__DOT__thecpu__DOT__op_pc);
+			}
 			dbgins("Al - ",
 				m_core->v__DOT__thecpu__DOT__alu_ce,
 				m_core->v__DOT__thecpu__DOT__alu_pc_valid,
@@ -1346,7 +1341,7 @@ public:
 				0,
 #endif
 				alu_pc(),
-#ifdef	OPT_VLIW
+#ifdef	OPT_CIS
 				m_core->v__DOT__thecpu__DOT__r_alu_phase,
 #else
 				false,
@@ -1392,7 +1387,7 @@ public:
 				(m_core->v__DOT__dc_stb)?"S":" ",
 				(m_core->v__DOT__dc_ack)?"A":" ",
 				(m_core->v__DOT__dc_err)?"E":" ",
-				m_core->v__DOT__dc_addr,
+				m_core->v__DOT__dc_addr<<2,
 				(m_core->v__DOT__dc_data),
 				m_core->v__DOT__dma_controller__DOT__last_read_request,
 				m_core->v__DOT__dma_controller__DOT__last_read_ack,
@@ -1423,7 +1418,7 @@ public:
 	}
 
 	unsigned	op_pc(void) {
-		return m_core->v__DOT__thecpu__DOT__op_pc-4;
+		return (m_core->v__DOT__thecpu__DOT__op_pc<<2)-4;
 	}
 
 	bool	dcd_ce(void) {
@@ -1496,7 +1491,7 @@ public:
 			r--;
 		return r;
 		*/
-		return m_core->v__DOT__thecpu__DOT__r_alu_pc-1;
+		return (m_core->v__DOT__thecpu__DOT__r_alu_pc<<2)-4;
 	}
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
@@ -1536,12 +1531,12 @@ public:
 		m_core->i_dbg_cyc = 1;
 		m_core->i_dbg_stb = 1;
 		m_core->i_dbg_we  = 1;
-		m_core->i_dbg_addr = a & 1;
+		m_core->i_dbg_addr = (a>>2) & 1;
 		m_core->i_dbg_data = v;
 
-		tick();
 		while((errcount++ < 100)&&(m_core->o_dbg_stall))
 			tick();
+		tick();
 
 		m_core->i_dbg_stb = 0;
 		while((errcount++ < 100)&&(!m_core->o_dbg_ack))
@@ -1557,7 +1552,7 @@ public:
 
 		if (errcount >= 100) {
 			if (m_dbgfp) fprintf(m_dbgfp, "WB-WRITE: ERRCount = %d, BOMB!!\n", errcount);
-			bomb = true;
+			m_bomb = true;
 		}
 	}
 
@@ -1569,11 +1564,11 @@ public:
 		m_core->i_dbg_cyc = 1;
 		m_core->i_dbg_stb = 1;
 		m_core->i_dbg_we  = 0;
-		m_core->i_dbg_addr = a & 1;
+		m_core->i_dbg_addr = (a>>2) & 1;
 
-		tick();
 		while((errcount++<100)&&(m_core->o_dbg_stall))
 			tick();
+		tick();
 
 		m_core->i_dbg_stb = 0;
 		while((errcount++<100)&&(!m_core->o_dbg_ack))
@@ -1589,8 +1584,8 @@ public:
 		mvprintw(0,40, "wb_read = 0x%08x", v);
 
 		if (errcount >= 100) {
-			if (m_dbgfp) fprintf(m_dbgfp, "WB-WRITE: ERRCount = %d, BOMB!!\n", errcount);
-			bomb = true;
+			if (m_dbgfp) fprintf(m_dbgfp, "WB-READ: ERRCount = %d, BOMB!!\n", errcount);
+			m_bomb = true;
 		}
 		return v;
 	}
@@ -1614,7 +1609,10 @@ public:
 	int	cursor(void) { return m_cursor; }
 
 	void	jump_to(ZIPI address) {
-		m_core->v__DOT__thecpu__DOT__pf_pc = address;
+		if (m_dbgfp)
+			fprintf(m_dbgfp, "JUMP_TO(%08x) ... Setting PC to %08x\n", address, address & -4);
+		m_core->v__DOT__thecpu__DOT__pf_pc = address & -4;
+		m_core->v__DOT__thecpu__DOT__pf_request_address = address >> 2;
 		// m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 		m_core->v__DOT__thecpu__DOT__new_pc = 1;
 	}
@@ -1737,8 +1735,7 @@ void	get_value(ZIPPY_TB *tb) {
 			case 15:
 				tb->m_core->v__DOT__thecpu__DOT__ipc = v;
 				if (!tb->m_core->v__DOT__thecpu__DOT__r_gie) {
-					tb->m_core->v__DOT__thecpu__DOT__pf_pc = v;
-					tb->m_core->v__DOT__thecpu__DOT__new_pc = 1;
+					tb->jump_to(v);
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 					tb->m_core->v__DOT__thecpu__DOT__alu_pc_valid = 0;
 #ifdef	OPT_PIPELINED
@@ -1749,10 +1746,9 @@ void	get_value(ZIPPY_TB *tb) {
 				}
 				break;
 			case 31:
-				tb->m_core->v__DOT__thecpu__DOT__r_upc = v; 
+				tb->m_core->v__DOT__thecpu__DOT__r_upc = v;
 				if (tb->m_core->v__DOT__thecpu__DOT__r_gie) {
-					tb->m_core->v__DOT__thecpu__DOT__pf_pc = v;
-					tb->m_core->v__DOT__thecpu__DOT__new_pc = 1;
+					tb->jump_to(v);
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 					tb->m_core->v__DOT__thecpu__DOT__alu_pc_valid = 0;
 #ifdef	OPT_PIPELINED
@@ -1822,9 +1818,6 @@ int	main(int argc, char **argv) {
 	bool		autorun = false, exit_on_done = false, autostep=false;
 	ZIPI		entry = RAMBASE;
 
-	// mem[0x00000] = 0xbe000010; // Halt instruction
-	unsigned int mptr = 0;
-
 	signal(SIGINT, sigint);
 
 	if (argc <= 1) {
@@ -1852,41 +1845,22 @@ int	main(int argc, char **argv) {
 					exit(-1);
 					break;
 				}
-			} else if (access(argv[argn], R_OK)==0) {
-				if (iself(argv[argn])) {
-					ELFSECTION **secpp = NULL, *secp;
-					elfread(argv[argn], entry, secpp);
-					for(int i=0; secpp[i]->m_len; i++) {
-						secp = secpp[i];
-						assert(secp->m_start >= RAMBASE);
-						assert(secp->m_start+secp->m_len <= RAMBASE+RAMWORDS);
-						memcpy(&tb->m_mem[secp->m_start-RAMBASE],
-							&secp->m_data,
-							secp->m_len*sizeof(ZIPI));
-						mptr = secp->m_start+secp->m_len;
-					}
-				} else {
-				FILE *fp = fopen(argv[argn], "r");
-				int	nr, nv = 0;
-				if (fp == NULL) {
-					printf("Cannot open %s\n", argv[argn]);
-					perror("O/S Err: ");
-					exit(-1);
-				} nr = fread(&tb->m_mem[mptr], sizeof(ZIPI), tb->m_mem_size - mptr, fp);
-				fclose(fp);
-				mptr+= nr;
-				if (nr == 0) {
-					printf("Could not read from %s, only read 0 words\n", argv[argn]);
-					perror("O/S  Err?:");
-					exit(-2);
-				} for(int i=0; i<nr; i++) {
-					if (tb->m_mem[mptr-nr+i])
-						nv++;
-				} if (nv == 0) {
-					printf("Read nothing but zeros from %s\n", argv[argn]);
-					perror("O/S  Err?:");
-					exit(-2);
-				}
+			} else if ((access(argv[argn], R_OK)==0)
+						&&(iself(argv[argn]))) {
+				ELFSECTION **secpp = NULL, *secp;
+
+				elfread(argv[argn], entry, secpp);
+
+				for(int i=0; secpp[i]->m_len; i++) {
+					const char *data;
+
+					secp = secpp[i];
+					assert(secp->m_start >= RAMBASE);
+					assert(secp->m_start+secp->m_len <= RAMBASE+RAMWORDS);
+					assert((secp->m_len & 3)==0);
+
+					data = &secp->m_data[0];
+					tb->m_mem.load((secp->m_start-RAMBASE)>>2, data, secp->m_len);
 				}
 			} else {
 				fprintf(stderr, "No access to %s, or unknown arg\n", argv[argn]);
@@ -1895,8 +1869,6 @@ int	main(int argc, char **argv) {
 		}
 	}
 
-
-	assert(mptr > 0);
 
 	if (autorun) {
 		bool	done = false;
@@ -1948,9 +1920,18 @@ int	main(int argc, char **argv) {
 		// for(int i=0; i<2; i++)
 			// tb->tick();
 		tb->m_core->v__DOT__cmd_reset = 1;
-		tb->m_core->v__DOT__cmd_halt = 0;
+		tb->m_core->v__DOT__cmd_halt = 1;
+		tb->tick();
 
+		tb->m_core->v__DOT__cmd_reset = 0;
+		tb->m_core->v__DOT__cmd_halt = 0;
+		tb->tick();
 		tb->jump_to(entry);
+		tb->tick();
+		tb->jump_to(entry);
+		tb->tick();
+		tb->jump_to(entry);
+
 
 		// For debugging purposes: do we wish to skip some number of
 		// instructions to fast forward to a time of interest??
@@ -2039,7 +2020,7 @@ int	main(int argc, char **argv) {
 				tb->eval();
 				tb->tick();
 				break;
-			case 'T': // 
+			case 'T': //
 				if ((!manual)||(halted))
 					erase();
 				manual = true;
@@ -2093,7 +2074,7 @@ int	main(int argc, char **argv) {
 
 			if (tb->m_core->i_rst)
 				done =true;
-			if ((tb->bomb)||(signalled))
+			if ((tb->m_bomb)||(signalled))
 				done = true;
 
 			if (exit_on_done) {
@@ -2107,6 +2088,7 @@ int	main(int argc, char **argv) {
 	}
 #ifdef	MANUAL_STEPPING_MODE
 	 else { // Manual stepping mode
+		tb->jump_to(entry);
 		tb->show_state();
 
 		while('q' != tolower(chv = getch())) {
@@ -2137,7 +2119,7 @@ int	main(int argc, char **argv) {
 			/ (double)tb->m_core->v__DOT__mtc_data);
 
 	int	rcode = 0;
-	if (tb->bomb) {
+	if (tb->m_bomb) {
 		printf("TEST BOMBED\n");
 		rcode = -1;
 	} else if (tb->test_success()) {
