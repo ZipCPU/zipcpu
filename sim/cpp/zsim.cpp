@@ -1038,8 +1038,8 @@ int main(int argc, char **argv) {
 	// bus->add(net->data,   0x00002000, 0xffffe000, "R"); // 8 words
 	// bus->add(net->data,   0x00003000, 0xffffe000, "R"); // 8 words
 	bus->add(new MEMDEV(17), 0x0020000, 0x7fe0000, "RWX", "BlockRAM");// Block RAM
-	bus->add(new ROMDEV(24), 0x1000000, 0x7000000, "RXL", "Flash"); // Flash
-	bus->add(new MEMDEV(26), 0x4000000, 0xfc000000, "RWX", "SDRAM");// SDRAM
+	bus->add(new ROMDEV(24),0x01000000,0xff000000, "RXL", "Flash"); // Flash
+	bus->add(new MEMDEV(28),0x10000000,0xf0000000, "RWX", "SDRAM");// SDRAM
 
 	for(int s=0; secpp[s]->m_len; s++) {
 		secp = secpp[s];
