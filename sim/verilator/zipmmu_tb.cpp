@@ -63,8 +63,7 @@ public:
 #define	v__DOT__mem_stb	v__DOT__mut__DOT__r_valid
 	void	tick(void) {
 
-		m_core->eval();
-		m_core->i_clk = 1;
+		TESTB<Vzipmmu_tb>::tick();
 
 		bool	writeout = true;
 
@@ -132,12 +131,6 @@ public:
 			*/
 			printf("\n");
 		}
-
-		m_core->eval();
-		m_core->i_clk = 0;
-		m_core->eval();
-
-		m_tickcount++;
 	}
 
 	void reset(void) {
