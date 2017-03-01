@@ -300,10 +300,437 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +#define	TARGET_OPTION_OPTIMIZATION_TABLE	zip_option_optimization_table
 +
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
+--- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-01 16:08:32.168248852 -0500
+@@ -0,0 +1,423 @@
++////////////////////////////////////////////////////////////////////////////////
++//
++// Filename:	genzipops.c
++//
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++//
++// Purpose:	This program generates the zip-ops.md machine description file.
++//
++//	While I understand that this is not GCC's preferred method of generating
++//	machine description files, there were just so many instructions to
++//	generate, and so many forms of them, and the GCC infrastructure didn't
++//	support the conditional execution model of the ZipCPU that ... I built
++//	it this way.
++//
++//	As of this writing, building zip-ops.md is not an automatic part of
++//	making GCC.  To build genzipops, just type:
++//
++//	g++ genzipops.c -o genzipops
++//
++//	And to run it, type:
++//
++//	genzipops > zip-ops.md
++//
++//	genzipops takes no arguments, and does nothing but write the machine
++//	descriptions to the standard output.
++//
++//
++// Creator:	Dan Gisselquist, Ph.D.
++//		Gisselquist Technology, LLC
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++// Copyright (C) 2017, Gisselquist Technology, LLC
++//
++// This program is free software (firmware): you can redistribute it and/or
++// modify it under the terms of  the GNU General Public License as published
++// by the Free Software Foundation, either version 3 of the License, or (at
++// your option) any later version.
++//
++// This program is distributed in the hope that it will be useful, but WITHOUT
++// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++// for more details.
++//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
++//
++// License:	GPL, v3, as defined and found on www.gnu.org,
++//		http://www.gnu.org/licenses/gpl.html
++//
++//
++////////////////////////////////////////////////////////////////////////////////
++//
++//
++#include <stdio.h>
++
++void	legal(FILE *fp) {
++	fprintf(fp, ""
++";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
++";;\n"
++";; Filename:	zip-ops.md\n"
++";;\n"
++";; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core\n"
++";;\n"
++";; Purpose:	This is a computer generated machine description of the\n"
++";;		ZipCPU\'s operations.  It is computer generated simply for\n"
++";;	two reasons.  First, I can\'t seem to find a way to generate this\n"
++";;	information within GCC\'s current constructs.  Specifically, the\n"
++";;	CPU\'s instructions normally set the condition codes, unless they\n"
++";;	are conditional instructions when they don\'t.  Second, the ZipCPU is\n"
++";;	actually quite regular.  Almost all of the instructions have the same\n"
++";;	form.  This form turns into many, many RTL instructions.  Because the\n"
++";;	CPU doesn\'t match any of the others within GCC, that means either\n"
++";;	I have a *lot* of cut, copy, paste, and edit to do to create the file\n"
++";;	and upon any and every edit, or I need to build a program to generate\n"
++";;	the remaining .md constructs.  Hence, I chose the latter to minimize\n"
++";;	the amount of work I needed to do.\n"
++";;\n"
++";;\n"
++";; Creator:	Dan Gisselquist, Ph.D.\n"
++";;		Gisselquist Technology, LLC\n"
++";;\n"
++";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
++";;\n"
++";; Copyright (C) 2017, Gisselquist Technology, LLC\n"
++";;\n"
++";; This program is free software (firmware): you can redistribute it and/or\n"
++";; modify it under the terms of  the GNU General Public License as published\n"
++";; by the Free Software Foundation, either version 3 of the License, or (at\n"
++";; your option) any later version.\n"
++";;\n"
++";; This program is distributed in the hope that it will be useful, but WITHOUT\n"
++";; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or\n"
++";; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License\n"
++";; for more details.\n"
++";;\n"
++";; License:	GPL, v3, as defined and found on www.gnu.org,\n"
++";;		http://www.gnu.org/licenses/gpl.html\n"
++";;\n"
++";;\n"
++";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
++";;\n"
++";;\n");
++}
++
++void	gen_heading(FILE *fp, const char *heading) {
++	fprintf(fp, ";\n;\n; %s\n;\n;\n", heading);
++}
++
++void	genzip_condop(FILE *fp, const char *md_opname,
++		const char *rtxstr, const char *insn_cond,
++		const char *zip_op,
++		const char *rtx_cond, const char *zip_cond) {
++
++	fprintf(fp, "(define_insn \"%s_%s\"\n"
++		"\t[(cond_exec (%s (reg:CC CC_REG) (const_int 0))\n"
++		"\t\t\t%s)]\n"
++		"\t\"%s\"\t; Condition\n"
++		"\t\"%s.%s\\t%%1,%%0\t; genzip, conditional operator\"\t; Template\n"
++		"\t[(set_attr \"predicable\" \"no\") "
++		"(set_attr \"ccresult\" \"unchanged\")])\n;\n;\n",
++		md_opname, rtx_cond, rtx_cond, rtxstr, insn_cond, zip_op, zip_cond);
++
++}
++
++void	genzipop_long(FILE *fp, const char *md_opname, const char *uncond_rtx, const char *insn_cond, const char *split_rtx, const char *dup_rtx, const char *zip_op) {
++	char	heading[128];
++	sprintf(heading, "%s (genzipop_long)", zip_op);
++	fprintf(fp, ";\n;\n;\n; %s (genzipop_long)\n;\n;\n;\n", zip_op);
++
++	fprintf(fp, "(define_insn \"%s\"\n"
++"\t[%s\n"
++"\t(clobber (reg:CC CC_REG))]\n"
++"\t\"%s\"\n"
++"\t\"%s\\t%%2,%%0\t; %s\"\n"
++"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unknown\")])\n;\n;\n",
++		md_opname, uncond_rtx, insn_cond, zip_op, md_opname);
++
++
++	fprintf(fp, "(define_insn \"%s_raw\"\n"
++"\t[%s\n"
++"\t(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]\n"
++"\t\"%s\"\n"
++"\t\"%s\\t%%1,%%0\t; %s_raw\"\n"
++"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"set\")])\n;\n;\n",
++	md_opname, dup_rtx, insn_cond, zip_op, md_opname);
++
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "eq", "Z");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ne", "NZ");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "lt", "LT");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ge", "GE");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ltu", "C");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "geu", "NC");
++}
++
++void	genzipop(FILE *fp, const char *md_opname, const char *rtx_name, const char *insn_cond, const char *zip_op) {
++	char	rtxstr[512], splitstr[512], dupstr[512], altname[64];
++
++	sprintf(rtxstr, 
++"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++"\t\t(%s (match_operand:SI 1 \"register_operand\" \"0\")\n"
++"\t\t\t(match_operand:SI 2 \"zip_opb_single_operand_p\" \"rO\")))", rtx_name);
++	sprintf(splitstr,
++	    "(set (match_dup 0) (%s (match_dup 0) (match_dup 2)))", rtx_name);
++
++	sprintf(dupstr, 
++"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++"\t\t(%s (match_dup 0)\n"
++"\t\t\t(match_operand:SI 1 \"zip_opb_single_operand_p\" \"rO\")))", rtx_name);
++
++	genzipop_long(fp, md_opname, rtxstr, insn_cond, splitstr, dupstr, zip_op);
++
++	sprintf(rtxstr, 
++"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++"\t\t(%s (match_operand:SI 1 \"register_operand\" \"0\")\n"
++"\t\t\t(plus:SI (match_operand:SI 2 \"register_operand\" \"r\")\n"
++"\t\t\t\t(match_operand:SI 3 \"const_int_operand\" \"N\"))))", rtx_name);
++	sprintf(splitstr,
++	    "(set (match_dup 0) (%s (match_dup 0)\n"
++"\t\t\t(plus:SI (match_dup 2) (match_dup 3))))", rtx_name);
++
++	sprintf(dupstr, 
++"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++"\t\t(%s (match_dup 0)\n"
++"\t\t\t(plus:SI (match_operand:SI 1 \"register_operand\" \"r\")\n"
++"\t\t\t\t(match_operand:SI 2 \"const_int_operand\" \"N\"))))", rtx_name);
++
++	sprintf(altname, "%s_off", md_opname);
++
++	genzipop_long(fp, altname, rtxstr, insn_cond, splitstr, dupstr, zip_op);
++}
++
++void	gencmov(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"=r,r,r,Q\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++		"\t\t\t(match_operand:SI 1 \"general_operand\" \"r,Q,i,r\")\n"
++		"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"@\n"
++	"\tMOV.%s\t%%1,%%0\t; cmov\n"
++	"\tLW.%s\t%%1,%%0\t; cmov\n"
++	"\tLDI.%s\t%%1,%%0\t; cmov\n"
++	"\tSW.%s\t%%1,%%0\t; cmov\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond, zip_cond, zip_cond, zip_cond);
++
++}
++
++void	gencadd(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(plus:SI (match_dup 0)\n"
++				"\t\t\t\t(match_operand:SI 1 \"zip_opb_single_operand_p\" \"rO\"))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"ADD.%s\t%%1,%%0\t; cadd\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++void	gencnot(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(xor:SI (match_dup 0)\n"
++				"\t\t\t\t(const_int -1))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"NOT.%s\t%%0\t; cnot\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++void	gencneg(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"+r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(neg:SI (match_dup 0))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"NEG.%s\t%%0\t; cneg\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++
++void	gencand(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"+r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(and:SI (match_dup 0) (match_operand:SI 1 \"zip_opb_single_operand_p\" \"rO\"))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"AND.%s\t%%1,%%0\t; cand\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++
++void	gencior(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"+r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(ior:SI (match_dup 0) (match_operand:SI 1 \"zip_opb_single_operand_p\" \"rO\"))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"OR.%s\t%%1,%%0\t; cior\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++void	gencxor(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
++	fprintf(fp, ";\n;\n"
++"(define_insn \"%s_%s\"\n"
++	"\t[(set (match_operand:SI 0 \"register_operand\" \"+r\")\n"
++		"\t\t(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))\n"
++			"\t\t\t(xor:SI (match_dup 0) (match_operand:SI 1 \"zip_opb_single_operand_p\" \"rO\"))\n"
++			"\t\t\t(match_dup 0)))]\n"
++	"\t\"\"\n"
++	"\t\"XOR.%s\t%%1,%%0\t; cxor\"\n"
++	"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unchanged\")])\n",
++	md_opname, md_cond, md_cond, zip_cond);
++}
++
++int main(int argc, char **argv) {
++	legal(stdout);
++	genzipop(stdout, "addsi3",  "plus:SI",    "",             "ADD");
++	genzipop(stdout, "subsi3",  "minus:SI",   "",             "SUB");
++	genzipop(stdout, "mulsi3",  "mult:SI",    "",             "MPY");
++	genzipop(stdout, "divsi3",  "div:SI",     "(ZIP_DIVIDE)", "DIVS");
++	genzipop(stdout, "udivsi3", "udiv:SI",    "(ZIP_DIVIDE)", "DIVU");
++	genzipop(stdout, "andsi3",  "and:SI",     "",             "AND");
++	genzipop(stdout, "iorsi3",  "ior:SI",     "",             "OR");
++	genzipop(stdout, "xorsi3",  "xor:SI",     "",             "XOR");
++	genzipop(stdout, "ashrsi3", "ashiftrt:SI","",             "ASR");
++	genzipop(stdout, "ashlsi3", "ashift:SI",  "",             "LSL");
++	genzipop(stdout, "lshrsi3", "lshiftrt:SI","",             "LSR");
++
++	genzipop_long(stdout, "smulsi_highpart",
++		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(sign_extend:DI (match_operand:SI 1 \"register_operand\" \"0\"))\n"
++		"\t\t\t(sign_extend:DI (match_operand:SI 2 \"zip_opb_operand_p\" \"rO\")))\n"
++		"\t\t\t(const_int 32))))",
++		"(ZIP_HAS_DI)",
++		"(set (match_dup 0)\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(sign_extend:DI (match_dup 1))\n"
++		"\t\t\t(sign_extend:DI (match_dup 2)))\n"
++		"\t\t\t(const_int 32))))",
++		//
++		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(sign_extend:DI (match_dup 0))\n"
++		"\t\t\t(sign_extend:DI (match_operand:SI 1 \"zip_opb_operand_p\" \"rO\")))\n"
++		"\t\t\t(const_int 32))))",
++		"MPYSHI");
++	genzipop_long(stdout, "umulsi_highpart",
++		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(zero_extend:DI (match_operand:SI 1 \"register_operand\" \"0\"))\n"
++		"\t\t\t(zero_extend:DI (match_operand:SI 2 \"zip_opb_operand_p\" \"rO\")))\n"
++		"\t\t\t(const_int 32))))",
++		"(ZIP_HAS_DI)",
++		"(set (match_dup 0)\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(zero_extend:DI (match_dup 1))\n"
++		"\t\t\t(zero_extend:DI (match_dup 2)))\n"
++		"\t\t\t(const_int 32))))",
++		//
++		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
++		"\t\t\t(zero_extend:DI (match_dup 0))\n"
++		"\t\t\t(zero_extend:DI (match_operand:SI 1 \"zip_opb_operand_p\" \"rO\")))\n"
++		"\t\t\t(const_int 32))))",
++		"MPYUHI");
++
++	gen_heading(stdout, "Conditional move instructions");
++
++	gencmov(stdout, "cmov", "eq", "Z");
++	gencmov(stdout, "cmov", "ne", "NZ");
++	gencmov(stdout, "cmov", "lt", "LT");
++	gencmov(stdout, "cmov", "ge", "GE");
++	gencmov(stdout, "cmov", "ltu", "C");
++	gencmov(stdout, "cmov", "geu", "NC");
++
++	gen_heading(stdout, "Conditional add instructions");
++
++	gencadd(stdout, "cadd", "eq", "Z");
++	gencadd(stdout, "cadd", "ne", "NZ");
++	gencadd(stdout, "cadd", "lt", "LT");
++	gencadd(stdout, "cadd", "ge", "GE");
++	gencadd(stdout, "cadd", "ltu", "C");
++	gencadd(stdout, "cadd", "geu", "NC");
++
++	gen_heading(stdout, "Conditional negate instructions");
++
++	gencneg(stdout, "cneg", "eq", "Z");
++	gencneg(stdout, "cneg", "ne", "NZ");
++	gencneg(stdout, "cneg", "lt", "LT");
++	gencneg(stdout, "cneg", "ge", "GE");
++	gencneg(stdout, "cneg", "ltu", "C");
++	gencneg(stdout, "cneg", "geu", "NC");
++
++	gen_heading(stdout, "Conditional not instructions");
++
++	gencnot(stdout, "cnot", "eq", "Z");
++	gencnot(stdout, "cnot", "ne", "NZ");
++	gencnot(stdout, "cnot", "lt", "LT");
++	gencnot(stdout, "cnot", "ge", "GE");
++	gencnot(stdout, "cnot", "ltu", "C");
++	gencnot(stdout, "cnot", "geu", "NC");
++
++	gen_heading(stdout, "Conditional and instructions");
++
++	gencand(stdout, "cand", "eq", "Z");
++	gencand(stdout, "cand", "ne", "NZ");
++	gencand(stdout, "cand", "lt", "LT");
++	gencand(stdout, "cand", "ge", "GE");
++	gencand(stdout, "cand", "ltu", "C");
++	gencand(stdout, "cand", "geu", "NC");
++
++	gen_heading(stdout, "Conditional ior instructions");
++
++	gencior(stdout, "cior", "eq", "Z");
++	gencior(stdout, "cior", "ne", "NZ");
++	gencior(stdout, "cior", "lt", "LT");
++	gencior(stdout, "cior", "ge", "GE");
++	gencior(stdout, "cior", "ltu", "C");
++	gencior(stdout, "cior", "geu", "NC");
++
++	gen_heading(stdout, "Conditional xor instructions");
++
++	gencxor(stdout, "cxor", "eq", "Z");
++	gencxor(stdout, "cxor", "ne", "NZ");
++	gencxor(stdout, "cxor", "lt", "LT");
++	gencxor(stdout, "cxor", "ge", "GE");
++	gencxor(stdout, "cxor", "ltu", "C");
++	gencxor(stdout, "cxor", "geu", "NC");
++
++/*
++	fprintf(stdout, ";\n;\n"
++"(define_split\n"
++"\t[(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
++"\t\t(plus:SI (match_operand:SI 1 \"register_operand\" \"r\")\n"
++"\t\t\t	(match_operand:SI 2 \"const_int_operand\" \"M\")))\n"
++"\t\t(clobber (reg:CC CC_REG))]\n"
++"\t\"(reload_completed)&&((REGNO(operands[0]))!=(REGNO(operands[1])))\"\n"
++"\t[(set (match_dup 0) (plus:SI (match_dup 1) (match_dup 2)))]\n"
++"\t\"\")\n");
++*/
++
++}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-02-22 18:02:13.360536755 -0500
-@@ -0,0 +1,2846 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-01 15:45:33.608220567 -0500
+@@ -0,0 +1,2696 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -909,8 +1336,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	if (dbg)  fprintf(stderr, "PROLOGUE:::EXPAND-SMALL-PROLOGUE(SP-FP offset is %d)\n",
 +		cfun->machine->sp_fp_offset);
 +
-+	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx,
-+			stack_pointer_rtx,
++	insn = emit_insn(gen_subsi3(stack_pointer_rtx, stack_pointer_rtx,
 +			gen_int_mode(cfun->machine->size_for_adjusting_sp,
 +				SImode)));
 +	RTX_FRAME_RELATED_P(insn) = 1;
@@ -940,7 +1366,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +			insn = emit_insn(gen_movsi(fp_rtx, stack_pointer_rtx));
 +			RTX_FRAME_RELATED_P(insn) = 1;
 +
-+			insn = emit_insn(gen_addsi3_reg_clobber(fp_rtx, fp_rtx,
++			insn = emit_insn(gen_addsi3(fp_rtx, fp_rtx,
 +				GEN_INT(cfun->machine->sp_fp_offset)));
 +			RTX_FRAME_RELATED_P(insn) = 1;
 +		}
@@ -976,7 +1402,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	if (dbg)	fprintf(stderr, "PROLOGUE::expand-large(%d-%d)\n",
 +				cfun->machine->size_for_adjusting_sp,
 +				cfun->machine->sp_fp_offset);
-+	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx, stack_pointer_rtx,
++	insn = emit_insn(gen_subsi3(stack_pointer_rtx, stack_pointer_rtx,
 +		gen_int_mode(cfun->machine->size_for_adjusting_sp
 +				-cfun->machine->sp_fp_offset, SImode)));
 +	RTX_FRAME_RELATED_P(insn) = 1;
@@ -989,11 +1415,11 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		gen_int_mode(cfun->machine->sp_fp_offset, SImode)));
 +	RTX_FRAME_RELATED_P(insn) = 1;
 +
-+	insn = emit_insn(gen_subsi3_reg_clobber(stack_pointer_rtx,
-+			stack_pointer_rtx, fp_rtx));
++	insn = emit_insn(gen_subsi3(stack_pointer_rtx, stack_pointer_rtx,
++			fp_rtx));
 +	RTX_FRAME_RELATED_P(insn) = 1;
 +
-+	insn = emit_insn(gen_addsi3_reg_clobber(fp_rtx, fp_rtx, stack_pointer_rtx));
++	insn = emit_insn(gen_addsi3(fp_rtx, fp_rtx, stack_pointer_rtx));
 +	RTX_FRAME_RELATED_P(insn) = 1;
 +}
 +
@@ -1114,7 +1540,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		// Restore the stack pointer back to the original, the
 +		// difference being the difference from the frame pointer
 +		// to the original stack
-+		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
++		insn = emit_insn(gen_addsi3(stack_pointer_rtx,
 +			stack_pointer_rtx,
 +			GEN_INT(cfun->machine->size_for_adjusting_sp
 +				-cfun->machine->sp_fp_offset)));
@@ -1124,8 +1550,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		// the original stack pointer.
 +		if (dbg) fprintf(stderr, "EPILOG::ADDSI3(StackPtr, %d)\n",
 +				cfun->machine->size_for_adjusting_sp);
-+		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
-+			stack_pointer_rtx,
++		insn = emit_insn(gen_addsi3(stack_pointer_rtx, stack_pointer_rtx,
 +			GEN_INT(cfun->machine->size_for_adjusting_sp)));
 +		RTX_FRAME_RELATED_P(insn) = 1;
 +	}
@@ -1181,8 +1606,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		// Restore the stack pointer back to the original, the
 +		// difference being the difference from the frame pointer
 +		// to the original stack
-+		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
-+			stack_pointer_rtx,
++		insn = emit_insn(gen_addsi3(stack_pointer_rtx, stack_pointer_rtx,
 +			GEN_INT(cfun->machine->size_for_adjusting_sp
 +				-cfun->machine->sp_fp_offset)));
 +		RTX_FRAME_RELATED_P(insn) = 1;
@@ -1191,8 +1615,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		// the original stack pointer.
 +		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::ADDSI3(StackPtr, %d)\n",
 +				cfun->machine->size_for_adjusting_sp);
-+		insn = emit_insn(gen_addsi3_reg_clobber(stack_pointer_rtx,
-+			stack_pointer_rtx,
++		insn = emit_insn(gen_addsi3(stack_pointer_rtx,stack_pointer_rtx,
 +			GEN_INT(cfun->machine->size_for_adjusting_sp)));
 +		RTX_FRAME_RELATED_P(insn) = 1;
 +	}
@@ -1511,6 +1934,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +			//; Add one to the integer constant,
 +			//; And use a GTU comparison
 +			*op1 = GEN_INT(INTVAL(*op1)+1);
++			*code = GE;
 +		} else {
 +			reverse = true;
 +		}
@@ -1520,7 +1944,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		rtx tem = *op0;
 +		*op0 = *op1;
 +		*op1 = tem;
-+
 +		*code = (int)swap_condition((enum rtx_code)*code);
 +	}
 +}
@@ -2578,152 +3001,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	}
 +
 +	return 0;
-+}
-+
-+int
-+zip_expand_movsicc(rtx dst, rtx condition, rtx iftrue, rtx iffalse) {
-+	rtx_insn *insn;
-+	ZIPDEBUGFLAG(dbg, false);
-+
-+	if (dbg) fprintf(stderr, "ZIP::MOVSICC\n");
-+	if (dbg) zip_debug_rtx_pfx("DST", dst);
-+	if (dbg) zip_debug_rtx_pfx("CND", condition);
-+	if (dbg) zip_debug_rtx_pfx("TRU", iftrue);
-+	if (dbg) zip_debug_rtx_pfx("FAL", iffalse);
-+
-+	// Start with the condition
-+	rtx	cmpa = XEXP(condition,0), cmpb=XEXP(condition,1);
-+	enum rtx_code	cmpcode = GET_CODE(condition);
-+
-+	// Want to always do the false expression, and only sometimes the
-+	// true expression.  If, however, the false is a constant and the 
-+	// true and destination are the same thing, this doesn't work.
-+	if (rtx_equal_p(dst, iftrue)) {
-+		// If the true value is the same as the destination already,
-+		// then swap so we only do the condition on true
-+		rtx tem = iffalse;
-+		iffalse = iftrue;
-+		iftrue  = tem;
-+		cmpcode = reverse_condition(cmpcode);
-+	}
-+
-+	//; Do we need to swap or adjust the condition?
-+	if (zip_supported_condition((int)cmpcode)) {
-+		// Keep everything as is
-+		if (dbg) fprintf(stderr, "ZIP::MOVSICC -- Condition is supported\n");
-+	} else if ((zip_supported_condition(reverse_condition(cmpcode)))
-+			&&(!MEM_P(iffalse))
-+			&&(!rtx_equal_p(dst,iffalse))) {
-+		rtx tem = iffalse;
-+		iffalse = iftrue;
-+		iftrue = tem;
-+
-+		cmpcode = reverse_condition(cmpcode);
-+	} else if ((zip_supported_condition((int)swap_condition(cmpcode)))
-+		&&((REG_P(cmpb))||(can_create_pseudo_p()))) {
-+		rtx tem = cmpa;
-+		cmpa = cmpb;
-+		cmpa = tem;
-+		cmpcode = swap_condition(cmpcode);
-+
-+		if ((GET_CODE(cmpa)==PLUS)&&(zip_signed_comparison((int)cmpcode))
-+			&&(REG_P(XEXP(cmpa,0)))
-+			&&(CONST_INT_P(XEXP(cmpa,1)))
-+			&&(abs(INTVAL(XEXP(cmpa,1)))<(1<<17))) {
-+
-+			// If we were doing CMP x(Rb),Ra
-+			// and we just changed it to CMP Ra,x(Rb)
-+			// adjust it to CMP -x(Ra),Rb
-+			cmpb = plus_constant(SImode, cmpb, -INTVAL(XEXP(cmpa,1)));
-+			cmpa = XEXP(cmpa,0);
-+		} else if (!REG_P(cmpa)) {
-+			// Otherwise, if we had anything else in Rb other than
-+			// a register ... such as a constant, then load it into
-+			// a register before comparing it.  So
-+			//	CMP x,Ra
-+			// became
-+			//	CMP Ra,x
-+			// now becomes
-+			//	LDI x,Rt
-+			//	CMP Ra,Rt
-+			// (We already tested for can_create_pseudo_p() above..)
-+			tem = gen_reg_rtx(SImode);
-+			emit_move_insn(tem, cmpa);
-+			cmpa = tem;
-+		}
-+	} else {
-+		// Here's our last chance.
-+		// This will adjust for less than equal types of stuff
-+		int	cod = (int)cmpcode;
-+		zip_canonicalize_comparison(&cod, &cmpa, &cmpb, false);
-+		cmpcode = (enum rtx_code)cod;
-+	}
-+
-+	if (dbg) fprintf(stderr, "ZIP::MOVSICC -- Post-Modes\n");
-+	if (dbg) zip_debug_rtx_pfx("DST-P: ", dst);
-+	if (dbg) zip_debug_rtx_pfx("CND-P: ", condition);
-+	if (dbg) zip_debug_rtx_pfx("TRU-P: ", iftrue);
-+	if (dbg) zip_debug_rtx_pfx("FAL-P: ", iffalse);
-+
-+	if (!zip_supported_condition((int)cmpcode)) {
-+		if (dbg) {
-+		fprintf(stderr, "ZIP::MOVSICC -- Unsupported condition: ");
-+			zip_debug_ccode(cmpcode);
-+			fprintf(stderr, "\n");
-+		}
-+		return 0;
-+	}
-+	gcc_assert(zip_supported_condition((int)cmpcode));
-+
-+	//; Always do the default move
-+	bool	conditionally_do_false = false;
-+	conditionally_do_false = (MEM_P(iffalse))
-+		&&(!rtx_equal_p(dst,iffalse))
-+		&&(zip_supported_condition(reverse_condition(cmpcode)));
-+	conditionally_do_false = conditionally_do_false || (rtx_equal_p(dst,iftrue));
-+	if ((conditionally_do_false)&&(!zip_supported_condition(reverse_condition(cmpcode)))) {
-+		if (dbg) {
-+			fprintf(stderr, "ZIP::MOVSICC -- Cant support the reverse condition: ");
-+			zip_debug_ccode(cmpcode);
-+			fprintf(stderr, "\n");
-+		}
-+		return 0;
-+	}
-+
-+	if ((!rtx_equal_p(dst, iffalse))&&(!conditionally_do_false)) {
-+		if (dbg)
-+		fprintf(stderr, "ZIP::MOVSICC -- EMITTING MOVE FALSE->DST\n");
-+		insn = emit_move_insn(dst, iffalse);
-+		if (dbg) zip_debug_rtx_pfx("BARE-U: ", insn);
-+	}
-+
-+	rtx	cc_rtx = gen_rtx_REG(CCmode, zip_CC);
-+
-+	//; Now let's get our comparison right
-+	if (dbg) fprintf(stderr, "ZIP::MOVSICC -- EMITTING COMPARISON\n");
-+	insn = emit_insn(gen_rtx_SET(cc_rtx,
-+		gen_rtx_COMPARE(CCmode, cmpa, cmpb)));
-+	if (dbg) zip_debug_rtx_pfx("BARE-C: ", insn);
-+
-+	//; Finally, let's load the value on true
-+	if (!rtx_equal_p(dst, iftrue)) {
-+		if (dbg) fprintf(stderr, "ZIP::MOVSICC -- EMITTING BARE\n");
-+		insn=emit_insn(gen_movsicc_bare(dst,
-+			gen_rtx_fmt_ee(cmpcode, SImode, NULL_RTX, NULL_RTX),
-+			iftrue, dst));
-+		if (dbg) zip_debug_rtx_pfx("BARE-T: ", insn);
-+	}
-+
-+	if (conditionally_do_false) {
-+		gcc_assert(zip_supported_condition(reverse_condition(cmpcode)));
-+		insn=emit_insn(gen_movsicc_bare(dst,
-+			gen_rtx_fmt_ee(reverse_condition(cmpcode), SImode,
-+			NULL_RTX, NULL_RTX), iffalse, dst));
-+		if (dbg) zip_debug_rtx_pfx("BARE-F: ", insn);
-+	}
-+
-+	// Return true on success
-+	return 1;
 +}
 +
 +const char *
@@ -7944,8 +8221,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-02-22 15:49:42.666079205 -0500
-@@ -0,0 +1,2687 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-03-01 15:44:32.980219323 -0500
+@@ -0,0 +1,1996 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -8384,36 +8661,77 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +(define_insn "zero_extendqisi2"
-+	[(set (match_operand:SI 0 "register_operand" "=r,r")
++	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(zero_extend:SI
-+			(match_operand:QI 1 "general_operand" "0,Q")))]
++			(match_operand:QI 1 "register_operand" "0")))
++	(clobber (reg:CC CC_REG))]
 +	""
-+	"@
-+	AND\t255,%0
-+	LB\t%1,%0\t; Zero-Extend:QI"
-+	[(set_attr "predicable" "yes") (set_attr "ccresult" "set")])
++	"AND\t255,%0	; zero_extendqisi2 ... reg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++
++(define_insn "zero_extendqisi2_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(zero_extend:SI
++			(match_operand:QI 1 "register_operand" "0")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"AND\t255,%0	; zero_extendqisi2 ... raw/set CC"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++
++(define_insn "zero_extendqisi2_mem"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(zero_extend:SI
++			(match_operand:QI 1 "memory_operand" "Q")))]
++	""
++	"LB\t%1,%0\t; Zero-Extend:QI"
++	[(set_attr "predicable" "yes") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
 +(define_insn "zero_extendhisi2"
-+	[(set (match_operand:SI 0 "register_operand" "=r,r")
++	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(zero_extend:SI
-+			(match_operand:HI 1 "general_operand" "0,Q")))]
++			(match_operand:HI 1 "register_operand" "0")))
++	(clobber (reg:CC CC_REG))]
 +	""
-+	"@
-+	AND\t65535,%0
-+	LH\t%1,%0\t; Zero-Extend:HI"
++	"AND\t65535,%0	; zero_extendhisi2 ... reg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++(define_insn "zero_extendhisi2_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(zero_extend:SI
++			(match_operand:HI 1 "register_operand" "0")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"AND\t65535,%0	; zero_extendhisi2 ... reg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++(define_insn "zero_extendhisi2_mem"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(zero_extend:SI
++			(match_operand:HI 1 "memory_operand" "Q")))
++	]
++	""
++	"LH\t%1,%0\t; Zero-Extend:HI"
 +	[(set_attr "predicable" "yes") (set_attr "ccresult" "set")])
++;
++;
++;
++;
 +(define_insn "extendqisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(sign_extend:SI
-+			(match_operand:QI 1 "register_operand" "0")))]
++			(match_operand:QI 1 "register_operand" "0")))
++	(clobber (reg:CC CC_REG))]
 +	""
-+	"SEXTB\t%0"
++	"SEXTB\t%0\t; SEXTB"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +(define_insn "extendhisi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(sign_extend:SI
-+			(match_operand:HI 1 "register_operand" "0")))]
++			(match_operand:HI 1 "register_operand" "0")))
++	(clobber (reg:CC CC_REG))]
 +	""
-+	"SEXTH\t%0"
++	"SEXTH\t%0\t; SEXTH"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -8425,441 +8743,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +;
-+;
-+(define_expand "addsi3" ; Fastest/best instruction always goes first
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))
-+	])
-+(define_insn_and_split "addsi3_split_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"	; This code means the instruction *must* be split
-+	"(reload_completed)&&(REG_P(operands[0]))&&(REG_P(operands[1]))&&(REGNO(operands[0])==REGNO(operands[1]))"
-+	[(parallel [(set (match_dup 0) (plus:SI (match_dup 1) (match_dup 2)))
-+		(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "predicable" "yes")])
-+(define_insn_and_split "addsi3_split_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"	; This code means the instruction *must* be split
-+	"(reload_completed)&&(REG_P(operands[0]))&&(REG_P(operands[1]))&&(REGNO(operands[0])==REGNO(operands[1]))"
-+	[(parallel [(set (match_dup 0) (plus:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+		(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "predicable" "yes")])
-+(define_insn "addsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"ADD	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "addsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"ADD	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "addsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"ADD	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "addsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(plus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"ADD	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+;
-+(define_expand "subsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))])
-+(define_insn_and_split "subsi3_split_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (minus:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set") (set_attr "predicable" "yes")])
-+(define_insn "subsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"SUB	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "subsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"SUB	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "subsi3_off_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "%r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (minus:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "subsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "%r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"SUB	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "subsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(minus:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "%r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"SUB	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+(define_expand "mulsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))]
-+	"")
-+(define_insn_and_split "mulsi3_split_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (mult:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "mulsi3_split_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (mult:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "mulsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"MPY\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "mulsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"MPY\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "mulsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"MPY\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "mulsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(mult:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"MPY\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+(define_expand "smulsi3_highpart"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI (mult:DI
-+		(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		(sign_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "")))
-+		(const_int 32))))]
-+	"(ZIP_HAS_DI)")
-+(define_insn_and_split "smulsi3_highpart_split_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI (mult:DI
-+		(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		(sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))]
-+	"(ZIP_HAS_DI)"
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0)
-+	  	(truncate:SI (ashiftrt:DI
-+			(mult:DI
-+				(sign_extend:DI (match_dup 1))
-+				(sign_extend:DI (match_dup 2)))
-+			(const_int 32))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "smulsi3_highpart_split_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	   (truncate:SI (ashift:DI (mult:DI
-+		(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		(sign_extend:DI
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+			(const_int 32))))]
-+	"(ZIP_HAS_DI)"
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0)
-+	  	(truncate:SI (ashiftrt:DI
-+			(mult:SI
-+				(sign_extend:DI (match_dup 1))
-+				(sign_extend:DI
-+					(plus:SI (match_dup 2) (match_dup 3))))
-+			(const_int 32))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "smulsi3_highpart_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	     (truncate:SI (ashiftrt:DI
-+		(mult:SI
-+		  (sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		  (sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "smulsi3_highpart_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:SI
-+		  (sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		  (sign_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "smulsi3_highpart_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:SI
-+		  (sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		  (sign_extend:DI (plus:SI
-+				(match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+		(const_int 32))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "smulsi3_highpart_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:SI
-+		  (sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		  (sign_extend:DI (plus:SI
-+			(match_operand:SI 2 "register_operand" "r")
-+			(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+		(const_int 32))))
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+(define_expand "umulsi3_highpart"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI (mult:DI
-+		(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		(zero_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "")))
-+		(const_int 32))))]
-+	"(ZIP_HAS_DI)")
-+(define_insn_and_split "umulsi3_highpart_split_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI (mult:DI
-+		(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		(zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))]
-+	"(ZIP_HAS_DI)"
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0)
-+	  	(truncate:SI (ashiftrt:DI
-+			(mult:SI
-+				(zero_extend:DI (match_dup 1))
-+				(zero_extend:DI (match_dup 2)))
-+			(const_int 32))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "umulsi3_highpart_split_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(truncate:SI (ashiftrt:DI
-+		(mult:DI 
-+		  (zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		  (zero_extend:DI 
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+		(const_int 32))))]
-+	"(ZIP_HAS_DI)"
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0)
-+	  	(truncate:SI (ashiftrt:DI
-+			(mult:DI
-+				(zero_extend:DI (match_dup 1))
-+				(zero_extend:DI
-+					(plus:SI (match_dup 2) (match_dup 3))))
-+			(const_int 32))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "umulsi3_highpart_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:DI
-+		    (zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		    (zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "umulsi3_highpart_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:DI
-+		   (zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		   (zero_extend:DI (match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+		(const_int 32))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "umulsi3_highpart_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:DI
-+		    (zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		    (zero_extend:DI (plus:SI
-+				(match_operand:SI 2 "register_operand" "r")
-+				(match_operand:DI 3 "zip_opb_immv_p" "N"))))
-+		(const_int 32))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "umulsi3_highpart_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+	    (truncate:SI (ashiftrt:DI
-+		(mult:DI
-+		    (zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+		    (zero_extend:DI (plus:SI
-+			(match_operand:SI 2 "register_operand" "r")
-+			(match_operand:DI 3 "zip_opb_immv_p" "N"))))
-+		(const_int 32))))
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_HAS_DI)"
-+	"MPYSHI\t%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+(define_expand "divsi3"
-+	[(parallel [(set (match_operand:SI 0 "register_operand" "=r")
-+		(div:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))])]
-+	"(ZIP_DIVIDE)")
-+(define_insn "divsi3_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(div:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_DIVIDE)"
-+	"DIVS	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "divsi3_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(div:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_DIVIDE)"
-+	"DIVS	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_expand "udivsi3"
-+	[(parallel [(set (match_operand:SI 0 "register_operand" "=r")
-+		(udiv:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))])]
-+	"(ZIP_DIVIDE)")
-+(define_insn "udivsi3_reg"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(udiv:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_DIVIDE)"
-+	"DIVU	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "udivsi3_off"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(udiv:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"(ZIP_DIVIDE)"
-+	"DIVU	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
 +;;
 +;; modsi3
 +;; umodsi3
@@ -8907,211 +8790,11 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +; AND
-+;
-+;
-+(define_expand "andsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))])
-+(define_insn_and_split "andsi3_reg_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (and:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "andsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"AND	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "andsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"AND	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "andsi3_off_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (and:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "andsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"AND	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "andsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(and:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"AND	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+;
-+;
 +; iOR
-+;
-+;
-+(define_expand "iorsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))])
-+(define_insn_and_split "iorsi3_reg_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (ior:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "iorsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"OR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "iorsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"OR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "iorsi3_off_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (ior:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "iorsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"OR	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "iorsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ior:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"OR	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+;
-+;
 +; XOR
 +;
 +;
 +;
-+(define_expand "xorsi3"
-+	[(parallel [(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_operand_p" "")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))])]
-+	"")
-+(define_insn_and_split "xorsi3_reg_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (xor:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "xorsi3_reg_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"XOR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "xorsi3_reg_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "%0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"XOR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn_and_split "xorsi3_off_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (xor:SI (match_dup 1)
-+			(plus:SI (match_dup 2) (match_dup 3))))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "xorsi3_off_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"XOR	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "xorsi3_off_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(xor:SI (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "zip_opb_immv_p" "N"))))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"XOR	%3+%2,%0"
-+	[(set_attr "ccresult" "set")])
 +;(define_insn "addvsi4"
 +	;[(set (match_operand:SI 0 "register_operand" "=r")
 +		;(plus:SI (match_operand:SI 1 "register_operand" "%r")
@@ -9143,115 +8826,9 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +; ASR
-+;
-+;
-+(define_expand "ashrsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))])
-+(define_insn_and_split "ashrsi3_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (ashiftrt:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "ashrsi3_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"ASR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "ashrsi3_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"ASR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+;
 +; LSL
-+;
-+;
-+;
-+(define_expand "ashlsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashift:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))])
-+(define_insn_and_split "ashlsi3_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashift:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (ashift:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "ashlsi3_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashift:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"LSL	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "ashlsi3_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(ashift:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"LSL	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+;
-+;
-+;
 +; LSR
 +;
-+;
-+;
-+(define_expand "lshrsi3"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))])
-+(define_insn_and_split "lshrsi3_split"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))]
-+	""
-+	"#"
-+	"(reload_completed)"
-+	[(parallel [(set (match_dup 0) (lshiftrt:SI (match_dup 1) (match_dup 2)))
-+	(clobber (reg:CC CC_REG))])]
-+	""
-+	[(set_attr "ccresult" "set")])
-+(define_insn "lshrsi3_raw"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	""
-+	"LSR	%2,%0"
-+	[(set_attr "ccresult" "set")])
-+(define_insn "lshrsi3_clobber"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rR")))
-+	(clobber (reg:CC CC_REG))]
-+	""
-+	"LSR	%2,%0"
-+	[(set_attr "ccresult" "set")])
 +;
 +;
 +;
@@ -9264,7 +8841,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(neg:SI (match_operand:SI 1 "register_operand" "r")))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"NEG	%1,%0"
++	"NEG	%1,%0"	;//; = MOV -1(%1),%0, XOR -1,%0
 +	[(set_attr "ccresult" "validzn")])
 +(define_insn "abssi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -9276,11 +8853,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +(define_insn_and_split "one_cmplsi2"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(not:SI (match_operand:SI 1 "register_operand" "0")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	(clobber (reg:CC CC_REG))]
 +	""
 +	"#"
 +	""
-+	[(set (match_dup 0) (xor:SI (match_dup 1) (const_int -1)))]
++	[(parallel [(set (match_dup 0) (xor:SI (match_dup 1) (const_int -1)))
++		(clobber (reg:CC CC_REG))])]
 +	""
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
@@ -9297,132 +8875,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +;
-+(define_expand "cstoresi4" ; Store 0 or 1 in %0 based on cmp between %2&%3
-+	[(set (reg:CC CC_REG) (compare:CC (match_operand:SI 2 "register_operand" "r")
-+		(match_operand:SI 3 "zip_opb_operand_p" "rO")))
-+	(set (match_operand:SI 0 "register_operand" "=r") (if_then_else:SI
-+			(match_operator 1 "ordered_comparison_operator" 
-+					[(reg:CC CC_REG) (const_int 0)])
-+			(const_int 1) (const_int 0)))]
-+	""
-+	{
-+		if (!zip_supported_condition(GET_CODE(operands[1]))) {
-+		extern void zip_debug_rtx_pfx(const char *, const_rtx);
-+		//; Two branches give us no end of difficulty when implementing.
-+		//; Let's check for these two branch codes, and swap the 
-+		//; comparison to simplify them.
-+		//; fprintf(stderr, "CBRANCH\n");
-+		//; zip_debug_rtx_pfx("- CMP: ", operands[0]);
-+		//; zip_debug_rtx_pfx("- A  : ", operands[1]);
-+		//; zip_debug_rtx_pfx("- B  : ", operands[2]);
-+		//; zip_debug_rtx_pfx("- JMP: ", operands[3]);
-+		//; Can we do better if we reverse some compares?
-+		//;
-+		//; We have GE, LT, LTU, and GEU conditions
-+		//; Figure out how to create the other conditions from
-+		//; these.
-+		if (GET_CODE(operands[1])==GTU) {
-+			if (REG_P(operands[3])) {
-+				//; Reverse the comparison
-+				rtx	tmp;
-+				tmp = operands[3];
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],LTU);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(INTVAL(operands[3])>-(1<<17)+2)) {
-+				//; A >  #
-+				//; A >= #+1
-+				//;
-+				//; Add one to the integer constant,
-+				//; And use a GEU comparison
-+				operands[3] = GEN_INT(INTVAL(operands[3])+1);
-+				PUT_CODE(operands[1],GEU);
-+			} else if ((CONST_INT_P(operands[3]))
-+					&&(can_create_pseudo_p())) {
-+				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
-+				emit_insn(gen_movsi(tmp,operands[3]));
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],LTU);
-+			}
-+		} else if (GET_CODE(operands[1]) == LEU) {
-+			if (REG_P(operands[3])) {
-+				//; Reverse the comparison
-+				rtx	tmp;
-+				tmp = operands[3];
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],GEU);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(INTVAL(operands[3])==0)) {
-+				PUT_CODE(operands[1],EQ);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(INTVAL(operands[3])<(1<<17))) {
-+				//; A <  #
-+				//; A <= #-1
-+				//;
-+				//; Subtract one from the integer constant,
-+				//; And use a LTU comparison
-+				operands[3] = GEN_INT(INTVAL(operands[3])-1);
-+				PUT_CODE(operands[1],LTU);
-+			} else if ((CONST_INT_P(operands[3]))
-+					&&(can_create_pseudo_p())) {
-+				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
-+				emit_insn(gen_movsi(tmp,operands[3]));
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],GEU);
-+			}
-+		} else if (GET_CODE(operands[1]) == LE) {
-+			if (REG_P(operands[3])) {
-+				//; Reverse the comparison
-+				rtx	tmp;
-+				tmp = operands[3];
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],GE);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(INTVAL(operands[3])<(1<<17)-2)) {
-+				//; A <= #
-+				//; A <  #+1
-+				//;
-+				//; Add one to the integer constant,
-+				//; And use a LT comparison
-+				operands[3] = GEN_INT(INTVAL(operands[3])+1);
-+				PUT_CODE(operands[1],LT);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(can_create_pseudo_p())) {
-+				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
-+				emit_insn(gen_movsi(tmp,operands[3]));
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],GE);
-+			}
-+		} else if (GET_CODE(operands[1]) == GT) {
-+			if (REG_P(operands[3])) {
-+				//; Reverse the comparison
-+				rtx	tmp;
-+				tmp = operands[3];
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],LT);
-+			} else if ((CONST_INT_P(operands[3]))
-+				&&(INTVAL(operands[3])<(1<<17)-2)) {
-+				//; Add one to the integer constant,
-+				//; And use a GE comparison
-+				operands[3] = GEN_INT(INTVAL(operands[3])+1);
-+				PUT_CODE(operands[1],LE);
-+			} else if ((CONST_INT_P(operands[3]))
-+					&&(can_create_pseudo_p())) {
-+				rtx tmp = gen_reg_rtx(GET_MODE(operands[3]));
-+				emit_insn(gen_movsi(tmp,operands[3]));
-+				operands[3] = operands[2];
-+				operands[2] = tmp;
-+				PUT_CODE(operands[1],LT);
-+			}
-+		}
-+	}})
 +;
 +;
 +;
@@ -9547,56 +8999,189 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +; // Look for #define HAVE_conditional_move to understand how these might be
 +; // used.
 +;
-+(define_insn "set_zero_or_onesi"
-+	[(set (match_operand:SI 0 "register_operand" "=r") (if_then_else:SI
-+			(match_operator 1 "ordered_comparison_operator" 
-+					[(reg:CC CC_REG) (const_int 0)])
-+			(const_int 1) (const_int 0)))]
-+	""
-+	{ return (zip_set_zero_or_one(operands[1], operands[0]));
-+	}
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++; set_zero_or_one_si
++; movsicc
 +(define_expand "movsicc"
++	[(set (match_operand:SI 0 "nonimmediate_operand" "")
++		(if_then_else:SI (match_operand 1 "comparison_operator")
++			(match_operand:SI 2 "general_operand" "")
++			(match_operand:SI 3 "general_operand" "")))]
++	""
++	{
++	//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
++	//; fprintf(stderr, "MOVSICC\n");
++	//; zip_debug_rtx_pfx("- DST: ", operands[0]);
++	//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
++	//; zip_debug_rtx_pfx("- NEW: ", operands[2]);
++	//; zip_debug_rtx_pfx("- DEF: ", operands[3]);
++
++	if (!REG_P(operands[2]))
++		operands[2] = force_reg(SImode, operands[2]);
++
++	if ((!REG_P(operands[3]))||(REGNO(operands[0]) != REGNO(operands[3])))
++		emit_insn(gen_movsi(operands[0], operands[3]));
++	operands[3] = operands[0];
++
++
++	rtx_code	ccode = GET_CODE(operands[1]);
++	rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
++	rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
++
++	zip_canonicalize_comparison((int *)&ccode, &cmpop0, &cmpop1, true);
++	emit_insn(gen_cmpsi(cmpop0, cmpop1));
++
++	operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
++			gen_rtx_REG(CCmode, 14), const0_rtx);
++	})
++;
++;
++;
++(define_expand "addsicc"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
 +		(if_then_else:SI (match_operand 1 "comparison_operator")
-+			(match_operand:SI 2 "general_operand" "rio")
-+			(match_operand:SI 3 "nonmemory_operand" "rio")))]
++			(plus:SI (match_operand:SI 2 "register_operand" "0")
++				(match_operand:SI 3 "zip_opb_single_operand_p" "rO"))
++			(match_dup 2)))]
 +	""
 +	{
-+	if (zip_expand_movsicc(operands[0], operands[1], operands[2], operands[3]))
-+		DONE;
-+	else
-+		FAIL;
-+	})
-+(define_insn_and_split "movsicc_bare"
++		//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; fprintf(stderr, "ADDSICC\n");
++		//; zip_debug_rtx_pfx("- DST: ", operands[0]);
++		//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
++		//; zip_debug_rtx_pfx("- OLD: ", operands[2]);
++		//; zip_debug_rtx_pfx("- INC: ", operands[3]);
++
++		if (!REG_P(operands[2]))
++			operands[2] = force_reg(SImode, operands[2]);
++		if (REGNO(operands[0]) != REGNO(operands[2]))
++			emit_insn(gen_movsi(operands[0], operands[2]));
++		operands[2] = operands[0];
++
++		rtx_code	ccode = GET_CODE(operands[1]);
++		rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
++		rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
++
++		zip_canonicalize_comparison((int *)&ccode, &cmpop0, &cmpop1, true);
++		emit_insn(gen_cmpsi(cmpop0, cmpop1));
++
++		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
++			gen_rtx_REG(CCmode, 14), const0_rtx);
++	}
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++(define_expand "notsicc"
 +	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
-+				[(reg:CC CC_REG) (const_int 0)])
-+			(match_operand:SI 2 "general_operand" "rio")
-+			(match_operand:SI 3 "register_operand" "0")))]
-+	"(zip_supported_condition(GET_CODE(operands[1])))"
-+	"#"
-+	"(reload_completed)"
-+	[(cond_exec (match_operator 1 "ordered_comparison_operator"
-+				[(reg:CC CC_REG) (const_int 0)])
-+			(set (match_dup 0) (match_dup 2)))]
-+	"" [(set_attr "predicable" "no")])
-+;
-+;
-+; Dies when trying to do reloads for "ADD.NZ R6,R7,R9"
-+;	... But ... that could be turned into MOV.NZ R9,R6\nADD.NZ R7,R6
-+;
-+(define_insn "addsicc"
-+	[(set (match_operand:SI 0 "register_operand" "=r,r")
-+		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
-+			[(reg:CC CC_REG) (const_int 0)])
-+			(plus:SI (match_operand:SI 2 "register_operand" "r,r")
-+				(match_operand:SI 3 "nonmemory_operand" "rO,M"))
-+			(match_operand:SI 4 "register_operand" "0,0")))]
++		(if_then_else:SI (match_operand 1 "comparison_operator")
++			(xor:SI (match_operand:SI 2 "register_operand" "0")
++				(const_int -1))
++			(match_dup 2)))]
 +	""
 +	{
-+	extern const char *zip_addsicc(rtx, rtx, rtx, rtx);
-+	return zip_addsicc(operands[0], operands[1], operands[2], operands[3]);
++		extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; fprintf(stderr, "NOTSICC\n");
++		//; zip_debug_rtx_pfx("- DST: ", operands[0]);
++		//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
++		//; zip_debug_rtx_pfx("- NOT: ", operands[2]);
++		//; zip_debug_rtx_pfx("- OLD: ", operands[3]);
++
++		if (!REG_P(operands[2]))
++			operands[2] = force_reg(SImode, operands[2]);
++		if (REGNO(operands[0]) != REGNO(operands[2]))
++			emit_insn(gen_movsi(operands[0], operands[2]));
++
++		rtx_code	ccode = GET_CODE(operands[1]);
++		rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
++		rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
++
++		zip_canonicalize_comparison((int *)&ccode,&cmpop0,&cmpop1,true);
++		emit_insn(gen_cmpsi(cmpop0, cmpop1));
++
++		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
++			gen_rtx_REG(CCmode, 14), const0_rtx);
++	}
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_expand "negsicc"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (match_operand 1 "comparison_operator")
++			(neg:SI (match_operand:SI 2 "register_operand" "0"))
++			(match_operand:SI 3 "register_operand" "0")))]
++	""
++	{
++		//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; fprintf(stderr, "NEGSICC\n");
++		//; zip_debug_rtx_pfx("- DST: ", operands[0]);
++		//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
++		//; zip_debug_rtx_pfx("- NOT: ", operands[2]);
++
++		if (!REG_P(operands[2]))
++			operands[2] = force_reg(SImode, operands[2]);
++		if (REGNO(operands[0]) != REGNO(operands[3]))
++			emit_insn(gen_movsi(operands[0], operands[3]));
++
++		rtx_code	ccode = GET_CODE(operands[1]);
++		rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
++		rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
++
++		zip_canonicalize_comparison((int *)&ccode,&cmpop0,&cmpop1,true);
++		emit_insn(gen_cmpsi(cmpop0, cmpop1));
++
++		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
++			gen_rtx_REG(CCmode, 14), const0_rtx);
++
++		if (REGNO(operands[0]) != REGNO(operands[2]))
++			emit_insn(gen_movsicc(operands[0], operands[1], operands[2], operands[0]));
++	}
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_expand "cstoresi4"
++	[(set (reg:CC CC_REG) (compare:CC (match_operand:SI 2 "register_operand" "r")
++		(match_operand:SI 3 "zip_opb_operand_p" "rO")))
++	(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI
++			(match_operator 1 "ordered_comparison_operator"
++				[(reg:CC CC_REG) (const_int 0)])
++			(const_int 1) (const_int 0)))]
++	""
++	{
++		//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; fprintf(stderr, "CSTORESI4\n");
++		//; zip_debug_rtx_pfx("- DST: ", operands[0]);
++		//; zip_debug_rtx_pfx("- TST: ", operands[1]);
++		//; zip_debug_rtx_pfx("- A  : ", operands[2]);
++		//; zip_debug_rtx_pfx("-  -B: ", operands[3]);
++
++		rtx_code	ccode = GET_CODE(operands[1]);
++
++		zip_canonicalize_comparison((int *)&ccode,&operands[2],&operands[3],true);
++		emit_insn(gen_cmpsi(operands[2], operands[3]));
++		emit_insn(gen_movsi(operands[0], const0_rtx));
++		switch(ccode) {
++		case EQ:
++			emit_insn(gen_cmov_eq(operands[0], const1_rtx));
++			break;
++		case NE:
++			emit_insn(gen_cmov_ne(operands[0], const1_rtx));
++			break;
++		case LT:
++			emit_insn(gen_cmov_lt(operands[0], const1_rtx));
++			break;
++		case GE:
++			emit_insn(gen_cmov_ge(operands[0], const1_rtx));
++			break;
++		case LTU:
++			emit_insn(gen_cmov_ltu(operands[0], const1_rtx));
++			break;
++		case GEU:
++			emit_insn(gen_cmov_geu(operands[0], const1_rtx));
++			break;
++		default:
++			FAIL;
++		} DONE;
 +	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +;
@@ -10586,6 +10171,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +(include "zip-di.md")
++(include "zip-ops.md")
 +(include "zip-float.md")
 +(include "zip-sync.md")
 +(include "zip-peephole.md")
@@ -10640,8 +10226,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-modes.def gcc-6.2.0-zi
 +#define	BITS_PER_UNIT	8
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-6.2.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-02-22 15:46:24.055471512 -0500
-@@ -0,0 +1,700 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-03-01 15:46:02.440221158 -0500
+@@ -0,0 +1,768 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-peephole.md
@@ -11189,32 +10775,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
 +			(const_int 0)))])
 +;
-+(define_peephole2
-+	[(set (match_operand:SI 0 "register_operand")
-+		(match_operand:SI 1 "register_operand"))
-+	(parallel [(set (match_operand:SI 3 "register_operand")
-+			(and:SI (match_dup 0)
-+				(match_operand:SI 2 "zip_opb_single_operand_p")))
-+		(clobber (reg:CC CC_REG))])
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 3) (const_int 0)))
-+	]
-+	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(3, REGNO(operands[0])))&&(peep2_regno_dead_p(3, REGNO(operands[3])))"
-+	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
-+			(const_int 0)))])
-+;
-+(define_peephole2
-+	[(set (match_operand:SI 0 "register_operand")
-+		(match_operand:SI 1 "register_operand"))
-+	(set (match_operand:SI 3 "register_operand")
-+			(and:SI (match_dup 0)
-+				(match_operand:SI 2 "zip_opb_single_operand_p")))
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 3) (const_int 0)))
-+	]
-+	"((1)||(ZIP_PEEPHOLE))&&(peep2_regno_dead_p(3, REGNO(operands[0])))&&(peep2_regno_dead_p(3, REGNO(operands[3])))"
-+	[(set (reg:CC CC_REG) (compare:CC (and:SI (match_dup 1) (match_dup 2))
-+			(const_int 0)))])
-+;
-+;
 +;
 +; Match:
 +;	LB OpB,Rx
@@ -11226,10 +10786,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +(define_peephole2
 +	[(set (match_operand:QI 0 "register_operand")
 +		(match_operand:QI 1 "memory_operand"))
-+	(set (match_operand:SI 2 "register_operand")
-+		(zero_extend:SI (match_dup 0)))]
++	(parallel [(set (match_operand:SI 2 "register_operand")
++			(zero_extend:SI (match_dup 0)))
++		(clobber (reg:CC CC_REG))])]
 +	"((1)||(ZIP_PEEPHOLE))"
-+	[(set (match_dup 2) (zero_extend:SI (match_dup 1)))])
++	[(parallel [(set (match_dup 2) (zero_extend:SI (match_dup 1)))
++		(clobber (reg:CC CC_REG))])])
 +;
 +;
 +;
@@ -11243,13 +10805,105 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +(define_peephole2
 +	[(set (match_operand:HI 0 "register_operand")
 +		(match_operand:HI 1 "memory_operand"))
-+	(set (match_operand:SI 2 "register_operand")
-+		(zero_extend:SI (match_dup 0)))]
++	(parallel [(set (match_operand:SI 2 "register_operand")
++			(zero_extend:SI (match_dup 0)))
++		(clobber (reg:CC CC_REG))])]
 +	"((1)||(ZIP_PEEPHOLE))
 +		&&(REG_P(operands[0]))
 +		&&(REG_P(operands[2]))
 +		&&(REGNO(operands[0])==REGNO(operands[2]))"
-+	[(set (match_dup 2) (zero_extend:SI (match_dup 1)))])
++	[(parallel [(set (match_dup 2) (zero_extend:SI (match_dup 1)))
++		(clobber (reg:CC CC_REG))])])
++;
++;
++;
++; Match:
++;	LDI 0,Rx
++;	LDI.y #,Rx
++;	Add Rx,Ry
++; Transform to:
++;	Add.y #,Ry
++;
++;
++(define_peephole2
++	[(set (match_operand:SI 0 "register_operand") (const_int 0))
++	(set (match_dup 0)
++		(if_then_else:SI
++			(match_operator 1 "ordered_comparison_operator"
++				[(reg:CC CC_REG) (const_int 0)])
++			(match_operand:SI 2 "zip_opb_single_operand_p") (match_dup 0)))
++	(parallel [
++		(set (match_operand:SI 3 "register_operand")
++			(plus:SI (match_dup 3) (match_dup 0)))
++		(clobber (reg:CC CC_REG))
++		])]
++	"((1)||(ZIP_PEEPHOLE))
++		&&(peep2_regno_dead_p(3, REGNO(operands[0])))"
++	[(set (match_dup 3)
++		(if_then_else:SI
++			(match_op_dup 1 [(reg:CC CC_REG) (const_int 0)])
++			(plus:SI (match_dup 3) (match_dup 2))
++			(match_dup 3)))])
++;
++;
++; Match:
++;	LDI	0,Rx
++;	LDI.y	#,Rx
++;	XOR	Rx,Rc
++; Transform to:
++;	XOR.y #,Ry
++;
++;
++(define_peephole2
++	[(set (match_operand:SI 0 "register_operand") (const_int 0))
++	(set (match_dup 0)
++		(if_then_else:SI
++			(match_operator 1 "ordered_comparison_operator"
++				[(reg:CC CC_REG) (const_int 0)])
++			(match_operand:SI 2 "zip_opb_single_operand_p") (match_dup 0)))
++	(parallel [
++		(set (match_operand:SI 3 "register_operand")
++			(xor:SI (match_dup 3) (match_dup 0)))
++		(clobber (reg:CC CC_REG))
++		])]
++	"((1)||(ZIP_PEEPHOLE))
++		&&(peep2_regno_dead_p(3, REGNO(operands[0])))"
++	[(set (match_dup 3)
++		(if_then_else:SI
++			(match_op_dup 1 [(reg:CC CC_REG) (const_int 0)])
++			(xor:SI (match_dup 3) (match_dup 2))
++			(match_dup 3)))])
++;
++;
++;
++;
++;
++; Match:
++;	LDI	0,Rx
++;	LDI.y	#,Rx
++;	OR	Rx,Rc
++; Transform to:
++;	OR.y #,Ry
++;
++;
++;
++(define_peephole2
++	[(set (match_operand:SI 0 "register_operand") (const_int 0))
++	(set (match_dup 0)
++		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
++				[(reg:CC CC_REG) (const_int 0)])
++			(match_operand:SI 2 "zip_opb_single_operand_p") (match_dup 0)))
++	(parallel [(set (match_operand:SI 3 "register_operand")
++			(ior:SI (match_dup 3) (match_dup 0)))
++		(clobber (reg:CC CC_REG))])]
++	"((1)||(ZIP_PEEPHOLE))
++		&&(peep2_regno_dead_p(3, REGNO(operands[0])))"
++	[(set (match_dup 3)
++		(if_then_else:SI
++			(match_op_dup 1 [(reg:CC CC_REG) (const_int 0)])
++			(ior:SI (match_dup 3) (match_dup 2))
++			(match_dup 3)))])
++;
 +;
 +;
 +; Match:
@@ -12177,7 +11831,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/loop-iv.c gcc-6.2.0-zip/gcc/loop-iv.c
  	  delta = simplify_gen_binary (MINUS, mode, tmp1, delta);
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
 --- gcc-6.2.0/gcc/optabs.c	2016-02-16 10:15:40.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/optabs.c	2017-02-06 21:52:12.905985278 -0500
++++ gcc-6.2.0-zip/gcc/optabs.c	2017-03-01 15:46:15.660221429 -0500
 @@ -43,6 +43,17 @@
  #include "optabs-tree.h"
  #include "libfuncs.h"
@@ -12204,8 +11858,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
 +fprintf(stderr, "ICODE = %d\n", icode);
 +fprintf(stderr, "NOPS  = %d\n", nops);
 +for(int i=0; i<nops; i++) {
-+	char	str[5];
-+	sprintf(str, "%d", i);
++	char	str[10];
++	sprintf(str, "Op %d: ", i);
 +	zip_debug_rtx_pfx(str, ops[i].value);
 +}
 +#endif
@@ -12251,6 +11905,25 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/reload1.c gcc-6.2.0-zip/gcc/reload1.c
  /* This file contains the reload pass of the compiler, which is
     run after register allocation has been done.  It checks that
     each insn is valid (operands required to be in registers really
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/reload.c gcc-6.2.0-zip/gcc/reload.c
+--- gcc-6.2.0/gcc/reload.c	2016-02-13 20:37:40.000000000 -0500
++++ gcc-6.2.0-zip/gcc/reload.c	2017-03-01 15:46:26.784221658 -0500
+@@ -106,6 +106,15 @@
+ #include "addresses.h"
+ #include "params.h"
+ 
++// #define	DO_ZIP_DEBUGS
++#ifdef	DO_ZIP_DEBUGS
++#include <stdio.h>
++#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s:%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
++extern	void	zip_debug_rtx(const_rtx);
++#else
++#define	ZIP_DEBUG_LINE(STR,RTX)
++#endif
++
+ /* True if X is a constant that can be forced into the constant pool.
+    MODE is the mode of the operand, or VOIDmode if not known.  */
+ #define CONST_POOL_OK_P(MODE, X)		\
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/testsuite/lib/target-supports.exp gcc-6.2.0-zip/gcc/testsuite/lib/target-supports.exp
 --- gcc-6.2.0/gcc/testsuite/lib/target-supports.exp	2016-07-05 13:54:02.000000000 -0400
 +++ gcc-6.2.0-zip/gcc/testsuite/lib/target-supports.exp	2016-12-31 16:59:52.719091392 -0500
