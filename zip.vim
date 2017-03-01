@@ -80,7 +80,7 @@ syn keyword zipopcode fpadd fpsub fpmul fpdiv fpi2f fpf2i
 syn keyword zipopcode noop break brk lock
 syn keyword zipopcode bz beq bnz bne bc bnc bv bra blt bge ljmp jsr ljsr
 syn keyword zipopcode clr halt wait jmp ljmp not trap busy neg rtu retn
-syn keyword zipopcode sim sexit nexit sdump ndump snoop sdump
+syn keyword zipopcode sim sexit nexit sdump ndump snoop sdump sstr nstr
 
 "delimiters
 

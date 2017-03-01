@@ -32,7 +32,7 @@
 // for more details.
 //
 // You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //
@@ -105,7 +105,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 
 
 	wire	[4:0]	w_op;
-	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev, w_noop;
+	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev, w_noop,
+			w_mpy;
 	wire	[4:0]	w_dcdR, w_dcdB, w_dcdA;
 	wire		w_dcdR_pc, w_dcdR_cc;
 	wire		w_dcdA_pc, w_dcdA_cc;
@@ -207,7 +208,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	// What register will we be placing results into (if at all)?
 	//
 	// Two parts to the result register: the register set, given for
-	// moves in i_word[18] but only for the supervisor, and the other
+	// moves in iword[18] but only for the supervisor, and the other
 	// four bits encoded in the instruction.
 	//
 	assign	w_dcdR = { ((!iword[31])&&(w_mov)&&(~i_gie))?iword[18]:i_gie,

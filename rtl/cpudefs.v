@@ -41,7 +41,7 @@
 // for more details.
 //
 // You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //
@@ -235,8 +235,6 @@
 // This logic has been added into the ZipCPU, but it has not (yet) been
 // tested thoroughly.
 //
-// Oh, and the debugger and the simulator also need to be updated as well
-// to properly handle these.
 //
 `define OPT_CIS
 //
