@@ -63,7 +63,7 @@
 ################################################################################
 #
 .PHONY: all
-all: $(OBJDIR)/ hellosim simtest simuart
+all: $(OBJDIR)/ hellosim simtest simuart cmptest
 
 CC      := zip-gcc
 CPP     := zip-cpp
@@ -119,6 +119,9 @@ $(OBJDIR)/simtest.o: simtest.s $(OBJDIR)/
 
 simtest: $(OBJDIR)/simtest.o
 	$(LD) -T $(LDSCRIPT) $< -o $@
+
+cmptest: $(OBJDIR)/cmptest.o
+	$(LD) -T $(LDSCRIPT) -Map=map.txt $< -o $@
 
 
 $(OBJDIR)/:
