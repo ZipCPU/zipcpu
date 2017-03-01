@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-02-17 16:39:42.146031035 -0500
-@@ -0,0 +1,3267 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-01 15:33:18.388205481 -0500
+@@ -0,0 +1,3308 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -1825,7 +1825,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +#define	ZIP_CC_GIE	0x020
 +#define	ZIP_CC_STEP	0x040
 +
-+#define	NOOP_OPCODE	0x77c00000
++#define	SIM_OPCODE	0x77800000	// 0111.x111.1000. .... 0_111.x_111.10....
++#define	NOOP_OPCODE	0x77c00000	// 0111.x111.1100. .... 0_111.x_111.11....
 +
 +typedef  struct {
 +	bfd_reloc_code_real_type	r_type;
@@ -4450,8 +4451,49 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +}
 +
 +void
-+md_assemble(char *line)
-+{
++md_assemble(char *line) {
++	const char *linep;
++	char	*p;
++
++	linep = (char *)zip_skip_white_spaces(line);
++	if ((strncasecmp(linep, "nstr", 4)==0)
++		||(strncasecmp(linep, "sstr", 4)==0)) {
++		uint32_t	base;
++		const char	*sbeg;
++
++		if ((linep[0] =='n')||(linep[0] == 'N'))
++			base = 0x0400 + NOOP_OPCODE;
++		else
++			base = 0x0400 + SIM_OPCODE;
++
++		sbeg = strchr(line, '\"');
++		if (!sbeg)
++			as_bad("String instruction with no quotes found");
++		sbeg++;
++		while(*sbeg != '\"') {
++			unsigned v = *sbeg++;
++			if (v == '\\') {
++				switch(*sbeg++) {
++				case 'a':	v = '\a'; break;
++				case 'b':	v = '\b'; break;
++				case 'f':	v = '\f'; break;
++				case 'n':	v = '\n'; break;
++				case 'r':	v = '\r'; break;
++				case 't':	v = '\t'; break;
++				case '\\':	v = '\\'; break;
++				case '\"':	v = '\"'; break;
++				case '\'':	v = '\''; break;
++				default: sbeg--;
++				}
++			}
++			p = frag_more(sizeof(uint32_t));
++			md_number_to_chars(p,base+(v&0x0ff),sizeof(uint32_t));
++		}
++
++		return;
++	}
++
++
 +	// Decode an instruction from op_str
 +	//	Determine the opcode
 +	//		any conditions
@@ -4460,7 +4502,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	//		any "B" register
 +	ZIPIS	insnv, *insn = &insnv;
 +	const char *error = zip_parse(line, insn);
-+	char	*p;
 +
 +#ifdef	ZIP_DEBUG
 +	fprintf(stderr, "ZIP-ASSEMBLE %s\n", line);
@@ -7180,7 +7221,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-02-18 12:48:38.206182730 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-03-01 15:30:32.632202080 -0500
 @@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7376,8 +7417,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	// 0rrr.r101.1
 +	{ "LDI",  0x87800000, 0x06000000, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(23,0), ZIP_OPUNUSED },
 +	// 0111.x111.00.xxxxxxxx
-+	{ "BRK",   0xf7ffffff, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
-+	{ "BRK",   0xf7c00000, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
++	{ "BREAK", 0xf7ffffff, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "BREAK", 0xf7c00000, 0x77000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
 +	{ "LOCK",  0xf7ffffff, 0x77400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
 +	{ "LOCK",  0xf7c00000, 0x77400000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(22,0), ZIP_OPUNUSED },
 +	// 0.111x.00000.xxx.xxx.xxxx.xxxx.xxxx.xxxx
