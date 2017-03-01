@@ -212,7 +212,7 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 		always @(posedge i_clk)
 		begin
 			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_gbl));
+			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
 		end
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
