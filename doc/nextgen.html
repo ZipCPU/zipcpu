@@ -1,0 +1,223 @@
+<HTML><HEAD><TITLE>Next Generation ZipCPU ISA</TITLE></HEAD><BODY>
+<H1 align=center>Next Generation Zip CPU ISA</H1>
+<P align=center><TABLE BORDER>
+<TR>
+	<TH>31</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>27</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>23</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>19</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>15</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>11</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>7</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>3</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>0</TH>
+	<TH>CC</TH><TH>Extra</TH></TR>
+<TR><TH>1'Zip</TH><TD colspan=9>&nbsp;</TD><TH colspan=3>3'Cond</TH><TD colspan=19>&nbsp;</TD></TR>
+<!-- -->
+<TR><TD rowspan=8 colspan=1>0</TD><TD rowspan=8 colspan=9>Any</TD><TD colspan=3><TT>000</TT></TD><TD colspan=19>Always</TD><TD>Y</TD></TR>
+<TR><TD colspan=3><TT>001</TT></TD><TD colspan=19>Less-Than</TD><TD rowspan=7>N</TD></TR>
+<TR><TD colspan=3><TT>010</TT></TD><TD colspan=19>On Zero</TD></TR>
+<TR><TD colspan=3><TT>011</TT></TD><TD colspan=19>Not Zero</TD></TR>
+<TR><TD colspan=3><TT>100</TT></TD><TD colspan=19>Greater Than</TD></TR>
+<TR><TD colspan=3><TT>101</TT></TD><TD colspan=19>Greater Than/Equal</TD></TR>
+<TR><TD colspan=3><TT>110</TT></TD><TD colspan=19>On Carry (unsigned overflow)</TD></TR>
+<TR><TD colspan=3><TT>111</TT></TD><TD colspan=19>On (signed) oVerflow</TD></TR>
+<!-- -->
+<TR><TD rowspan=14>0</TD>
+	<TH colspan=4>4'Reg</TH>
+	<TH colspan=5>5'OpCod</TH>
+	<TH colspan=3>Cond</TH>
+	<TH colspan=19>19'Op-B</TH>
+	<TH>CC</TH></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>0xxxx</TT></TD><TD colspan=3 rowspan=12 valign=center>Any</TD><TD colspan=19>ALU operation</TD><TD rowspan=1>(y)</TD></TR>
+<TR><TD colspan=9 rowspan=2>&nbsp;</TD><TD colspan=1>0</TD><TD colspan=18>18-bit Immediate</TD>
+	<TD rowspan=2>&nbsp;</TD></TR>
+<TR><TD colspan=1>1</TD><TD colspan=4>B-Reg</TD><TD colspan=14>14-bit Immediate</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>01001</TT></TD><TD>0</TD><TD colspan=2>2'hx</TD><TD colspan=16>LDI(<STRIKE>HI/</STRIKE>LO), 16-bit Imm</TD><TD>N</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>01111</TT></TD>
+	<TD colspan=1>AR</TD>
+	<TD colspan=4>Reg</TD>
+	<TD colspan=1>BR</TD>
+	<TD colspan=13>Move, 13-bit Imm</TD>
+	<TD>N</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>1000x</TT></TD>
+	<TD colspan=19>Compare/Test (ALU)</TD>
+	<TD>Y</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>1001w</TT></TD>
+	<TD colspan=19>Memory operation, w=write, Op-B=address</TD><TD>N</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>1010x</TT></TD>
+	<TD colspan=19>IDIV(U/S), RA=RA/(RB+Imm), uses alt-A</TD><TD>Y</TD></TR>
+<TR><TD colspan=3 rowspan=3>3'h7</TD><TD rowspan=3>&nbsp;</TD><TD colspan=5><TT>11000</TT></TD><TD colspan=19>NOOP</TD>
+	<TD rowspan=3>N</TD></TR>
+<TR><TD colspan=5><TT>11001</TT></TD><TD colspan=19>Break</TD></TR>
+<TR><TD colspan=5><TT>11010</TT></TD><TD colspan=19>Bus Lock</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=5><TT>11fff</TT></TD><TD colspan=19>Floating Point operation</TD><TD>Y</TD></TR>
+<TR><TD colspan=4>Reg</TD><TD colspan=4><TT>1011</TT></TD><TD colspan=23>Load Immediate (23 bit Immediate, unconditional)</TD><TD>N</TD></TR>
+<!-- -->
+<TR><TD rowspan=4>1</TD><TD colspan=9 rowspan=5>Any</TD><TD colspan=1 rowspan=4>x</TD><TD colspan=2>00</TD><TD colspan=19>Always</TD>
+	<TD rowspan=7>&nbsp;</TD></TR>
+<TR><TD colspan=2>01</TD><TD colspan=19>Less Than</TD></TR>
+<TR><TD colspan=2>10</TD><TD colspan=19>On Zero</TD></TR>
+<TR><TD colspan=2>11</TD><TD colspan=19>Not Zero</TD></TR>
+<TR><TD rowspan=1>1</TD><TD colspan=1>1</TD>
+	<TD colspan=2>2'bxx</TD><TD colspan=19>Apply condition to second half</TD>
+	</TR>
+<TR><TD rowspan=2>1</TD>
+	<TH colspan=4 rowspan=2>4'Reg</TH>
+	<TH colspan=5 rowspan=2>5'OpCod</TH>
+	<TD colspan=3 rowspan=2>Any</TD>
+	<TD colspan=1 rowspan=1>0</TD><TD colspan=4>4'Imm</TD>
+	<TH colspan=4 rowspan=2>4'Reg</TH>
+	<TH colspan=5 rowspan=2>5'OpCod</TH>
+	<TD colspan=1 rowspan=1>0</TD><TD colspan=4>4'Imm</TD>
+	</TR>
+<TR><TD>1</TD><TD colspan=4>4'Reg</TD>
+	<TD>1</TD><TD colspan=4>4'Reg</TD></TR>
+</TABLE>
+
+
+<P align=center><TABLE BORDER>
+<TR><TH colspan=2>ALU Operation</TH><TH>CC</TH></TR>
+<TR><TD><TT>A-0000</TT></TD><TD>SUB (Pairs w/ CMP)</TD><TD rowspan=8>Y</TD></TR>
+<TR><TD><TT>A-0001</TT></TD><TD>AND (Pairs w/ OR, and TST)</TD></TR>
+<TR><TD><TT>A-0010</TT></TD><TD>ADD (Pairs w/ SUB)</TD></TR>
+<TR><TD><TT>A-0011</TT></TD><TD>OR (Pairs w/ AND)</TD></TR>
+<TR><TD><TT>A-0100</TT></TD><TD>XOR</TD></TR>
+<TR><TD><TT>A-0101</TT></TD><TD>LSR</TD></TR>
+<TR><TD><TT>A-0110</TT></TD><TD>LSL (Pairs w/ ROL)</TD></TR>
+<TR><TD><TT>A-0111</TT></TD><TD>ASR (Pairs w/ LSR)</TD></TR>
+<!-- -->
+<TR><TD><TT>A-1000</TT></TD><TD>MPY</TD><TD><STRIKE>N</STRIKE>&nbsp; Y</TD></TR>
+<TR><TD><TT>A-1001</TT></TD><TD>LDILO</TD><TD>N</TD></TR>
+<TR><TD><TT>A-1010</TT></TD><TD>MPYUHI</TD><TD rowspan=2>Y</TD></TR>
+<TR><TD><TT>A-1011</TT></TD><TD>MPYSHI</TD></TR>
+<TR><TD><TT>A-1100</TT></TD><TD>BREV</TD><TD><STRIKE>Y</STRIKE>&nbsp; N</TD></TR>
+<TR><TD><TT>A-1101</TT></TD><TD><STRIKE>POPC</STRIKE> MOV</TD><TD rowspan=2><STRIKE>Y</STRIKE> N</TD></TR>
+<TR><TD><TT>A-1110</TT></TD><TD><STRIKE>ROL</STRIKE> LB</TD></TR>
+<TR><TD><TT>A-1111</TT></TD><TD><STRIKE>MOV</STRIKE> SB</TD><TD>N</TD></TR>
+</TABLE>
+
+<P align=center><TABLE BORDER>
+<TR><TH colspan=3>FP Operation</TH><TH>CC</TH></TR>
+<TR><TD><TT>F-000</TT></TD><TD>FPADD</TD><TD>Floating point Add</TD><TD rowspan=8>Y</TD></TR>
+<TR><TD><TT>F-001</TT></TD><TD>FPSUB</TD><TD>Floating point Subtract &amp; Compare</TD></TR>
+<TR><TD><TT>F-010</TT></TD><TD>FPMPY</TD><TD>Floating point multiply</TD></TR>
+<TR><TD><TT>F-011</TT></TD><TD>FPDIV</TD><TD>Floating point divide</TD></TR>
+<TR><TD><TT>F-100</TT></TD><TD>FPI2F</TD><TD>Convert to floating point</TD></TR>
+<TR><TD><TT>F-101</TT></TD><TD>FPF2I</TD><TD>Convert to integer</TD></TR>
+<TR><TD><TT>F-110</TT></TD><TD>LH</TD><TD>Load Word</TD></TD></TR>
+<TR><TD><TT>F-111</TT></TD><TD>SH</TD><TD>Store Word</TD></TR>
+</TABLE>
+
+<P align=center><TABLE BORDER>
+<TR><TD><TT>00000</TT></TD><TD bgcolor=fffbbb>SUB</TD> <TD><TT>10000</TT></TD><TD bgcolor=bbffff>CMP</TD></TR>
+<TR><TD><TT>00001</TT></TD><TD bgcolor=fffbbb>AND</TD> <TD><TT>10001</TT></TD><TD bgcolor=bbffff>TEST</TD></TR>
+<TR><TD><TT>00010</TT></TD><TD bgcolor=fffbbb>ADD</TD> <TD><TT>10010</TT></TD><TD bgcolor=d9ffbb>LOD</TD></TR>
+<TR><TD><TT>00011</TT></TD><TD bgcolor=fffbbb>OR </TD> <TD><TT>10011</TT></TD><TD bgcolor=d9ffbb>STO</TD></TR>
+<TR><TD><TT>00100</TT></TD><TD bgcolor=fffbbb>XOR</TD><TD><TT>10100</TT></TD><TD bgcolor=ffbbff>DIVU</TD></TR>
+<TR><TD><TT>00101</TT></TD><TD bgcolor=fffbbb>LSR</TD><TD><TT>10101</TT></TD><TD bgcolor=ffbbff>DIVS</TD></TR>
+<TR><TD><TT>00110</TT></TD><TD bgcolor=fffbbb>LSL</TD><TD><TT>10110</TT></TD><TD bgcolor=fff777 rowspan=2>LDI</TD></TR>
+<TR><TD><TT>00111</TT></TD><TD bgcolor=fffbbb>ASR</TD><TD><TT>10111</TT></TD></TR>
+<TR><TD><TT>01000</TT></TD><TD bgcolor=bbcfef>MPY</TD><TD><TT>11000</TT></TD><TD bgcolor=ffc8bb>FPADD</TD></TR>
+<TR><TD><TT>01001</TT></TD><TD bgcolor=fff777>LDILO</TD><TD><TT>11001</TT></TD><TD bgcolor=ffc8bb>FPSUB</TD></TR>
+<TR><TD><TT>01010</TT></TD><TD bgcolor=bbcfef>MPYUHI</TD><TD><TT>11010</TT></TD><TD bgcolor=ffc8bb>FPMPY</TD></TR>
+<TR><TD><TT>01011</TT></TD><TD bgcolor=bbcfef>MPYSHI</TD><TD><TT>11011</TT></TD><TD bgcolor=ffc8bb>FPDIV</TD></TR>
+<TR><TD><TT>01100</TT></TD><TD bgcolor=fff777>BREV</TD><TD><TT>11100</TT></TD><TD bgcolor=ffc8bb>FPI2F</TD></TR>
+<TR><TD><TT>01101</TT></TD><TD bgcolor=fff777>MOV</TD><TD><TT>11101</TT></TD><TD bgcolor=ffc8bb>FPF2I</TD></TR>
+<TR><TD><TT>01110</TT></TD><TD bgcolor=d9ffbb>LB</TD><TD><TT>11110</TT></TD><TD bgcolor=d9ffbb>LH</TD></TD></TR>
+<TR><TD><TT>01111</TT></TD><TD bgcolor=d9ffbb>SB</TD><TD><TT>11111</TT></TD><TD bgcolor=d9ffbb>SH</TD></TR>
+</TABLE>
+<HR>
+<P align=center><TABLE BORDER>
+<H1 align=center>Proposed instruction set change</H1>
+
+<TABLE border>
+<TR>
+	<TH>31</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>27</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>23</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>19</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>15</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>11</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>7</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH>
+	<TH>3</TH> <TH>&nbsp;</TH> <TH>&nbsp;</TH> <TH>0</TH></TR>
+<TR><TD rowspan=2>0</TD><TD colspan=4 rowspan=2>4'DR</TD><TD colspan=5 rowspan=2>5'OpCode</TD><TD colspan=3 rowspan=2>3'Cond</TD><TD>0</TD><TD colspan=18>18'Immediate</TD></TR>
+	<TR><TD>1</TD><TD colspan=4>B-Reg</TD><TD colspan=14>14'Immediate</TD></TR>
+<TR><TD rowspan=2>1</TD><TD colspan=4 rowspan=2>4'DR</TD>
+	<TD colspan=3 rowspan=2>3'OpCode</TD><TD rowspan=2>A</TD>
+	<TD colspan=7 rowspan=2>7'Op-B</TD></TD>
+	<TD rowspan=2>&nbsp;</TD><TD colspan=4>4'DR</TD><TD colspan=3>3'OpCode</TD><TD>0</TD><TD colspan=7>7'Imm</TD></TR>
+<TR><TD colspan=4>4'DR</TD><TD colspan=3>3'OpCode</TD><TD>1</TD><TD colspan=4>B-Reg</TD><TD colspan=3>3'Imm</TD></TR>
+<!-- -->
+</TABLE>
+<P align=center><TABLE BORDER>
+<TR><TD><TT>00000</TT></TD><TD bgcolor=fffbbb>SUB</TD> <TD><TT>10000</TT></TD><TD bgcolor=bbffff>CMP</TD><TD><TT>000</TT></TD><TD bgcolor=fffbbb>SUB</TD></TR>
+<TR><TD><TT>00001</TT></TD><TD bgcolor=fffbbb>AND</TD> <TD><TT>10001</TT></TD><TD bgcolor=bbffff>TEST</TD><TD><TT>001</TT></TD><TD bgcolor=fffbbb>AND</TD></TR>
+<TR><TD><TT>00010</TT></TD><TD bgcolor=fffbbb>ADD</TD> <TD><TT>10010</TT></TD><TD bgcolor=d9ffbb>LW</TD><TD><TT>010</TT></TD><TD bgcolor=fffbbb>ADD</TD></TR>
+<TR><TD><TT>00011</TT></TD><TD bgcolor=fffbbb>OR</TD> <TD><TT>10011</TT></TD><TD bgcolor=d9ffbb>SW</TD><TD><TT>011</TT></TD><TD bgcolor=bbffff>CMP</TD></TR>
+<TR><TD><TT>00100</TT></TD><TD bgcolor=fffbbb>XOR</TD><TD><TT>10100</TT></TD><TD bgcolor=d9ffbb>LH</TD><TD><TT>100</TT></TD><TD bgcolor=d9ffbb>LW</TD></TR>
+<TR><TD><TT>00101</TT></TD><TD bgcolor=fffbbb>LSR</TD><TD><TT>10101</TT></TD><TD bgcolor=d9ffbb>SH</TD><TD><TT>101</TT></TD><TD bgcolor=d9ffbb>SW</TD></TR>
+<TR><TD><TT>00110</TT></TD><TD bgcolor=fffbbb>LSL</TD><TD><TT>10110</TT></TD><TD bgcolor=d9ffbb>LB</TD><TD><TT>110</TT></TD><TD bgcolor=dfdfbf>LDI</TD></TR>
+<TR><TD><TT>00111</TT></TD><TD bgcolor=fffbbb>ASR</TD><TD><TT>10111</TT></TD><TD bgcolor=d9ffbb>SB</TD><TD><TT>111</TT></TD><TD bgcolor=fff777>MOV</TD></TR>
+<TR><TD><TT>01000</TT></TD><TD bgcolor=dfdfbf>BREV</TD><TD><TT>11000</TT></TD><TD bgcolor=dfdfbf rowspan=2>LDI</TD></TR>
+<TR><TD><TT>01001</TT></TD><TD bgcolor=dfdfbf>LDILO</TD><TD><TT>11001</TT></TD></TR>
+<TR><TD><TT>01010</TT></TD><TD bgcolor=bbcfef>MPYUHI</TD><TD><TT>11010</TT></TD><TD bgcolor=ffc8bb>FPADD</TD></TR>
+<TR><TD><TT>01011</TT></TD><TD bgcolor=bbcfef>MPYSHI</TD><TD><TT>11011</TT></TD><TD bgcolor=ffc8bb>FPSUB</TD></TR>
+<TR><TD><TT>01100</TT></TD><TD bgcolor=bbcfef>MPY</TD><TD><TT>11100</TT></TD><TD bgcolor=ffc8bb>FPMPY</TD><TD><TT>11100</TT></TD><TD bgcolor=aaaa00ff>BREAK</TD></TR>
+<TR><TD><TT>01101</TT></TD><TD bgcolor=fff777>MOV</TD><TD><TT>11101</TT></TD><TD bgcolor=ffc8bb>FPDIV</TD><TD><TT>11101</TT></TD><TD bgcolor=aaaa00ff>LOCK</TD></TR>
+<TR><TD><TT>01110</TT></TD><TD bgcolor=ffbbff>DIVU</TD><TD><TT>11110</TT></TD><TD bgcolor=ffc8bb>FPI2F</TD><TD><TT>11110</TT></TD><TD bgcolor=aaaa00ff>SIM</TD></TR>
+<TR><TD><TT>01111</TT></TD><TD bgcolor=ffbbff>DIVS</TD><TD><TT>11111</TT></TD><TD bgcolor=ffc8bb>FPF2I</TD><TD><TT>11111</TT></TD><TD bgcolor=aaaa00ff>NOOP</TD></TR>
+</TABLE>
+
+<H3>VLIW</H3>
+<P>The VLIW instructions take 3-bits only for their opcode.  They are designed
+to use only the most used opcodes.
+<P>LDI will use all opcode bits, and the immediate field will be dedicated to
+	its immediate, allowing us to load any 8-bit signed constant
+	(-128 to 127).
+<P>MOV will use all opcode bits, and the extra bit selecting reg/imm will
+	be extended to be an immediate bit, so that we can have any 4'bit
+	register offset (-8 to 7)
+<P>To make this more usable, the LOD/STO instructions will assume the register
+	is SP if no register is given.  This will allow us to offset the stack
+	by anything between -64 to 63.  Useful enough to get just about
+	anything.
+<H3>SIM Codes</H3>
+<P>SIM and NOOP instructions are both 32-bit instructions, and both take an
+	18-bit immediate.
+	This immediate, together with the destination register, is ignored by
+		the CPU--only the simulation pays attention to either.
+	SIM and NOOP instructions are to be treated identically by the
+		simulation (if the CPU is run within a simulation).
+	The CPU will create an illegal instruction on any SIM opcode outside
+	of the simulator, and ignore any NOOP instruction--no matter what
+		the immediate.
+	Particular immediate values include:
+<OL>
+<LI>SIMEXIT: with an 8-bit (signed) exit code
+<LI>SIMNOOP: useful for testing if the simulator is present.  Will cause an
+	ILLegal instruction if the simulator is not present, but ignored
+	otherwise.  This will be the immediate value of zero.
+<LI>SIMDUMP: dump the CPU state (all the registers) to the output
+<LI>(Console read/write can be done via UART, so not necessary here.)
+</OL>
+<H3>8-bit bytes</H3>
+<P>This particular change is designed to create support for 8-bit bytes.
+	Specifically, we added support for LH, SH, LB, and SB instructions
+	(Load and store 16-bits, or load and store 8-bits.) 
+<P>As a consequence, the bottom 2-bits of any address no longer traverse the
+	bus.
+<H3>Together</H3>
+While the VLIW instruction set works well without this change, this
+change renders the 3'bit register offsets difficult to use.  Two examples:
+<OL>
+<LI>The original VLIW allowed a JSR instruction: MOV 1(PC),R0, LOD(PC),PC.  The
+	new version would need to be replaced with MOV 4(PC),R0 and LOD(PC),PC,
+	but 4 doesn't fit in 3-signed bits.
+<LI>  Further, a 3'bit offset to a LOD or STO instruction makes no sense.
+</OL>
+
+<!-- Colors: FP = ffc8bb, DIV = ffbbff, MOV=fff777,
+		MPY=bbcfef, LOD=d9ffbb, NOOP==aaaa00ff,
+		LDI=dfdfbf
+ -->
+</BODY></HTML>
