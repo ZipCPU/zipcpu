@@ -9,7 +9,7 @@ load_generic_config "sim"
 # basic-sim.exp is a basic description for the standard Cygnus simulator
 load_base_board_description "basic-sim"
 
-# zip is the name o fthe sim subdir
+# zip is the name of the sim subdir
 setup_sim zip
 
 # No multilib options needed by default
@@ -22,21 +22,23 @@ set_board_info compiler "[find_gcc]"
 # We only support newlib on this targte.
 # However, we include libgloss so we can find the linker scripts
 set_board_info cflags "[newlib_include_flags] [libgloss_include_flags]"
-set_board_info ldflags "[newlib_link_flags]"
+set_board_info ldflags "[newlib_link_flags] -lzipbasic"
 
 # For now, the simulator won't return an exit status and we'll need to indicate
 # this, the standard GCC wrapper will work with this target.
 set_board_info needs_status_wrapper 1
 
 # The linker script for this board
-# set_board_info ldscript "-Tzipsim.ld"
+set_board_info ldscript "-Tzipsim.ld"
 
 # Can't pass arguments to this target
 set_board_info noargs 1
 
 # No signals
 set_board_info gdb,nosignals 1
+# Cant return results
 set_board_info gdb,noresults 1
+# Doesnt do inferiori
 set_board_info gdb,noinferiorio 1
 
 # And it can't call functions
