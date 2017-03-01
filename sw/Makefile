@@ -69,6 +69,7 @@ install: basic-install
 all: basic-install binutils-pdf-install gcc-pdf-install
 basic-install: gas-install gcc-install newlib-install
 build: gas gcc-all nlib
+CC: gcc
 
 BINUTILSD=binutils-2.27
 GCCD=gcc-6.2.0
@@ -100,6 +101,7 @@ binutils: $(BUILDGASD)/nonce.txt
 .PHONY: binutils-install
 binutils-install: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) install
+	cp ../bench/zipsim.ld install/cross-tools/zip/lib/ldscripts
 
 .PHONY: binutils-pdf
 binutils-pdf: binutils
@@ -121,6 +123,8 @@ gas: binutils
 .PHONY: gas-install
 gas-install: binutils-install
 
+# We can also set the environment variable DEJAGNU to point to our site .exp
+# file.
 gas-check: binutils-install
 	+$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
 #
@@ -146,6 +150,11 @@ $(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt gas-install
 # built compiler.
 #
 #
+genzipops: $(GCCD)-zip/gcc/config/zip/genzipops.c $(GCCD)-zip/nonce.txt
+	$(CC) $< -o $@
+$(GCCD)-zip/gcc/config/zip/zip-ops.md: genzipops
+	genzipops > $@
+
 gcc-host: $(BUILDGCCD)/nonce.txt
 	+$(SUBMAKE) --directory=$(BUILDGCCD) all-host
 .PHONY: zip-gcc
@@ -183,7 +192,6 @@ gcc-pdf: $(BUILDGCCD)/nonce.txt
 
 gcc-pdf-install: gcc-pdf $(PDFD)/
 	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
-
 
 #
 #
