@@ -24,6 +24,7 @@
 * ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 * for more details.
+*
 * You should have received a copy of the GNU General Public License along
 * with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 * target there if the PDF file isn't present.)  If not, see
@@ -39,8 +40,8 @@ ENTRY(_start)
 
 MEMORY
 {
-	flash  (rx) : ORIGIN = 0x1000000, LENGTH = 0x1000000 /* 2^24 = 16MB */
-	sdram  (wx) : ORIGIN = 0x4000000, LENGTH = 0x4000000 /* 2^26 = 64MB */
+	flash  (wx) : ORIGIN = 0x01000000, LENGTH = 0x01000000 /* 2^24 =  16MB */
+	sdram  (wx) : ORIGIN = 0x10000000, LENGTH = 0x10000000 /* 2^28 = 256MB */
 }
 
 _flash	= ORIGIN(flash);
@@ -52,12 +53,12 @@ SECTIONS
 {
 	.rocode ORIGIN(flash) : {
 		_boot_address = .;
-		*(.start) *(.boot)
+		*(.start)
 		} > flash
 	_kernel_image_start = . ;
 	_kernel_image_end = . ;
 	_sdram_image_start = . ;
-	.ramcode : {
+	.ramcode ORIGIN(sdram) : {
 		*(.kernel)
 		*(.text.startup)
 		*(.text)
