@@ -203,7 +203,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
 --- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-02-21 16:49:14.639211315 -0500
++++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-03-01 15:51:53.300228357 -0500
 @@ -0,0 +1,190 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -341,7 +341,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +#define	_ZIP_HAS_WBUARTX
 +#define	_uarttx		_uart->u_tx
 +#define	_ZIP_HAS_WBUARTRX
-+#define	_uartrx	_	uart->u_rx
++#define	_uartrx		_uart->u_rx
 +#define	_ZIP_HAS_UARTSETUP
 +#define	_uartsetup	_uart->u_setup
 +
@@ -397,7 +397,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-02-21 16:49:14.639211315 -0500
++++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-03-01 15:51:53.300228357 -0500
 @@ -0,0 +1,190 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -535,7 +535,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +#define	_ZIP_HAS_WBUARTX
 +#define	_uarttx		_uart->u_tx
 +#define	_ZIP_HAS_WBUARTRX
-+#define	_uartrx	_	uart->u_rx
++#define	_uartrx		_uart->u_rx
 +#define	_ZIP_HAS_UARTSETUP
 +#define	_uartsetup	_uart->u_setup
 +
@@ -5153,8 +5153,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-02-21 16:47:14.172169605 -0500
-@@ -0,0 +1,326 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-03-01 15:49:08.024224966 -0500
+@@ -0,0 +1,374 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -5203,6 +5203,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +void
 +_outbyte(char v) {
 +#ifdef	_ZIP_HAS_WBUART
++	if (v == '\n') {
++		// Depend upon the WBUART, not the PIC
++		while(_uart->u_fifo & 0x010000)
++			;
++		_uarttx = (unsigned)'\r';
++	}
++
 +	// Depend upon the WBUART, not the PIC
 +	while(_uart->u_fifo & 0x010000)
 +		;
@@ -5216,6 +5223,41 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +	uint8_t c = v;
 +	UARTTX = (unsigned)c;
 +#endif
++#endif
++}
++
++int
++_inbyte(void) {
++#ifdef	_ZIP_HAS_WBUARTRX
++	const	int	echo = 1, cr_into_nl = 1;
++	static	int	last_was_cr = 0;
++	int	rv;
++
++	// Character translations:
++	// 1. All characters should be echoed
++	// 2. \r's should quietly be turned into \n's
++	// 3. \r\n's should quietly be turned into \n's
++	// 4. \n's should be passed as is
++	// Insist on at least one character
++	rv = _uartrx;
++	if (rv & 0x0100)
++		rv = -1;
++	else if ((cr_into_nl)&&(rv == '\r')) {
++		rv = '\n';
++		last_was_cr = 1;
++	} else if ((cr_into_nl)&&(rv == '\n')) {
++		if (last_was_cr) {
++			rv = -1;
++			last_was_cr = 0;
++		}
++	} else
++		last_was_cr = 0;
++
++	if ((rv != -1)&&(echo))
++		_outbyte(rv);
++	return rv;
++#else
++	return -1;
 +#endif
 +}
 +
@@ -5267,7 +5309,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +}
 +
 +int
-+_gettimeofday(struct _reent *reent, struct timeval *ptimeval, void *ptimezone)
++_gettimeofday_r(struct _reent *reent, struct timeval *ptimeval, void *ptimezone)
 +{
 +#ifdef	_ZIP_HAS_RTC
 +	if (ptimeval) {
@@ -5332,9 +5374,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +		ptimeval->tv_usec = 0;
 +	}
-+#endif
++	return 0;
++#else
 +	reent->_errno = ENOSYS;
 +	return -1;
++#endif
 +}
 +
 +int
@@ -5397,15 +5441,19 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int
 +_read_r(struct _reent *reent, int file, void *ptr, size_t len)
 +{
-+#ifdef	_ZIP_HAS_UARTRX
++#ifdef	_ZIP_HAS_WBUARTRX
 +	if (STDIN_FILENO == file)
 +	{
 +		int	nr = 0, rv;
 +		char	*chp = ptr;
-+		while(nr < len) {
-+			do {
-+				rv = _uartrx;
-+			} while(rv & 0x0100);
++
++		while((rv=_inbyte()) &0x0100)
++			;
++		*chp++ = (char)rv;
++		nr++;
++
++		// Now read out anything left in the FIFO
++		while((nr < len)&&(((rv=_inbyte()) & 0x0100)==0)) {
 +			*chp++ = (char)rv;
 +			nr++;
 +		}
