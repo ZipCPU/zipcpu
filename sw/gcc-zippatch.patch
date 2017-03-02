@@ -729,8 +729,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-01 15:45:33.608220567 -0500
-@@ -0,0 +1,2696 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-01 21:23:03.492636061 -0500
+@@ -0,0 +1,2686 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -2851,15 +2851,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	fprintf(stream, "\t.equ %s, %s\n", name, value);
 +}
 +
-+#define	USE_SUBREG
-+#ifdef	USE_SUBREG
-+#define	SREG_P(RTX) ((SUBREG_P(RTX))&&(REG_P(XEXP(RTX,0))))
-+#define	SMEM_P(RTX) ((SUBREG_P(RTX))&&(MEM_P(XEXP(RTX,0))))
-+#else
-+#define	SREG_P(RTX)	false
-+#define	SMEM_P(RTX)	false
-+#endif
-+
 +const char *zip_set_zero_or_one(rtx condition, rtx dst) {
 +	ZIPDEBUGFLAG(dbg, false);
 +
@@ -2937,7 +2928,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	// MOV REG->MEM (a store instruction)
 +	if ((MEM_P(dst))&&(REG_P(src))) {
 +		rtx	addr = XEXP(dst,0);
-+		unsigned long	offset = 0;
++		long	offset = 0;
 +		if ((GET_CODE(addr)==PLUS)&&(CONST_INT_P(XEXP(addr,1))))
 +			offset = INTVAL(XEXP(addr,1));
 +
@@ -2948,7 +2939,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		} else if ((GET_CODE(addr)==PLUS)
 +			&&(REG_P(XEXP(addr,0)))
 +			&&(CONST_INT_P(XEXP(addr,1)))
-+			&&(offset+4<(unsigned)zip_max_anchor_offset)) {
++			&&(offset>=(long)zip_min_anchor_offset)
++			&&(offset+4<(long)zip_max_anchor_offset)) {
 +			// Demonstrated and works
 +			emit_insn(gen_movdi_raw(dst, src));
 +			return 1;
@@ -2963,22 +2955,20 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	// MOV MEM->REG (a load instruction)
 +	if ((REG_P(dst))&&(MEM_P(src))) {
 +		rtx addr = XEXP(src,0);
-+		unsigned long	offset = 0;
++		long	offset = 0;
 +		if ((GET_CODE(addr)==PLUS)&&(CONST_INT_P(XEXP(addr,1))))
 +			offset = INTVAL(XEXP(addr,1));
 +
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- MEM->REG\n");
 +		if (REG_P(addr)) {
 +			if (dbg) fprintf(stderr, "ZIP::MOVDI -- MEM[R]->REG\n");
-+			emit_insn(gen_movsi(
-+				gen_rtx_SUBREG(SImode, dst, 0),
-+				gen_rtx_MEM(SImode, addr)));
 +			emit_insn(gen_movdi_raw(dst, src));
 +			return 1;
 +		} else if ((GET_CODE(addr)==PLUS)
 +			&&(REG_P(XEXP(addr,0)))
 +			&&(CONST_INT_P(XEXP(addr,1)))
-+			&&(offset+4<(unsigned)zip_max_anchor_offset)) {
++			&&(offset>=(long)zip_min_anchor_offset)
++			&&(offset+4<(long)zip_max_anchor_offset)) {
 +			if (dbg) fprintf(stderr, "ZIP::MOVDI -- MEM[#+R]->REG -- DONE\n");
 +			emit_insn(gen_movdi_raw(dst, src));
 +			return 1;
