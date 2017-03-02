@@ -139,7 +139,12 @@ $(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch
 	rm -rf $(BUILDGCCD)
 	touch $(GCCD)-zip/nonce.txt
 
-$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt gas-install
+genzipops: $(GCCD)-zip/gcc/config/zip/genzipops.c $(GCCD)-zip/nonce.txt
+	$(CC) $< -o $@
+$(GCCD)-zip/gcc/config/zip/zip-ops.md: genzipops
+	genzipops > $@
+
+$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt $(GCCD)-zip/gcc/config/zip/zip-ops.md gas-install
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
 	touch $(BUILDGCCD)/nonce.txt
 
@@ -150,11 +155,6 @@ $(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt gas-install
 # built compiler.
 #
 #
-genzipops: $(GCCD)-zip/gcc/config/zip/genzipops.c $(GCCD)-zip/nonce.txt
-	$(CC) $< -o $@
-$(GCCD)-zip/gcc/config/zip/zip-ops.md: genzipops
-	genzipops > $@
-
 gcc-host: $(BUILDGCCD)/nonce.txt
 	+$(SUBMAKE) --directory=$(BUILDGCCD) all-host
 .PHONY: zip-gcc
