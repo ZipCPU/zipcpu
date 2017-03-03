@@ -105,8 +105,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 
 
 	wire	[4:0]	w_op;
-	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev, w_noop,
-			w_mpy;
+	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev, w_noop;
 	wire	[4:0]	w_dcdR, w_dcdB, w_dcdA;
 	wire		w_dcdR_pc, w_dcdR_cc;
 	wire		w_dcdA_pc, w_dcdA_cc;
@@ -189,8 +188,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		endcase
 `endif
 `else
-	always @(iword)
-		w_cis_op <= w_op;
+	wire	[4:0]	w_cis_op;
+	assign	w_cis_op = w_op;
 `endif
 
 	assign	w_op= iword[26:22];
