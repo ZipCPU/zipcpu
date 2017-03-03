@@ -99,9 +99,22 @@ syn keyword zipregisters gbl sp cc pc lr fp ulr ufp usp ucc upc
 "floating point classes
 
 "Data allocation syntax
-syn match zipdata "word\s*\>"
-syn match zipdata "fill\s*\>"
-syn match zipdata "stringz\=\(\(\(\.ua\)\=\(\.msb\|\.lsb\)\=\)\|\(\(\.msb\|\.lsb\)\=\(\.ua\)\=\)\)\=\>"
+syn match zipdata "\.ascii\s*\>"
+syn match zipdata "\.asciz\s*\>"
+syn match zipdata "\.byte\s*\>"
+syn match zipdata "\.short\s*\>"
+syn match zipdata "\.word\s*\>"
+syn match zipdata "\.int\s*\>"
+syn match zipdata "\.long\s*\>"
+syn match zipdata "\.single\s*\>"
+syn match zipdata "\.float\s*\>"
+syn match zipdata "\.skip\s*\>"
+syn match zipdata "\.fill\s*\>"
+syn match zipdata "\.set\s*\>"
+syn match zipdata "string8\=\(\(\(\.ua\)\=\(\.msb\|\.lsb\)\=\)\|\(\(\.msb\|\.lsb\)\=\(\.ua\)\=\)\)\=\>"
+syn match zipdata "string16\=\(\(\(\.ua\)\=\(\.msb\|\.lsb\)\=\)\|\(\(\.msb\|\.lsb\)\=\(\.ua\)\=\)\)\=\>"
+syn match zipdata "string32\=\(\(\(\.ua\)\=\(\.msb\|\.lsb\)\=\)\|\(\(\.msb\|\.lsb\)\=\(\.ua\)\=\)\)\=\>"
+syn match zipdata "string64\=\(\(\(\.ua\)\=\(\.msb\|\.lsb\)\=\)\|\(\(\.msb\|\.lsb\)\=\(\.ua\)\=\)\)\=\>"
 
 " Define the default highlighting.
 " For version 5.8 and later: only when an item doesn't have highlighting yet
