@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-01 15:33:18.388205481 -0500
-@@ -0,0 +1,3308 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-03 09:35:15.463310260 -0500
+@@ -0,0 +1,3325 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -1814,10 +1814,27 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +
 +void	md_end(void) { }
 +
++void	zip_cons_align(int n) {
++	int	lg;
++	for(lg=0; ((1<<lg)<n)&&(lg<2); lg++)
++		;
++	do_align(lg, NULL, 0, (1<<lg)-1);
++}
++
++void	zip_flush_pending_output(void) {
++	// If the Assembler is going to stuff things into our output stream,
++	// then we need to make certain that any instructions that follow
++	// dont try to merge with anything previous.  i.e., CIS = false.
++	cis_mergable = FALSE;
++}
++
 +int	zip_address_bytes(void) { return 4; }
 +
 +const	pseudo_typeS	md_pseudo_table[] = 
 +{
++	{ "word", cons, 4 },	// ZipCPU word size is 4, not 2
++	{ "long", cons, 8 },	// ZipCPU longs are 64-bits, not 32
++	{ "quad", cons,16 },	// ZipCPU QUAD-words are 128-bits, not 64
 +	{ NULL, NULL, 0 }
 +};
 +
@@ -5017,8 +5034,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +}
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
 --- binutils-2.27/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.h	2017-01-24 15:59:39.640740398 -0500
-@@ -0,0 +1,188 @@
++++ binutils-2.27-zip/gas/config/tc-zip.h	2017-03-03 09:35:34.527310651 -0500
+@@ -0,0 +1,191 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.h
@@ -5094,9 +5111,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip
 + * before a data allocation pseudo-op.
 + *
 + */
-+// #define	md_cons_align(N)	zip_cons_align(N)
++#define	md_cons_align(N)	zip_cons_align(N)
++extern	void	zip_cons_align(int);
 +
-+/* TI implements the tic4x_do_align --- do we need it? */
++#define	md_flush_pending_output	zip_flush_pending_output
++extern	void	zip_flush_pending_output(void);
++
 +
 +/* This macro is the BFD target name to use when creating the output
 +* file.  This will normally depend upon the OBJ_FMT macro. */
@@ -6710,8 +6730,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2017-02-18 12:48:10.626349391 -0500
-@@ -0,0 +1,458 @@
++++ binutils-2.27-zip/opcodes/zip-dis.c	2017-03-03 09:34:03.983308793 -0500
+@@ -0,0 +1,474 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -7096,6 +7116,22 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	char	astr[80], bstr[80];
 +	unsigned char ibytes[12];
 +	uint32_t	refaddr = 0;
++
++	// Deal with misalignment ...
++	if ((vma & 3)!=0) {
++		int	consumed = 0;
++
++		// Consume up to four bytes, after a zero (possibly multiple),
++		// though, align ourselves
++		(*info->read_memory_func)(vma, ibytes, 4, info);
++		while((consumed<4)&&(ibytes[consumed]!=0))
++			consumed++;
++		while((consumed<4)&&(ibytes[consumed]==0))
++			consumed++;
++		if (consumed <= 1)
++			consumed = 1;
++		return consumed;
++	}
 +
 +	// Always read the first word
 +	(*info->read_memory_func)(vma, ibytes, 4, info);

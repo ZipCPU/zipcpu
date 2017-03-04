@@ -4105,8 +4105,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/config/zip/zip.h
 --- gcc-6.2.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-02-17 16:46:46.807848329 -0500
-@@ -0,0 +1,4102 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-03-03 09:30:57.671304970 -0500
+@@ -0,0 +1,4114 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -7101,7 +7101,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 +/* 17.20 Defining the Output Assembler Language */
 +
-+/* 17.20.4 Output of Data */
++/* 17.20.2 Output of Data */
 +
 +/* These hooks (above) specify assembly directives for creating certain kinds
 + * of integer objects.  The TARGET_ASM_BYTE_OP directive creates a byte-sized
@@ -7113,6 +7113,18 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * immediately by the object's initial value.  In most cases, the string should
 + * contain a tab, a pseudo op, and then another tab.
 + */
++
++#undef	TARGET_ASM_ALIGNED_HI_OP
++#undef	TARGET_ASM_ALIGNED_SI_OP
++// #undef	TARGET_ASM_ALIGNED_DI_OP
++#define	TARGET_ASM_ALIGNED_HI_OP	".short"
++// The assembler is set up to call a 4-byte integer a long.  This definition of
++// a long isn't consistent with the compilers definition.  For this reason,
++// the ZipCPU backend for the GNU Assembler defines a long as a 64-bit number,
++// and an int as a 32-bit number.
++#define	TARGET_ASM_ALIGNED_SI_OP	".int"
++// #define	TARGET_ASM_ALIGNED_DI_OP	".long"	
++
 +
 +/* 17.20.4 Output and Generation of Labels */
 +
