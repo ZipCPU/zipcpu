@@ -411,7 +411,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 				o_pc <= { i_pc + 1'b1, 1'b0 };
 `else
 			o_gie<= i_gie;
-			o_pc <= i_pc+{{(AW-1){1'b0}},1'b1};
+			o_pc <= { i_pc + 1'b1, 1'b0 };
 `endif
 
 			// Under what condition will we execute this
