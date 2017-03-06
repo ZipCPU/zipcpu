@@ -8,7 +8,7 @@
 #		zipsystem.  Specifically, it builds the final C++ portion
 #	of the simulator, and thus the final simulator executable.
 #
-#	This simulator depends upon the ncurses library.
+#	This simulator depends upon the libelf and ncurses libraries.
 #
 #	Useful targets of this makefile include:
 #

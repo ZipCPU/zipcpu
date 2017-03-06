@@ -120,7 +120,7 @@ module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc, i_aux,
 		if ((o_wb_cyc)&&(i_wb_ack))
 		begin
 			o_valid <= (i_pc == o_wb_addr)&&(~i_wb_err);
-			o_illegal <= i_wb_err;
+			o_illegal <= (i_wb_err)&&(i_pc == o_wb_addr);
 		end else if (i_stalled_n)
 		begin
 			o_valid <= 1'b0;
