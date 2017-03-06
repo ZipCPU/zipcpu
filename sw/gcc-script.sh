@@ -82,4 +82,4 @@ LD_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ld
         --without-fp --with-newlib
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
-	|| PATH=${INSTALL_BASE}/cross-tools/bin:$PATH
+	|| export PATH=$PATH:${INSTALL_BASE}/cross-tools/bin
