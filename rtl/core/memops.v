@@ -182,7 +182,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		4'b01??: o_result <= i_wb_data;
 		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
 		4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
-		4'h1100: o_result <= { 24'h00, i_wb_data[31:24] };
+		4'b1100: o_result <= { 24'h00, i_wb_data[31:24] };
 		4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
 		4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
 		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
