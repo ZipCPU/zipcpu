@@ -1705,7 +1705,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-03 09:35:15.463310260 -0500
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-06 16:15:12.977121009 -0500
 @@ -0,0 +1,3325 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -3107,7 +3107,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		insn_form = NO_OP;
 +	} else if (strcasecmp(opstr, "BUSY")==0) {
 +		insn->i_op = ZIPO_BUSY;
-+		insn->i_imm= -1;
++		insn->i_imm= -4;
 +		insn->i_areg = ZIP_PC;
 +		insn->i_breg = ZIP_RNONE;
 +		insn_form = NO_OP;
@@ -4378,7 +4378,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				// LW (PC),PC
 +				// _somewhere_
 +				insn->i_naux = 2;
-+				insn->i_code = SMPLMOV(insn->i_cnd, 1, ZIP_PC,
++				insn->i_code = SMPLMOV(insn->i_cnd, 2, ZIP_PC,
 +					ZIP_LR);
 +				insn->i_aux[0] = DBLREGOP(ZIPO_LW,ZIPC_ALWAYS,
 +					0,ZIP_PC,ZIP_PC); // Load into PC register
@@ -4396,12 +4396,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				ZIP_CONDITION cnd =
 +					zip_negate_condition(insn->i_cnd);
 +				insn->i_code = IMMOP(ZIPO_ADD, cnd, 12, ZIP_PC);
-+				insn->i_aux[0] = SMPLMOV(ZIPC_ALWAYS, 1, ZIP_PC,
++				insn->i_aux[0] = SMPLMOV(ZIPC_ALWAYS, 2, ZIP_PC,
 +					ZIP_LR);
 +				insn->i_aux[1] = DBLREGOP(ZIPO_LW, ZIPC_ALWAYS,
 +					0,ZIP_PC,ZIP_PC); // Load into PC register
 +			} else {
-+				insn->i_code = SMPLMOV(ZIPC_V, 1, ZIP_PC,
++				insn->i_code = SMPLMOV(ZIPC_V, 3, ZIP_PC,
 +					ZIP_LR);
 +				insn->i_aux[0] = DBLREGOP(ZIPO_LW, ZIPC_V,
 +					0,ZIP_PC,ZIP_PC); // Load into PC register
@@ -7257,7 +7257,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-03-01 15:30:32.632202080 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2017-03-06 14:00:55.404955681 -0500
 @@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7322,7 +7322,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +	// Conditional branches
 +	//	0.1111.0111.ccc.0.111.10iiiii--
 +	//	0111 1011 11cc c011 110i iiii iiii iiii
-+	{ "BUSY", 0xffc7ffff, 0x7883ffff, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
++	{ "BUSY", 0xffc7fffc, 0x7883fffc, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_BITFIELD(3,19) },
 +	{ "BZ",  0xfffc0000, 0x78880000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BLT", 0xfffc0000, 0x78900000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
 +	{ "BC",  0xfffc0000, 0x78980000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(18,0), ZIP_OPUNUSED },
