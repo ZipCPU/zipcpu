@@ -782,7 +782,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else if ((wr_reg_ce)&&(op_Bid == wr_reg_id)&&(op_rB))
 			r_op_Bv <= wr_gpreg_vl;
 `else
-		r_op_Bv <= w_op_BnI + dcd_I;
+		if ((dcd_Bpc)&&(dcd_rB))
+			r_op_Bv <= w_pcB_v + { dcd_I[29:0], 2'b00 };
+		else
+			r_op_Bv <= w_op_BnI + dcd_I;
 `endif
 
 	// The logic here has become more complex than it should be, no thanks
@@ -1865,7 +1868,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else if ((alu_gie==gie)&&(
 				((alu_pc_valid)&&(~clear_pipeline))
 				||(mem_pc_valid)))
-			pf_pc <= { alu_pc[(AW+1):2], 2'b00 };
+			pf_pc <= { alu_pc[(AW-1):0], 2'b00 };
 `endif
 
 `ifdef	OPT_PIPELINED
