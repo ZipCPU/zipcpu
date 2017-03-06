@@ -302,8 +302,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-01 16:08:32.168248852 -0500
-@@ -0,0 +1,423 @@
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-06 16:35:56.521146524 -0500
+@@ -0,0 +1,444 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	genzipops.c
@@ -360,7 +360,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +//
++#include <unistd.h>
++#include <stdlib.h>
 +#include <stdio.h>
++#include <string.h>
 +
 +void	legal(FILE *fp) {
 +	fprintf(fp, ""
@@ -598,21 +601,45 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +	md_opname, md_cond, md_cond, zip_cond);
 +}
 +
-+int main(int argc, char **argv) {
-+	legal(stdout);
-+	genzipop(stdout, "addsi3",  "plus:SI",    "",             "ADD");
-+	genzipop(stdout, "subsi3",  "minus:SI",   "",             "SUB");
-+	genzipop(stdout, "mulsi3",  "mult:SI",    "",             "MPY");
-+	genzipop(stdout, "divsi3",  "div:SI",     "(ZIP_DIVIDE)", "DIVS");
-+	genzipop(stdout, "udivsi3", "udiv:SI",    "(ZIP_DIVIDE)", "DIVU");
-+	genzipop(stdout, "andsi3",  "and:SI",     "",             "AND");
-+	genzipop(stdout, "iorsi3",  "ior:SI",     "",             "OR");
-+	genzipop(stdout, "xorsi3",  "xor:SI",     "",             "XOR");
-+	genzipop(stdout, "ashrsi3", "ashiftrt:SI","",             "ASR");
-+	genzipop(stdout, "ashlsi3", "ashift:SI",  "",             "LSL");
-+	genzipop(stdout, "lshrsi3", "lshiftrt:SI","",             "LSR");
++void	usage(void) {
++	printf("USAGE: genzipops <new-zip-ops.md filename>\n");
++}
 +
-+	genzipop_long(stdout, "smulsi_highpart",
++const	char	*TMPPATH = ".zip-ops.md";
++const	char	*TAILPATH = "zip-ops.md";
++
++int main(int argc, char **argv) {
++	FILE	*fp = fopen(TMPPATH, "w");
++	const char	*newname = TAILPATH;
++
++	if ((argc>1)&&(argv[1][0] == '-')) {
++		usage();
++		exit(EXIT_FAILURE);
++	}
++
++	if (argc>1) {
++		if ((strlen(argv[1])>=strlen(TAILPATH))
++			&&(strcmp(&argv[1][strlen(argv[1])-strlen(TAILPATH)],
++				TAILPATH)==0)
++			&&(access(argv[1], F_OK)==0))
++				unlink(argv[1]);
++		newname = argv[1];
++	}
++
++	legal(fp);
++	genzipop(fp, "addsi3",  "plus:SI",    "",             "ADD");
++	genzipop(fp, "subsi3",  "minus:SI",   "",             "SUB");
++	genzipop(fp, "mulsi3",  "mult:SI",    "",             "MPY");
++	genzipop(fp, "divsi3",  "div:SI",     "(ZIP_DIVIDE)", "DIVS");
++	genzipop(fp, "udivsi3", "udiv:SI",    "(ZIP_DIVIDE)", "DIVU");
++	genzipop(fp, "andsi3",  "and:SI",     "",             "AND");
++	genzipop(fp, "iorsi3",  "ior:SI",     "",             "OR");
++	genzipop(fp, "xorsi3",  "xor:SI",     "",             "XOR");
++	genzipop(fp, "ashrsi3", "ashiftrt:SI","",             "ASR");
++	genzipop(fp, "ashlsi3", "ashift:SI",  "",             "LSL");
++	genzipop(fp, "lshrsi3", "lshiftrt:SI","",             "LSR");
++
++	genzipop_long(fp, "smulsi_highpart",
 +		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
 +		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
 +		"\t\t\t(sign_extend:DI (match_operand:SI 1 \"register_operand\" \"0\"))\n"
@@ -631,7 +658,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +		"\t\t\t(sign_extend:DI (match_operand:SI 1 \"zip_opb_operand_p\" \"rO\")))\n"
 +		"\t\t\t(const_int 32))))",
 +		"MPYSHI");
-+	genzipop_long(stdout, "umulsi_highpart",
++	genzipop_long(fp, "umulsi_highpart",
 +		"(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
 +		"\t\t(truncate:SI (ashiftrt:DI (mult:DI\n"
 +		"\t\t\t(zero_extend:DI (match_operand:SI 1 \"register_operand\" \"0\"))\n"
@@ -651,81 +678,75 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +		"\t\t\t(const_int 32))))",
 +		"MPYUHI");
 +
-+	gen_heading(stdout, "Conditional move instructions");
++	gen_heading(fp, "Conditional move instructions");
 +
-+	gencmov(stdout, "cmov", "eq", "Z");
-+	gencmov(stdout, "cmov", "ne", "NZ");
-+	gencmov(stdout, "cmov", "lt", "LT");
-+	gencmov(stdout, "cmov", "ge", "GE");
-+	gencmov(stdout, "cmov", "ltu", "C");
-+	gencmov(stdout, "cmov", "geu", "NC");
++	gencmov(fp, "cmov", "eq", "Z");
++	gencmov(fp, "cmov", "ne", "NZ");
++	gencmov(fp, "cmov", "lt", "LT");
++	gencmov(fp, "cmov", "ge", "GE");
++	gencmov(fp, "cmov", "ltu", "C");
++	gencmov(fp, "cmov", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional add instructions");
++	gen_heading(fp, "Conditional add instructions");
 +
-+	gencadd(stdout, "cadd", "eq", "Z");
-+	gencadd(stdout, "cadd", "ne", "NZ");
-+	gencadd(stdout, "cadd", "lt", "LT");
-+	gencadd(stdout, "cadd", "ge", "GE");
-+	gencadd(stdout, "cadd", "ltu", "C");
-+	gencadd(stdout, "cadd", "geu", "NC");
++	gencadd(fp, "cadd", "eq", "Z");
++	gencadd(fp, "cadd", "ne", "NZ");
++	gencadd(fp, "cadd", "lt", "LT");
++	gencadd(fp, "cadd", "ge", "GE");
++	gencadd(fp, "cadd", "ltu", "C");
++	gencadd(fp, "cadd", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional negate instructions");
++	gen_heading(fp, "Conditional negate instructions");
 +
-+	gencneg(stdout, "cneg", "eq", "Z");
-+	gencneg(stdout, "cneg", "ne", "NZ");
-+	gencneg(stdout, "cneg", "lt", "LT");
-+	gencneg(stdout, "cneg", "ge", "GE");
-+	gencneg(stdout, "cneg", "ltu", "C");
-+	gencneg(stdout, "cneg", "geu", "NC");
++	gencneg(fp, "cneg", "eq", "Z");
++	gencneg(fp, "cneg", "ne", "NZ");
++	gencneg(fp, "cneg", "lt", "LT");
++	gencneg(fp, "cneg", "ge", "GE");
++	gencneg(fp, "cneg", "ltu", "C");
++	gencneg(fp, "cneg", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional not instructions");
++	gen_heading(fp, "Conditional not instructions");
 +
-+	gencnot(stdout, "cnot", "eq", "Z");
-+	gencnot(stdout, "cnot", "ne", "NZ");
-+	gencnot(stdout, "cnot", "lt", "LT");
-+	gencnot(stdout, "cnot", "ge", "GE");
-+	gencnot(stdout, "cnot", "ltu", "C");
-+	gencnot(stdout, "cnot", "geu", "NC");
++	gencnot(fp, "cnot", "eq", "Z");
++	gencnot(fp, "cnot", "ne", "NZ");
++	gencnot(fp, "cnot", "lt", "LT");
++	gencnot(fp, "cnot", "ge", "GE");
++	gencnot(fp, "cnot", "ltu", "C");
++	gencnot(fp, "cnot", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional and instructions");
++	gen_heading(fp, "Conditional and instructions");
 +
-+	gencand(stdout, "cand", "eq", "Z");
-+	gencand(stdout, "cand", "ne", "NZ");
-+	gencand(stdout, "cand", "lt", "LT");
-+	gencand(stdout, "cand", "ge", "GE");
-+	gencand(stdout, "cand", "ltu", "C");
-+	gencand(stdout, "cand", "geu", "NC");
++	gencand(fp, "cand", "eq", "Z");
++	gencand(fp, "cand", "ne", "NZ");
++	gencand(fp, "cand", "lt", "LT");
++	gencand(fp, "cand", "ge", "GE");
++	gencand(fp, "cand", "ltu", "C");
++	gencand(fp, "cand", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional ior instructions");
++	gen_heading(fp, "Conditional ior instructions");
 +
-+	gencior(stdout, "cior", "eq", "Z");
-+	gencior(stdout, "cior", "ne", "NZ");
-+	gencior(stdout, "cior", "lt", "LT");
-+	gencior(stdout, "cior", "ge", "GE");
-+	gencior(stdout, "cior", "ltu", "C");
-+	gencior(stdout, "cior", "geu", "NC");
++	gencior(fp, "cior", "eq", "Z");
++	gencior(fp, "cior", "ne", "NZ");
++	gencior(fp, "cior", "lt", "LT");
++	gencior(fp, "cior", "ge", "GE");
++	gencior(fp, "cior", "ltu", "C");
++	gencior(fp, "cior", "geu", "NC");
 +
-+	gen_heading(stdout, "Conditional xor instructions");
++	gen_heading(fp, "Conditional xor instructions");
 +
-+	gencxor(stdout, "cxor", "eq", "Z");
-+	gencxor(stdout, "cxor", "ne", "NZ");
-+	gencxor(stdout, "cxor", "lt", "LT");
-+	gencxor(stdout, "cxor", "ge", "GE");
-+	gencxor(stdout, "cxor", "ltu", "C");
-+	gencxor(stdout, "cxor", "geu", "NC");
++	gencxor(fp, "cxor", "eq", "Z");
++	gencxor(fp, "cxor", "ne", "NZ");
++	gencxor(fp, "cxor", "lt", "LT");
++	gencxor(fp, "cxor", "ge", "GE");
++	gencxor(fp, "cxor", "ltu", "C");
++	gencxor(fp, "cxor", "geu", "NC");
 +
-+/*
-+	fprintf(stdout, ";\n;\n"
-+"(define_split\n"
-+"\t[(set (match_operand:SI 0 \"register_operand\" \"=r\")\n"
-+"\t\t(plus:SI (match_operand:SI 1 \"register_operand\" \"r\")\n"
-+"\t\t\t	(match_operand:SI 2 \"const_int_operand\" \"M\")))\n"
-+"\t\t(clobber (reg:CC CC_REG))]\n"
-+"\t\"(reload_completed)&&((REGNO(operands[0]))!=(REGNO(operands[1])))\"\n"
-+"\t[(set (match_dup 0) (plus:SI (match_dup 1) (match_dup 2)))]\n"
-+"\t\"\")\n");
-+*/
++	fclose(fp);
 +
++	if (rename(TMPPATH, newname) != 0) {
++		fprintf(stderr, "ERR: Could not create %s, leaving results in %s\n", newname, TMPPATH);
++		exit(EXIT_FAILURE);
++	} exit(EXIT_SUCCESS);
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
