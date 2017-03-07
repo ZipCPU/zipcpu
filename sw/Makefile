@@ -143,7 +143,7 @@ $(GCCD)-zip/gcc/config/zip/genzipops.c: $(GCCD)-zip/nonce.txt
 genzipops: $(GCCD)-zip/gcc/config/zip/genzipops.c $(GCCD)-zip/nonce.txt
 	$(CC) $< -o $@
 $(GCCD)-zip/gcc/config/zip/zip-ops.md: genzipops
-	genzipops $@
+	./genzipops $@
 
 $(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt $(GCCD)-zip/gcc/config/zip/zip-ops.md gas-install
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
