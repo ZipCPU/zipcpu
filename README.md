@@ -35,7 +35,7 @@ branch:
 - The two simulators are designed to closely match the performance of a bare-bones [basic ZipCPU system](https://github.com/ZipCPU/zbasic).  Further, the newlib library as built is designed to support this minimum ZipCPU implementation.
 - The Assembler now implements the Compressed Instruction Set by default when it can.  (This instruction set was formerly and inappropriately named the VLIW instruction set.  It has since been redesigned.)  Instruction words using this format can pack two instructions into a single instruction word.
 
-Current work is focused on getting newlib to work on the ZipCPU.
+Current work is focused on getting newlib to work on the ZipCPU.  Results using newlib right now are mixed, and would probably be greatly improved with a proper test-suite.
 
 ## Not yet integrated
 
