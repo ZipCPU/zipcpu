@@ -1,7 +1,7 @@
 # The Zip CPU
 
 The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
-- 32-bit.  All registers, addresses, and instructions are 32-bits in length.  ~~Indeed, the "byte size" for this processor is 32-bits.~~  _This particular branch has been built to test out whether or not 8-bit bytes can be done without too much pain_
+- 32-bit.  All registers, addresses, and instructions are 32-bits in length.  While the byte-size itself was at one time 32-bits, the CPU now handles 8-bit bytes like all other CPUs
 - A RISC CPU.  The ZipCPU does not implement any microcode for executing instructions.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (sometime) floating point instructions.
 - A load/store architecture.  Only load and store instructions may access memory.
 - Wishbone compliant.  All memory and peripherals are accessed across a single wishbone bus.
@@ -14,15 +14,13 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 - Only 29 instructions are currently implemented.  Six additional instructions have been reserved for a floating point unit, but such a unit has yet to be implemented.
 - (Almost) all instructions can be executed conditionally.  Exceptions include load immediate, the debug break instruction, the bus lock and simulation instructions, and the no-operation instruction.
-- Simplfied wishbone bus.  While the ZipCPU conforms to the Wishbone B4 standard, some simplifications have been made.  All tgx lines have been removed, ~~as have the select lines~~ although the select lines have been kept.  All accesses are (or can be) pipelined.  Finally, the ZipCPU project (and its daughter projects/[peripherals](rtl/peripherals) assumes that the strobe line is zero whenever the cycle is zero.  This simplifies peripheral processing.
-- ~~Did I mention that the select lines were removed from the wishbone bus?  That means that `sizeof(char)=sizeof(int)`, and both are 32-bit values.~~ This branch is testing whether or not sizeof(char)x4 can be sizeof(int).
+- Simplfied wishbone bus.  While the ZipCPU conforms to the Wishbone B4 standard, some simplifications have been made.  All tgx lines have been removed, although the select lines have been kept.  All accesses are (or can be) pipelined.  Finally, the ZipCPU project (and its daughter projects/[peripherals](rtl/peripherals) assumes that the strobe line is zero whenever the cycle is zero.  This simplifies peripheral processing.
 - The CPU makes heavy use of pipelined wishbone processing wherever and whenever it can.  Hence, loading two vaues in a row may cost only one clock more than just loading the one value.
 - The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An [interrupt peripheral](rtl/peripherals/icontrol.v) handles the combining of multiple interrupts into a single interrupt line.
 
 ## Current Status
 
-This is an 8-bit support branch.  Several changes are being tested in this
-branch:
+20170309: The CPU has just been updated for 8-bit byte support.  Several additional changes include:
 - The CPU has been rebuilt to add four new instructions, LB (load byte), SB (store byte), LH (load half-word or short), and SH (store half-word or short). 
 - The LOD/STO instructions have been renamed LW (load word) and SW (store word) respectively.
 - The CPU is now also, as a result, completely big--endian, which it only sort of was before. 
@@ -33,14 +31,14 @@ branch:
 - The ZipCPU supports several new simulation support or SIM instructions.  These can be used to write messages to the simulator console if desired.
 - There are now two simulators for the ZipCPU: A [C++ simulator](sim/cpp) that is independent of the Verilog, and a [Verilator](https://www.veripool.org/wiki/verilator) based [simulator](sim/verilated) that exercises the CPUs core logic.
 - The two simulators are designed to closely match the performance of a bare-bones [basic ZipCPU system](https://github.com/ZipCPU/zbasic).  Further, the newlib library as built is designed to support this minimum ZipCPU implementation.
-- The Assembler now implements the Compressed Instruction Set by default when it can.  (This instruction set was formerly and inappropriately named the VLIW instruction set.  It has since been redesigned.)  Instruction words using this format can pack two instructions into a single instruction word.
+- The Assembler now implements the Compressed Instruction Set (CIS) by default when it can.  (This instruction set was formerly and inappropriately named the VLIW instruction set.  It has since been redesigned.)  Instruction words using this format can pack two instructions into a single instruction word.
 
-Current work is focused on getting newlib to work on the ZipCPU.  Results using newlib right now are mixed, and would probably be greatly improved with a proper test-suite.
+Unlike the ZipCPU before these changes, newlib now compiles and appears to work with the ZipCPU (without floating point support).
 
 ## Not yet integrated
 
-- An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, but not yet integrated into it.
-- Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been written for the ZipCPU, but not yet integrated into it.
+- An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, but not yet integrated into it
+- Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been written for the ZipCPU, but not yet integrated into it
 - I would also like to integrate [SDCard support](https://github.com/ZipCPU/sdspi) into the newlib C-library to give the CPU file access
 - The [ZipOS](https://github.com/ZipCPU/s6soc/tree/master/sw/zipos) would greatly speed up and improve the bare bones newlib library.
 
