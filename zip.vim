@@ -75,7 +75,7 @@ syn match zipDecimal		"\$\=[1-9_][0-9_]*\>"
 "simple instructions
 syn keyword zipopcode sub and add or xor lsr lsl asr
 syn keyword zipopcode brev ldilo mpyuhi mpyshi mpy mov divu divs
-syn keyword zipopcode cmp tst lw sw lh sh lb sb ldi
+syn keyword zipopcode cmp tst test lw sw lh sh lb sb ldi
 syn keyword zipopcode fpadd fpsub fpmul fpdiv fpi2f fpf2i
 syn keyword zipopcode noop break brk lock
 syn keyword zipopcode bz beq bnz bne bc bnc bv bra blt bge ljmp jsr ljsr
