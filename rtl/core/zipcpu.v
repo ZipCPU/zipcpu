@@ -2006,7 +2006,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 					o_wb_addr[8:0] }
 					: { pf_instruction[31:21] },
 			pf_valid, (pf_valid) ? alu_pc[14:0]
-				:{ pf_cyc, pf_stb, pf_pc[12:0] }
+				:{ pf_cyc, pf_stb, pf_pc[14:2] }
 
 		/*
 			i_wb_err, gie, new_pc, dcd_early_branch,	// 4
