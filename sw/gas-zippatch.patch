@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-06 16:15:12.977121009 -0500
-@@ -0,0 +1,3325 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-08 17:57:01.048791909 -0500
+@@ -0,0 +1,3329 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -1785,7 +1785,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +// static int	zip_param_got = 0;
 +static int	zip_param_cis = 1;
 +static int	zip_param_small = 0;
-+static int	zip_param_use_machine  = 0;
++static int	zip_param_use_machine  = 1;
 +
 +typedef	struct	{
 +	int	m_known;
@@ -1927,6 +1927,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	// state.  For now, we state that anything with a symbol becomes
 +	// unknown.
 +	//
++	if ((insn->i_op == ZIPO_LJSR)||(insn->i_op == ZIPO_JSR)) {
++		zip_clear_machine(pzipm);
++		return;
++	}
 +	if ((insn->i_rp)&&(insn->i_areg<ZIP_CC)) {
 +		bknown = MACH_VUNKNOWN;
 +		if((insn->i_op==ZIPO_LDI)&&(insn->i_cnd == ZIPC_ALWAYS)) {
