@@ -302,7 +302,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-06 16:35:56.521146524 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-07 12:03:59.062584503 -0500
 @@ -0,0 +1,444 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -444,7 +444,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +"\t(clobber (reg:CC CC_REG))]\n"
 +"\t\"%s\"\n"
 +"\t\"%s\\t%%2,%%0\t; %s\"\n"
-+"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"unknown\")])\n;\n;\n",
++"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"set\")])\n;\n;\n",
 +		md_opname, uncond_rtx, insn_cond, zip_op, md_opname);
 +
 +
@@ -750,8 +750,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-01 21:23:03.492636061 -0500
-@@ -0,0 +1,2686 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-07 12:03:18.566583672 -0500
+@@ -0,0 +1,2679 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -3198,13 +3198,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +int	zip_insn_sets_cc(rtx_insn *insn) {
 +	return (get_attr_ccresult(insn)==CCRESULT_SET);
 +}
-+
-+int	zip_is_conditional(rtx_insn *insn) {
-+	return (get_attr_conditional(insn)==CONDITIONAL_YES);
-+}
-+
-+
-+
 +
 +const char *
 +zip_cbranchdi_const(rtx comparison,
@@ -8244,8 +8237,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-03-01 15:44:32.980219323 -0500
-@@ -0,0 +1,1996 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-03-07 12:02:29.862582673 -0500
+@@ -0,0 +1,1968 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -8501,7 +8494,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;
 +;
 +(define_attr "predicable"  "no,yes" (const_string "yes"))
-+(define_attr "conditional" "no,yes" (const_string "no"))
 +(define_attr "ccresult" "set,unknown,unchanged,validzn" (const_string "set"))
 +;
 +;
@@ -8980,35 +8972,17 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +; both methods.
 +;
 +(define_cond_exec
-+	[(eq (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[Z]"
-+	[(set_attr "conditional" "yes")])
++	[(eq  (reg:CC CC_REG) (const_int 0))] "" "[Z]")
 +(define_cond_exec
-+	[(ne (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[NZ]"
-+	[(set_attr "conditional" "yes")])
++	[(ne  (reg:CC CC_REG) (const_int 0))] "" "[NZ]")
 +(define_cond_exec
-+	[(lt (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[LT]"
-+	[(set_attr "conditional" "yes")])
++	[(lt  (reg:CC CC_REG) (const_int 0))] "" "[LT]")
 +(define_cond_exec
-+	[(ge (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[GE]"
-+	[(set_attr "conditional" "yes")])
++	[(ge  (reg:CC CC_REG) (const_int 0))] "" "[GE]")
 +(define_cond_exec
-+	[(ltu (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[C]"
-+	[(set_attr "conditional" "yes")])
++	[(ltu (reg:CC CC_REG) (const_int 0))] "" "[C]")
 +(define_cond_exec
-+	[(geu (reg:CC CC_REG) (const_int 0))]
-+	""
-+	"[NC]"
-+	[(set_attr "conditional" "yes")])
++	[(geu (reg:CC CC_REG) (const_int 0))] "" "[NC]")
 +;
 +;
 +;
@@ -9410,7 +9384,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BZ\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_neq"
 +	[(set (pc) (if_then_else (ne (reg:CC CC_REG) (const_int 0))
@@ -9419,7 +9392,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BNZ\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_lt"
 +	[(set (pc) (if_then_else (lt (reg:CC CC_REG) (const_int 0))
@@ -9428,7 +9400,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BLT\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_le"
 +	[(set (pc) (if_then_else (le (reg:CC CC_REG) (const_int 0))
@@ -9437,7 +9408,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BLT\t%0\n\tBZ\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_gt"
 +	[(set (pc) (if_then_else (gt (reg:CC CC_REG) (const_int 0))
@@ -9445,7 +9415,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		 (pc)))]
 +	""
 +	"BZ\t.Lgt%=\n\tBGE\t%0\n\t.Lgt%=:"
-+	[(set_attr "predicable" "no") (set_attr "conditional" "yes")
++	[(set_attr "predicable" "no")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_gte"
 +	[(set (pc) (if_then_else (ge (reg:CC CC_REG) (const_int 0))
@@ -9454,7 +9424,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BGE\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_ltu"
 +	[(set (pc) (if_then_else (ltu (reg:CC CC_REG) (const_int 0))
@@ -9463,7 +9432,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BC\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_gtu"
 +	[(set (pc) (if_then_else (gtu (reg:CC CC_REG) (const_int 0))
@@ -9479,7 +9447,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	;// the equals?  We do so here by branching around. (sigh)
 +	"BZ\t.Lgtu%=\n\tBNC\t%0\n.Lgtu%=:"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unknown")])
 +(define_insn "cbranch_jmp_leu"
 +	[(set (pc) (if_then_else (leu (reg:CC CC_REG) (const_int 0))
@@ -9489,7 +9456,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	"BC\t%0
 +	BZ\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +(define_insn "cbranch_jmp_geu"
 +	[(set (pc) (if_then_else (geu (reg:CC CC_REG) (const_int 0))
@@ -9498,7 +9464,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"BNC\t%0"
 +	[(set_attr "predicable" "no")
-+		(set_attr "conditional" "yes")
 +		(set_attr "ccresult" "unchanged")])
 +;
 +;
