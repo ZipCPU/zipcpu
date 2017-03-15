@@ -163,10 +163,10 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
-		o_valid <= ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_ack)&&(~o_wb_we);
+		o_valid <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_ack)&&(~o_wb_we);
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
-		o_err <= ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_err);
+		o_err <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_err);
 	assign	o_busy = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 
 	always @(posedge i_clk)
