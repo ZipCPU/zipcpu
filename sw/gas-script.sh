@@ -38,6 +38,7 @@ then
   tar -xjf ./$VERSION.tar.bz2 --transform s,$VERSION,$VERSION-zip,
   if [[ -e gas-zippatch.patch ]]
   then
+    cd $VERSION-zip
     patch -p1 <../gas-zippatch.patch
     cd ..
   else
