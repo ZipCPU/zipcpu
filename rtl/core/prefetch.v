@@ -53,17 +53,15 @@
 // mode which this prefetch does not support.  In non--pipelined mode, the
 // flash will require (16+6+6)*2 = 56 clocks plus 16 clocks per word read,
 // or 72 clocks to fetch one instruction.
-module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc, i_aux,
-			o_i, o_pc, o_aux, o_valid, o_illegal,
+module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc,
+			o_i, o_pc, o_valid, o_illegal,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter		ADDRESS_WIDTH=32, AUX_WIDTH = 1, AW=ADDRESS_WIDTH;
+	parameter		ADDRESS_WIDTH=32, AW=ADDRESS_WIDTH;
 	input				i_clk, i_rst, i_ce, i_stalled_n;
 	input		[(AW-1):0]	i_pc;
-	input	[(AUX_WIDTH-1):0]	i_aux;
 	output	reg	[31:0]		o_i;
 	output	reg	[(AW-1):0]	o_pc;
-	output	reg [(AUX_WIDTH-1):0]	o_aux;
 	output	reg			o_valid, o_illegal;
 	// Wishbone outputs
 	output	reg			o_wb_cyc, o_wb_stb;
@@ -105,9 +103,6 @@ module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc, i_aux,
 			o_wb_addr <= {(AW){1'b1}};
 		else if ((i_ce)&&(~o_wb_cyc))
 			o_wb_addr <= i_pc;
-	always @(posedge i_clk)
-		if ((o_wb_cyc)&&(i_wb_ack))
-			o_aux <= i_aux;
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(i_wb_ack))
 			o_i <= i_wb_data;

@@ -537,10 +537,11 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//	PIPELINE STAGE #1 :: Prefetch
 	//
 	//
+	assign	pf_gie = gie;
 `ifdef	OPT_SINGLE_FETCH
 	wire		pf_ce;
 
-	assign		pf_ce = (~pf_valid)&&(~dcd_valid)&&(~op_valid)&&(~alu_busy)&&(~mem_busy)&&(~alu_pc_valid)&&(~mem_pc_valid);
+	assign		pf_ce = (!pf_valid)&&(!dcd_valid)&&(!op_valid)&&(!alu_busy)&&(!mem_busy)&&(!alu_pc_valid)&&(!mem_pc_valid);
 	prefetch	#(ADDRESS_WIDTH)
 			pf(i_clk, (i_rst), (pf_ce), (!dcd_stalled), pf_pc[(AW+1):2], gie,
 				pf_instruction, pf_instruction_pc, pf_gie,
@@ -854,7 +855,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	// to be, step through it, and then replace it back.  In this fashion,
 	// a debugger can step through code.
 	// assign w_op_break = (dcd_break)&&(r_dcd_I[15:0] == 16'h0001);
-`ifdef	OPT_PIPELINED
+`ifdef	OPT_SINGLE_FETCH
+	assign	op_break = dcd_break;
+`else
 	reg	r_op_break;
 
 	initial	r_op_break = 1'b0;
@@ -865,8 +868,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else if (!op_valid)
 			r_op_break <= 1'b0;
 	assign	op_break = r_op_break;
-`else
-	assign	op_break = dcd_break;
 `endif
 
 `ifdef	OPT_PIPELINED
@@ -1314,7 +1315,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 				mem_ack, mem_stall, mem_err, i_wb_data);
 
 `else // PIPELINED_BUS_ACCESS
-	memops	#(AW,IMPLEMENT_LOCK,WITH_LOCAL_BUS) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
+	memops	#(AW,IMPLEMENT_LOCK,WITH_LOCAL_BUS) domem(i_clk, i_rst,
+			(mem_ce)&&(set_cond), bus_lock,
 				(op_opn[2:0]), op_Bv, op_Av, op_R,
 				mem_busy,
 				mem_valid, bus_err, mem_wreg, mem_result,
@@ -1847,19 +1849,21 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 			pf_pc <= { upc[(AW+1):2], 2'b00 };
 		else if ((wr_reg_ce)&&(wr_reg_id[4] == gie)&&(wr_write_pc))
 			pf_pc <= { wr_spreg_vl[(AW+1):2], 2'b00 };
-`ifdef	OPT_PIPELINED
-		else if ((dcd_early_branch)&&(~clear_pipeline))
+`ifdef	SINGLE_FETCH
+		else if ((alu_gie==gie)&&(
+				((alu_pc_valid)&&(!clear_pipeline))
+				||(mem_pc_valid)))
+			pf_pc <= { alu_pc[(AW-1):0], 2'b00 };
+`else
+		else if ((dcd_early_branch)&&(!clear_pipeline))
 			pf_pc <= { dcd_branch_pc + 1'b1, 2'b00 };
 		else if ((new_pc)||((!pf_stalled)&&(pf_valid)))
 			pf_pc <= { pf_pc[(AW+1):2] + {{(AW-1){1'b0}},1'b1}, 2'b00 };
-`else
-		else if ((alu_gie==gie)&&(
-				((alu_pc_valid)&&(~clear_pipeline))
-				||(mem_pc_valid)))
-			pf_pc <= { alu_pc[(AW-1):0], 2'b00 };
 `endif
 
-`ifdef	OPT_PIPELINED
+	// If we aren't pipelined, or equivalently if we have no cache, these
+	// instructions will get quietly (or not so quietly) ignored by the
+	// optimizer.
 	reg	r_clear_icache;
 	initial	r_clear_icache = 1'b1;
 	always @(posedge i_clk)
@@ -1870,9 +1874,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		else
 			r_clear_icache <= 1'b0;
 	assign	w_clear_icache = r_clear_icache;
-`else
-	assign	w_clear_icache = i_clear_pf_cache;
-`endif
 
 	initial	new_pc = 1'b1;
 	always @(posedge i_clk)
