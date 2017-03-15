@@ -111,7 +111,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	wire		w_dcdA_pc, w_dcdA_cc;
 	wire		w_dcdB_pc, w_dcdB_cc;
 	wire	[3:0]	w_cond;
-	wire		w_wF, w_mem, w_sto, w_lod, w_div, w_fpu;
+	wire		w_wF, w_mem, w_sto, w_div, w_fpu;
 	wire		w_wR, w_rA, w_rB, w_wR_n;
 	wire		w_ljmp, w_ljmp_dly, w_cis_ljmp;
 	wire	[31:0]	iword;
@@ -252,7 +252,6 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	// 1 LUT
 	assign	w_mem    = (w_cis_op[4:3] == 2'b10)&&(w_cis_op[2:1] !=2'b00);
 	assign	w_sto     = (w_mem)&&( w_cis_op[0]);
-	assign	w_lod     = (w_mem)&&(!w_cis_op[0]);
 	// 1 LUT
 	assign	w_div     = (!iword[31])&&(w_op[4:1] == 4'h7);
 	// 2 LUTs
@@ -403,12 +402,16 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 			if (!o_phase)
 				o_gie<= i_gie;
 
-			if ((iword[31])&&(!o_phase))
-				o_pc <= { i_pc, 1'b1 };
-			else if ((iword[31])&&(i_pf_valid))
-				o_pc <= { i_pc, 1'b0 };
-			else
+			if (iword[31])
+			begin
+				if (o_phase)
+					o_pc <= o_pc + 1'b1;
+				else if (i_pf_valid)
+					o_pc <= { i_pc, 1'b1 };
+			end else begin
+				// The normal, non-CIS case
 				o_pc <= { i_pc + 1'b1, 1'b0 };
+			end
 `else
 			o_gie<= i_gie;
 			o_pc <= { i_pc + 1'b1, 1'b0 };
