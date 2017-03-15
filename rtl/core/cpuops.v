@@ -128,8 +128,8 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		assign	mpy_result = r_mpy_a_input * r_mpy_b_input;
 		assign	mpybusy = 1'b0;
 
-		initial	mpypipe = 1'b0;
 		reg	mpypipe;
+		initial	mpypipe = 1'b0;
 		always @(posedge i_clk)
 			if (i_rst)
 				mpypipe <= 1'b0;
@@ -205,6 +205,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		reg	[2:0]	mpypipe;
 
 		// First clock, latch in the inputs
+		initial	mpypipe = 3'b0;
 		always @(posedge i_clk)
 		begin
 			// mpypipe indicates we have a multiply in the
