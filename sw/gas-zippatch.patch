@@ -1705,7 +1705,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-14 17:49:10.927345116 -0400
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-15 23:03:15.801504568 -0400
 @@ -0,0 +1,3340 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -3982,8 +3982,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	switch(insn->i_op) {
 +	case ZIPO_LDI: // May or may not be conditional
 +		if ((sym_known)&&(this_segment)
-+			&&(fits_within(13,immv+symv-fragP->fr_address-insn->i_rp->r_fr_offset-sizeof(uint32_t)))) {
++			&&(fits_within(15,immv+symv-fragP->fr_address-insn->i_rp->r_fr_offset-sizeof(uint32_t)))) {
 +			// Turn this into a MOV x(PC),Rx
++			//
++			// Although moves can normally only handle 13 bits,
++			// when the immediate is an offset to the PC, the bottom
++			// two bits are always zero, and so the immediate
++			// gets an extra two free bits--hence the test for
++			// fitting into 15 bits above.
 +			insn->i_breg = ZIP_PC;
 +			insn->i_op = ZIPO_MOV;
 +			insn->i_naux = 0;
@@ -3996,8 +4002,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		// 0.111.x111.11
 +		insn->i_aux[0] = 0x7fc00000; // NOOP -- if never used.
 +		immv += symv;
-+		if (((!insn->i_rp)||(sym_known))
-+				&&(insn->i_cnd == ZIPC_ALWAYS)
++		if ((!insn->i_rp)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(fits_within(23, immv))) {
 +			insn->i_naux = 0;
 +			insn->i_code = LDIOP(immv,insn->i_areg);
@@ -4014,11 +4019,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			if (insn->i_rp)
 +				insn->i_rp->r_type = BFD_RELOC_NONE;
 +// 0000 1110 0000 0000 0000 0000 0100 0000
-+		} else if (((!insn->i_rp)||(sym_known))
-+				&&(insn->i_cnd == ZIPC_ALWAYS)
-+				&&(fits_within(23, immv))) {
-+			insn->i_naux = 0;
-+			insn->i_code = LDIOP(immv,insn->i_areg);
 +		} else if ((zip_param_use_machine)&&(pzipm)&&((!insn->i_rp)||(sym_known))
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&(0==((immv^pzipm->r[insn->i_areg].m_value)
