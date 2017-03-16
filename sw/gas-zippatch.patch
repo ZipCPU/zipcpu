@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-08 17:57:01.048791909 -0500
-@@ -0,0 +1,3329 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-14 17:49:10.927345116 -0400
+@@ -0,0 +1,3340 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2465,6 +2465,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	const char *ustr = str;
 +	int	userreg = 0;
 +
++	if ((!str)||(str[0]=='\0'))
++		return "No register given";
 +	ustr = zip_skip_white_spaces(str);
 +
 +	if (toupper(ustr[0]) == 'U') {
@@ -3304,7 +3306,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			if (NULL != right)
 +				err = "Instruction opcode expects only one operand";
 +			else {
-+				if ((NULL == strchr(left,'('))
++				if ((NULL == left)||(left[0] == '\0')) {
++					err = "No address given";
++				} else if ((NULL == strchr(left,'('))
 +					&&(NULL == strchr(left,'+'))) {
 +					char	*longerstr = (char *)xmalloc(strlen(left)+6);
 +					// If not stated, assume PC relative
@@ -3640,6 +3644,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		return 0;
 +	if ((opb == ZIPO_MOV)&&(b & 0x44000))
 +		return 0;
++
 +	imma = zip_non_cis_immediate(a);
 +	immb = zip_non_cis_immediate(b);
 +
@@ -3661,7 +3666,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_MOV:
 +			if (!fits_within(3,imma))
 +				return 0;
-+			if (aareg == ZIP_CC)
++			// Prohibit a MOV x(PC),Ry to move into a first
++			// instruction position.  While the CPU supports it,
++			// making sure x remains valid isn't yet supported
++			// here.
++			if ((ZIP_PC == aareg)||(ZIP_CC == aareg))
 +				return 0;
 +			break;
 +		case ZIPO_LDI: case ZIPO_LDIn:
@@ -4837,6 +4846,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	// instructions giving offsets to symbols, such as LDI .x+50,R0. 
 +	relP->addend = fixP->fx_offset;
 +	if (fixP->fx_r_type == BFD_RELOC_ZIP_OPB_PCREL)
++		relP->addend -= 4;
++	else if (fixP->fx_r_type == BFD_RELOC_ZIP_MOV_PCREL)
 +		relP->addend -= 4;
 +#ifdef	ZIP_DEBUG
 +	fprintf(stderr, "ADDEND = %08lx\n", relP->addend);
