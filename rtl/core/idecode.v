@@ -55,6 +55,7 @@
 module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		i_instruction, i_gie, i_pc, i_pf_valid,
 			i_illegal,
+		o_valid,
 		o_phase, o_illegal,
 		o_pc, o_gie,
 		o_dcdR, o_dcdA, o_dcdB, o_I, o_zI,
@@ -72,7 +73,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	input			i_gie;
 	input	[(AW-1):0]	i_pc;
 	input			i_pf_valid, i_illegal;
-	output	wire		o_phase;
+	output	wire		o_valid, o_phase;
 	output	reg		o_illegal;
 	output	reg	[AW:0]	o_pc;
 	output	reg		o_gie;
@@ -105,7 +106,8 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 
 
 	wire	[4:0]	w_op;
-	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev, w_noop;
+	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev,
+			w_noop, w_lock;
 	wire	[4:0]	w_dcdR, w_dcdB, w_dcdA;
 	wire		w_dcdR_pc, w_dcdR_cc;
 	wire		w_dcdA_pc, w_dcdA_cc;
@@ -217,6 +219,9 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
+	assign	w_lock   = (!iword[31])&&(w_op[4:0]==5'h1d)&&(
+				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
+				||(IMPLEMENT_FPU==0));
 	assign	w_noop   = (!iword[31])&&(w_op[4:0] == 5'h1f)&&(
 			((IMPLEMENT_FPU>0)&&(w_dcdR[3:1] == 3'h7))
 			||(IMPLEMENT_FPU==0));
@@ -463,9 +468,7 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
 				||(IMPLEMENT_FPU==0));
 `ifdef	OPT_PIPELINED
-			r_lock  <= (!iword[31])&&(w_op[4:0]==5'h1d)&&(
-				((IMPLEMENT_FPU>0)&&(w_dcdR[3:1]==3'h7))
-				||(IMPLEMENT_FPU==0));
+			r_lock  <= w_lock;
 `endif
 `ifdef	OPT_CIS
 			r_nxt_half <= { iword[31], iword[14:0] };
@@ -591,12 +594,13 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	always @(posedge i_clk)
 		if (i_rst)
 			r_valid <= 1'b0;
-		else if ((i_ce)&&(o_ljmp))
+		else if (i_ce)
+			r_valid <= ((i_pf_valid)||(o_phase)||(i_illegal))
+					&&(!o_ljmp)&&(!o_early_branch);
+		else if (!i_stalled)
 			r_valid <= 1'b0;
-		else if ((i_ce)&&(i_pf_valid))
-			r_valid <= 1'b1;
-		else if (~i_stalled)
-			r_valid <= 1'b0;
+
+	assign	o_valid = r_valid;
 
 
 	assign	o_I = { {(32-22){r_I[22]}}, r_I[21:0] };
