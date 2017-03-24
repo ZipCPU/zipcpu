@@ -45,6 +45,8 @@
 #include "testb.h"
 // #include "twoc.h"
 
+#define	DIVASSERT(A) do { if (!(A)) { closetrace(); } assert(A); } while(0)
+
 class	DIV_TB : public TESTB<Vdiv> {
 public:
 	DIV_TB(void) {
@@ -55,11 +57,6 @@ public:
 	void	reset(void) {
 		// m_flash.debug(false);
 		TESTB<Vdiv>::reset();
-	}
-
-	bool	on_tick(void) {
-		tick();
-		return true;
 	}
 
 	void	bprint(char *str, int nbits, unsigned long v) {
@@ -118,7 +115,7 @@ public:
 
 		// The test bench is supposed to assert that we are idle when
 		// we come in here.
-		assert(m_core->o_busy == 0);
+		DIVASSERT(m_core->o_busy == 0);
 
 		// Request a divide
 		m_core->i_rst = 0;
@@ -141,10 +138,10 @@ public:
 		// listed as a valid result.
 		if (!m_core->o_busy) {
 			closetrace();
-			assert(m_core->o_busy);
+			DIVASSERT(m_core->o_busy);
 		} if (m_core->o_valid != 0) {
 			closetrace();
-			assert(m_core->o_valid == 0);
+			DIVASSERT(m_core->o_valid == 0);
 		}
 
 		// while((!m_core->o_valid)&&(!m_core->o_err))
@@ -156,7 +153,7 @@ public:
 				// is a test failure.
 				dbgdump();
 				closetrace();
-				assert(m_core->o_busy);
+				DIVASSERT(m_core->o_busy);
 			}
 
 			// Let the algorithm work for another clock tick.
@@ -167,7 +164,7 @@ public:
 		// result has been produced.
 		if (m_core->o_busy) {
 			closetrace();
-			assert(!m_core->o_busy);
+			DIVASSERT(!m_core->o_busy);
 		}
 
 		if (dbg) {
@@ -191,7 +188,7 @@ public:
 				// assert, lest the file not get the final
 				// values into it.
 				closetrace();
-				assert(m_core->o_err);
+				DIVASSERT(m_core->o_err);
 			}
 		} else if (m_core->o_err) {
 			// Otherwise, there should not have been any divide
@@ -199,7 +196,7 @@ public:
 			// divide by zero.  So, this is an error.  Let's
 			// stop and report it.
 			closetrace();
-			assert(!m_core->o_err);
+			DIVASSERT(!m_core->o_err);
 		} else if (ans != (uint32_t)m_core->o_quotient) {
 			// The other problem we might encounter would be if the
 			// result doesn't match the one we are expecting.
@@ -207,7 +204,13 @@ public:
 			// Stop on this bug as well.
 			//
 			closetrace();
-			assert(ans == (uint32_t)m_core->o_quotient);
+			DIVASSERT(ans == (uint32_t)m_core->o_quotient);
+		}
+
+		if(((m_core->o_quotient == 0)&&((m_core->o_flags&1)==0))
+			||((m_core->o_quotient!= 0)&&((m_core->o_flags&1)!=0))){
+			fprintf(stderr, "Z-FLAG DOES NOT MATCH: FLAGS = %d, QUOTIENT = %08x\n", m_core->o_flags, m_core->o_quotient);
+			DIVASSERT((m_core->o_quotient!= 0)^(m_core->o_flags&1));
 		}
 	}
 
@@ -253,8 +256,6 @@ int	main(int argc, char **argv) {
 	// Setup
 	Verilated::commandArgs(argc, argv);
 	DIV_TB	*tb = new DIV_TB();
-
-	// tb->opentrace("divtrace.vcd");
 
 	tb->reset();
 	// tb->opentrace("div_tb.vcd");
