@@ -50,6 +50,8 @@ public:
 	TESTB(void) : m_trace(NULL), m_tickcount(0l) {
 		m_core = new VA;
 		Verilated::traceEverOn(true);
+		m_core->i_clk = 0;
+		eval(); // Get our initial values set properly.
 	}
 	virtual ~TESTB(void) {
 		if (m_trace) m_trace->close();
