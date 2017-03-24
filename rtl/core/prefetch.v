@@ -53,24 +53,27 @@
 // mode which this prefetch does not support.  In non--pipelined mode, the
 // flash will require (16+6+6)*2 = 56 clocks plus 16 clocks per word read,
 // or 72 clocks to fetch one instruction.
-module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc,
+module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			o_i, o_pc, o_valid, o_illegal,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter		ADDRESS_WIDTH=32, AW=ADDRESS_WIDTH;
-	input				i_clk, i_rst, i_ce, i_stalled_n;
+	parameter		ADDRESS_WIDTH=32;
+	localparam		AW=ADDRESS_WIDTH;
+	input				i_clk, i_rst, i_new_pc, i_clear_cache,
+					i_stalled_n;
 	input		[(AW-1):0]	i_pc;
 	output	reg	[31:0]		o_i;
-	output	reg	[(AW-1):0]	o_pc;
-	output	reg			o_valid, o_illegal;
+	output	wire	[(AW-1):0]	o_pc;
+	output	reg			o_valid;
 	// Wishbone outputs
 	output	reg			o_wb_cyc, o_wb_stb;
 	output	wire			o_wb_we;
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]		o_wb_data;
 	// And return inputs
-	input			i_wb_ack, i_wb_stall, i_wb_err;
-	input		[31:0]	i_wb_data;
+	input				i_wb_ack, i_wb_stall, i_wb_err;
+	input		[31:0]		i_wb_data;
+	output	reg			o_illegal;
 
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 32'h0000;
@@ -82,44 +85,54 @@ module	prefetch(i_clk, i_rst, i_ce, i_stalled_n, i_pc,
 	initial	o_wb_stb = 1'b0;
 	initial	o_wb_addr= 0;
 	always @(posedge i_clk)
-		if ((i_rst)||(i_wb_ack))
+		if ((i_rst)||(i_wb_ack)||(i_wb_err))
 		begin
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
-		end else if ((i_ce)&&(~o_wb_cyc)) // Initiate a bus cycle
-		begin
+		end else if ((!o_wb_cyc)&&((i_stalled_n)||(!o_valid)))
+		begin // Initiate a bus cycle
 			o_wb_cyc <= 1'b1;
 			o_wb_stb <= 1'b1;
 		end else if (o_wb_cyc) // Independent of ce
 		begin
-			if ((o_wb_cyc)&&(o_wb_stb)&&(~i_wb_stall))
+			if (~i_wb_stall)
 				o_wb_stb <= 1'b0;
-			if (i_wb_ack)
-				o_wb_cyc <= 1'b0;
 		end
 
+	reg	invalid;
+	initial	invalid = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst) // Set the address to guarantee the result is invalid
-			o_wb_addr <= {(AW){1'b1}};
-		else if ((i_ce)&&(~o_wb_cyc))
+		if (!o_wb_cyc)
+			invalid <= 1'b0;
+		else if ((i_new_pc)||(i_clear_cache))
+			invalid <= (!o_wb_stb);
+
+	always @(posedge i_clk)
+		if (i_new_pc)
 			o_wb_addr <= i_pc;
+		else if ((!o_wb_cyc)&&(i_stalled_n)&&(!invalid))
+			o_wb_addr <= o_wb_addr + 1'b1;
+
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(i_wb_ack))
 			o_i <= i_wb_data;
-	always @(posedge i_clk)
-		if ((o_wb_cyc)&&(i_wb_ack))
-			o_pc <= o_wb_addr;
+
 	initial o_valid   = 1'b0;
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
-		if ((o_wb_cyc)&&(i_wb_ack))
+		if (i_rst)
 		begin
-			o_valid <= (i_pc == o_wb_addr)&&(~i_wb_err);
-			o_illegal <= (i_wb_err)&&(i_pc == o_wb_addr);
-		end else if (i_stalled_n)
+			o_valid   <= 1'b0;
+			o_illegal <= 1'b0;
+		end else if ((o_wb_cyc)&&(i_wb_ack))
+		begin
+			o_valid   <= (!i_wb_err)&&(!invalid);
+			o_illegal <= ( i_wb_err)&&(!invalid);
+		end else if ((i_stalled_n)||(i_clear_cache))
 		begin
 			o_valid <= 1'b0;
 			o_illegal <= 1'b0;
 		end
 
+	assign	o_pc = o_wb_addr;
 endmodule
