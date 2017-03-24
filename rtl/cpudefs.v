@@ -150,6 +150,58 @@
 // `define	OPT_SINGLE_FETCH
 //
 //
+// OPT_DOUBLE_FETCH is an alternative to OPT_SINGLE_FETCH.  It is designed to
+// increase performance primarily when using an instruction memory which has
+// one cost for a random access, and a second (lower) cost for sequential
+// access.  The driving example behind this implementation was flash memory
+// with 34 clocks for an initial access and 16 clocks for any subsequent access,
+// but SDRAM memory with 27 clocks for an initial access and 1 clock for a
+// subsequent access is also a good example.  Even block RAM might be a good
+// example, if there were any bus delays in getting to the RAM device.  Using
+// OPT_DOUBLE_FETCH also increases the pipeline speed, as it allows CIS
+// instructions and therefore partial pipelining.  (No work is done to resolve
+// pipeline conflicts past the decode stage, as is the case with full pipeline
+// mode.
+//
+// Do not define OPT_DOUBLE_FETCH if you wish to fully pipeline the CPU.  Do
+// not define both OPT_DOUBLE_FETCH and OPT_SINGLE_FETCH (the ifndef below
+// should prevent that).
+//
+//
+`ifndef	OPT_SINGLE_FETCH
+// `define	OPT_DOUBLE_FETCH
+`endif
+//
+//
+//
+// The ZipCPU ISA defines an optional compressed instruction set (CIS)
+// complement.  This compressed instruction format allows two instructions to
+// be packed into the same instruction word.  Some instructions can be so
+// compressed, although not all.  Compressed instructions take the same time to
+// complete--they are just compressed within memory to spare troubles with the
+// prefetch.  Set OPT_CIS to include these compressed instructions as part of
+// the instruction set.
+//
+`define OPT_CIS		// COST: about 87 LUTs
+//
+//
+//
+//
+// OPT_EARLY_BRANCHING is an attempt to execute a BRA statement as early
+// as possible, to avoid as many pipeline stalls on a branch as possible.
+// With the OPT_TRADITIONAL_PFCACHE, BRA instructions cost only a single
+// extra stall cycle, while LJMP instructions cost two (assuming the target is
+// in the cache).  Indeed, the result is that a BRA instruction can be used as
+// the compiler's branch prediction optimizer: BRA's barely stall, while
+// conditional branches will always suffer about 4 stall cycles or so.
+//
+// I recommend setting this flag, so as to turn early branching on---if you
+// have the LUTs available to afford it.
+//
+`define	OPT_EARLY_BRANCHING
+//
+//
+//
 //
 // The next several options are pipeline optimization options.  They make no
 // sense in a single instruction fetch mode, hence we #ifndef them so they
@@ -157,6 +209,7 @@
 // is not defined).
 //
 `ifndef	OPT_SINGLE_FETCH
+`ifndef	OPT_DOUBLE_FETCH
 //
 //
 //
@@ -185,20 +238,6 @@
 //
 //
 //
-// OPT_EARLY_BRANCHING is an attempt to execute a BRA statement as early
-// as possible, to avoid as many pipeline stalls on a branch as possible.
-// It's not tremendously successful yet--BRA's still suffer stalls,
-// but I intend to keep working on this approach until the number of stalls
-// gets down to one or (ideally) zero.  (With the OPT_TRADITIONAL_PFCACHE, this
-// gets down to a single stall cycle ...)  That way a "BRA" can be used as the
-// compiler's branch prediction optimizer: BRA's barely stall, while branches
-// on conditions will always suffer about 4 stall cycles or so.
-//
-// I recommend setting this flag, so as to turn early branching on.
-//
-`define	OPT_EARLY_BRANCHING
-//
-//
 //
 // OPT_PIPELINED_BUS_ACCESS controls whether or not LOD/STO instructions
 // can take advantaged of pipelined bus instructions.  To be eligible, the
@@ -218,28 +257,7 @@
 //
 //
 //
-// The instruction set defines an optional compressed instruction set (CIS)
-// complement.  These were at one time erroneously called Very Long Instruction
-// Words.  They are more appropriately referred to as compressed instructions.
-// The compressed instruction format allows two instructions to be packed into
-// the same instruction word.  Some instructions can be compressed, not all.
-// Compressed instructions take the same time to complete.  Set OPT_CIS to
-// include these double instructions as part of the instruction set.  These
-// instructions are designed to get more code density from the instruction set,
-// and to hopefully take some pain off of the performance of the pre-fetch and
-// instruction cache.
-//
-// These new instructions, however, also necessitate a change in the Zip
-// CPU--the Zip CPU can no longer execute instructions atomically.  It must
-// now execute non-CIS instructions, or CIS instruction pairs, atomically. 
-// This logic has been added into the ZipCPU, but it has not (yet) been
-// tested thoroughly.
-//
-//
-`define OPT_CIS
-//
-//
-//
+`endif	// OPT_DOUBLE_FETCH
 `endif	// OPT_SINGLE_FETCH
 //
 //
