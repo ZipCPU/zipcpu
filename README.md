@@ -35,10 +35,16 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 Unlike the ZipCPU before these changes, newlib now compiles and appears to work with the ZipCPU (without floating point support).
 
+Also, unlike before, the ZipCPU is now small enough to be able to include a divide unit, and a double-fetch (uses pipelined WB for one word) when build for the Spartan-6/LX4.
 ## Not yet integrated
 
 - An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, but not yet integrated into it
 - Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been written for the ZipCPU, but not yet integrated into it
 - I would also like to integrate [SDCard support](https://github.com/ZipCPU/sdspi) into the newlib C-library to give the CPU file access
 - The [ZipOS](https://github.com/ZipCPU/s6soc/tree/master/sw/zipos) would greatly speed up and improve the bare bones newlib library.
+
+## Commercial Opportunities
+
+If the GPLv3 license is insufficient for your needs, other licenses (for all but
+the tool-chain) can be purchased from Gisselquist Technology, LLC.
 
