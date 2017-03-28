@@ -34,7 +34,7 @@
 //
 //
 //	At this point, the divide is has started.  The divide works by walking
-//	through every shift of the 
+//	through every shift of the
 //
 //		    DIVIDEND	over the
 //		DIVISOR
@@ -50,7 +50,7 @@
 //		DIVIDEND
 //		DIVISOR
 //
-//	At this point, if the DIVISOR is less than the dividend, the 
+//	At this point, if the DIVISOR is less than the dividend, the
 //	divisor is subtracted from the dividend, and the DIVISOR is again
 //	shifted to the right.  Further, a '1' bit gets set in the output
 //	quotient.
@@ -62,7 +62,7 @@
 //
 //	On the clock when we are done, o_busy is set to false, and o_valid set
 //	to true.  (It is a violation of the ZipCPU internal protocol for both
-//	busy and valid to ever be true on the same clock.  It is also a 
+//	busy and valid to ever be true on the same clock.  It is also a
 //	violation for busy to be false with valid true thereafter.)
 //
 //
