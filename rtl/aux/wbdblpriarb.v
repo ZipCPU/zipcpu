@@ -79,25 +79,25 @@ module	wbdblpriarb(i_clk, i_rst,
 	parameter			DW=32, AW=32;
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_rst.
-	input				i_clk, i_rst;
+	input	wire			i_clk, i_rst;
 	// Bus A
-	input				i_a_cyc_a, i_a_cyc_b, i_a_stb_a, i_a_stb_b, i_a_we;
-	input		[(AW-1):0]	i_a_adr;
-	input		[(DW-1):0]	i_a_dat;
-	input		[(DW/8-1):0]	i_a_sel;
+	input	wire			i_a_cyc_a, i_a_cyc_b, i_a_stb_a, i_a_stb_b, i_a_we;
+	input	wire	[(AW-1):0]	i_a_adr;
+	input	wire	[(DW-1):0]	i_a_dat;
+	input	wire	[(DW/8-1):0]	i_a_sel;
 	output	wire			o_a_ack, o_a_stall, o_a_err;
 	// Bus B
-	input				i_b_cyc_a, i_b_cyc_b, i_b_stb_a, i_b_stb_b, i_b_we;
-	input		[(AW-1):0]	i_b_adr;
-	input		[(DW-1):0]	i_b_dat;
-	input		[(DW/8-1):0]	i_b_sel;
+	input	wire			i_b_cyc_a, i_b_cyc_b, i_b_stb_a, i_b_stb_b, i_b_we;
+	input	wire	[(AW-1):0]	i_b_adr;
+	input	wire	[(DW-1):0]	i_b_dat;
+	input	wire	[(DW/8-1):0]	i_b_sel;
 	output	wire			o_b_ack, o_b_stall, o_b_err;
 	//
 	output	wire			o_cyc_a,o_cyc_b, o_stb_a, o_stb_b, o_we;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
-	input				i_ack, i_stall, i_err;
+	input	wire			i_ack, i_stall, i_err;
 
 	// All of our logic is really captured in the 'r_a_owner' register.
 	// This register determines who owns the bus.  If no one is requesting

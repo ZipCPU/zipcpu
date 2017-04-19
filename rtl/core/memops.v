@@ -52,13 +52,13 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
 	parameter	ADDRESS_WIDTH=30, IMPLEMENT_LOCK=0, WITH_LOCAL_BUS=0;
 	localparam	AW=ADDRESS_WIDTH;
-	input			i_clk, i_rst;
-	input			i_stb, i_lock;
+	input	wire		i_clk, i_rst;
+	input	wire		i_stb, i_lock;
 	// CPU interface
-	input		[2:0]	i_op;
-	input		[31:0]	i_addr;
-	input		[31:0]	i_data;
-	input		[4:0]	i_oreg;
+	input	wire	[2:0]	i_op;
+	input	wire	[31:0]	i_addr;
+	input	wire	[31:0]	i_data;
+	input	wire	[4:0]	i_oreg;
 	// CPU outputs
 	output	wire		o_busy;
 	output	reg		o_valid;
@@ -75,8 +75,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	output	reg	[31:0]	o_wb_data;
 	output	reg	[3:0]	o_wb_sel;
 	// Wishbone inputs
-	input			i_wb_ack, i_wb_stall, i_wb_err;
-	input		[31:0]	i_wb_data;
+	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire	[31:0]	i_wb_data;
 
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;

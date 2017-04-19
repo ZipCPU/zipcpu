@@ -68,11 +68,11 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 		);
 	parameter	ADDRESS_WIDTH=24, IMPLEMENT_MPY=1, EARLY_BRANCHING=1,
 			IMPLEMENT_DIVIDE=1, IMPLEMENT_FPU=0, AW = ADDRESS_WIDTH;
-	input			i_clk, i_rst, i_ce, i_stalled;
-	input	[31:0]		i_instruction;
-	input			i_gie;
-	input	[(AW-1):0]	i_pc;
-	input			i_pf_valid, i_illegal;
+	input	wire		i_clk, i_rst, i_ce, i_stalled;
+	input	wire [31:0]	i_instruction;
+	input	wire		i_gie;
+	input	wire [(AW-1):0]	i_pc;
+	input	wire		i_pf_valid, i_illegal;
 	output	wire		o_valid, o_phase;
 	output	reg		o_illegal;
 	output	reg	[AW:0]	o_pc;

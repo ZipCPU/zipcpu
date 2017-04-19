@@ -62,9 +62,9 @@ module	pipefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	parameter	RESET_ADDRESS=32'h0010_0000,
 			LGCACHELEN = 6, ADDRESS_WIDTH=24,
 			CACHELEN=(1<<LGCACHELEN), BUSW=32, AW=ADDRESS_WIDTH;
-	input				i_clk, i_rst, i_new_pc,
+	input	wire			i_clk, i_rst, i_new_pc,
 					i_clear_cache, i_stall_n;
-	input		[(AW-1):0]	i_pc;
+	input	wire	[(AW-1):0]	i_pc;
 	output	reg	[(BUSW-1):0]	o_i;
 	output	reg	[(AW-1):0]	o_pc;
 	output	wire			o_v;
@@ -74,11 +74,11 @@ module	pipefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[(BUSW-1):0]	o_wb_data;
 	//
-	input			i_wb_ack, i_wb_stall, i_wb_err;
-	input		[(BUSW-1):0]	i_wb_data;
+	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire	[(BUSW-1):0]	i_wb_data;
 	//
 	// Is the (data) memory unit also requesting access to the bus?
-	input				i_wb_request;
+	input	wire			i_wb_request;
 	output	wire			o_illegal;
 
 	// Fixed bus outputs: we read from the bus only, never write.

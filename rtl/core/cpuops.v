@@ -42,9 +42,9 @@
 module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
 	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
-	input		i_clk, i_rst, i_ce;
-	input		[3:0]	i_op;
-	input		[31:0]	i_a, i_b;
+	input	wire	i_clk, i_rst, i_ce;
+	input	wire	[3:0]	i_op;
+	input	wire	[31:0]	i_a, i_b;
 	output	reg	[31:0]	o_c;
 	output	wire	[3:0]	o_f;
 	output	reg		o_valid;

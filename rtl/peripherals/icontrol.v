@@ -79,11 +79,11 @@
 module	icontrol(i_clk, i_reset, i_wr, i_proc_bus, o_proc_bus,
 		i_brd_ints, o_interrupt);
 	parameter	IUSED = 15;
-	input			i_clk, i_reset;
-	input			i_wr;
-	input		[31:0]	i_proc_bus;
+	input	wire		i_clk, i_reset;
+	input	wire		i_wr;
+	input	wire	[31:0]	i_proc_bus;
 	output	wire	[31:0]	o_proc_bus;
-	input		[(IUSED-1):0]	i_brd_ints;
+	input	wire	[(IUSED-1):0]	i_brd_ints;
 	output	wire		o_interrupt;
 
 	reg	[(IUSED-1):0]	r_int_state;

@@ -161,12 +161,12 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	parameter	WITH_LOCAL_BUS = 1;
 	localparam	AW=ADDRESS_WIDTH;
 	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
-	input			i_clk, i_rst, i_interrupt;
+	input	wire		i_clk, i_rst, i_interrupt;
 	// Debug interface -- inputs
-	input			i_halt, i_clear_pf_cache;
-	input		[4:0]	i_dbg_reg;
-	input			i_dbg_we;
-	input		[31:0]	i_dbg_data;
+	input	wire		i_halt, i_clear_pf_cache;
+	input	wire	[4:0]	i_dbg_reg;
+	input	wire		i_dbg_we;
+	input	wire	[31:0]	i_dbg_data;
 	// Debug interface -- outputs
 	output	wire		o_dbg_stall;
 	output	reg	[31:0]	o_dbg_reg;
@@ -179,9 +179,9 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	output	wire	[31:0]	o_wb_data;
 	output	wire	[3:0]	o_wb_sel;
 	// Wishbone interface -- inputs
-	input			i_wb_ack, i_wb_stall;
-	input		[31:0]	i_wb_data;
-	input			i_wb_err;
+	input	wire		i_wb_ack, i_wb_stall;
+	input	wire	[31:0]	i_wb_data;
+	input	wire		i_wb_err;
 	// Accounting outputs ... to help us count stalls and usage
 	output	wire		o_op_stall;
 	output	wire		o_pf_stall;

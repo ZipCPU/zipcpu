@@ -241,15 +241,15 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 			PAW=(AW-LGPGSZ), // Physical address width
 			TBL_BITS = LGTBL,	// Bits necessary to addr tbl
 			TBL_SIZE=(1<<TBL_BITS);// Number of table entries
-	input			i_clk, i_reset;
+	input	wire		i_clk, i_reset;
 	//
-	input			i_ctrl_cyc_stb;
+	input	wire		i_ctrl_cyc_stb;
 	//
-	input			i_wbm_cyc, i_wbm_stb;
+	input	wire		i_wbm_cyc, i_wbm_stb;
 	//
-	input			i_wb_we;
-	input	[(DW-1):0]	i_wb_addr;
-	input	[(DW-1):0]	i_wb_data;
+	input	wire		i_wb_we;
+	input	wire [(DW-1):0]	i_wb_addr;
+	input	wire [(DW-1):0]	i_wb_data;
 	//
 	// Here's where we drive the slave side of the bus
 	output	reg			o_cyc;
@@ -257,8 +257,8 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	output	reg	[(AW-1):0]	o_addr;
 	output	reg	[(DW-1):0]	o_data;
 	// and get our return information from driving the slave ...
-	input				i_stall, i_ack, i_err;
-	input		[(DW-1):0]	i_data;
+	input	wire			i_stall, i_ack, i_err;
+	input	wire	[(DW-1):0]	i_data;
 	//
 	// Here's where we return information on either our slave/control bus
 	// or the memory bus we are controlled from.  Note that we share these

@@ -65,9 +65,9 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 		o_illegal);
 	parameter		ADDRESS_WIDTH=32, AUX_WIDTH = 1;
 	localparam		AW=ADDRESS_WIDTH;
-	input				i_clk, i_rst, i_new_pc, i_clear_cache,
+	input	wire			i_clk, i_rst, i_new_pc, i_clear_cache,
 						i_stall_n;
-	input		[(AW-1):0]	i_pc;
+	input	wire	[(AW-1):0]	i_pc;
 	output	reg	[31:0]		o_i;
 	output	reg	[(AW-1):0]	o_pc;
 	output	wire			o_v;
@@ -77,8 +77,8 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]		o_wb_data;
 	// And return inputs
-	input			i_wb_ack, i_wb_stall, i_wb_err;
-	input		[31:0]	i_wb_data;
+	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire	[31:0]	i_wb_data;
 	// And ... the result if we got an error
 	output	reg		o_illegal;
 

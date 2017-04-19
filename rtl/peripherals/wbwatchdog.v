@@ -57,9 +57,9 @@
 //
 module	wbwatchdog(i_clk, i_rst, i_ce, i_timeout, o_int);
 	parameter	BW = 32;
-	input			i_clk, i_rst, i_ce;
+	input	wire		i_clk, i_rst, i_ce;
 	// Inputs (these were at one time wishbone controlled ...)
-	input	[(BW-1):0]	i_timeout;
+	input	wire [(BW-1):0]	i_timeout;
 	// Interrupt line
 	output	reg		o_int;
 

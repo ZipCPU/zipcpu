@@ -60,25 +60,25 @@ module	wbpriarbiter(i_clk,
 	o_cyc, o_stb, o_we, o_adr, o_dat, o_sel, i_ack, i_stall, i_err);
 	parameter			DW=32, AW=32;
 	//
-	input				i_clk;
+	input	wire			i_clk;
 	// Bus A
-	input				i_a_cyc, i_a_stb, i_a_we;
-	input		[(AW-1):0]	i_a_adr;
-	input		[(DW-1):0]	i_a_dat;
-	input		[(DW/8-1):0]	i_a_sel;
+	input	wire			i_a_cyc, i_a_stb, i_a_we;
+	input	wire	[(AW-1):0]	i_a_adr;
+	input	wire	[(DW-1):0]	i_a_dat;
+	input	wire	[(DW/8-1):0]	i_a_sel;
 	output	wire			o_a_ack, o_a_stall, o_a_err;
 	// Bus B
-	input				i_b_cyc, i_b_stb, i_b_we;
-	input		[(AW-1):0]	i_b_adr;
-	input		[(DW-1):0]	i_b_dat;
-	input		[(DW/8-1):0]	i_b_sel;
+	input	wire			i_b_cyc, i_b_stb, i_b_we;
+	input	wire	[(AW-1):0]	i_b_adr;
+	input	wire	[(DW-1):0]	i_b_dat;
+	input	wire	[(DW/8-1):0]	i_b_sel;
 	output	wire			o_b_ack, o_b_stall, o_b_err;
 	//
 	output	wire			o_cyc, o_stb, o_we;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
-	input				i_ack, i_stall, i_err;
+	input	wire			i_ack, i_stall, i_err;
 
 	// Go high immediately (new cycle) if ...
 	//	Previous cycle was low and *someone* is requesting a bus cycle

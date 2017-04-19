@@ -123,11 +123,11 @@ module wbdmac(i_clk, i_rst,
 		o_interrupt);
 	parameter	ADDRESS_WIDTH=32, LGMEMLEN = 10,
 			DW=32, LGDV=5,AW=ADDRESS_WIDTH;
-	input			i_clk, i_rst;
+	input	wire		i_clk, i_rst;
 	// Slave/control wishbone inputs
-	input			i_swb_cyc, i_swb_stb, i_swb_we;
-	input	[1:0]		i_swb_addr;
-	input	[(DW-1):0]	i_swb_data;
+	input	wire		i_swb_cyc, i_swb_stb, i_swb_we;
+	input	wire	[1:0]	i_swb_addr;
+	input	wire [(DW-1):0]	i_swb_data;
 	// Slave/control wishbone outputs
 	output	reg		o_swb_ack;
 	output	wire		o_swb_stall;
@@ -137,11 +137,11 @@ module wbdmac(i_clk, i_rst,
 	output	reg [(AW-1):0]	o_mwb_addr;
 	output	reg [(DW-1):0]	o_mwb_data;
 	// Master/DMA wishbone responses from the bus
-	input			i_mwb_ack, i_mwb_stall;
-	input	[(DW-1):0]	i_mwb_data;
-	input			i_mwb_err;
+	input	wire		i_mwb_ack, i_mwb_stall;
+	input	wire [(DW-1):0]	i_mwb_data;
+	input	wire		i_mwb_err;
 	// The interrupt device interrupt lines
-	input	[(DW-1):0]	i_dev_ints;
+	input	wire [(DW-1):0]	i_dev_ints;
 	// An interrupt to be set upon completion
 	output	reg		o_interrupt;
 	// Need to release the bus for a higher priority user

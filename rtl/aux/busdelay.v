@@ -69,12 +69,12 @@ module	busdelay(i_clk,
 		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
 			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
 	parameter	AW=32, DW=32, DELAY_STALL = 0;
-	input	i_clk;
+	input	wire			i_clk;
 	// Input/master bus
-	input				i_wb_cyc, i_wb_stb, i_wb_we;
-	input		[(AW-1):0]	i_wb_addr;
-	input		[(DW-1):0]	i_wb_data;
-	input		[(DW/8-1):0]	i_wb_sel;
+	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
+	input	wire	[(AW-1):0]	i_wb_addr;
+	input	wire	[(DW-1):0]	i_wb_data;
+	input	wire	[(DW/8-1):0]	i_wb_sel;
 	output	reg			o_wb_ack;
 	output	wire			o_wb_stall;
 	output	reg	[(DW-1):0]	o_wb_data;
@@ -84,10 +84,10 @@ module	busdelay(i_clk,
 	output	reg	[(AW-1):0]	o_dly_addr;
 	output	reg	[(DW-1):0]	o_dly_data;
 	output	reg	[(DW/8-1):0]	o_dly_sel;
-	input				i_dly_ack;
-	input				i_dly_stall;
-	input		[(DW-1):0]	i_dly_data;
-	input				i_dly_err;
+	input	wire			i_dly_ack;
+	input	wire			i_dly_stall;
+	input	wire	[(DW-1):0]	i_dly_data;
+	input	wire			i_dly_err;
 
 	generate
 	if (DELAY_STALL != 0)

@@ -50,10 +50,10 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	localparam	PW=LGCACHELEN-LGLINES; // Size of a cache line
 	localparam	BUSW = 32;	// Number of data lines on the bus
 	localparam	AW=ADDRESS_WIDTH; // Shorthand for ADDRESS_WIDTH
-	input				i_clk, i_rst, i_new_pc;
-	input				i_clear_cache;
-	input				i_stall_n;
-	input		[(AW-1):0]	i_pc;
+	input	wire			i_clk, i_rst, i_new_pc;
+	input	wire			i_clear_cache;
+	input	wire			i_stall_n;
+	input	wire	[(AW-1):0]	i_pc;
 	output	wire	[(BUSW-1):0]	o_i;
 	output	wire	[(AW-1):0]	o_pc;
 	output	wire			o_v;
@@ -63,8 +63,8 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[(BUSW-1):0]	o_wb_data;
 	//
-	input				i_wb_ack, i_wb_stall, i_wb_err;
-	input		[(BUSW-1):0]	i_wb_data;
+	input	wire			i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire	[(BUSW-1):0]	i_wb_data;
 	//
 	output	reg			o_illegal;
 

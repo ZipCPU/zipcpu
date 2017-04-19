@@ -74,19 +74,19 @@ module	wbarbiter(i_clk, i_rst,
 	parameter			DW=32, AW=19;
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_rst.
-	input				i_clk, i_rst;
-	input		[(AW-1):0]	i_a_adr, i_b_adr;
-	input		[(DW-1):0]	i_a_dat, i_b_dat;
-	input		[(DW/8-1):0]	i_a_sel, i_b_sel;
-	input				i_a_we, i_a_stb, i_a_cyc;
-	input				i_b_we, i_b_stb, i_b_cyc;
+	input	wire			i_clk, i_rst;
+	input	wire	[(AW-1):0]	i_a_adr, i_b_adr;
+	input	wire	[(DW-1):0]	i_a_dat, i_b_dat;
+	input	wire	[(DW/8-1):0]	i_a_sel, i_b_sel;
+	input	wire			i_a_we, i_a_stb, i_a_cyc;
+	input	wire			i_b_we, i_b_stb, i_b_cyc;
 	output	wire			o_a_ack, o_b_ack, o_a_stall, o_b_stall,
 					o_a_err, o_b_err;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
 	output	wire			o_we, o_stb, o_cyc;
-	input				i_ack, i_stall, i_err;
+	input	wire			i_ack, i_stall, i_err;
 
 	// All the fancy stuff here is done with the three primary signals:
 	//	o_cyc
