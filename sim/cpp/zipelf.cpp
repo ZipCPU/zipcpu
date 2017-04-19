@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipelf.cpp
 //
@@ -10,9 +10,9 @@
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -24,11 +24,16 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 //
+// You should have received a copy of the GNU General Public License along
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+// target there if the PDF file isn't present.)  If not, see
+// <http://www.gnu.org/licenses/> for a copy.
+//
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
 //
 
@@ -114,17 +119,17 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 	}
 
 	if (dbg) {
-	printf("    %-20s 0x%jx\n", "e_type", (uintmax_t)ehdr.e_type);
-	printf("    %-20s 0x%jx\n", "e_machine", (uintmax_t)ehdr.e_machine);
-	printf("    %-20s 0x%jx\n", "e_version", (uintmax_t)ehdr.e_version);
-	printf("    %-20s 0x%jx\n", "e_entry", (uintmax_t)ehdr.e_entry);
-	printf("    %-20s 0x%jx\n", "e_phoff", (uintmax_t)ehdr.e_phoff);
-	printf("    %-20s 0x%jx\n", "e_shoff", (uintmax_t)ehdr.e_shoff);
-	printf("    %-20s 0x%jx\n", "e_flags", (uintmax_t)ehdr.e_flags);
-	printf("    %-20s 0x%jx\n", "e_ehsize", (uintmax_t)ehdr.e_ehsize);
-	printf("    %-20s 0x%jx\n", "e_phentsize", (uintmax_t)ehdr.e_phentsize);
-	printf("    %-20s 0x%jx\n", "e_shentsize", (uintmax_t)ehdr.e_shentsize);
-	printf("\n");
+	fprintf(stderr,"    %-20s 0x%jx\n","e_type", (uintmax_t)ehdr.e_type);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_machine", (uintmax_t)ehdr.e_machine);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_version", (uintmax_t)ehdr.e_version);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_entry",(uintmax_t)ehdr.e_entry);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_phoff",(uintmax_t)ehdr.e_phoff);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_shoff",(uintmax_t)ehdr.e_shoff);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_flags",(uintmax_t)ehdr.e_flags);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_ehsize",(uintmax_t)ehdr.e_ehsize);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_phentsize", (uintmax_t)ehdr.e_phentsize);
+	fprintf(stderr,"    %-20s 0x%jx\n","e_shentsize", (uintmax_t)ehdr.e_shentsize);
+	fprintf(stderr,"\n");
 	}
 
 
@@ -156,22 +161,22 @@ assert(n != 0);
 		}
 
 		if (dbg) {
-		printf("    %-20s 0x%x\n", "p_type",   phdr.p_type);
-		printf("    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
-		printf("    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
-		printf("    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
-		printf("    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
-		printf("    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
-		printf("    %-20s 0x%x [", "p_flags",  phdr.p_flags);
+		fprintf(stderr, "    %-20s 0x%x\n", "p_type",   phdr.p_type);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
+		fprintf(stderr, "    %-20s 0x%x [", "p_flags",  phdr.p_flags);
 
-		if (phdr.p_flags & PF_X)	printf(" Execute");
-		if (phdr.p_flags & PF_R)	printf(" Read");
-		if (phdr.p_flags & PF_W)	printf(" Write");
-		printf("]\n");
-		printf("    %-20s 0x%jx\n", "p_align", phdr.p_align);
+		if (phdr.p_flags & PF_X)	fprintf(stderr, " Execute");
+		if (phdr.p_flags & PF_R)	fprintf(stderr, " Read");
+		if (phdr.p_flags & PF_W)	fprintf(stderr, " Write");
+		fprintf(stderr, "]\n");
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_align", phdr.p_align);
 		}
 
-		total_octets += phdr.p_memsz;
+		total_octets += phdr.p_filesz;
 	}
 
 	char	*d = (char *)malloc(total_octets + sizeof(ELFSECTION)+sizeof(ELFSECTION *));
@@ -182,6 +187,7 @@ assert(n != 0);
 	current_section = 0;
 
 	for(i=0; i<(int)n; i++) {
+		if (dbg) fprintf(stderr, "Working with &d[%d]\n", current_offset);
 		r[i] = (ELFSECTION *)(&d[current_offset]);
 
 		if (gelf_getphdr(e, i, &phdr) != &phdr) {
@@ -190,19 +196,19 @@ assert(n != 0);
 		}
 
 		if (dbg) {
-		printf("    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
-		printf("    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
-		printf("    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
-		printf("    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
-		printf("    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
-		printf("    %-20s 0x%x [", "p_flags",  phdr.p_flags);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_offset", phdr.p_offset);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_vaddr",  phdr.p_vaddr);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_paddr",  phdr.p_paddr);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_filesz", phdr.p_filesz);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_memsz",  phdr.p_memsz);
+		fprintf(stderr, "    %-20s 0x%x [", "p_flags",  phdr.p_flags);
 
-		if (phdr.p_flags & PF_X)	printf(" Execute");
-		if (phdr.p_flags & PF_R)	printf(" Read");
-		if (phdr.p_flags & PF_W)	printf(" Write");
-		printf("]\n");
+		if (phdr.p_flags & PF_X)	fprintf(stderr, " Execute");
+		if (phdr.p_flags & PF_R)	fprintf(stderr, " Read");
+		if (phdr.p_flags & PF_W)	fprintf(stderr, " Write");
+		fprintf(stderr, "]\n");
 
-		printf("    %-20s 0x%jx\n", "p_align", phdr.p_align);
+		fprintf(stderr, "    %-20s 0x%jx\n", "p_align", phdr.p_align);
 		}
 
 		current_section++;
@@ -210,7 +216,7 @@ assert(n != 0);
 		r[i]->m_start = phdr.p_paddr;
 		r[i]->m_len   = phdr.p_filesz;
 
-		current_offset += phdr.p_memsz + sizeof(ELFSECTION);
+		current_offset += phdr.p_filesz + sizeof(ELFSECTION);
 
 		// Now, let's read in our section ...
 		if (lseek(fd, phdr.p_offset, SEEK_SET) < 0) {
