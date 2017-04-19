@@ -3445,8 +3445,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-02-22 15:56:17.195319460 -0500
-@@ -0,0 +1,528 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-04-19 11:38:00.203886955 -0400
+@@ -0,0 +1,548 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-di.md
@@ -3508,9 +3508,29 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +			return	"MOV %H1,%H0\t; MOV:DI\n\tMOV %L1,%L0";
 +		else if (MEM_P(operands[0]))	//; StoreDI
 +			return	"SW %H1,%0\t; Store:DI\n\tSW %L1,4+%0";
-+		else if (MEM_P(operands[1]))	//; LoadDI
-+			return	"LW %1,%H0\t; Load:DI\n\tLW 4+%1,%L0";
-+		else if (CONST_INT_P(operands[1])) {
++		else if (MEM_P(operands[1])) {	//; LoadDI
++			//; Deal with the case of
++			//;	LOD (R0),R0
++			//;	LOD 4(R0),R1
++			//; By reversing the order of the operands, to
++			//;	LOD 4(R0),R1
++			//;	LOD (R0),R0
++			//; This isn't efficient, so let's do whatever we can to
++			//; avoid this, still ... if we do it, we can make it
++			//; work
++			rtx	address = XEXP(operands[1],0);
++			int	hazard = 0;
++			if ( (REG_P(address))
++				&&((REGNO(address))==(REGNO(operands[0]))) )
++				hazard = 1;
++			else if ( (PLUS == (GET_CODE(address)))
++				&&(REGNO(XEXP(address,0))==(REGNO(operands[0]))) )
++				hazard = 1;
++			if (hazard)
++				return	"LW 4+%1,%L0\t; Load:DI\n\tLW %1,%H0";
++			else
++				return	"LW %1,%H0\t; Load:DI\n\tLW 4+%1,%L0";
++		} else if (CONST_INT_P(operands[1])) {
 +			char	tmp[128];
 +			HOST_WIDE_INT	v = INTVAL(operands[1]);
 +			sprintf(tmp, "LDI\t0x%08x,%%H0\t; LDI #:DI,%%H0\n\tLDI\t0x%08x,%%L0",
