@@ -284,16 +284,14 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	reg	[(DW-LGPGSZ-1):0]	tlb_vdata	[0:(TBL_SIZE-1)];
 	reg	[(AW-LGPGSZ-1):0]	tlb_pdata	[0:(TBL_SIZE-1)];
 
-	wire	adr_control, adr_status, adr_vtable, adr_ptable;
-	wire	wr_control, wr_status, wr_vtable, wr_ptable;
+	wire	adr_control, adr_vtable, adr_ptable;
+	wire	wr_control, wr_vtable, wr_ptable;
 	wire	[(LGTBL-1):0]	wr_tlb_addr;
 	assign	wr_tlb_addr= i_wb_addr[(LGTBL):1]; // Leave bottom for V/P
 	assign	adr_control= (i_ctrl_cyc_stb)&&(~i_wb_addr[(LGTBL+1)])&&(~i_wb_addr[0]);
-	assign	adr_status = (i_ctrl_cyc_stb)&&(~i_wb_addr[(LGTBL+1)])&&( i_wb_addr[0]);
 	assign	adr_vtable = (i_ctrl_cyc_stb)&&( i_wb_addr[(LGTBL+1)])&&(~i_wb_addr[0]);
 	assign	adr_ptable = (i_ctrl_cyc_stb)&&( i_wb_addr[(LGTBL+1)])&&( i_wb_addr[0]);
 	assign	wr_control = (adr_control)&&(i_wb_we);
-	assign	wr_status  = (adr_status )&&(i_wb_we);
 	assign	wr_vtable  = (adr_vtable )&&(i_wb_we);
 	assign	wr_ptable  = (adr_ptable )&&(i_wb_we);
 
@@ -305,13 +303,6 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	wire	[(LGCTXT-1):0]	w_ctable_reg;
 	reg	[31:0]	status_word;
 	//
-	reg		rf_miss, rf_ropage, rf_table_err;
-	wire	[31:0]	control_word;
-	wire	[3:0]	lgaddr_bits, lgtblsz_bits, lgpagesz_bits,
-			lgcontext_bits;
-
-	reg	[(AW-(LGPGSZ)):0]	r_mmu_err_vaddr;
-	wire	[(DW-LGPGSZ):0]		w_mmu_err_vaddr;
 	//
 	reg			r_pending, r_we, last_page_valid, last_ro, r_valid;
 	reg	[(DW-1):0]	r_addr;
@@ -319,7 +310,7 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	reg	[(PAW-1):0]	last_ppage;
 	reg	[(VAW-1):0]	last_vpage;
 	//
-	wire	[(TBL_SIZE-1):0]	r_tlb_match;
+	wire	[(TBL_BITS-1):0]	r_tlb_match;
 	reg	[(LGTBL-1):0]		s_tlb_addr;
 	reg				s_tlb_miss, s_tlb_hit, s_pending;
 	//
@@ -415,7 +406,6 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	//
 	//
 	//////////////////////////////////////////
-	assign w_mmu_err_vaddr = { {(DW-AW){1'b0}}, r_mmu_err_vaddr };
 
 	//
 	//

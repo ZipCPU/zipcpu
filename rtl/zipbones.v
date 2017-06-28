@@ -81,15 +81,6 @@ module	zipbones(i_clk, i_rst,
 	output	wire	[31:0]	o_zip_debug;
 `endif
 
-	// 
-	//
-	//
-	wire	sys_cyc, sys_stb, sys_we;
-	wire	[4:0]	sys_addr;
-	wire	[(AW-1):0]	cpu_addr;
-	wire	[31:0]	sys_data;
-	wire		sys_ack, sys_stall;
-
 	//
 	// The external debug interface
 	//
@@ -167,10 +158,9 @@ module	zipbones(i_clk, i_rst,
 	//
 	// The CPU itself
 	//
-	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb, 
-			cpu_we, cpu_dbg_we,
+	wire		cpu_lcl_cyc, cpu_lcl_stb, 
+			cpu_dbg_we,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
-	wire	[31:0]	cpu_data;
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((i_dbg_cyc)&&(i_dbg_stb)
 					&&(i_dbg_we)&&(i_dbg_addr));
@@ -201,5 +191,12 @@ module	zipbones(i_clk, i_rst,
 	assign	o_dbg_stall=(i_dbg_cyc)&&(cpu_dbg_stall)&&(i_dbg_addr);
 
 	assign	o_ext_int = (cmd_halt) && (~i_wb_stall);
+
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	[3:0] unused;
+	assign	unused = { cpu_lcl_stb, cpu_op_stall, cpu_pf_stall, cpu_i_count };
+	// verilator lint_on  UNUSED
 
 endmodule
