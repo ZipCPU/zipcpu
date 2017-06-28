@@ -93,10 +93,6 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 	output	reg		o_sim		/* verilator public_flat */;
 	output	reg	[22:0]	o_sim_immv	/* verilator public_flat */;
 
-	wire	dcdA_stall, dcdB_stall, dcdF_stall;
-	wire			o_dcd_early_branch;
-	wire	[(AW-1):0]	o_dcd_branch_pc;
-	reg	o_dcdI, o_dcdIz;
 `ifdef	OPT_PIPELINED
 	reg	r_lock;
 `endif

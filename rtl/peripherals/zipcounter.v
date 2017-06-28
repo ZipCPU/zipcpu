@@ -81,4 +81,12 @@ module	zipcounter(i_clk, i_ce,
 	always @(posedge i_clk)
 		o_wb_ack <= (i_wb_stb);
 	assign	o_wb_stall = 1'b0;
+
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = i_wb_cyc;
+	// verilator lint_on  UNUSED
+
 endmodule

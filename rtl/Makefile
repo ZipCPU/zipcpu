@@ -59,9 +59,11 @@ VZIP := zipbones.v cpudefs.v					\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VOBJ := obj_dir
 SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
+VERILATOR := verilator
+VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
 
 
-VERILATE=verilator --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
+VERILATE=$(VERILATOR) $(VFLAGS)
 
 $(VOBJ)/Vzipsystem.cpp: $(VSRC)
 	$(VERILATE) zipsystem.v
@@ -137,3 +139,12 @@ pfcache: $(VOBJ)/Vpfcache__ALL.a
 .PHONY: clean
 clean:
 	rm -rf $(VOBJ) cpudefs.h
+
+#
+# Note Verilator's dependency created information, and include it here if we
+# can
+DEPS := $(wildcard $(VOBJ)/*.d)
+
+ifneq ($(DEPS),)
+include $(DEPS)
+endif

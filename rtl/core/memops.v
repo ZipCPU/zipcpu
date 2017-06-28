@@ -209,4 +209,13 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 	end endgenerate
+
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = i_lock;
+	// verilator lint_on  UNUSED
+
+
 endmodule

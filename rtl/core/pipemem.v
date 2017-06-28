@@ -190,13 +190,13 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 		o_wreg <= w_wreg[8:4];
 	always @(posedge i_clk)
 		casez(w_wreg[3:0])
-		4'b1100: o_result = { 24'h00, i_wb_data[31:24] };
-		4'b1101: o_result = { 24'h00, i_wb_data[23:16] };
-		4'b1110: o_result = { 24'h00, i_wb_data[15: 8] };
-		4'b1111: o_result = { 24'h00, i_wb_data[ 7: 0] };
-		4'b100?: o_result = { 16'h00, i_wb_data[31:16] };
-		4'b101?: o_result = { 16'h00, i_wb_data[15: 0] };
-		default: o_result = i_wb_data[31:0];
+		4'b1100: o_result <= { 24'h00, i_wb_data[31:24] };
+		4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
+		4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
+		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
+		4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
+		default: o_result <= i_wb_data[31:0];
 		endcase
 
 	assign	o_pipe_stalled = (cyc)
@@ -222,5 +222,11 @@ module	pipemem(i_clk, i_rst, i_pipe_stb, i_lock,
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 	end endgenerate
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = i_lock;
+	// verilator lint_on  UNUSED
 
 endmodule

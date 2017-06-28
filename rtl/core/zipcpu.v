@@ -236,7 +236,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	clear_pipeline = new_pc;
 
 	wire		dcd_stalled;
-	wire		pf_cyc, pf_stb, pf_we, pf_busy, pf_ack, pf_stall, pf_err;
+	wire		pf_cyc, pf_stb, pf_we, pf_ack, pf_stall, pf_err;
 	wire	[(AW-1):0]	pf_addr;
 	wire	[31:0]		pf_data;
 	wire	[31:0]		pf_instruction;
@@ -289,10 +289,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	reg	[31:0]	r_op_Av, r_op_Bv;
 	reg	[(AW-1):0]	op_pc;
 	wire	[31:0]	w_op_Av, w_op_Bv;
-	wire	[31:0]	op_A_nowait, op_B_nowait, op_Av, op_Bv;
+	wire	[31:0]	op_Av, op_Bv;
 	reg		op_wR, op_wF;
 	wire		op_gie, op_Rcc;
-	wire	[14:0]	op_Fl;
+	wire	[3:0]	op_Fl;
 	reg	[6:0]	r_op_F;
 	wire	[7:0]	op_F;
 	wire		op_ce, op_phase, op_pipe, op_change_data_ce;
@@ -945,7 +945,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	op_gie = r_op_gie;
 	assign	op_Rcc = r_op_Rcc;
 
-	assign	op_Fl = (op_gie)?(w_uflags):(w_iflags);
+	assign	op_Fl = (op_gie)?(w_uflags[3:0]):(w_iflags[3:0]);
 
 `ifdef	OPT_CIS
 	reg	r_op_phase;
@@ -1961,5 +1961,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		*/
 			};
 `endif
+
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	[40:0]	unused;
+	assign	unused = { fpu_ce, pf_data, wr_spreg_vl[1:0], ipc[1:0], upc[1:0], pf_pc[1:0]  };
+	// verilator lint_on  UNUSED
+
 
 endmodule
