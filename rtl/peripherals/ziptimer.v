@@ -161,4 +161,10 @@ module	ziptimer(i_clk, i_rst, i_ce,
 		assign	o_wb_data = { auto_reload, r_value };
 	endgenerate
 
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	[32:0]	unused;
+	assign	unused = { i_wb_cyc, i_wb_data };
+	// verilator lint_on  UNUSED
+
 endmodule
