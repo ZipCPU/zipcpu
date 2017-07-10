@@ -15,7 +15,7 @@
 #
 ################################################################################
 #
-# Copyright (C) 2015-2016, Gisselquist Technology, LLC
+# Copyright (C) 2015-2017, Gisselquist Technology, LLC
 #
 # This program is free software (firmware): you can redistribute it and/or
 # modify it under the terms of  the GNU General Public License as published
@@ -39,19 +39,27 @@ all: zipmmu_tb
 CORED:= ../../rtl/core
 PRPHD:= ../../rtl/peripherals
 AUXD := ../../rtl/aux
-
 VOBJ := obj_dir
+VERILATOR := verilator
+VFLAGS    := -Wall -MMD -trace -y $(PRPHD) -cc
+SUBMAKE   := $(MAKE) --no-print-directory -C
 
 $(VOBJ)/Vzipmmu_tb.cpp: $(PRPHD)/zipmmu.v zipmmu_tb.v memdev.v
-	verilator -trace -cc  -y $(PRPHD) zipmmu_tb.v
+	$(VERILATOR) $(VFLAGS) zipmmu_tb.v
 $(VOBJ)/Vzipmmu_tb.h: $(VOBJ)/Vzipmmu_tb.cpp
 
 $(VOBJ)/Vzipmmu_tb__ALL.a: $(VOBJ)/Vzipmmu_tb.cpp $(VOBJ)/Vzipmmu_tb.h
-	cd $(VOBJ); make --no-print-directory -f Vzipmmu_tb.mk
+	$(SUBMAKE) $(VOBJ) -f Vzipmmu_tb.mk
 
 .PHONY: zipmmu_tb
 zipmmu_tb: $(VOBJ)/Vzipmmu_tb__ALL.a
 
 .PHONY: clean
 clean:
-	rm -rf $(VOBJ) cpudefs.h
+	rm -rf $(VOBJ)
+
+
+DEPS := $(wildcard $(VOBJ)/*.d)
+ifneq ($(DEPS),)
+include $(DEPS)
+endif

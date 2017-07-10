@@ -112,7 +112,7 @@
 //				This is not a hardware page, but a memory page.
 //				Therefore, the values within this page may be
 //				cached.
-//	   1-bit	This context
+//	   1-bit	This context (Unused ?)
 //				This is a read-only bit, indicating that the
 //				context register of this address matches the
 //				context register in the control word.
@@ -211,51 +211,73 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
-module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
-			i_wb_addr, i_wb_data,
-		o_cyc, o_stb, o_we, o_addr, o_data,
+module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
+				i_wbs_data, o_wbs_ack, o_wbs_stall, o_wbs_data,
+		i_wbm_cyc, i_wbm_stb, i_wb_we,
+			i_wb_addr, i_wb_data, i_wb_sel,
+		o_cyc, o_stb, o_we, o_addr, o_data, o_sel,
 			i_stall, i_ack, i_err, i_data,
 			o_rtn_stall, o_rtn_ack, o_rtn_err,
 				o_rtn_miss, o_rtn_data,
 		pf_return_stb, pf_return_we,
 				pf_return_p, pf_return_v,
 				pf_return_cachable);
-	parameter	ADDRESS_WIDTH=28, LGTBL=6, PLGPGSZ=12, PLGCTXT=16, DW=32;
+	parameter	// The size of the address bus.  Actual addressable
+			// size will likely be 2^(ADDRESS_WIDTH+2) octets
+			ADDRESS_WIDTH=28,
+			// Number of page table entries
+			LGTBL=6,
+			// The requested log page size in bytes
+			PLGPGSZB=12,
+			// Number of bits describing context
+			PLGCTXT=16;
 	localparam	// And for our derived parameters (don't set these ...)
+			// Width of the data bus is 32-bits.  This may be hard
+			// to change.
+			DW = 32,
 			// AW is just shorthand for the name ADDRESS_WIDTH
 			AW = ADDRESS_WIDTH,
 			// Page sizes must allow for a minimum of one context
 			// bit per page, plus four flag bits, hence the minimum
 			// number of bits for an address within a page is 5
-			LGPGSZ=(PLGPGSZ < 5)? 5:PLGPGSZ,
+			LGPGSZB=(PLGPGSZB < 5)? 5:PLGPGSZB,	// in bytes
+			LGPGSZW=LGPGSZB-2,			// in words
 			// The number of context bits is twice the number of
 			// bits left over from DW after removing the LGPGSZ
 			// and flags bits.
-			LGCTXT=(((DW-LGPGSZ-4)<<1)<PLGCTXT)?
-				((DW-LGPGSZ-4)<<1):PLGCTXT,
+			LGCTXT=((2*(LGPGSZB-4))>PLGCTXT)?
+				(2*(LGPGSZB-4)):PLGCTXT,
 			// LGLCTX is the number of context bits in the low word
-			LGLCTX=((LGPGSZ-4)<LGCTXT)?(LGPGSZ-4):LGCTXT,
+			LGLCTX=(LGCTXT > (LGPGSZB-4))?(LGPGSZB-4):LGCTXT,
 			// LGHCTX is the number of context bits in the high word
-			LGHCTX= (LGCTXT-LGLCTX),
-			VAW=(DW-LGPGSZ), //  Virtual address width
-			PAW=(AW-LGPGSZ), // Physical address width
+			LGHCTX= (LGCTXT-LGLCTX>0)?(LGCTXT-LGLCTX):0,
+			VAW=(DW-LGPGSZB), //  Virtual address width, in bytes
+			PAW=(AW-LGPGSZW), // Physical address width, in words
 			TBL_BITS = LGTBL,	// Bits necessary to addr tbl
 			TBL_SIZE=(1<<TBL_BITS);// Number of table entries
 	input	wire		i_clk, i_reset;
 	//
-	input	wire		i_ctrl_cyc_stb;
+	input	wire		i_wbs_cyc_stb;
+	input	wire		i_wbs_we;
+	input	wire	[(LGTBL+1):0]	i_wbs_addr;
+	input	wire	[(DW-1):0]	i_wbs_data;
+	output	reg			o_wbs_ack;
+	output	wire			o_wbs_stall;
+	output	reg	[(DW-1):0]	o_wbs_data;
 	//
 	input	wire		i_wbm_cyc, i_wbm_stb;
 	//
-	input	wire		i_wb_we;
-	input	wire [(DW-1):0]	i_wb_addr;
-	input	wire [(DW-1):0]	i_wb_data;
+	input	wire			i_wb_we;
+	input	wire [(DW-2-1):0]	i_wb_addr;
+	input	wire [(DW-1):0]		i_wb_data;
+	input	wire [(DW/8-1):0]	i_wb_sel;
 	//
 	// Here's where we drive the slave side of the bus
 	output	reg			o_cyc;
 	output	wire			o_stb, o_we;
 	output	reg	[(AW-1):0]	o_addr;
 	output	reg	[(DW-1):0]	o_data;
+	output	reg	[(DW/8-1):0]	o_sel;
 	// and get our return information from driving the slave ...
 	input	wire			i_stall, i_ack, i_err;
 	input	wire	[(DW-1):0]	i_data;
@@ -281,22 +303,21 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 //
 	reg	[3:1]			tlb_flags	[0:(TBL_SIZE-1)];
 	reg	[(LGCTXT-1):0]		tlb_cdata	[0:(TBL_SIZE-1)];
-	reg	[(DW-LGPGSZ-1):0]	tlb_vdata	[0:(TBL_SIZE-1)];
-	reg	[(AW-LGPGSZ-1):0]	tlb_pdata	[0:(TBL_SIZE-1)];
+	reg	[(VAW-1):0]		tlb_vdata	[0:(TBL_SIZE-1)];
+	reg	[(PAW-1):0]		tlb_pdata	[0:(TBL_SIZE-1)];
 
 	wire	adr_control, adr_vtable, adr_ptable;
 	wire	wr_control, wr_vtable, wr_ptable;
 	wire	[(LGTBL-1):0]	wr_tlb_addr;
-	assign	wr_tlb_addr= i_wb_addr[(LGTBL):1]; // Leave bottom for V/P
-	assign	adr_control= (i_ctrl_cyc_stb)&&(~i_wb_addr[(LGTBL+1)])&&(~i_wb_addr[0]);
-	assign	adr_vtable = (i_ctrl_cyc_stb)&&( i_wb_addr[(LGTBL+1)])&&(~i_wb_addr[0]);
-	assign	adr_ptable = (i_ctrl_cyc_stb)&&( i_wb_addr[(LGTBL+1)])&&( i_wb_addr[0]);
-	assign	wr_control = (adr_control)&&(i_wb_we);
-	assign	wr_vtable  = (adr_vtable )&&(i_wb_we);
-	assign	wr_ptable  = (adr_ptable )&&(i_wb_we);
+	assign	wr_tlb_addr= i_wbs_addr[(LGTBL):1]; // Leave bottom for V/P
+	assign	adr_control= (i_wbs_cyc_stb)&&(~i_wbs_addr[(LGTBL+1)])&&(~i_wbs_addr[0]);
+	assign	adr_vtable = (i_wbs_cyc_stb)&&( i_wbs_addr[(LGTBL+1)])&&(~i_wbs_addr[0]);
+	assign	adr_ptable = (i_wbs_cyc_stb)&&( i_wbs_addr[(LGTBL+1)])&&( i_wbs_addr[0]);
+	assign	wr_control = (adr_control)&&(i_wbs_we);
+	assign	wr_vtable  = (adr_vtable )&&(i_wbs_we);
+	assign	wr_ptable  = (adr_ptable )&&(i_wbs_we);
 
-	reg			setup_ack, z_context, setup_this_page_flag;
-	reg	[(DW-1):0]	setup_data;
+	reg			z_context, setup_this_page_flag;
 	reg	[(LGCTXT-1):0]	r_context_word, setup_page;
 	//
 	wire	[31:0]		w_control_data,w_vtable_reg,w_ptable_reg;
@@ -305,12 +326,13 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	//
 	//
 	reg			r_pending, r_we, last_page_valid, last_ro, r_valid;
-	reg	[(DW-1):0]	r_addr;
+	reg	[(DW-3):0]	r_addr;
 	reg	[(DW-1):0]	r_data;
+	reg	[(DW/8-1):0]	r_sel;
 	reg	[(PAW-1):0]	last_ppage;
 	reg	[(VAW-1):0]	last_vpage;
 	//
-	wire	[(TBL_BITS-1):0]	r_tlb_match;
+	wire	[(TBL_SIZE-1):0]	r_tlb_match;
 	reg	[(LGTBL-1):0]		s_tlb_addr;
 	reg				s_tlb_miss, s_tlb_hit, s_pending;
 	//
@@ -323,7 +345,7 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	//////////////////////////////////////////
 	//
 	//
-	// Step one -- handle the control bus--i_ctrl_cyc_stb
+	// Step one -- handle the control bus--i_wbs_cyc_stb
 	//
 	//
 	//////////////////////////////////////////
@@ -331,12 +353,12 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	begin
 		// Write to the Translation lookaside buffer
 		if (wr_vtable)
-			tlb_vdata[wr_tlb_addr]<=i_wb_data[(DW-1):LGPGSZ];
+			tlb_vdata[wr_tlb_addr]<=i_wbs_data[(DW-1):LGPGSZB];
 		if (wr_ptable)
-			tlb_pdata[wr_tlb_addr]<=i_wb_data[(AW-1):LGPGSZ];
+			tlb_pdata[wr_tlb_addr]<=i_wbs_data[(AW+1):LGPGSZB];
 		// Set the context register for the page
 		if ((wr_vtable)||(wr_ptable))
-			tlb_flags[wr_tlb_addr] <= i_wb_data[3:1];
+			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
 		// Otherwise, keep track of the accessed bit if we ever access this page
 		else if ((!z_context)&&(r_pending)&&(s_tlb_hit)&&((!r_we)||(!ro_flag)))
 			tlb_flags[s_tlb_addr][2] <= 1'b1;
@@ -346,7 +368,6 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 		if ((wr_ptable)&&(LGCTXT > 8))
 			tlb_cdata[wr_tlb_addr][(LGCTXT-1):8]
 				<= i_wb_data[(4+LGCTXT-8-1):4];
-		setup_ack <= (i_ctrl_cyc_stb)&&(!i_reset);
 	end
 	// Writing to the control word
 	initial z_context = 1'b1;
@@ -354,27 +375,25 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	always @(posedge i_clk)
 	if (wr_control)
 		begin
-		r_context_word <= i_wb_data[(LGCTXT-1):0];
-		z_context      <= (i_wb_data[(LGCTXT-1):0] == {(LGCTXT){1'b0}});
+		r_context_word <= i_wbs_data[(LGCTXT-1):0];
+		z_context      <= (i_wbs_data[(LGCTXT-1):0] == {(LGCTXT){1'b0}});
 		end
 	// Status words cannot be written to
 
 	/* verilator lint_off WIDTH */
 	assign	w_control_data[31:28] = AW-17;
 	assign	w_control_data[27:24] = LGTBL;
-	assign	w_control_data[23:20] = LGPGSZ-8;
+	assign	w_control_data[23:20] = LGPGSZB-10;
 	assign	w_control_data[19:16] = LGCTXT-1;
 	/* verilator lint_on WIDTH */
 	assign	w_control_data[15: 0] = {{(16-LGCTXT){1'b0}}, r_context_word};
 	//
-	assign	w_vtable_reg[(DW-1):LGPGSZ] = tlb_vdata[wr_tlb_addr];
-	assign	w_vtable_reg[(LGPGSZ-1):(LGLCTX+4-1)] = 0;
+	assign	w_vtable_reg[(DW-1):LGPGSZB] = tlb_vdata[wr_tlb_addr];
 	assign	w_vtable_reg[(LGLCTX+4-1):4] = { tlb_cdata[wr_tlb_addr][(LGLCTX-1):0] };
 	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], 1'b0 };
 	//
-	assign	w_ptable_reg[(DW-1):LGPGSZ] = { {(DW-AW){1'b0}},
+	assign	w_ptable_reg[(DW-1):LGPGSZB] = { {(DW-PAW-LGPGSZB){1'b0}},
 					tlb_pdata[wr_tlb_addr] };
-	assign	w_ptable_reg[LGPGSZ:(4+LGHCTX)] = 0;
 	assign	w_ptable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], 1'b0 };
 	assign	w_ctable_reg = tlb_cdata[wr_tlb_addr];
 	//
@@ -382,20 +401,17 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 		if (4+LGHCTX-1>4)
 			assign	w_ptable_reg[(4+LGHCTX-1):4] =  {
 				tlb_cdata[wr_tlb_addr][(LGCTXT-1):LGLCTX] };
+		if (LGPGSZB > LGLCTX+4)
+			assign	w_vtable_reg[(LGPGSZB-1):(LGLCTX+4)] = 0;
+		if (LGPGSZB > LGHCTX+4)
+			assign	w_ptable_reg[(LGPGSZB-1):(LGHCTX+4)] = 0;
 	endgenerate
 
 	// Now, reading from the bus
 	always @(posedge i_clk)
 		setup_page <= w_ctable_reg;
 	always @(posedge i_clk)
-		setup_this_page_flag <= (i_ctrl_cyc_stb)&&(i_wb_addr[LGTBL+1]);
-	always @(posedge i_clk)
-		case({i_wb_addr[LGTBL+1],i_wb_addr[0]})
-		2'b00: setup_data <= w_control_data;
-		2'b01: setup_data <= status_word;
-		2'b10: setup_data <= w_vtable_reg;
-		2'b11: setup_data <= w_ptable_reg;
-		endcase
+		setup_this_page_flag <= (i_wbs_cyc_stb)&&(i_wbs_addr[LGTBL+1]);
 
 
 
@@ -424,13 +440,14 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 			r_we      <= i_wb_we;
 			r_addr    <= i_wb_addr;
 			r_data    <= i_wb_data;
+			r_sel     <= i_wb_sel;
 			r_valid   <= (i_wbm_stb)&&((z_context)||((last_page_valid)
-					&&(i_wb_addr[(DW-1):LGPGSZ] == last_vpage)
+					&&(i_wb_addr[(DW-3):(DW-2-VAW)] == last_vpage)
 					&&((!last_ro)||(!i_wb_we))));
 			s_pending <= 1'b0;
 		end else begin
 			r_valid <= (r_valid)||((last_page_valid)
-					&&(r_addr[(DW-1):LGPGSZ] == last_vpage)
+					&&(r_addr[(DW-3):(DW-2-VAW)]== last_vpage)
 					&&((!last_ro)||(!r_we)));
 			r_pending<= (r_pending)&&(i_wbm_cyc);
 			s_pending <= r_pending;
@@ -444,10 +461,10 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	// while ...
 	genvar k, s;
 	generate
-	for(k=0; k<TBL_BITS; k = k + 1)
+	for(k=0; k<TBL_SIZE; k = k + 1)
 		assign r_tlb_match[k] =
 			// Virtual address must match
-			((tlb_vdata[k] == r_addr[(DW-1):LGPGSZ])
+			((tlb_vdata[k] == r_addr[(DW-3):(DW-2-VAW)])
 			// Context must match as well
 				&&(tlb_cdata[k] == r_context_word));
 	endgenerate
@@ -458,10 +475,15 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	always @(posedge i_clk)
 	begin // valid when s_ becomes valid
 		s_tlb_addr <= {(LGTBL){1'b0}};
+		/*
 		for(k=0; k<TBL_SIZE; k=k+1)
 			for(s=0; s<LGTBL; s=s+1)
 				if (((k&(1<<s))!=0)&&(r_tlb_match[k]))
 					s_tlb_addr[s] <= 1'b1;
+		*/
+		for(k=0; k<TBL_SIZE; k=k+1)
+			if (r_tlb_match[k])
+				s_tlb_addr <= k[(LGTBL-1):0];
 		s_tlb_miss <= (r_pending)&&(r_tlb_match[(TBL_BITS-1):0] == 0);
 		s_tlb_hit <= 1'b0;
 		for(k=0; k<TBL_SIZE; k=k+1)
@@ -496,8 +518,8 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 		end else
 			pf_stb <= 1'b0;
 		if ((table_err)||(ro_miss)||(simple_miss))
-			status_word <= { r_addr[(DW-1):LGPGSZ],
-				{(LGPGSZ-3){1'b0}}, 
+			status_word <= { r_addr[(AW-1):(AW-VAW)],
+				{(LGPGSZW-1){1'b0}}, 
 				(table_err), (ro_miss), (simple_miss) };
 				
 		if (wr_control)
@@ -515,8 +537,8 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	begin
 		o_cyc <=  (!i_reset)&&(i_wbm_cyc);
 
-		o_rtn_ack  <= (!i_reset)&&((setup_ack)||(i_wbm_cyc)&&(i_ack));
-		o_rtn_data <= (setup_ack) ? setup_data : i_data;
+		o_rtn_ack  <= (!i_reset)&&(i_wbm_cyc)&&(i_ack);
+		o_rtn_data <= i_data;
 		if (setup_this_page_flag)
 			o_rtn_data[0] <= ((setup_page == r_context_word)? 1'b1:1'b0);
 		rtn_err  <= (!i_reset)&&(i_wbm_cyc)&&(i_err);
@@ -527,10 +549,23 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	assign	o_rtn_miss  = p_tlb_miss;
 	assign	o_rtn_err   = (rtn_err)||(p_tlb_err);
 
-	assign	o_addr[(AW-1):0] = {(z_context)?
-				r_addr[(AW-1):LGPGSZ] : last_ppage,
-			r_addr[(LGPGSZ-1):0]};
+	assign	o_addr[(AW-1):0] = { { (z_context)?
+				r_addr[(AW-1):LGPGSZW] : last_ppage },
+			r_addr[(LGPGSZW-1):0]};
+	assign	o_sel  = r_sel;
 	assign	o_data = r_data;
+
+	//
+	assign	o_wbs_stall = 1'b0;
+	always @(posedge i_clk)
+		o_wbs_ack <= (i_wbs_cyc_stb)&&(!i_reset);
+	always @(posedge i_clk)
+		case({i_wb_addr[LGTBL+1],i_wb_addr[0]})
+		2'b00: o_wbs_data <= w_control_data;
+		2'b01: o_wbs_data <= status_word;
+		2'b10: o_wbs_data <= w_vtable_reg;
+		2'b11: o_wbs_data <= w_ptable_reg;
+		endcase
 
 	//
 	// Bus snooping returns ...
@@ -540,5 +575,6 @@ module zipmmu(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	assign	pf_return_p  = last_ppage;
 	assign	pf_return_v  = last_vpage;
 	assign	pf_return_cachable = pf_cachable;
+
 
 endmodule

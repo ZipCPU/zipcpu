@@ -4,7 +4,9 @@
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	
+// Purpose:	This is a test-bench wrapper for the MMU.  It's used to
+//		test whether or not the MMU works independent of the ZipCPU
+//	itself.  The rest of the test bench is a C++ Verilator-enabled program.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -12,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -32,10 +34,10 @@
 //
 //
 module zipmmu_tb(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
-				i_wb_addr, i_wb_data,
+				i_wb_addr, i_wb_data, i_wb_sel,
 			o_rtn_stall, o_rtn_ack, o_rtn_err,
 				o_rtn_miss, o_rtn_data);
-	parameter	CPU_ADDRESS_WIDTH=28,
+	parameter	CPU_ADDRESS_WIDTH=30,
 			MEMORY_ADDRESS_WIDTH=15;
 	localparam	AW= CPU_ADDRESS_WIDTH,
 			MAW= MEMORY_ADDRESS_WIDTH;
@@ -46,8 +48,9 @@ module zipmmu_tb(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	input			i_wbm_cyc, i_wbm_stb;
 	//
 	input			i_wb_we;
-	input	[(32-1):0]	i_wb_addr;
+	input	[(32-3):0]	i_wb_addr;
 	input	[(32-1):0]	i_wb_data;
+	input	[(32/8-1):0]	i_wb_sel;
 	//
 	// Here's where we return information on either our slave/control bus
 	// or the memory bus we are controlled from.  Note that we share these
@@ -56,32 +59,63 @@ module zipmmu_tb(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	output	wire	[(32-1):0]	o_rtn_data;
 
 
-	wire	mem_cyc, mem_stb, mem_we, mem_ack, mem_stall;
-	wire	[31:0]	mem_idata, mem_odata;
-	wire	[27:0]	mem_addr;
-	reg		mem_err;
+
+	wire			mem_cyc	/* verilator public_flat */,
+				mem_stb	/* verilator public_flat */,
+				mem_we	/* verilator public_flat */,
+				mem_ack	/* verilator public_flat */,
+				mem_stall	/* verilator public_flat */;
+	wire	[31:0]		mem_idata	/* verilator public_flat */,
+				mem_odata	/* verilator public_flat */;
+	wire	[(32/8-1):0]	mem_sel;
+	wire	[(CPU_ADDRESS_WIDTH-1):0]	mem_addr /* verilator public_flat */;
+	reg			mem_err	/* verilator public_flat */;
+
+	wire		mmus_ack, mmus_stall;
+	wire	[31:0]	mmus_data;
+
+	wire		rtn_ack, rtn_stall;
+	wire	[31:0]	rtn_data;
 
 	wire	ign_stb, ign_we, ign_cache;
-	wire	[15:0]	ign_p;
+	wire	[19:0]	ign_p;
 	wire	[19:0]	ign_v;
 
 	//
 	// mut = Module Under Test
 	//
 	zipmmu	#(.ADDRESS_WIDTH(CPU_ADDRESS_WIDTH))
-		mut(i_clk, i_rst, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb,
-			i_wb_we, i_wb_addr, i_wb_data,
-			mem_cyc, mem_stb, mem_we, mem_addr,
-					mem_idata,
+		mut(i_clk, i_rst,
+			// Slave access
+			i_ctrl_cyc_stb, i_wb_we, i_wb_addr[7:0], i_wb_data,
+				mmus_ack, mmus_stall, mmus_data,
+			i_wbm_cyc, i_wbm_stb,
+				i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
+			mem_cyc, mem_stb, mem_we, mem_addr, mem_idata, mem_sel,
 				mem_stall, mem_ack, mem_err, mem_odata,
-			o_rtn_stall, o_rtn_ack, o_rtn_err, o_rtn_miss,
-				o_rtn_data,
+			rtn_stall, rtn_ack, o_rtn_err, o_rtn_miss,
+				rtn_data,
 			ign_stb, ign_we, ign_p, ign_v, ign_cache);
 
-	memdev #(MAW) ram(i_clk, mem_cyc, mem_stb,mem_we, mem_addr[(MAW-1):0],
-		mem_idata, mem_ack, mem_stall, mem_odata);
+	memdev #(MAW+2) ram(i_clk,
+		mem_cyc, mem_stb, mem_we, mem_addr[(MAW-1):0], mem_idata,
+				mem_sel,
+			mem_ack, mem_stall, mem_odata);
 
 	always@(posedge i_clk)
-		mem_err <= ((mem_stb)&&(!mem_cyc))||((mem_stb)&&(mem_addr[(AW-1):MAW]!={{(AW-MAW-1){1'b0}}, 1'b1}));
+		mem_err <= ((mem_stb)&&(!mem_cyc))
+				||((mem_stb)&&(mem_addr[(AW-1):MAW]
+					!= {{(AW-MAW-1){1'b0}}, 1'b1}));
+
+
+	assign	o_rtn_stall = (i_wbm_cyc)&&(rtn_stall);
+	assign	o_rtn_ack   = (i_wbm_cyc)?(rtn_ack) :mmus_ack;
+	assign	o_rtn_data  = (i_wbm_cyc)?(rtn_data):mmus_data;
+
+	// Make Verilator happy
+	// verilator lint_on UNUSED
+	wire	[2+20+20+1+1-1:0]	unused;
+	assign	unused = { ign_stb, ign_we, ign_p, ign_v, ign_cache, mmus_stall };
+	// verilator lint_off UNUSED
 
 endmodule

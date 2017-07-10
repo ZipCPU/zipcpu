@@ -51,6 +51,33 @@
 #define	MMUFLAG_CCHE	2 // Cachable
 #define	MMUFLAG_THSP	1 // Page has this context
 
+#define	setup_stb	i_ctrl_cyc_stb
+#define	setup_ack	o_rtn_ack
+#define	setup_stall	o_rtn_stall
+#define	setup_data	o_rtn_data
+#define	mem_cyc		v__DOT__mem_cyc
+#define	mem_stb		v__DOT__mem_stb
+#define	mem_we		v__DOT__mem_we
+#define	mem_r_we	v__DOT__mut__DOT__r_we
+#define	mem_r_valid	v__DOT__mut__DOT__r_valid
+#define	mem_addr	v__DOT__mem_addr
+#define	mem_err		v__DOT__mem_err
+#define	wr_vtable	v__DOT__mut__DOT__wr_vtable
+#define	wr_ptable	v__DOT__mut__DOT__wr_ptable
+#define	wr_control	v__DOT__mut__DOT__wr_control
+#define	z_context	__PVT__mut__DOT__z_context
+#define	context_word	v__DOT__mut__DOT__r_context_word
+#define	r_pending	v__DOT__mut__DOT__r_pending
+#define	r_we		v__DOT__mut__DOT__r_we
+#define	r_valid		v__DOT__mut__DOT__r_valid
+#define	r_addr		v__DOT__mut__DOT__r_addr
+#define	r_data		v__DOT__mut__DOT__r_data
+
+#define	R_CONTROL		0
+#define	R_STATUS		4
+#define	R_TABLESZ(LGSZ)		(8<<LGSZ)
+#define	R_ENTRYSZ(LGSZ,K)	(R_TABLESZ(LGSZ)+(K<<3))
+
 const int	BOMBCOUNT = 32,
 		LGMEMSIZE = 15;
 
@@ -65,7 +92,6 @@ public:
 		m_last_tlb_index = 0;
 	}
 
-#define	v__DOT__mem_stb	v__DOT__mut__DOT__r_valid
 	void	tick(void) {
 
 		TESTB<Vzipmmu_tb>::tick();
@@ -74,30 +100,28 @@ public:
 
 		if ((m_debug)&&(writeout)) {
 			printf("%08lx-MMU: ", m_tickcount);
-			printf("(%s%s%s%s) %08x (%s%s%s)%08x%s %s %08x/%08x %s%s%s%s%s",
-				(m_core->i_ctrl_cyc_stb)?"CT":"  ",
+			printf("(%s%s%s%s) %08x (%s%s%s)%08x%s %s %08x/%08x %s%s%s%s",
+				(m_core->setup_stb)?"CT":"  ",
 				(m_core->i_wbm_cyc)?"CYC":"   ",
 				(m_core->i_wbm_stb)?"STB":"   ",
 				(m_core->i_wb_we)?"WE":"  ",
 				(m_core->i_wb_addr),
-				(m_core->v__DOT__mem_cyc)?"CYC":"   ",
-				(m_core->v__DOT__mem_stb)?"STB":"   ",
-#define	v__DOT__mem_we	v__DOT__mut__DOT__r_we
-				(m_core->v__DOT__mem_we)?"WE":"  ",
-				(m_core->v__DOT__mem_addr),
-				(m_core->v__DOT__mem_err)?"ER":"  ",
+				(m_core->mem_cyc)?"CYC":"   ",
+				(m_core->mem_stb)?"STB":"   ",
+				(m_core->mem_we)?"WE":"  ",
+				(m_core->mem_addr),
+				(m_core->mem_err)?"ER":"  ",
 				(m_core->i_wb_we)?"<-":"->",
 				(m_core->i_wb_we)?m_core->i_wb_data:m_core->o_rtn_data,
-				(m_core->v__DOT__mem_we)?m_core->v__DOT__mut__DOT__r_data:m_core->v__DOT__mem_odata,
+				(m_core->mem_we)?m_core->r_data:m_core->v__DOT__mem_odata,
 				(m_core->o_rtn_stall)?"STALL":"     ",
-				(m_core->v__DOT__mut__DOT__setup_ack)?"S":" ",
 				(m_core->o_rtn_ack )?"ACK":"   ",
 				(m_core->o_rtn_miss)?"MISS":"    ",
 				(m_core->o_rtn_err )?"ERR":"   ");
 
 			printf("[%d,%d]",
-				m_core->v__DOT__mut__DOT__wr_vtable,
-				m_core->v__DOT__mut__DOT__wr_ptable);
+				m_core->wr_vtable,
+				m_core->wr_ptable);
 			printf("[%d,%d,%04x]",
 				m_core->v__DOT__mut__DOT__wr_control,
 				m_core->v__DOT__mut__DOT__z_context,
@@ -109,11 +133,11 @@ public:
 				m_core->v__DOT__mut__DOT__setup_data);
 			*/
 			printf(" %s[%s%s@%08x,%08x]",
-				(m_core->v__DOT__mut__DOT__r_pending)?"R":" ",
-				(m_core->v__DOT__mut__DOT__r_we)?"W":" ",
-				(m_core->v__DOT__mut__DOT__r_valid)?"V":" ",
-				(m_core->v__DOT__mut__DOT__r_addr),
-				(m_core->v__DOT__mut__DOT__r_data));
+				(m_core->r_pending)?"R":" ",
+				(m_core->r_we)?"W":" ",
+				(m_core->r_valid)?"V":" ",
+				(m_core->r_addr),
+				(m_core->r_data));
 			printf("@%2x[%s%s%s][%s%s%s%s]",
 				(m_core->v__DOT__mut__DOT__s_tlb_addr),
 				(m_core->v__DOT__mut__DOT__s_pending)?"P":" ",
@@ -158,7 +182,11 @@ public:
 	}
 
 	unsigned operator[](unsigned a) {
-		a &= ((1<<LGMEMSIZE)-1);
+		unsigned	msk = (1<<LGMEMSIZE)-1;
+// printf("OP[] Reading from %08x\n", a);
+		assert((a&3)==0);
+		a = (a>>2)&(msk);
+// printf("OP[] ----> %08x\n", a);
 		return m_core->v__DOT__ram__DOT__mem[a];
 	}
 
@@ -173,7 +201,7 @@ public:
 		m_core->i_wbm_cyc = 0;
 		m_core->i_wbm_stb = 0;
 		m_core->i_wb_we  = 0;
-		m_core->i_wb_addr= a;
+		m_core->i_wb_addr= a>>2;
 
 		if (m_core->o_rtn_stall) {
 			while((errcount++ < BOMBCOUNT)&&(m_core->o_rtn_stall))
@@ -218,8 +246,9 @@ public:
 		m_core->i_wbm_cyc = 0;
 		m_core->i_wbm_stb = 0;
 		m_core->i_wb_we  = 1;
-		m_core->i_wb_addr= a;
+		m_core->i_wb_addr= a>>2;
 		m_core->i_wb_data= v;
+		m_core->i_wb_sel= 15;
 
 		if (a & 0x080)
 			m_last_tlb_index = (a>>1)&0x3f;
@@ -265,7 +294,7 @@ public:
 		m_core->i_wbm_cyc = 1;
 		m_core->i_wbm_stb = 1;
 		m_core->i_wb_we  = 0;
-		m_core->i_wb_addr= a;
+		m_core->i_wb_addr= a>>2;
 
 		if (m_core->o_rtn_stall) {
 			while((errcount++ < BOMBCOUNT)&&(m_core->o_rtn_stall)) {
@@ -350,7 +379,7 @@ public:
 		m_core->i_wbm_cyc = 1;
 		m_core->i_wbm_stb = 1;
 		m_core->i_wb_we   = 0;
-		m_core->i_wb_addr = a;
+		m_core->i_wb_addr = a>>2;
 
 		rdidx =0; cnt = 0;
 		inc = 1;
@@ -422,8 +451,9 @@ public:
 		m_core->i_wbm_cyc = 1;
 		m_core->i_wbm_stb = 1;
 		m_core->i_wb_we  = 1;
-		m_core->i_wb_addr= a;
+		m_core->i_wb_addr= a>>2;
 		m_core->i_wb_data= v;
+		m_core->i_wb_sel= 15;
 
 		if (m_core->o_rtn_stall)
 			while((errcount++ < BOMBCOUNT)&&(m_core->o_rtn_stall)) {
@@ -502,8 +532,9 @@ public:
 		m_core->i_wbm_cyc = 1;
 		m_core->i_wbm_stb = 1;
 		m_core->i_wb_we  = 1;
+		m_core->i_wb_sel= 15;
 		for(unsigned stbcnt=0; stbcnt<ln; stbcnt++) {
-			m_core->i_wb_addr= a+stbcnt;
+			m_core->i_wb_addr= (a>>2)+stbcnt;
 			m_core->i_wb_data= buf[stbcnt];
 			errcount = 0;
 
@@ -600,22 +631,24 @@ void	install_page(ZIPMMU_TB *tb, int idx, unsigned va, unsigned pa, int flags) {
 	bool	hdebug = tb->debug();
 
 	tb->debug(false);
-	c=tb->setup_read(0);
+	c=tb->setup_read(R_CONTROL);
 	printf("CONTEXT-REG = %08x\n", c);
 	LGTBL  = ((c>>24)&15);
-	LGPGSZ= (((c>>20)&15)+8)&31;
+	LGPGSZ= (((c>>20)&15)+10)&31;
 	LGCTXT= (((c>>16)&15)+1)&31;
 	c &= ((1<<LGCTXT)-1);
-	base  = (2<<LGTBL)+(idx<<1);
+	base  = R_ENTRYSZ(LGTBL, idx);
 	va &= -(1<<LGPGSZ);
 	pa &= -(1<<LGPGSZ);
 
-	printf("INSTALL[%2d] %04x:%08xV -> %08xP %s%s\n",
-		idx, c, va, pa,
+	printf("INSTALL[%2d] %04x:%05x[%02x]%xV -> %05x[%02x]%xP %s%s\n",
+		idx, c,
+		(va>>12), (c&0x0ff), flags,
+		(pa>>12), ((c>>8)&0x0ff), flags,
 		(flags&MMUFLAG_RONW)?"RO":"  ",
 		(flags&MMUFLAG_CCHE)?"Cachable":"");
 	tb->setup_write(base  , va|(( c    &0x0ff)<<4)|flags);
-	tb->setup_write(base+1, pa|(((c>>8)&0x0ff)<<4)|flags);
+	tb->setup_write(base+4, pa|(((c>>8)&0x0ff)<<4)|flags);
 	tb->debug(hdebug);
 }
 
@@ -624,6 +657,8 @@ int main(int  argc, char **argv) {
 	ZIPMMU_TB	*tb = new ZIPMMU_TB;
 	unsigned 	*rdbuf; // *mbuf;
 	unsigned	mlen = (1<<LGMEMSIZE), c, blen;
+#define	R_TABLE		(8<<LGTBL)
+#define	R_ENTRY(K)	((8<<LGTBL)+(K<<3))
 
 	tb->opentrace("zipmmu_tb.vcd");
 	printf("Giving the core 2 cycles to start up\n");
@@ -641,25 +676,27 @@ int main(int  argc, char **argv) {
 	uload(mlen, rdbuf);
 
 
-	int	LGADR, LGTBL, LGPGSZ, LGCTXT, sr;
+	int	LGADR, LGTBL, LGPGSZ, LGCTXT, sr, PAGESZ;
 
-	c=tb->setup_read(0);
+	c=tb->setup_read(R_CONTROL);
 	printf("CONTROL-REG = %08x\n = %2d\n", c, c);
-	sr = tb->setup_read(1);
+	sr = tb->setup_read(R_STATUS);
 	printf("STATUS-REG  = %08x = %2d\n", sr, sr);
 	LGADR = (((c>>28)&15)+17)&31;
 	LGTBL = ((c>>24)&15);
-	LGPGSZ= (((c>>20)&15)+8)&31;
+	LGPGSZ= (((c>>20)&15)+10)&31;
+	PAGESZ= 1ul<<LGPGSZ;
 	LGCTXT= (((c>>16)&15)+1)&31;
 	printf("LGADR       = %08x = %2d\n", LGADR, LGADR);
 	printf("LGTBL       = %08x = %2d\n", LGTBL, LGTBL);
 	printf("LGPGSZ      = %08x = %2d\n", LGPGSZ, LGPGSZ);
 	printf("LGCTXT      = %08x = %2d\n", LGCTXT, LGCTXT);
+	printf("PAGESZ      = %08x = %2d\n", PAGESZ, PAGESZ);
 
 	// First, let's make sure we can read/write the context
 	printf("\n\nTest: Can we read/write the context register?\n");
-	tb->setup_write(0,0x01fec);
-	c=tb->setup_read(0);
+	tb->setup_write(R_CONTROL,0x01fec);
+	c=tb->setup_read(R_CONTROL);
 	printf("CONTEXT     = %08x (0x1fec?)\n", c&0x0ffff);
 	if ((c&0x0ffff) != 0x01fec)
 		goto test_failure;
@@ -668,23 +705,26 @@ int main(int  argc, char **argv) {
 	printf("\n\nTest: Can we load the table with TLB misses? (%d entries)\n", (1<<LGTBL));
 	for(int i=0; i<(1<<LGTBL); i++) {
 		c = 0x0f70; // Context: 0xfef7
-		tb->setup_write((2<<LGTBL)+(i<<1)  , c+(((1<<LGTBL)-1-i)<<LGPGSZ));
+		tb->setup_write(R_ENTRY(i)  , c+(((1<<LGTBL)-1-i)<<LGPGSZ));
 		c = 0x0fe2; // CCHE flag only
-		tb->setup_write((2<<LGTBL)+(i<<1)+1, c+(((1<<LGTBL)-1-i)<<LGPGSZ));
+		tb->setup_write(R_ENTRY(i)+4, c+(((1<<LGTBL)-1-i)<<LGPGSZ));
 	}
 
 	// Dump the table, make sure we got it right
 	for(int i=0; i<(1<<LGTBL); i++) {
 		unsigned v, p;
-		v=tb->setup_read((2<<LGTBL)+(i<<1)  );
-		p=tb->setup_read((2<<LGTBL)+(i<<1)+1);
+		v=tb->setup_read(R_ENTRY(i)  );
+		p=tb->setup_read(R_ENTRY(i)+4);
 
-		printf("TBL[%2d] = %08x -> %08x\n", i, v, p);
+		printf("TBL[%2d] = %08x -> %08x", i, v, p);
+		printf("\tEXPECTING %08x -> %08x\n",
+			(unsigned)(0x00f72+(((1<<LGTBL)-1-i)<<LGPGSZ)),
+			(unsigned)(0x00fe2+(((1<<LGTBL)-1-i)<<LGPGSZ)) );
 		if (v != (unsigned)(0x00f72+(((1<<LGTBL)-1-i)<<LGPGSZ)))
 			goto test_failure;
 		if (p != (unsigned)(0x00fe2+(((1<<LGTBL)-1-i)<<LGPGSZ)))
 			goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 
 	// Now, let's create a fictitious process, context 1, with no pages.
 	// See what happens when we try to access his stack at 0xffffffff
@@ -697,10 +737,10 @@ int main(int  argc, char **argv) {
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
 		goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 
 	tberr = false;
-	install_page(tb, 0, 0x0ffffffff, (1<<LGMEMSIZE)+0*(1<<LGPGSZ),
+	install_page(tb, 0, 0x0ffffffff, (4<<LGMEMSIZE)+0*PAGESZ,
 			MMUFLAG_RONW);
 	printf("\n\nTest: Do we get a TLB miss when attempting to write a RO page?\n");
 	tb->wb_write(0xffffffff, 0x0fe, &tberr);
@@ -709,18 +749,18 @@ int main(int  argc, char **argv) {
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
 		goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 
 	tberr = false;
 	printf("\n\nTest: What if we make this into a writeable page?\n");
-	install_page(tb, 0, 0xffffffff, (1<<LGMEMSIZE)+0*(1<<LGPGSZ), 0);
+	install_page(tb, 0, 0xffffffff, (4<<LGMEMSIZE)+0*PAGESZ, 0);
 	tb->wb_write(0xffffffff, 0x0fe, &tberr);
 	if (tberr) {
 		printf("TBERR = %s\nMISS  = %s\nERR   = %s\n",
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
 		goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 	printf("\n\nTest: Is the next access done w/in a single clock?\n");
 	tb->wb_write(0xfffffff7, 0xdeadbeef, &tberr);
 	if (tberr) {
@@ -728,27 +768,27 @@ int main(int  argc, char **argv) {
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
 		goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 
 
 	tberr = false;
 	printf("\n\nTest: What if we make this into a writeable page?\n");
-	install_page(tb, 0, 0xffffffff, (1<<LGMEMSIZE)+0*(1<<LGPGSZ), 0);
-	tb->wb_write(0xffffffff, 0x0fe, &tberr);
-	if ((tberr)||((*tb)[0x0fff]!=0x0fe)) {
+	install_page(tb, 0, 0xffffffff, (4<<LGMEMSIZE)+0*PAGESZ, 0);
+	tb->wb_write(0xfffffffc, 0x0fe, &tberr);
+	if ((tberr)||((*tb)[0x0ffc]!=0x0fe)) {
 		unsigned v;
-		v = ((*tb)[0x0fff]!=0x0fe);
+		v = ((*tb)[0x0ffc]!=0x0fe);
 		printf("V     = 0x%08x (!= 0x0fe?)\nTBERR = %s\nMISS  = %s\nERR   = %s\n",
 			v, (tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
 		goto test_failure;
-	}
+	} printf("-- PASS\n\n");
 
 	tberr = false;
 	printf("\n\nTest: How about a read from the same location?\n");
 	{
 		unsigned	v;
-		v = tb->wb_read(0xffffffff, &tberr);
+		v = tb->wb_read(0xfffffffc, &tberr);
 		if ((tberr)||(v != 0x0fe)) {
 			printf("V     = 0x%08x (!= 0x0fe?)\nTBERR = %s\nMISS  = %s\nERR   = %s\n",
 				v,
@@ -756,48 +796,49 @@ int main(int  argc, char **argv) {
 				(tb->err())?"true":"false");
 			goto test_failure;
 		}
-	}
+	} printf("-- PASS\n\n");
 
-	printf("Test: Burst write, within page\n");
-	tb->setup_write(0, 0x0dad);
-	install_page(tb, 0, ((0x0ffffffffl)&(-(1l<<LGPGSZ)))-2*(1<<LGPGSZ), (1<<LGMEMSIZE)+0*(1<<LGPGSZ), 0);
-	install_page(tb, 1, ((0x0ffffffffl)&(-(1l<<LGPGSZ)))-1*(1<<LGPGSZ), (1<<LGMEMSIZE)+1*(1<<LGPGSZ), 0);
-	install_page(tb, 2, ((0x0ffffffffl)&(-(1l<<LGPGSZ)))+0*(1<<LGPGSZ), (1<<LGMEMSIZE)+2*(1<<LGPGSZ), 0);
+	printf("Test: Burst write, within page (PAGESZ = %04x)\n", PAGESZ);
+	tb->setup_write(R_CONTROL, 0x0dad);
+#define	TEST_VPAGE	((0x0ffffffffl)&(-(1l<<LGPGSZ)))
+	install_page(tb, 0, TEST_VPAGE-2*PAGESZ, (4<<LGMEMSIZE)+0*PAGESZ, 0);
+	install_page(tb, 1, TEST_VPAGE-1*PAGESZ, (4<<LGMEMSIZE)+1*PAGESZ, 0);
+	install_page(tb, 2, TEST_VPAGE-0*PAGESZ, (4<<LGMEMSIZE)+2*PAGESZ, 0);
 
 	tberr = false;
 	blen = (1<<(LGPGSZ-2));
-	tb->wb_write(((0xffffffff)&(-(1l<<LGPGSZ)))-2*(1<<LGPGSZ), blen, rdbuf, &tberr);
+	tb->wb_write(TEST_VPAGE-2*(1<<LGPGSZ), blen, rdbuf, &tberr);
 	if (tberr) {
 		printf("TBERR = %s\nMISS  = %s\nERR   = %s\n",
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
-		printf("STATUS= %08x\n", tb->setup_read(1));
+		printf("STATUS= %08x\n", tb->setup_read(R_STATUS));
 		goto test_failure;
 	} for(unsigned i=0; i<blen; i++) {
-		if ((*tb)[i] != rdbuf[i]) {
+		if ((*tb)[i*4] != rdbuf[i]) {
 			printf("MEM[%04x] = %08x (!= %08x as expected)\n",
-				i, (*tb)[i], rdbuf[i]);
+				i, (*tb)[4*i], rdbuf[i]);
 			goto test_failure;
 		}
-	}
+	} printf("-- PASS\n\n");
 
 	printf("Test: Burst read\n");
 	// Try somewhere within that last page
 	tberr = false;
-	tb->wb_read(((0xffffffff)&(-(1<<LGPGSZ)))-2*(1<<LGPGSZ)+18, blen, rdbuf, &tberr);
+	tb->wb_read(TEST_VPAGE-2*(1<<LGPGSZ)+(18*4), blen, rdbuf, &tberr);
 	if (tberr) {
 		printf("TBERR = %s\nMISS  = %s\nERR   = %s\n",
 			(tberr)?"true":"false", (tb->miss())?"true":"false",
 			(tb->err())?"true":"false");
-		printf("STATUS= %08x\n", tb->setup_read(1));
+		printf("STATUS= %08x\n", tb->setup_read(R_STATUS));
 		goto test_failure;
 	} for(unsigned i=0; i<blen; i++) {
-		if ((*tb)[i+18] != rdbuf[i]) {
+		if ((*tb)[(i+18)*4] != rdbuf[i]) {
 			printf("MEM[%04x] = %08x (!= %08x as expected)\n",
 				i+18, (*tb)[i+18], rdbuf[i]);
 			goto test_failure;
 		}
-	}
+	} printf("-- PASS\n\n");
 
 
 	printf("Tests not (yet) implemented\n");
