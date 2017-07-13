@@ -166,19 +166,19 @@ module	busdelay(i_clk,
 		// o_wb_stall criteria below, which would otherwise *and*
 		// these two.
 		always @(posedge i_clk)
-			if (~o_wb_stall)
+			if (!o_wb_stall)
 				o_dly_stb <= ((i_wb_cyc)&&(i_wb_stb));
 		always @(posedge i_clk)
-			if (~o_wb_stall)
+			if (!o_wb_stall)
 				o_dly_we  <= i_wb_we;
 		always @(posedge i_clk)
-			if (~o_wb_stall)
+			if (!o_wb_stall)
 				o_dly_addr<= i_wb_addr;
 		always @(posedge i_clk)
-			if (~o_wb_stall)
+			if (!o_wb_stall)
 				o_dly_data <= i_wb_data;
 		always @(posedge i_clk)
-			if (~o_wb_stall)
+			if (!o_wb_stall)
 				o_dly_sel <= i_wb_sel;
 		always @(posedge i_clk)
 			o_wb_ack  <= (i_dly_ack)&&(o_dly_cyc)&&(i_wb_cyc);
