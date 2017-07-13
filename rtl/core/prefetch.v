@@ -48,6 +48,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
+//
 // Flash requires a minimum of 4 clocks per byte to read, so that would be
 // 4*(4bytes/32bit word) = 16 clocks per word read---and that's in pipeline
 // mode which this prefetch does not support.  In non--pipelined mode, the
@@ -59,9 +62,9 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=32;
 	localparam		AW=ADDRESS_WIDTH;
-	input				i_clk, i_rst, i_new_pc, i_clear_cache,
+	input	wire			i_clk, i_rst, i_new_pc, i_clear_cache,
 					i_stalled_n;
-	input		[(AW-1):0]	i_pc;
+	input	wire	[(AW-1):0]	i_pc;
 	output	reg	[31:0]		o_i;
 	output	wire	[(AW-1):0]	o_pc;
 	output	reg			o_valid;
@@ -71,8 +74,8 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]		o_wb_data;
 	// And return inputs
-	input				i_wb_ack, i_wb_stall, i_wb_err;
-	input		[31:0]		i_wb_data;
+	input	wire			i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire	[31:0]		i_wb_data;
 	output	reg			o_illegal;
 
 	assign	o_wb_we = 1'b0;

@@ -98,6 +98,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
 //
 `define	CPU_CC_REG	4'he
 `define	CPU_PC_REG	4'hf
@@ -1265,7 +1266,8 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `endif
 
 `ifdef	OPT_PIPELINED_BUS_ACCESS
-	pipemem	#(AW,IMPLEMENT_LOCK) domem(i_clk, i_rst,(mem_ce)&&(set_cond), bus_lock,
+	pipemem	#(AW,IMPLEMENT_LOCK,WITH_LOCAL_BUS) domem(i_clk, i_rst,
+			(mem_ce)&&(set_cond), bus_lock,
 				(op_opn[2:0]), op_Bv, op_Av, op_R,
 				mem_busy, mem_pipe_stalled,
 				mem_valid, bus_err, mem_wreg, mem_result,
@@ -1967,6 +1969,11 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	// verilator lint_off UNUSED
 	wire	[40:0]	unused;
 	assign	unused = { fpu_ce, pf_data, wr_spreg_vl[1:0], ipc[1:0], upc[1:0], pf_pc[1:0]  };
+	generate if (AW+2 < 32)
+	begin
+		wire	[31:(AW+2)] generic_ignore;
+		assign generic_ignore = wr_spreg_vl[31:(AW+2)];
+	end endgenerate
 	// verilator lint_on  UNUSED
 
 
