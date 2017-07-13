@@ -37,6 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 `include "cpudefs.v"
 //
 module	zipbones(i_clk, i_rst,
@@ -57,22 +59,22 @@ module	zipbones(i_clk, i_rst,
 	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=8, START_HALTED=0;
 	localparam	AW=ADDRESS_WIDTH;
-	input	i_clk, i_rst;
+	input	wire	i_clk, i_rst;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
 	output	wire	[3:0]	o_wb_sel;
-	input			i_wb_ack, i_wb_stall;
-	input		[31:0]	i_wb_data;
-	input			i_wb_err;
+	input	wire		i_wb_ack, i_wb_stall;
+	input	wire	[31:0]	i_wb_data;
+	input	wire		i_wb_err;
 	// Incoming interrupts
-	input			i_ext_int;
+	input	wire		i_ext_int;
 	// Outgoing interrupt
 	output	wire		o_ext_int;
 	// Wishbone slave
-	input			i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
-	input		[31:0]	i_dbg_data;
+	input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
+	input	wire	[31:0]	i_dbg_data;
 	output	reg		o_dbg_ack;
 	output	wire		o_dbg_stall;
 	output	wire	[31:0]	o_dbg_data;
