@@ -153,6 +153,38 @@ module wbdmac(i_clk, i_rst,
 	// input			i_other_busmaster_requests_bus;
 	//
 
+	wire	s_cyc, s_stb, s_we;
+	wire	[1:0]	s_addr;
+	wire	[31:0]	s_data;
+`define	DELAY_ACCESS
+`ifdef	DELAY_ACCESS
+	reg	r_s_cyc, r_s_stb, r_s_we;
+	reg	[1:0]	r_s_addr;
+	reg	[31:0]	r_s_data;
+
+	always @(posedge i_clk)
+		r_s_cyc <= i_swb_cyc;
+	always @(posedge i_clk)
+		r_s_stb <= i_swb_stb;
+	always @(posedge i_clk)
+		r_s_we  <= i_swb_we;
+	always @(posedge i_clk)
+		r_s_addr<= i_swb_addr;
+	always @(posedge i_clk)
+		r_s_data<= i_swb_data;
+
+	assign	s_cyc = r_s_cyc;
+	assign	s_stb = r_s_stb;
+	assign	s_we  = r_s_we;
+	assign	s_addr= r_s_addr;
+	assign	s_data= r_s_data;
+`else
+	assign	s_cyc = i_swb_cyc;
+	assign	s_stb = i_swb_stb;
+	assign	s_we  = i_swb_we;
+	assign	s_addr= i_swb_addr;
+	assign	s_data= i_swb_data;
+`endif
 
 	reg	[2:0]		dma_state;
 	reg			cfg_err, cfg_len_nonzero;
@@ -193,29 +225,29 @@ module wbdmac(i_clk, i_rst,
 		// When the slave wishbone writes, and we are in this 
 		// (ready) configuration, then allow the DMA to be controlled
 		// and thus to start.
-		if ((i_swb_stb)&&(i_swb_we))
+		if ((s_stb)&&(s_we))
 		begin
-			case(i_swb_addr)
+			case(s_addr)
 			2'b00: begin
-				if ((i_swb_data[27:16] == 12'hfed)
-					&&(i_swb_data[31:30] == 2'b00)
+				if ((s_data[27:16] == 12'hfed)
+					&&(s_data[31:30] == 2'b00)
 						&&(cfg_len_nonzero))
 					dma_state <= `DMA_WAIT;
 				cfg_blocklen_sub_one
-					<= i_swb_data[(LGMEMLEN-1):0]
+					<= s_data[(LGMEMLEN-1):0]
 					+ {(LGMEMLEN){1'b1}};
 					// i.e. -1;
-				cfg_dev_trigger    <= i_swb_data[14:10];
-				cfg_on_dev_trigger <= i_swb_data[15];
-				cfg_incs  <= !i_swb_data[29];
-				cfg_incd  <= !i_swb_data[28];
+				cfg_dev_trigger    <= s_data[14:10];
+				cfg_on_dev_trigger <= s_data[15];
+				cfg_incs  <= !s_data[29];
+				cfg_incd  <= !s_data[28];
 				end
 			2'b01: begin
-				cfg_len   <=  i_swb_data[(AW-1):0];
-				cfg_len_nonzero <= (|i_swb_data[(AW-1):0]);
+				cfg_len   <=  s_data[(AW-1):0];
+				cfg_len_nonzero <= (|s_data[(AW-1):0]);
 				end
-			2'b10: cfg_raddr <=  i_swb_data[(AW+2-1):2];
-			2'b11: cfg_waddr <=  i_swb_data[(AW+2-1):2];
+			2'b10: cfg_raddr <=  s_data[(AW+2-1):2];
+			2'b11: cfg_waddr <=  s_data[(AW+2-1):2];
 			endcase
 		end end
 	`DMA_WAIT: begin
@@ -355,7 +387,7 @@ module wbdmac(i_clk, i_rst,
 	always @(posedge i_clk)
 		if (dma_state == `DMA_IDLE)
 		begin
-			if ((i_swb_stb)&&(i_swb_we)&&(i_swb_addr==2'b00))
+			if ((s_stb)&&(s_we)&&(s_addr==2'b00))
 				cfg_err <= 1'b0;
 		end else if (((i_mwb_err)&&(o_mwb_cyc))||(abort))
 			cfg_err <= 1'b1;
@@ -446,7 +478,7 @@ module wbdmac(i_clk, i_rst,
 			dma_mem[nread[(LGMEMLEN-1):0]] <= i_mwb_data;
 
 	always @(posedge i_clk)
-		casez(i_swb_addr)
+		casez(s_addr)
 		2'b00: o_swb_data <= {	(dma_state != `DMA_IDLE), cfg_err,
 					~cfg_incs, ~cfg_incd,
 					1'b0, nread,
@@ -471,28 +503,28 @@ module wbdmac(i_clk, i_rst,
 	// but ack it anyway.  In other words, before writing to the device,
 	// double check that it isn't busy, and then write.
 	always @(posedge i_clk)
-		o_swb_ack <= (i_swb_stb);
+		o_swb_ack <= (s_stb);
 
 	assign	o_swb_stall = 1'b0;
 
 	initial	abort = 1'b0;
 	always @(posedge i_clk)
-		abort <= (i_rst)||((i_swb_stb)&&(i_swb_we)
-			&&(i_swb_addr == 2'b00)
-			&&(i_swb_data == 32'hffed0000));
+		abort <= (i_rst)||((s_stb)&&(s_we)
+			&&(s_addr == 2'b00)
+			&&(s_data == 32'hffed0000));
 
 	initial	user_halt = 1'b0;
 	always @(posedge i_clk)
 		user_halt <= ((user_halt)&&(dma_state != `DMA_IDLE))
-			||((i_swb_stb)&&(i_swb_we)&&(dma_state != `DMA_IDLE)
-				&&(i_swb_addr == 2'b00)
-				&&(i_swb_data == 32'hafed0000));
+			||((s_stb)&&(s_we)&&(dma_state != `DMA_IDLE)
+				&&(s_addr == 2'b00)
+				&&(s_data == 32'hafed0000));
 
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = i_swb_cyc;
+	assign	unused = s_cyc;
 	// verilator lint_on  UNUSED
 
 endmodule
