@@ -50,7 +50,9 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
-	parameter	ADDRESS_WIDTH=30, IMPLEMENT_LOCK=0, WITH_LOCAL_BUS=0;
+	parameter	ADDRESS_WIDTH=30;
+	parameter [0:0]	IMPLEMENT_LOCK=1'b0,
+			WITH_LOCAL_BUS=1'b0;
 	localparam	AW=ADDRESS_WIDTH;
 	input	wire		i_clk, i_rst;
 	input	wire		i_stb, i_lock;
