@@ -63,7 +63,9 @@
 ################################################################################
 #
 .PHONY: all
-all: $(OBJDIR)/ hellosim simtest simuart cmptest
+all:
+PROGRAMS := hellosim simuart simtest cmptest
+all: $(PROGRAMS)
 
 CC      := zip-gcc
 CPP     := zip-cpp
@@ -74,12 +76,14 @@ OBJDIR := obj-zip
 CFLAGS := -O3
 LIBD   := ../../sw/install/cross-tools/zip/lib
 LIBS   := -L$(LIBD) -lzipbasic
-LDSCRIPT:= ../zipsim.ld
+LDSCRIPT:= ./simscript.ld
 
-$(OBJDIR)/%.o: %.c $(OBJDIR)/
+$(OBJDIR)/%.o: %.c
+	$(mk-objdir)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)/%.o: %.s $(OBJDIR)/
+$(OBJDIR)/%.o: %.s
+	$(mk-objdir)
 	$(AS) $< -o $@
 
 %.txt: %
@@ -113,7 +117,8 @@ simuart: $(OBJDIR)/simuart.o
 # needs to be run through the C pre-processor before it can go through the
 # assembler.  Hence the build is a tocuh trickier, but still simple enough.
 #
-$(OBJDIR)/simtest.o: simtest.s $(OBJDIR)/
+$(OBJDIR)/simtest.o: simtest.s
+	$(mk-objdir)
 	$(CPP) $< > $(OBJDIR)/simtest.s
 	$(AS) $(OBJDIR)/simtest.s -o $@
 
@@ -124,10 +129,15 @@ cmptest: $(OBJDIR)/cmptest.o
 	$(LD) -T $(LDSCRIPT) -Map=map.txt $< -o $@
 
 
-$(OBJDIR)/:
+define	mk-objdir
 	@bash -c "if [[ ! -e $(OBJDIR) ]]; then mkdir -p $(OBJDIR)/; fi"
+endef
+
+tags: $(wildcard *.c) $(wildcard *.h) $(wildcard *.cpp)
+	@echo "Generating tags"
+	@ctags $(wildcard *.c) $(wildcard *.h)
 
 .PHONY: clean
 clean:
 	rm -rf $(OBJDIR)/
-	rm -rf hellosim simuart simtest
+	rm -rf $(PROGRAMS)

@@ -88,7 +88,7 @@ continue_test_with_testable_instructions:
 	; Don't clear the user PC register
 	; Now, let's try loading some constants into registers
 	; Specifically, we're testing the LDI, LDIHI, and LDILO instructions
-	LDI	0xdead,R5
+	ldi	0xdead,R5
 	ldi	0x0beef,r6
 	ldi	0xdeadbeef,r7
 	brev	0xb57b, r8
