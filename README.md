@@ -21,7 +21,7 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 ## Getting Started
 
 If you'd like to get started with the ZipCPU, you might wish to know that this
-repository contains the CPU, its documentation, and the toolchain.
+repository contains the [CPU](./rtl/core/zipcpu.v), its [documentation](./doc/spec.pdf), and the [toolchain](./sw).
 The CPU implementation found here, though, is just that: a CPU.  This
 implementation requires a bus with peripherals hanging off of it, things such
 as [RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
@@ -44,20 +44,22 @@ that repository, you can either tweak the distro
 [regdefs.h](https://github.com/ZipCPU/zbasic/blob/master/sw/host/regdefs.h),
 [board.h](https://github.com/ZipCPU/zbasic/blob/master/sw/zlib/board.h),
 [board.ld](https://github.com/ZipCPU/zbasic/blob/master/sw/board/board.ld)) to
-the peripherals you want to use the CPU with, or you can use
+add the peripherals you want to use the CPU with, or you can use
 [autofpga](https://github.com/ZipCPU/autofpga)
 to adjust your RAM size, add or remove peripherals and so forth while
 maintaining (creating, really) all of these files for you.
 
 Even more than that,
 the [ZBasic distribution](https://github.com/ZipCPU/zbasic) has complete
-Verilator support so that you can build your design, and simulate it, from
+[Verilator support](https://github.com/ZipCPU/zbasic/tree/sim/verilator)
+so that you can build your design, and simulate it, from
 power on reset through bootloader through ... well, however far you'd like to
 simulate and your disk has space for.
 
 If you aren't interested in simulating the CPU, there is an assembly level
-[debugger](https://github.com/ZipCPU/zbasic/blob/master/sw/host/zipdbg.cpp),
-and an integrated [wishbone scope](https://github.com/ZipCPU/wbscope) that
+[debugger](https://github.com/ZipCPU/zbasic/blob/master/sw/host/zipdbg.cpp)
+that you can use to stop and step the CPU, as well as an
+integrated [wishbone scope](https://github.com/ZipCPU/wbscope) that
 you can use to get traces from within the design while it is running.
 
 
