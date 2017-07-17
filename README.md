@@ -18,6 +18,56 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 - The CPU makes heavy use of pipelined wishbone processing wherever and whenever it can.  Hence, loading two vaues in a row may cost only one clock more than just loading the one value.
 - The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An [interrupt peripheral](rtl/peripherals/icontrol.v) handles the combining of multiple interrupts into a single interrupt line.
 
+## Getting Started
+
+If you'd like to get started with the ZipCPU, you might wish to know that this
+repository contains the CPU, its documentation, and the toolchain.
+The CPU implementation found here, though, is just that: a CPU.  This
+implementation requires a bus with peripherals hanging off of it, things such
+as [RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
+[flash (ROM)](https://github.com/ZipCPU/zbasic/blob/master/rtl/wbqspiflash.v),
+[serial port](https://github.com/ZipCPU/wbuart32), etc.  This is just where
+I keep the CPU apart from any necessary peripherals.
+
+So, if you want to try out the CPU, feel free to download and build this
+repository.  You'll need it for the binutils, GCC, and newlib support provided
+by it.
+
+Once you've built these tools, then I'd suggest you look into the
+[ZBasic repository](https://github.com/ZipCPU/zbasic).  That repository places
+the CPU in an environment with
+[block RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
+[QSPI flash](https://github.com/ZipCPU/zbasic/blob/master/rtl/wbqspiflash.v),
+and [SD-card (SPI protocol)](https://github.com/ZipCPU/sdspi) access.  From
+that repository, you can either tweak the distro
+([main.v](https://github.com/ZipCPU/zbasic/blob/master/rtl/main.v),
+[regdefs.h](https://github.com/ZipCPU/zbasic/blob/master/sw/host/regdefs.h),
+[board.h](https://github.com/ZipCPU/zbasic/blob/master/sw/zlib/board.h),
+[board.ld](https://github.com/ZipCPU/zbasic/blob/master/sw/board/board.ld)) to
+the peripherals you want to use the CPU with, or you can use
+[autofpga](https://github.com/ZipCPU/autofpga)
+to adjust your RAM size, add or remove peripherals and so forth while
+maintaining (creating, really) all of these files for you.
+
+Even more than that,
+the [ZBasic distribution](https://github.com/ZipCPU/zbasic) has complete
+Verilator support so that you can build your design, and simulate it, from
+power on reset through bootloader through ... well, however far you'd like to
+simulate and your disk has space for.
+
+If you aren't interested in simulating the CPU, there is an assembly level
+[debugger](https://github.com/ZipCPU/zbasic/blob/master/sw/host/zipdbg.cpp),
+and an integrated [wishbone scope](https://github.com/ZipCPU/wbscope) that
+you can use to get traces from within the design while it is running.
+
+
+## Need help?
+
+If you'd like to use the ZipCPU, and don't know where to begin, feel free
+to find me on IRC as ZipCPU.  I tend to inhabit the #openarty channel
+of the Freenode IRC server.  If you get stuck, I've been known to help folks
+out there as well.
+
 ## Current Status
 
 20170309: The CPU has just been updated for 8-bit byte support.  Several additional changes include:
@@ -35,13 +85,34 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 Unlike the ZipCPU before these changes, newlib now compiles and appears to work with the ZipCPU (without floating point support).
 
-Also, unlike before, the ZipCPU is now small enough to be able to include a divide unit, and a double-fetch (uses pipelined WB for one word) when build for the Spartan-6/LX4.
+Also, unlike before, the ZipCPU is now small enough to be able to include a
+divide unit, and a double-fetch (uses pipelined WB for one word) when built
+for the [Spartan-6/LX4](https://github.com/ZipCPU/s6soc).
+
+Other distributions include the [OpenArty](https://github.com/ZipCPU/openarty)
+distribution (with network hardware support), and a very minimal
+[S6SoC](https://github.com/ZipCPU/s6soc) distribution for Digilent's CMod-S6.
+
+I'm currently trying to build video support for the Nexys Video, but that's
+simply an ongoing project.
+
 ## Not yet integrated
 
-- An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, but not yet integrated into it
-- Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been written for the ZipCPU, but not yet integrated into it
-- I would also like to integrate [SDCard support](https://github.com/ZipCPU/sdspi) into the newlib C-library to give the CPU file access
-- The [ZipOS](https://github.com/ZipCPU/s6soc/tree/master/sw/zipos) would greatly speed up and improve the bare bones newlib library.
+- An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, and even
+  integrated into it, but it has not yet been tested.
+
+- Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been
+  written for the ZipCPU, but not yet integrated into it
+
+- I would also like to integrate [SDCard
+  support](https://github.com/ZipCPU/sdspi) into the newlib C-library to give
+  the CPU file access.  If and when this takes place, it will take place as
+  part of the [ZBasic repository](https://github.com/ZipCPU/zbasic) first.
+
+- The [ZipOS](https://github.com/ZipCPU/s6soc/tree/master/sw/zipos)
+  would greatly speed up and improve the bare bones newlib library--primarily
+  by providing "O/S" level interrupt support when using the library.  This
+  integration has not (yet) been accomplished.
 
 ## Commercial Opportunities
 
