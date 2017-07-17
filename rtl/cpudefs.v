@@ -261,11 +261,12 @@
 `endif	// OPT_SINGLE_FETCH
 //
 //
+// [EXPERIMENTAL]
 // OPT_MMU determines whether or not an MMU will be included in the ZipSystem
 // containing the ZipCPU.  When set, the ZipCPU will route all memory accesses
 // through the MMU as an address translator, creating a form of Virtual memory.
 //
-`define	OPT_MMU
+// `define	OPT_MMU
 //
 // Now let's talk about peripherals for a moment.  These next two defines
 // control whether the DMA controller is included in the Zip System, and
