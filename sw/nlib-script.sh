@@ -1,11 +1,22 @@
 #!/bin/bash
 
 VERSION="newlib-2.5.0"
-INSTALL_BASE=`pwd`/install
+if [[ -z "$INSTALLD" ]]
+then
+  INSTALLD=`pwd`/install
+fi
+INSTALL_BASE=${INSTALLD}
 if [[ ! -d $INSTALL_BASE ]]
 then
   echo "I cant seem to find the install directory," $INSTALL_BASE
-  exit;
+  exit -1
+fi
+which zip-gcc > /dev/null
+if [[ $? != 0 ]]
+then
+  echo "Nlib-script Error: Unable to find zip-gcc in your path"
+  echo "PATH=$PATH"
+  exit -1
 fi
 
 if [[ -d build-nlib ]]

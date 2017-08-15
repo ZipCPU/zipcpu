@@ -60,7 +60,16 @@ set +h
 set -e
 CLFS_HOST=$MACHTYPE
 CLFS_TARGET="zip"
-INSTALL_BASE=`pwd`/install
+if [[ -z "$INSTALLD" ]]
+then
+  INSTALLD=`pwd`/install
+fi
+if [[ ! $(which zip-as) ]]
+then
+  echo "GCC-script ERROR: Unable to find zip-as, the ZipCPU assembler, in your path"
+  exit -1
+fi
+INSTALL_BASE=${INSTALLD}
 mkdir -p ${INSTALL_BASE}/cross-tools
 mkdir -p ${INSTALL_BASE}/tools/lib
 mkdir -p ${INSTALL_BASE}/usr/include
