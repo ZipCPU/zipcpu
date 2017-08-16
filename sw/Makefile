@@ -104,6 +104,7 @@ binutils: $(BUILDGASD)/nonce.txt
 binutils-install: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) install
 	cp ../bench/zipsim.ld install/cross-tools/zip/lib/ldscripts
+	bash -c "if [[ ! -f $(BUILDGASD)/install-nonce.txt ]]; then touch $(BUILDGASD)/install-nonce.txt; fi"
 	@echo "Binutils installed"
 
 .PHONY: binutils-pdf
@@ -128,6 +129,9 @@ gas: binutils
 .PHONY: gas-install
 gas-install: binutils-install
 
+$(BUILDGASD)/install-nonce.txt: binutils-install
+
+
 # We can also set the environment variable DEJAGNU to point to our site .exp
 # file.
 gas-check: binutils-install
@@ -137,7 +141,8 @@ gas-check: binutils-install
 # Now let's try the same thing for GCC
 #
 #
-$(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch binutils-install
+$(GCCD)-zip/nonce.txt: $(BUILDGASD)/install-nonce.txt
+$(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch
 	rm -rf $(GCCD)-zip/
 	tar -xjf ./$(GCCD).tar.bz2 --transform s,$(GCCD),$(GCCD)-zip,
 	-bash -c "cd $(GCCD)-zip; patch -p1 <../gcc-zippatch.patch"
@@ -150,7 +155,8 @@ genzipops: $(GCCD)-zip/gcc/config/zip/genzipops.c $(GCCD)-zip/nonce.txt
 $(GCCD)-zip/gcc/config/zip/zip-ops.md: genzipops
 	./genzipops $@
 
-$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt $(GCCD)-zip/gcc/config/zip/zip-ops.md gas-install
+$(BUILDGCCD)/nonce.txt: $(BUILDGASD)/install-nonce.txt
+$(BUILDGCCD)/nonce.txt: $(GCCD)-zip/nonce.txt $(GCCD)-zip/gcc/config/zip/zip-ops.md
 	bash -c "if [[ ! -e $(BUILDGCCD) ]]; then bash gcc-script.sh; fi"
 	touch $(BUILDGCCD)/nonce.txt
 
@@ -169,12 +175,14 @@ zip-gcc: gcc-host
 
 gcc-install-host: $(BUILDGCCD)/nonce.txt gcc-host
 	+$(SUBMAKE) --directory=$(BUILDGCCD) install-host
+	@bash -c "if [[ ! -f $(BUILDGCCD)/install-nonce.txt ]]; then touch $(BUILDGCCD)/install-nonce.txt; fi"
 	@echo "GCC package installed"
 
 .PHONY: zip-gcc-install
 zip-gcc-install: gcc-install-host
 
 $(INSTALLD)/cross-tools/bin/zip-gcc: zip-gcc-install
+$(BUILDGCCD)/install-nonce.txt: zip-gcc-install
 
 $(INSTALLD)/cross-tools/bin/zip-cc: zip-gcc-install
 	bash -c "cd $(INSTALLD)/cross-tools/bin; if [[ ! -e zip-cc ]]; then ln -s zip-gcc zip-cc; fi"
@@ -187,7 +195,9 @@ $(INSTALLD)/cross-tools/bin/zip-cc: zip-gcc-install
 #
 #
 .PHONY: gcc
-gcc: $(BUILDGCCD)/nonce.txt gas-install newlib-install
+gcc: $(BUILDGASD)/install-nonce.txt
+gcc: $(BUILDNLIB)/install-nonce.txt
+gcc: $(BUILDGCCD)/nonce.txt
 	+$(SUBMAKE) --directory=$(BUILDGCCD)
 
 .PHONY: gcc-install
@@ -208,7 +218,8 @@ gcc-pdf-install: gcc-pdf $(PDFD)/
 # And repeat for newlib
 #
 #
-$(NLIBD)-zip/nonce.txt: $(NLIBD).tar.gz nlib-zippatch.patch zip-gcc-install
+$(NLIBD)-zip/nonce.txt: $(BUILDGCCD)/install-nonce.txt
+$(NLIBD)-zip/nonce.txt: $(NLIBD).tar.gz nlib-zippatch.patch
 	rm -rf $(NLIBD)-zip/
 	tar -xzf ./$(NLIBD).tar.gz --transform s,$(NLIBD),$(NLIBD)-zip,
 	-bash -c "cd $(NLIBD)-zip; patch -p1 <../nlib-zippatch.patch"
@@ -220,7 +231,8 @@ $(BUILDNLIB)/nonce.txt: $(NLIBD)-zip/nonce.txt $(BUILDGASD)/nonce.txt
 	touch $(BUILDNLIB)/nonce.txt
 
 .PHONY: newlib
-newlib: $(BUILDNLIB)/nonce.txt zip-gcc-install
+newlib: $(BUILDGCCD)/install-nonce.txt
+newlib: $(BUILDNLIB)/nonce.txt
 newlib: $(INSTALLD)/cross-tools/bin/zip-cc
 	+$(SUBMAKE) --directory=$(BUILDNLIB)
 	@echo "Newlib build complete"
@@ -228,6 +240,7 @@ newlib: $(INSTALLD)/cross-tools/bin/zip-cc
 .PHONY: newlib-install
 newlib-install: newlib
 	+$(SUBMAKE) --directory=$(BUILDNLIB) install
+	@bash -c "if [[ ! -f $(BUILDNLIB)/install-nonce.txt ]]; then touch $(BUILDNLIB)/install-nonce.txt; fi"
 	@echo "Newlib installed"
 
 
@@ -235,6 +248,7 @@ newlib-install: newlib
 .PHONY: nlib nlib-install
 nlib: newlib
 nlib-install: newlib-install
+$(BUILDNLIB)/install-nonce.txt: newlib-install
 
 #
 #
