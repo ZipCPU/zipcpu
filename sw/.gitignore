@@ -10,3 +10,6 @@ gcc-6.2.0-zip/
 newlib-2.5.0/
 newlib-2.5.0-zip/
 2017*.patch
+lib/
+zipos/
+zlibc/
