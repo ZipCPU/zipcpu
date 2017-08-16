@@ -33,7 +33,6 @@ wbcordic.v
 zipport.v
 ziptrap.v
 genzipops
-bench/asm
 doc/gfx/*.dia
 doc/gfx/*.json
 doc/gfx/*.svg
