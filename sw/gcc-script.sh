@@ -6,8 +6,8 @@
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	To handle all of the GCC configuration options properly.  This
-##		both runs the GCC configure script, as well as initially running
-##	make on the resulting configured directory.
+##		runs the GCC configure script, using options known to work
+##	with the ZipCPU.
 ##
 ##
 ## Creator:	Dan Gisselquist, Ph.D.
