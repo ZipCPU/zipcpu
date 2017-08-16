@@ -3,3 +3,5 @@ zdump
 zasm
 tags
 obj-pc/*
+optest.cpp
+sys.i
