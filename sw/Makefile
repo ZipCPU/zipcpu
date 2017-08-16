@@ -1,69 +1,75 @@
 ################################################################################
-#
-# Filename:	Makefile
-#
-# Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-#
-# Purpose:	This makefile attempts to build the ZipCPU toolchain.  This 
-#		includes binutils and GCC.  (Eventually, it will include the
-#	standard library as well ...)  Configuration options for binutils, GCC,
-#	and newlib can be found (and set) in the gas-script.sh, gcc-script.sh,
-#	and nlib-script.sh files respectively.
-#
-# Targets:
-#
-#	make all:
-#		Includes the install target, but also the pdf documentation
-#		files that come with binutils and gcc.  Building this target
-#		will require a LaTeX distribution in addition to the needs of
-#		the other targets.  Since the PDFs can be found on line,
-#		building them is not really necessary, but may be quite useful.
-#
-#	make install
-#		Attempts to build binutils, gcc, and newlib, and to install 
-#		them into the local install directory.
-#
-#		This is the default target
-#
-#	make binutils
-#	make gcc
-#	make newlib
-#		Builds the respective packages
-#
-#	make binutils-install
-#	make gcc-install
-#	make newlib-install
-#		Installs the respective packages into the install directory,
-#		building them first if necessary.
-#
-#	make clean
-#		Removes all build products--to include the source directories
-#		that are built from patched tarballs.
-#
-#
-# Creator:	Dan Gisselquist, Ph.D.
-#		Gisselquist Technology, LLC
-#
+##
+## Filename:	Makefile
+##
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+##
+## Purpose:	This makefile attempts to build the ZipCPU toolchain.  This
+##		includes binutils and GCC.  (Eventually, it will include the
+##	standard library as well ...)  Configuration options for binutils, GCC,
+##	and newlib can be found (and set) in the gas-script.sh, gcc-script.sh,
+##	and nlib-script.sh files respectively.
+##
+## Targets:
+##
+##	make all:
+##		Includes the install target, but also the pdf documentation
+##		files that come with binutils and gcc.  Building this target
+##		will require a LaTeX distribution in addition to the needs of
+##		the other targets.  Since the PDFs can be found on line,
+##		building them is not really necessary, but may be quite useful.
+##
+##	make install
+##		Attempts to build binutils, gcc, and newlib, and to install
+##		them into the local install directory.
+##
+##		This is the default target
+##
+##	make binutils
+##	make gcc
+##	make newlib
+##		Builds the respective packages
+##
+##	make binutils-install
+##	make gcc-install
+##	make newlib-install
+##		Installs the respective packages into the install directory,
+##		building them first if necessary.
+##
+##	make clean
+##		Removes all build products--to include the source directories
+##		that are built from patched tarballs.
+##
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
 ################################################################################
-#
-# Copyright (C) 2015-2017, Gisselquist Technology, LLC
-#
-# This program is free software (firmware): you can redistribute it and/or
-# modify it under the terms of  the GNU General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or (at
-# your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# for more details.
-#
-# License:	GPL, v3, as defined and found on www.gnu.org,
-#		http://www.gnu.org/licenses/gpl.html
-#
-#
+##
+## Copyright (C) 2015-2017, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
 ################################################################################
-#
+##
+##
 .PHONY: all basic-install install build
 install: basic-install
 all: basic-install binutils-pdf-install gcc-pdf-install
