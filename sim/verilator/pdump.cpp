@@ -2,7 +2,7 @@
 //
 // Filename: 	pdump.cpp
 //
-// Project:	Zip CPU -- a small, lightweight, RISC CPU core
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Disassemble machine code files onto the stdout file.  Unlike
 //		the zip-objdump program that is part of the binutils suite, this
@@ -29,7 +29,7 @@
 // for more details.
 //
 // You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //
@@ -38,6 +38,8 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
+//
+//
 #include <algorithm>
 #include <stdio.h>
 #include <unistd.h>

@@ -6,8 +6,7 @@
 //
 // Purpose:	This creates a memory like device to act on a WISHBONE bus.
 //		It doesn't exercise the bus thoroughly, but does give some
-//		exercise to the bus to see whether or not the bus master
-//		can control it.
+//	exercise to the bus to see whether or not the bus master can control it.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -28,7 +27,7 @@
 // for more details.
 //
 // You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory, run make with no
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //

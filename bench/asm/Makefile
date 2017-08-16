@@ -1,67 +1,68 @@
 ################################################################################
-#
-# Filename:	Makefile
-#
-# Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-#
-# Purpose:	To direct and simplify the build of a variety of simple assembly
-#		language test programs which will use one (or both) of the
-#	ZipCPU simulators.
-#
-# Targets include:
-#
-#	hellosim
-#		Using the SIM instruction, prints Hello World to the screen.
-#
-#	simuart
-#		Same as hellosim, but without using the SIM instruction.  This
-#		*should* be able to run successfully on a verilated or
-#		synthesized hardware, although I hvae yet to test it there.
-#
-#	simtest
-#		A set of simple tests designed to demonstrate if the simulator
-#		works or not.
-#
-#	clean
-#		Removes the object file directory and any executables that have
-#		been created.
-#
-#	None of the files/targets below have any dependencies, or if they did,
-#	GCC can't determine them, so thus there is no make depends step.
-#
-#	To actually run one of these programs, list the program on the command
-#	line with the ZipCPU simulator, zsim.
-#
-#
-#
-# Creator:	Dan Gisselquist, Ph.D.
-#		Gisselquist Technology, LLC
-#
+##
+## Filename:	Makefile
+##
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+##
+## Purpose:	To direct and simplify the build of a variety of simple assembly
+##		language test programs which will use one (or both) of the
+##	ZipCPU simulators.
+##
+## Targets include:
+##
+##	hellosim
+##		Using the SIM instruction, prints Hello World to the screen.
+##
+##	simuart
+##		Same as hellosim, but without using the SIM instruction.  This
+##		*should* be able to run successfully on a verilated or
+##		synthesized hardware, although I hvae yet to test it there.
+##
+##	simtest
+##		A set of simple tests designed to demonstrate if the simulator
+##		works or not.
+##
+##	clean
+##		Removes the object file directory and any executables that have
+##		been created.
+##
+##	None of the files/targets below have any dependencies, or if they did,
+##	GCC can't determine them, so thus there is no make depends step.
+##
+##	To actually run one of these programs, list the program on the command
+##	line with the ZipCPU simulator, zsim.
+##
+##
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
 ################################################################################
-#
-# Copyright (C) 2017, Gisselquist Technology, LLC
-#
-# This program is free software (firmware): you can redistribute it and/or
-# modify it under the terms of  the GNU General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or (at
-# your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
-# target there if the PDF file isn't present.)  If not, see
-# <http://www.gnu.org/licenses/> for a copy.
-#
-# License:	GPL, v3, as defined and found on www.gnu.org,
-#		http://www.gnu.org/licenses/gpl.html
-#
-#
+##
+## Copyright (C) 2017, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
 ################################################################################
-#
+##
+##
 .PHONY: all
 all:
 PROGRAMS := hellosim simuart simtest cmptest

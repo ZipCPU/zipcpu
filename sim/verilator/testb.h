@@ -2,7 +2,7 @@
 //
 // Filename: 	testb.h
 //
-// Project:	Zip CPU -- a small, lightweight, RISC CPU core
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A wrapper for a common interface to a clocked FPGA core
 //		begin exercised in Verilator.
@@ -34,6 +34,8 @@
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
+//
+//
 #ifndef	TESTB_H
 #define	TESTB_H
 
