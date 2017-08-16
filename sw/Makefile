@@ -87,6 +87,7 @@ ZASMD=zasm
 BUILDGASD:=build-gas
 BUILDGCCD:=build-gcc
 BUILDNLIB:=build-nlib
+TARGETGCC:=$(INSTALL)/cross-tools/bin/zip-gcc
 SUBMAKE:=$(MAKE) --no-print-directory
 ZIPINCD=$(INSTALLD)/cross-tools/zip/include
 
