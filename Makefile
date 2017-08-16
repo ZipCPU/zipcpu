@@ -55,7 +55,7 @@
 ##
 ##
 .PHONY: all
-all: rtl sw
+all: rtl sw sim
 
 MAKE := make	# Was `which make`
 SUBMAKE := $(MAKE) --no-print-directory

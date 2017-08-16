@@ -6,3 +6,4 @@ pdump
 zippy_tb
 pfcache_tb
 zipmmu_tb
+pfile.bin
