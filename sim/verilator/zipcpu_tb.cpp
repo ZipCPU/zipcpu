@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zippy_tb.cpp
+// Filename:	zipcpu_tb.cpp
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -53,7 +53,16 @@
 
 #include "verilated.h"
 #include "verilated_vcd_c.h"
+
+#ifdef	ZIPBONES
+#include "Vzipbones.h"
+#define	SIMCLASS	Vzipbones
+#else
+#define	ZIPSYSTEM
 #include "Vzipsystem.h"
+#define	SIMCLASS	Vzipsystem
+#endif
+
 #include "cpudefs.h"
 
 #include "testb.h"
@@ -65,7 +74,8 @@
 #include "zopcodes.h"
 
 #define	CMD_REG		0
-#define	CMD_DATA	1
+#define	CMD_DATA	4
+#define	CMD_GO		0
 #define	CMD_GIE		(1<<13)
 #define	CMD_SLEEP	(1<<12)
 #define	CMD_CLEAR_CACHE	(1<<11)
@@ -74,12 +84,20 @@
 #define	CMD_INT		(1<<7)
 #define	CMD_RESET	(1<<6)
 #define	CMD_STEP	((1<<8)|CMD_HALT)
+#define	CPU_HALT	CMD_HALT
+#define	CPU_sPC		15
 
 #define	KEY_ESCAPE	27
 #define	KEY_RETURN	10
 #define	CTRL(X)		((X)&0x01f)
 
 #define	MAXERR		10000
+
+
+#define	cpu_halt	v__DOT__cmd_halt
+#define	cmd_reset	v__DOT__cpu_reset
+#define	cmd_step	v__DOT__cmd_step
+#define	cmd_addr	v__DOT__cmd_addr
 
 #define	early_branch	v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_early_branch
 #define	early_branch_pc v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_branch_pc
@@ -120,6 +138,30 @@
 #define	op_phase	v__DOT__thecpu__DOT__r_op_phase
 #define	alu_phase	v__DOT__thecpu__DOT__r_alu_phase
 
+
+#ifdef	ZIPSYSTEM
+#define	dbg_cyc		v__DOT__dbg_cyc
+#define	dbg_stb		v__DOT__dbg_stb
+#define	dbg_we		v__DOT__dbg_we
+#define	dbg_idata	v__DOT__dbg_idata
+#define	cpu_stall	v__DOT__cpu_stall
+#define	cpu_interrupt	v__DOT__genblk9__DOT__pic__DOT__r_interrupt
+#define	cpu_idata	v__DOT__cpu_idata
+#define	tick_counter	m_core->v__DOT__jiffies__DOT__r_counter
+#define	dbg_addr	v__DOT__dbg_addr
+#else
+#define	dbg_cyc		i_dbg_cyc
+#define	dbg_stb		i_dbg_stb
+#define	dbg_we		i_dbg_we
+#define	dbg_idata	i_dbg_data
+#define	cpu_stall	i_wb_stall
+#define	cpu_interrupt	i_ext_int
+#define	cpu_idata	i_wb_data
+#define	tick_counter	m_tickcount
+#define	dbg_addr	i_dbg_addr
+#endif
+
+
 /*
 // We are just a raw CPU with memory.  There is no flash.
 #define	LGFLASHLEN	24
@@ -142,7 +184,9 @@ class	ZIPSTATE {
 public:
 	bool		m_valid, m_gie, m_last_pc_valid;
 	unsigned int	m_sR[16], m_uR[16];
+#ifdef	ZIPSYSTEM
 	unsigned int	m_p[20];
+#endif
 	unsigned int	m_last_pc, m_pc, m_sp;
 	SPARSEMEM	m_smem[5]; // Nearby stack memory
 	SPARSEMEM	m_imem[5]; // Nearby instruction memory
@@ -158,7 +202,7 @@ extern	FILE	*gbl_dbgfp;
 FILE	*gbl_dbgfp = NULL;
 
 // No particular "parameters" need definition or redefinition here.
-class	ZIPPY_TB : public TESTB<Vzipsystem> {
+class	ZIPPY_TB : public TESTB<SIMCLASS> {
 public:
 	unsigned long	m_mem_size;
 	MEMSIM		m_mem;
@@ -209,7 +253,7 @@ public:
 
 	void	reset(void) {
 		// m_flash.debug(false);
-		TESTB<Vzipsystem>::reset();
+		TESTB<SIMCLASS>::reset();
 	}
 
 	void	step(void) {
@@ -223,8 +267,10 @@ public:
 			m_state.m_sR[i] = cmd_read(i);
 		for(int i=0; i<16; i++)
 			m_state.m_uR[i] = cmd_read(i+16);
+#ifdef	ZIPSYSTEM
 		for(int i=0; i<20; i++)
 			m_state.m_p[i]  = cmd_read(i+32);
+#endif
 
 		m_state.m_gie = wb_read(CMD_REG) & CMD_GIE;
 		m_state.m_pc  = (m_state.m_gie) ? (m_state.m_uR[15]):(m_state.m_sR[15]);
@@ -279,6 +325,7 @@ public:
 		m_state.m_pc  = (m_state.m_gie) ? (m_state.m_uR[15]):(m_state.m_sR[15]);
 		m_state.m_sp  = (m_state.m_gie) ? (m_state.m_uR[13]):(m_state.m_sR[13]);
 
+#ifdef	ZIPSYSTEM
 		m_state.m_p[0] = m_core->v__DOT__pic_data;
 		m_state.m_p[1] = m_core->v__DOT__watchdog__DOT__r_value;
 		if (!m_show_user_timers) {
@@ -302,7 +349,7 @@ public:
 		m_state.m_p[13] = m_core->v__DOT__moc_data;
 		m_state.m_p[14] = m_core->v__DOT__mpc_data;
 		m_state.m_p[15] = m_core->v__DOT__mic_data;
-
+#endif
 	}
 
 	void	showval(int y, int x, const char *lbl, unsigned int v, bool c) {
@@ -440,6 +487,7 @@ public:
 		// printw(" %s", (m_core->v__DOT__thecpu__DOT____Vcellinp__pf____pinNumber3)?"-> P3":"     ");
 #endif
 
+#ifdef	ZIPSYSTEM
 		showval(ln, 0, "PIC ", m_state.m_p[0], (m_cursor==0));
 		showval(ln,20, "WDT ", m_state.m_p[1], (m_cursor==1));
 		// showval(ln,40, "CACH", m_core->v__DOT__manualcache__DOT__cache_base, (m_cursor==2));
@@ -472,18 +520,21 @@ public:
 			showval(ln,40, "UPST", m_state.m_p[10], (m_cursor==10));
 			showval(ln,60, "UICT", m_state.m_p[11], (m_cursor==11));
 		}
+#else
+		ln += 2;
+#endif
 
 		ln++;
 		mvprintw(ln, 40, "%s %s",
-			(m_core->v__DOT__cpu_halt)? "CPU-HALT": "        ",
-			(m_core->v__DOT__cpu_reset)?"CPU-RESET":"         "); ln++;
+			(m_core->cpu_halt)? "CPU-HALT": "        ",
+			(m_core->cmd_reset)?"CPU-RESET":"         "); ln++;
 		mvprintw(ln, 40, "%s %s %s 0x%02x %s %s",
-			(m_core->v__DOT__cmd_halt)? "HALT": "    ",
-			(m_core->v__DOT__cmd_reset)?"RESET":"     ",
-			(m_core->v__DOT__cmd_step)? "STEP" :"    ",
-			(m_core->v__DOT__cmd_addr)&0x3f,
+			(m_core->cpu_halt)? "HALT": "    ",
+			(m_core->cmd_reset)?"RESET":"     ",
+			(m_core->cmd_step)? "STEP" :"    ",
+			(m_core->cmd_addr)&0x3f,
 			(m_core->master_ce)? "*CE*" :"(ce)",
-			(m_core->v__DOT__cpu_reset)? "*RST*" :"(rst)");
+			(m_core->cmd_reset)? "*RST*" :"(rst)");
 		if (m_core->v__DOT__thecpu__DOT__r_gie)
 			attroff(A_BOLD);
 		else
@@ -514,7 +565,9 @@ public:
 			mvprintw(ln,40, "%ssCC : 0x%08x",
 				(m_cursor==26)?">":" ", cc);
 		} else {
-			mvprintw(ln,40, "%ssCC :%s%s%s%s%s%s%s",
+			char	cbuf[32];
+
+			sprintf(cbuf, "%ssCC :%s%s%s%s%s%s%s",
 				(m_cursor==26)?">":" ",
 				(cc&0x01000)?"FE":"",
 				(cc&0x00800)?"DE":"",
@@ -523,6 +576,7 @@ public:
 				(cc&0x00100)?"IL":"",
 				(cc&0x00080)?"BK":"",
 				((m_state.m_gie==0)&&(cc&0x010))?"HLT":"");
+			mvprintw(ln,40, "%-14s",cbuf);
 			mvprintw(ln, 54, "%s%s%s%s",
 				(cc&8)?"V":" ",
 				(cc&4)?"N":" ",
@@ -575,7 +629,8 @@ public:
 			mvprintw(ln,40, "%cuCC : 0x%08x",
 				(m_cursor == 42)?'>':' ', cc);
 		} else {
-			mvprintw(ln,40, "%cuCC :%s%s%s%s%s%s%s",
+			char	cbuf[32];
+			sprintf(cbuf, "%cuCC :%s%s%s%s%s%s%s",
 				(m_cursor == 42)?'>':' ',
 				(cc & 0x1000)?"FE":"",
 				(cc & 0x0800)?"DE":"",
@@ -584,6 +639,7 @@ public:
 				(cc & 0x0100)?"IL":"",
 				(cc & 0x0040)?"ST":"",
 				((m_state.m_gie)&&(cc & 0x010))?"SL":"");
+			mvprintw(ln,40, "%-14s",cbuf);
 			mvprintw(ln, 54, "%s%s%s%s",
 				(cc&8)?"V":" ",
 				(cc&4)?"N":" ",
@@ -612,7 +668,7 @@ public:
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
 			(m_core->v__DOT__thecpu__DOT__pf_ack)?"ACK":"   ",
 			"   ",//(m_core->v__DOT__thecpu__DOT__pf_stall)?"STL":"   ",
-			(m_core->v__DOT__cpu_idata)); ln++;
+			(m_core->cpu_idata)); ln++;
 #else
 
 		mvprintw(ln, 0, "PFCACH: v=%08x, %s%s, tag=%08x, pf_pc=%08x, lastpc=%08x",
@@ -634,7 +690,7 @@ public:
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
 			(m_core->v__DOT__thecpu__DOT__pf_ack)?"ACK":"   ",
 			(pfstall())?"STL":"   ",
-			(m_core->v__DOT__cpu_idata)); ln++;
+			(m_core->cpu_idata)); ln++;
 #endif
 
 		mvprintw(ln, 0, "MEMBUS: %3s %3s %s @0x%08x[0x%08x] -> %s %s %08x",
@@ -911,7 +967,7 @@ public:
 	}
 
 	bool	halted(void) {
-		return (m_core->v__DOT__cmd_halt != 0);
+		return (m_core->cpu_halt != 0);
 	}
 
 	void	read_state(void) {
@@ -921,8 +977,13 @@ public:
 		read_raw_state();
 		if (m_cursor < 0)
 			m_cursor = 0;
+#ifdef	ZIPBONES
+		else if (m_cursor >= 32)
+			m_cursor = 31;
+#else
 		else if (m_cursor >= 44)
 			m_cursor = 43;
+#endif
 
 		mvprintw(ln,0, "Peripherals-RS");
 		mvprintw(ln,40,"%-40s", "CPU State: ");
@@ -942,6 +1003,7 @@ public:
 			if (v & 0x000080)
 				printw("PIC Enabled ");
 		} ln++;
+#ifdef	ZIPSYSTEM
 		showval(ln, 0, "PIC ", m_state.m_p[0], (m_cursor==0));
 		showval(ln,20, "WDT ", m_state.m_p[1], (m_cursor==1));
 		showval(ln,40, "WBUS", m_state.m_p[2], false);
@@ -964,6 +1026,9 @@ public:
 			showval(ln,40, "UPST", m_state.m_p[10], (m_cursor==10));
 			showval(ln,60, "UICT", m_state.m_p[11], (m_cursor==11));
 		}
+#else
+		ln += 2;
+#endif
 
 		ln++;
 		ln++;
@@ -1000,7 +1065,8 @@ public:
 			mvprintw(ln,40, "%ssCC : 0x%08x",
 				(m_cursor==26)?">":" ", cc);
 		} else {
-			mvprintw(ln,40, "%ssCC :%s%s%s%s%s%s%s",
+			char	cbuf[32];
+			sprintf(cbuf, "%ssCC :%s%s%s%s%s%s%s",
 				(m_cursor==26)?">":" ",
 				(cc&0x01000)?"FE":"",
 				(cc&0x00800)?"DE":"",
@@ -1009,6 +1075,7 @@ public:
 				(cc&0x00100)?"IL":"",
 				(cc&0x00080)?"BK":"",
 				((m_state.m_gie==0)&&(cc&0x010))?"HLT":"");
+			mvprintw(ln,40, "%-14s",cbuf);
 			mvprintw(ln, 54, "%s%s%s%s",
 				(cc&8)?"V":" ",
 				(cc&4)?"N":" ",
@@ -1052,7 +1119,8 @@ public:
 			mvprintw(ln,40, "%cuCC : 0x%08x",
 				(m_cursor == 42)?'>':' ', cc);
 		} else {
-			mvprintw(ln,40, "%cuCC :%s%s%s%s%s%s%s",
+			char	cbuf[32];
+			sprintf(cbuf, "%cuCC :%s%s%s%s%s%s%s",
 				(m_cursor == 42)?'>':' ',
 				(cc & 0x1000)?"FE":"",
 				(cc & 0x0800)?"DE":"",
@@ -1061,6 +1129,7 @@ public:
 				(cc & 0x0100)?"IL":"",
 				(cc & 0x0040)?"ST":"",
 				((m_state.m_gie)&&(cc & 0x010))?"SL":"");
+			mvprintw(ln,40, "%-14s", cbuf);
 			mvprintw(ln, 54, "%s%s%s%s",
 				(cc&8)?"V":" ",
 				(cc&4)?"N":" ",
@@ -1193,14 +1262,14 @@ public:
 			fprintf(m_dbgfp, "DBG  %s %s %s @0x%08x/%d[0x%08x] %s %s [0x%08x] %s %s %s%s%s%s%s%s%s%s%s\n",
 				(m_core->i_dbg_cyc)?"CYC":"   ",
 				(m_core->i_dbg_stb)?"STB":
-					((m_core->v__DOT__dbg_stb)?"DBG":"   "),
+					((m_core->dbg_stb)?"DBG":"   "),
 				((m_core->i_dbg_we)?"WE":"  "),
 				(m_core->i_dbg_addr),0,
 				m_core->i_dbg_data,
 				(m_core->o_dbg_ack)?"ACK":"   ",
 				(m_core->o_dbg_stall)?"STALL":"     ",
 				(m_core->o_dbg_data),
-				(m_core->v__DOT__cpu_halt)?"CPU-HALT ":"",
+				(m_core->cpu_halt)?"CPU-HALT ":"",
 				(m_core->v__DOT__thecpu__DOT__r_halted)?"CPU-DBG_STALL":"",
 				(m_core->dcd_valid)?"DCDV ":"",
 				(m_core->op_valid)?"OPV ":"",
@@ -1211,6 +1280,7 @@ public:
 				(m_core->alu_ce)?"ALCE ":"",
 				(m_core->alu_valid)?"ALUV ":"",
 				(m_core->mem_valid)?"MEMV ":"");
+#ifdef	ZIPSYSTEM
 			fprintf(m_dbgfp, " SYS %s %s %s @0x%08x/%d[0x%08x] %s [0x%08x]\n",
 				(m_core->v__DOT__sys_cyc)?"CYC":"   ",
 				(m_core->v__DOT__sys_stb)?"STB":"   ",
@@ -1219,19 +1289,19 @@ public:
 				(m_core->v__DOT__dbg_addr<<2),
 				(m_core->v__DOT__sys_data),
 				(m_core->v__DOT__dbg_ack)?"ACK":"   ",
-				(m_core->v__DOT__cpu_idata));
+				(m_core->cpu_idata));
+#endif
 		}
 
 		if (m_dbgfp)
-			fprintf(m_dbgfp, "CEs %d/0x%08x,%d/0x%08x DCD: ->%02x, OP: ->%02x, ALU: halt=%d,%d ce=%d, valid=%d, wr=%d  Reg=%02x, IPC=%08x, UPC=%08x\n",
+			fprintf(m_dbgfp, "CEs %d/0x%08x,%d/0x%08x DCD: ->%02x, OP: ->%02x, ALU: halt=%d ce=%d, valid=%d, wr=%d  Reg=%02x, IPC=%08x, UPC=%08x\n",
 				m_core->dcd_ce,
 				m_core->dcd_pc,
 				m_core->op_ce,
 				op_pc(),
 				dcd_Aid()&0x01f,
 				m_core->v__DOT__thecpu__DOT__r_op_R,
-				m_core->v__DOT__cmd_halt,
-				m_core->v__DOT__cpu_halt,
+				m_core->cpu_halt,
 				m_core->alu_ce,
 				m_core->alu_valid,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
@@ -1241,12 +1311,12 @@ public:
 
 		if ((m_dbgfp)&&(!gie)&&(m_core->v__DOT__thecpu__DOT__w_release_from_interrupt)) {
 			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d\n",
-				m_core->v__DOT__genblk9__DOT__pic__DOT__r_interrupt,
+				m_core->cpu_interrupt,
 				m_core->v__DOT__thecpu__DOT__wr_reg_ce,
 				m_core->v__DOT__thecpu__DOT__wr_reg_id,
 				m_core->v__DOT__thecpu__DOT__wr_spreg_vl,
 				m_core->v__DOT__cmd_addr<<2,
-				m_core->v__DOT__dbg_idata,
+				m_core->dbg_idata,
 				m_core->master_ce,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
 				m_core->alu_valid,
@@ -1257,7 +1327,7 @@ public:
 				m_core->v__DOT__thecpu__DOT__wr_reg_id,
 				m_core->v__DOT__thecpu__DOT__wr_spreg_vl,
 				m_core->v__DOT__cmd_addr<<2,
-				m_core->v__DOT__dbg_idata,
+				m_core->dbg_idata,
 				m_core->master_ce,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
 				m_core->alu_valid,
@@ -1290,14 +1360,14 @@ public:
 
 		if (m_dbgfp)
 			fprintf(m_dbgfp, "-----------  TICK (%08x) ----------%s\n",
-				m_core->v__DOT__jiffies__DOT__r_counter,
+				(uint32_t)tick_counter,
 				(m_bomb)?" BOMBED!!":"");
 		m_mem(m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
 			m_core->o_wb_addr & mask, m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 			m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 
 
-		TESTB<Vzipsystem>::tick();
+		TESTB<SIMCLASS>::tick();
 
 		if ((m_dbgfp)&&(gie != m_core->v__DOT__thecpu__DOT__r_gie)) {
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
@@ -1424,6 +1494,7 @@ public:
 				(m_core->v__DOT__thecpu__DOT__r_alu_gie)?"ALU-GIE":"");
 		}
 
+#ifdef	ZIPSYSTEM
 		if (m_core->v__DOT__dma_controller__DOT__dma_state) {
 			fprintf(m_dbgfp, "DMA[%d]%s%s%s%s@%08x,%08x [%d%d/%4d/%4d] -> [%d%d/%04d/%04d]\n",
 				m_core->v__DOT__dma_controller__DOT__dma_state,
@@ -1442,6 +1513,7 @@ public:
 				m_core->v__DOT__dma_controller__DOT__nwacks,
 				m_core->v__DOT__dma_controller__DOT__nwritten);
 		}
+#endif
 		if (((m_core->alu_pc_valid)
 			||(m_core->mem_pc_valid))
 			&&(!m_core->v__DOT__thecpu__DOT__new_pc)) {
@@ -1467,7 +1539,7 @@ public:
 
 	bool	pfstall(void) {
 		return((!(m_core->v__DOT__thecpu__DOT__pformem__DOT__r_a_owner))
-			||(m_core->v__DOT__cpu_stall));
+			||(m_core->cpu_stall));
 	}
 	unsigned	dcd_Aid(void) {
 		return (m_core->dcdA);
@@ -1538,18 +1610,8 @@ public:
 
 	bool	test_failure(void) {
 		if (m_core->v__DOT__thecpu__DOT__sleep)
-			return 0;
-		else if (m_core->v__DOT__thecpu__DOT__r_gie)
-			return (m_mem[m_core->v__DOT__thecpu__DOT__r_upc] == 0x7bc3dfff);
-		else if (m_mem[m_core->v__DOT__thecpu__DOT__ipc] == 0x7883ffff)
-			return true; // ADD to PC instruction
-		else // MOV to PC instruction
-			return (m_mem[m_core->v__DOT__thecpu__DOT__ipc] == 0x7bc3dfff);
-		/*
-		return ((m_core->alu_pc_valid)
-			&&(m_mem[alu_pc()] == 0x2f0f7fff)
-			&&(!m_core->v__DOT__thecpu__DOT__clear_pipeline));
-		*/
+			return false;
+		return false;
 	}
 
 	void	wb_write(unsigned a, unsigned int v) {
@@ -1619,19 +1681,35 @@ public:
 	}
 
 	void	cursor_up(void) {
+#ifdef	ZIPSYSTEM
 		if (m_cursor > 3)
 			m_cursor -= 4;
+#else
+		if (m_cursor > 12+3)
+			m_cursor =- 4;
+#endif
 	} void	cursor_down(void) {
 		if (m_cursor < 40)
 			m_cursor += 4;
 	} void	cursor_left(void) {
+#ifdef	ZIPSYSTEM
 		if (m_cursor > 0)
 			m_cursor--;
+#else
+		if (m_cursor > 12)
+			m_cursor--;
+#endif
 		else	m_cursor = 43;
 	} void	cursor_right(void) {
+#ifdef	ZIPSYSTEM
 		if (m_cursor < 43)
 			m_cursor++;
 		else	m_cursor = 0;
+#else
+		if (m_cursor < 43)
+			m_cursor++;
+		else	m_cursor = 12;
+#endif
 	}
 
 	int	cursor(void) { return m_cursor; }
@@ -1785,6 +1863,7 @@ void	get_value(ZIPPY_TB *tb) {
 					tb->m_core->op_valid = 0;
 				}
 				break;
+#ifdef	ZIPSYSTEM
 			case 32: tb->m_core->v__DOT__pic_data = v; break;
 			case 33: tb->m_core->v__DOT__watchdog__DOT__r_value = v; break;
 			// case 34: tb->m_core->v__DOT__manualcache__DOT__cache_base = v; break;
@@ -1797,6 +1876,13 @@ void	get_value(ZIPPY_TB *tb) {
 			case 45: tb->m_core->v__DOT__uoc_data = v; break;
 			case 46: tb->m_core->v__DOT__upc_data = v; break;
 			case 47: tb->m_core->v__DOT__uic_data = v; break;
+#else
+			case 32: case 33: case 34: case 35:
+			case 36: case 37: case 38: case 39:
+			case 40: case 41: case 42: case 43:
+			case 44: case 45: case 46: case 47:
+				break;
+#endif
 			default:
 				tb->m_core->v__DOT__thecpu__DOT__regset[ra] = v;
 				break;
@@ -1903,17 +1989,16 @@ int	main(int argc, char **argv) {
 
 		printf("Running in non-interactive mode\n");
 		tb->reset();
-		for(int i=0; i<2; i++)
-			tb->tick();
-		tb->m_core->v__DOT__cmd_halt = 0;
+		tb->m_core->cpu_halt = 1;
 		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|15);
 		tb->wb_write(CMD_DATA, entry);
 		tb->wb_write(CMD_REG, 15);
+		tb->m_bomb = false;
 		while(!done) {
 			tb->tick();
 
 				// tb->m_core->v__DOT__thecpu__DOT__step = 0;
-				// tb->m_core->v__DOT__cmd_halt = 0;
+				// tb->m_core->cpu_halt = 0;
 				// tb->m_core->v__DOT__cmd_step = 0;
 
 			/*
@@ -1930,9 +2015,11 @@ int	main(int argc, char **argv) {
 		bool	done = false;
 
 		printf("Running in non-interactive mode, via step commands\n");
-		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|15);
+		tb->reset();
+		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|CPU_sPC);
 		tb->wb_write(CMD_DATA, entry);
-		tb->wb_write(CMD_REG, 15);
+		tb->wb_write(CMD_REG, CPU_sPC);
+		tb->m_bomb = false;
 		while(!done) {
 			tb->wb_write(CMD_REG, CMD_STEP);
 			done = (tb->test_success())||(tb->test_failure());
@@ -1947,12 +2034,12 @@ int	main(int argc, char **argv) {
 		// tb->reset();
 		// for(int i=0; i<2; i++)
 			// tb->tick();
-		tb->m_core->v__DOT__cmd_reset = 1;
-		tb->m_core->v__DOT__cmd_halt = 1;
+		tb->m_core->cmd_reset = 1;
+		tb->m_core->cpu_halt = 1;
 		tb->tick();
 
-		tb->m_core->v__DOT__cmd_reset = 0;
-		tb->m_core->v__DOT__cmd_halt = 0;
+		tb->m_core->cmd_reset = 0;
+		tb->m_core->cpu_halt = 0;
 		tb->tick();
 		tb->jump_to(entry);
 		tb->tick();
@@ -1964,7 +2051,7 @@ int	main(int argc, char **argv) {
 		// For debugging purposes: do we wish to skip some number of
 		// instructions to fast forward to a time of interest??
 		for(int i=0; i<0; i++) {
-			tb->m_core->v__DOT__cmd_halt = 0;
+			tb->m_core->cpu_halt = 0;
 			tb->tick();
 		}
 
@@ -2043,7 +2130,7 @@ int	main(int argc, char **argv) {
 				// if (high_speed)
 					// halfdelay(1);
 				high_speed = false;
-				tb->m_core->v__DOT__cmd_halt = 0;
+				tb->m_core->cpu_halt = 0;
 				tb->m_core->v__DOT__cmd_step = 1;
 				tb->eval();
 				tb->tick();
@@ -2056,7 +2143,7 @@ int	main(int argc, char **argv) {
 				// if (high_speed)
 					// halfdelay(1);
 				high_speed = false;
-				tb->m_core->v__DOT__cmd_halt = 1;
+				tb->m_core->cpu_halt = 1;
 				tb->m_core->v__DOT__cmd_step = 0;
 				tb->eval();
 				tb->tick();
@@ -2070,7 +2157,7 @@ int	main(int argc, char **argv) {
 					// halfdelay(1);
 				high_speed = false;
 		//		tb->m_core->v__DOT__thecpu__DOT__step = 0;
-				tb->m_core->v__DOT__cmd_halt = 0;
+				tb->m_core->cpu_halt = 0;
 		//		tb->m_core->v__DOT__cmd_step = 0;
 				tb->tick();
 				break;
@@ -2138,6 +2225,7 @@ int	main(int argc, char **argv) {
 		tb->dump_state();
 	}
 
+#ifdef	ZIPSYSTEM
 	printf("Clocks used         : %08x\n", tb->m_core->v__DOT__mtc_data);
 	printf("Instructions Issued : %08x\n", tb->m_core->v__DOT__mic_data);
 	printf("Tick Count          : %08lx\n", tb->m_tickcount);
@@ -2145,6 +2233,7 @@ int	main(int argc, char **argv) {
 		printf("Instructions / Clock: %.2f\n",
 			(double)tb->m_core->v__DOT__mic_data
 			/ (double)tb->m_core->v__DOT__mtc_data);
+#endif
 
 	int	rcode = 0;
 	if (tb->m_bomb) {

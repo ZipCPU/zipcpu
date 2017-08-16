@@ -12,9 +12,13 @@
 ##
 ##	Useful targets of this makefile include:
 ##
-##	zippy_tb (default)
+##	zipsys_tb (default)
 ##		This is the test bench program / simulator that is built by
-##		this directory.
+##		this directory.  This is based upon the ZipSystem.
+##
+##	zipbones_tb (default)
+##		This is the test bench program / simulator that is built by
+##		this directory--save that this ones uses the ZipBones.
 ##
 ##	test
 ##		Runs the simulator on a test program found in the trunk/sw/zasm
@@ -71,7 +75,7 @@
 ##		separated from the rest of the CPU.
 ##
 ##	pdump
-##		zippy_tb can be configured to produce a profile output that is
+##		zipsys_tb can be configured to produce a profile output that is
 ##		very useful when debugging the Dhrystone benchmark.  (It is
 ##		so configured by default.)  This file will be name pfile.bin.
 ##		pdump is a very simple program designed to read this file and
@@ -82,7 +86,7 @@
 ##		instruction and the next.
 ##
 ##	clean
-##		Removes all products of compilation--specifically zippy_tb,
+##		Removes all products of compilation--specifically zipsys_tb,
 ##		pdump and div_tb.
 ##
 ##
@@ -115,7 +119,7 @@
 ################################################################################
 ##
 ##
-all: zippy_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
+all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
 
 CXX	:= g++
 CFLAGS	:= -Wall -Og -g
@@ -129,21 +133,31 @@ VROOT   := $(VERILATOR_ROOT)
 VINCS	:= -I$(VROOT)/include -I$(VROOT)/include/vltstd
 INCS	:= -I$(RTLOBJD) -I$(RTLD) -I$(ZASM) $(VINCS)
 ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
-SOURCES := $(ZLIBSRCS) pdump.cpp zippy_tb.cpp memsim.cpp
+SOURCES := $(ZLIBSRCS) pdump.cpp zipcpu_tb.cpp memsim.cpp
 ZDSMSRCS:= zopcodes.cpp
 ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZLIBSRCS) $(ZDSMSRCS)))
-SIMSRCS := zippy_tb.cpp memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
+SIMSRCS := memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
+SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
+BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
 VLOBJS := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
-RAWLIB	:= $(RTLOBJD)/Vzipsystem__ALL.a
-LIBS	:= $(RAWLIB) -lncurses -lelf
-TESTF	:= $(ZASM)/z.out
+RAWSYSLIB := $(RTLOBJD)/Vzipsystem__ALL.a
+RAWBONLIB := $(RTLOBJD)/Vzipbones__ALL.a
+SYSLIBS	:= $(RAWSYSLIB) -lncurses -lelf
+BONLIBS	:= $(RAWBONLIB) -lncurses -lelf
+TESTF	:= ../../bench/asm/simtest
 DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
+
+$(OBJDIR)/zipsys_tb.o: zipcpu_tb.cpp
+	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
+
+$(OBJDIR)/zipbones_tb.o: zipcpu_tb.cpp
+	$(CXX) -DZIPBONES $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
@@ -151,8 +165,11 @@ $(OBJDIR)/%.o: $(ZASM)/%.cpp
 $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
-zippy_tb: $(SIMOBJS) $(VLOBJS) $(RAWLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(SIMOBJS) $(VLOBJS) $(RAWLIB) $(LIBS) -o $@
+zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(SYSOBJS) $(VLOBJS) $(SYSLIBS) -o $@
+
+zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
 	$(CXX) $(CFLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
@@ -172,24 +189,25 @@ pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
 	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
 
 .PHONY: stest
-stest: zippy_tb
-	./zippy_tb -s $(TESTF)
+stest: zipsys_tb
+	./zipsys_tb -s $(TESTF)
 
 .PHONY: itest
-itest: zippy_tb
-	./zippy_tb $(TESTF)
+itest: zipsys_tb
+	./zipsys_tb $(TESTF)
 
 .PHONY: test
-test: zippy_tb stest
-	./zippy_tb -a $(TESTF)
+test: zipsys_tb stest
+	./zipsys_tb -a $(TESTF)
 
 .PHONY: dhrystone
-dhrystone: zippy_tb
-	./zippy_tb -a $(DHRYSTONEF)
+dhrystone: zipsys_tb
+	./zipsys_tb -a $(DHRYSTONEF)
 
 define	build-depends
 	@echo "Building dependencies"
-	@$(CXX) $(CPPFLAGS) $(INCS) -MM $(VLIB) $(SOURCES) > $(OBJDIR)/xdepends.txt
+	@$(CXX) $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/xdepends.txt
+	@$(CXX) -DZIPBONES $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) >> $(OBJDIR)/xdepends.txt
 	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
 	@rm $(OBJDIR)/xdepends.txt
 endef
@@ -209,6 +227,6 @@ $(OBJDIR)/depends.txt: $(OBJDIR)/ depends
 .PHONY: clean
 clean:
 	rm -rf $(OBJDIR)/
-	rm -rf ./zippy_tb pdump div_tb mpy_tb
+	rm -rf ./zipsys_tb ./zipbones_tb pdump div_tb mpy_tb
 
 -include $(OBJDIR)/depends.txt
