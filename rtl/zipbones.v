@@ -39,6 +39,11 @@
 //
 `include "cpudefs.v"
 //
+`define	RESET_BIT	6
+`define	STEP_BIT	8
+`define	HALT_BIT	10
+`define	CLEAR_CACHE_BIT	11
+//
 module	zipbones(i_clk, i_rst,
 		// Wishbone master interface from the CPU
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
@@ -55,24 +60,25 @@ module	zipbones(i_clk, i_rst,
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=8, START_HALTED=0;
+			LGICACHE=8;
+	parameter [0:0]	START_HALTED=0;
 	localparam	AW=ADDRESS_WIDTH;
-	input	i_clk, i_rst;
+	input	wire	i_clk, i_rst;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(AW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
 	output	wire	[3:0]	o_wb_sel;
-	input			i_wb_ack, i_wb_stall;
-	input		[31:0]	i_wb_data;
-	input			i_wb_err;
+	input	wire		i_wb_ack, i_wb_stall;
+	input	wire	[31:0]	i_wb_data;
+	input	wire		i_wb_err;
 	// Incoming interrupts
-	input			i_ext_int;
+	input	wire		i_ext_int;
 	// Outgoing interrupt
 	output	wire		o_ext_int;
 	// Wishbone slave
-	input			i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
-	input		[31:0]	i_dbg_data;
+	input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
+	input	wire	[31:0]	i_dbg_data;
 	output	reg		o_dbg_ack;
 	output	wire		o_dbg_stall;
 	output	wire	[31:0]	o_dbg_data;
@@ -107,35 +113,30 @@ module	zipbones(i_clk, i_rst,
 	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache;
 	reg	[4:0]	cmd_addr;
 	wire	[3:0]	cpu_dbg_cc;
-	assign	dbg_cmd_write = (i_dbg_cyc)&&(i_dbg_stb)&&(i_dbg_we)&&(~i_dbg_addr);
+	assign	dbg_cmd_write = (i_dbg_cyc)&&(i_dbg_stb)&&(i_dbg_we)&&(!i_dbg_addr);
 	//
 	// Always start us off with an initial reset
 	//
 	initial	cmd_reset = 1'b1;
 	always @(posedge i_clk)
-		cmd_reset <= ((dbg_cmd_write)&&(i_dbg_data[6]));
+		cmd_reset <= ((dbg_cmd_write)&&(i_dbg_data[`RESET_BIT]));
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
 		if (i_rst)
-			cmd_halt <= (START_HALTED == 1)? 1'b1 : 1'b0;
+			cmd_halt <= (START_HALTED);
 		else if (dbg_cmd_write)
-			cmd_halt <= ((i_dbg_data[10])||(i_dbg_data[8]));
+			cmd_halt <= ((i_dbg_data[`HALT_BIT])&&(!i_dbg_data[`STEP_BIT]));
 		else if ((cmd_step)||(cpu_break))
 			cmd_halt  <= 1'b1;
 
 	initial	cmd_clear_pf_cache = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
-			cmd_clear_pf_cache <= 1'b0;
-		else if (dbg_cmd_write)
-			cmd_clear_pf_cache <= i_dbg_data[11];
-		else
-			cmd_clear_pf_cache <= 1'b0;
+		cmd_clear_pf_cache <= (dbg_cmd_write)&&(i_dbg_data[`CLEAR_CACHE_BIT]);
 	//
 	initial	cmd_step  = 1'b0;
 	always @(posedge i_clk)
-		cmd_step <= (dbg_cmd_write)&&(i_dbg_data[8]);
+		cmd_step <= (dbg_cmd_write)&&(i_dbg_data[`STEP_BIT]);
 	//
 	initial	cmd_addr = 5'h0;
 	always @(posedge i_clk)
@@ -146,7 +147,7 @@ module	zipbones(i_clk, i_rst,
 	assign	cpu_reset = (cmd_reset)||(i_rst);
 
 	wire	cpu_halt, cpu_dbg_stall;
-	assign	cpu_halt = (i_rst)||((cmd_halt)&&(~cmd_step));
+	assign	cpu_halt = (cmd_halt);
 	wire	[31:0]	cmd_data;
 	// Values:
 	//	0x0003f -> cmd_addr mask
@@ -161,7 +162,7 @@ module	zipbones(i_clk, i_rst,
 	//	0x10000 -> External interrupt line is high
 	assign	cmd_data = { 7'h00, 8'h00, i_ext_int,
 			cpu_dbg_cc,
-			1'b0, cmd_halt, (~cpu_dbg_stall), 1'b0,
+			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 			1'b0, cpu_reset, 1'b0, cmd_addr };
 
 	//
@@ -172,8 +173,7 @@ module	zipbones(i_clk, i_rst,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_data;
 	wire	[31:0]	cpu_dbg_data;
-	assign cpu_dbg_we = ((i_dbg_cyc)&&(i_dbg_stb)
-					&&(i_dbg_we)&&(i_dbg_addr));
+	assign cpu_dbg_we = ((i_dbg_stb)&&(i_dbg_we)&&(i_dbg_addr));
 	zipcpu	#(.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
@@ -194,12 +194,12 @@ module	zipbones(i_clk, i_rst,
 			);
 
 	// Return debug response values
-	assign	o_dbg_data = (~i_dbg_addr)?cmd_data :cpu_dbg_data;
+	assign	o_dbg_data = (!i_dbg_addr)?cmd_data :cpu_dbg_data;
 	initial o_dbg_ack = 1'b0;
 	always @(posedge i_clk)
-		o_dbg_ack <= (i_dbg_cyc)&&((~i_dbg_addr)||(~o_dbg_stall));
-	assign	o_dbg_stall=(i_dbg_cyc)&&(cpu_dbg_stall)&&(i_dbg_addr);
+		o_dbg_ack <= (i_dbg_stb)&&((!i_dbg_addr)||(!o_dbg_stall));
+	assign	o_dbg_stall= (cpu_dbg_stall)&&(i_dbg_addr);
 
-	assign	o_ext_int = (cmd_halt) && (~i_wb_stall);
+	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
 
 endmodule
