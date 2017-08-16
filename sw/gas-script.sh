@@ -50,7 +50,11 @@ set +h
 set -e
 CLFS_HOST=$MACHTYPE
 CLFS_TARGET="zip"
-INSTALL_BASE=`pwd`/install
+if [[ -z "$INSTALLD" ]]
+then
+  INSTALLD=`pwd`/install
+fi
+INSTALL_BASE=${INSTALLD}
 mkdir -p ${INSTALL_BASE}/cross-tools
 mkdir -p build-gas
 echo ../$VERSION-zip/configure

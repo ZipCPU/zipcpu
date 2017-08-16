@@ -3674,8 +3674,7 @@ later version of this ZipCPU to make it better.
 	instruction set has demonstrated an amazing versatility. I will contend
 	therefore and for anyone who will listen, that this instruction set
 	offers a full and complete capability for whatever a user might wish
-	to do with two exceptions: bytewise character access and accelerated
-	floating-point support.
+	to do with the only exception being accelerated floating-point support.
 \item The burst load/store approach using the wishbone pipelining mode is
 	novel, and can be used to greatly increase the speed of the processor.
 \item The novel approach to interrupts greatly facilitates the development of
@@ -3688,17 +3687,6 @@ later version of this ZipCPU to make it better.
 
 	At the same time, if most modern systems handle interrupt vectoring in
 	software anyway, why maintain complicated hardware support for it?
-
-\item My goal of a high rate of instructions per clock may not be the proper
-	measure of this CPU. For example, if instructions are being read from a
-	SPI flash device, such as is common among FPGA implementations, these
-	same instructions may suffer stalls of between 64 and 128 cycles per
-	instruction just to read the instruction from the flash. Executing the
-	instruction in a single clock cycle is no longer the appropriate
-	measure. At the same time, it should be possible to use the DMA
-	peripheral to copy instructions from the FLASH to a temporary memory
-	location, after which they may be executed at a single instruction
-	cycle per access again. 
 
 \item Both GCC and binutils back ends exist for the ZipCPU.
 \item As of this version of the CPU, a newlib veresion of the C--library

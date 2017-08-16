@@ -188,7 +188,6 @@ module	wbdblpriarb(i_clk, i_rst,
 	// irrelevant.
 	assign o_stb_a = (r_a_owner) ? i_a_stb_a : i_b_stb_a;
 	assign o_stb_b = (r_a_owner) ? i_a_stb_b : i_b_stb_b;
-	assign o_we    = (r_a_owner) ? i_a_we    : i_b_we;
 	assign o_adr   = (r_a_owner) ? i_a_adr   : i_b_adr;
 	assign o_dat   = (r_a_owner) ? i_a_dat   : i_b_dat;
 	assign o_sel   = (r_a_owner) ? i_a_sel   : i_b_sel;

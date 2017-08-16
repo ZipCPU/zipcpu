@@ -106,7 +106,10 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	generate
 	if (IMPLEMENT_MPY == 0)
 	begin // No multiply support.
-		assign	mpy_result = 63'h00;
+		assign	mpy_result = 64'h00;
+		assign	mpybusy    = 1'b0;
+		assign	mpydone    = 1'b1;
+		always @(*) mpyhi = 1'b0; // Not needed
 	end else if (IMPLEMENT_MPY == 1)
 	begin // Our single clock option (no extra clocks)
 		wire	signed	[63:0]	w_mpy_a_input, w_mpy_b_input;
@@ -333,6 +336,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		default:   o_c   <= i_b;		// MOV, LDI
 		endcase
 	end else // if (mpydone)
+		// set the carry based upon a multiply result
 		o_c <= (mpyhi)?mpy_result[63:32]:mpy_result[31:0];
 
 	reg	r_busy;

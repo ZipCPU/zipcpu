@@ -45,7 +45,7 @@
 
 template <class VA>	class TESTB {
 public:
-	VA	*m_core;
+	VA		*m_core;
 	VerilatedVcdC*	m_trace;
 	unsigned long	m_tickcount;
 
@@ -56,7 +56,7 @@ public:
 		eval(); // Get our initial values set properly.
 	}
 	virtual ~TESTB(void) {
-		if (m_trace) m_trace->close();
+		closetrace();
 		delete m_core;
 		m_core = NULL;
 	}
@@ -72,6 +72,7 @@ public:
 	virtual	void	closetrace(void) {
 		if (m_trace) {
 			m_trace->close();
+			delete m_trace;
 			m_trace = NULL;
 		}
 	}
@@ -106,6 +107,10 @@ public:
 		tick();
 		m_core->i_rst = 0;
 		// printf("RESET\n");
+	}
+
+	unsigned long	tickcount(void) {
+		return m_tickcount;
 	}
 };
 
