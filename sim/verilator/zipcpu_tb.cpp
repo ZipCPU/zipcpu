@@ -95,7 +95,7 @@
 
 
 #define	cpu_halt	v__DOT__cmd_halt
-#define	cmd_reset	v__DOT__cpu_reset
+#define	cmd_reset	v__DOT__cmd_reset
 #define	cmd_step	v__DOT__cmd_step
 #define	cmd_addr	v__DOT__cmd_addr
 
