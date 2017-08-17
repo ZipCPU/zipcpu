@@ -58,17 +58,45 @@ module	zipbones(i_clk, i_rst,
 		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
 			o_dbg_ack, o_dbg_stall, o_dbg_data
 `ifdef	DEBUG_SCOPE
-		, o_zip_debug
+		, o_cpu_debug
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
 			LGICACHE=8;
 	parameter [0:0]	START_HALTED=0;
+	parameter	EXTERNAL_INTERRUPTS=1,
+`ifdef	OPT_MULTIPLY
+			IMPLEMENT_MPY = `OPT_MULTIPLY,
+`else
+			IMPLEMENT_MPY = 0,
+`endif
+`ifdef	OPT_DIVIDE
+			IMPLEMENT_DIVIDE=1,
+`else
+			IMPLEMENT_DIVIDE=0,
+`endif
+`ifdef	OPT_IMPLEMENT_FPU
+			IMPLEMENT_FPU=1,
+`else
+			IMPLEMENT_FPU=0,
+`endif
+			IMPLEMENT_LOCK=1;
+	localparam	// Derived parameters
+			PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
+			PAW=ADDRESS_WIDTH,
+`ifdef	OPT_MMU
+			VIRTUAL_ADDRESS_WIDTH=30,
+`else
+			VIRTUAL_ADDRESS_WIDTH=PAW,
+`endif
+			LGTLBSZ = 6,
+			VAW=VIRTUAL_ADDRESS_WIDTH;
+
 	localparam	AW=ADDRESS_WIDTH;
 	input	wire	i_clk, i_rst;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
-	output	wire	[(AW-1):0]	o_wb_addr;
+	output	wire	[(PAW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
 	output	wire	[3:0]	o_wb_sel;
 	input	wire		i_wb_ack, i_wb_stall;
@@ -81,14 +109,25 @@ module	zipbones(i_clk, i_rst,
 	// Wishbone slave
 	input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
 	input	wire	[31:0]	i_dbg_data;
-	output	reg		o_dbg_ack;
+	output	wire		o_dbg_ack;
 	output	wire		o_dbg_stall;
 	output	wire	[31:0]	o_dbg_data;
 	//
 `ifdef	DEBUG_SCOPE
-	output	wire	[31:0]	o_zip_debug;
+	output	wire	[31:0]	o_cpu_debug;
 `endif
+	wire		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_stall;
+	wire	[31:0]	dbg_idata, dbg_odata;
+	reg		dbg_ack;
 
+	assign	dbg_cyc     = i_dbg_cyc;
+	assign	dbg_stb     = i_dbg_stb;
+	assign	dbg_we      = i_dbg_we;
+	assign	dbg_addr    = i_dbg_addr;
+	assign	dbg_idata   = i_dbg_data;
+	assign	o_dbg_ack   = dbg_ack;
+	assign	o_dbg_stall = dbg_stall;
+	assign	o_dbg_data  = dbg_odata;
 	//
 	// The external debug interface
 	//
@@ -106,35 +145,35 @@ module	zipbones(i_clk, i_rst,
 	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache;
 	reg	[4:0]	cmd_addr;
 	wire	[3:0]	cpu_dbg_cc;
-	assign	dbg_cmd_write = (i_dbg_cyc)&&(i_dbg_stb)&&(i_dbg_we)&&(!i_dbg_addr);
+	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(!dbg_addr);
 	//
 	// Always start us off with an initial reset
 	//
 	initial	cmd_reset = 1'b1;
 	always @(posedge i_clk)
-		cmd_reset <= ((dbg_cmd_write)&&(i_dbg_data[`RESET_BIT]));
+		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[`RESET_BIT]));
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
 		if (i_rst)
 			cmd_halt <= (START_HALTED);
 		else if (dbg_cmd_write)
-			cmd_halt <= ((i_dbg_data[`HALT_BIT])&&(!i_dbg_data[`STEP_BIT]));
+			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
 		else if ((cmd_step)||(cpu_break))
 			cmd_halt  <= 1'b1;
 
-	initial	cmd_clear_pf_cache = 1'b0;
+	initial	cmd_clear_pf_cache = 1'b1;
 	always @(posedge i_clk)
-		cmd_clear_pf_cache <= (dbg_cmd_write)&&(i_dbg_data[`CLEAR_CACHE_BIT]);
+		cmd_clear_pf_cache <= (dbg_cmd_write)&&(dbg_idata[`CLEAR_CACHE_BIT]);
 	//
 	initial	cmd_step  = 1'b0;
 	always @(posedge i_clk)
-		cmd_step <= (dbg_cmd_write)&&(i_dbg_data[`STEP_BIT]);
+		cmd_step <= (dbg_cmd_write)&&(dbg_idata[`STEP_BIT]);
 	//
 	initial	cmd_addr = 5'h0;
 	always @(posedge i_clk)
 		if (dbg_cmd_write)
-			cmd_addr <= i_dbg_data[4:0];
+			cmd_addr <= dbg_idata[4:0];
 
 	wire	cpu_reset;
 	assign	cpu_reset = (cmd_reset)||(i_rst);
@@ -165,14 +204,14 @@ module	zipbones(i_clk, i_rst,
 			cpu_dbg_we,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_dbg_data;
-	assign cpu_dbg_we = ((i_dbg_stb)&&(i_dbg_we)&&(i_dbg_addr));
+	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(dbg_addr));
 	zipcpu	#(.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
 			.WITH_LOCAL_BUS(0))
 		thecpu(i_clk, cpu_reset, i_ext_int,
 			cpu_halt, cmd_clear_pf_cache, cmd_addr[4:0], cpu_dbg_we,
-				i_dbg_data, cpu_dbg_stall, cpu_dbg_data,
+				dbg_idata, cpu_dbg_stall, cpu_dbg_data,
 				cpu_dbg_cc, cpu_break,
 			o_wb_cyc, o_wb_stb,
 				cpu_lcl_cyc, cpu_lcl_stb,
@@ -181,24 +220,24 @@ module	zipbones(i_clk, i_rst,
 				(i_wb_err)||(cpu_lcl_cyc),
 			cpu_op_stall, cpu_pf_stall, cpu_i_count
 `ifdef	DEBUG_SCOPE
-			, o_zip_debug
+			, o_cpu_debug
 `endif
 			);
 
 	// Return debug response values
-	assign	o_dbg_data = (!i_dbg_addr)?cmd_data :cpu_dbg_data;
-	initial o_dbg_ack = 1'b0;
+	assign	dbg_odata = (!dbg_addr)?cmd_data :cpu_dbg_data;
+	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
-		o_dbg_ack <= (i_dbg_stb)&&((!i_dbg_addr)||(!o_dbg_stall));
-	assign	o_dbg_stall= (cpu_dbg_stall)&&(i_dbg_addr);
+		dbg_ack <= (dbg_stb)&&(!o_dbg_stall);
+	assign	dbg_stall= (cpu_dbg_stall)&&(dbg_addr);
 
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
 
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
-	wire	[3:0] unused;
-	assign	unused = { cpu_lcl_stb, cpu_op_stall, cpu_pf_stall, cpu_i_count };
+	wire	[4:0] unused;
+	assign	unused = { dbg_cyc, cpu_lcl_stb, cpu_op_stall, cpu_pf_stall, cpu_i_count };
 	// verilator lint_on  UNUSED
 
 endmodule
