@@ -118,17 +118,22 @@ module	busdelay(i_clk,
 					o_dly_data <= r_data;
 					o_dly_sel  <= r_sel;
 					o_dly_stb  <= 1'b1;
-					r_rtn_stall <= 1'b0;
-					r_stb <= 1'b0;
 				end else begin
 					o_dly_we   <= i_wb_we;
 					o_dly_addr <= i_wb_addr;
 					o_dly_data <= i_wb_data;
 					o_dly_sel  <= i_wb_sel;
 					o_dly_stb  <= i_wb_stb;
-					r_stb <= 1'b0;
-					r_rtn_stall <= 1'b0;
 				end
+
+				r_stb <= 1'b0;
+			end else if (!o_dly_stb)
+			begin
+				o_dly_we   <= i_wb_we;
+				o_dly_addr <= i_wb_addr;
+				o_dly_data <= i_wb_data;
+				o_dly_sel  <= i_wb_sel;
+				o_dly_stb  <= i_wb_stb;
 			end else if ((!r_stb)&&(!o_wb_stall))
 			begin
 				r_we   <= i_wb_we;
@@ -136,15 +141,12 @@ module	busdelay(i_clk,
 				r_data <= i_wb_data;
 				r_sel  <= i_wb_sel;
 				r_stb  <= i_wb_stb;
-
-				r_rtn_stall <= i_wb_stb;
 			end
 
 			if (!i_wb_cyc)
 			begin
 				o_dly_stb <= 1'b0;
 				r_stb <= 1'b0;
-				r_rtn_stall <= 1'b0;
 			end
 
 			o_wb_ack  <= (i_dly_ack)&&(i_wb_cyc)&&(o_dly_cyc);
@@ -152,7 +154,7 @@ module	busdelay(i_clk,
 			r_rtn_err <= (i_dly_err)&&(i_wb_cyc)&&(o_dly_cyc);
 		end
 
-		assign	o_wb_stall = r_rtn_stall;
+		assign	o_wb_stall = r_stb;
 		assign	o_wb_err   = r_rtn_err;
 
 	end else begin

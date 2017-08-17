@@ -265,7 +265,7 @@ breaksupervisor:
 ;#ifdef	TRAP_TEST
 traptest:
 	bra	traptest_supervisor
-	SEXIT	-1
+	NEXIT	-1
 traptest_user:
 	trap	0
 	busy
@@ -290,33 +290,33 @@ testbench:
 	CMP	0x220,r0
 	bnz	test_failure
 test_success:
-	SOUT 'S'
-	SOUT 'i'
-	SOUT 'm'
-	SOUT ' '
-	SOUT 'd'
-	SOUT 'o'
-	SOUT 'n'
-	SOUT 'e'
-	SOUT '\r'
-	SOUT '\n'
-	SOUT 'S'
-	SOUT 'U'
-	SOUT 'C'
-	SOUT 'C'
-	SOUT 'E'
-	SOUT 'S'
-	SOUT 'S'
-	SOUT '!'
-	SOUT '\r'
-	SOUT '\n'
-	SEXIT 0
+	NOUT 'S'
+	NOUT 'i'
+	NOUT 'm'
+	NOUT ' '
+	NOUT 'd'
+	NOUT 'o'
+	NOUT 'n'
+	NOUT 'e'
+	NOUT '\r'
+	NOUT '\n'
+	NOUT 'S'
+	NOUT 'U'
+	NOUT 'C'
+	NOUT 'C'
+	NOUT 'E'
+	NOUT 'S'
+	NOUT 'S'
+	NOUT '!'
+	NOUT '\r'
+	NOUT '\n'
+	NEXIT 0
 	halt
 ;// Go into an infinite loop if the trap fails
 ;// Permanent loop instruction -- a busy halt if you will
 test_failure:
-	SDUMP
-	SEXIT -1
+	NDUMP
+	NEXIT -1
 	busy
 ;
 ;; Now for a series of tests.  If the test fails, call the trap
@@ -621,7 +621,7 @@ bcmemtest_cmploc_2:
 	noop
 	noop
 
-	SEXIT	-1
+	NEXIT	-1
 	BUSY
 ;
 ;// And, in case we miss a halt ...

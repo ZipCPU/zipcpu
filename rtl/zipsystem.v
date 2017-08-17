@@ -89,14 +89,18 @@
 //
 `default_nettype	none
 //
-//
 `include "cpudefs.v"
+//
+`define	RESET_BIT	6
+`define	STEP_BIT	8
+`define	HALT_BIT	10
+`define	CLEAR_CACHE_BIT	11
 //
 // While I hate adding delays to any bus access, this next delay is required
 // to make timing close in my Basys-3 design.
 `define	DELAY_DBG_BUS
 //
-`define	DELAY_EXT_BUS
+// `define	DELAY_EXT_BUS
 //
 //
 // If space is tight, you might not wish to have your performance and
@@ -173,7 +177,9 @@ module	zipsystem(i_clk, i_rst,
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=10, START_HALTED=1, EXTERNAL_INTERRUPTS=1,
+			LGICACHE=10;
+	parameter [0:0]	START_HALTED=1;
+	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
 			IMPLEMENT_MPY = `OPT_MULTIPLY,
 `else
@@ -328,30 +334,32 @@ module	zipsystem(i_clk, i_rst,
 	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache;
 	reg	[5:0]	cmd_addr;
 	wire	[3:0]	cpu_dbg_cc;
-	assign	dbg_cmd_write = (dbg_cyc)&&(dbg_stb)&&(dbg_we)&&(~dbg_addr);
+	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(!dbg_addr);
+	//
+	// Always start us off with an initial reset
 	//
 	initial	cmd_reset = 1'b1;
 	always @(posedge i_clk)
-		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[6]));
+		cmd_reset <= ((dbg_cmd_write)&&(i_dbg_data[`RESET_BIT]));
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
 		if (i_rst)
-			cmd_halt <= (START_HALTED == 1)? 1'b1 : 1'b0;
+			cmd_halt <= (START_HALTED);
 		else if (dbg_cmd_write)
-			cmd_halt <= ((dbg_idata[10])||(dbg_idata[8]));
+			cmd_halt <= ((i_dbg_data[`HALT_BIT])&&(!i_dbg_data[`STEP_BIT]));
 		else if ((cmd_step)||(cpu_break))
 			cmd_halt  <= 1'b1;
 
 	initial	cmd_clear_pf_cache = 1'b1;
 	always @(posedge i_clk)
-		cmd_clear_pf_cache <= (~i_rst)&&(dbg_cmd_write)
-					&&((dbg_idata[11])||(dbg_idata[6]));
+		cmd_clear_pf_cache <= (dbg_cmd_write)&&(i_dbg_data[`CLEAR_CACHE_BIT]);
 	//
 	initial	cmd_step  = 1'b0;
 	always @(posedge i_clk)
-		cmd_step <= (dbg_cmd_write)&&(dbg_idata[8]);
+		cmd_step <= (dbg_cmd_write)&&(dbg_idata[`STEP_BIT]);
 	//
+	initial	cmd_addr = 6'h0;
 	always @(posedge i_clk)
 		if (dbg_cmd_write)
 			cmd_addr <= dbg_idata[5:0];
@@ -360,7 +368,7 @@ module	zipsystem(i_clk, i_rst,
 	assign	cpu_reset = (cmd_reset)||(wdt_reset)||(i_rst);
 
 	wire	cpu_halt, cpu_dbg_stall;
-	assign	cpu_halt = (i_rst)||((cmd_halt)&&(~cmd_step));
+	assign	cpu_halt = (cmd_halt);
 	wire	[31:0]	pic_data;
 	wire	[31:0]	cmd_data;
 	// Values:
@@ -380,11 +388,11 @@ module	zipsystem(i_clk, i_rst,
 		assign	cmd_data = { {(16-EXTERNAL_INTERRUPTS){1'b0}},
 					i_ext_int,
 				cpu_dbg_cc,	// 4 bits
-				1'b0, cmd_halt, (~cpu_dbg_stall), 1'b0,
+				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 				pic_data[15], cpu_reset, cmd_addr };
 	else
 		assign	cmd_data = { i_ext_int[15:0], cpu_dbg_cc,
-				1'b0, cmd_halt, (~cpu_dbg_stall), 1'b0,
+				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 				pic_data[15], cpu_reset, cmd_addr };
 	endgenerate
 
@@ -830,8 +838,7 @@ module	zipsystem(i_clk, i_rst,
 	//			his results may not be what he expects.
 	//
 	wire	sys_dbg_cyc = ((dbg_cyc)&&(!cpu_lcl_cyc)&&(dbg_addr))
-				&&(((cpu_halt)&&(!cpu_dbg_stall))
-					||(!cmd_addr[5]));
+				&&(cmd_addr[5]);
 	assign	sys_cyc = (cpu_lcl_cyc)||(sys_dbg_cyc);
 	assign	sys_stb = (cpu_lcl_cyc)
 				? (cpu_lcl_stb)
@@ -866,8 +873,11 @@ module	zipsystem(i_clk, i_rst,
 				:((!cmd_addr[5])?cpu_dbg_data : sys_idata);
 	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
-		dbg_ack <= (dbg_cyc)&&(dbg_stb)&&(!dbg_stall);
-	assign	dbg_stall=(dbg_cyc)&&((!sys_dbg_cyc)||(sys_stall))&&(dbg_addr);
+		dbg_ack <= (dbg_stb)&&(!dbg_stall);
+	assign	dbg_stall=(dbg_cyc)&&(
+		((!sys_dbg_cyc)&&(cpu_dbg_stall))
+			||(sys_stall)
+		)&&(dbg_addr);
 
 	// Now for the external wishbone bus
 	//	Need to arbitrate between the flash cache and the CPU

@@ -100,17 +100,10 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 		begin
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
-			// last_stb <= 1'b0;
-			// last_ack <= 1'b0;
 		end else if (o_wb_cyc)
 		begin
 			if ((o_wb_stb)&&(!i_wb_stall))
-			begin
-				// last_stb <= 1'b1;
 				o_wb_stb <= !last_stb;
-			end
-			// if (i_wb_ack)
-			//	last_ack <= 1'b1;
 			if ((i_new_pc)||(invalid_bus_cycle))
 				o_wb_stb <= 1'b0;
 
@@ -127,9 +120,11 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 				o_wb_stb <= 1'b0;
 			end
 
-			if ((!last_stb)&&(i_wb_stall)&&((i_new_pc)||(invalid_bus_cycle)))
-				// Also release the bus with no acks, if we
-				// haven't made any requests
+			if ((!last_stb)&&(i_wb_stall)
+					&&((i_new_pc)||(invalid_bus_cycle)))
+				// Also release the bus with no acks on a new
+				// address request, if we haven't made any
+				// bus requests that need to be answered
 			begin
 				o_wb_cyc <= 1'b0;
 				o_wb_stb <= 1'b0;
@@ -210,7 +205,7 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	initial	o_i = {(32){1'b1}};
 	always @(posedge i_clk)
-		if ((i_stall_n)&&(o_wb_cyc)&&(i_wb_ack))
+		if (((i_stall_n)||(!o_v))&&(o_wb_cyc)&&(i_wb_ack))
 			o_i <= i_wb_data;
 		else
 			o_i <= cache[cache_read_addr];

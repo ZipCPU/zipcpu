@@ -92,13 +92,13 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		begin
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
-		end else if ((!o_wb_cyc)&&((i_stalled_n)||(!o_valid)))
+		end else if ((!o_wb_cyc)&&((i_stalled_n)||(!o_valid)||(i_new_pc)))
 		begin // Initiate a bus cycle
 			o_wb_cyc <= 1'b1;
 			o_wb_stb <= 1'b1;
 		end else if (o_wb_cyc) // Independent of ce
 		begin
-			if (~i_wb_stall)
+			if (!i_wb_stall)
 				o_wb_stb <= 1'b0;
 		end
 
@@ -108,7 +108,7 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		if (!o_wb_cyc)
 			invalid <= 1'b0;
 		else if ((i_new_pc)||(i_clear_cache))
-			invalid <= (!o_wb_stb);
+			invalid <= 1'b1;
 
 	always @(posedge i_clk)
 		if (i_new_pc)
@@ -123,15 +123,15 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	initial o_valid   = 1'b0;
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if ((i_rst)||(i_new_pc))
 		begin
 			o_valid   <= 1'b0;
 			o_illegal <= 1'b0;
-		end else if ((o_wb_cyc)&&(i_wb_ack))
+		end else if ((o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
 		begin
-			o_valid   <= (!i_wb_err)&&(!invalid);
+			o_valid   <= (!invalid);
 			o_illegal <= ( i_wb_err)&&(!invalid);
-		end else if ((i_stalled_n)||(i_clear_cache))
+		end else if ((i_stalled_n)||(i_clear_cache)||(i_new_pc))
 		begin
 			o_valid <= 1'b0;
 			o_illegal <= 1'b0;

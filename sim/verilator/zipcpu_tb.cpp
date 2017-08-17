@@ -99,13 +99,20 @@
 #define	cmd_step	v__DOT__cmd_step
 #define	cmd_addr	v__DOT__cmd_addr
 
+#ifdef	OPT_SINGLE_FETCH
 #define	early_branch	v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_early_branch
+#else
+#define	early_branch	v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_early_branch
+#endif
 #define	early_branch_pc v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk3__DOT__r_branch_pc
 
 #define	dcdRmx		v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber15
 #define	dcdA		v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber16
 #define	dcdB		v__DOT__thecpu__DOT____Vcellout__instruction_decoder____pinNumber17
 
+#define	new_pc		v__DOT__thecpu__DOT__new_pc
+#define	cpu_ipc		v__DOT__thecpu__DOT__ipc
+#define	cpu_upc		v__DOT__thecpu__DOT__r_upc
 #define	pf_valid	v__DOT__thecpu__DOT__pf_valid
 #define	dcd_valid	v__DOT__thecpu__DOT__instruction_decoder__DOT__r_valid
 #define	op_valid	v__DOT__thecpu__DOT__op_valid
@@ -126,18 +133,43 @@
 #define	dcd_ce		v__DOT__thecpu__DOT__dcd_ce
 #define	wr_reg_ce	v__DOT__thecpu__DOT__wr_reg_ce
 #define	wr_flags_ce	v__DOT__thecpu__DOT__wr_flags_ce
+#define	alu_flags	v__DOT__thecpu__DOT__alu_flags
 
 #define	dcdR		v__DOT__thecpu__DOT__instruction_decoder__DOT__w_dcdR
 #define	dcdRpc		v__DOT__thecpu__DOT__instruction_decoder__DOT__w_dcdR_pc
 #define	dcdRcc		v__DOT__thecpu__DOT__instruction_decoder__DOT__w_dcdR_cc
 #define	dcd_wR		v__DOT__thecpu__DOT__dcd_wR
 
+#define	pf_pc		v__DOT__thecpu__DOT__pf_pc
 #define	dcd_pc		v__DOT__thecpu__DOT__dcd_pc
 
 #define	dcd_phase	v__DOT__thecpu__DOT__instruction_decoder__DOT__r_phase
 #define	op_phase	v__DOT__thecpu__DOT__r_op_phase
 #define	alu_phase	v__DOT__thecpu__DOT__r_alu_phase
 
+#ifdef	OPT_SINGLE_FETCH
+#define	pf_instruction_pc	v__DOT__thecpu__DOT__pf_addr
+#else
+#define	pf_instruction_pc	v__DOT__thecpu__DOT__pf_instruction_pc
+#endif
+
+#define	pf_instruction		v__DOT__thecpu__DOT__pf_instruction
+
+#ifdef	OPT_PIPELINED
+#define	op_Av	v__DOT__thecpu__DOT__op_Av
+#define	op_Bv	v__DOT__thecpu__DOT__op_Bv
+#define	alu_gie	v__DOT__thecpu__DOT__r_alu_gie
+#define	alu_pc	v__DOT__thecpu__DOT__r_alu_pc
+#define	op_Aid	v__DOT__thecpu__DOT__op_Aid
+#define	op_Bid	v__DOT__thecpu__DOT__op_Bid
+#else
+#define	op_Av	v__DOT__thecpu__DOT__r_op_Av
+#define	op_Bv	v__DOT__thecpu__DOT__r_op_Bv
+#define	alu_gie	v__DOT__thecpu__DOT__r_op_gie
+#define	alu_pc	v__DOT__thecpu__DOT__op_pc
+#endif
+
+#define	r_op_pc	v__DOT__thecpu__DOT__op_pc
 
 #ifdef	ZIPSYSTEM
 #define	dbg_cyc		v__DOT__dbg_cyc
@@ -157,9 +189,10 @@
 #define	cpu_stall	i_wb_stall
 #define	cpu_interrupt	i_ext_int
 #define	cpu_idata	i_wb_data
-#define	tick_counter	m_tickcount
+#define	tick_counter	tickcount()
 #define	dbg_addr	i_dbg_addr
 #endif
+
 
 
 /*
@@ -202,7 +235,7 @@ extern	FILE	*gbl_dbgfp;
 FILE	*gbl_dbgfp = NULL;
 
 // No particular "parameters" need definition or redefinition here.
-class	ZIPPY_TB : public TESTB<SIMCLASS> {
+class	ZIPCPU_TB : public TESTB<SIMCLASS> {
 public:
 	unsigned long	m_mem_size;
 	MEMSIM		m_mem;
@@ -213,7 +246,7 @@ public:
 	unsigned long	m_last_instruction_tickcount;
 	ZIPSTATE	m_state;
 
-	ZIPPY_TB(void) : m_mem_size(RAMWORDS), m_mem(m_mem_size) {
+	ZIPCPU_TB(void) : m_mem_size(RAMWORDS), m_mem(m_mem_size) {
 		if (true) {
 			m_dbgfp = fopen("debug.txt", "w");
 			dbg_flag = true;
@@ -242,7 +275,7 @@ public:
 		}
 	}
 
-	~ZIPPY_TB(void) {
+	~ZIPCPU_TB(void) {
 		if (m_dbgfp)
 			fclose(m_dbgfp);
 		if (m_profile_fp)
@@ -315,11 +348,11 @@ public:
 		for(int i=0; i<16; i++)
 			m_state.m_sR[i] = m_core->v__DOT__thecpu__DOT__regset[i];
 		m_state.m_sR[14] = (m_state.m_sR[14]&0xffffe000)|m_core->v__DOT__thecpu__DOT__w_iflags;
-		m_state.m_sR[15] = m_core->v__DOT__thecpu__DOT__ipc;
+		m_state.m_sR[15] = m_core->cpu_ipc;
 		for(int i=0; i<16; i++)
 			m_state.m_uR[i] = m_core->v__DOT__thecpu__DOT__regset[i+16];
 		m_state.m_uR[14] = (m_state.m_uR[14]&0xffffe000)|m_core->v__DOT__thecpu__DOT__w_uflags;
-		m_state.m_uR[15] = m_core->v__DOT__thecpu__DOT__r_upc;
+		m_state.m_uR[15] = m_core->cpu_upc;
 
 		m_state.m_gie = m_core->v__DOT__thecpu__DOT__r_gie;
 		m_state.m_pc  = (m_state.m_gie) ? (m_state.m_uR[15]):(m_state.m_sR[15]);
@@ -589,7 +622,7 @@ public:
 				&&(m_core->v__DOT__thecpu__DOT__wr_reg_ce)
 				?"V"
 			:(((m_core->v__DOT__thecpu__DOT__wr_flags_ce)
-				&&(!m_core->v__DOT__thecpu__DOT__r_alu_gie))?"+"
+				&&(!m_core->alu_gie))?"+"
 			:" "));
 		ln++;
 
@@ -652,7 +685,7 @@ public:
 				&&(m_core->v__DOT__thecpu__DOT__wr_reg_ce)
 				?"V"
 			:(((m_core->v__DOT__thecpu__DOT__wr_flags_ce)
-				&&(m_core->v__DOT__thecpu__DOT__r_alu_gie))?"+"
+				&&(m_core->alu_gie))?"+"
 			:" "));
 
 		attroff(A_BOLD);
@@ -670,6 +703,8 @@ public:
 			"   ",//(m_core->v__DOT__thecpu__DOT__pf_stall)?"STL":"   ",
 			(m_core->cpu_idata)); ln++;
 #else
+#ifdef	OPT_DOUBLE_FETCH
+#else
 
 		mvprintw(ln, 0, "PFCACH: v=%08x, %s%s, tag=%08x, pf_pc=%08x, lastpc=%08x",
 			m_core->v__DOT__thecpu__DOT__pf__DOT__vmask,
@@ -681,6 +716,7 @@ public:
 			m_core->v__DOT__thecpu__DOT__pf_pc,
 			m_core->v__DOT__thecpu__DOT__pf__DOT__lastpc);
 
+#endif
 		ln++;
 		mvprintw(ln, 0, "PF BUS: %3s %3s %s @0x%08x[0x%08x] -> %s %s %08x",
 			(m_core->v__DOT__thecpu__DOT__pf_cyc)?"CYC":"   ",
@@ -747,7 +783,7 @@ public:
 		// mvprintw(4,4,"r_dcdI = 0x%06x",
 			// (m_core->v__DOT__thecpu__DOT__dcdI)&0x0ffffff);
 #endif
-		mvprintw(4,42,"0x%08x", m_core->v__DOT__thecpu__DOT__pf_instruction);
+		mvprintw(4,42,"0x%08x", m_core->pf_instruction);
 #ifdef	OPT_SINGLE_CYCLE
 		printw(" A:%c%c B:%c%c",
 			(m_core->v__DOT__thecpu__DOT__op_A_alu)?'A':'-',
@@ -770,7 +806,7 @@ public:
 			//m_core->v__DOT__thecpu__DOT__instruction_gie,
 			m_core->v__DOT__thecpu__DOT__r_gie,
 			0,
-			(m_core->v__DOT__thecpu__DOT__pf_instruction_pc)<<2,
+			(m_core->pf_instruction_pc)<<2,
 			true); ln++;
 			// m_core->v__DOT__thecpu__DOT__pf_pc); ln++;
 
@@ -823,7 +859,7 @@ public:
 			showins(ln, "Mm",
 				m_core->mem_ce,
 				m_core->mem_pc_valid,
-				m_core->v__DOT__thecpu__DOT__r_alu_gie,
+				m_core->alu_gie,
 #ifdef	OPT_PIPELINED
 				m_core->v__DOT__thecpu__DOT__mem_stall,
 #else
@@ -840,7 +876,7 @@ public:
 			showins(ln, "Al",
 				m_core->alu_ce,
 				m_core->alu_pc_valid,
-				m_core->v__DOT__thecpu__DOT__r_alu_gie,
+				m_core->alu_gie,
 #ifdef	OPT_PIPELINED
 				m_core->v__DOT__thecpu__DOT__alu_stall,
 #else
@@ -883,11 +919,12 @@ public:
 			(m_core->v__DOT__thecpu__DOT__op_wF)?"OF":"  ",
 			(m_core->v__DOT__thecpu__DOT__alu_wF)?"FL":"  ",
 			(m_core->v__DOT__thecpu__DOT__wr_flags_ce)?"W":" ",
-			(m_core->v__DOT__thecpu__DOT__alu_flags));
+			(m_core->alu_flags));
+#ifdef	OPT_PIPELINED
 		mvprintw(ln-3, 48, "Op(%x)%8x,%8x->",
 			m_core->v__DOT__thecpu__DOT__r_op_opn,
-			m_core->v__DOT__thecpu__DOT__op_Aid,
-			m_core->v__DOT__thecpu__DOT__op_Bid);
+			m_core->op_Aid, m_core->op_Bid);
+#endif
 		if (m_core->alu_valid)
 			printw("%08x", m_core->v__DOT__thecpu__DOT__alu_result);
 		else
@@ -1152,7 +1189,7 @@ public:
 			m_core->pf_valid,
 			m_core->v__DOT__thecpu__DOT__r_gie,
 			0,
-			m_core->v__DOT__thecpu__DOT__pf_instruction_pc,
+			m_core->pf_instruction_pc,
 			true); ln++;
 			// m_core->v__DOT__thecpu__DOT__pf_pc); ln++;
 
@@ -1189,7 +1226,7 @@ public:
 			showins(ln, "Mm",
 				m_core->mem_ce,
 				m_core->mem_pc_valid,
-				m_core->v__DOT__thecpu__DOT__r_alu_gie,
+				m_core->alu_gie,
 #ifdef	OPT_PIPELINED
 				m_core->v__DOT__thecpu__DOT__mem_stall,
 #else
@@ -1206,7 +1243,7 @@ public:
 			showins(ln, "Al",
 				m_core->alu_ce,
 				m_core->alu_pc_valid,
-				m_core->v__DOT__thecpu__DOT__r_alu_gie,
+				m_core->alu_gie,
 #ifdef	OPT_PIPELINED
 				m_core->v__DOT__thecpu__DOT__alu_stall,
 #else
@@ -1239,7 +1276,7 @@ public:
 		if ((m_core->o_wb_cyc)&&(m_core->o_wb_stb)&&(!stb)) {
 			m_core->i_wb_ack = 1;
 			m_core->i_wb_err = 1;
-			m_bomb = true;
+			m_bomb = (m_tickcount > 20);
 			if (m_dbgfp) fprintf(m_dbgfp,
 				"BOMB!! (Attempting to access %08x/%08x->%08x)\n",
 				addr, RAMBASE, ((addr)&(~mask)));
@@ -1306,8 +1343,8 @@ public:
 				m_core->alu_valid,
 				m_core->v__DOT__thecpu__DOT__alu_wR,
 				m_core->v__DOT__thecpu__DOT__alu_reg,
-				m_core->v__DOT__thecpu__DOT__ipc,
-				m_core->v__DOT__thecpu__DOT__r_upc);
+				m_core->cpu_ipc,
+				m_core->cpu_upc);
 
 		if ((m_dbgfp)&&(!gie)&&(m_core->v__DOT__thecpu__DOT__w_release_from_interrupt)) {
 			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d\n",
@@ -1358,10 +1395,11 @@ public:
 				fprintf(m_dbgfp, "\tNew PC\n");
 		}
 
-		if (m_dbgfp)
-			fprintf(m_dbgfp, "-----------  TICK (%08x) ----------%s\n",
-				(uint32_t)tick_counter,
-				(m_bomb)?" BOMBED!!":"");
+		if (m_dbgfp) {
+			unsigned long	v = m_tickcount;
+			fprintf(m_dbgfp, "-----------  TICK (%08lx) ----------%s\n",
+				v, (m_bomb)?" BOMBED!!":"");
+		}
 		m_mem(m_core->o_wb_cyc, m_core->o_wb_stb, m_core->o_wb_we,
 			m_core->o_wb_addr & mask, m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 			m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
@@ -1373,8 +1411,8 @@ public:
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
 				(gie)?"User":"Supervisor",
 				(gie)?"Supervisor":"User",
-				m_core->v__DOT__thecpu__DOT__ipc,
-				m_core->v__DOT__thecpu__DOT__r_upc,
+				m_core->cpu_ipc,
+				m_core->cpu_upc,
 				m_core->v__DOT__thecpu__DOT__pf_pc);
 		} if (m_dbgfp) {
 #ifdef	OPT_TRADITIONAL_PFCACHE
@@ -1386,7 +1424,7 @@ public:
 				&&(m_core->dcd_valid)
 				&&(!m_core->v__DOT__thecpu__DOT__new_pc))?"V":"-",
 				m_core->v__DOT__thecpu__DOT__pf__DOT__lastpc,
-				m_core->v__DOT__thecpu__DOT__pf_instruction_pc,
+				m_core->pf_instruction_pc,
 				(m_core->v__DOT__thecpu__DOT__pf__DOT__r_v)?"R":" ",
 				(m_core->pf_valid)?"V":" ",
 				(m_core->v__DOT__thecpu__DOT__pf_illegal)?"I":" ");
@@ -1441,14 +1479,14 @@ public:
 			if (m_dbgfp) {
 				fprintf(m_dbgfp, "\t\t\t(*OP=%d)[ A = 0x%08x , B = 0x%08x ], op_pc= %08x\n",
 					m_core->v__DOT__thecpu__DOT__r_op_opn,
-					m_core->v__DOT__thecpu__DOT__op_Av,
-					m_core->v__DOT__thecpu__DOT__op_Bv,
-					m_core->v__DOT__thecpu__DOT__op_pc);
+					m_core->op_Av,
+					m_core->op_Bv,
+					m_core->r_op_pc);
 			}
 			dbgins("Al - ",
 				m_core->alu_ce,
 				m_core->alu_pc_valid,
-				m_core->v__DOT__thecpu__DOT__r_alu_gie,
+				m_core->alu_gie,
 #ifdef	OPT_PIPELINED
 				m_core->v__DOT__thecpu__DOT__alu_stall,
 #else
@@ -1470,6 +1508,9 @@ public:
 				fprintf(m_dbgfp, "WB::Reg[%2x] <= %08x\n",
 					m_core->v__DOT__thecpu__DOT__wr_reg_id,
 					m_core->v__DOT__thecpu__DOT__wr_gpreg_vl);
+			if (m_core->v__DOT__thecpu__DOT__wr_flags_ce)
+				fprintf(m_dbgfp, "WB::Flags <= %02x\n",
+					m_core->alu_flags);
 
 		}
 
@@ -1490,8 +1531,8 @@ public:
 
 			fprintf(m_dbgfp, "ALU-PC: %08x %s %s\n",
 				alu_pc(),
-				(m_core->v__DOT__thecpu__DOT__r_alu_pc_valid)?"VALID":"",
-				(m_core->v__DOT__thecpu__DOT__r_alu_gie)?"ALU-GIE":"");
+				(m_core->alu_pc_valid)?"VALID":"",
+				(m_core->alu_gie)?"ALU-GIE":"");
 		}
 
 #ifdef	ZIPSYSTEM
@@ -1591,7 +1632,7 @@ public:
 			r--;
 		return r;
 		*/
-		return (m_core->v__DOT__thecpu__DOT__r_alu_pc<<2)-4;
+		return (m_core->alu_pc<<2)-4;
 	}
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
@@ -1717,8 +1758,13 @@ public:
 	void	jump_to(ZIPI address) {
 		if (m_dbgfp)
 			fprintf(m_dbgfp, "JUMP_TO(%08x) ... Setting PC to %08x\n", address, address & -4);
+#ifdef	OPT_SINGLE_FETCH
+		m_core->new_pc = 1;
+		m_core->pf_pc = address;
+#else
 		m_core->v__DOT__thecpu__DOT__pf_pc = address & -4;
 		m_core->v__DOT__thecpu__DOT__pf_request_address = address >> 2;
+#endif
 		// m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 		m_core->v__DOT__thecpu__DOT__new_pc = 1;
 	}
@@ -1766,7 +1812,7 @@ public:
 	}
 };
 
-void	get_value(ZIPPY_TB *tb) {
+void	get_value(ZIPCPU_TB *tb) {
 	int	wy, wx, ra;
 	int	c = tb->cursor();
 
@@ -1839,7 +1885,7 @@ void	get_value(ZIPPY_TB *tb) {
 		if (!tb->halted()) {
 			switch(ra) {
 			case 15:
-				tb->m_core->v__DOT__thecpu__DOT__ipc = v;
+				tb->m_core->cpu_ipc = v;
 				if (!tb->m_core->v__DOT__thecpu__DOT__r_gie) {
 					tb->jump_to(v);
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
@@ -1852,7 +1898,7 @@ void	get_value(ZIPPY_TB *tb) {
 				}
 				break;
 			case 31:
-				tb->m_core->v__DOT__thecpu__DOT__r_upc = v;
+				tb->m_core->cpu_upc = v;
 				if (tb->m_core->v__DOT__thecpu__DOT__r_gie) {
 					tb->jump_to(v);
 					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
@@ -1928,7 +1974,7 @@ void	sigint(int v) {
 
 int	main(int argc, char **argv) {
 	Verilated::commandArgs(argc, argv);
-	ZIPPY_TB	*tb = new ZIPPY_TB();
+	ZIPCPU_TB	*tb = new ZIPCPU_TB();
 	bool		autorun = false, exit_on_done = false, autostep=false;
 	ZIPI		entry = RAMBASE;
 
@@ -2003,8 +2049,8 @@ int	main(int argc, char **argv) {
 
 			/*
 			printf("PC = %08x:%08x (%08x)\n",
-				tb->m_core->v__DOT__thecpu__DOT__ipc,
-				tb->m_core->v__DOT__thecpu__DOT__r_upc,
+				tb->m_core->cpu_ipc,
+				tb->m_core->cpu_upc,
 				tb->m_core->v__DOT__thecpu__DOT__alu_pc);
 			*/
 
@@ -2022,6 +2068,11 @@ int	main(int argc, char **argv) {
 		tb->m_bomb = false;
 		while(!done) {
 			tb->wb_write(CMD_REG, CMD_STEP);
+			/*
+			printf("PC = %08x:%08x (%08x)\n",
+				tb->m_core->cpu_ipc, tb->m_core->cpu_upc,
+				tb->m_core->alu_pc);
+			*/
 			done = (tb->test_success())||(tb->test_failure());
 			done = done || signalled;
 		}

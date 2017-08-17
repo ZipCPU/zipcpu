@@ -206,10 +206,14 @@ dhrystone: zipsys_tb
 
 define	build-depends
 	@echo "Building dependencies"
-	@$(CXX) $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/xdepends.txt
-	@$(CXX) -DZIPBONES $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) >> $(OBJDIR)/xdepends.txt
+	@$(CXX) $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/sysdepends.txt
+	@$(CXX) -DZIPBONES $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/bondepends.txt
+	@sed -e 's/^zipcpu_tb.o: /zipsys_tb.o: /' < $(OBJDIR)/sysdepends.txt > $(OBJDIR)/xdepends.txt
+	@sed -e 's/^zipcpu_tb.o: /zipbones_tb.o: /' < $(OBJDIR)/bondepends.txt >> $(OBJDIR)/xdepends.txt
 	@sed -e 's/^.*.o: /$(OBJDIR)\/&/' < $(OBJDIR)/xdepends.txt > $(OBJDIR)/depends.txt
 	@rm $(OBJDIR)/xdepends.txt
+	@rm $(OBJDIR)/sysdepends.txt
+	@rm $(OBJDIR)/bondepends.txt
 endef
 
 tags: $(VLIB) $(SOURCES)
