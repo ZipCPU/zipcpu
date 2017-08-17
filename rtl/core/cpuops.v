@@ -37,6 +37,9 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
+//
+`default_nettype	none
+//
 `include "cpudefs.v"
 //
 module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
@@ -238,7 +241,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 			r_mpy_signed  <= i_op[0];
 
 			if (this_is_a_multiply_op)
-				mpyhi  = i_op[1];
+				mpyhi  <= i_op[1];
 		end
 
 		assign	mpybusy = |mpypipe[1:0];
@@ -336,7 +339,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		default:   o_c   <= i_b;		// MOV, LDI
 		endcase
 	end else // if (mpydone)
-		// set the carry based upon a multiply result
+		// set the output based upon the multiply result
 		o_c <= (mpyhi)?mpy_result[63:32]:mpy_result[31:0];
 
 	reg	r_busy;
