@@ -94,6 +94,13 @@
 #define	MAXERR		10000
 
 
+// Some versions of Verilator require a prefix starting with the top level
+// module name, rather than v__DOT__....  For these versions of Verilator,
+// you will need to replace these variable prefixes with either
+//	zipsystem__DOT__...
+// or
+//	zipbones__DOT__...
+
 #define	cpu_halt	v__DOT__cmd_halt
 #define	cmd_reset	v__DOT__cmd_reset
 #define	cmd_step	v__DOT__cmd_step
