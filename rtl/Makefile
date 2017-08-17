@@ -65,7 +65,11 @@ VZIP := zipbones.v cpudefs.v					\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VOBJ := obj_dir
 SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
+ifeq ($(VERILATOR_ROOT),)
 VERILATOR := verilator
+else
+VERILATOR := $(VERILATOR_ROOT)/bin/verilator
+endif
 VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
 
 

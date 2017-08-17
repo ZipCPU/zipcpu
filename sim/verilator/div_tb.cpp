@@ -47,6 +47,22 @@
 #include "verilated.h"
 #include "Vdiv.h"
 
+#ifdef	NEW_VERILATOR
+#define	VVAR(A)	div__DOT_ ## A
+#else
+#define	VVAR(A)	v__DOT_ ## A
+#endif
+
+#define	r_busy		VVAR(_r_busy)
+#define	pre_sign	VVAR(_pre_sign)
+#define	r_sign		VVAR(_r_sign)
+#define	r_z		VVAR(_r_z)
+#define	r_bit		VVAR(_r_bit)
+#define	last_bit	VVAR(_last_bit)
+#define	r_dividend	VVAR(_r_dividend)
+#define	r_divisor	VVAR(_r_divisor)
+#define	vdiff		VVAR(_diff)
+
 #include "testb.h"
 // #include "twoc.h"
 
@@ -82,27 +98,27 @@ public:
 		sprintf(outstr, "Tick %4ld %s%s%s%s%s%s%s %2d(%s= 0)",
 			m_tickcount,
 			(m_core->o_busy)?"B":" ",
-			(m_core->v__DOT__r_busy)?"R":" ",
+			(m_core->r_busy)?"R":" ",
 			(m_core->o_valid)?"V":" ",
 			(m_core->i_wr)?"W":" ",
-			(m_core->v__DOT__pre_sign)?"+":" ",
-			(m_core->v__DOT__r_sign)?"-":" ",
-			(m_core->v__DOT__r_z)?"Z":" ",
-			m_core->v__DOT__r_bit,
-			(m_core->v__DOT__last_bit)?"=":"!");
+			(m_core->pre_sign)?"+":" ",
+			(m_core->r_sign)?"-":" ",
+			(m_core->r_z)?"Z":" ",
+			m_core->r_bit,
+			(m_core->last_bit)?"=":"!");
 		s = &outstr[strlen(outstr)];
 		sprintf(s, "%s\n%10s %40s",s, "Div","");
 			s = &s[strlen(s)];
-		bprint( s, 32, m_core->v__DOT__r_dividend);
+		bprint( s, 32, m_core->r_dividend);
 			s=&s[strlen(s)];
 		sprintf(s, "%s\n%10s ",s, "Div"); s = &s[strlen(s)];
-		bprint( s, 64, m_core->v__DOT__r_divisor);
+		bprint( s, 64, m_core->r_divisor);
 			s=&s[strlen(s)];
 		sprintf(s, "%s\n%10s %40s",s, "Q",""); s=&s[strlen(s)];
 		bprint( s, 32, m_core->o_quotient); s = &s[strlen(s)];
 		sprintf(s, "%s\n%10s %38s",s, "Diff","");
 			s=&s[strlen(s)];
-		bprint( s, 33, m_core->v__DOT__diff); s = &s[strlen(s)];
+		bprint( s, 33, m_core->vdiff); s = &s[strlen(s)];
 		strcat(s, "\n");
 		puts(outstr);
 	}

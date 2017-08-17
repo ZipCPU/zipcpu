@@ -49,6 +49,13 @@
 #include "verilated.h"
 #include "Vcpuops.h"
 
+#ifdef	NEW_VERILATOR
+#define	VVAR(A)	cpuops__DOT_ ## A
+#else
+#define	VVAR(A)	v__DOT_ ## A
+#endif
+
+
 #include "testb.h"
 #include "cpudefs.h"
 // #include "twoc.h"
@@ -117,26 +124,35 @@ public:
 		s = &outstr[strlen(outstr)];
 
 #if(OPT_MULTIPLY==1)
+#define	mpy_result	VVAR(_mpy_result)
 		sprintf(s, "1,MPY[][][%016lx]",
-			m_core->v__DOT__mpy_result);
+			m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==2)
 		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input,
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input,
-			m_core->v__DOT__mpy_result);
+#define	r_mpy_a_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input)
+#define	r_mpy_b_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input)
+#define	mpy_result	VVAR(_mpy_result)
+			m_core->r_mpy_a_input,
+			m_core->r_mpy_b_input,
+			m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==3)
+#define	r_mpy_a_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input)
+#define	r_mpy_b_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input)
+#define	r_smpy_result	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_smpy_result)
+#define	mpypipe		VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__mpypipe)
 		sprintf(s, "3,MPY[%08x][%08x][%016lx], P[%d]",
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input,
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input,
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_smpy_result,
-			m_core->v__DOT__genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__mpypipe);
+			m_core->r_mpy_a_input,
+			m_core->r_mpy_b_input,
+			m_core->r_smpy_result,
+			m_core->mpypipe);
 
 #endif
 
 #if(OPT_MULTIPLY != 1)
-		if (m_core->v__DOT__this_is_a_multiply_op)
+#define	this_is_a_multiply_op	VVAR(_this_is_a_multiply_op)
+		if (m_core->this_is_a_multiply_op)
 			strcat(s, " MPY-OP");
 #endif
 		puts(outstr);

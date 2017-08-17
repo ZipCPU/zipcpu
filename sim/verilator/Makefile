@@ -128,8 +128,14 @@ ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
 RTLOBJD := $(RTLD)/obj_dir
 BENCHOBJD:= ../../bench/rtl/obj_dir
+ifneq ($(VERILATOR_ROOT),)
+VERILATOR:=$(VERILATOR_ROOT)/bin/verilator
+else
 VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
+endif
+export	$(VERILATOR)
 VROOT   := $(VERILATOR_ROOT)
+VDEFS   := $(shell ./vversion.sh)
 VINCS	:= -I$(VROOT)/include -I$(VROOT)/include/vltstd
 INCS	:= -I$(RTLOBJD) -I$(RTLD) -I$(ZASM) $(VINCS)
 ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
@@ -151,13 +157,13 @@ TESTF	:= ../../bench/asm/simtest
 DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/zipsys_tb.o: zipcpu_tb.cpp
-	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/zipbones_tb.o: zipcpu_tb.cpp
-	$(CXX) -DZIPBONES $(CFLAGS) $(INCS) -c $< -o $@
+	$(CXX) -DZIPBONES $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
@@ -172,17 +178,17 @@ zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
 	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
 
 mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
 
 zipmmu_tb: zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
 
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
 pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
-	$(CXX) $(CFLAGS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
 
 pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
@@ -232,5 +238,6 @@ $(OBJDIR)/depends.txt: $(OBJDIR)/ depends
 clean:
 	rm -rf $(OBJDIR)/
 	rm -rf ./zipsys_tb ./zipbones_tb pdump div_tb mpy_tb
+	rm -rf pfcache_tb
 
 -include $(OBJDIR)/depends.txt
