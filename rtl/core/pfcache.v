@@ -37,6 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 			// i_early_branch, i_from_addr,
 			i_stall_n, i_pc, o_i, o_pc, o_v,

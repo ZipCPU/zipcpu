@@ -50,7 +50,6 @@
 //
 `default_nettype	none
 //
-//
 // Flash requires a minimum of 4 clocks per byte to read, so that would be
 // 4*(4bytes/32bit word) = 16 clocks per word read---and that's in pipeline
 // mode which this prefetch does not support.  In non--pipelined mode, the

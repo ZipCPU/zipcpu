@@ -95,6 +95,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 // `include "cpudefs.v"
 //
 module	div(i_clk, i_rst, i_wr, i_signed, i_numerator, i_denominator,

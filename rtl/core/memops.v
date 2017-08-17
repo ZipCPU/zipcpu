@@ -43,6 +43,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 module	memops(i_clk, i_rst, i_stb, i_lock,
 		i_op, i_addr, i_data, i_oreg,
 			o_busy, o_valid, o_err, o_wreg, o_result,

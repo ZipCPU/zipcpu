@@ -43,6 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
 //
 `define	CPU_SP_REG	4'hd
 `define	CPU_CC_REG	4'he
@@ -619,9 +620,9 @@ module	idecode(i_clk, i_rst, i_ce, i_stalled,
 
 	assign	o_I = { {(32-22){r_I[22]}}, r_I[21:0] };
 
-	// Make verilator happy
-	// verilator lint_off UNUSED
-	wire	unused;
-	assign	unused = w_lock;
-	// verilator lint_on UNUSED
+	// Make Verilator happy across all our various options
+	// verilator lint_off  UNUSED
+	wire	[3:0] possibly_unused;
+	assign	possibly_unused = { w_lock, w_ljmp, w_ljmp_dly, w_cis_ljmp };
+	// verilator lint_on  UNUSED
 endmodule

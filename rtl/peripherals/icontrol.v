@@ -76,6 +76,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 module	icontrol(i_clk, i_reset, i_wr, i_proc_bus, o_proc_bus,
 		i_brd_ints, o_interrupt);
 	parameter	IUSED = 15;

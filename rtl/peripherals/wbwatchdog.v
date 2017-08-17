@@ -55,6 +55,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 module	wbwatchdog(i_clk, i_rst, i_ce, i_timeout, o_int);
 	parameter	BW = 32;
 	input	wire		i_clk, i_rst, i_ce;

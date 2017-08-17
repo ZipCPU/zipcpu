@@ -69,6 +69,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 module	ziptimer(i_clk, i_rst, i_ce,
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 			o_wb_ack, o_wb_stall, o_wb_data,
