@@ -441,7 +441,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(!op_stall);
 
 `else
-	assign	prelock_stall = 1'b0;
 	assign	op_stall = (alu_busy)||(div_busy)||(fpu_busy)||(wr_reg_ce)
 			||(mem_busy)||(op_valid)||(wr_flags_ce);
 	assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(!op_stall);
@@ -1248,6 +1247,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		assign	bus_lock = 1'b0;
 	end endgenerate
 `else
+	assign	prelock_stall = 1'b0;
 	assign	bus_lock = 1'b0;
 `endif
 
