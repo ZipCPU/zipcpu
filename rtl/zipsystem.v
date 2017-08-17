@@ -181,10 +181,11 @@ module	zipsystem(i_clk, i_rst,
 	parameter [0:0]	START_HALTED=1;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
-			IMPLEMENT_MPY = `OPT_MULTIPLY,
+			IMPLEMENT_MPY = `OPT_MULTIPLY;
 `else
-			IMPLEMENT_MPY = 0,
+			IMPLEMENT_MPY = 0;
 `endif
+	parameter [0:0]
 `ifdef	OPT_DIVIDE
 			IMPLEMENT_DIVIDE=1,
 `else
@@ -206,6 +207,8 @@ module	zipsystem(i_clk, i_rst,
 `endif
 			LGTLBSZ = 6,
 			VAW=VIRTUAL_ADDRESS_WIDTH;
+
+	localparam	AW=ADDRESS_WIDTH;
 	input	wire	i_clk, i_rst;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
@@ -259,11 +262,19 @@ module	zipsystem(i_clk, i_rst,
 `endif
 	else
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
+	if (EXTERNAL_INTERRUPTS >= 15)
+		assign	alt_int_vector = { i_ext_int[14:8],
+					mtc_int, moc_int, mpc_int, mic_int,
+					utc_int, uoc_int, upc_int, uic_int };
+	else
 		assign	alt_int_vector = { {(7-(EXTERNAL_INTERRUPTS-9)){1'b0}},
 					i_ext_int[(EXTERNAL_INTERRUPTS-1):9],
 					mtc_int, moc_int, mpc_int, mic_int,
 					utc_int, uoc_int, upc_int, uic_int };
 `else
+	if (EXTERNAL_INTERRUPTS >= 24)
+		assign	alt_int_vector = { i_ext_int[(EXTERNAL_INTERRUPTS-1):9] };
+	else
 		assign	alt_int_vector = { {(15-(EXTERNAL_INTERRUPTS-9)){1'b0}},
 					i_ext_int[(EXTERNAL_INTERRUPTS-1):9] };
 `endif
@@ -275,8 +286,12 @@ module	zipsystem(i_clk, i_rst,
 	wire	[31:0]	dbg_idata, dbg_odata;
 	reg		dbg_ack;
 `ifdef	DELAY_DBG_BUS
-	wire		dbg_err, no_dbg_err;
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire		no_dbg_err;
 	wire	[3:0]	dbg_sel;
+	// verilator lint_on  UNUSED
+	wire		dbg_err;
 	assign		dbg_err = 1'b0;
 	busdelay #(1,32) wbdelay(i_clk,
 		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data, 4'hf,
@@ -340,20 +355,21 @@ module	zipsystem(i_clk, i_rst,
 	//
 	initial	cmd_reset = 1'b1;
 	always @(posedge i_clk)
-		cmd_reset <= ((dbg_cmd_write)&&(i_dbg_data[`RESET_BIT]));
+		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[`RESET_BIT]))
+			||(wdt_reset);
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
-		if (i_rst)
-			cmd_halt <= (START_HALTED);
+		if ((i_rst)||(cmd_reset))
+			cmd_halt <= START_HALTED;
 		else if (dbg_cmd_write)
-			cmd_halt <= ((i_dbg_data[`HALT_BIT])&&(!i_dbg_data[`STEP_BIT]));
+			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
 		else if ((cmd_step)||(cpu_break))
 			cmd_halt  <= 1'b1;
 
 	initial	cmd_clear_pf_cache = 1'b1;
 	always @(posedge i_clk)
-		cmd_clear_pf_cache <= (dbg_cmd_write)&&(i_dbg_data[`CLEAR_CACHE_BIT]);
+		cmd_clear_pf_cache <= (dbg_cmd_write)&&(dbg_idata[`CLEAR_CACHE_BIT]);
 	//
 	initial	cmd_step  = 1'b0;
 	always @(posedge i_clk)
@@ -365,7 +381,7 @@ module	zipsystem(i_clk, i_rst,
 			cmd_addr <= dbg_idata[5:0];
 
 	wire	cpu_reset;
-	assign	cpu_reset = (cmd_reset)||(wdt_reset)||(i_rst);
+	assign	cpu_reset = (cmd_reset);
 
 	wire	cpu_halt, cpu_dbg_stall;
 	assign	cpu_halt = (cmd_halt);
@@ -709,14 +725,14 @@ module	zipsystem(i_clk, i_rst,
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(~cmd_addr[5])
 					&&(dbg_we)&&(dbg_addr));
-	zipcpu	#(
-			.RESET_ADDRESS(RESET_ADDRESS),
+	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
 			.IMPLEMENT_MPY(IMPLEMENT_MPY),
 			.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
 			.IMPLEMENT_FPU(IMPLEMENT_FPU),
-			.IMPLEMENT_LOCK(IMPLEMENT_LOCK)
+			.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+			.WITH_LOCAL_BUS(1'b1)
 		)
 		thecpu(i_clk, cpu_reset, pic_interrupt,
 			cpu_halt, cmd_clear_pf_cache, cmd_addr[4:0], cpu_dbg_we,
@@ -848,22 +864,6 @@ module	zipsystem(i_clk, i_rst,
 	assign	sys_addr= (cpu_lcl_cyc) ? cpu_addr[7:0] : { 3'h0, cmd_addr[4:0]};
 	assign	sys_data= (cpu_lcl_cyc) ? cpu_data : dbg_idata;
 
-/*
-	wire	[3:0]	sys_sel;
-	wbpriarbiter #(.DW(32), .AW(8))
-		sysarb(i_clk,
-			(cpu_lcl_cyc)&&(cpu_halt), cpu_lcl_stb, cpu_we, cpu_addr[7:0],
-				cpu_data, 4'hf, sys_cpu_ack, sys_cpu_stall, sys_cpu_data,
-			dbg_cyc, dbg_stb, dbg_we, {3'h0, cmd_addr[4:0]},
-				dbg_idata, 4'hf, dbg_ack, sys_dbg_stall, dbg_data,
-			sys_cyc, sys_stb, sys_we, sys_addr[7:0], sys_data,
-				sys_sel, sys_ack, sys_stall, sys_err);
-	assign	sys_cpu_data = sys_idata;
-	assign	dbg_stall = (!cpu_halt)||(sys_dbg_stall);
-*/
-
-	//
-	//
 	// Return debug response values
 	// A return from one of three busses:
 	//	CMD	giving command instructions to the CPU (step, halt, etc)

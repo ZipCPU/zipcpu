@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015, 2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -66,10 +66,11 @@ module	zipbones(i_clk, i_rst,
 	parameter [0:0]	START_HALTED=0;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
-			IMPLEMENT_MPY = `OPT_MULTIPLY,
+			IMPLEMENT_MPY = `OPT_MULTIPLY;
 `else
-			IMPLEMENT_MPY = 0,
+			IMPLEMENT_MPY = 0;
 `endif
+	parameter [0:0]
 `ifdef	OPT_DIVIDE
 			IMPLEMENT_DIVIDE=1,
 `else
@@ -155,8 +156,8 @@ module	zipbones(i_clk, i_rst,
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
-		if (i_rst)
-			cmd_halt <= (START_HALTED);
+		if ((i_rst)||(cmd_reset))
+			cmd_halt <= START_HALTED;
 		else if (dbg_cmd_write)
 			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
 		else if ((cmd_step)||(cpu_break))
@@ -176,7 +177,7 @@ module	zipbones(i_clk, i_rst,
 			cmd_addr <= dbg_idata[4:0];
 
 	wire	cpu_reset;
-	assign	cpu_reset = (cmd_reset)||(i_rst);
+	assign	cpu_reset = (cmd_reset);
 
 	wire	cpu_halt, cpu_dbg_stall;
 	assign	cpu_halt = (cmd_halt);
@@ -184,7 +185,7 @@ module	zipbones(i_clk, i_rst,
 	// Values:
 	//	0x0003f -> cmd_addr mask
 	//	0x00040 -> reset
-	//	0x00080 -> PIC interrrupts enabled
+	//	0x00080 -> PIC interrrupt pending
 	//	0x00100 -> cmd_step
 	//	0x00200 -> cmd_stall
 	//	0x00400 -> cmd_halt
@@ -195,7 +196,7 @@ module	zipbones(i_clk, i_rst,
 	assign	cmd_data = { 7'h00, 8'h00, i_ext_int,
 			cpu_dbg_cc,
 			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-			1'b0, cpu_reset, 1'b0, cmd_addr };
+			i_ext_int, cpu_reset, 1'b0, cmd_addr };
 
 	//
 	// The CPU itself
@@ -233,8 +234,7 @@ module	zipbones(i_clk, i_rst,
 
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
 
-
-	// Make verilator happy
+	// Make Verilator happy
 	// verilator lint_off UNUSED
 	wire	[4:0] unused;
 	assign	unused = { dbg_cyc, cpu_lcl_stb, cpu_op_stall, cpu_pf_stall, cpu_i_count };
