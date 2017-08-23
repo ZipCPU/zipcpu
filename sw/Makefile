@@ -212,6 +212,7 @@ gcc: $(BUILDGCCD)/nonce.txt
 .PHONY: gcc-install
 gcc-install: gcc
 	+$(SUBMAKE) --directory=$(BUILDGCCD) install
+	@echo "GCC installed"
 
 .PHONY: gcc-pdf
 gcc-pdf: $(BUILDGCCD)/nonce.txt
