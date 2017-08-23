@@ -157,18 +157,23 @@ TESTF	:= ../../bench/asm/simtest
 DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
+	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/zipsys_tb.o: zipcpu_tb.cpp
+	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/zipbones_tb.o: zipcpu_tb.cpp
+	$(mk-objdir)
 	$(CXX) -DZIPBONES $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
+	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
+	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
@@ -212,6 +217,7 @@ dhrystone: zipsys_tb
 
 define	build-depends
 	@echo "Building dependencies"
+	$(mk-objdir)
 	@$(CXX) $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/sysdepends.txt
 	@$(CXX) -DZIPBONES $(CPPFLAGS) $(INCS) -MM zipcpu_tb.cpp $(VLIB) $(SOURCES) > $(OBJDIR)/bondepends.txt
 	@sed -e 's/^zipcpu_tb.o: /zipsys_tb.o: /' < $(OBJDIR)/sysdepends.txt > $(OBJDIR)/xdepends.txt
@@ -229,8 +235,9 @@ tags: $(VLIB) $(SOURCES)
 depends: tags $(OBJDIR)/
 	$(build-depends)
 
-$(OBJDIR)/:
+define	mk-objdir
 	@bash -c "if [ ! -e $(OBJDIR) ]; then mkdir -p $(OBJDIR)/; fi"
+endef
 
 $(OBJDIR)/depends.txt: $(OBJDIR)/ depends
 

@@ -119,14 +119,16 @@ binutils-pdf: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) pdf
 	@echo "Binutils pdfs made"
 
-$(PDFD)/:
-	@bash -c "if [[ ! -d $(PDFD) ]]; then mkdir -p $(PDFD); fi"
-
 .PHONY: pdfd
-pdfd: $(PDFD)/
+pdfd:
+	$(mk-pdfd)
+
+define mk-pdfd
+	@bash -c "if [[ ! -d $(PDFD) ]]; then mkdir -p $(PDFD); fi"
+endef
 
 .PHONY: binutils-pdf-install
-binutils-pdf-install: binutils-pdf $(PDFD)/
+binutils-pdf-install: binutils-pdf pdfd
 	find $(BUILDGASD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 	@echo "Binutils pdfs installed"
 
