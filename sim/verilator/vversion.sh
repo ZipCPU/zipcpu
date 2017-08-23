@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2015-2016, Gisselquist Technology, LLC
+## Copyright (C) 2017, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -53,7 +53,8 @@ then
   exit -1
 fi
 
-VVER=`${VERILATOR} -V | head -1 | cut -d " " -f 2`
+VVERLINE=`${VERILATOR} -V | grep -i ^Verilator`
+VVER=`echo ${VVERLINE} | cut -d " " -f 2`
 LATER=`echo $VVER \>= 3.9 | bc`
 if [[ $LATER > 0 ]];
 then
