@@ -12035,6 +12035,18 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/tree-ssa-math-opts.c gcc-6.2.0-zip/gc
        cmpxchg >>= (64 / BITS_PER_MARKER - n->range) * BITS_PER_MARKER;
        cmpnop &= mask;
      }
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/ubsan.c gcc-6.2.0-zip/gcc/ubsan.c
+--- gcc-6.2.0/gcc/ubsan.c	2016-08-12 15:57:35.000000000 -0400
++++ gcc-6.2.0-zip/gcc/ubsan.c	2017-08-23 09:29:11.196719450 -0400
+@@ -1469,7 +1469,7 @@
+ 
+   expanded_location xloc = expand_location (loc);
+   if (xloc.file == NULL || strncmp (xloc.file, "\1", 2) == 0
+-      || xloc.file == '\0' || xloc.file[0] == '\xff'
++      || xloc.file[0] == '\0' || xloc.file[0] == '\xff'
+       || xloc.file[1] == '\xff')
+     return false;
+ 
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/varasm.c gcc-6.2.0-zip/gcc/varasm.c
 --- gcc-6.2.0/gcc/varasm.c	2016-03-31 11:30:33.000000000 -0400
 +++ gcc-6.2.0-zip/gcc/varasm.c	2016-12-31 17:03:08.629193673 -0500
