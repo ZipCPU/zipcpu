@@ -10,7 +10,7 @@ The ZipCPU repository contains a couple of very basic cabilities, some very nece
 - It contains my first attempt at building an Assembler.  Well, it does until I eventually remove it from the repository as unnecessary ...
 - It also contains the source code for an example assembly level [debugger](sw/zipdbg).  This will probably be replaced in time with an implementation of gdb, but it remains for the time being.
 
-Prior to building within the ZipCPU repository directory, you need to make certain you have a number of prerequisites.  These include: texinfo gcc-dev g++-dev flex bison libbison-dev verilator libgmp10 libgmp-dev libmpfr-dev libmpc-dev libelf-dev and ncurses-dev.
+Prior to building within the ZipCPU repository directory, you need to make certain you have a number of prerequisites.  These include: texinfo gcc-dev g++-dev flex bison libbison-dev verilator libgmp10 libgmp-dev libmpfr-dev libmpc-dev libelf-dev, bc, ctags, and ncurses-dev.
 
 To build all of the above, type _make_ in the main repository directory.  This will build the tools and place them into a [local install directory](sw/install/cross-tools/bin).  Sadly, this process will currently fail about halfway through.  To get past this, add the [install directory](sw/install/cross-tools/bin) to your path and restart.  _make_ will then pick up where it left off and finish the task.
 

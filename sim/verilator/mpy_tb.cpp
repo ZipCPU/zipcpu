@@ -42,6 +42,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include <stdlib.h>
 #include <ctype.h>
@@ -142,10 +143,10 @@ public:
 #define	r_mpy_b_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input)
 #define	r_smpy_result	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_smpy_result)
 #define	mpypipe		VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__mpypipe)
-		sprintf(s, "3,MPY[%08x][%08x][%016lx], P[%d]",
+		sprintf(s, "3,MPY[%08x][%08x][%016llx], P[%d]",
 			m_core->r_mpy_a_input,
 			m_core->r_mpy_b_input,
-			m_core->r_smpy_result,
+			(long long)m_core->r_smpy_result,
 			m_core->mpypipe);
 
 #endif
@@ -210,7 +211,7 @@ public:
 	// the CPU may need to do that if a jump is made and the pipeline needs
 	// to be cleared.
 	//
-	unsigned	op(int op, int a, int b) {
+	uint32_t	op(int op, int a, int b) {
 		// Make sure we start witht he core idle
 		if (m_core->o_valid)
 			clear_ops();
@@ -222,7 +223,7 @@ public:
 		m_core->i_a     = a;
 		m_core->i_b     = b;
 
-		unsigned long now = m_tickcount;
+		uint64_t now = m_tickcount;
 
 		// Tick once to get it going
 		tick();
@@ -240,8 +241,8 @@ public:
 		// be using.  OPT_MULTIPLY is *supposed* to be equal to this
 		// number.
 		if((m_tickcount - now)!=OPT_MULTIPLY) {
-			printf("%ld ticks seen, %d ticks expected\n",
-				m_tickcount-now, OPT_MULTIPLY);
+			printf("%lld ticks seen, %d ticks expected\n",
+				(unsigned long long)(m_tickcount-now), OPT_MULTIPLY);
 			dbgdump();
 			printf("TEST-FAILURE!\n");
 			closetrace();
@@ -262,8 +263,8 @@ public:
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
 		const	int OP_MPY = 0x08, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
-		long	ia, ib, sv;
-		unsigned long	ua, ub, uv;
+		int64_t		ia, ib, sv;
+		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
 
 		clear_ops();
@@ -271,8 +272,8 @@ public:
 		printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
 
 		ia = (long)a; ib = (long)b; sv = ia * ib;
-		ua = ((unsigned long)a)&0x0ffffffffu;
-		ub = ((unsigned long)b)&0x0ffffffffu;
+		ua = ((uint64_t)a)&0x0ffffffffu;
+		ub = ((uint64_t)b)&0x0ffffffffu;
 		uv = ua * ub;
 
 		r = op(OP_MPY, a, b);
@@ -283,13 +284,13 @@ public:
 		// Let's check our answers, and see if we got the right results
 		if ((r ^ sv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #1\n");
-			printf("Comparing 0x%08x to 0x%016lx\n", r, sv);
+			printf("Comparing 0x%08x to 0x%016llx\n", r, (long long)sv);
 			printf("TEST-FAILURE!\n");
 			closetrace();
 			exit(EXIT_FAILURE);
 		} if ((r ^ uv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #2\n");
-			printf("Comparing 0x%08x to 0x%016lx\n", r, uv);
+			printf("Comparing 0x%08x to 0x%016llx\n", r, (unsigned long long)uv);
 			printf("TEST-FAILURE!\n");
 			closetrace();
 			exit(EXIT_FAILURE);
@@ -297,13 +298,13 @@ public:
 
 		if ((s^(sv>>32))&0x0ffffffffu) {
 			printf("TEST FAILURE(MPYSHI), MPY #3\n");
-			printf("Comparing 0x%08x to 0x%016lx\n", s, sv);
+			printf("Comparing 0x%08x to 0x%016llx\n", s, (long long)sv);
 			printf("TEST-FAILURE!\n");
 			closetrace();
 			exit(EXIT_FAILURE);
 		} if ((u^(uv>>32))&0x0ffffffffu) {
 			printf("TEST FAILURE(MPYUHI), MPY #4\n");
-			printf("Comparing 0x%08x to 0x%016lx\n", u, uv);
+			printf("Comparing 0x%08x to 0x%016llx\n", u, (unsigned long long)uv);
 			printf("TEST-FAILURE!\n");
 			closetrace();
 			exit(EXIT_FAILURE);

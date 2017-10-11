@@ -220,7 +220,7 @@ assert(n != 0);
 
 		// Now, let's read in our section ...
 		if (lseek(fd, phdr.p_offset, SEEK_SET) < 0) {
-			fprintf(stderr, "Could not seek to file position %08lx\n", phdr.p_offset);
+			fprintf(stderr, "Could not seek to file position %08lx\n", (unsigned long)phdr.p_offset);
 			perror("O/S Err:");
 			exit(EXIT_FAILURE);
 		} if (phdr.p_filesz > phdr.p_memsz)
