@@ -127,7 +127,7 @@ public:
 #if(OPT_MULTIPLY==1)
 #define	mpy_result	VVAR(_mpy_result)
 		sprintf(s, "1,MPY[][][%016lx]",
-			m_core->mpy_result);
+			(unsigned)m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==2)
 		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
@@ -262,7 +262,7 @@ public:
 	// against a local multiply on the local (host) machine.  If there's
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
-		const	int OP_MPY = 0x08, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
+		const	int OP_MPY = 0x0c, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
 		int64_t		ia, ib, sv;
 		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
@@ -336,7 +336,7 @@ int	main(int argc, char **argv) {
 	// Now, create a test bench.
 	CPUOPS_TB	*tb = new CPUOPS_TB();
 	int	rcode = EXIT_SUCCESS;
-	// tb->opentrace("mpy_tb.vcd");
+	tb->opentrace("mpy_tb.vcd");
 
 	// Get us started by a couple of clocks past reset.  This isn't that
 	// unreasonable, since the CPU needs to load up the pipeline before
