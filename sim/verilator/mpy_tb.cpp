@@ -93,8 +93,8 @@ public:
 	//
 	void	dbgdump(void) {
 		char	outstr[2048], *s;
-		sprintf(outstr, "Tick %4ld %s%s ",
-			m_tickcount,
+		sprintf(outstr, "Tick %4lld %s%s ",
+			(unsigned long long)m_tickcount,
 			(m_core->i_rst)?"R":" ", 
 			(m_core->i_ce)?"CE":"  ");
 		switch(m_core->i_op) {
