@@ -336,7 +336,7 @@ int	main(int argc, char **argv) {
 	// Now, create a test bench.
 	CPUOPS_TB	*tb = new CPUOPS_TB();
 	int	rcode = EXIT_SUCCESS;
-	tb->opentrace("mpy_tb.vcd");
+	// tb->opentrace("mpy_tb.vcd");
 
 	// Get us started by a couple of clocks past reset.  This isn't that
 	// unreasonable, since the CPU needs to load up the pipeline before
