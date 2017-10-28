@@ -1,0 +1,5 @@
+read_verilog -D BUSDELAY -formal ../../rtl/aux/busdelay.v
+prep -top busdelay -nordff
+clk2fflogic
+opt clean
+write_smt2 -wires busdelay.smt2

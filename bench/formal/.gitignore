@@ -1,0 +1,3 @@
+*.check
+*.smt2
+*.yslog

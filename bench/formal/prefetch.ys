@@ -1,0 +1,5 @@
+read_verilog -D PREFETCH -formal ../../rtl/core/prefetch.v
+prep -top prefetch -nordff
+clk2fflogic
+opt clean
+write_smt2 -wires prefetch.smt2

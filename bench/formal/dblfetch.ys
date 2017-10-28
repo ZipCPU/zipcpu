@@ -1,0 +1,5 @@
+read_verilog -D DBLFETCH -formal ../../rtl/core/dblfetch.v
+prep -top dblfetch -nordff
+clk2fflogic
+opt clean
+write_smt2 -wires dblfetch.smt2
