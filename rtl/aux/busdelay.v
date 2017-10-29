@@ -387,7 +387,8 @@ module	busdelay(i_clk,
 			assert(o_dly_stb);
 
 	always @(posedge i_clk)
-		if ((DELAY_STALL)&&(f_past_valid)&&($past(f_pending[STB_BIT])))
+		if ((DELAY_STALL)&&(f_past_valid)&&($past(i_wb_cyc))
+				&&($past(f_pending[STB_BIT])))
 			assert(o_dly_stb);
 
 	always @(posedge i_clk)

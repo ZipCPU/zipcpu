@@ -123,4 +123,5 @@ clean:
 	rm -f $(PFTWO).smt2 $(PFTWOBMC).smt2 $(PFTWOIND).smt2 $(PFTWO)*.vcd
 	rm -f $(PFCACHE).smt2 $(PFCACHEBMC).smt2 $(PFCACHEIND).smt2 $(PFCACHE)*.vcd
 	rm -f $(WBDLY).smt2 $(WBDLYBMC).smt2 $(WBDLYIND).smt2 $(WBDLY)*.vcd
+	rm -f $(PFONE).yslog $(PFTWO).yslog $(PFCACHE).yslog $(WBDLY).yslog
 	rm -f *.check
