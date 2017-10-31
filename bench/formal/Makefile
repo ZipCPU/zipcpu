@@ -2,10 +2,10 @@
 ##
 ## Filename:	Makefile
 ##
-## Project:	WBPMIC, wishbone control of a MEMs PMod MIC
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
-## Purpose:	To direct the formal verification of the SPI A/DC (and FIFO)
-##		sources.
+## Purpose:	To direct the formal verification of particular components of
+##		the ZipCPU.
 ##
 ## Targets:	The default target, all, tests all of the components within
 ##		this module.
@@ -35,6 +35,7 @@
 ## License:	GPL, v3, as defined and found on www.gnu.org,
 ##		http://www.gnu.org/licenses/gpl.html
 ##
+##
 ################################################################################
 ##
 ##
@@ -46,8 +47,10 @@ RTL := ../../rtl
 SMTBMC  := yosys-smtbmc
 # SOLVER  := -s z3
 SOLVER  := -s yices
+# SOLVER  := -s boolector
 BMCARGS := --presat $(SOLVER) --unroll
-# BMCARGS := $(SOLVER)    --unroll
+# BMCARGS := $(SOLVER) --unroll
+# BMCARGS := $(SOLVER)
 INDARGS := $(SOLVER) -i
 
 PFONE=prefetch
@@ -66,17 +69,24 @@ WBDLY    := busdelay
 WBDLYBMC := $(WBDLY)_bmc
 WBDLYIND := $(WBDLY)_ind
 
-$(PFONE).smt2: $(RTL)/core/$(PFONE).v
+PRIARB    := wbpriarbiter
+PRIARBBMC := $(PRIARB)_bmc
+PRIARBIND := $(PRIARB)_ind
+
+$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(RTL)/aux/formal_master.v
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
 
-$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v
+$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(RTL)/aux/formal_master.v
 	yosys -ql $(PFTWO).yslog -s $(PFTWO).ys
 
-$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v
+$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(RTL)/aux/formal_master.v
 	yosys -ql $(PFCACHE).yslog -s $(PFCACHE).ys
 
-$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v
+$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(RTL)/aux/formal_master.v $(RTL)/aux/formal_slave.v
 	yosys -ql $(WBDLY).yslog -s $(WBDLY).ys
+
+$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(RTL)/aux/formal_master.v $(RTL)/aux/formal_slave.v
+	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -84,9 +94,9 @@ $(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v
 $(PFONE) : $(PFONE).check
 $(PFONE).check: $(PFONE).smt2
 	@rm -f $(PFONE).check
-	$(SMTBMC) $(BMCARGS) -t 40 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
-	$(SMTBMC) $(INDARGS) -t 38 --dump-vcd $(PFONEIND).vcd $(PFONE).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
+	$(SMTBMC)    $(BMCARGS) -t 60 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 60 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
+	$(SMTBMC)    $(INDARGS) -t 58 --dump-vcd $(PFONEIND).vcd $(PFONE).smt2
 	touch $@
 
 
@@ -110,18 +120,26 @@ $(PFCACHE).check: $(PFCACHE).smt2
 $(WBDLY) : $(WBDLY).check
 $(WBDLY).check: $(WBDLY).smt2
 	@rm -f $(PFCACHE).check
-	$(SMTBMC)   $(BMCARGS) -t 80 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
-	$(SMTBMC)   $(INDARGS) -t 76 --dump-vcd $(WBDLYIND).vcd $(WBDLY).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 80 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(WBDLYIND).vcd $(WBDLY).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
 	touch $@
 
-
+$(PRIARB) : $(PRIARB).check
+$(PRIARB).check: $(PRIARB).smt2
+	@rm -f $(PFCACHE).check
+	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(PRIARBBMC).vcd $(PRIARB).smt2
+	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(PRIARBIND).vcd $(PRIARB).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARBBMC).vcd $(PRIARB).smt2
+	touch $@
 
 .PHONY: clean
 clean:
-	rm -f $(PFONE).smt2 $(PFONEBMC).smt2 $(PFONEIND).smt2 $(PFONE)*.vcd
-	rm -f $(PFTWO).smt2 $(PFTWOBMC).smt2 $(PFTWOIND).smt2 $(PFTWO)*.vcd
+	rm -f $(PFONE).smt2  $(PFONEBMC).smt2  $(PFONEIND).smt2  $(PFONE)*.vcd
+	rm -f $(PFTWO).smt2  $(PFTWOBMC).smt2  $(PFTWOIND).smt2  $(PFTWO)*.vcd
 	rm -f $(PFCACHE).smt2 $(PFCACHEBMC).smt2 $(PFCACHEIND).smt2 $(PFCACHE)*.vcd
-	rm -f $(WBDLY).smt2 $(WBDLYBMC).smt2 $(WBDLYIND).smt2 $(WBDLY)*.vcd
-	rm -f $(PFONE).yslog $(PFTWO).yslog $(PFCACHE).yslog $(WBDLY).yslog
+	rm -f $(WBDLY).smt2  $(WBDLYBMC).smt2  $(WBDLYIND).smt2  $(WBDLY)*.vcd
+	rm -f $(PRIARB).smt2 $(PRIARBBMC).smt2 $(PRIARBIND).smt2 $(PRIARB)*.vcd
+	rm -f $(PFONE).yslog $(PFTWO).yslog    $(PFCACHE).yslog  $(WBDLY).yslog
+	rm -f $(PRIARB).yslog
 	rm -f *.check

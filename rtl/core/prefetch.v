@@ -235,19 +235,20 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 //
 `ifdef	PREFETCH
 `define	ASSUME	assume
-`define	STEP_CLOCK	assume(i_clk != f_last_clk);
+	reg	f_last_clk;
+	initial	assume(f_last_clk == 1);
+	initial	assume(i_clk == 0);
+	always @($global_clock)
+	begin
+		assume(i_clk != f_last_clk);
+		f_last_clk <= !f_last_clk;
+	end
 `else
 `define	ASSUME	assert
-`define	STEP_CLOCK
 `endif
 
 	// Assume a clock
 	reg	f_last_clk, f_past_valid;
-	always @($global_clock)
-	begin
-		`STEP_CLOCK
-		f_last_clk <= i_clk;
-	end
 
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
@@ -275,11 +276,6 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		`ASSUME($stable(i_clear_cache));
 		`ASSUME($stable(i_stalled_n));
 		`ASSUME($stable(i_pc));
-		// Wishbone inputs
-		`ASSUME($stable(i_wb_ack));
-		`ASSUME($stable(i_wb_stall));
-		`ASSUME($stable(i_wb_err));
-		`ASSUME($stable(i_wb_data));
 	end
 
 
@@ -302,9 +298,14 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	end
 `endif
 
-	//
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_rst);
+
+	formal_master #(.AW(AW), .DW(DW),.F_LGDEPTH(2), .F_MAX_REQUESTS(1))
+		f_wbm(i_clk, i_rst,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err);
+	//
 	//
 	// Let's make some assumptions about how long it takes our
 	// phantom bus and phantom CPU to respond.
@@ -318,67 +319,31 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	// First, let's assume that any response from the bus comes back
 	// within F_WB_DELAY clocks
-	always @(posedge i_clk)
-	if (!o_wb_cyc) // No delay accumulates except during bus requests
-		f_wb_delay <= 0;
-	else begin
-		if (o_wb_stb)
-		begin
-			// In the process, let's assert a reality: nothing
-			// will acknowledge or error during the request
-			// cycle.  All acknowledgement's or errors will be
-			// at least one clock after (o_wb_stb)&&(!i_wb_stall)
-			`ASSUME(!i_wb_ack);
-			`ASSUME(!i_wb_err);
-		end
-
-		f_wb_delay <= f_wb_delay + 1;
 
 		// Here's our delay assumption: We'll assume that the
-		// wishbone will always respond within F_WB_DELAY clock ticks
-		// of the beginning of any cycle.
-		//
-		// This includes both dropping the stall line, as well as
-		// acknowledging any request.  While this may not be
-		// a reasonable assumption for a piped master, it should
-		// work here for us.
-		`ASSUME(f_wb_delay < F_WB_DELAY);
-	end
+	// wishbone will always respond within F_WB_DELAY clock ticks
+	// of the beginning of any cycle.
+	//
+	// This includes both dropping the stall line, as well as
+	// acknowledging any request.  While this may not be
+	// a reasonable assumption for a piped master, it should
+	// work here for us.
 
-	// Now, let's repeat this bit but now looking at the delay the CPU
-	// takes to accept an instruction.
+	// Count the number of clocks it takes the CPU to respond to our
+	// instruction.
 	always @(posedge i_clk)
 		// If no instruction is ready, then keep our counter at zero
-		if ((!o_valid)||(i_stalled_n))
+		if ((i_rst)||(!o_valid)||(i_stalled_n))
 			f_cpu_delay <= 0;
 		else
 			// Otherwise, count the clocks the CPU takes to respond
 			f_cpu_delay <= f_cpu_delay + 1'b1;
 
 `ifdef	PREFETCH
+	// Only *assume* that we are less than F_CPU_DELAY if we are not
+	// integrated into the CPU
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
-`endif
-
-// `define	SPEED_PROOF
-`ifdef	SPEED_PROOF
-	// In many ways, we don't care what happens on the bus return lines
-	// if the cycle line is low, so restricting them to a known value
-	// makes a lot of sense.
-	//
-	// On the other hand, if something above *does* depend upon these
-	// values (when it shouldn't), then we might want to know about it.
-	//
-	//
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-		begin
-			restrict(!i_wb_ack);
-			restrict(!i_wb_stall);
-			restrict(!i_wb_err);
-			restrict($stable(i_wb_data));
-		end else if (!$past(i_wb_ack))
-			restrict($stable(i_wb_data));
 `endif
 
 	/////////////////////////////////////////////////
@@ -388,15 +353,11 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	//
 	/////////////////////////////////////////////////
-	initial	assert(!o_wb_cyc);
-	initial	assert(!o_wb_stb);
 
+	// Prefetches don't write
 	always @(posedge i_clk)
 		if (o_wb_stb)
-		begin
-			assert( o_wb_cyc);
 			assert(!o_wb_we);
-		end
 
 	// Any time the CPU accepts an instruction, assume that on the
 	// next clock the valid line has been de-asserted
@@ -404,26 +365,13 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		if ((f_past_valid)&&($past(o_valid))&&($past(i_stalled_n)))
 			assert(!o_valid);
 
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_rst)))
-	begin
-		if (($past(o_wb_stb))&&($past(i_wb_stall))
-				&&(!$past(i_wb_err)))
-			assert(o_wb_stb);
-	end
-
+	// This routine is not allowed to change the address mid-cycle
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_wb_cyc)))
 			assert($stable(o_wb_addr));
 
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_rst)))
-	begin
-		if (($past(o_wb_cyc))
-				&&(($past(i_wb_ack))||($past(i_wb_err))))
-			assert(!o_wb_cyc);
-	end
-
+	// If we just got a valid instruction via prefetch, assert that the
+	// instruction is listed as valid on the next instruction cycle
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_rst))&&($past(o_wb_cyc))
 			&&($past(i_wb_ack))&&(!$past(i_wb_err)))

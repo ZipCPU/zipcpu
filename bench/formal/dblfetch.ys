@@ -1,4 +1,5 @@
 read_verilog -D DBLFETCH -formal ../../rtl/core/dblfetch.v
+read_verilog -D DBLFETCH -formal ../../rtl/aux/formal_master.v
 prep -top dblfetch -nordff
 clk2fflogic
 opt clean

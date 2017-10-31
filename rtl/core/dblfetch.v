@@ -107,7 +107,7 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 						&&(!i_new_pc);;
 
 			// Relase the bus on the second ack
-			if ((i_wb_ack)&&(last_ack))
+			if ((i_wb_ack)&&((last_ack)||(!o_wb_stb)))
 			begin
 				o_wb_cyc <= 1'b0;
 				o_wb_stb <= 1'b0;
@@ -303,43 +303,30 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_rst);
 
+	// Add a bunch of wishbone-based asserts
+	formal_master #(.AW(AW), .DW(DW), .F_LGDEPTH(2), .F_MAX_REQUESTS(2))
+		f_wbm(i_clk, i_rst,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err);
+
+
 	// Assume that any reset is either accompanied by a new address,
 	// or a new address immediately follows it.
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_rst)))
 			`ASSUME((i_new_pc)||($past(i_new_pc)));
 	//
-	// Let's make some assumptions about how long it takes our
-	// phantom bus and phantom CPU to respond.
+	// Let's make some assumptions about how long it takes our phantom
+	// (i.e. assumed) CPU to respond.
 	//
-	// These delays need to be long enough to flush out any potential
+	// This delay needs to be long enough to flush out any potential
 	// errors, yet still short enough that the formal method doesn't
 	// take forever to solve.
 	//
-	localparam	F_WB_ACK_DELAY = 6, F_WB_STALL_DELAY=4, F_CPU_DELAY = 4;
-	reg	[4:0]	f_wb_ack_delay, f_wb_stall_delay, f_cpu_delay;
+	localparam	F_CPU_DELAY = 4;
+	reg	[4:0]	f_cpu_delay;
 
-	initial	f_wb_ack_delay = 0;
-	always @(posedge i_clk)
-	if ((!o_wb_cyc)||(o_wb_stb)||(i_wb_ack)||(i_wb_err))
-		f_wb_ack_delay = 0;
-	else begin
-		f_wb_ack_delay <= f_wb_ack_delay + 1'b1;
-		`ASSUME(f_wb_ack_delay < F_WB_ACK_DELAY);
-	end
-
-	initial	f_wb_stall_delay = 0;
-	always @(posedge i_clk)
-	if ((!o_wb_cyc)||(!o_wb_stb)||(!i_wb_stall))
-		f_wb_stall_delay <= 0;
-	else begin
-		f_wb_stall_delay <= f_wb_stall_delay + 1;
-
-		`ASSUME(f_wb_stall_delay < F_WB_STALL_DELAY);
-	end
-
-	// Now, let's repeat this bit but now looking at the delay the CPU
-	// takes to accept an instruction.
+	// Now, let's look at the delay the CPU takes to accept an instruction.
 	always @(posedge i_clk)
 		// If no instruction is ready, then keep our counter at zero
 		if ((!o_v)||(i_stall_n))
@@ -353,27 +340,6 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
 
-// `define	SPEED_PROOF
-`ifdef	SPEED_PROOF
-	// In many ways, we don't care what happens on the bus return lines
-	// if the cycle line is low, so restricting them to a known value
-	// makes a lot of sense.
-	//
-	// On the other hand, if something above *does* depend upon these
-	// values (when it shouldn't), then we might want to know about it.
-	//
-	//
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-		begin
-			restrict(!i_wb_ack);
-			restrict(!i_wb_stall);
-			restrict(!i_wb_err);
-			restrict($stable(i_wb_data));
-		end else if (!$past(i_wb_ack))
-			restrict($stable(i_wb_data));
-`endif
-
 	/////////////////////////////////////////////////
 	//
 	//
@@ -381,31 +347,6 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	//
 	/////////////////////////////////////////////////
-
-	initial	assert(!o_wb_cyc);
-	initial	assert(!o_wb_stb);
-
-	// If strobe is high, CYC must also be high.  STB && !CYC is illegal.
-	// Likewise, writes are also illegal for a prefetch.
-	always @(posedge i_clk)
-		if (o_wb_stb)
-		begin
-			assert( o_wb_cyc);
-			assert(!o_wb_we);
-		end
-
-	// Strobe can only be dropped after stall is dropped--assuming no
-	// error, and no reset
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_rst))&&(!$past(i_wb_err)))
-	begin
-		if (($past(o_wb_stb))&&($past(i_wb_stall)))
-			assert(o_wb_stb);
-	end
-
-	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_wb_cyc))&&($past(i_wb_stall)))
-			assert($stable(o_wb_addr));
 
 	reg	[3:0]	f_wb_nreqs, f_wb_acks;
 

@@ -147,5 +147,82 @@ module	wbpriarbiter(i_clk,
 	assign	o_b_err = (!r_a_owner) ? i_err : 1'b0;
 `endif
 
+`ifdef	FORMAL
+
+`ifdef	WBPRIARBITER
+	reg	f_last_clk;
+	initial	assume(!i_clk);
+	always @($global_clock)
+	begin
+		assume(i_clk != f_last_clk);
+		f_last_clk <= i_clk;
+	end
+`define	`ASSUME	assume
+`else
+`define	`ASSUME	assert
+`endif
+
+	reg	f_past_valid;
+	initial	f_past_valid = 1'b0;
+	always @($global_clock)
+		f_past_valid <= 1'b1;
+
+	initial	assume(!i_a_cyc);
+	initial	assume(!i_a_stb);
+
+	initial	assume(!i_b_cyc);
+	initial	assume(!i_b_stb);
+
+	initial	assume(!i_ack);
+	initial	assume(!i_err);
+
+	always @(posedge i_clk)
+	begin
+		if (o_cyc)
+			assert((i_a_cyc)||(i_b_cyc));
+		if ((f_past_valid)&&($past(o_cyc))&&(o_cyc))
+			assert($past(r_a_owner) == r_a_owner);
+		if ((f_past_valid)&&($past(!o_cyc))&&($past(i_a_cyc)))
+			assert(r_a_owner);
+	end
+
+	reg	f_reset;
+	initial	f_reset = 1'b1;
+	always @(posedge i_clk)
+		f_reset <= 1'b0;
+	
+	formal_master #(.F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbm(i_clk, f_reset,
+			o_cyc, o_stb, o_we, o_adr, o_dat, o_sel,
+			i_ack, i_stall, 32'h0, i_err);
+	formal_slave  #(.F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wba(i_clk, f_reset,
+			i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+			o_a_ack, o_a_stall, 32'h0, o_a_err);
+	formal_slave  #(.F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbb(i_clk, f_reset,
+			i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel,
+			o_b_ack, o_b_stall, 32'h0, o_b_err);
+
+	always @(posedge i_clk)
+		if (r_a_owner)
+		begin
+			assert(f_wbb.f_oustanding == 0);
+			assert(f_wba.f_oustanding == f_wbm.f_outstanding);
+		end else begin
+			assert(f_wba.f_oustanding == 0);
+			assert(f_wbb.f_oustanding == f_wbm.f_outstanding);
+		end
+
+`endif
 endmodule
 
