@@ -3,5 +3,5 @@ read_verilog -D WBPRIARBITER -formal ../../rtl/aux/formal_master.v
 read_verilog -D WBPRIARBITER -formal ../../rtl/aux/formal_slave.v
 prep -top wbpriarbiter -nordff
 clk2fflogic
-opt clean
+opt -share_all
 write_smt2 -wires wbpriarbiter.smt2

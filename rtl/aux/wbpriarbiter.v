@@ -190,38 +190,59 @@ module	wbpriarbiter(i_clk,
 	initial	f_reset = 1'b1;
 	always @(posedge i_clk)
 		f_reset <= 1'b0;
-	
+
+	localparam	F_LGDEPTH=3;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding,
+			f_a_nreqs, f_a_nacks, f_a_outstanding,
+			f_b_nreqs, f_b_nacks, f_b_outstanding;
+
 	formal_master #(.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, f_reset,
 			o_cyc, o_stb, o_we, o_adr, o_dat, o_sel,
-			i_ack, i_stall, 32'h0, i_err);
+			i_ack, i_stall, 32'h0, i_err,
+			f_nreqs, f_nacks, f_outstanding);
 	formal_slave  #(.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba(i_clk, f_reset,
 			i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
-			o_a_ack, o_a_stall, 32'h0, o_a_err);
+			o_a_ack, o_a_stall, 32'h0, o_a_err,
+			f_a_nreqs, f_a_nacks, f_a_outstanding);
 	formal_slave  #(.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb(i_clk, f_reset,
 			i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel,
-			o_b_ack, o_b_stall, 32'h0, o_b_err);
+			o_b_ack, o_b_stall, 32'h0, o_b_err,
+			f_b_nreqs, f_b_nacks, f_b_outstanding);
 
 	always @(posedge i_clk)
 		if (r_a_owner)
 		begin
-			assert(f_wbb.f_oustanding == 0);
-			assert(f_wba.f_oustanding == f_wbm.f_outstanding);
+			assert(f_b_nreqs == 0);
+			assert(f_b_nacks == 0);
+			assert(f_a_outstanding == f_outstanding);
 		end else begin
-			assert(f_wba.f_oustanding == 0);
-			assert(f_wbb.f_oustanding == f_wbm.f_outstanding);
+			assert(f_a_nreqs == 0);
+			assert(f_a_nacks == 0);
+			assert(f_b_outstanding == f_outstanding);
 		end
+
+	always @(posedge i_clk)
+		if ((r_a_owner)&&(i_b_cyc))
+			assume(i_b_stb);
+
+	always @(posedge i_clk)
+		if ((r_a_owner)&&(i_a_cyc))
+			assume(i_a_stb);
 
 `endif
 endmodule

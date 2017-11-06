@@ -106,18 +106,25 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			r_wb_cyc_lcl <= lcl_stb;
 			r_wb_cyc_gbl <= gbl_stb;
 		end
+	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
-		if (o_wb_cyc_gbl)
+		if ((i_rst)||((i_wb_err)&&(r_wb_cyc_gbl)))
+			o_wb_stb_gbl <= 1'b0;
+		else if (o_wb_cyc_gbl)
 			o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
 		else
 			o_wb_stb_gbl <= gbl_stb; // Grab wishbone on new operation
+	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
-		if (o_wb_cyc_lcl)
+		if ((i_rst)||((i_wb_err)&&(r_wb_cyc_lcl)))
+			o_wb_stb_lcl <= 1'b0;
+		else if (o_wb_cyc_lcl)
 			o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
 		else
 			o_wb_stb_lcl  <= lcl_stb; // Grab wishbone on new operation
 
 	reg	[3:0]	r_op;
+	initial	o_wb_we = 1'b0;
 	always @(posedge i_clk)
 		if (i_stb)
 		begin
@@ -167,10 +174,12 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
-		o_valid <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_ack)&&(~o_wb_we);
+		o_valid <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
+				&&(i_wb_ack)&&(!o_wb_we);
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
-		o_err <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_err);
+		o_err <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
+				&&(i_wb_err);
 	assign	o_busy = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 
 	always @(posedge i_clk)
@@ -221,5 +230,241 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	assign	unused = i_lock;
 	// verilator lint_on  UNUSED
 
+`ifdef	FORMAL
+`ifdef	MEMOPS
+`define	ASSUME	assume
+	reg	f_last_clk;
+	// initial	i_clk      = 0;
+	initial	f_last_clk = 0;
+	always @($global_clock)
+	begin
+		assume(i_clk != f_last_clk);
+		f_last_clk <= i_clk;
+	end
+`else
+`define	ASSUME	assert
+`endif
 
+	reg	f_past_valid;
+	initial	f_past_valid = 0;
+	always @(posedge i_clk)
+		f_past_valid = 1'b1;
+	initial	assume( i_rst);
+	initial	assume(!i_stb);
+
+	always @($global_clock)
+	if (!$rose(i_clk))
+	begin
+		assume($stable(i_rst));
+		assume($stable(i_stb));
+		assume($stable(i_addr));
+		assume($stable(i_op));
+	end
+
+	wire	f_cyc, f_stb;
+	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
+	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
+
+	localparam	F_LGDEPTH = 2;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+
+	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH))
+		f_wb(i_clk, i_rst,
+			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
+
+
+	// Rule: Only one of the two CYC's may be valid, never both
+	always @(posedge i_clk)
+		assert((!o_wb_cyc_gbl)||(!o_wb_cyc_lcl));
+
+	// Rule: Only one of the two STB's may be valid, never both
+	always @(posedge i_clk)
+		assert((!o_wb_stb_gbl)||(!o_wb_stb_lcl));
+
+	// Rule: if WITH_LOCAL_BUS is ever false, neither the local STB nor CYC
+	// may be valid
+	always @(*)
+		if (!WITH_LOCAL_BUS)
+		begin
+			assert(!o_wb_cyc_lcl);
+			assert(!o_wb_stb_lcl);
+		end
+
+	// Rule: If the global CYC is ever true, the LCL one cannot be true
+	// on the next clock without an intervening idle of both
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(o_wb_cyc_gbl)))
+			assert(!o_wb_cyc_lcl);
+
+	// Same for if the LCL CYC is true
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(o_wb_cyc_lcl)))
+			assert(!o_wb_cyc_gbl);
+
+	// STB can never be true unless CYC is also true
+	always @(posedge i_clk)
+		if (o_wb_stb_gbl)
+			assert(o_wb_cyc_gbl);
+	always @(posedge i_clk)
+		if (o_wb_stb_lcl)
+			assert(o_wb_cyc_lcl);
+
+	// This core only ever has zero or one outstanding transaction(s)
+	always @(posedge i_clk)
+		assert((f_outstanding == 0)||(f_outstanding == 1));
+
+	// The LOCK function only allows up to two transactions (at most)
+	// before CYC must be dropped.
+	always @(posedge i_clk)
+		assert((f_nreqs == 0)||(f_nreqs == 1)||(f_nreqs == 2));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(o_busy))
+	begin
+
+		// If i_stb doesn't change, then neither do any of the other
+		// inputs
+		if (($past(i_stb))&&(i_stb))
+		begin
+			`ASSUME($stable(i_op));
+			`ASSUME($stable(i_addr));
+			`ASSUME($stable(i_data));
+			`ASSUME($stable(i_oreg));
+			`ASSUME($stable(i_lock));
+		end else if (($past(!i_stb))&&(!i_stb))
+		begin
+			// The CPU might actually allow these inputs to change.
+			// They shouldn't affect this module, so we
+			// restrict them to stable here--although they might
+			// not be in practice.
+			//
+			//restrict($stable(i_op));
+			//restrict($stable(i_addr));
+			//restrict($stable(i_data));
+			//restrict($stable(i_oreg));
+			//restrict($stable(i_lock));
+		end
+
+
+		// No strobe's are allowed if a request is outstanding, either
+		// having been accepted by the bus or waiting to be accepted
+		// by the bus.
+		if ((f_outstanding != 0)||(f_stb))
+			`ASSUME(!i_stb);
+		/*
+		if (o_busy)
+			assert( (!i_stb)
+				||((!o_wb_stb_gbl)&&(!o_wb_stb_lcl)&&(i_lock)));
+
+		if ((f_cyc)&&($past(f_cyc)))
+			assert($stable(r_op));
+		*/
+	end
+
+	// Following any i_stb request, assuming we are idle, immediately
+	// begin a bus transaction
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(i_stb))
+			&&(!$past(f_cyc))&&(!$past(i_rst)))
+		begin
+			`ASSUME(!i_stb);
+			assert(f_cyc);
+			assert(o_busy);
+		end
+
+	// If a transaction ends in an error, send o_err on the output port.
+	always @(posedge i_clk)
+		if (f_past_valid)
+		begin
+			if ($past(i_rst))
+				assert(!o_err);
+			else if (($past(f_cyc))&&($past(i_wb_err)))
+				assert(o_err);
+		end
+
+	// Always following a successful ACK, return an O_VALID value.
+	always @(posedge i_clk)
+		if (f_past_valid)
+		begin
+			if (($past(i_rst))||(!$past(f_cyc)))
+				assert(!o_valid);
+			else if (($past(i_wb_ack))&&(!$past(o_wb_we)))
+				assert(o_valid);
+		end
+
+	//always @(posedge i_clk)
+	//	if ((f_past_valid)&&($past(f_cyc))&&(!$past(o_wb_we))&&($past(i_wb_ack)))
+
+	/*
+	input	wire	[2:0]	i_op;
+	input	wire	[31:0]	i_addr;
+	input	wire	[31:0]	i_data;
+	input	wire	[4:0]	i_oreg;
+	// CPU outputs
+	output	wire		o_busy;
+	output	reg		o_valid;
+	output	reg		o_err;
+	output	reg	[4:0]	o_wreg;
+	output	reg	[31:0]	o_result;
+	*/
+
+	reg	[3:0]	r_op;
+	initial	o_wb_we = 1'b0;
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_stb)))
+	begin
+		// On a write, assert o_wb_we should be true
+		assert( $past(i_op[0]) == o_wb_we);
+
+		// Word write
+		if ($past(i_op[2:1]) == 2'b01)
+		begin
+			assert(o_wb_sel == 4'hf);
+			assert(o_wb_data == $past(i_data));
+		end
+
+		// Halfword (short) write
+		if ($past(i_op[2:1]) == 2'b10)
+		begin
+			if (!$past(i_addr[1]))
+			begin
+				assert(o_wb_sel == 4'hc);
+				assert(o_wb_data[31:16] == $past(i_data[15:0]));
+			end else begin
+				assert(o_wb_sel == 4'h3);
+				assert(o_wb_data[15:0] == $past(i_data[15:0]));
+			end
+		end
+
+		if ($past(i_op[2:1] == 2'b11))
+		begin
+			if ($past(i_addr[1:0])==2'b00)
+			begin
+				assert(o_wb_sel == 4'h8);
+				assert(o_wb_data[31:24] == $past(i_data[7:0]));
+			end
+
+			if ($past(i_addr[1:0])==2'b01)
+			begin
+				assert(o_wb_sel == 4'h4);
+				assert(o_wb_data[23:16] == $past(i_data[7:0]));
+			end
+			if ($past(i_addr[1:0])==2'b10)
+			begin
+				assert(o_wb_sel == 4'h2);
+				assert(o_wb_data[15:8] == $past(i_data[7:0]));
+			end
+			if ($past(i_addr[1:0])==2'b11)
+			begin
+				assert(o_wb_sel == 4'h1);
+				assert(o_wb_data[7:0] == $past(i_data[7:0]));
+			end
+		end
+
+		`ASSUME($past(i_op[2:1] != 2'b00));
+	end
+
+`endif
 endmodule

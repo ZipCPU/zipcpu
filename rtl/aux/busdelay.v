@@ -71,6 +71,7 @@ module	busdelay(i_clk, i_reset,
 		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
 			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
 	parameter		AW=32, DW=32;
+	localparam	F_LGDEPTH=4;
 	parameter	 [0:0]	DELAY_STALL = 1;
 	input	wire			i_clk, i_reset;
 	// Input/master bus
@@ -121,7 +122,7 @@ module	busdelay(i_clk, i_reset,
 		initial	o_wb_err   = 1'b0;
 		always @(posedge i_clk)
 		begin
-			o_dly_cyc <= (i_wb_cyc)&&(!i_reset);
+			o_dly_cyc <= (i_wb_cyc)&&(!i_reset)&&(!o_wb_err)&&(!i_dly_err);
 	
 			if (!i_dly_stall)
 			begin
@@ -168,9 +169,16 @@ module	busdelay(i_clk, i_reset,
 				r_stb <= 1'b0;
 			end
 
-			o_wb_ack  <= (i_dly_ack)&&(i_wb_cyc)&&(o_dly_cyc)&&(!i_dly_err);
+			if ((i_reset)||(!i_wb_cyc)||(o_wb_err))
+				o_wb_ack <= 1'b0;
+			else
+				o_wb_ack  <= (i_dly_ack)&&(o_dly_cyc)&&(!i_dly_err);
 			o_wb_data <= i_dly_data;
-			o_wb_err  <= (i_dly_err)&&(i_wb_cyc)&&(o_dly_cyc);
+
+			if (!i_wb_cyc)
+				o_wb_err <= 1'b0;
+			else
+				o_wb_err  <= (i_dly_err)&&(o_dly_cyc);
 
 			if (i_reset)
 			begin
@@ -226,12 +234,15 @@ module	busdelay(i_clk, i_reset,
 				o_wb_ack <= 1'b0;
 			else
 				o_wb_ack  <= ((i_dly_ack)&&(!i_dly_err)
-					&&(o_dly_cyc)&&(i_wb_cyc));
+					&&(o_dly_cyc)&&(i_wb_cyc))
+					&&(!o_wb_err);
 		always @(posedge i_clk)
 			if (i_reset)
 				o_wb_err <= 1'b0;
+			else if (!i_dly_cyc)
+				o_wb_err <= 1'b0;
 			else
-				o_wb_err  <= (i_dly_err)&&(o_dly_cyc)&&(i_wb_cyc);
+				o_wb_err  <= (o_wb_err)||(i_dly_err)&&(i_wb_cyc);
 		always @(posedge i_clk)
 			o_wb_data <= i_dly_data;
 
@@ -286,29 +297,36 @@ module	busdelay(i_clk, i_reset,
 		`ASSUME($stable(i_dly_err));
 	end
 
+	wire	[(F_LGDEPTH-1):0]	f_wb_nreqs,f_wb_nacks, f_wb_outstanding,
+				f_dly_nreqs, f_dly_nacks, f_dly_outstanding;
+
+	localparam	ACK_DELAY = 5,
+			STALL_DELAY = 3;
 	formal_slave #(.AW(AW), .DW(DW),
-			.F_LGDEPTH(7),
-			.F_MAX_STALL(4),
-			.F_MAX_ACK_DELAY(4),
+			.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_STALL(STALL_DELAY+1),
+			.F_MAX_ACK_DELAY(ACK_DELAY+1+2*STALL_DELAY),
 			.F_MAX_REQUESTS(64),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
-		f_wbm(i_clk, i_reset,
+		f_wbs(i_clk, i_reset,
 			i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data,
 				i_wb_sel,
-			o_wb_ack, o_wb_stall, o_wb_data, o_wb_err);
+			o_wb_ack, o_wb_stall, o_wb_data, o_wb_err,
+			f_wb_nreqs, f_wb_nacks, f_wb_outstanding);
 
 	formal_master #(.AW(AW), .DW(DW),
-			.F_LGDEPTH(7),
-			.F_MAX_STALL(3),
-			.F_MAX_ACK_DELAY(5),
+			.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_STALL(STALL_DELAY),
+			.F_MAX_ACK_DELAY(ACK_DELAY),
 			.F_MAX_REQUESTS(64),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, i_reset,
 			o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr, o_dly_data,
 				o_dly_sel,
-			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
+			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err,
+			f_dly_nreqs, f_dly_nacks, f_dly_outstanding);
 
 	wire	[2+AW+DW+DW/8-1:0]	f_wb_request, f_dly_request;
 	assign	f_wb_request = { i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel };
@@ -341,7 +359,7 @@ module	busdelay(i_clk, i_reset,
 	begin
 		if ((f_past_valid)&&($past(f_wb_req))&&(!$past(i_reset)))
 			assert(($past(f_wb_request) == f_dly_request));
-		else if ((f_past_valid)&&($past(i_reset))
+		else if ((f_past_valid)&&($past(i_reset)))
 			assert(f_dly_request[STB_BIT] == 1'b0);
 		assert(o_wb_stall == ((o_dly_stb)&&(i_dly_stall)));
 	end else if ((DELAY_STALL)&&(f_past_valid))
@@ -369,7 +387,7 @@ module	busdelay(i_clk, i_reset,
 	// hold register should be identical to whatever is in the f_wpending
 	// wires above.
 	always @(posedge i_clk)
-		if ((DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset))
+		if ((DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset)))
 		begin
 			if (($past(f_dly_busy))&&($past(f_wb_busy)))
 				assert(f_pending == f_wpending);
@@ -396,42 +414,6 @@ module	busdelay(i_clk, i_reset,
 
 
 	// Make sure we get no more than one ack per request
-	localparam	LGDEPTH=4,
-			MAX_OUTSTANDING = -1;
-	reg	[(LGDEPTH-1):0]	f_wb_nreqs, f_wb_nacks,
-					f_dly_nreqs, f_dly_nacks;
-
-	initial	f_wb_nreqs = 0;
-	always @(posedge i_clk)
-		if ((i_reset)||(!i_wb_cyc))
-			f_wb_nreqs <= 0;
-		else if ((i_wb_stb)&&(!o_wb_stall))
-			f_wb_nreqs <= f_wb_nreqs + 1'b1;
-
-	initial	f_dly_nreqs = 0;
-	always @(posedge i_clk)
-		if ((i_reset)||(!o_dly_cyc))
-			f_dly_nreqs <= 0;
-		else if ((o_dly_stb)&&(!i_dly_stall))
-			f_dly_nreqs <= f_dly_nreqs + 1'b1;
-
-	wire	[(LGDEPTH-1):0]	f_wb_outstanding, f_dly_outstanding;
-	assign	f_wb_outstanding = f_wb_nreqs - f_wb_nacks;
-
-	initial	f_wb_nacks = 0;
-	always @(posedge i_clk)
-		if ((i_reset)||(!i_wb_cyc))
-			f_wb_nacks <= 0;
-		else if ((o_wb_ack)||(o_wb_err))
-			f_wb_nacks <= f_wb_nacks + 1'b1;
-
-	always @(posedge i_clk)
-		if ((i_reset)||(!o_dly_cyc))
-			f_dly_nacks <= 0;
-		else if ((i_dly_ack)||(i_dly_err))
-			f_dly_nacks <= f_dly_nacks + 1'b1;
-
-	assign	f_dly_outstanding = f_dly_nreqs - f_dly_nacks;
 
 	always @(posedge i_clk)
 		`ASSUME(f_dly_outstanding <= f_wb_outstanding);

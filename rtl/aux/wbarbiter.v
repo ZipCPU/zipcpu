@@ -4,15 +4,13 @@
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	At some point in time, I might wish to have two masters connect
-//		to the same wishbone bus.  As an example, I might wish to have
-//		both the instruction fetch and the load/store operators
-//		of my Zip CPU access the the same bus.  How shall they both
-//		get access to the same resource?  This module allows the
-//		wishbone interfaces from two sources to drive the bus, while
-//		guaranteeing that only one drives the bus at a time.
+// Purpose:	This is a priority bus arbiter.  It allows two separate wishbone
+//		masters to connect to the same bus, while also guaranteeing
+//	that the last master can have the bus with no delay any time it is
+//	idle.  The goal is to minimize the combinatorial logic required in this
+//	process, while still minimizing access time.
 //
-//		The core logic works like this:
+//	The core logic works like this:
 //
 //		1. If 'A' or 'B' asserts the o_cyc line, a bus cycle will begin,
 //			with acccess granted to whomever requested it.
@@ -36,7 +34,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -60,13 +58,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
+`default_nettype	none
+//
 `define	WBA_ALTERNATING
-module	wbarbiter(i_clk, i_rst, 
-	// Bus A
-	i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, o_a_ack, o_a_stall, o_a_err,
+
+module	wbarbiter(i_clk, i_rst,
+	// Bus A -- the priority bus
+	i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel,
+		o_a_ack, o_a_stall, o_a_err,
 	// Bus B
-	i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel, o_b_ack, o_b_stall, o_b_err,
-	// Both buses
+	i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel,
+		o_b_ack, o_b_stall, o_b_err,
+	// Combined/arbitrated bus
 	o_cyc, o_stb, o_we, o_adr, o_dat, o_sel, i_ack, i_stall, i_err);
 	// 18 bits will address one GB, 4 bytes at a time.
 	// 19 bits will allow the ability to address things other than just

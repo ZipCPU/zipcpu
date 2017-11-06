@@ -73,6 +73,10 @@ PRIARB    := wbpriarbiter
 PRIARBBMC := $(PRIARB)_bmc
 PRIARBIND := $(PRIARB)_ind
 
+MEM    := memops
+MEMBMC := $(MEM)_bmc
+MEMIND := $(MEM)_ind
+
 $(PFONE).smt2: $(RTL)/core/$(PFONE).v $(RTL)/aux/formal_master.v
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
 
@@ -87,6 +91,9 @@ $(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(RTL)/aux/formal_master.v $(RTL)/aux/forma
 
 $(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(RTL)/aux/formal_master.v $(RTL)/aux/formal_slave.v
 	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
+
+$(MEM).smt2: $(RTL)/core/$(MEM).v $(RTL)/aux/formal_master.v
+	yosys -ql $(MEM).yslog -s $(MEM).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -120,9 +127,9 @@ $(PFCACHE).check: $(PFCACHE).smt2
 $(WBDLY) : $(WBDLY).check
 $(WBDLY).check: $(WBDLY).smt2
 	@rm -f $(PFCACHE).check
-	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
-	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(WBDLYIND).vcd $(WBDLY).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(BMCARGS) -t 48 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(INDARGS) -t 48 --dump-vcd $(WBDLYIND).vcd $(WBDLY).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 46 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
 	touch $@
 
 $(PRIARB) : $(PRIARB).check
@@ -133,13 +140,20 @@ $(PRIARB).check: $(PRIARB).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARBBMC).vcd $(PRIARB).smt2
 	touch $@
 
+$(MEM) : $(MEM).check
+$(MEM).check: $(MEM).smt2
+	@rm -f $(PFCACHE).check
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MEMBMC).vcd $(MEM).smt2
+	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MEMIND).vcd $(MEM).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MEMBMC).vcd $(MEM).smt2
+	touch $@
+
 .PHONY: clean
 clean:
-	rm -f $(PFONE).smt2  $(PFONEBMC).smt2  $(PFONEIND).smt2  $(PFONE)*.vcd
-	rm -f $(PFTWO).smt2  $(PFTWOBMC).smt2  $(PFTWOIND).smt2  $(PFTWO)*.vcd
-	rm -f $(PFCACHE).smt2 $(PFCACHEBMC).smt2 $(PFCACHEIND).smt2 $(PFCACHE)*.vcd
-	rm -f $(WBDLY).smt2  $(WBDLYBMC).smt2  $(WBDLYIND).smt2  $(WBDLY)*.vcd
-	rm -f $(PRIARB).smt2 $(PRIARBBMC).smt2 $(PRIARBIND).smt2 $(PRIARB)*.vcd
-	rm -f $(PFONE).yslog $(PFTWO).yslog    $(PFCACHE).yslog  $(WBDLY).yslog
-	rm -f $(PRIARB).yslog
+	rm -f $(PFONE).smt2   $(PFONE)*.vcd   $(PFONE).yslog
+	rm -f $(PFTWO).smt2   $(PFTWO)*.vcd   $(PFTWO).yslog
+	rm -f $(PFCACHE).smt2 $(PFCACHE)*.vcd $(PFCACHE).yslog
+	rm -f $(WBDLY).smt2   $(WBDLY)*.vcd   $(WBDLY).yslog
+	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
+	rm -f $(MEM).smt2     $(MEM)*.vcd     $(MEM).yslog
 	rm -f *.check

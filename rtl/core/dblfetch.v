@@ -303,11 +303,16 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_rst);
 
+	localparam	F_LGDEPTH=2;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+
 	// Add a bunch of wishbone-based asserts
-	formal_master #(.AW(AW), .DW(DW), .F_LGDEPTH(2), .F_MAX_REQUESTS(2))
+	formal_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
+				.F_MAX_REQUESTS(2))
 		f_wbm(i_clk, i_rst,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err);
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
 
 
 	// Assume that any reset is either accompanied by a new address,

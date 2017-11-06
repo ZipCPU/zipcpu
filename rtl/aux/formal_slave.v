@@ -41,7 +41,8 @@
 module	formal_slave(i_clk, i_reset,
 		// The wishbone bus
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
-			i_wb_ack, i_wb_stall, i_wb_idata, i_wb_err);
+			i_wb_ack, i_wb_stall, i_wb_idata, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
 	parameter		AW=32, DW=32;
 	parameter		F_MAX_STALL = 4,
 				F_MAX_ACK_DELAY = 10;
@@ -86,11 +87,14 @@ module	formal_slave(i_clk, i_reset,
 	input	wire			i_wb_stall;
 	input	wire	[(DW-1):0]	i_wb_idata;
 	input	wire			i_wb_err;
+	//
+	output	reg	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks;
+	output	wire	[(F_LGDEPTH-1):0]	f_outstanding;
+
 
 	localparam	STB_BIT = 2+AW+DW+DW/8-1;
 	wire	[STB_BIT:0]	f_request;
 	assign	f_request = { i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel };
-	wire	[(F_LGDEPTH-1):0]	f_outstanding;
 
 	//
 	// A quick register to be used later to know if the $past() operator
@@ -173,8 +177,6 @@ module	formal_slave(i_clk, i_reset,
 	always @(posedge i_clk)
 		assert((!i_wb_ack)||(!i_wb_err));
 
-	reg	[(F_LGDEPTH-1):0]	f_wb_nreqs, f_wb_nacks;
-
 	// Any opening statement starts with both CYC and STB high
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_wb_cyc))&&(i_wb_cyc))
@@ -217,36 +219,36 @@ module	formal_slave(i_clk, i_reset,
 				f_ackwait_count <= 0;
 	end endgenerate
 
-	initial	f_wb_nreqs = 0;
+	initial	f_nreqs = 0;
 	always @(posedge i_clk)
 		if ((i_reset)||(!i_wb_cyc))
-			f_wb_nreqs <= 0;
+			f_nreqs <= 0;
 		else if ((i_wb_stb)&&(!i_wb_stall))
-			f_wb_nreqs <= f_wb_nreqs + 1'b1;
+			f_nreqs <= f_nreqs + 1'b1;
 
 
-	initial	f_wb_nacks = 0;
+	initial	f_nacks = 0;
 	always @(posedge i_clk)
 		if (!i_wb_cyc)
-			f_wb_nacks <= 0;
+			f_nacks <= 0;
 		else if ((i_wb_ack)||(i_wb_err))
-			f_wb_nacks <= f_wb_nacks + 1'b1;
+			f_nacks <= f_nacks + 1'b1;
 
-	assign	f_outstanding = (i_wb_cyc) ? (f_wb_nreqs - f_wb_nacks):0;
+	assign	f_outstanding = (i_wb_cyc) ? (f_nreqs - f_nacks):0;
 
 	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
 
 	always @(posedge i_clk)
 		if (F_MAX_REQUESTS > 0)
 		begin
-			assume(f_wb_nreqs <= F_MAX_REQUESTS);
-			assume(f_wb_nacks <= F_MAX_REQUESTS);
-			assume(f_outstanding < (1<<F_LGDEPTH));
+			assume(f_nreqs <= F_MAX_REQUESTS);
+			assume(f_nacks <= F_MAX_REQUESTS);
+			assume(f_outstanding < (1<<F_LGDEPTH)-1);
 		end else
-			assume(f_outstanding < (1<<F_LGDEPTH));
+			assume(f_outstanding < (1<<F_LGDEPTH)-1);
 
 	always @(posedge i_clk)
-		if (f_outstanding == 0)
+		if ((i_wb_cyc)&&(f_outstanding == 0))
 		begin
 			// If nothing is outstanding, then there should be
 			// no acknowledgements

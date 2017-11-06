@@ -441,56 +441,46 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	/////////////////////////////////////////////////
 
-	formal_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(PW+1),
+	localparam	F_LGDEPTH=PW+1;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+
+	formal_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(2), .F_MAX_ACK_DELAY(3),
 			.F_MAX_REQUESTS((1<<PW)))
 		f_wbm(i_clk, i_rst,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err);
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
 
 	// writes are also illegal for a prefetch.
 	always @(posedge i_clk)
 		if (o_wb_stb)
 			assert(!o_wb_we);
 
-	reg	[(PW):0]	f_wb_nreqs, f_wb_acks;
-
-	initial	f_wb_nreqs = 0;
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-			f_wb_nreqs <= 0;
-		else if ((o_wb_stb)&&(!i_wb_stall))
-			f_wb_nreqs <= f_wb_nreqs + 1'b1;
 	always @(posedge i_clk)
 	begin
-		assert(f_wb_nreqs <= (1<<PW));
+		assert(f_nreqs <= (1<<PW));
 		if ((o_wb_cyc)&&(o_wb_stb))
-			assert(f_wb_nreqs == o_wb_addr[(PW-1):0]);
+			assert(f_nreqs == o_wb_addr[(PW-1):0]);
 		if ((f_past_valid)&&($past(o_wb_cyc))
 			&&(!o_wb_stb)&&(!$past(i_wb_err))&&(!$past(i_rst)))
-			assert(f_wb_nreqs == (1<<PW));
+			assert(f_nreqs == (1<<PW));
 	end
-
-	initial	f_wb_acks = 0;
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-			f_wb_acks <= 0;
-		else if ((i_wb_ack)||(i_wb_err))
-			f_wb_acks <= f_wb_acks + 1'b1;
 
 	always @(posedge i_clk)
 	begin
 		if ((!o_wb_cyc)&&($past(o_wb_cyc))&&(!$past(i_rst))
 				&&(!$past(i_wb_err)))
-			`ASSUME(f_wb_acks == (1<<PW));
+			`ASSUME(f_nacks == (1<<PW));
+		else if (o_wb_cyc)
+			assert(f_nacks[(PW-1):0] == rdaddr);
+
 	end
 
 	// The last-ack line
 	always @(posedge i_clk)
-	begin
-		if (f_wb_nreqs != (1<<PW))
+		if ((o_wb_cyc)&&(f_nreqs != (1<<PW)))
 			assert(!last_ack);
-	end
 
 	/////////////////////////////////////////////////////
 	//
