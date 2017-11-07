@@ -446,7 +446,9 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	formal_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(2), .F_MAX_ACK_DELAY(3),
-			.F_MAX_REQUESTS((1<<PW)))
+			.F_MAX_REQUESTS((1<<PW)-1), .F_OPT_SOURCE(1),
+			.F_OPT_RMW_BUS_OPTION(0),
+			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_rst,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,

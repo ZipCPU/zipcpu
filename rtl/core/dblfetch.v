@@ -308,7 +308,9 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	// Add a bunch of wishbone-based asserts
 	formal_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
-				.F_MAX_REQUESTS(2))
+				.F_MAX_REQUESTS(2), .F_OPT_SOURCE(1),
+				.F_OPT_RMW_BUS_OPTION(0),
+				.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_rst,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -353,48 +355,25 @@ module	dblfetch(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	/////////////////////////////////////////////////
 
-	reg	[3:0]	f_wb_nreqs, f_wb_acks;
-
-	initial	f_wb_nreqs = 0;
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-			f_wb_nreqs <= 0;
-		else if ((o_wb_stb)&&(!i_wb_stall))
-			f_wb_nreqs <= f_wb_nreqs + 1'b1;
-	always @(posedge i_clk)
-		assert(f_wb_nreqs <= 2);
-
-	initial	f_wb_acks = 0;
-	always @(posedge i_clk)
-		if (!o_wb_cyc)
-			f_wb_acks <= 0;
-		else if ((i_wb_ack)||(i_wb_err))
-			f_wb_acks <= f_wb_acks + 1'b1;
-	always @(posedge i_clk)
-		`ASSUME(f_wb_acks <= 2);
-	// Can't have an ACK or an ERR coming back during the request
-	always @(posedge i_clk)
-		`ASSUME((!o_wb_stb)||((!i_wb_ack)&&(!i_wb_err))||(f_wb_acks < f_wb_nreqs));
-
 	// Grab a copy of the requested address for comparison later
 	reg	[(AW-1):0]	f_wb_req_addr	[0:15];
 	reg	[(DW-1):0]	f_wb_ack_data	[0:15];
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(!invalid_bus_cycle))
 		begin
-			f_wb_req_addr[f_wb_nreqs] <= o_wb_addr;
+			f_wb_req_addr[f_nreqs] <= o_wb_addr;
 
 			// Insist that any subsequent addresses are separated
 			// by one.
-			if (f_wb_nreqs > 0)
-				assert(f_wb_req_addr[f_wb_nreqs-1]
+			if (f_nreqs > 0)
+				assert(f_wb_req_addr[f_nreqs-1]
 					== o_wb_addr - 1);
 		end
 
 	// Grab a copy of the return data (instruction) for comparison later
 	always @(posedge i_clk)
 		if (o_wb_cyc)
-			f_wb_ack_data[f_wb_acks] <= i_wb_data;
+			f_wb_ack_data[f_nacks] <= i_wb_data;
 
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_rst))&&($past(o_wb_cyc))

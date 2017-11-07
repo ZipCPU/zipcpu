@@ -39,7 +39,7 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache busdelay
+TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -77,22 +77,25 @@ MEM    := memops
 MEMBMC := $(MEM)_bmc
 MEMIND := $(MEM)_ind
 
-$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(RTL)/aux/formal_master.v
+MASTER := $(RTL)/aux/formal_master.v
+SLAVE  := $(RTL)/aux/formal_slave.v
+
+$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER)
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
 
-$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(RTL)/aux/formal_master.v
+$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(MASTER)
 	yosys -ql $(PFTWO).yslog -s $(PFTWO).ys
 
-$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(RTL)/aux/formal_master.v
+$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(MASTER)
 	yosys -ql $(PFCACHE).yslog -s $(PFCACHE).ys
 
-$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(RTL)/aux/formal_master.v $(RTL)/aux/formal_slave.v
+$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(MASTER) $(SLAVE)
 	yosys -ql $(WBDLY).yslog -s $(WBDLY).ys
 
-$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(RTL)/aux/formal_master.v $(RTL)/aux/formal_slave.v
+$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(MASTER) $(SLAVE)
 	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
 
-$(MEM).smt2: $(RTL)/core/$(MEM).v $(RTL)/aux/formal_master.v
+$(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER)
 	yosys -ql $(MEM).yslog -s $(MEM).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v

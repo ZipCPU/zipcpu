@@ -180,7 +180,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	always @(posedge i_clk)
 		o_err <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
 				&&(i_wb_err);
-	assign	o_busy = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
+	assign	o_busy = (r_wb_cyc_gbl)||(r_wb_cyc_lcl);
 
 	always @(posedge i_clk)
 		if (i_stb)
@@ -268,7 +268,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	localparam	F_LGDEPTH = 2;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
-	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH))
+	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
+			.F_OPT_RMW_BUS_OPTION(1), .F_OPT_DISCONTINUOUS(1))
 		f_wb(i_clk, i_rst,
 			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -313,12 +314,26 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	// This core only ever has zero or one outstanding transaction(s)
 	always @(posedge i_clk)
-		assert((f_outstanding == 0)||(f_outstanding == 1));
+		if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
+			assert(f_outstanding == 0);
+		else
+			assert((f_outstanding == 0)||(f_outstanding == 1));
 
 	// The LOCK function only allows up to two transactions (at most)
 	// before CYC must be dropped.
 	always @(posedge i_clk)
-		assert((f_nreqs == 0)||(f_nreqs == 1)||(f_nreqs == 2));
+		if (IMPLEMENT_LOCK)
+			assert((f_nreqs == 0)||(f_nreqs == 1)||(f_nreqs == 2));
+		else
+			assert((f_nreqs == 0)||(f_nreqs == 1));
+	always @(posedge i_clk)
+		if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
+		begin
+			if (IMPLEMENT_LOCK)
+				assert((f_nreqs == 0)||(f_nreqs == 1));
+			else
+				assert(f_nreqs == 0);
+		end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(o_busy))
@@ -362,6 +377,14 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			assert($stable(r_op));
 		*/
 	end
+
+	always @(*)
+		if (!IMPLEMENT_LOCK)
+			assume(!i_lock);
+
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(f_cyc))&&($past(!i_lock)))
+			assert(!i_lock);
 
 	// Following any i_stb request, assuming we are idle, immediately
 	// begin a bus transaction

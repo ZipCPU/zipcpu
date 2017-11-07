@@ -305,7 +305,9 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks,
 					f_outstanding;
 	formal_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
-			.F_MAX_REQUESTS(1))
+			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
+			.F_OPT_RMW_BUS_OPTION(0),
+			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_rst,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -428,6 +430,12 @@ module	prefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 		if (o_valid)
 			f_last_pc  <= o_pc;
+		else if (f_last_pc_valid)
+			assert(o_pc == f_last_pc + 1'b1);
+
+	always @(posedge i_clk)
+		if (o_wb_stb)
+			assert(f_nreqs == 0);
 
 	// If we are producing a new result, and no new-pc or clear cache
 	// has come through (i.e. f_last_pc_valid is true), then the resulting

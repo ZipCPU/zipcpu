@@ -191,7 +191,8 @@ module	wbpriarbiter(i_clk,
 	always @(posedge i_clk)
 		f_reset <= 1'b0;
 
-	localparam	F_LGDEPTH=3;
+	parameter	F_LGDEPTH=3;
+
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding,
 			f_a_nreqs, f_a_nacks, f_a_outstanding,
 			f_b_nreqs, f_b_nacks, f_b_outstanding;
