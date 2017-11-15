@@ -199,7 +199,8 @@ module	formal_master(i_clk, i_reset,
 	// If a request was both outstanding and stalled on the last clock,
 	// then nothing should change on this clock regarding it.
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_wb_stb))&&($past(i_wb_stall))&&(i_wb_cyc))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
+			&&($past(i_wb_stall))&&(i_wb_cyc))
 	begin
 		assert(i_wb_stb);
 		assert($stable(f_request));

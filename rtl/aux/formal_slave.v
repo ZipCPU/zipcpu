@@ -109,7 +109,16 @@ module	formal_slave(i_clk, i_reset,
 	output	reg	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks;
 	output	wire	[(F_LGDEPTH-1):0]	f_outstanding;
 
+	//
+	// Let's just make sure our parameters are set up right
+	//
+	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
 
+	//
+	// Wrap the request line in a bundle.  The top bit, named STB_BIT,
+	// is the bit indicating whether the request described by this vector
+	// is a valid request or not.
+	//
 	localparam	STB_BIT = 2+AW+DW+DW/8-1;
 	wire	[STB_BIT:0]	f_request;
 	assign	f_request = { i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel };
@@ -121,6 +130,9 @@ module	formal_slave(i_clk, i_reset,
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
+	always @(*)
+		if (!f_past_valid)
+			assume(i_reset);
 	//
 	//
 	// Assertions regarding the initial (and reset) state
@@ -180,7 +192,8 @@ module	formal_slave(i_clk, i_reset,
 	// If a request was both outstanding and stalled on the last clock,
 	// then nothing should change on this clock regarding it.
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_wb_stb))&&($past(i_wb_stall))&&(i_wb_cyc))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
+			&&($past(i_wb_stall))&&(i_wb_cyc))
 	begin
 		assume(i_wb_stb);
 		assume($stable(f_request));
@@ -223,8 +236,8 @@ module	formal_slave(i_clk, i_reset,
 	end
 
 	// ACK and ERR may never both be true at the same time
-	always @(posedge i_clk)
-		assert((!i_wb_ack)||(!i_wb_err));
+	always @(*)
+		assume((!i_wb_ack)||(!i_wb_err));
 
 	generate if (F_MAX_STALL > 0)
 	begin : MXSTALL
@@ -293,8 +306,6 @@ module	formal_slave(i_clk, i_reset,
 	//
 	assign	f_outstanding = (i_wb_cyc) ? (f_nreqs - f_nacks):0;
 
-	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
-
 	always @(posedge i_clk)
 		if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
 		begin
@@ -323,7 +334,7 @@ module	formal_slave(i_clk, i_reset,
 	// response to a transaction request--whether completed or
 	// not.
 	always @(posedge i_clk)
-		if ((!i_wb_stb)&&(f_outstanding == 0))
+		if ((i_wb_cyc)&&(!i_wb_stb)&&(f_outstanding == 0))
 			assert(!i_wb_err);
 
 	generate if (!F_OPT_RMW_BUS_OPTION)

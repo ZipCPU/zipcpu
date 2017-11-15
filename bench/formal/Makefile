@@ -53,50 +53,37 @@ BMCARGS := --presat $(SOLVER) --unroll
 # BMCARGS := $(SOLVER)
 INDARGS := $(SOLVER) -i
 
-PFONE=prefetch
-PFONEBMC=$(PFONE)_bmc
-PFONEIND=$(PFONE)_ind
-
-PFTWO    := dblfetch
-PFTWOBMC := $(PFTWO)_bmc
-PFTWOIND := $(PFTWO)_ind
-
-PFCACHE    := pfcache
-PFCACHEBMC := $(PFCACHE)_bmc
-PFCACHEIND := $(PFCACHE)_ind
-
-WBDLY    := busdelay
-WBDLYBMC := $(WBDLY)_bmc
-WBDLYIND := $(WBDLY)_ind
-
-PRIARB    := wbpriarbiter
-PRIARBBMC := $(PRIARB)_bmc
-PRIARBIND := $(PRIARB)_ind
-
+PFONE  :=prefetch
+PFTWO  := dblfetch
+PFCACHE:= pfcache
+WBDLY  := busdelay
+PRIARB := wbpriarbiter
 MEM    := memops
-MEMBMC := $(MEM)_bmc
-MEMIND := $(MEM)_ind
+PIPE   := pipemem
 
 MASTER := $(RTL)/aux/formal_master.v
 SLAVE  := $(RTL)/aux/formal_slave.v
 
-$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER)
+$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER) $(PFONE).ys
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
 
-$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(MASTER)
+$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(MASTER) $(PFTWO).ys
 	yosys -ql $(PFTWO).yslog -s $(PFTWO).ys
 
-$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(MASTER)
+$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(MASTER) $(PFCACHE).ys
 	yosys -ql $(PFCACHE).yslog -s $(PFCACHE).ys
 
-$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(MASTER) $(SLAVE)
+$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(MASTER) $(SLAVE) $(WBDLY).ys
 	yosys -ql $(WBDLY).yslog -s $(WBDLY).ys
 
-$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(MASTER) $(SLAVE)
+$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
 	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
 
-$(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER)
+$(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys
 	yosys -ql $(MEM).yslog -s $(MEM).ys
+
+$(PIPE).smt2: $(RTL)/core/$(PIPE).v $(MASTER) $(PIPE).ys
+	yosys -ql $(PIPE).yslog -s $(PIPE).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -104,51 +91,59 @@ $(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER)
 $(PFONE) : $(PFONE).check
 $(PFONE).check: $(PFONE).smt2
 	@rm -f $(PFONE).check
-	$(SMTBMC)    $(BMCARGS) -t 60 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 60 --dump-vcd $(PFONEBMC).vcd $(PFONE).smt2
-	$(SMTBMC)    $(INDARGS) -t 58 --dump-vcd $(PFONEIND).vcd $(PFONE).smt2
+	$(SMTBMC)    $(BMCARGS) -t 60 --dump-vcd $(PFONE).vcd $(PFONE).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 60 --dump-vcd $(PFONE).vcd $(PFONE).smt2
+	$(SMTBMC)    $(INDARGS) -t 58 --dump-vcd $(PFONE).vcd $(PFONE).smt2
 	touch $@
 
 
 $(PFTWO) : $(PFTWO).check
 $(PFTWO).check: $(PFTWO).smt2
 	@rm -f $(PFTWO).check
-	$(SMTBMC) $(BMCARGS) -t 40 --dump-vcd $(PFTWOBMC).vcd $(PFTWO).smt2
-	$(SMTBMC) $(INDARGS) -t 38 --dump-vcd $(PFTWOIND).vcd $(PFTWO).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PFTWOBMC).vcd $(PFTWO).smt2
+	$(SMTBMC) $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
+	$(SMTBMC) $(INDARGS) -t 38 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
 	touch $@
 
 $(PFCACHE) : $(PFCACHE).check
 $(PFCACHE).check: $(PFCACHE).smt2
 	@rm -f $(PFCACHE).check
-	$(SMTBMC) $(BMCARGS) -t 80 --dump-vcd $(PFCACHEBMC).vcd $(PFCACHE).smt2
-	$(SMTBMC) $(INDARGS) -t 76 --dump-vcd $(PFCACHEIND).vcd $(PFCACHE).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 80 --dump-vcd $(PFCACHEBMC).vcd $(PFCACHE).smt2
+	$(SMTBMC) $(BMCARGS) -t 80 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
+	$(SMTBMC) $(INDARGS) -t 76 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 80 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
 	touch $@
 
 
 $(WBDLY) : $(WBDLY).check
 $(WBDLY).check: $(WBDLY).smt2
-	@rm -f $(PFCACHE).check
-	$(SMTBMC)    $(BMCARGS) -t 48 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
-	$(SMTBMC)    $(INDARGS) -t 48 --dump-vcd $(WBDLYIND).vcd $(WBDLY).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 46 --dump-vcd $(WBDLYBMC).vcd $(WBDLY).smt2
+	@rm -f $(WBDLY).check
+	$(SMTBMC)    $(BMCARGS) -t 48 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(INDARGS) -t 48 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 46 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
 	touch $@
 
 $(PRIARB) : $(PRIARB).check
 $(PRIARB).check: $(PRIARB).smt2
-	@rm -f $(PFCACHE).check
-	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(PRIARBBMC).vcd $(PRIARB).smt2
-	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(PRIARBIND).vcd $(PRIARB).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARBBMC).vcd $(PRIARB).smt2
+	@rm -f $(PRIARB).check
+	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
+	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
 	touch $@
 
 $(MEM) : $(MEM).check
 $(MEM).check: $(MEM).smt2
-	@rm -f $(PFCACHE).check
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MEMBMC).vcd $(MEM).smt2
-	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MEMIND).vcd $(MEM).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MEMBMC).vcd $(MEM).smt2
+	@rm -f $(MEM).check
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MEM).vcd $(MEM).smt2
+	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MEM).vcd $(MEM).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MEM).vcd $(MEM).smt2
+	touch $@
+
+$(PIPE) : $(PIPE).check
+$(PIPE).check: $(PIPE).smt2
+	@rm -f $(PIPE).check
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(PIPE).vcd $(PIPE).smt2
+	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(PIPE).vcd $(PIPE).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PIPE).vcd $(PIPE).smt2
 	touch $@
 
 .PHONY: clean
@@ -159,4 +154,5 @@ clean:
 	rm -f $(WBDLY).smt2   $(WBDLY)*.vcd   $(WBDLY).yslog
 	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
 	rm -f $(MEM).smt2     $(MEM)*.vcd     $(MEM).yslog
+	rm -f $(PIPE).smt2    $(PIPE)*.vcd    $(PIPE).yslog
 	rm -f *.check

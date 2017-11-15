@@ -71,7 +71,7 @@ module	busdelay(i_clk, i_reset,
 		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
 			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
 	parameter		AW=32, DW=32;
-	localparam	F_LGDEPTH=4;
+	localparam		F_LGDEPTH=4;
 	parameter	 [0:0]	DELAY_STALL = 1;
 	input	wire			i_clk, i_reset;
 	// Input/master bus
@@ -95,7 +95,6 @@ module	busdelay(i_clk, i_reset,
 
 `ifdef	FORMAL
 	wire	[2+AW+DW+DW/8-1:0]	f_wpending;
-	assign	f_wpending = { r_stb, r_we, r_addr, r_data, r_sel };
 `endif
 
 	generate
@@ -163,7 +162,7 @@ module	busdelay(i_clk, i_reset,
 				r_stb  <= i_wb_stb;
 			end
 
-			if (!i_wb_cyc)
+			if ((!i_wb_cyc)||(i_dly_err)||(o_wb_err))
 			begin
 				o_dly_stb <= 1'b0;
 				r_stb <= 1'b0;
@@ -208,15 +207,20 @@ module	busdelay(i_clk, i_reset,
 		initial	o_wb_err    = 0;
 
 		always @(posedge i_clk)
-			o_dly_cyc <= i_wb_cyc;
+			if ((i_reset)||(i_dly_err))
+				o_dly_cyc <= 1'b0;
+			else
+				o_dly_cyc <= i_wb_cyc;
+
 		// Add the i_wb_cyc criteria here, so we can simplify the
 		// o_wb_stall criteria below, which would otherwise *and*
 		// these two.
 		always @(posedge i_clk)
-			if (i_reset)
+			if ((i_reset)||(i_dly_err)||(!i_wb_cyc))
 				o_dly_stb <= 1'b0;
 			else if (!o_wb_stall)
-				o_dly_stb <= ((i_wb_cyc)&&(i_wb_stb));
+				o_dly_stb <= (i_wb_stb);
+
 		always @(posedge i_clk)
 			if (!o_wb_stall)
 				o_dly_we  <= i_wb_we;
@@ -239,7 +243,7 @@ module	busdelay(i_clk, i_reset,
 		always @(posedge i_clk)
 			if (i_reset)
 				o_wb_err <= 1'b0;
-			else if (!i_dly_cyc)
+			else if (!o_dly_cyc)
 				o_wb_err <= 1'b0;
 			else
 				o_wb_err  <= (o_wb_err)||(i_dly_err)&&(i_wb_cyc);
@@ -250,7 +254,7 @@ module	busdelay(i_clk, i_reset,
 		// there's a way to register this?
 		// o_wb_stall <= (i_wb_cyc)&&(i_wb_stb) ... or some such?
 		// assign o_wb_stall=((i_wb_cyc)&&(i_dly_stall)&&(o_dly_stb));//&&o_cyc
-		assign	o_wb_stall = ((i_dly_stall)&&(o_dly_stb));//&&o_cyc
+		assign	o_wb_stall = (i_dly_stall)&&(o_dly_stb);
 
 `ifdef	FORMAL
 		// f_wpending isn't used if DELAY_STALL is zero, but we'll give
@@ -301,12 +305,12 @@ module	busdelay(i_clk, i_reset,
 				f_dly_nreqs, f_dly_nacks, f_dly_outstanding;
 
 	localparam	ACK_DELAY = 5,
-			STALL_DELAY = 3;
+			STALL_DELAY = 4;
 	formal_slave #(.AW(AW), .DW(DW),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY+1),
 			.F_MAX_ACK_DELAY(ACK_DELAY+1+2*STALL_DELAY),
-			.F_MAX_REQUESTS(64),
+			.F_MAX_REQUESTS((1<<(F_LGDEPTH))-3),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbs(i_clk, i_reset,
@@ -319,7 +323,7 @@ module	busdelay(i_clk, i_reset,
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY),
 			.F_MAX_ACK_DELAY(ACK_DELAY),
-			.F_MAX_REQUESTS(64),
+			.F_MAX_REQUESTS((1<<(F_LGDEPTH))-2),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, i_reset,
@@ -337,13 +341,14 @@ module	busdelay(i_clk, i_reset,
 	initial	f_pending = 0;
 	always @(posedge i_clk)
 	if (!DELAY_STALL)
-	begin end else if ((i_reset)||(!i_wb_cyc))
+		f_pending = 0;
+	else if ((i_reset)||(!i_wb_cyc)||(i_dly_err))
 		f_pending[STB_BIT] <= 1'b0;
 	else if ((i_wb_stb)&&(!o_wb_stall))
 	begin
 		f_pending <= f_wb_request;
 
-		if (!i_dly_stall)
+		if ((!i_dly_stall)||(!o_dly_stb))
 			f_pending[STB_BIT] <= 1'b0;
 
 	end else if ((!i_dly_stall)&&(f_pending[STB_BIT]))
@@ -357,11 +362,15 @@ module	busdelay(i_clk, i_reset,
 	always @(posedge i_clk)
 	if (!DELAY_STALL)
 	begin
-		if ((f_past_valid)&&($past(f_wb_req))&&(!$past(i_reset)))
+		if ((f_past_valid)&&($past(f_wb_req))&&(!$past(i_reset))
+				&&(!o_wb_err))
 			assert(($past(f_wb_request) == f_dly_request));
-		else if ((f_past_valid)&&($past(i_reset)))
-			assert(f_dly_request[STB_BIT] == 1'b0);
-		assert(o_wb_stall == ((o_dly_stb)&&(i_dly_stall)));
+		if ((f_past_valid)&&($past(i_reset)))
+			assert(!o_dly_stb);
+		if ((f_past_valid)&&(!$past(i_wb_cyc)))
+			assert(!o_dly_stb);
+		if ((o_dly_stb)&&(i_dly_stall))
+			assert(o_wb_stall);
 	end else if ((DELAY_STALL)&&(f_past_valid))
 	begin
 		if ($past(i_reset))
@@ -369,7 +378,7 @@ module	busdelay(i_clk, i_reset,
 		if (!$past(f_dly_busy))
 			assert(!f_pending[STB_BIT]);
 		//
-		if ($past(i_reset))
+		if (($past(i_reset))||($past(i_dly_err)))
 		begin
 			assert(!f_pending[STB_BIT]);
 		end else if ($past(f_wb_req))
@@ -389,58 +398,91 @@ module	busdelay(i_clk, i_reset,
 	always @(posedge i_clk)
 		if ((DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset)))
 		begin
-			if (($past(f_dly_busy))&&($past(f_wb_busy)))
+			if (!$past(i_wb_cyc))
+				assert((!f_pending[STB_BIT])
+					&&(!f_wpending[STB_BIT]));
+			else if (($past(f_dly_busy))&&($past(f_wb_busy)))
 				assert(f_pending == f_wpending);
 			else if(($past(f_dly_busy))&&($past(f_pending[STB_BIT])))
 				assert(f_pending == f_wpending);
 		end
 
 	always @(posedge i_clk)
-		if (DELAY_STALL)
+		if ((!DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset))
+				&&($past(i_wb_stb))&&(!$past(o_wb_stall))
+				&&(!o_wb_err))
+			assert(f_dly_request == $past(f_wb_request));
+
+	always @(posedge i_clk)
+		if ((DELAY_STALL)&&(!i_reset)&&(!o_wb_err))
 			assert(f_pending[STB_BIT] == f_wpending[STB_BIT]);
 
 	// Upon any request at the input, there should always be a request
 	// on the output at the very next clock
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_wb_stb))&&(!$past(i_reset)))
-			assert(o_dly_stb);
+		if ((f_past_valid)&&($past(i_wb_stb))&&(i_wb_cyc))
+			assert((o_dly_stb)||(o_wb_err));
+
+	// Following any dropping of CYC or raising of RESET, STB should
+	// go down as well
+	always @(posedge i_clk)
+		if ((f_past_valid)&&(($past(!i_wb_cyc))||($past(i_reset))))
+			assert(!o_dly_stb);
 
 	always @(posedge i_clk)
 		if ((DELAY_STALL)&&(f_past_valid)
 				&&(!$past(i_reset))
 				&&($past(i_wb_cyc))
 				&&($past(f_pending[STB_BIT])))
-			assert(o_dly_stb);
+		begin
+			if ($past(i_dly_err))
+				assert(!o_dly_stb);
+			else
+				assert(o_dly_stb);
+		end
 
 
 	// Make sure we get no more than one ack per request
-
-	always @(posedge i_clk)
-		`ASSUME(f_dly_outstanding <= f_wb_outstanding);
-
-	reg	[2:0]	f_pending_acks;
+	reg	[(F_LGDEPTH-1):0]	f_pending_acks;
 	always @(*)
+	if (DELAY_STALL)
 	begin
 		f_pending_acks <= 0;
 		if ((f_past_valid)
-			&&((i_dly_err)||(i_dly_ack))
+			&&((o_wb_err)||(o_wb_ack))
 			&&(o_dly_cyc))
 			f_pending_acks <= 1;
+	end else
+		f_pending_acks <= (((o_wb_ack)||(o_wb_err)) ? 1:0);
+
+	reg	[(F_LGDEPTH-1):0]	 f_pending_reqs;
+	always @(*)
+	if (DELAY_STALL)
+	begin
+		f_pending_reqs <= ((o_dly_stb) ? 1:0)
+			+ ((f_pending[STB_BIT]) ? 1:0);
+	end else begin
+		f_pending_reqs <= (!f_past_valid) ? 0 :
+			((o_dly_stb) ? 1:0);
 	end
 
-	reg	[2:0]	 f_pending_reqs;
+	reg	[(F_LGDEPTH-1):0]	f_expected, f_exp_nreqs, f_exp_nacks;
 	always @(*)
-	begin
-		f_pending_reqs <= 
-			(((i_wb_stb)
-				&&(!o_wb_stall)) ? 1:0)
-			+ ((o_dly_stb) ? 1:0)
-			+ ((f_pending[STB_BIT]) ? 1:0);
-	end
+		f_expected <= f_dly_outstanding + f_pending_reqs+f_pending_acks;
+	always @(*)
+		f_exp_nreqs<= f_dly_nreqs + f_pending_reqs;
+	always @(*)
+		f_exp_nacks<= f_dly_nacks - f_pending_acks;
 
 	always @(posedge i_clk)
-		`ASSUME(f_dly_outstanding + f_pending_reqs + f_pending_acks
-				== f_wb_outstanding);
+		if ((!i_reset)&&(i_wb_cyc)&&(o_dly_cyc)&&(!i_dly_err))
+			assert(f_expected == f_wb_outstanding);
 
+	always @(posedge i_clk)
+		if ((i_wb_cyc)&&(o_dly_cyc)&&(!i_reset)&&(!i_dly_err))
+		begin
+			assert(f_exp_nreqs == f_wb_nreqs);
+			assert(f_exp_nacks == f_wb_nacks);
+		end
 `endif
 endmodule

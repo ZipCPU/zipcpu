@@ -53,8 +53,10 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
 	parameter	ADDRESS_WIDTH=30;
-	parameter [0:0]	IMPLEMENT_LOCK=1'b0,
-			WITH_LOCAL_BUS=1'b0;
+	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
+			WITH_LOCAL_BUS=1'b1,
+			OPT_ALIGNMENT_ERR=1'b0,
+			OPT_ZERO_ON_IDLE=1'b0;
 	localparam	AW=ADDRESS_WIDTH;
 	input	wire		i_clk, i_rst;
 	input	wire		i_stb, i_lock;
@@ -82,10 +84,27 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
 
+	wire	misaligned;
+	generate if (OPT_ALIGNMENT_ERR)
+	begin : GENERATE_ALIGNMENT_ERR
+		always @(*)
+		casez({ i_op[2:1], i_addr[1:0] })
+		4'b01?1: misaligned <= 1'b1; // Words must be halfword aligned
+		4'b0110: misaligned <= 1'b1; // Words must be word aligned
+		4'b10?1: misaligned <= 1'b1; // Halfwords must be aligned
+		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
+		default: misaligned <= 1'b0;
+		endcase
+	end else
+		assign	misaligned = 1'b0;
+	endgenerate
+
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;
-	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff);
-	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff));
+	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff)
+				&&(!misaligned);
+	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff))
+				&&(!misaligned);
 
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
@@ -113,7 +132,9 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		else if (o_wb_cyc_gbl)
 			o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
 		else
-			o_wb_stb_gbl <= gbl_stb; // Grab wishbone on new operation
+			// Grab wishbone on any new transaction to the gbl bus
+			o_wb_stb_gbl <= gbl_stb;
+
 	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
 		if ((i_rst)||((i_wb_err)&&(r_wb_cyc_lcl)))
@@ -121,56 +142,57 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		else if (o_wb_cyc_lcl)
 			o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
 		else
-			o_wb_stb_lcl  <= lcl_stb; // Grab wishbone on new operation
+			// Grab wishbone on any new transaction to the lcl bus
+			o_wb_stb_lcl  <= lcl_stb;
 
 	reg	[3:0]	r_op;
 	initial	o_wb_we = 1'b0;
 	always @(posedge i_clk)
-		if (i_stb)
+	if (i_stb)
+	begin
+		o_wb_we   <= i_op[0];
+		if (OPT_ZERO_ON_IDLE)
 		begin
-			o_wb_we   <= i_op[0];
 			casez({ i_op[2:1], i_addr[1:0] })
-`ifdef	ZERO_ON_IDLE
 			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
 			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
 			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
 			4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
 			4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
 			4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
-`else
+			default: o_wb_data <= i_data;
+			endcase
+		end else
+			casez({ i_op[2:1], i_addr[1:0] })
 			4'b10??: o_wb_data <= { (2){ i_data[15:0] } };
 			4'b11??: o_wb_data <= { (4){ i_data[7:0] } };
-`endif
 			default: o_wb_data <= i_data;
 			endcase
 
-			o_wb_addr <= i_addr[(AW+1):2];
+		o_wb_addr <= i_addr[(AW+1):2];
 `ifdef	SET_SEL_ON_READ
-			if (i_op[0] == 1'b0)
-				o_wb_sel <= 4'hf;
-			else
+		if (i_op[0] == 1'b0)
+			o_wb_sel <= 4'hf;
+		else
 `endif
-			casez({ i_op[2:1], i_addr[1:0] })
-			4'b01??: o_wb_sel <= 4'b1111;
-			4'b100?: o_wb_sel <= 4'b1100;
-			4'b101?: o_wb_sel <= 4'b0011;
-			4'b1100: o_wb_sel <= 4'b1000;
-			4'b1101: o_wb_sel <= 4'b0100;
-			4'b1110: o_wb_sel <= 4'b0010;
-			4'b1111: o_wb_sel <= 4'b0001;
-			default: o_wb_sel <= 4'b1111;
-			endcase
-			r_op <= { i_op[2:1] , i_addr[1:0] };
-		end
-`ifdef	ZERO_ON_IDLE
-		else if ((!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
-		begin
-			o_wb_we   <= 1'b0;
-			o_wb_addr <= 0;
-			o_wb_data <= 32'h0;
-			o_wb_sel  <= 4'h0;
-		end
-`endif
+		casez({ i_op[2:1], i_addr[1:0] })
+		4'b01??: o_wb_sel <= 4'b1111;
+		4'b100?: o_wb_sel <= 4'b1100;
+		4'b101?: o_wb_sel <= 4'b0011;
+		4'b1100: o_wb_sel <= 4'b1000;
+		4'b1101: o_wb_sel <= 4'b0100;
+		4'b1110: o_wb_sel <= 4'b0010;
+		4'b1111: o_wb_sel <= 4'b0001;
+		default: o_wb_sel <= 4'b1111;
+		endcase
+		r_op <= { i_op[2:1] , i_addr[1:0] };
+	end else if ((OPT_ZERO_ON_IDLE)&&(!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
+	begin
+		o_wb_we   <= 1'b0;
+		o_wb_addr <= 0;
+		o_wb_data <= 32'h0;
+		o_wb_sel  <= 4'h0;
+	end
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
@@ -178,19 +200,22 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 				&&(i_wb_ack)&&(!o_wb_we);
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
-		o_err <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
-				&&(i_wb_err);
+		if (i_rst)
+			o_err <= 1'b0;
+		else if ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
+			o_err <= i_wb_err;
+		else
+			o_err <= ((i_stb)&&(misaligned));
+
 	assign	o_busy = (r_wb_cyc_gbl)||(r_wb_cyc_lcl);
 
 	always @(posedge i_clk)
 		if (i_stb)
 			o_wreg    <= i_oreg;
 	always @(posedge i_clk)
-`ifdef	ZERO_ON_IDLE
-		if (!i_wb_ack)
-			o_result <= 32'h0;
-		else
-`endif
+	if ((OPT_ZERO_ON_IDLE)&&(!i_wb_ack))
+		o_result <= 32'h0;
+	else begin
 		casez(r_op)
 		4'b01??: o_result <= i_wb_data;
 		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
@@ -201,6 +226,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		default: o_result <= i_wb_data;
 		endcase
+	end
 
 	generate
 	if (IMPLEMENT_LOCK != 0)
@@ -212,8 +238,15 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 		always @(posedge i_clk)
 		begin
-			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+			if ((i_rst)||((i_wb_err)&&
+					((r_wb_cyc_gbl)||(r_wb_cyc_lcl))))
+			begin
+				lock_gbl <= 1'b0;
+				lock_lcl <= 1'b0;
+			end else begin
+				lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
+				lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+			end
 		end
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
@@ -259,6 +292,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		assume($stable(i_stb));
 		assume($stable(i_addr));
 		assume($stable(i_op));
+		assume($stable(i_lock));
 	end
 
 	wire	f_cyc, f_stb;
@@ -269,7 +303,8 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
 	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_RMW_BUS_OPTION(1), .F_OPT_DISCONTINUOUS(1))
+			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
+			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
 		f_wb(i_clk, i_rst,
 			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -307,10 +342,10 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	// STB can never be true unless CYC is also true
 	always @(posedge i_clk)
 		if (o_wb_stb_gbl)
-			assert(o_wb_cyc_gbl);
+			assert(r_wb_cyc_gbl);
 	always @(posedge i_clk)
 		if (o_wb_stb_lcl)
-			assert(o_wb_cyc_lcl);
+			assert(r_wb_cyc_lcl);
 
 	// This core only ever has zero or one outstanding transaction(s)
 	always @(posedge i_clk)
@@ -384,7 +419,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(f_cyc))&&($past(!i_lock)))
-			assert(!i_lock);
+			assume(!i_lock);
 
 	// Following any i_stb request, assuming we are idle, immediately
 	// begin a bus transaction
@@ -396,6 +431,10 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			assert(f_cyc);
 			assert(o_busy);
 		end
+
+	always @(posedge i_clk)
+		if (f_outstanding > 0)
+			assert(o_busy);
 
 	// If a transaction ends in an error, send o_err on the output port.
 	always @(posedge i_clk)
@@ -489,5 +528,42 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		`ASSUME($past(i_op[2:1] != 2'b00));
 	end
 
+	always @(posedge i_clk)
+		if ((i_stb)&&(f_cyc)&&(WITH_LOCAL_BUS))
+		begin
+			`ASSUME((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
+			`ASSUME((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
+		end
+
+	always @(posedge i_clk)
+		if (o_wb_stb_lcl)
+			assert(o_wb_addr[29:22] == 8'hff);
+
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(i_stb))&&($past(misaligned)))
+		begin
+			assert(!o_wb_cyc_gbl);
+			assert(!o_wb_cyc_lcl);
+			assert(!o_wb_stb_gbl);
+			assert(!o_wb_stb_lcl);
+			assert(o_err);
+			//OPT_ALIGNMENT_ERR=1'b0,
+			//OPT_ZERO_ON_IDLE=1'b0;
+		end
 `endif
 endmodule
+//
+//
+// Usage (from yosys):
+//		(BFOR)	(!ZOI,ALIGN)	(ZOI,ALIGN)	(!ZOI,!ALIGN)
+//	Cells	 230		220		273		218
+//	  FDRE	 114		116		116		116
+//	  LUT2	  17		 23		 77		 23
+//	  LUT3	   9		 24		  1		 24
+//	  LUT4	  15		  2		 10		  2
+//	  LUT5	  18		 20		 14		 19
+//	  LUT6	  33		 24		 54		 23
+//	  MUX7	  16		 10		  1		 10
+//	  MUX8	   8		  1				  1
+//
+//

@@ -3,5 +3,5 @@ read_verilog -D BUSDELAY -formal ../../rtl/aux/formal_slave.v
 read_verilog -D BUSDELAY -formal ../../rtl/aux/formal_master.v
 prep -top busdelay -nordff
 clk2fflogic
-opt clean
+opt -share_all
 write_smt2 -wires busdelay.smt2

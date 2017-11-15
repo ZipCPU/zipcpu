@@ -109,6 +109,8 @@ module	wbarbiter(i_clk, i_rst,
 	// starting another cycle.  Specifically, no new cycles will be
 	// allowed to begin unless r_cyc=0.
 	reg	r_cyc;
+
+	initial	r_cyc = 1'b0;
 	always @(posedge i_clk)
 		if (i_rst)
 			r_cyc <= 1'b0;
@@ -121,7 +123,8 @@ module	wbarbiter(i_clk, i_rst,
 	//	We were just high and the owner no longer wants the bus
 	// WISHBONE Spec recommends no logic between a FF and the o_cyc
 	//	This violates that spec.  (Rec 3.15, p35)
-	assign o_cyc = ((~r_cyc)&&((i_a_cyc)||(i_b_cyc))) || ((r_cyc)&&((w_a_owner)||(w_b_owner)));
+	assign o_cyc = ((!r_cyc)&&((i_a_cyc)||(i_b_cyc)))
+			||((r_cyc)&&((w_a_owner)||(w_b_owner)));
 
 
 	// Register keeping track of the last owner, wire keeping track of the
@@ -133,6 +136,8 @@ module	wbarbiter(i_clk, i_rst,
 	reg	r_a_last_owner;
 
 `endif
+	initial	r_a_owner = 1'b0;
+	initial	r_b_owner = 1'b0;
 	always @(posedge i_clk)
 		if (i_rst)
 		begin
@@ -163,13 +168,13 @@ module	wbarbiter(i_clk, i_rst,
 `ifdef	WBA_ALTERNATING
 	assign w_a_owner = (i_a_cyc)	// if A requests ownership, and either
 			&& ((r_a_owner) // A has already been recognized or
-			|| ((~r_cyc) // the bus is free and
-				&&((~i_b_cyc) // B has not requested, or if he 
-				||(~r_a_last_owner)) )); // has, it's A's turn
-	assign w_b_owner = (i_b_cyc)&& ((r_b_owner) || ((~r_cyc)&&((~i_a_cyc)||(r_a_last_owner)) ));
+			|| ((!r_cyc) // the bus is free and
+				&&((!i_b_cyc) // B has not requested, or if he 
+				||(!r_a_last_owner)) )); // has, it's A's turn
+	assign w_b_owner = (i_b_cyc)&& ((r_b_owner) || ((!r_cyc)&&((!i_a_cyc)||(r_a_last_owner)) ));
 `else
-	assign w_a_owner = (i_a_cyc)&& ((r_a_owner) ||  (~r_cyc) );
-	assign w_b_owner = (i_b_cyc)&& ((r_b_owner) || ((~r_cyc)&&(~i_a_cyc)) );
+	assign w_a_owner = (i_a_cyc)&& ((r_a_owner) ||  (!r_cyc) );
+	assign w_b_owner = (i_b_cyc)&& ((r_b_owner) || ((!r_cyc)&&(!i_a_cyc)) );
 `endif
 
 	// Realistically, if neither master owns the bus, the output is a
@@ -199,5 +204,133 @@ module	wbarbiter(i_clk, i_rst,
 	assign	o_a_err = (w_a_owner) ? i_err : 1'b0;
 	assign	o_b_err = (w_b_owner) ? i_err : 1'b0;
 
+
+`ifdef	FORMAL
+
+`ifdef	WBARBITER
+	reg	f_last_clk;
+	initial	assume(!i_clk);
+	always @($global_clock)
+	begin
+		assume(i_clk != f_last_clk);
+		f_last_clk <= i_clk;
+	end
+`define	`ASSUME	assume
+`else
+`define	`ASSUME	assert
+`endif
+
+	reg	f_past_valid;
+	initial	f_past_valid = 1'b0;
+	always @($global_clock)
+		f_past_valid <= 1'b1;
+
+	initial	assume(!i_a_cyc);
+	initial	assume(!i_a_stb);
+
+	initial	assume(!i_b_cyc);
+	initial	assume(!i_b_stb);
+
+	initial	assume(!i_ack);
+	initial	assume(!i_err);
+
+	always @(posedge i_clk)
+	begin
+		if (o_cyc)
+			assert((i_a_cyc)||(i_b_cyc));
+		if ((f_past_valid)&&($past(o_cyc))&&(o_cyc))
+		begin
+			assert($past(w_a_owner) == w_a_owner);
+			assert($past(w_b_owner) == w_b_owner);
+		end
+`ifdef	WBA_ALTERNATING
+		if ((f_past_valid)&&($past(!o_cyc))&&($past(i_a_cyc)))
+			assert(r_a_owner);
+`endif
+	end
+
+	reg	f_reset;
+	initial	f_reset = 1'b1;
+	always @(posedge i_clk)
+		f_reset <= 1'b0;
+
+	parameter	F_LGDEPTH=3;
+
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding,
+			f_a_nreqs, f_a_nacks, f_a_outstanding,
+			f_b_nreqs, f_b_nacks, f_b_outstanding;
+
+	formal_master #(.DW(DW), .AW(AW),
+			.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbm(i_clk, f_reset,
+			o_cyc, o_stb, o_we, o_adr, o_dat, o_sel,
+			i_ack, i_stall, 32'h0, i_err,
+			f_nreqs, f_nacks, f_outstanding);
+	formal_slave  #(.DW(DW), .AW(AW),
+			.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wba(i_clk, f_reset,
+			i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+			o_a_ack, o_a_stall, 32'h0, o_a_err,
+			f_a_nreqs, f_a_nacks, f_a_outstanding);
+	formal_slave  #(.DW(DW), .AW(AW),
+			.F_MAX_STALL(0),
+			.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_ACK_DELAY(0),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(1))
+		f_wbb(i_clk, f_reset,
+			i_b_cyc, i_b_stb, i_b_we, i_b_adr, i_b_dat, i_b_sel,
+			o_b_ack, o_b_stall, 32'h0, o_b_err,
+			f_b_nreqs, f_b_nacks, f_b_outstanding);
+
+	always @(posedge i_clk)
+		if (w_a_owner)
+		begin
+			assert(f_b_nreqs == 0);
+			assert(f_b_nacks == 0);
+			assert(f_a_outstanding == f_outstanding);
+		end else if (w_b_owner) begin
+			assert(f_a_nreqs == 0);
+			assert(f_a_nacks == 0);
+			assert(f_b_outstanding == f_outstanding);
+		end
+
+	always @(posedge i_clk)
+		if ((w_a_owner)&&(i_b_cyc))
+			restrict(i_b_stb);
+
+	always @(posedge i_clk)
+		if ((w_b_owner)&&(i_a_cyc))
+			restrict(i_a_stb);
+
+	always @(posedge i_clk)
+		assert((!r_a_owner)||(!r_b_owner));
+
+	always @(posedge i_clk)
+		assert((!w_a_owner)||(!w_b_owner));
+
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(o_cyc))&&(!$past(i_rst)))
+			assert(r_cyc);
+
+	always @(posedge i_clk)
+		if (!f_past_valid)
+			assume(i_rst);
+
+	always @(posedge i_clk)
+		if ((!f_past_valid)||((f_past_valid)&&($past(i_rst))))
+		begin
+			assume(!i_a_cyc);
+			assume(!i_b_cyc);
+		end
+`endif
 endmodule
 
