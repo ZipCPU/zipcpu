@@ -95,8 +95,8 @@ public:
 
 	void	dbgdump(void) {
 		char	outstr[2048], *s;
-		sprintf(outstr, "Tick %4ld %s%s%s%s%s%s%s %2d(%s= 0)",
-			m_tickcount,
+		sprintf(outstr, "Tick %4lld %s%s%s%s%s%s%s %2d(%s= 0)",
+			(unsigned long long)m_tickcount,
 			(m_core->o_busy)?"B":" ",
 			(m_core->r_busy)?"R":" ",
 			(m_core->o_valid)?"V":" ",
