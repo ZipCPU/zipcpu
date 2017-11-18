@@ -1,3 +1,4 @@
 *.check
 *.smt2
 *.yslog
+*.blif
