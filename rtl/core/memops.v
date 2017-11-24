@@ -302,7 +302,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	localparam	F_LGDEPTH = 2;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
-	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
+	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
 		f_wb(i_clk, i_rst,

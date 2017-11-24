@@ -1,4 +1,4 @@
-read_verilog -D PREFETCH -formal ../../rtl/aux/formal_master.v
+read_verilog -D PREFETCH -formal ../../rtl/aux/fwb_master.v
 read_verilog -D PREFETCH -formal ../../rtl/core/prefetch.v
 prep -top prefetch -nordff
 clk2fflogic

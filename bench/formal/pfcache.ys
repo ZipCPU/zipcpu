@@ -1,5 +1,5 @@
 read_verilog -D PFCACHE -formal ../../rtl/core/pfcache.v
-read_verilog -D PFCACHE -formal ../../rtl/aux/formal_master.v
+read_verilog -D PFCACHE -formal ../../rtl/aux/fwb_master.v
 prep -top pfcache -nordff
 clk2fflogic
 opt -share_all

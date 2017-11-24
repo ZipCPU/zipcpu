@@ -1,4 +1,4 @@
-read_verilog -D PIPEMEM -formal ../../rtl/aux/formal_master.v
+read_verilog -D PIPEMEM -formal ../../rtl/aux/fwb_master.v
 read_verilog -D PIPEMEM -formal ../../rtl/core/pipemem.v
 prep -top pipemem -nordff
 clk2fflogic

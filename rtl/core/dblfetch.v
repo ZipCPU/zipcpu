@@ -299,7 +299,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
 	// Add a bunch of wishbone-based asserts
-	formal_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
+	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
 				.F_MAX_REQUESTS(2), .F_OPT_SOURCE(1),
 				.F_OPT_RMW_BUS_OPTION(0),
 				.F_OPT_DISCONTINUOUS(0))

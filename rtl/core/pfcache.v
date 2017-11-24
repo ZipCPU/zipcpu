@@ -444,7 +444,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	localparam	F_LGDEPTH=PW+1;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
-	formal_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
+	fwb_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(2), .F_MAX_ACK_DELAY(3),
 			.F_MAX_REQUESTS((1<<PW)-1), .F_OPT_SOURCE(1),
 			.F_OPT_RMW_BUS_OPTION(0),

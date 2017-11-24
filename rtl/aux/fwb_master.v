@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	formal_master.v
+// Filename:	fwb_master.v
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -57,7 +57,7 @@
 //
 `default_nettype none
 //
-module	formal_master(i_clk, i_reset,
+module	fwb_master(i_clk, i_reset,
 		// The Wishbone bus
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_idata, i_wb_err,

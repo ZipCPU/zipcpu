@@ -306,7 +306,7 @@ module	busdelay(i_clk, i_reset,
 
 	localparam	ACK_DELAY = 5,
 			STALL_DELAY = 4;
-	formal_slave #(.AW(AW), .DW(DW),
+	fwb_slave #(.AW(AW), .DW(DW),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY+1),
 			.F_MAX_ACK_DELAY(ACK_DELAY+1+2*STALL_DELAY),
@@ -319,7 +319,7 @@ module	busdelay(i_clk, i_reset,
 			o_wb_ack, o_wb_stall, o_wb_data, o_wb_err,
 			f_wb_nreqs, f_wb_nacks, f_wb_outstanding);
 
-	formal_master #(.AW(AW), .DW(DW),
+	fwb_master #(.AW(AW), .DW(DW),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY),
 			.F_MAX_ACK_DELAY(ACK_DELAY),

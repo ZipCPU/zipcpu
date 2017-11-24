@@ -342,7 +342,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
 
-	formal_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
+	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))

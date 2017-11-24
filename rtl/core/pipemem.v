@@ -317,7 +317,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	localparam	F_LGDEPTH=5;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
-	formal_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
+	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS(14),
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))

@@ -1,4 +1,4 @@
-read_verilog -D MEMOPS -formal ../../rtl/aux/formal_master.v
+read_verilog -D MEMOPS -formal ../../rtl/aux/fwb_master.v
 read_verilog -D MEMOPS -formal ../../rtl/core/memops.v
 prep -top memops
 clk2fflogic

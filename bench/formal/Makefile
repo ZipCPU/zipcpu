@@ -39,7 +39,7 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops
+TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops pipemem
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -61,8 +61,8 @@ PRIARB := wbpriarbiter
 MEM    := memops
 PIPE   := pipemem
 
-MASTER := $(RTL)/aux/formal_master.v
-SLAVE  := $(RTL)/aux/formal_slave.v
+MASTER := $(RTL)/aux/fwb_master.v
+SLAVE  := $(RTL)/aux/fwb_slave.v
 
 $(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER) $(PFONE).ys
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
