@@ -356,13 +356,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	[31:0]	div_result;
 	wire	[3:0]	div_flags;
 
-	assign	div_ce = (master_ce)&&(!clear_pipeline)&&(op_valid_div)
-				&&(!mem_rdbusy)&&(!div_busy)&&(!fpu_busy)
-				&&(set_cond);
-
 	wire	fpu_ce, fpu_error, fpu_busy, fpu_valid;
 	wire	[31:0]	fpu_result;
 	wire	[3:0]	fpu_flags;
+
+	assign	div_ce = (master_ce)&&(!clear_pipeline)&&(op_valid_div)
+				&&(!mem_rdbusy)&&(!div_busy)&&(!fpu_busy)
+				&&(set_cond);
 
 	assign	fpu_ce = (master_ce)&&(!clear_pipeline)&&(op_valid_fpu)
 				&&(!mem_rdbusy)&&(!div_busy)&&(!fpu_busy)
