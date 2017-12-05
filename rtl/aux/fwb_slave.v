@@ -132,7 +132,7 @@ module	fwb_slave(i_clk, i_reset,
 		f_past_valid <= 1'b1;
 	always @(*)
 		if (!f_past_valid)
-			assume(i_reset);
+			assert(i_reset);
 	//
 	//
 	// Assertions regarding the initial (and reset) state
@@ -141,7 +141,7 @@ module	fwb_slave(i_clk, i_reset,
 
 	//
 	// Assume we start from a reset condition
-	initial assume(i_reset);
+	initial assert(i_reset);
 	initial assume(!i_wb_cyc);
 	initial assume(!i_wb_stb);
 	//
@@ -162,9 +162,9 @@ module	fwb_slave(i_clk, i_reset,
 	always @($global_clock)
 	if ((f_past_valid)&&(!$rose(i_clk)))
 	begin
-		assume($stable(i_reset));
+		assert($stable(i_reset));
 		assume($stable(i_wb_cyc));
-		assume($stable(f_request));
+		assume($stable(f_request)); // The entire request should b stabl
 		//
 		assert($stable(i_wb_ack));
 		assert($stable(i_wb_stall));
@@ -227,7 +227,7 @@ module	fwb_slave(i_clk, i_reset,
 	// If CYC was low on the last clock, then both ACK and ERR should be
 	// low on this clock.
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_wb_cyc)))
+	if ((f_past_valid)&&(!$past(i_wb_cyc))&&(!i_wb_cyc))
 	begin
 		assert(!i_wb_ack);
 		assert(!i_wb_err);
@@ -280,7 +280,7 @@ module	fwb_slave(i_clk, i_reset,
 	end endgenerate
 
 	//
-	// Count the number of requests that have been receied
+	// Count the number of requests that have been received
 	//
 	initial	f_nreqs = 0;
 	always @(posedge i_clk)
@@ -322,20 +322,14 @@ module	fwb_slave(i_clk, i_reset,
 		if ((i_wb_cyc)&&(f_outstanding == 0))
 		begin
 			// If nothing is outstanding, then there should be
-			// no acknowledgements
-			assert(!i_wb_ack);
-			// The same is not true of errors.  It may be that an
-			// error is created before the request gets through
-			// assert(!i_wb_err);
+			// no acknowledgements ... however, an acknowledgement
+			// *can* come back on the same clock as the stb is
+			// going out.
+			assert((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
+			// The same is true of errors.  They may not be
+			// created before the request gets through
+			assert((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
 		end
-
-	// While the error signal may be asserted immediately before
-	// anything is outstanding, it may only be asserted in
-	// response to a transaction request--whether completed or
-	// not.
-	always @(posedge i_clk)
-		if ((i_wb_cyc)&&(!i_wb_stb)&&(f_outstanding == 0))
-			assert(!i_wb_err);
 
 	generate if (!F_OPT_RMW_BUS_OPTION)
 	begin

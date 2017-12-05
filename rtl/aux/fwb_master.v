@@ -171,7 +171,10 @@ module	fwb_master(i_clk, i_reset,
 	begin
 		assert($stable(i_reset));
 		assert($stable(i_wb_cyc));
-		assert($stable(f_request)); // The entire request should b stabl
+		if (i_wb_we)
+			assert($stable(f_request)); // The entire request should b stabl
+		else
+			assert($stable(f_request[(2+AW-1):(DW+DW/8)]));
 		//
 		assume($stable(i_wb_ack));
 		assume($stable(i_wb_stall));
@@ -234,7 +237,7 @@ module	fwb_master(i_clk, i_reset,
 	// If CYC was low on the last clock, then both ACK and ERR should be
 	// low on this clock.
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_wb_cyc)))
+	if ((f_past_valid)&&(!$past(i_wb_cyc))&&(!i_wb_cyc))
 	begin
 		assume(!i_wb_ack);
 		assume(!i_wb_err);
@@ -329,21 +332,14 @@ module	fwb_master(i_clk, i_reset,
 		if ((i_wb_cyc)&&(f_outstanding == 0))
 		begin
 			// If nothing is outstanding, then there should be
-			// no acknowledgements
-			assume(!i_wb_ack);
-			// The same is not true of errors.  It may be that an
-			// error is created before the request gets through
-			// assume(!i_wb_err);
+			// no acknowledgements ... however, an acknowledgement
+			// *can* come back on the same clock as the stb is
+			// going out.
+			assume((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
+			// The same is true of errors.  They may not be
+			// created before the request gets through
+			assume((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
 		end
-
-	// While the error signal may be asserted immediately before
-	// anything is outstanding, it may only be asserted in
-	// response to a transaction request--whether completed or
-	// not.
-	always @(posedge i_clk)
-		if ((!i_wb_stb)&&(f_outstanding == 0))
-			assume(!i_wb_err);
-
 
 	generate if (F_OPT_SOURCE)
 	begin : SRC
