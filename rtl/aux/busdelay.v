@@ -121,7 +121,8 @@ module	busdelay(i_clk, i_reset,
 		initial	o_wb_err   = 1'b0;
 		always @(posedge i_clk)
 		begin
-			o_dly_cyc <= (i_wb_cyc)&&(!i_reset)&&(!o_wb_err)&&(!i_dly_err);
+			o_dly_cyc <= (i_wb_cyc)&&(!i_reset)&&(!o_wb_err)
+				&&((!i_dly_err)||(!o_dly_cyc));
 	
 			if (!i_dly_stall)
 			begin
@@ -162,7 +163,7 @@ module	busdelay(i_clk, i_reset,
 				r_stb  <= i_wb_stb;
 			end
 
-			if ((!i_wb_cyc)||(i_dly_err)||(o_wb_err))
+			if ((!i_wb_cyc)||((i_dly_err)&&(o_dly_cyc))||(o_wb_err))
 			begin
 				o_dly_stb <= 1'b0;
 				r_stb <= 1'b0;
