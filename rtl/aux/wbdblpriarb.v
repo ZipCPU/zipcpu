@@ -107,9 +107,10 @@ module	wbdblpriarb(i_clk, i_rst,
 	//
 	// The CYC logic is here to make certain that, by the time we determine
 	// who the bus owner is, we can do so based upon determined criteria.
+	reg	r_a_owner;
+
 	assign o_cyc_a = ((r_a_owner) ? i_a_cyc_a : i_b_cyc_a);
 	assign o_cyc_b = ((r_a_owner) ? i_a_cyc_b : i_b_cyc_b);
-	reg	r_a_owner;
 	initial	r_a_owner = 1'b1;
 	always @(posedge i_clk)
 		if (i_rst)
