@@ -48,7 +48,7 @@ SMTBMC  := yosys-smtbmc
 # SOLVER  := -s z3
 SOLVER  := -s yices
 # SOLVER  := -s boolector
-BMCARGS := --presat $(SOLVER) --unroll
+BMCARGS := --presat $(SOLVER)
 # BMCARGS := $(SOLVER) --unroll
 # BMCARGS := $(SOLVER)
 INDARGS := $(SOLVER) -i
@@ -60,6 +60,7 @@ WBDLY  := busdelay
 PRIARB := wbpriarbiter
 MEM    := memops
 PIPE   := pipemem
+MMU    := zipmmu
 
 MASTER := $(RTL)/aux/fwb_master.v
 SLAVE  := $(RTL)/aux/fwb_slave.v
@@ -84,6 +85,9 @@ $(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys
 
 $(PIPE).smt2: $(RTL)/core/$(PIPE).v $(MASTER) $(PIPE).ys
 	yosys -ql $(PIPE).yslog -s $(PIPE).ys
+
+$(MMU).smt2: $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE) $(MMU).ys
+	yosys -ql $(MMU).yslog -s $(MMU).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -146,6 +150,14 @@ $(PIPE).check: $(PIPE).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PIPE).vcd $(PIPE).smt2
 	touch $@
 
+$(MMU) : $(MMU).check
+$(MMU).check: $(MMU).smt2
+	@rm -f $(MMU).check
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MMU).vcd $(MMU).smt2
+	touch $@
+
 .PHONY: clean
 clean:
 	rm -f $(PFONE).smt2   $(PFONE)*.vcd   $(PFONE).yslog
@@ -155,4 +167,5 @@ clean:
 	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
 	rm -f $(MEM).smt2     $(MEM)*.vcd     $(MEM).yslog
 	rm -f $(PIPE).smt2    $(PIPE)*.vcd    $(PIPE).yslog
+	rm -f $(MMU).smt2     $(MMU)*.vcd     $(MMU).yslog
 	rm -f *.check
