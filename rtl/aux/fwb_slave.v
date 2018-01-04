@@ -81,6 +81,15 @@ module	fwb_slave(i_clk, i_reset,
 	parameter	[0:0]	F_OPT_DISCONTINUOUS = 0;
 	//
 	//
+	// If true, insist that there be a minimum of a single clock delay
+	// between request and response.  This defaults to off since the
+	// wishbone specification specifically doesn't require this.  However,
+	// some interfaces do, so we allow it as an option here.
+	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
+	//
+	//
+	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b1;
+	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
 	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
 				? F_MAX_STALL : F_MAX_ACK_DELAY;
@@ -159,18 +168,21 @@ module	fwb_slave(i_clk, i_reset,
 	end
 
 	// Things can only change on the positive edge of the clock
-	always @($global_clock)
-	if ((f_past_valid)&&(!$rose(i_clk)))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		assert($stable(i_reset));
-		assume($stable(i_wb_cyc));
-		assume($stable(f_request)); // The entire request should b stabl
-		//
-		assert($stable(i_wb_ack));
-		assert($stable(i_wb_stall));
-		assert($stable(i_wb_idata));
-		assert($stable(i_wb_err));
-	end
+		always @($global_clock)
+		if ((f_past_valid)&&(!$rose(i_clk)))
+		begin
+			assert($stable(i_reset));
+			assume($stable(i_wb_cyc));
+			assume($stable(f_request)); // The entire request should b stabl
+			//
+			assert($stable(i_wb_ack));
+			assert($stable(i_wb_stall));
+			assert($stable(i_wb_idata));
+			assert($stable(i_wb_err));
+		end
+	end endgenerate
 
 	//
 	//
@@ -196,7 +208,11 @@ module	fwb_slave(i_clk, i_reset,
 			&&($past(i_wb_stall))&&(i_wb_cyc))
 	begin
 		assume(i_wb_stb);
-		assume($stable(f_request));
+		assume(i_wb_we   == $past(i_wb_we));
+		assume(i_wb_addr == $past(i_wb_addr));
+		assume(i_wb_sel  == $past(i_wb_sel));
+		if (i_wb_we)
+			assume(i_wb_data == $past(i_wb_data));
 	end
 
 	// Within any series of STB/requests, the direction of the request
@@ -271,7 +287,8 @@ module	fwb_slave(i_clk, i_reset,
 		initial	f_ackwait_count = 0;
 		always @(posedge i_clk)
 			if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
-					&&(!i_wb_ack)&&(!i_wb_err))
+					&&(!i_wb_ack)&&(!i_wb_err)
+					&&(f_outstanding > 0))
 			begin
 				f_ackwait_count <= f_ackwait_count + 1'b1;
 				assert(f_ackwait_count < F_MAX_ACK_DELAY);
@@ -325,10 +342,16 @@ module	fwb_slave(i_clk, i_reset,
 			// no acknowledgements ... however, an acknowledgement
 			// *can* come back on the same clock as the stb is
 			// going out.
-			assert((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
-			// The same is true of errors.  They may not be
-			// created before the request gets through
-			assert((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
+			if (F_OPT_MINCLOCK_DELAY)
+			begin
+				assert(!i_wb_ack);
+				assert(!i_wb_err);
+			end else begin
+				assert((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
+				// The same is true of errors.  They may not be
+				// created before the request gets through
+				assert((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
+			end
 		end
 
 	generate if (!F_OPT_RMW_BUS_OPTION)
