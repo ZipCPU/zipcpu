@@ -44,7 +44,8 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 			i_stall_n, i_pc, o_i, o_pc, o_v,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
-			o_illegal);
+			o_illegal,
+		i_mmu_ack, i_mmu_we, i_mmu_paddr);
 	parameter	LGCACHELEN = 5, ADDRESS_WIDTH=24,
 			LGLINES=2; // Log of the number of separate cache lines
 	localparam	CACHELEN=(1<<LGCACHELEN); // Size of our cache memory
@@ -69,12 +70,23 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	input	wire	[(BUSW-1):0]	i_wb_data;
 	//
 	output	reg			o_illegal;
+	//
+	input	wire			i_mmu_ack, i_mmu_we;
+	input	wire	[(PAW-1):0]	i_mmu_paddr;
 
 	// Fixed bus outputs: we read from the bus only, never write.
 	// Thus the output data is ... irrelevant and don't care.  We set it
 	// to zero just to set it to something.
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 0;
+
+	// These wires will be used below as part of the cache invalidation
+	// routine, should the MMU be used.  This allows us to snoop on the
+	// physical side of the MMU bus, and invalidate any results should
+	// we need to do so.
+	wire			mmu_inval;
+	wire	[(PAW-CW-1):0]	mmu_mskaddr;
+
 
 	wire			r_v;
 	reg	[(BUSW-1):0]	cache	[0:((1<<CW)-1)];
@@ -297,11 +309,71 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 				vmask[saddr] <= (!bus_abort);
 			if ((!o_wb_cyc)&&(needload))
 				vmask[lastpc[(CW-1):PW]] <= 1'b0;
+			//
+			// MMU code
+			//
+			if (mmu_inval)
+				vmask[mmu_mskadr] <= 1'b0;
 		end
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(i_wb_ack))
 			saddr <= rdaddr[(CW-1):PW];
 
+	//
+	//
+	// MMU code
+	//
+	//
+	parameter	[0:0]	USE_MMU = 1'b1;
+	generate if (USE_MMU)
+	begin
+		reg	[(PAW-CW-1):0]	ptag	[0:((1<<(LGLINES))-1)];
+		reg			mmu_pre_inval, r_mmu_inval;
+		reg	[(PAW-CW-1):0]	mmu_pre_tag, mmu_pre_padr;
+		reg	[(CW-PW-1):0]	r_mmu_mskadr;
+
+		initial	mmu_pre_inval   = 0;
+		initial	mmu_pre_tag     = 0;
+		initial	mmu_pre_padr    = 0;
+		initial	mmu_pre2_inval  = 0;
+		initial	mmu_pre2_mskadr = 0;
+
+		always @(posedge i_clk)
+		if ((o_wb_cyc)&&(!last_addr)&&(i_mmu_ack))
+			ptag[i_mmu_paddr[(CW-1):PW]] <= i_mmu_paddr[(PAW-1):CW];
+
+		always @(posedge i_clk)
+		if (i_reset)
+		begin
+			mmu_pre_inval <= 0;
+			r_mmu_inval     <= 0;
+		end else begin
+			mmu_pre_inval <= (i_mmu_ack)&&(i_mmu_we);
+			r_mmu_inval  <= (mmu_pre_inval)&&(mmu_pre_inval)
+						&&(mmu_pre_tag == mmu_pre_paddr);
+		end
+
+		always @(posedge i_clk)
+			mmu_pre_tag   <= ptag[i_mmu_paddr[(CW-1):PW]];
+
+		always @(posedge i_clk)
+		begin
+			mmu_pre_padr  <= i_mmu_paddr[(PAW-1):CW];
+	
+			r_mmu_mskadr <= mmu_pre_padr[(PAW-PW-1):(CW-PW)];
+		end
+
+		assign	mmu_inval  = r_mmu_inval;
+		assign	mmu_mskadr = r_mmu_mskadr;
+	end else begin
+		assign	mmu_inval  = 0;
+		assign	mmu_mskadr = 0;
+	end endgenerate
+
+	//
+	//
+	//
+	//
 	initial	illegal_cache = 0;
 	initial	illegal_valid = 0;
 	always @(posedge i_clk)
