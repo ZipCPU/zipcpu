@@ -61,6 +61,7 @@ module	wbpriarbiter(i_clk,
 	// Both buses
 	o_cyc, o_stb, o_we, o_adr, o_dat, o_sel, i_ack, i_stall, i_err);
 	parameter			DW=32, AW=32;
+	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	input	wire			i_clk;
 	// Bus A
@@ -150,13 +151,16 @@ module	wbpriarbiter(i_clk,
 `ifdef	FORMAL
 
 `ifdef	WBPRIARBITER
-	reg	f_last_clk;
-	initial	assume(!i_clk);
-	always @($global_clock)
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		assume(i_clk != f_last_clk);
-		f_last_clk <= i_clk;
-	end
+		reg	f_last_clk;
+		initial	assume(!i_clk);
+		always @($global_clock)
+		begin
+			assume(i_clk != f_last_clk);
+			f_last_clk <= i_clk;
+		end
+	end endgenerate
 `define	`ASSUME	assume
 `else
 `define	`ASSUME	assert
@@ -164,7 +168,7 @@ module	wbpriarbiter(i_clk,
 
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
-	always @($global_clock)
+	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
 	initial	assume(!i_a_cyc);
@@ -190,6 +194,9 @@ module	wbpriarbiter(i_clk,
 	initial	f_reset = 1'b1;
 	always @(posedge i_clk)
 		f_reset <= 1'b0;
+	always @(*)
+		if (!f_past_valid)
+			assert(f_reset);
 
 	parameter	F_LGDEPTH=3;
 
@@ -200,6 +207,7 @@ module	wbpriarbiter(i_clk,
 	fwb_master #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, f_reset,
@@ -209,6 +217,7 @@ module	wbpriarbiter(i_clk,
 	fwb_slave  #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba(i_clk, f_reset,
@@ -218,6 +227,7 @@ module	wbpriarbiter(i_clk,
 	fwb_slave  #(.F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb(i_clk, f_reset,

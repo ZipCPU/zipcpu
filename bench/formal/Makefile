@@ -39,7 +39,7 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops pipemem
+TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops pipemem zipmmu
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl

@@ -66,6 +66,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
 		o_illegal);
 	parameter		ADDRESS_WIDTH=32, AUX_WIDTH = 1;
+	parameter	[0:0]	F_OPT_CLK2FFLOGIC=1'b0;
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
 	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
 						i_stall_n;
@@ -230,16 +231,20 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 `define	STEP_CLOCK
 `endif
 
-	// Assume a clock
-	reg	f_last_clk, f_past_valid;
-	always @($global_clock)
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		`STEP_CLOCK
-		f_last_clk <= i_clk;
-	end
+		// Assume a clock
+		reg	f_last_clk;
+		always @($global_clock)
+		begin
+			`STEP_CLOCK
+			f_last_clk <= i_clk;
+		end
+	end endgenerate
 
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
+ 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
@@ -252,24 +257,31 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	/////////////////////////////////////////////////
 
+	always @(*)
+		if (!f_past_valid)
+			`ASSUME(i_reset);
+
 	//
 	// Nothing changes, but on the positive edge of a clock
 	//
-	always @($global_clock)
-	if (!$rose(i_clk))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		// Control inputs from the CPU
-		`ASSUME($stable(i_reset));
-		`ASSUME($stable(i_new_pc));
-		`ASSUME($stable(i_clear_cache));
-		`ASSUME($stable(i_stall_n));
-		`ASSUME($stable(i_pc));
-		// Wishbone inputs
-		`ASSUME($stable(i_wb_ack));
-		`ASSUME($stable(i_wb_stall));
-		`ASSUME($stable(i_wb_err));
-		`ASSUME($stable(i_wb_data));
-	end
+		always @($global_clock)
+		if (!$rose(i_clk))
+		begin
+			// Control inputs from the CPU
+			`ASSUME($stable(i_reset));
+			`ASSUME($stable(i_new_pc));
+			`ASSUME($stable(i_clear_cache));
+			`ASSUME($stable(i_stall_n));
+			`ASSUME($stable(i_pc));
+			// Wishbone inputs
+			`ASSUME($stable(i_wb_ack));
+			`ASSUME($stable(i_wb_stall));
+			`ASSUME($stable(i_wb_err));
+			`ASSUME($stable(i_wb_data));
+		end
+	end endgenerate
 
 
 `ifdef	DBLFETCH
@@ -301,6 +313,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Add a bunch of wishbone-based asserts
 	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
 				.F_MAX_REQUESTS(2), .F_OPT_SOURCE(1),
+				.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 				.F_OPT_RMW_BUS_OPTION(0),
 				.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,

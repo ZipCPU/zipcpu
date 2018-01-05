@@ -39,21 +39,25 @@
 //
 `default_nettype	none
 //
-module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
+module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 			// i_early_branch, i_from_addr,
 			i_stall_n, i_pc, o_i, o_pc, o_v,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
-			o_illegal,
-		i_mmu_ack, i_mmu_we, i_mmu_paddr);
+			o_illegal
+`ifdef	NOT_YET_READY
+		, i_mmu_ack, i_mmu_we, i_mmu_paddr
+`endif
+		);
 	parameter	LGCACHELEN = 5, ADDRESS_WIDTH=24,
 			LGLINES=2; // Log of the number of separate cache lines
+	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam	CACHELEN=(1<<LGCACHELEN); // Size of our cache memory
 	localparam	CW=LGCACHELEN;	// Short hand for LGCACHELEN
 	localparam	PW=LGCACHELEN-LGLINES; // Size of a cache line
 	localparam	BUSW = 32;	// Number of data lines on the bus
 	localparam	AW=ADDRESS_WIDTH; // Shorthand for ADDRESS_WIDTH
-	input	wire			i_clk, i_rst, i_new_pc;
+	input	wire			i_clk, i_reset, i_new_pc;
 	input	wire			i_clear_cache;
 	input	wire			i_stall_n;
 	input	wire	[(AW-1):0]	i_pc;
@@ -71,8 +75,10 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	output	reg			o_illegal;
 	//
+`ifdef	NOT_YET_READY
 	input	wire			i_mmu_ack, i_mmu_we;
 	input	wire	[(PAW-1):0]	i_mmu_paddr;
+`endif
 
 	// Fixed bus outputs: we read from the bus only, never write.
 	// Thus the output data is ... irrelevant and don't care.  We set it
@@ -80,12 +86,14 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 0;
 
+`ifdef	NOT_YET_READY
 	// These wires will be used below as part of the cache invalidation
 	// routine, should the MMU be used.  This allows us to snoop on the
 	// physical side of the MMU bus, and invalidate any results should
 	// we need to do so.
 	wire			mmu_inval;
 	wire	[(PAW-CW-1):0]	mmu_mskaddr;
+`endif
 
 
 	wire			r_v;
@@ -172,7 +180,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	initial	delay = 2'h3;
 	reg	rvsrc;
 	always @(posedge i_clk)
-		if ((i_rst)||(i_clear_cache)||(i_new_pc)||((r_v)&&(i_stall_n)))
+		if ((i_reset)||(i_clear_cache)||(i_new_pc)||((r_v)&&(i_stall_n)))
 		begin
 			// r_v <= r_v_from_pc;
 			rvsrc <= 1'b1;
@@ -189,7 +197,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	reg	r_new_request;
 	wire	w_new_request;
 	initial	r_new_request = 0;
-	assign	w_new_request = (i_rst)||(i_new_pc)||(i_clear_cache);
+	assign	w_new_request = (i_reset)||(i_new_pc)||(i_clear_cache);
 	always @(posedge i_clk)
 		r_new_request <= w_new_request;
 	always @(posedge i_clk)
@@ -200,7 +208,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last))&&(!r_new_request);
 	assign	o_v = (((rvsrc)?(r_v_from_pc):(r_v_from_last))
 				||((o_illegal)&&(!o_wb_cyc)))
-			&&(!i_new_pc)&&(!i_rst)&&(!i_clear_cache);
+			&&(!i_new_pc)&&(!i_reset)&&(!i_clear_cache);
 
 	reg	last_ack;
 	initial	last_ack = 1'b0;
@@ -239,7 +247,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	initial	o_wb_addr = {(AW){1'b0}};
 	initial	rdaddr    = 0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (i_reset)
 		begin
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
@@ -297,7 +305,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	initial	svmask = 1'b0;
 	reg	[(LGLINES-1):0]	saddr;
 	always @(posedge i_clk)
-		if ((i_rst)||(i_clear_cache))
+		if ((i_reset)||(i_clear_cache))
 		begin
 			vmask <= 0;
 			svmask<= 1'b0;
@@ -309,11 +317,13 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 				vmask[saddr] <= (!bus_abort);
 			if ((!o_wb_cyc)&&(needload))
 				vmask[lastpc[(CW-1):PW]] <= 1'b0;
+`ifdef	NOT_YET_READY
 			//
 			// MMU code
 			//
 			if (mmu_inval)
 				vmask[mmu_mskadr] <= 1'b0;
+`endif
 		end
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(i_wb_ack))
@@ -324,6 +334,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	// MMU code
 	//
 	//
+`ifdef	NOT_YET_READY
 	parameter	[0:0]	USE_MMU = 1'b1;
 	generate if (USE_MMU)
 	begin
@@ -369,6 +380,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 		assign	mmu_inval  = 0;
 		assign	mmu_mskadr = 0;
 	end endgenerate
+`endif
 
 	//
 	//
@@ -377,7 +389,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	initial	illegal_cache = 0;
 	initial	illegal_valid = 0;
 	always @(posedge i_clk)
-		if ((i_rst)||(i_clear_cache))
+		if ((i_reset)||(i_clear_cache))
 		begin
 			illegal_cache <= 0;
 			illegal_valid <= 0;
@@ -409,19 +421,26 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 `define	STEP_CLOCK
 `endif
 
-	// Assume a clock
-	reg	f_last_clk, f_past_valid;
-	always @($global_clock)
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		`STEP_CLOCK
-		f_last_clk <= i_clk;
-	end
+		// Assume a clock
+		reg	f_last_clk;
+		always @($global_clock)
+		begin
+			`STEP_CLOCK
+			f_last_clk <= i_clk;
+		end
+	end endgenerate
 
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
+	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
+	always @(*)
+		if (!f_past_valid)
+			`ASSUME(i_reset);
 
 	/////////////////////////////////////////////////
 	//
@@ -434,21 +453,24 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	// Nothing changes, but on the positive edge of a clock
 	//
-	always @($global_clock)
-	if (!$rose(i_clk))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		// Control inputs from the CPU
-		`ASSUME($stable(i_rst));
-		`ASSUME($stable(i_new_pc));
-		`ASSUME($stable(i_clear_cache));
-		`ASSUME($stable(i_stall_n));
-		`ASSUME($stable(i_pc));
-		// Wishbone inputs
-		`ASSUME($stable(i_wb_ack));
-		`ASSUME($stable(i_wb_stall));
-		`ASSUME($stable(i_wb_err));
-		`ASSUME($stable(i_wb_data));
-	end
+		always @($global_clock)
+		if (!$rose(i_clk))
+		begin
+			// Control inputs from the CPU
+			`ASSUME($stable(i_reset));
+			`ASSUME($stable(i_new_pc));
+			`ASSUME($stable(i_clear_cache));
+			`ASSUME($stable(i_stall_n));
+			`ASSUME($stable(i_pc));
+			// Wishbone inputs
+			`ASSUME($stable(i_wb_ack));
+			`ASSUME($stable(i_wb_stall));
+			`ASSUME($stable(i_wb_err));
+			`ASSUME($stable(i_wb_data));
+		end
+	end endgenerate
 
 
 `ifdef	PFCACHE
@@ -461,8 +483,8 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if (f_past_valid)
 	begin
-		if ($past(i_rst))
-			restrict(!i_rst);
+		if ($past(i_reset))
+			restrict(!i_reset);
 		if ($past(i_new_pc))
 			restrict(!i_new_pc);
 		if ($past(i_clear_cache))
@@ -472,12 +494,12 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	//
 	// Assume we start from a reset condition
-	initial	`ASSUME(i_rst);
+	initial	`ASSUME(i_reset);
 
 	// Assume that any reset is either accompanied by a new address,
 	// or a new address immediately follows it.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_rst)))
+		if ((f_past_valid)&&(!$past(i_reset)))
 			`ASSUME((i_new_pc)||($past(i_new_pc)));
 	//
 	// Let's make some assumptions about how long it takes our
@@ -519,9 +541,10 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	fwb_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(2), .F_MAX_ACK_DELAY(3),
 			.F_MAX_REQUESTS((1<<PW)-1), .F_OPT_SOURCE(1),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))
-		f_wbm(i_clk, i_rst,
+		f_wbm(i_clk, i_reset,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 			f_nreqs, f_nacks, f_outstanding);
@@ -537,13 +560,13 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 		if ((o_wb_cyc)&&(o_wb_stb))
 			assert(f_nreqs == o_wb_addr[(PW-1):0]);
 		if ((f_past_valid)&&($past(o_wb_cyc))
-			&&(!o_wb_stb)&&(!$past(i_wb_err))&&(!$past(i_rst)))
+			&&(!o_wb_stb)&&(!$past(i_wb_err))&&(!$past(i_reset)))
 			assert(f_nreqs == (1<<PW));
 	end
 
 	always @(posedge i_clk)
 	begin
-		if ((!o_wb_cyc)&&($past(o_wb_cyc))&&(!$past(i_rst))
+		if ((!o_wb_cyc)&&($past(o_wb_cyc))&&(!$past(i_reset))
 				&&(!$past(i_wb_err)))
 			`ASSUME(f_nacks == (1<<PW));
 		else if (o_wb_cyc)
@@ -564,16 +587,19 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 	//
 	/////////////////////////////////////////////////////
 
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_rst))
-			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
-			&&($past(o_v))&&(!$past(i_stall_n)))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		assert($stable(o_pc));
-		assert($stable(o_i));
-		assert($stable(o_v));
-		assert($stable(o_illegal));
-	end
+		always @(posedge i_clk)
+		if ((f_past_valid)&&(!$past(i_reset))
+				&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
+				&&($past(o_v))&&(!$past(i_stall_n)))
+		begin
+			assert($stable(o_pc));
+			assert($stable(o_i));
+			assert($stable(o_v));
+			assert($stable(o_illegal));
+		end
+	end endgenerate
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc)))
@@ -596,7 +622,7 @@ module	pfcache(i_clk, i_rst, i_new_pc, i_clear_cache,
 
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(o_v)&&($past(o_v))
-			&&(!$past(i_rst))
+			&&(!$past(i_reset))
 			&&(!$past(i_new_pc))
 			&&(!$past(i_stall_n)))
 		begin

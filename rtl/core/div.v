@@ -151,9 +151,9 @@ module	div(i_clk, i_rst, i_wr, i_signed, i_numerator, i_denominator,
 			o_busy <= 1'b0;
 		else if (i_wr)
 			o_busy <= 1'b1;
-		else if (((last_bit)&&(~r_sign))||(zero_divisor))
+		else if (((last_bit)&&(!r_sign))||(zero_divisor))
 			o_busy <= 1'b0;
-		else if (~r_busy)
+		else if (!r_busy)
 			o_busy <= 1'b0;
 
 	// If we are asked to divide by zero, we need to halt.  The sooner
@@ -351,4 +351,36 @@ module	div(i_clk, i_rst, i_wr, i_signed, i_numerator, i_denominator,
 	assign w_n = o_quotient[(BW-1)];
 
 	assign o_flags = { 1'b0, w_n, r_c, r_z };
+
+`ifdef	FORMAL
+	reg	f_past_valid;
+	initial	f_past_valid = 0;
+	always @(posedge i_clk)
+		f_past_valid <= 1'b1;
+
+	// A formal methods section
+	//
+	// This section isn't yet complete.  For now, it is just
+	// a description of things I think should be in here ... not
+	// yet a description of what it would take to prove
+	// this divide (yet).
+	always @(posedge i_clk)
+		if (o_err)
+			assert(o_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_valid)))
+		assert(!o_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(r_busy))&&(!$past(i_wr)))
+		assert(!o_busy);
+	always @(posedge i_clk)
+		assert((!o_busy)||(!o_valid));
+	always @(posedge i_clk)
+		if(o_busy) `ASSUME(!i_wr);
+	always @(posedge i_clk)
+		if(r_busy) assert(o_busy);
+
+`endif
 endmodule

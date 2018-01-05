@@ -218,7 +218,7 @@
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				i_wbs_data, o_wbs_ack, o_wbs_stall, o_wbs_data,
 		i_wbm_cyc, i_wbm_stb, i_wbm_we,
-			i_wbm_addr, i_wbm_data, i_wbm_sel,
+			i_wbm_addr, i_wbm_data, i_wbm_sel, i_gie,
 		o_cyc, o_stb, o_we, o_addr, o_data, o_sel,
 			i_stall, i_ack, i_err, i_data,
 			o_rtn_stall, o_rtn_ack, o_rtn_err,
@@ -283,6 +283,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	input	wire [(DW-2-1):0]	i_wbm_addr;
 	input	wire [(DW-1):0]		i_wbm_data;
 	input	wire [(DW/8-1):0]	i_wbm_sel;
+	input	wire			i_gie;
 	//
 	// Here's where we drive the slave side of the bus
 	output	reg			o_cyc;
@@ -330,6 +331,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	assign	wr_ptable  = (adr_ptable )&&(i_wbs_we);
 
 	reg			z_context;
+	wire			gie_context;
 	reg	[(LGCTXT-1):0]	r_context_word;
 	//
 	wire	[31:0]		w_control_data,w_vtable_reg,w_ptable_reg;
@@ -373,7 +375,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
 		// Otherwise, keep track of the accessed bit if we
 		// ever access this page
-		else if ((!z_context)&&(s_pending)&&(s_tlb_hit)&&((!r_we)||(!ro_flag)))
+		else if ((!gie_context)&&(s_pending)&&(s_tlb_hit)&&((!r_we)||(!ro_flag)))
 			tlb_flags[s_tlb_addr][2] <= 1'b1;
 		if (wr_vtable)
 			tlb_cdata[wr_tlb_addr][((LGCTXT>=8)? 7:(LGCTXT-1)):0]
@@ -391,6 +393,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		r_context_word <= i_wbs_data[(LGCTXT-1):0];
 		z_context      <= (i_wbs_data[(LGCTXT-1):0] == {(LGCTXT){1'b0}});
 		end
+	assign	gie_context = (z_context)||(!i_gie);
 	// Status words cannot be written to
 
 	/* v*rilator lint_off WIDTH */
@@ -459,14 +462,14 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		begin
 			r_pending <= i_wbm_stb;
 			r_we      <= i_wbm_we;
-			o_addr    <= { { (z_context)?
+			o_addr    <= { { (gie_context)?
 				i_wbm_addr[(AW-1):LGPGSZW] : last_ppage },
 				i_wbm_addr[(LGPGSZW-1):0]};
 			r_addr    <= i_wbm_addr;
 			r_data    <= i_wbm_data;
 			r_sel     <= i_wbm_sel;
 			r_valid   <= (i_wbm_stb)&&(
-				(z_context)
+				(gie_context)
 				||((last_page_valid)
 					&&(i_wbm_addr[(DW-3):(DW-2-VAW)] == last_vpage)
 					&&((!last_ro)||(!i_wbm_we))));
@@ -477,7 +480,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 					&&((!last_ro)||(!r_we)));
 			o_addr <= { last_ppage , i_wbm_addr[(LGPGSZW-1):0] };
 			r_pending<= (r_pending);
-			s_pending <=(r_pending)&&(!z_context);
+			s_pending <=(r_pending)&&(!gie_context);
 		end
 
 		if ((i_reset)||(!i_wbm_cyc)||(o_rtn_err)||((o_cyc)&&(i_err)))
@@ -497,7 +500,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			// Virtual address must match
 			((tlb_vdata[k] == r_addr[(DW-3):(DW-2-VAW)])
 			// Context must match as well
-				&&(tlb_cdata[k] == r_context_word));
+				&&(tlb_cdata[k][LGCTXT-1:1] == r_context_word[LGCTXT-1:1]))
+				&&((!tlb_cdata[k][0])||(r_context_word[0]));
 	endgenerate
 
 	initial	s_tlb_miss = 1'b0;
@@ -541,7 +545,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		p_tlb_err  <= (!i_reset)&&(i_wbm_cyc)&&(s_pending)&&(!s_tlb_miss)&&(!s_tlb_hit);
 
 		pf_cachable <= cachable;
-		if ((!z_context)&&(r_pending)&&(!last_page_valid))
+		if ((!gie_context)&&(r_pending)&&(!last_page_valid))
 		begin
 			last_ppage <= tlb_pdata[s_tlb_addr];
 			last_vpage <= tlb_vdata[s_tlb_addr];
@@ -556,10 +560,10 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				
 		if ((i_wbs_cyc_stb)&&(i_wbs_we))
 			last_page_valid <= 1'b0;
-		else if ((!o_rtn_stall)&&(!z_context))
+		else if ((!o_rtn_stall)&&(!gie_context))
 			last_page_valid <= (last_page_valid)
 					&&(i_wbm_addr[(DW-3):(DW-2-VAW)] == last_vpage);
-		else if ((r_pending)&&(!z_context)&&(!last_page_valid))
+		else if ((r_pending)&&(!gie_context)&&(!last_page_valid))
 			last_page_valid <= (s_tlb_hit)&&(!ro_miss);
 
 		if (i_reset)
@@ -754,6 +758,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	always @(*)
 		assert(z_context == (r_context_word == 0));
+	always @(*)
+		assert(gie_context == ( ((r_context_word == 0)||(!i_gie)) ? 1'b1 : 1'b0));
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_wbs_cyc_stb)))
 		assume(!i_wbm_cyc);
@@ -761,7 +767,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(posedge i_clk)
 		assert((!i_wbm_cyc)||(!o_wbs_ack));
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(r_pending)&&($past(z_context))
+	if ((f_past_valid)&&(r_pending)&&($past(gie_context))
 			&&($past(i_wbm_stb))&&(!$past(i_stall))&&(i_wbm_cyc))
 		assert(o_addr[(AW-1):0] == $past(i_wbm_addr[(AW-1):0]));
 	always @(*)
@@ -783,7 +789,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		if (!$past(i_wbm_we))
 			assert(!ro_miss);
 
-		if (!z_context)
+		if (!gie_context)
 		begin
 			assert((!o_stb)||(!(simple_miss|ro_miss|table_err)));
 			// This doesn't belong on the clear list, but on the
@@ -796,13 +802,13 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wbm_cyc))
 			&&(!$past(o_rtn_stall)))
 	begin
-		if ((!z_context)&&(o_stb))
+		if ((!$past(gie_context))&&(o_stb))
 			assert((last_page_valid)||(s_tlb_hit));
 	end
 
 	reg	[(LGTBL-1):0]		f_last_page;
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!z_context)&&(r_pending)&&(!last_page_valid))
+	if ((f_past_valid)&&(!gie_context)&&(r_pending)&&(!last_page_valid))
 		f_last_page <= s_tlb_addr;
 
 	always @(*)
@@ -811,17 +817,32 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		assert(last_ppage == tlb_pdata[f_last_page]);
 		assert(last_vpage == tlb_vdata[f_last_page]);
 		assert(last_ro    == tlb_flags[f_last_page][3]);
+		assert(r_context_word[LGCTXT-1:1] == tlb_cdata[f_last_page][LGCTXT-1:1]);
+		if (!r_context_word[0])
+			assert(!tlb_cdata[f_last_page][0]);
+		assert((!r_context_word[0])||(r_context_word[0]));
 	end
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_stb))&&(o_stb))
-		assert((last_page_valid)||(z_context));
+	if ((f_past_valid)&&($past(o_stb))&&(o_stb)&&(i_wbm_cyc))
+		assert((last_page_valid)||(gie_context));
 
 	always @(*)
 		assert((!s_tlb_hit)||(!s_tlb_miss));
 	// always @(*)
-	// if ((fp_outstanding > 0)&&(o_cyc)&&(!o_stb)&&(!r_pending)&&(!z_context))
+	// if ((fp_outstanding > 0)&&(o_cyc)&&(!o_stb)&&(!r_pending)&&(!gie_context))
 		// assert(last_page_valid);
-	// always @(*) assume(z_context);
+	// always @(*) assume(gie_context);
+	always @(*)
+		assume((!i_wbs_cyc_stb)||(!i_gie));
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(bus_pending))
+		assume(i_gie == $past(i_gie));
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(i_wbm_cyc)&&($past(i_wbm_cyc)))
+		assume(i_gie == $past(i_gie));
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset)))
+		assume(!i_gie);
 `endif
 endmodule

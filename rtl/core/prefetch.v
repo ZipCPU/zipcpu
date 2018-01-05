@@ -62,6 +62,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
+	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam		AW=ADDRESS_WIDTH,
 				DW=DATA_WIDTH;
 	input	wire			i_clk, i_reset;
@@ -264,19 +265,25 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	// Nothing changes, but on the positive edge of a clock
 	//
-	always @($global_clock)
-	if (!$rose(i_clk))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		// Control inputs from the CPU
-		`ASSUME($stable(i_reset));
-		`ASSUME($stable(i_new_pc));
-		`ASSUME($stable(i_clear_cache));
-		`ASSUME($stable(i_stalled_n));
-		`ASSUME($stable(i_pc));
-	end
+		always @($global_clock)
+		if (!$rose(i_clk))
+		begin
+			// Control inputs from the CPU
+			`ASSUME($stable(i_reset));
+			`ASSUME($stable(i_new_pc));
+			`ASSUME($stable(i_clear_cache));
+			`ASSUME($stable(i_stalled_n));
+			`ASSUME($stable(i_pc));
+		end
+	end endgenerate
 
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_reset);
+	always @(*)
+		if (!f_past_valid)
+			`ASSUME(i_reset);
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset
 	always @(posedge i_clk)
@@ -344,6 +351,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
@@ -375,7 +383,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_valid))&&(o_valid))
-			assert($stable(o_wb_addr));
+			assert(o_wb_addr == $past(o_wb_addr));
 
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(!i_reset))&&($past(invalid)))
@@ -430,7 +438,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
 			&&($past(o_valid))&&(!$past(i_stalled_n)))
-		assert($stable(o_valid));
+		assert(o_valid == $past(o_valid));
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_valid))&&(o_valid))
@@ -449,7 +457,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
 			&&($past(!o_wb_cyc)))
-		assert($stable(o_illegal));
+		assert(o_illegal == $past(o_illegal));
 
 
 	//

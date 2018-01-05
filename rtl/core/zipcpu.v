@@ -356,13 +356,13 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	wire	[31:0]	div_result;
 	wire	[3:0]	div_flags;
 
+	wire		fpu_ce, fpu_error, fpu_busy, fpu_valid;
+	wire	[31:0]	fpu_result;
+	wire	[3:0]	fpu_flags;
+
 	assign	div_ce = (master_ce)&&(!clear_pipeline)&&(op_valid_div)
 				&&(!mem_rdbusy)&&(!div_busy)&&(!fpu_busy)
 				&&(set_cond);
-
-	wire	fpu_ce, fpu_error, fpu_busy, fpu_valid;
-	wire	[31:0]	fpu_result;
-	wire	[3:0]	fpu_flags;
 
 	assign	fpu_ce = (master_ce)&&(!clear_pipeline)&&(op_valid_fpu)
 				&&(!mem_rdbusy)&&(!div_busy)&&(!fpu_busy)
@@ -905,7 +905,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign op_lock       = 1'b0;
 `endif
 
-`ifdef	OPT_ILLEGAL_INSTRUCTION
 	initial	op_illegal = 1'b0;
 	always @(posedge i_clk)
 		if (clear_pipeline)
@@ -918,7 +917,6 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 `endif
 		else if(alu_ce)
 			op_illegal <= 1'b0;
-`endif
 
 	always @(posedge i_clk)
 		if (op_ce)
@@ -2042,6 +2040,130 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 		assign generic_ignore = wr_spreg_vl[31:(AW+2)];
 	end endgenerate
 	// verilator lint_on  UNUSED
+	//}}}
+
+	// Formal methods
+	//{{{
+`ifdef	FORMAL
+	//
+	// Formal methods section
+	//
+	// This is only a beginning of my formal methods work.
+	// It is not (yet) complete nor sufficient to prove that
+	// the properties within this section hold.
+	//
+	// Assertions about the prefetch
+	// Assertions about the decode stage
+	// dcd_ce, dcd_valid
+	wire	[1+4+15+6+4+13+AW+1+32+4+23-1:0]	f_dcd_data;
+	assign	f_dcd_data = {
+			dcd_phase,
+			dcd_opn, dcd_A, dcd_B, dcd_R,	// 4+15
+			dcd_Acc, dcd_Bcc, dcd_Apc, dcd_Bpc, dcd_Rcc, dcd_Rpc,//6
+			dcd_F,		// 4
+			dcd_wR, dcd_rA, dcd_rB,
+				dcd_ALU, dcd_M, dcd_DIV, dcd_FP,
+				dcd_wF, dcd_gie, dcd_break, dcd_lock,
+				dcd_pipe, dcd_ljmp,
+			dcd_pc, 	// AW+1
+			dcd_I,		// 32
+			dcd_zI,	// true if dcd_I == 0
+			dcd_illegal,
+			dcd_early_branch,
+			dcd_sim, dcd_sim_immv
+		};
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(clear_pipeline))
+			&&(dcd_valid)&&(dcd_stalled))
+	begin
+		assert($stable(dcd_valid));
+		assert($stable(f_dcd_data));
+	end
+
+
+	//
+
+	// Assertions about the op stage
+	// op_valid
+	// op_ce
+	// op_stall
+	wire	[4+64+AW+2+7+4-1:0]	f_op_data;
+	assign	f_op_data = { op_valid_mem, op_valid_alu,
+			op_valid_div, op_valid_fpu,
+			r_op_Av, r_op_Bv,	// 32 ea
+			op_pc,			// AW
+			op_wR, op_wF,
+			r_op_F,			// 7
+			op_illegal, op_break,
+			op_lock, op_pipe
+			};
+
+	always @(posedge i_clk)
+	if (op_valid)
+	begin
+		assert((op_valid_mem)|(op_valid_alu)
+			(op_valid_div)|(op_valid_fpu));
+		if (op_valid_mem)
+			assert(3'b000=={op_valid_alu, op_valid_div, op_valid_fpu });
+		else if (op_valid_alu)
+			assert(2'b00 =={op_valid_div, op_valid_fpu });
+		else if (op_valid_div)
+			assert(!op_valid_fpu);
+	end else
+		assert(!op_illegal);
+
+	always @(posedge i_clk)
+		if ((f_past_valid)&&($past(op_valid))&&(!$past(clear_pipeline)))
+		begin
+			if (($past(op_valid_mem))&&($past(mem_stalled)))
+				assert($stable(f_op_data));
+			if (($past(op_valid_alu))&&($past(alu_stalled)))
+				assert($stable(f_op_data));
+			if (($past(op_valid_div))&&($past(div_stalled)))
+				assert($stable(f_op_data));
+		end
+	always @(posedge i_clk)
+		if (!master_ce)
+		begin
+			assert((!op_valid_mem)||(mem_stalled));
+			assert((!op_valid_alu)||(alu_stalled));
+			assert((!op_valid_div)||(div_stalled));
+			// assert((!op_valid_fpu)||(fpu_stalled));
+		end
+
+	// ALU stage assertions
+	always @(posedge i_clk)
+		if (alu_busy)
+		begin
+			assert(!mem_rdbusy);
+			assert(!div_busy);
+			assert(!fpu_busy);
+		end else if (mem_rdbusy)
+		begin
+			assert(!div_busy);
+			assert(!fpu_busy);
+		end else if (div_busy)
+			assert(!fpu_busy);
+
+	// Writeback assertions
+	always @(posedge i_clk)
+		if (alu_valid)
+		begin
+			assert(!mem_valid);
+			assert(!div_valid);
+			assert(!fpu_valid);
+		end else if (mem_valid)
+		begin
+			assert(!div_valid);
+			assert(!fpu_valid);
+		end else if (div_valid)
+			assert(!fpu_valid);
+
+	always @(posedge i_clk)
+		if ((wr_reg-ce)&&((write_cc)||(write_pc)))
+			assert(wr_spreg_val == wr_gpreg_val);
+`endif	// FORMAL
 	//}}}
 
 endmodule

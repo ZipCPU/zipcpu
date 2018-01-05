@@ -45,7 +45,7 @@
 //
 `default_nettype	none
 //
-module	memops(i_clk, i_rst, i_stb, i_lock,
+module	memops(i_clk, i_reset, i_stb, i_lock,
 		i_op, i_addr, i_data, i_oreg,
 			o_busy, o_valid, o_err, o_wreg, o_result,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
@@ -57,8 +57,9 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 			WITH_LOCAL_BUS=1'b1,
 			OPT_ALIGNMENT_ERR=1'b0,
 			OPT_ZERO_ON_IDLE=1'b0;
+	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam	AW=ADDRESS_WIDTH;
-	input	wire		i_clk, i_rst;
+	input	wire		i_clk, i_reset;
 	input	wire		i_stb, i_lock;
 	// CPU interface
 	input	wire	[2:0]	i_op;
@@ -109,7 +110,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (i_reset)
 		begin
 			r_wb_cyc_gbl <= 1'b0;
 			r_wb_cyc_lcl <= 1'b0;
@@ -127,7 +128,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 		end
 	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||((i_wb_err)&&(r_wb_cyc_gbl)))
+		if ((i_reset)||((i_wb_err)&&(r_wb_cyc_gbl)))
 			o_wb_stb_gbl <= 1'b0;
 		else if (o_wb_cyc_gbl)
 			o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
@@ -137,7 +138,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||((i_wb_err)&&(r_wb_cyc_lcl)))
+		if ((i_reset)||((i_wb_err)&&(r_wb_cyc_lcl)))
 			o_wb_stb_lcl <= 1'b0;
 		else if (o_wb_cyc_lcl)
 			o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
@@ -196,11 +197,11 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
-		o_valid <= (!i_rst)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
+		o_valid <= (!i_reset)&&((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
 				&&(i_wb_ack)&&(!o_wb_we);
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (i_reset)
 			o_err <= 1'b0;
 		else if ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
 			o_err <= i_wb_err;
@@ -238,7 +239,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 
 		always @(posedge i_clk)
 		begin
-			if ((i_rst)||((i_wb_err)&&
+			if ((i_reset)||((i_wb_err)&&
 					((r_wb_cyc_gbl)||(r_wb_cyc_lcl))))
 			begin
 				lock_gbl <= 1'b0;
@@ -266,14 +267,16 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 `ifdef	FORMAL
 `ifdef	MEMOPS
 `define	ASSUME	assume
-	reg	f_last_clk;
-	// initial	i_clk      = 0;
-	initial	f_last_clk = 0;
-	always @($global_clock)
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		assume(i_clk != f_last_clk);
-		f_last_clk <= i_clk;
-	end
+		reg	f_last_clk;
+		initial	f_last_clk = 0;
+		always @($global_clock)
+		begin
+			assume(i_clk != f_last_clk);
+			f_last_clk <= i_clk;
+		end
+	end endgenerate
 `else
 `define	ASSUME	assert
 `endif
@@ -282,18 +285,23 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
-	initial	assume( i_rst);
+	always @(*)
+		if (!f_past_valid)
+			`ASSUME(i_reset);
 	initial	assume(!i_stb);
 
-	always @($global_clock)
-	if (!$rose(i_clk))
+	generate if (F_OPT_CLK2FFLOGIC)
 	begin
-		assume($stable(i_rst));
-		assume($stable(i_stb));
-		assume($stable(i_addr));
-		assume($stable(i_op));
-		assume($stable(i_lock));
-	end
+		always @($global_clock)
+		if (!$rose(i_clk))
+		begin
+			assume($stable(i_reset));
+			assume($stable(i_stb));
+			assume($stable(i_addr));
+			assume($stable(i_op));
+			assume($stable(i_lock));
+		end
+	end endgenerate
 
 	wire	f_cyc, f_stb;
 	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
@@ -303,9 +311,10 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
 	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
+			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
-		f_wb(i_clk, i_rst,
+		f_wb(i_clk, i_reset,
 			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 			f_nreqs, f_nacks, f_outstanding);
@@ -425,7 +434,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	// begin a bus transaction
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_stb))
-			&&(!$past(f_cyc))&&(!$past(i_rst)))
+			&&(!$past(f_cyc))&&(!$past(i_reset)))
 		begin
 			`ASSUME(!i_stb);
 			assert(f_cyc);
@@ -440,7 +449,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	always @(posedge i_clk)
 		if (f_past_valid)
 		begin
-			if ($past(i_rst))
+			if ($past(i_reset))
 				assert(!o_err);
 			else if (($past(f_cyc))&&($past(i_wb_err)))
 				assert(o_err);
@@ -450,7 +459,7 @@ module	memops(i_clk, i_rst, i_stb, i_lock,
 	always @(posedge i_clk)
 		if (f_past_valid)
 		begin
-			if (($past(i_rst))||(!$past(f_cyc)))
+			if (($past(i_reset))||(!$past(f_cyc)))
 				assert(!o_valid);
 			else if (($past(i_wb_ack))&&(!$past(o_wb_we)))
 				assert(o_valid);
