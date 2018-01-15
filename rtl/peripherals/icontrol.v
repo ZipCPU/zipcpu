@@ -52,7 +52,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -78,20 +78,21 @@
 //
 `default_nettype	none
 //
-module	icontrol(i_clk, i_reset, i_wr, i_proc_bus, o_proc_bus,
+module	icontrol(i_clk, i_reset, i_wr, i_data, o_data,
 		i_brd_ints, o_interrupt);
-	parameter	IUSED = 15;
+	parameter	IUSED = 15, BW=32;
 	input	wire		i_clk, i_reset;
 	input	wire		i_wr;
-	input	wire	[31:0]	i_proc_bus;
-	output	wire	[31:0]	o_proc_bus;
+	input	wire	[BW-1:0]	i_data;
+	output	reg	[BW-1:0]	o_data;
 	input	wire	[(IUSED-1):0]	i_brd_ints;
 	output	wire		o_interrupt;
 
 	reg	[(IUSED-1):0]	r_int_state;
 	reg	[(IUSED-1):0]	r_int_enable;
 	wire	[(IUSED-1):0]	nxt_int_state;
-	reg		r_any, r_interrupt, r_gie;
+	reg		r_interrupt, r_gie;
+	wire		w_any;
 
 	assign	nxt_int_state = (r_int_state|i_brd_ints);
 	initial	r_int_state = 0;
@@ -99,48 +100,115 @@ module	icontrol(i_clk, i_reset, i_wr, i_proc_bus, o_proc_bus,
 		if (i_reset)
 			r_int_state  <= 0;
 		else if (i_wr)
-			r_int_state <= nxt_int_state & (~i_proc_bus[(IUSED-1):0]);
+			r_int_state <= i_brd_ints | (r_int_state & (~i_data[(IUSED-1):0]));
 		else
 			r_int_state <= nxt_int_state;
 	initial	r_int_enable = 0;
 	always @(posedge i_clk)
 		if (i_reset)
 			r_int_enable <= 0;
-		else if ((i_wr)&&(i_proc_bus[31]))
-			r_int_enable <= r_int_enable | i_proc_bus[(16+IUSED-1):16];
-		else if ((i_wr)&&(~i_proc_bus[31]))
-			r_int_enable <= r_int_enable & (~ i_proc_bus[(16+IUSED-1):16]);
+		else if ((i_wr)&&(i_data[BW-1]))
+			r_int_enable <= r_int_enable | i_data[(16+IUSED-1):16];
+		else if ((i_wr)&&(!i_data[BW-1]))
+			r_int_enable <= r_int_enable & (~ i_data[(16+IUSED-1):16]);
 
 	initial	r_gie = 1'b0;
 	always @(posedge i_clk)
 		if (i_reset)
 			r_gie <= 1'b0;
 		else if (i_wr)
-			r_gie <= i_proc_bus[31];
+			r_gie <= i_data[BW-1];
 
-	initial	r_any = 1'b0;
-	always @(posedge i_clk)
-		r_any <= ((r_int_state & r_int_enable) != 0);
+	assign	w_any = ((r_int_state & r_int_enable) != 0);
+
 	initial	r_interrupt = 1'b0;
 	always @(posedge i_clk)
-		r_interrupt <= r_gie & r_any;
+	if (i_reset)
+		r_interrupt <= 1'b0;
+	else
+		r_interrupt <= (r_gie)&&(w_any);
 
 	generate
 	if (IUSED < 15)
 	begin
-		assign o_proc_bus = {
+		always @(posedge i_clk)
+			o_data <= {
 				r_gie, { {(15-IUSED){1'b0}}, r_int_enable }, 
-				r_any, { {(15-IUSED){1'b0}}, r_int_state  } };
+				w_any, { {(15-IUSED){1'b0}}, r_int_state  } };
 	end else begin
-		assign o_proc_bus = { r_gie, r_int_enable, r_any, r_int_state };
+		always @(posedge i_clk)
+			o_data <= { r_gie, r_int_enable, w_any, r_int_state };
 	end endgenerate
 
 	assign	o_interrupt = r_interrupt;
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
-	wire	[31:0]	unused;
-	assign	unused = i_proc_bus[31:0];
+	wire	[30:0]	unused;
+	assign	unused = i_data[30:0];
 	// verilator lint_on  UNUSED
 
+`ifdef	FORMAL
+`ifdef	ICONTROL
+`define	ASSUME	assume
+`else
+`define	ASSUME	assert
+`endif
+
+	reg	f_past_valid;
+
+	initial	f_past_valid = 1'b0;
+	always @(posedge i_clk)
+		f_past_valid <= 1'b1;
+
+	initial	`ASSUME(i_reset);
+	always @(*)
+	if (!f_past_valid)
+		`ASSUME(i_reset);
+
+	always @(posedge i_clk)
+	if ((!f_past_valid)||($past(i_reset)))
+	begin
+		assert(w_any == 0);
+		assert(r_interrupt == 0);
+		assert(r_gie == 0);
+		assert(r_int_enable == 0);
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset)))
+		assert((r_int_state & $past(i_brd_ints))==$past(i_brd_ints));
+
+	always @(posedge i_clk)
+	if (((f_past_valid)&&(!$past(i_reset)))
+			&&($past(r_int_state) & $past(r_int_enable))
+			&&($past(r_gie)) )
+		assert(o_interrupt);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(w_any))&&(!$past(i_wr))&&(!$past(i_reset)))
+		assert(w_any);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(r_gie)))
+		assert(!o_interrupt);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(w_any)))
+		assert(!o_interrupt);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wr)))
+	begin
+		// Interrupts cannot be cleared, unless they are set
+		assert(r_int_state == (($past(i_brd_ints))
+			|(($past(r_int_state))&(~$past(i_data[IUSED-1:0])))));
+		assert(r_gie == $past(i_data[BW-1]));
+	end else if ((f_past_valid)&&(!$past(i_reset)))
+	begin
+		assert(r_int_state == ($past(r_int_state)|$past(i_brd_ints)));
+		assert(r_gie == $past(r_gie));
+	end
+
+`endif
 endmodule
