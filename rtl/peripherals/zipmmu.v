@@ -189,7 +189,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2016-2017, Gisselquist Technology, LLC
+// Copyright (C) 2016-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -478,7 +478,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			r_valid <= (!miss_pending)&&((last_page_valid)
 					&&(r_addr[(DW-3):(DW-2-VAW)]== last_vpage)
 					&&((!last_ro)||(!r_we)));
-			o_addr <= { last_ppage , i_wbm_addr[(LGPGSZW-1):0] };
+			o_addr <= { last_ppage , r_addr[(LGPGSZW-1):0] };
 			r_pending<= (r_pending);
 			s_pending <=(r_pending)&&(!gie_context);
 		end
@@ -652,6 +652,11 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// pf_return_we = 1
 	// pf_stb = 1
 	// and pf_return_p has the physical address
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	// Nothing .... currently
+	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
 	reg	f_past_valid;
