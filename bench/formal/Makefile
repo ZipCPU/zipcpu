@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2017, Gisselquist Technology, LLC
+## Copyright (C) 2017-2018, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -39,7 +39,9 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache busdelay wbpriarbiter memops pipemem zipmmu
+TESTS := prefetch dblfetch pfcache memops pipemem
+TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol
+TESTS += busdelay wbpriarbiter wbdblpriarb
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -58,9 +60,15 @@ PFTWO  := dblfetch
 PFCACHE:= pfcache
 WBDLY  := busdelay
 PRIARB := wbpriarbiter
+DBL    := wbdblpriarb
 MEM    := memops
 PIPE   := pipemem
 MMU    := zipmmu
+TMR    := ziptimer
+CNT    := zipcounter
+JIF    := zipjiffies
+WDG    := wbwatchdog
+INT    := icontrol
 
 MASTER := $(RTL)/aux/fwb_master.v
 SLAVE  := $(RTL)/aux/fwb_slave.v
@@ -80,6 +88,9 @@ $(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(MASTER) $(SLAVE) $(WBDLY).ys
 $(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
 	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
 
+$(DBL).smt2: $(RTL)/aux/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
+	yosys -ql $(DBL).yslog -s $(DBL).ys
+
 $(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys
 	yosys -ql $(MEM).yslog -s $(MEM).ys
 
@@ -89,12 +100,27 @@ $(PIPE).smt2: $(RTL)/core/$(PIPE).v $(MASTER) $(PIPE).ys
 $(MMU).smt2: $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE) $(MMU).ys
 	yosys -ql $(MMU).yslog -s $(MMU).ys
 
+$(CNT).smt2: $(RTL)/peripherals/$(CNT).v $(SLAVE) $(CNT).ys
+	yosys -ql $(CNT).yslog -s $(CNT).ys
+
+$(TMR).smt2: $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
+	yosys -ql $(TMR).yslog -s $(TMR).ys
+
+$(JIF).smt2: $(RTL)/peripherals/$(JIF).v $(SLAVE) $(JIF).ys
+	yosys -ql $(JIF).yslog -s $(JIF).ys
+
+$(WDG).smt2: $(RTL)/peripherals/$(WDG).v $(SLAVE) $(WDG).ys
+	yosys -ql $(WDG).yslog -s $(WDG).ys
+
+$(INT).smt2: $(RTL)/peripherals/$(INT).v $(SLAVE) $(INT).ys
+	yosys -ql $(INT).yslog -s $(INT).ys
+
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
 
 $(PFONE) : $(PFONE).check
 $(PFONE).check: $(PFONE).smt2
-	@rm -f $(PFONE).check
+	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 60 --dump-vcd $(PFONE).vcd $(PFONE).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 60 --dump-vcd $(PFONE).vcd $(PFONE).smt2
 	$(SMTBMC)    $(INDARGS) -t 58 --dump-vcd $(PFONE).vcd $(PFONE).smt2
@@ -103,7 +129,7 @@ $(PFONE).check: $(PFONE).smt2
 
 $(PFTWO) : $(PFTWO).check
 $(PFTWO).check: $(PFTWO).smt2
-	@rm -f $(PFTWO).check
+	@rm -f $@
 	$(SMTBMC) $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
 	$(SMTBMC) $(INDARGS) -t 38 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
@@ -111,7 +137,7 @@ $(PFTWO).check: $(PFTWO).smt2
 
 $(PFCACHE) : $(PFCACHE).check
 $(PFCACHE).check: $(PFCACHE).smt2
-	@rm -f $(PFCACHE).check
+	@rm -f $@
 	$(SMTBMC) $(BMCARGS) -t 80 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
 	$(SMTBMC) $(INDARGS) -t 76 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 80 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
@@ -120,7 +146,7 @@ $(PFCACHE).check: $(PFCACHE).smt2
 
 $(WBDLY) : $(WBDLY).check
 $(WBDLY).check: $(WBDLY).smt2
-	@rm -f $(WBDLY).check
+	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 48 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
 	$(SMTBMC)    $(INDARGS) -t 48 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 46 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
@@ -128,15 +154,23 @@ $(WBDLY).check: $(WBDLY).smt2
 
 $(PRIARB) : $(PRIARB).check
 $(PRIARB).check: $(PRIARB).smt2
-	@rm -f $(PRIARB).check
+	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
 	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
 	touch $@
 
+$(DBL) : $(DBL).check
+$(DBL).check: $(DBL).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(DBL).vcd $(DBL).smt2
+	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(DBL).vcd $(DBL).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(DBL).vcd $(DBL).smt2
+	touch $@
+
 $(MEM) : $(MEM).check
 $(MEM).check: $(MEM).smt2
-	@rm -f $(MEM).check
+	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MEM).vcd $(MEM).smt2
 	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MEM).vcd $(MEM).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MEM).vcd $(MEM).smt2
@@ -144,7 +178,7 @@ $(MEM).check: $(MEM).smt2
 
 $(PIPE) : $(PIPE).check
 $(PIPE).check: $(PIPE).smt2
-	@rm -f $(PIPE).check
+	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(PIPE).vcd $(PIPE).smt2
 	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(PIPE).vcd $(PIPE).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PIPE).vcd $(PIPE).smt2
@@ -152,10 +186,50 @@ $(PIPE).check: $(PIPE).smt2
 
 $(MMU) : $(MMU).check
 $(MMU).check: $(MMU).smt2
-	@rm -f $(MMU).check
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(MMU).vcd $(MMU).smt2
-	$(SMTBMC)    $(INDARGS) -t 36 --dump-vcd $(MMU).vcd $(MMU).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(MMU).vcd $(MMU).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 16 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC)    $(INDARGS) -t 15 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 16 --dump-vcd $(MMU).vcd $(MMU).smt2
+	touch $@
+
+$(TMR) : $(TMR).check
+$(TMR).check: $(TMR).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(TMR).vcd $(TMR).smt2
+	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(TMR).vcd $(TMR).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(TMR).vcd $(TMR).smt2
+	touch $@
+
+$(CNT) : $(CNT).check
+$(CNT).check: $(CNT).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(CNT).vcd $(CNT).smt2
+	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(CNT).vcd $(CNT).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(CNT).vcd $(CNT).smt2
+	touch $@
+
+$(JIF) : $(JIF).check
+$(JIF).check: $(JIF).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(JIF).vcd $(JIF).smt2
+	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(JIF).vcd $(JIF).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(JIF).vcd $(JIF).smt2
+	touch $@
+
+$(WDG) : $(WDG).check
+$(WDG).check: $(WDG).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(WDG).vcd $(WDG).smt2
+	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(WDG).vcd $(WDG).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(WDG).vcd $(WDG).smt2
+	touch $@
+
+$(INT) : $(INT).check
+$(INT).check: $(INT).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(INT).vcd $(INT).smt2
+	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(INT).vcd $(INT).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(INT).vcd $(INT).smt2
 	touch $@
 
 .PHONY: clean
@@ -165,7 +239,13 @@ clean:
 	rm -f $(PFCACHE).smt2 $(PFCACHE)*.vcd $(PFCACHE).yslog
 	rm -f $(WBDLY).smt2   $(WBDLY)*.vcd   $(WBDLY).yslog
 	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
+	rm -f $(DBL).smt2     $(DBL)*.vcd     $(DBL).yslog
 	rm -f $(MEM).smt2     $(MEM)*.vcd     $(MEM).yslog
 	rm -f $(PIPE).smt2    $(PIPE)*.vcd    $(PIPE).yslog
 	rm -f $(MMU).smt2     $(MMU)*.vcd     $(MMU).yslog
+	rm -f $(TMR).smt2     $(TMR)*.vcd     $(TMR).yslog
+	rm -f $(CNT).smt2     $(CNT)*.vcd     $(CNT).yslog
+	rm -f $(JIF).smt2     $(JIF)*.vcd     $(JIF).yslog
+	rm -f $(WDG).smt2     $(WDG)*.vcd     $(WDG).yslog
+	rm -f $(INT).smt2     $(INT)*.vcd     $(INT).yslog
 	rm -f *.check

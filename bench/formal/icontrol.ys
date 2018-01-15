@@ -1,0 +1,4 @@
+read_verilog -D ICONTROL -formal ../../rtl/peripherals/icontrol.v
+prep -top icontrol -nordff
+opt -share_all
+write_smt2 -wires icontrol.smt2
