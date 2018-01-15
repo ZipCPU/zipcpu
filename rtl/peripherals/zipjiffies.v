@@ -166,6 +166,11 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	assign	o_wb_data = r_counter;
 	assign	o_wb_stall = 1'b0;
 
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = i_wb_cyc;
+	// verilator lint_on  UNUSED
 `ifdef	FORMAL
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
