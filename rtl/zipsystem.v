@@ -63,7 +63,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -293,7 +293,7 @@ module	zipsystem(i_clk, i_rst,
 	// verilator lint_on  UNUSED
 	wire		dbg_err;
 	assign		dbg_err = 1'b0;
-	busdelay #(1,32) wbdelay(i_clk,
+	busdelay #(1,32) wbdelay(i_clk, i_rst,
 		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data, 4'hf,
 			o_dbg_ack, o_dbg_stall, o_dbg_data, no_dbg_err,
 		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_idata, dbg_sel,
@@ -436,9 +436,9 @@ module	zipsystem(i_clk, i_rst,
 	reg	[(PAW-1):0] 	r_wdbus_data;
 	wire	[31:0]	 	wdbus_data;
 	wire	reset_wdbus_timer, wdbus_int;
-	assign	reset_wdbus_timer = ((o_wb_cyc)&&((o_wb_stb)||(i_wb_ack)));
+	assign	reset_wdbus_timer = (!o_wb_cyc)||(o_wb_stb)||(i_wb_ack);
 	wbwatchdog #(14) watchbus(i_clk,(cpu_reset)||(reset_wdbus_timer),
-			o_wb_cyc, 14'h2000, wdbus_int);
+			14'h2000, wdbus_int);
 	initial	r_wdbus_data = 0;
 	always @(posedge i_clk)
 		if ((wdbus_int)||(cpu_err))
@@ -462,7 +462,7 @@ module	zipsystem(i_clk, i_rst,
 	// Master task counter
 	wire		mtc_ack, mtc_stall;
 	wire	[31:0]	mtc_data;
-	zipcounter	mtask_ctr(i_clk, (~cpu_halt), sys_cyc,
+	zipcounter	mtask_ctr(i_clk, 1'b0, (!cpu_halt), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b000),
 					sys_we, sys_data,
 				mtc_ack, mtc_stall, mtc_data, mtc_int);
@@ -470,7 +470,7 @@ module	zipsystem(i_clk, i_rst,
 	// Master Operand Stall counter
 	wire		moc_ack, moc_stall;
 	wire	[31:0]	moc_data;
-	zipcounter	mmstall_ctr(i_clk,(cpu_op_stall), sys_cyc,
+	zipcounter	mmstall_ctr(i_clk,1'b0, (cpu_op_stall), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b001),
 					sys_we, sys_data,
 				moc_ack, moc_stall, moc_data, moc_int);
@@ -478,7 +478,7 @@ module	zipsystem(i_clk, i_rst,
 	// Master PreFetch-Stall counter
 	wire		mpc_ack, mpc_stall;
 	wire	[31:0]	mpc_data;
-	zipcounter	mpstall_ctr(i_clk,(cpu_pf_stall), sys_cyc,
+	zipcounter	mpstall_ctr(i_clk,1'b0, (cpu_pf_stall), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b010),
 					sys_we, sys_data,
 				mpc_ack, mpc_stall, mpc_data, mpc_int);
@@ -486,7 +486,7 @@ module	zipsystem(i_clk, i_rst,
 	// Master Instruction counter
 	wire		mic_ack, mic_stall;
 	wire	[31:0]	mic_data;
-	zipcounter	mins_ctr(i_clk,(cpu_i_count), sys_cyc,
+	zipcounter	mins_ctr(i_clk,1'b0, (cpu_i_count), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b011),
 					sys_we, sys_data,
 				mic_ack, mic_stall, mic_data, mic_int);
@@ -498,7 +498,7 @@ module	zipsystem(i_clk, i_rst,
 	// User task counter
 	wire		utc_ack, utc_stall;
 	wire	[31:0]	utc_data;
-	zipcounter	utask_ctr(i_clk,(~cpu_halt)&&(cpu_gie), sys_cyc,
+	zipcounter	utask_ctr(i_clk,1'b0, (!cpu_halt)&&(cpu_gie), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b100),
 					sys_we, sys_data,
 				utc_ack, utc_stall, utc_data, utc_int);
@@ -506,7 +506,7 @@ module	zipsystem(i_clk, i_rst,
 	// User Op-Stall counter
 	wire		uoc_ack, uoc_stall;
 	wire	[31:0]	uoc_data;
-	zipcounter	umstall_ctr(i_clk,(cpu_op_stall)&&(cpu_gie), sys_cyc,
+	zipcounter	umstall_ctr(i_clk,1'b0, (cpu_op_stall)&&(cpu_gie), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b101),
 					sys_we, sys_data,
 				uoc_ack, uoc_stall, uoc_data, uoc_int);
@@ -514,7 +514,7 @@ module	zipsystem(i_clk, i_rst,
 	// User PreFetch-Stall counter
 	wire		upc_ack, upc_stall;
 	wire	[31:0]	upc_data;
-	zipcounter	upstall_ctr(i_clk,(cpu_pf_stall)&&(cpu_gie), sys_cyc,
+	zipcounter	upstall_ctr(i_clk,1'b0, (cpu_pf_stall)&&(cpu_gie), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b110),
 					sys_we, sys_data,
 				upc_ack, upc_stall, upc_data, upc_int);
@@ -522,7 +522,7 @@ module	zipsystem(i_clk, i_rst,
 	// User instruction counter
 	wire		uic_ack, uic_stall;
 	wire	[31:0]	uic_data;
-	zipcounter	uins_ctr(i_clk,(cpu_i_count)&&(cpu_gie), sys_cyc,
+	zipcounter	uins_ctr(i_clk,1'b0, (cpu_i_count)&&(cpu_gie), sys_cyc,
 				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b111),
 					sys_we, sys_data,
 				uic_ack, uic_stall, uic_data, uic_int);
@@ -590,6 +590,7 @@ module	zipsystem(i_clk, i_rst,
 				dmac_int);
 `else
 	reg	r_dmac_ack;
+	initial	r_dmac_ack = 1'b0;
 	always @(posedge i_clk)
 		r_dmac_ack <= (sys_cyc)&&(dmac_stb);
 	assign	dmac_ack = r_dmac_ack;
@@ -609,8 +610,9 @@ module	zipsystem(i_clk, i_rst,
 	reg		ctri_ack;
 	wire	[31:0]	ctri_data;
 	assign	ctri_sel = (sys_stb)&&(sel_apic);
+	initial	ctri_ack = 1'b0;
 	always @(posedge i_clk)
-		ctri_ack <= ctri_sel;
+		ctri_ack <= (ctri_sel)&&(!cpu_reset);
 	assign	ctri_stall = 1'b0;
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
 	//
@@ -653,7 +655,7 @@ module	zipsystem(i_clk, i_rst,
 	//
 	wire		tma_ack, tma_stall;
 	wire	[31:0]	tma_data;
-	ziptimer timer_a(i_clk, cpu_reset, ~cmd_halt,
+	ziptimer timer_a(i_clk, cpu_reset, !cmd_halt,
 			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00), sys_we,
 				sys_data,
 			tma_ack, tma_stall, tma_data, tma_int);
@@ -663,7 +665,7 @@ module	zipsystem(i_clk, i_rst,
 	//
 	wire		tmb_ack, tmb_stall;
 	wire	[31:0]	tmb_data;
-	ziptimer timer_b(i_clk, cpu_reset, ~cmd_halt,
+	ziptimer timer_b(i_clk, cpu_reset, !cmd_halt,
 			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01), sys_we,
 				sys_data,
 			tmb_ack, tmb_stall, tmb_data, tmb_int);
@@ -673,7 +675,7 @@ module	zipsystem(i_clk, i_rst,
 	//
 	wire		tmc_ack, tmc_stall;
 	wire	[31:0]	tmc_data;
-	ziptimer timer_c(i_clk, cpu_reset, ~cmd_halt,
+	ziptimer timer_c(i_clk, cpu_reset, !cmd_halt,
 			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0]==2'b10), sys_we,
 				sys_data,
 			tmc_ack, tmc_stall, tmc_data, tmc_int);
@@ -683,7 +685,7 @@ module	zipsystem(i_clk, i_rst,
 	//
 	wire		jif_ack, jif_stall;
 	wire	[31:0]	jif_data;
-	zipjiffies jiffies(i_clk, ~cmd_halt,
+	zipjiffies jiffies(i_clk, cpu_reset, !cmd_halt,
 			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b11), sys_we,
 				sys_data,
 			jif_ack, jif_stall, jif_data, jif_int);
@@ -723,7 +725,7 @@ module	zipsystem(i_clk, i_rst,
 	wire	[3:0]	cpu_sel, mmu_sel;
 	wire		cpu_ack, cpu_stall, cpu_err;
 	wire	[31:0]	cpu_dbg_data;
-	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(~cmd_addr[5])
+	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(!cmd_addr[5])
 					&&(dbg_we)&&(dbg_addr));
 	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
@@ -842,13 +844,13 @@ module	zipsystem(i_clk, i_rst,
 	// For the debugger to have access to the local system bus, the
 	// following must be true:
 	//	(dbg_cyc)	The debugger must request the bus
-	//	(~cpu_lcl_cyc)	The CPU cannot be using it (CPU gets priority)
+	//	(!cpu_lcl_cyc)	The CPU cannot be using it (CPU gets priority)
 	//	(dbg_addr)	The debugger must be requesting its data
 	//				register, not just the control register
 	// and one of two other things.  Either
-	//	((cpu_halt)&&(~cpu_dbg_stall))	the CPU is completely halted,
+	//	((cpu_halt)&&(!cpu_dbg_stall))	the CPU is completely halted,
 	// or
-	//	(~cmd_addr[5])		we are trying to read a CPU register
+	//	(!cmd_addr[5])		we are trying to read a CPU register
 	//			while in motion.  Let the user beware that,
 	//			by not waiting for the CPU to fully halt,
 	//			his results may not be what he expects.
@@ -909,7 +911,7 @@ module	zipsystem(i_clk, i_rst,
 */
 
 `ifdef	DELAY_EXT_BUS
-	busdelay #(.AW(PAW),.DW(32),.DELAY_STALL(0)) extbus(i_clk,
+	busdelay #(.AW(PAW),.DW(32),.DELAY_STALL(0)) extbus(i_clk, i_rst,
 			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
 				ext_ack, ext_stall, ext_idata, ext_err,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
