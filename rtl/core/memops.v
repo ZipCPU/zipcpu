@@ -85,7 +85,22 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
 
-	wire	misaligned;
+	reg	misaligned;
+`ifdef	VERILATOR
+	generate if (OPT_ALIGNMENT_ERR)
+	begin : GENERATE_ALIGNMENT_ERR
+		always @(*)
+		casez({ i_op[2:1], i_addr[1:0] })
+		4'b01?1: misaligned = 1'b1; // Words must be halfword aligned
+		4'b0110: misaligned = 1'b1; // Words must be word aligned
+		4'b10?1: misaligned = 1'b1; // Halfwords must be aligned
+		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
+		default: misaligned = 1'b0;
+		endcase
+	end else
+		always @(*)	misaligned = 1'b0;
+	endgenerate
+`else
 	generate if (OPT_ALIGNMENT_ERR)
 	begin : GENERATE_ALIGNMENT_ERR
 		always @(*)
@@ -97,8 +112,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		default: misaligned <= 1'b0;
 		endcase
 	end else
-		assign	misaligned = 1'b0;
+		always @(*) misaligned <= 1'b0;
 	endgenerate
+`endif
 
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;

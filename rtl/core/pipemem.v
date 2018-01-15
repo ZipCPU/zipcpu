@@ -17,7 +17,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -92,7 +92,20 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	rdaddr = 0;
 	initial	wraddr = 0;
 
-	wire	misaligned;
+	reg	misaligned;
+`ifdef	VERILATOR
+	always	@(*)
+	if (OPT_ALIGNMENT_ERR)
+	begin
+		casez({ i_op[2:1], i_addr[1:0] })
+		4'b01?1: misaligned = 1'b1;
+		4'b0110: misaligned = 1'b1;
+		4'b10?1: misaligned = 1'b1;
+		default: misaligned = 1'b0;
+		endcase
+	end else
+		misaligned = 1'b0;
+`else
 	always	@(*)
 	if (OPT_ALIGNMENT_ERR)
 	begin
@@ -104,6 +117,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end else
 		misaligned <= 1'b0;
+`endif
 
 	always @(posedge i_clk)
 		fifo_oreg[wraddr] <= { i_oreg, i_op[2:1], i_addr[1:0] };
@@ -185,11 +199,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 			if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
 				o_wb_sel <= 4'b0000;
-`ifdef	SET_SEL_ON_READ
-			else if (!i_op[0])
-				// Always select everything on reads
-				o_wb_sel <= 4'b1111;	// Op is even
-`endif
 			else casez({ i_op[2:1], i_addr[1:0] })
 				4'b100?: o_wb_sel <= 4'b1100;	// Op = 5
 				4'b101?: o_wb_sel <= 4'b0011;	// Op = 5
@@ -249,7 +258,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	o_pipe_stalled = (cyc)
 			&&((i_wb_stall)||((!o_wb_stb_lcl)&&(!o_wb_stb_gbl)));
 
-	wire	lock;
 	generate
 	if (IMPLEMENT_LOCK != 0)
 	begin
@@ -270,12 +278,9 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
-
-		assign	lock = (lock_gbl)||(lock_lcl);
 	end else begin
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
-		assign	lock = 1'b0;
 	end endgenerate
 
 	// Make verilator happy
