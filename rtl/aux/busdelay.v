@@ -96,12 +96,13 @@ module	busdelay(i_clk, i_reset,
 
 `ifdef	FORMAL
 	wire	[2+AW+DW+DW/8-1:0]	f_wpending;
+	assign	f_wpending = { r_stb, r_we, r_addr, r_data, r_sel };
 `endif
 
 	generate
 	if (DELAY_STALL != 0)
 	begin
-		reg			r_stb, r_we, r_rtn_stall;
+		reg			r_stb, r_we;
 		reg	[(AW-1):0]	r_addr;
 		reg	[(DW-1):0]	r_data;
 		reg	[(DW/8-1):0]	r_sel;
@@ -109,10 +110,9 @@ module	busdelay(i_clk, i_reset,
 		initial	o_dly_cyc  = 1'b0;
 		initial	o_dly_stb  = 1'b0;
 		initial	o_dly_we   = 1'b0;
-		initial	o_dly_addr = 1'b0;
-		initial	o_dly_data = 1'b0;
-		initial	o_dly_sel  = 1'b0;
-		initial	r_rtn_stall= 1'b0;
+		initial	o_dly_addr = 0;
+		initial	o_dly_data = 0;
+		initial	o_dly_sel  = 0;
 		initial	r_stb      = 1'b0;
 		initial	r_we       = 1'b0;
 		initial	r_addr     = 0;
