@@ -156,7 +156,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	reg	r_zero  = 1'b1;
 	always @(posedge i_clk)
 		if (i_reset)
-			r_zero = 1'b1;
+			r_zero <= 1'b1;
 		else if (wb_write)
 			r_zero <= (i_wb_data[(VW-1):0] == 0);
 		else if ((r_running)&&(i_ce))
