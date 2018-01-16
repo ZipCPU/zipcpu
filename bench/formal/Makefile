@@ -39,7 +39,7 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache memops pipemem
+TESTS := prefetch dblfetch pfcache memops pipemem idecode
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol
 TESTS += busdelay wbpriarbiter wbdblpriarb
 .PHONY: $(TESTS)
@@ -69,6 +69,7 @@ CNT    := zipcounter
 JIF    := zipjiffies
 WDG    := wbwatchdog
 INT    := icontrol
+DCD    := idecode
 
 MASTER := $(RTL)/aux/fwb_master.v
 SLAVE  := $(RTL)/aux/fwb_slave.v
@@ -114,6 +115,9 @@ $(WDG).smt2: $(RTL)/peripherals/$(WDG).v $(SLAVE) $(WDG).ys
 
 $(INT).smt2: $(RTL)/peripherals/$(INT).v $(SLAVE) $(INT).ys
 	yosys -ql $(INT).yslog -s $(INT).ys
+
+$(DCD).smt2: $(RTL)/core/$(DCD).v $(DCD).ys
+	yosys -ql $(DCD).yslog -s $(DCD).ys
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -230,6 +234,14 @@ $(INT).check: $(INT).smt2
 	$(SMTBMC)    $(BMCARGS) -t 15 --dump-vcd $(INT).vcd $(INT).smt2
 	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(INT).vcd $(INT).smt2
 	$(SMTBMC) -g $(BMCARGS) -t 15 --dump-vcd $(INT).vcd $(INT).smt2
+	touch $@
+
+$(DCD) : $(DCD).check
+$(DCD).check: $(DCD).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 10 --dump-vcd $(DCD).vcd $(DCD).smt2
+	$(SMTBMC)    $(INDARGS) -t  8 --dump-vcd $(DCD).vcd $(DCD).smt2
+	$(SMTBMC) -g $(BMCARGS) -t 10 --dump-vcd $(DCD).vcd $(DCD).smt2
 	touch $@
 
 .PHONY: clean
