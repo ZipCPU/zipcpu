@@ -141,27 +141,32 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	parameter	ADDRESS_WIDTH=30,
 			LGICACHE=8;
 `ifdef	OPT_MULTIPLY
-	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
+	parameter 	IMPLEMENT_MPY = `OPT_MULTIPLY;
 `else
-	parameter	IMPLEMENT_MPY = 0;
+	parameter 	IMPLEMENT_MPY = 0;
 `endif
 `ifdef	OPT_DIVIDE
-	parameter	IMPLEMENT_DIVIDE = 1;
+	parameter [0:0]	IMPLEMENT_DIVIDE = 1;
 `else
-	parameter	IMPLEMENT_DIVIDE = 0;
+	parameter [0:0]	IMPLEMENT_DIVIDE = 0;
 `endif
 `ifdef	OPT_IMPLEMENT_FPU
-	parameter	IMPLEMENT_FPU = 1,
+	parameter [0:0]	IMPLEMENT_FPU = 1,
 `else
-	parameter	IMPLEMENT_FPU = 0,
+	parameter [0:0]	IMPLEMENT_FPU = 0,
 `endif
 			IMPLEMENT_LOCK=1;
 `ifdef	OPT_EARLY_BRANCHING
-	parameter	EARLY_BRANCHING = 1;
+	parameter [0:0]	EARLY_BRANCHING = 1;
 `else
-	parameter	EARLY_BRANCHING = 0;
+	parameter [0:0]	EARLY_BRANCHING = 0;
 `endif
-	parameter	WITH_LOCAL_BUS = 1;
+`ifdef	OPT_CIS
+	parameter [0:0]	OPT_CIS = 1'b1;
+`else
+	parameter [0:0]	OPT_CIS = 1'b0;
+`endif
+	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 	localparam	AW=ADDRESS_WIDTH;
 	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
 	//}}}
@@ -622,8 +627,12 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	//
 	//{{{
 	assign		dcd_ce = (!dcd_valid)||(!dcd_stalled);
-	idecode #(AW, IMPLEMENT_MPY, EARLY_BRANCHING, IMPLEMENT_DIVIDE,
-			IMPLEMENT_FPU)
+	idecode #(.ADDRESS_WIDTH(AW),
+		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
+		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
+		.OPT_FPU(IMPLEMENT_FPU),
+		.OPT_CIS(OPT_CIS))
 		instruction_decoder(i_clk, 
 			(clear_pipeline)||(w_clear_icache),
 			dcd_ce,
