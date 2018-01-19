@@ -197,7 +197,7 @@ module	fwb_slave(i_clk, i_reset,
 		assume(!i_wb_cyc);
 
 	// STB can only be true if CYC is also true
-	always @(posedge i_clk)
+	always @(*)
 		if (i_wb_stb)
 			assume(i_wb_cyc);
 
@@ -229,7 +229,7 @@ module	fwb_slave(i_clk, i_reset,
 			assume(i_wb_we == $past(i_wb_we));
 
 	// Write requests must also set one (or more) of i_wb_sel
-	always @(posedge i_clk)
+	always @(*)
 		if ((i_wb_stb)&&(i_wb_we))
 			assume(|i_wb_sel);
 
@@ -270,7 +270,7 @@ module	fwb_slave(i_clk, i_reset,
 				f_stall_count <= f_stall_count + 1'b1;
 			else
 				f_stall_count <= 0;
-		always @(posedge i_clk)
+		always @(*)
 			if (i_wb_cyc)
 				assert(f_stall_count < F_MAX_STALL);
 	end endgenerate
@@ -289,11 +289,15 @@ module	fwb_slave(i_clk, i_reset,
 			if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
 					&&(!i_wb_ack)&&(!i_wb_err)
 					&&(f_outstanding > 0))
-			begin
 				f_ackwait_count <= f_ackwait_count + 1'b1;
-				assert(f_ackwait_count < F_MAX_ACK_DELAY);
-			end else
+			else
 				f_ackwait_count <= 0;
+
+		always @(*)
+		if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
+					&&(!i_wb_ack)&&(!i_wb_err)
+					&&(f_outstanding > 0))
+			assert(f_ackwait_count < F_MAX_ACK_DELAY);
 	end endgenerate
 
 	//
@@ -301,10 +305,10 @@ module	fwb_slave(i_clk, i_reset,
 	//
 	initial	f_nreqs = 0;
 	always @(posedge i_clk)
-		if ((i_reset)||(!i_wb_cyc))
-			f_nreqs <= 0;
-		else if ((i_wb_stb)&&(!i_wb_stall))
-			f_nreqs <= f_nreqs + 1'b1;
+	if ((i_reset)||(!i_wb_cyc))
+		f_nreqs <= 0;
+	else if ((i_wb_stb)&&(!i_wb_stall))
+		f_nreqs <= f_nreqs + 1'b1;
 
 
 	//
@@ -312,10 +316,12 @@ module	fwb_slave(i_clk, i_reset,
 	//
 	initial	f_nacks = 0;
 	always @(posedge i_clk)
-		if (!i_wb_cyc)
-			f_nacks <= 0;
-		else if ((i_wb_ack)||(i_wb_err))
-			f_nacks <= f_nacks + 1'b1;
+	if (i_reset)
+		f_nacks <= 0;
+	else if (!i_wb_cyc)
+		f_nacks <= 0;
+	else if ((i_wb_ack)||(i_wb_err))
+		f_nacks <= f_nacks + 1'b1;
 
 	//
 	// The number of outstanding requests is the difference between
@@ -323,7 +329,7 @@ module	fwb_slave(i_clk, i_reset,
 	//
 	assign	f_outstanding = (i_wb_cyc) ? (f_nreqs - f_nacks):0;
 
-	always @(posedge i_clk)
+	always @(*)
 		if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
 		begin
 			if (i_wb_stb)
@@ -335,7 +341,7 @@ module	fwb_slave(i_clk, i_reset,
 		end else
 			assert(f_outstanding < (1<<F_LGDEPTH)-1);
 
-	always @(posedge i_clk)
+	always @(*)
 		if ((i_wb_cyc)&&(f_outstanding == 0))
 		begin
 			// If nothing is outstanding, then there should be
@@ -359,7 +365,7 @@ module	fwb_slave(i_clk, i_reset,
 		// If we aren't waiting for anything, and we aren't issuing
 		// any requests, then then our transaction is over and we
 		// should be dropping the CYC line.
-		always @(posedge i_clk)
+		always @(*)
 			if (f_outstanding == 0)
 				assume((i_wb_stb)||(!i_wb_cyc));
 		// Not all masters will abide by this restriction.  Some
