@@ -150,7 +150,7 @@
 //	|                         | Upper 8b| R| A| C| T|
 //	|  20-bit Physical pg ID  | Context | O| C| C| H|
 //	|(top 20 bits of the      |   ID    | n| C| H| S|
-//	|    physical address     |         | W| S| E| P|
+//	|    physical address)    |         | W| S| E| P|
 //	+----+----+-----+----+----+----+----+--+--+--+--+
 //
 //	5. PF Cache--handles words in both physical and virtual
@@ -215,9 +215,14 @@
 //
 `default_nettype	none
 //
+`define	ROFLAG	3	// Read-only flag
+`define	AXFLAG	2	// Accessed flag
+`define	CHFLAG	1	// Cachable flag
+`define	EXEFLG	0	// No-execute flag (invalid for I-cache)
+//
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				i_wbs_data, o_wbs_ack, o_wbs_stall, o_wbs_data,
-		i_wbm_cyc, i_wbm_stb, i_wbm_we,
+		i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_exe,
 			i_wbm_addr, i_wbm_data, i_wbm_sel, i_gie,
 		o_cyc, o_stb, o_we, o_addr, o_data, o_sel,
 			i_stall, i_ack, i_err, i_data,
@@ -243,6 +248,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 `else
 			PLGCTXT=16;
 `endif
+	parameter [0:0] OPT_DELAY_RETURN = 1'b0;
 	localparam	// And for our derived parameters (don't set these ...)
 			// Width of the data bus is 32-bits.  This may be hard
 			// to change.
@@ -279,7 +285,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	input	wire		i_wbm_cyc, i_wbm_stb;
 	//
-	input	wire			i_wbm_we;
+	input	wire			i_wbm_we, i_wbm_exe;
 	input	wire [(DW-2-1):0]	i_wbm_addr;
 	input	wire [(DW-1):0]		i_wbm_data;
 	input	wire [(DW/8-1):0]	i_wbm_sel;
@@ -299,9 +305,9 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// or the memory bus we are controlled from.  Note that we share these
 	// wires ...
 	output	wire		o_rtn_stall;
-	output	reg		o_rtn_ack;
+	output	wire		o_rtn_ack;
 	output	wire		o_rtn_err, o_rtn_miss;
-	output	[(DW-1):0]	o_rtn_data;
+	output	wire [(DW-1):0]	o_rtn_data;
 	// Finally, to allow the prefetch to snoop on the MMU conversion ...
 	output	wire			pf_return_stb, // snoop data is valid
 					pf_return_we; // snoop data is chnging
@@ -314,7 +320,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 //
 //
 //
-	reg	[3:1]			tlb_flags	[0:(TBL_SIZE-1)];
+	reg	[3:0]			tlb_flags	[0:(TBL_SIZE-1)];
 	reg	[(LGCTXT-1):0]		tlb_cdata	[0:(TBL_SIZE-1)];
 	reg	[(VAW-1):0]		tlb_vdata	[0:(TBL_SIZE-1)];
 	reg	[(PAW-1):0]		tlb_pdata	[0:(TBL_SIZE-1)];
@@ -338,9 +344,12 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	reg	[31:0]	status_word;
 	//
 	//
-	reg			r_pending, r_we, last_page_valid, last_ro, r_valid;
+	reg			r_pending, r_we, r_exe, r_valid,
+				last_page_valid, last_ro, last_exe;
 	reg	[(DW-3):0]	r_addr;
 	reg	[(DW-1):0]	r_data;
+	wire	[(VAW-1):0]	vpage;
+	wire	[AW-LGPGSZW-1:0]	ppage;
 	reg	[(DW/8-1):0]	r_sel;
 	reg	[(PAW-1):0]	last_ppage;
 	reg	[(VAW-1):0]	last_vpage;
@@ -349,12 +358,21 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	reg	[(LGTBL-1):0]		s_tlb_addr;
 	reg				s_tlb_miss, s_tlb_hit, s_pending;
 	//
-	wire	ro_flag, simple_miss, ro_miss, table_err, cachable;
+	wire	ro_flag, exe_flag, simple_miss, ro_miss, exe_miss, table_err, cachable;
 	reg	p_tlb_miss,p_tlb_err, pf_stb, pf_cachable;
 	reg	miss_pending;
 	//
 	reg	rtn_err;
 
+
+	wire	this_page_valid, pending_page_valid;
+	assign	this_page_valid = ((last_page_valid)
+				&&(i_wbm_addr[(DW-3):(DW-2-VAW)]==last_vpage)
+				&&((!last_ro)||(!i_wbm_we))
+				&&((!last_exe)||(!i_wbm_exe)));
+	assign	pending_page_valid = ((s_pending)&&(s_tlb_hit)
+				&&((!r_we)||(!ro_flag))
+				&&((!r_exe)||(exe_flag)));
 
 	//////////////////////////////////////////
 	//
@@ -372,11 +390,13 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			tlb_pdata[wr_tlb_addr]<=i_wbs_data[(AW+1):LGPGSZB];
 		// Set the context register for the page
 		if ((wr_vtable)||(wr_ptable))
-			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
+			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:0];
 		// Otherwise, keep track of the accessed bit if we
 		// ever access this page
-		else if ((!kernel_context)&&(s_pending)&&(s_tlb_hit)&&((!r_we)||(!ro_flag)))
-			tlb_flags[s_tlb_addr][2] <= 1'b1;
+		else if ((!kernel_context)&&(pending_page_valid))
+			tlb_flags[s_tlb_addr][`AXFLAG] <= 1'b1;
+		else if ((!kernel_context)&&(this_page_valid));
+			tlb_flags[s_tlb_addr][`AXFLAG] <= 1'b1;
 		if (wr_vtable)
 			tlb_cdata[wr_tlb_addr][((LGCTXT>=8)? 7:(LGCTXT-1)):0]
 				<= i_wbs_data[((LGCTXT>=8)? 11:(4+LGCTXT-1)):4];
@@ -454,7 +474,9 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	//
 	wire	[(VAW-1):0]	r_vpage;
+	wire	[(PAW-1):0]	r_ppage;
 	assign	r_vpage = (r_addr[(DW-3):(DW-2-VAW)]);
+	assign	r_ppage = (o_addr[(AW-1):LGPGSZW]);
 
 	initial	s_pending = 1'b0;
 	initial	r_pending = 1'b0;
@@ -466,6 +488,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		r_valid   <= 1'b0;
 		o_addr    <= 0;
 		r_we      <= 0;
+		r_exe     <= 0;
 		r_addr    <= 0;
 		r_data    <= 0;
 		r_sel     <= 0;
@@ -475,27 +498,23 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	begin
 		if (!o_rtn_stall)
 		begin
-			r_pending <= (i_wbm_stb)&&(!kernel_context);
+			r_pending <= (i_wbm_stb)&&(!kernel_context)
+						&&(!this_page_valid);
 			r_we      <= i_wbm_we;
+			r_exe     <= i_wbm_exe;
 			o_addr    <= { { (kernel_context)?
 				i_wbm_addr[(AW-1):LGPGSZW] : last_ppage },
 				i_wbm_addr[(LGPGSZW-1):0] };
 			r_addr    <= i_wbm_addr;
 			r_data    <= i_wbm_data;
 			r_sel     <= i_wbm_sel;
-			r_valid   <= (i_wbm_stb)&&(
-				(kernel_context)
-				||((last_page_valid)
-					&&(i_wbm_addr[(DW-3):(DW-2-VAW)] == last_vpage)
-					&&((!last_ro)||(!i_wbm_we))));
+			r_valid   <= (i_wbm_stb)&&((kernel_context)||(this_page_valid));
 			s_pending <= 1'b0;
 		end else if (!r_valid) begin
-			r_valid <= (!miss_pending)&&((last_page_valid)
-					&&(r_vpage== last_vpage)
-					&&((!last_ro)||(!r_we)));
-			o_addr <= { last_ppage , r_addr[(LGPGSZW-1):0] };
-			r_pending<= (r_pending);
-			s_pending <=(r_pending)&&(!kernel_context);
+			r_valid <= (pending_page_valid);
+			o_addr <= { ppage , r_addr[(LGPGSZW-1):0] };
+			r_pending<= (r_pending)&&(!pending_page_valid);
+			s_pending <=(r_pending)&&(!pending_page_valid);
 		end else begin
 			r_pending <= 1'b0;
 			s_pending <= 1'b0;
@@ -536,12 +555,6 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(posedge i_clk)
 	begin // valid when s_ becomes valid
 		s_tlb_addr <= {(LGTBL){1'b0}};
-		/*
-		for(k=0; k<TBL_SIZE; k=k+1)
-			for(s=0; s<LGTBL; s=s+1)
-				if (((k&(1<<s))!=0)&&(r_tlb_match[k]))
-					s_tlb_addr[s] <= 1'b1;
-		*/
 		for(i=0; i<TBL_SIZE; i=i+1)
 			if (r_tlb_match[i])
 				s_tlb_addr <= i[(LGTBL-1):0];
@@ -554,19 +567,22 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	// Third clock: Read from the address the virtual table offset,
 	// whether read-only, etc.
-	assign	ro_flag     = tlb_flags[s_tlb_addr][3];
+	assign	ro_flag     = tlb_flags[s_tlb_addr][`ROFLAG];
+	assign	exe_flag    = tlb_flags[s_tlb_addr][`EXEFLG];
 	assign	simple_miss = (s_pending)&&(s_tlb_miss);
 	assign	ro_miss     = (s_pending)&&(s_tlb_hit)&&(r_we)&&(ro_flag);
+	assign	exe_miss    = (s_pending)&&(s_tlb_hit)&&(r_exe)&&(!exe_flag);
 	assign	table_err   = (s_pending)&&(!s_tlb_miss)&&(!s_tlb_hit);
-	assign	cachable    = tlb_flags[s_tlb_addr][1];
-	// assign	tlb_access_flag    = tlb_flags[s_tlb_addr][2];
+	assign	vpage       = tlb_vdata[s_tlb_addr];
+	assign	ppage	    = tlb_pdata[s_tlb_addr];
+	assign	cachable    = tlb_flags[s_tlb_addr][`CHFLAG];
 
 	initial	p_tlb_miss = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		p_tlb_miss <= 1'b0;
 	else
-		p_tlb_miss <= (i_wbm_cyc)&&((simple_miss)||(ro_miss));
+		p_tlb_miss <= (i_wbm_cyc)&&((simple_miss)||(ro_miss)||(exe_miss));
 
 	initial	p_tlb_err  = 1'b0;
 	always @(posedge i_clk)
@@ -593,19 +609,25 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		last_vpage <= 0;
 	end else if ((!kernel_context)&&(r_pending)&&(!last_page_valid))
 	begin
-		last_ppage <= tlb_pdata[s_tlb_addr];
-		last_vpage <= tlb_vdata[s_tlb_addr];
+		last_ppage <= ppage;
+		last_vpage <= vpage;
+		last_exe   <= exe_flag;
 		last_ro    <= ro_flag;
 		pf_stb <= 1'b1;
 	end else
 		pf_stb <= 1'b0;
 
-
+	initial	status_word = 0;
 	always @(posedge i_clk)
-		if ((table_err)||(ro_miss)||(simple_miss))
-			status_word <= { r_addr[(AW-1):(AW-VAW)],
+	if (i_reset)
+		status_word <= 0;
+	else if (wr_control)
+		status_word <= 0;
+	else if ((table_err)||(ro_miss)||(simple_miss)||(exe_miss))
+		status_word <= { r_addr[(AW-1):(AW-VAW)],
 				{(LGPGSZW-1){1'b0}}, 
-				(table_err), (ro_miss), (simple_miss) };
+				(table_err), (exe_miss),
+				(ro_miss), (simple_miss) };
 
 	initial	last_page_valid = 1'b0;
 	always @(posedge i_clk)
@@ -620,7 +642,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			last_page_valid <= (last_page_valid)
 				&&(i_wbm_addr[(DW-3):(DW-2-VAW)] == last_vpage);
 		else if ((r_pending)&&(!last_page_valid))
-			last_page_valid <= (s_tlb_hit)&&(!ro_miss);
+			last_page_valid <= (s_pending)&&(s_tlb_hit);
 	end
 
 	parameter	LGFIFO = 6;
@@ -652,21 +674,39 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	initial	rtn_err = 1'b0;
 	initial	o_cyc   = 1'b0;
-	initial	o_rtn_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
 		o_cyc <= 1'b0;
-		o_rtn_ack <= 1'b0;
 		rtn_err   <= 1'b0;
-		o_rtn_data <= 0;
 	end else begin
 		o_cyc <=  (i_wbm_cyc)&&(!o_rtn_err)&&((!i_err)||(!o_cyc)); /// &&((o_cyc)||(r_valid));
 
-		o_rtn_ack  <= (i_wbm_cyc)&&(i_ack)&&(o_cyc);
-		o_rtn_data <= i_data;
 		rtn_err  <= (i_wbm_cyc)&&(i_err)&&(o_cyc);
 	end
+
+	generate if (OPT_DELAY_RETURN)
+	begin
+		initial	r_rtn_data = 0;
+		initial	r_rtn_ack  = 0;
+		always @(posedge i_clk)
+		if (i_reset)
+		begin
+			r_rtn_ack  <= 0;
+			r_rtn_data <= 0;
+		end else begin
+			r_rtn_ack  <= (i_wbm_cyc)&&(i_ack)&&(o_cyc);
+			r_rtn_data <= i_data;
+		end
+
+		assign	o_rtn_ack  = r_rtn_ack;
+		assign	o_rtn_data = r_rtn_data;
+	end else begin
+
+		assign	o_rtn_ack  = (i_ack)&&(o_cyc);
+		assign	o_rtn_data = i_data;
+	end endgenerate
+
 	assign	o_stb = (r_valid);
 	assign	o_we  =  (r_we);
 	assign	o_rtn_stall = (i_wbm_cyc)&&(
@@ -682,7 +722,9 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	else if (!i_wbm_cyc)
 		miss_pending <= 0;
 	else
-		miss_pending <= (p_tlb_miss)||(p_tlb_err);
+		miss_pending <= (i_wbm_cyc)&&(
+				(simple_miss)||(ro_miss)||(exe_miss)
+				||((s_pending)&&(!s_tlb_miss)&&(!s_tlb_hit)));
 
 	assign	o_rtn_miss  = (miss_pending)&&(!bus_pending);
 	assign	o_rtn_err   = (rtn_err);
@@ -790,10 +832,20 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(*)
 		if (!i_wbm_cyc)
 			f_expected <= 0;
-		else if (r_pending)
-			f_expected <= fp_outstanding + 1'b1 + o_rtn_ack;
-		else
-			f_expected <= fp_outstanding + o_stb + o_rtn_ack;
+		else if (OPT_DELAY_RETURN)
+		begin
+			if (r_pending)
+				f_expected <= fp_outstanding + 1'b1
+							+ o_rtn_ack;
+			else
+				f_expected <= fp_outstanding + (o_stb)
+					+ (o_rtn_ack);
+		end else begin
+			if (r_pending)
+				f_expected <= fp_outstanding + 1'b1;
+			else
+				f_expected <= fp_outstanding + (o_stb);
+		end
 
 	reg	f_kill_input;
 	initial	f_kill_input = 1'b0;
@@ -864,6 +916,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	begin
 		assert(!simple_miss);
 		assert(!ro_miss);
+		assert(!exe_miss);
 		assert(!table_err);
 		if (!$past(i_wbm_we))
 			assert(!ro_miss);
@@ -895,11 +948,26 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	begin
 		assert(last_ppage == tlb_pdata[f_last_page]);
 		assert(last_vpage == tlb_vdata[f_last_page]);
-		assert(last_ro    == tlb_flags[f_last_page][3]);
+		assert(last_ro    == tlb_flags[f_last_page][`ROFLAG]);
+		assert(last_exe   == tlb_flags[f_last_page][`EXEFLG]);
 		assert(r_context_word[LGCTXT-1:1] == tlb_cdata[f_last_page][LGCTXT-1:1]);
 		if (!r_context_word[0])
 			assert(!tlb_cdata[f_last_page][0]);
 		assert((!r_context_word[0])||(r_context_word[0]));
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))
+			&&($past(last_page_valid))&&(!$past(kernel_context))
+			&&($past(o_stb))&&($past(i_wbm_cyc)))
+		assert(tlb_flags[$past(s_tlb_addr)][`AXFLAG]);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(kernel_context))&&(o_stb))
+	begin
+		assert(last_page_valid);
+		assert(r_ppage == last_ppage);
+		assert((!last_ro)||(!o_we));
 	end
 
 	always @(posedge i_clk)
@@ -914,9 +982,23 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// always @(*) assume(kernel_context);
 	always @(*)
 		assume((!i_wbs_cyc_stb)||(!i_gie));
+
+	reg	f_past_gie, f_past_wbm_cyc;
+
+	initial	f_past_gie = 1'b0;
 	always @(posedge i_clk)
+		f_past_gie <= i_gie;
+
+	initial	f_past_wbm_cyc = 1'b0;
+	always @(posedge i_clk)
+		f_past_wbm_cyc <= i_wbm_cyc;
+	always @(*)
 	if ((f_past_valid)&&(bus_pending))
-		assume(i_gie == $past(i_gie));
+		assume(i_gie == f_past_gie);
+	always @(*)
+	if ((f_past_wbm_cyc)&&(i_wbm_cyc))
+		assume(i_gie == f_past_gie);
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(i_wbm_cyc)&&($past(i_wbm_cyc)))
 		assume(i_gie == $past(i_gie));
@@ -924,24 +1006,43 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if ((f_past_valid)&&($past(i_reset)))
 		assume(!i_gie);
 
-	// If we are fully idle, both outstanding counts should be identical
-	always @(*)
-	if ((i_wbm_cyc)&&(o_cyc)
-			&&((!i_stall)||(!o_stb))
-			// &&((!o_rtn_stall)||(!i_wbm_stb))
-			&&(!o_rtn_stall)
-			&&(!o_stb)&&(!o_rtn_ack))
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wbm_cyc))
+			&&($past(!kernel_context))
+			&&($past(r_pending))
+			&&(!$past(last_page_valid)))
 	begin
-		assert(fv_outstanding+((o_rtn_ack)?1'b1:1'b0)== fp_outstanding);
-	//end else if ((i_wbm_cyc)&&(o_cyc)&&(!o_rtn_stall)&&(!i_stall))
-	//begin
-		//assert(fv_outstanding
-			//+ ((o_rtn_ack)? 1'b1:1'b0) == fp_outstanding);
+		if (($past(s_tlb_hit))
+				&&(!$past(ro_miss))
+				&&(!$past(exe_miss)))
+		begin
+			assert(last_vpage == $past(r_vpage));
+			assert(last_page_valid);
+			assert(!miss_pending);
+			assert(tlb_flags[s_tlb_addr][`AXFLAG]);
+		end else if (($past(s_tlb_hit))&&($past(ro_miss)))
+		begin
+			assert(miss_pending);
+			assert(last_page_valid);
+			assert(status_word[3:0] == 4'h2);
+		end else if (($past(s_tlb_hit))&&($past(exe_miss)))
+		begin
+			assert(miss_pending);
+			assert(last_page_valid);
+			assert(status_word[3:0] == 4'h4);
+		end else if (($past(s_tlb_hit))&&($past(simple_miss)))
+		begin
+			assert(miss_pending);
+			assert(last_page_valid);
+			assert(status_word[3:0] == 4'h1);
+		end else if (!$past(s_tlb_hit))
+		begin
+			assert(!last_page_valid);
+		end
 	end
 
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past((!kernel_context)&&(r_pending)&&(!last_page_valid)&&(s_tlb_hit)&&(!ro_miss))))
-		assert(last_vpage == $past(r_vpage));
+	always @(*)
+		assert((!ro_miss)||(!exe_miss)||(!simple_miss)||(!table_err));
 
 	reg	[4:0]	f_tlb_pipe;
 
@@ -956,5 +1057,25 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	always @(*)
 		assert(f_tlb_pipe != 5'h1f);
+
+	always @(*) // WE or EXE, never both
+	assume((!i_wbm_stb)||(!i_wbm_we)||(!i_wbm_exe));
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_wbm_stb))&&($past(o_rtn_stall)))
+		assume(i_wbm_exe == $past(i_wbm_exe));
+
+	always @(*)
+		assert((!r_pending)||(!o_stb));
+	always @(*)
+		assert((!s_pending)||(!o_stb));
+	always @(*)
+		assert((!s_pending)||(r_pending));
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_wbm_cyc)))
+		assume(!i_wbs_cyc_stb);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(|status_word[3:0])&&(!$past(i_wbm_cyc)))
+		assume(!i_gie);
 `endif
 endmodule
