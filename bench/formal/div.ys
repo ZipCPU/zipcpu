@@ -1,0 +1,5 @@
+read_verilog -D DIV -formal ../../rtl/core/div.v
+prep -top div -nordff
+opt -share_all
+clean
+write_smt2 -wires div.smt2
