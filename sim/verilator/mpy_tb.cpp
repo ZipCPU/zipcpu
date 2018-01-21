@@ -95,7 +95,7 @@ public:
 		char	outstr[2048], *s;
 		sprintf(outstr, "Tick %4lld %s%s ",
 			(unsigned long long)m_tickcount,
-			(m_core->i_rst)?"R":" ", 
+			(m_core->i_reset)?"R":" ", 
 			(m_core->i_ce)?"CE":"  ");
 		switch(m_core->i_op) {
 		case  0: strcat(outstr, "   SUB"); break;

@@ -161,7 +161,7 @@
 //
 //
 //
-module	zipsystem(i_clk, i_rst,
+module	zipsystem(i_clk, i_reset,
 		// Wishbone master interface from the CPU
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -209,7 +209,7 @@ module	zipsystem(i_clk, i_rst,
 			VAW=VIRTUAL_ADDRESS_WIDTH;
 
 	localparam	AW=ADDRESS_WIDTH;
-	input	wire	i_clk, i_rst;
+	input	wire	i_clk, i_reset;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(PAW-1):0]	o_wb_addr;
@@ -285,15 +285,15 @@ module	zipsystem(i_clk, i_rst,
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_stall;
 	wire	[31:0]	dbg_idata, dbg_odata;
 	reg		dbg_ack;
+	wire	[3:0]	dbg_sel;
+	wire		no_dbg_err;
 `ifdef	DELAY_DBG_BUS
 	// Make verilator happy
 	// verilator lint_off UNUSED
-	wire		no_dbg_err;
-	wire	[3:0]	dbg_sel;
 	// verilator lint_on  UNUSED
 	wire		dbg_err;
 	assign		dbg_err = 1'b0;
-	busdelay #(1,32) wbdelay(i_clk, i_rst,
+	busdelay #(1,32) wbdelay(i_clk, i_reset,
 		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data, 4'hf,
 			o_dbg_ack, o_dbg_stall, o_dbg_data, no_dbg_err,
 		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_idata, dbg_sel,
@@ -307,6 +307,8 @@ module	zipsystem(i_clk, i_rst,
 	assign	o_dbg_ack   = dbg_ack;
 	assign	o_dbg_stall = dbg_stall;
 	assign	o_dbg_data  = dbg_odata;
+	assign	dbg_sel     = 4'b1111;
+	assign	no_dbg_err  = 1'b0;
 `endif
 
 	// 
@@ -360,12 +362,14 @@ module	zipsystem(i_clk, i_rst,
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
-		if ((i_rst)||(cmd_reset))
-			cmd_halt <= START_HALTED;
-		else if (dbg_cmd_write)
-			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
-		else if ((cmd_step)||(cpu_break))
-			cmd_halt  <= 1'b1;
+	if (i_reset)
+		cmd_halt <= START_HALTED;
+	else if (cmd_reset)
+		cmd_halt <= START_HALTED;
+	else if (dbg_cmd_write)
+		cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
+	else if ((cmd_step)||(cpu_break))
+		cmd_halt  <= 1'b1;
 
 	initial	cmd_clear_pf_cache = 1'b1;
 	always @(posedge i_clk)
@@ -911,7 +915,7 @@ module	zipsystem(i_clk, i_rst,
 */
 
 `ifdef	DELAY_EXT_BUS
-	busdelay #(.AW(PAW),.DW(32),.DELAY_STALL(0)) extbus(i_clk, i_rst,
+	busdelay #(.AW(PAW),.DW(32),.DELAY_STALL(0)) extbus(i_clk, i_reset,
 			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
 				ext_ack, ext_stall, ext_idata, ext_err,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,

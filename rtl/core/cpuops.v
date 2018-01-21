@@ -42,10 +42,10 @@
 //
 `include "cpudefs.v"
 //
-module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
+module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
 	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
-	input	wire	i_clk, i_rst, i_ce;
+	input	wire	i_clk, i_reset, i_ce;
 	input	wire	[3:0]	i_op;
 	input	wire	[31:0]	i_a, i_b;
 	output	reg	[31:0]	o_c;
@@ -137,7 +137,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		reg	mpypipe;
 		initial	mpypipe = 1'b0;
 		always @(posedge i_clk)
-			if (i_rst)
+			if (i_reset)
 				mpypipe <= 1'b0;
 			else
 				mpypipe <= (this_is_a_multiply_op);
@@ -156,7 +156,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 
 		initial	mpypipe = 2'b0;
 		always @(posedge i_clk)
-			if (i_rst)
+			if (i_reset)
 				mpypipe <= 2'b0;
 			else
 			mpypipe <= { mpypipe[0], this_is_a_multiply_op };
@@ -218,7 +218,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 			// pipeline.  In this case, the multiply
 			// pipeline is a two stage pipeline, so we need 
 			// two bits in the pipe.
-			if (i_rst)
+			if (i_reset)
 				mpypipe <= 3'h0;
 			else begin
 				mpypipe[0] <= this_is_a_multiply_op;
@@ -345,7 +345,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	reg	r_busy;
 	initial	r_busy = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (i_reset)
 			r_busy <= 1'b0;
 		else
 			r_busy <= ((IMPLEMENT_MPY > 1)
@@ -362,7 +362,7 @@ module	cpuops(i_clk,i_rst, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
-		if (i_rst)
+		if (i_reset)
 			o_valid <= 1'b0;
 		else if (IMPLEMENT_MPY <= 1)
 			o_valid <= (i_ce);

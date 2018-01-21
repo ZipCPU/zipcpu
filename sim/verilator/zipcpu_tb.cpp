@@ -219,8 +219,7 @@
 
 
 
-
-#define	dcd_phase	VVAR(_thecpu__DOT__instruction_decoder__DOT__r_phase)
+#define	dcd_phase	VVAR(_thecpu__DOT__dcd_phase)
 #define	op_phase	VVAR(_thecpu__DOT__r_op_phase)
 #define	alu_phase	VVAR(_thecpu__DOT__r_alu_phase)
 
@@ -306,7 +305,7 @@
 #define	mem_wraddr	VVAR(_thecpu__DOT__domem__DOT__wraddr)
 #define	mem_rdaddr	VVAR(_thecpu__DOT__domem__DOT__rdaddr)
 #define	op_pipe		VVAR(_thecpu__DOT__r_op_pipe)
-#define	dcd_pipe	VVAR(_thecpu__DOT__instruction_decoder__DOT__r_pipe)
+#define	dcd_pipe	VVAR(_thecpu__DOT__instruction_decoder__DOT__genblk5__DOT__r_pipe)
 #define	op_A_alu	VVAR(_thecpu__DOT__op_A_alu)
 #define	op_B_alu	VVAR(_thecpu__DOT__op_B_alu)
 #define	op_A_mem	VVAR(_thecpu__DOT__op_A_mem)
@@ -2363,7 +2362,7 @@ int	main(int argc, char **argv) {
 			} else
 				tb->show_state();
 
-			if (tb->m_core->i_rst)
+			if (tb->m_core->i_reset)
 				done =true;
 			if ((tb->m_bomb)||(signalled))
 				done = true;
