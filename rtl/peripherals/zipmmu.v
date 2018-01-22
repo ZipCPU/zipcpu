@@ -324,6 +324,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	reg	[(LGCTXT-1):0]		tlb_cdata	[0:(TBL_SIZE-1)];
 	reg	[(VAW-1):0]		tlb_vdata	[0:(TBL_SIZE-1)];
 	reg	[(PAW-1):0]		tlb_pdata	[0:(TBL_SIZE-1)];
+	reg	[(TBL_SIZE-1):0]	tlb_valid;
 
 	wire	adr_control, adr_vtable, adr_ptable;
 	wire	wr_control, wr_vtable, wr_ptable;
@@ -389,7 +390,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		if (wr_ptable)
 			tlb_pdata[wr_tlb_addr]<=i_wbs_data[(AW+1):LGPGSZB];
 		// Set the context register for the page
-		if ((wr_vtable)||(wr_ptable))
+		if (wr_vtable)
 			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:0];
 		// Otherwise, keep track of the accessed bit if we
 		// ever access this page
@@ -415,6 +416,12 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		end
 	assign	kernel_context = (z_context)||(!i_gie);
 	// Status words cannot be written to
+
+	always @(posedge i_clk)
+	if (i_reset)
+		tlb_valid <= 0;
+	else if (wr_ptable)
+		tlb_valid[wr_tlb_addr]<=(i_wbs_data[(AW+1):LGPGSZB]!=0);
 
 	/* v*rilator lint_off WIDTH */
 	assign	w_control_data[31:28] = AW[3:0]-4'd1;
@@ -541,11 +548,13 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	generate
 	for(k=0; k<TBL_SIZE; k = k + 1)
 		assign r_tlb_match[k] =
+			// The page  must be valid
+			(tlb_valid[k])
 			// Virtual address must match
-			(tlb_vdata[k] == r_vpage)
+			&&(tlb_vdata[k] == r_vpage)
 			// Context must match as well
-				&&(tlb_cdata[k][LGCTXT-1:1] == r_context_word[LGCTXT-1:1])
-				&&((!tlb_cdata[k][0])||(r_context_word[0]));
+			&&(tlb_cdata[k][LGCTXT-1:1] == r_context_word[LGCTXT-1:1])
+			&&((!tlb_cdata[k][0])||(r_context_word[0]));
 	endgenerate
 
 	initial	s_tlb_miss = 1'b0;
@@ -946,6 +955,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(*)
 	if (last_page_valid)
 	begin
+		assert(tlb_valid[f_last_page]);
 		assert(last_ppage == tlb_pdata[f_last_page]);
 		assert(last_vpage == tlb_vdata[f_last_page]);
 		assert(last_ro    == tlb_flags[f_last_page][`ROFLAG]);
