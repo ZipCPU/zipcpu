@@ -30,8 +30,9 @@ as [RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
 I keep the CPU apart from any necessary peripherals.
 
 So, if you want to try out the CPU, feel free to download and build this
-repository.  You'll need it for the binutils, GCC, and [newlib](https://sourceware.org/newlib) support provided
-by it.
+repository (use `git-clone` with a depth of 1--there's a lot of stuff in the
+git repo that you don't necessarily need).  You'll need it for the binutils,
+GCC, and [newlib](https://sourceware.org/newlib) support provided by it.
 
 Once you've built these tools, then I'd suggest you look into the
 [ZBasic repository](https://github.com/ZipCPU/zbasic).  That repository places
