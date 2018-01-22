@@ -119,7 +119,6 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	reg	[(BW-1):0]	r_dividend;
 	wire	[(BW):0]	diff; // , xdiff[(BW-1):0];
 	assign	diff = r_dividend - r_divisor[(BW-1):0];
-	// assign	xdiff= r_dividend - { 1'b0, r_divisor[(BW-1):1] };
 
 	reg		r_sign, pre_sign, r_z, r_c, last_bit;
 	reg	[(LGBW-1):0]	r_bit;
@@ -467,17 +466,50 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	always @(*)
 		if(r_busy) assert(o_busy);
 
-	reg	[32:0]	f_bits_set;
+	reg	[BW:0]	f_bits_set;
 	always @(posedge i_clk)
 	if (i_reset)
 		f_bits_set <= 0;
 	else if (i_wr)
 		f_bits_set <= 0;
 	else if ((r_busy)&&(!pre_sign))
-		f_bits_set <= { f_bits_set[31:0], 1'b1 };
+		f_bits_set <= { f_bits_set[BW-1:0], 1'b1 };
 
 	always @(*)
 	if ((o_valid)&&(!o_err))
-		assert((!f_bits_set[32])&&(&f_bits_set[31:0]));
+		assert((!f_bits_set[BW])&&(&f_bits_set[BW-1:0]));
+
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(r_busy))
+		&&($past(r_divisor[2*BW-2:BW])==0))
+	begin
+		if ($past(r_divisor) == 0)
+			assert(o_err);
+		else if ($past(pre_sign))
+		begin
+			if ($past(r_dividend[BW-1]))
+				assert(r_dividend == -$past(r_dividend));
+			if ($past(r_divisor[(2*BW-2)]))
+			begin
+				assert(r_divisor[(2*BW-2):(BW-1)]
+					== -$past(r_divisor[(2*BW-2):(BW-1)]));
+				assert(r_divisor[BW-2:0] == 0);
+			end
+		end else begin
+			if (o_quotient[0])
+				assert(r_dividend == $past(diff));
+			else
+				assert(r_dividend == $past(r_dividend));
+
+			// r_divisor should shift down on every step
+			assert(r_divisor[2*BW-2]==0);
+			assert(r_divisor[2*BW-3:0]==$past(r_divisor[2*BW-2:1]));
+		end
+		if ($past(r_dividend) >= $past(r_divisor[BW-1:0]))
+			assert(o_quotient[0]);
+		else
+			assert(!o_quotient[0]);
+	end
 `endif
 endmodule
