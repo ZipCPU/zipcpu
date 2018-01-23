@@ -82,11 +82,11 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	input	wire		i_clk, i_reset, i_ce, i_stalled;
 	input	wire [31:0]	i_instruction;
 	input	wire		i_gie;
-	input	wire [(AW-1):0]	i_pc;
+	input	wire [(AW+1):0]	i_pc;
 	input	wire		i_pf_valid, i_illegal;
 	output	wire		o_valid, o_phase;
 	output	reg		o_illegal;
-	output	reg	[AW:0]	o_pc;
+	output	reg	[(AW+1):0]	o_pc;
 	output	reg		o_gie;
 	output	reg	[6:0]	o_dcdR, o_dcdA, o_dcdB;
 	output	wire	[31:0]	o_I;
@@ -98,7 +98,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	output	reg		o_lock;
 	output	reg		o_wR, o_rA, o_rB;
 	output	wire		o_early_branch, o_early_branch_stb;
-	output	wire	[(AW-1):0]	o_branch_pc;
+	output	wire	[(AW+1):0]	o_branch_pc;
 	output	wire		o_ljmp;
 	output	wire		o_pipe;
 	output	reg		o_sim		/* verilator public_flat */;
@@ -160,7 +160,6 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 		assign	w_cis_ljmp = 1'b0;
 		assign	w_ljmp = 1'b0;
-
 	end endgenerate
 
 	wire	[4:0]	w_cis_op;
@@ -184,8 +183,6 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 `else
 		reg	[4:0]	rw_cis_op;
 
-`define	FORKD
-`ifdef	FORKD
 		always @(*)
 			if (!iword[`CISBIT])
 				rw_cis_op = iword[26:22];
@@ -199,10 +196,6 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			3'h6: rw_cis_op = 5'h18;
 			3'h7: rw_cis_op = 5'h0d;
 			endcase
-`else
-		always @(*)
-			rw_cis_op <= w_op;
-`endif
 		assign	w_cis_op = rw_cis_op;
 `endif
 	end else begin : GEN_NOCIS_OP
@@ -430,6 +423,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(posedge i_clk)
 		if (i_ce)
 		begin
+			o_pc[0] <= 1'b0;
+
 			if (OPT_CIS)
 			begin
 				if (!o_phase)
@@ -438,16 +433,17 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				if (iword[`CISBIT])
 				begin
 					if (o_phase)
-						o_pc <= o_pc + 1'b1;
+						o_pc[AW+1:1] <= o_pc[AW+1:1] + 1'b1;
 					else if (i_pf_valid)
-						o_pc <= { i_pc, 1'b1 };
+						o_pc <= { i_pc[AW+1:2], 1'b1, 1'b0 };
 				end else begin
 					// The normal, non-CIS case
-					o_pc <= { i_pc + 1'b1, 1'b0 };
+					o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
 				end
 			end else begin
+				// The normal, non-CIS case
 				o_gie<= i_gie;
-				o_pc <= { i_pc + 1'b1, 1'b0 };
+				o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
 			end
 
 			// Under what condition will we execute this
@@ -514,7 +510,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		reg			r_early_branch,
 					r_early_branch_stb,
 					r_ljmp;
-		reg	[(AW-1):0]	r_branch_pc;
+		reg	[(AW+1):0]	r_branch_pc;
 
 		initial r_ljmp = 1'b0;
 		always @(posedge i_clk)
@@ -522,14 +518,10 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				r_ljmp <= 1'b0;
 			else if (i_ce)
 			begin
-				if (r_ljmp)
-					r_ljmp <= 1'b0;
-				else if ((OPT_CIS)&&(o_phase))
+				if ((OPT_CIS)&&(o_phase))
 					r_ljmp <= w_cis_ljmp;
 				else if (i_pf_valid)
 					r_ljmp <= (w_ljmp);
-				else if (!i_stalled)
-					r_ljmp <= 1'b0;
 			end
 		assign	o_ljmp = r_ljmp;
 
@@ -575,11 +567,15 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			if (i_ce)
 			begin
 				if (r_ljmp)
-					r_branch_pc <= iword[(AW+1):2];
-				else // Add x,PC
-				r_branch_pc <= i_pc
+					r_branch_pc <= { iword[(AW+1):2],
+							2'b00 };
+				else begin
+				// Add x,PC
+				r_branch_pc[AW+1:2] <= i_pc[AW+1:2]
 					+ {{(AW-15){iword[17]}},iword[16:2]}
 					+ {{(AW-1){1'b0}},1'b1};
+				r_branch_pc[1:0] <= 2'b00;
+				end
 			end
 
 		assign	w_ljmp_dly         = r_ljmp;
@@ -590,7 +586,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		assign	w_ljmp_dly         = 1'b0;
 		assign	o_early_branch     = 1'b0;
 		assign	o_early_branch_stb = 1'b0;
-		assign	o_branch_pc = {(AW){1'b0}};
+		assign	o_branch_pc = {(AW+2){1'b0}};
 		assign	o_ljmp = 1'b0;
 	end endgenerate
 
@@ -657,8 +653,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	// Make Verilator happy across all our various options
 	// verilator lint_off  UNUSED
-	wire	[3:0] possibly_unused;
-	assign	possibly_unused = { w_lock, w_ljmp, w_ljmp_dly, w_cis_ljmp };
+	wire	[5:0] possibly_unused;
+	assign	possibly_unused = { w_lock, w_ljmp, w_ljmp_dly, w_cis_ljmp, i_pc[1:0] };
 	// verilator lint_on  UNUSED
 `ifdef	FORMAL
 	reg	f_past_valid;
@@ -1293,7 +1289,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				// 2nd half of LOD(PC),PC
 				assert(o_early_branch);
 				assert(o_early_branch_stb);
-				assert(!o_ljmp);
+				// assert((i_stalled)||(!o_ljmp));
 			end else if ((!$past(iword[`CISBIT]))&&($past(w_add))
 				&&(!$past(w_rB))
 				&&($past(w_cond[3]))
@@ -1347,10 +1343,16 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				assert(!o_early_branch_stb);
 				assert(!o_ljmp);
 			end
-		end else begin
+		end
+		/*
+		else if ($past(o_valid)) begin
 			assert(!o_ljmp);
 			assert(!o_early_branch);
+		end else begin
+			assert(o_ljmp == $past(o_ljmp));
+			assert(!o_early_branch);
 		end
+		*/
 	end else begin
 		assert(!o_early_branch_stb);
 	end end else begin
@@ -1413,14 +1415,15 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		if ((f_past_valid)&&(!$past(i_stalled))&&($past(i_pf_valid))
 				&&($past(i_ce)))
 		begin
+			assert(o_pc[0] == 1'b0);
 			if (!$past(iword[`CISBIT]))
 			begin
-				assert(!o_pc[0]);
-				assert(o_pc[AW:1] == $past(i_pc)+1'b1);
+				assert(o_pc[1:0]==2'b00);
+				assert(o_pc[AW+1:2] == $past(i_pc[AW+1:2])+1'b1);
 			end else if ($past(iword[`CISBIT])&&($past(o_phase)))
-				assert(o_pc == $past(o_pc) + 1'b1);
+				assert(o_pc[(AW+1):1] == $past(o_pc[(AW+1):1]) + 1'b1);
 			else if ($past(iword[`CISBIT]))
-				assert(o_pc == { $past(i_pc), 1'b1});
+				assert(o_pc[(AW+1):1] == { $past(i_pc[(AW+1):2]), 1'b1});
 		end
 
 
@@ -1456,9 +1459,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_ce)))
-			assert(o_pc[AW:1] == $past(i_pc) + 1'b1);
+			assert(o_pc[AW+1:2] == $past(i_pc[AW+1:2]) + 1'b1);
 		else if (f_past_valid)
 			assert(o_pc == $past(o_pc));
+
+		always @(*)
+			assert(o_pc[1:0] == 2'b00);
 
 		always @(*)
 			assert((!w_ldi)||(w_I == iword[22:0]));

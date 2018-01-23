@@ -69,9 +69,9 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// CPU interaction wires
 	input	wire			i_new_pc, i_clear_cache, i_stalled_n;
 	// We ignore i_pc unless i_new_pc is true as well
-	input	wire	[(AW-1):0]	i_pc;
+	input	wire	[(AW+1):0]	i_pc;
 	output	reg	[(DW-1):0]	o_insn;	// Instruction read from WB
-	output	wire	[(AW-1):0]	o_pc;	// Address of that instruction
+	output	wire	[(AW+1):0]	o_pc;	// Address of that instruction
 	output	reg			o_valid; // If the output is valid
 	output	reg			o_illegal; // Result is from a bus err
 	// Wishbone outputs
@@ -162,7 +162,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	initial	o_wb_addr= 0;
 	always @(posedge i_clk)
 		if (i_new_pc)
-			o_wb_addr  <= i_pc;
+			o_wb_addr  <= i_pc[AW+1:2];
 		else if ((o_valid)&&(i_stalled_n)&&(!o_illegal))
 			o_wb_addr  <= o_wb_addr + 1'b1;
 
@@ -217,7 +217,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		end
 
 	// The o_pc output shares its value with the (last) wishbone address
-	assign	o_pc = o_wb_addr;
+	assign	o_pc = { o_wb_addr, 2'b00 };
 
 `ifdef	FORMAL
 	localparam	F_LGDEPTH=2;
@@ -475,9 +475,12 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// initial	f_last_pc = 0;
 	always @(posedge i_clk)
 		if (o_valid)
-			f_last_pc  <= o_pc;
+			f_last_pc  <= o_pc[AW+1:2];
 		else if (f_last_pc_valid)
-			assert(o_pc == f_last_pc + 1'b1);
+			assert(o_pc[AW+1:2] == f_last_pc + 1'b1);
+
+	always @(*)
+		assert(o_pc[1:0] == 2'b00);
 
 	// If we are producing a new result, and no new-pc or clear cache
 	// has come through (i.e. f_last_pc_valid is true), then the resulting
@@ -488,7 +491,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 		if ((f_past_valid)&&(o_valid)
 				&&(!$past(o_valid))&&(f_last_pc_valid))
-			assert(o_pc == (f_last_pc + 1'b1));
+			assert(o_pc[AW+1:2] == (f_last_pc + 1'b1));
 
 	// Let's also keep track of the address the CPU wants us to return.
 	// Any time the CPU branches to a new_pc, we'll record that request.
@@ -496,10 +499,12 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// we'll increment this address so as to automatically walk through
 	// memory.
 	//
+	always @(*)
+		assume(i_pc[1:0] == 2'b00);
 	initial	f_req_addr = 0;
 	always @(posedge i_clk)
 		if (i_new_pc)
-			f_req_addr <= i_pc;
+			f_req_addr <= i_pc[AW+1:2];
 		else if ((!invalid)&&(o_wb_cyc)&&(i_wb_ack)&&(!i_wb_err))
 			f_req_addr <= f_req_addr + 1'b1;
 

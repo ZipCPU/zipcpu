@@ -70,9 +70,9 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
 	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
 						i_stall_n;
-	input	wire	[(AW-1):0]	i_pc;
+	input	wire	[(AW+1):0]	i_pc;
 	output	reg	[(DW-1):0]	o_insn;
-	output	reg	[(AW-1):0]	o_pc;
+	output	reg	[(AW+1):0]	o_pc;
 	output	wire			o_valid;
 	// Wishbone outputs
 	output	reg			o_wb_cyc, o_wb_stb;
@@ -155,7 +155,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	o_wb_addr = {(AW){1'b1}};
 	always @(posedge i_clk)
 		if (i_new_pc)
-			o_wb_addr <= i_pc;
+			o_wb_addr <= i_pc[AW+1:2];
 		else if (o_wb_stb)
 		begin
 			if ((!i_wb_stall)&&(!invalid_bus_cycle))
@@ -206,7 +206,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if (i_new_pc)
 			o_pc <= i_pc;
 		else if ((o_valid)&&(i_stall_n))
-			o_pc <= o_pc + 1'b1;
+			o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
 
 	assign	o_valid = cache_valid[cache_read_addr];
 
@@ -440,11 +440,16 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if (o_valid)
 			assert(o_insn == cache[cache_read_addr]);
 
+	always @(*)
+		assume(i_pc[1:0] == 2'b00);
+	always @(*)
+		assert(o_pc[1:0] == 2'b00);
 	reg	[(AW-1):0]	f_req_addr;
+
 	initial	f_req_addr = {(AW){1'b1}};
 	always @(posedge i_clk)
 		if (i_new_pc)
-			f_req_addr <= i_pc;
+			f_req_addr <= i_pc[AW+1:2];
 		else if ((o_wb_stb)&&(!i_wb_stall)&&(!invalid_bus_cycle))
 			f_req_addr <= f_req_addr + 1'b1;
 
