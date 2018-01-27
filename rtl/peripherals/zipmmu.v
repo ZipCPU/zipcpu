@@ -696,6 +696,9 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	generate if (OPT_DELAY_RETURN)
 	begin
+		reg		r_rtn_ack;
+		reg	[31:0]	r_rtn_data;
+
 		initial	r_rtn_data = 0;
 		initial	r_rtn_ack  = 0;
 		always @(posedge i_clk)
