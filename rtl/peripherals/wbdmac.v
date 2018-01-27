@@ -334,9 +334,6 @@ module wbdmac(i_clk, i_reset,
 			dma_state <= (cfg_len <= 1)?`DMA_IDLE:`DMA_WAIT;
 		else if (!cfg_len_nonzero)
 			dma_state <= `DMA_IDLE;
-
-		if (abort)
-			dma_state <= `DMA_IDLE;
 		end
 	default:
 		dma_state <= `DMA_IDLE;
@@ -436,7 +433,10 @@ module wbdmac(i_clk, i_reset,
 	end else
 		last_read_request <= 1'b0;
 
-	wire	[LGMEMLEN:0]	next_nread = nread + 1'b1;
+
+	wire	[(LGMEMLEN):0]	next_nread;
+	assign	next_nread = nread + 1'b1;
+
 	initial	last_read_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -444,9 +444,9 @@ module wbdmac(i_clk, i_reset,
 	else if (dma_state == `DMA_READ_REQ)
 	begin
 		if ((i_mwb_ack)&&((!o_mwb_stb)||(i_mwb_stall)))
-			last_read_ack <= (next_nread[LGMEMLEN-1:0] == cfg_blocklen_sub_one);
+			last_read_ack <= (next_nread == { 1'b0, cfg_blocklen_sub_one });
 		else
-			last_read_ack <= (nread[LGMEMLEN-1:0] == cfg_blocklen_sub_one);
+			last_read_ack <= (nread == { 1'b0, cfg_blocklen_sub_one });
 	end else if (dma_state == `DMA_READ_ACK)
 	begin
 		if ((i_mwb_ack)&&((!o_mwb_stb)||(i_mwb_stall)))
