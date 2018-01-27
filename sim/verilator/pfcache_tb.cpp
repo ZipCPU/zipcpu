@@ -79,8 +79,8 @@ public:
 	// is low during this reset.
 	//
 	void	reset(void) {
-		m_core->i_rst         = 0;
-		m_core->i_pc          = RAMBASE;
+		m_core->i_reset       = 0;
+		m_core->i_pc          = RAMBASE<<2;
 		m_core->i_new_pc = 0;
 		m_core->i_clear_cache = 1;
 		m_core->i_stall_n = 1;
@@ -149,11 +149,11 @@ public:
 
 			pc   = m_core->o_pc;
 			insn = m_core->o_i;
-			if (insn != m_mem[pc & (RAMWORDS-1)]) {
+			if (insn != m_mem[(pc>>2) & (RAMWORDS-1)]) {
 				fprintf(stderr, "ERR: PF[%08x] = %08x != %08x\n", pc,
-					insn, m_mem[pc & (RAMWORDS-1)]);
+					insn, m_mem[(pc>>2) & (RAMWORDS-1)]);
 				closetrace();
-				assert(insn == m_mem[pc & (RAMWORDS-1)]);
+				assert(insn == m_mem[(pc>>2) & (RAMWORDS-1)]);
 			}
 		}
 	}
@@ -167,7 +167,7 @@ public:
 		if ((m_core->o_v)&&(m_core->i_stall_n))
 			m_core->i_pc++;
 
-		m_core->i_rst         = 0;
+		m_core->i_reset       = 0;
 		m_core->i_new_pc      = 0;
 		m_core->i_clear_cache = 0;
 		m_core->i_stall_n     = 1;
@@ -188,7 +188,7 @@ public:
 		if ((m_core->o_v)&&(m_core->i_stall_n))
 			m_core->i_pc++;
 
-		m_core->i_rst         = 0;
+		m_core->i_reset       = 0;
 		m_core->i_new_pc      = 0;
 		m_core->i_clear_cache = 0;
 		m_core->i_stall_n     = 0;
@@ -218,7 +218,7 @@ public:
 	void	jump(unsigned target) {
 		uint32_t	timeout = 0;
 
-		m_core->i_rst         = 0;
+		m_core->i_reset       = 0;
 		m_core->i_new_pc      = 1;
 		m_core->i_clear_cache = 0;
 		m_core->i_stall_n     = 1;
@@ -254,7 +254,7 @@ int	main(int argc, char **argv) {
 	tb->opentrace("pfcache.vcd");
 	tb->randomize_memory();
 
-	tb->jump(RAMBASE);
+	tb->jump(RAMBASE<<2);
 
 	// Simulate running straight through code
 	for(int i=0; i<130; i++) {
@@ -264,7 +264,7 @@ int	main(int argc, char **argv) {
 
 	// Now, let's bounce around through the cache
 	for(int j=0; j<20; j++) {
-		tb->jump(RAMBASE+j);
+		tb->jump((RAMBASE+j)<<2);
 		for(int i=0; i<130; i++) {
 			// printf("FETCH\n");
 			tb->fetch_insn();
@@ -303,7 +303,7 @@ int	main(int argc, char **argv) {
 			uint32_t target = rand() & (RAMWORDS-1);
 			target += RAMBASE;
 			// printf("JUMP TO %08x\n", target);
-			tb->jump(target);
+			tb->jump(target<<2);
 		} else if ((v & 3)==2) {
 			// printf("SKIP\n");
 			tb->skip_fetch();
