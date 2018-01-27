@@ -115,8 +115,8 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	reg	[(AW+1):0]	r_pc, r_lastpc;
 	reg	isrc;
 
-	initial	r_pc = 2'b00;
-	initial	r_lastpc = 2'b00;
+	initial	r_pc = 0;
+	initial	r_lastpc = 0;
 	always @(posedge i_clk)
 	begin
 		// We don't have the logic to select what to read, we must

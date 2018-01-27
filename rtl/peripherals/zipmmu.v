@@ -8,7 +8,7 @@
 //		unit, that is configured from one wishbone bus and modifies a
 //	separate wishbone bus.  Both busses will not be active at the same time.
 //
-//	The idea is that the CPU can use one portion of its peripheral 
+//	The idea is that the CPU can use one portion of its peripheral
 //	system memory space to configure the MMU, and another portion of its
 //	memory space to access the MMU.  Even more, configuring the MMU is to
 //	be done when the CPU is in supervisor mode.  This means that all
@@ -33,7 +33,7 @@
 //		clock cycle.  Further, multiple accesses to the same page
 //		should not take any longer than the one cycle delay.  Accesses
 //		to other pages should take a minimum number of clocks.
-//		Accesses from one page to the next, such as from one page to 
+//		Accesses from one page to the next, such as from one page to
 //		the next subsequent one, should cost no delays.
 //
 //	2. One independent control word to set the current context
@@ -48,7 +48,7 @@
 //		bus of width (lgpage+17), or a memory space of (2^(lgpage+17)).
 //		Under this formula, the number of valid address bits can range
 //		from 17 to 32.
-//	  -  Contains 4 RdOnly bits indicating log_2 TLB table size. 
+//	  -  Contains 4 RdOnly bits indicating log_2 TLB table size.
 //	  	Size is given by (2^(lgsize)).  I'm considering sizes of 6,7&8
 //	  -  Contains 4 RdOnly bits indicating the log page size, offset by
 //		eight.  Page sizes are therefore given by (2^(lgpage+8)), and
@@ -69,7 +69,7 @@
 //	Supervisor *cannot* have page table entries, since there are no
 //	interrupts (page faults) allowed in supervisor context.
 //
-//	To be valid, 
+//	To be valid,
 //	  Context Size (1..16), NFlags (    4) < Page Size (8-23 bits)
 //	  Page size (8-23 bits)                > NFlags bits (4)
 //
@@ -78,7 +78,7 @@
 //	3. One status word, which contains the address that failed and some
 //		flags:
 //
-//	Top Virtual address bits indicate which page ... caused  a problem. 
+//	Top Virtual address bits indicate which page ... caused  a problem.
 //		These will be the top N bits of the word, where N is the size
 //		of the virtual address bits.  (Bits are cleared upon any write.)
 //
@@ -87,7 +87,7 @@
 //		- 4: Multiple page table matches
 //		- 2: Attempt to write a read-only page
 //		- 1: Page not found
-//	
+//
 //	3. Two words per active page table entry, accessed through two bus
 //		addresses.  This word contains:
 //
@@ -125,7 +125,7 @@
 //
 //	4. Can read/write this word in two parts:
 //
-//		(20-bit Virtual )(8-bits lower context)(4-bit flags), and 
+//		(20-bit Virtual )(8-bits lower context)(4-bit flags), and
 //		(20-bit Physical)(8-bits upper context)(4-bit flags)
 //
 //		Actual bit lengths will vary as the MMU configuration changes,
@@ -163,7 +163,7 @@
 //		will have long been available, the "Valid" bit will be turned
 //		on and associated with the physical mapping.
 //	- On any data-write (pf doesn't write), MMU sends [Context,Va,Pa]
-//		TLB mapping to the pf-cache.  
+//		TLB mapping to the pf-cache.
 //	- If the write matches any physical PF-cache addresses (???), the
 //		pfcache declares that address line invalid, and just plain
 //		clears the valid bit for that page.
@@ -360,7 +360,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	reg				s_tlb_miss, s_tlb_hit, s_pending;
 	//
 	wire	ro_flag, exe_flag, simple_miss, ro_miss, exe_miss, table_err, cachable;
-	reg	p_tlb_miss,p_tlb_err, pf_stb, pf_cachable;
+	reg	pf_stb, pf_cachable;
 	reg	miss_pending;
 	//
 	reg	rtn_err;
@@ -433,11 +433,11 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	assign	w_vtable_reg[(DW-1):LGPGSZB] = tlb_vdata[wr_tlb_addr];
 	assign	w_vtable_reg[(LGLCTX+4-1):4] = { tlb_cdata[wr_tlb_addr][(LGLCTX-1):0] };
-	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], 1'b0 };
+	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr] };
 	//
 	assign	w_ptable_reg[(DW-1):LGPGSZB] = { {(DW-PAW-LGPGSZB){1'b0}},
 					tlb_pdata[wr_tlb_addr] };
-	assign	w_ptable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], 1'b0 };
+	assign	w_ptable_reg[ 3:0]  = 4'h0;
 	//
 	generate
 		if (4+LGHCTX-1>4)
@@ -586,20 +586,6 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	assign	ppage	    = tlb_pdata[s_tlb_addr];
 	assign	cachable    = tlb_flags[s_tlb_addr][`CHFLAG];
 
-	initial	p_tlb_miss = 1'b0;
-	always @(posedge i_clk)
-	if (i_reset)
-		p_tlb_miss <= 1'b0;
-	else
-		p_tlb_miss <= (i_wbm_cyc)&&((simple_miss)||(ro_miss)||(exe_miss));
-
-	initial	p_tlb_err  = 1'b0;
-	always @(posedge i_clk)
-	if (i_reset)
-		p_tlb_err <= 1'b0;
-	else
-		p_tlb_err  <= (i_wbm_cyc)&&(s_pending)&&(!s_tlb_miss)&&(!s_tlb_hit);
-
 	initial	pf_cachable = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -633,8 +619,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	else if (wr_control)
 		status_word <= 0;
 	else if ((table_err)||(ro_miss)||(simple_miss)||(exe_miss))
-		status_word <= { r_addr[(AW-1):(AW-VAW)],
-				{(LGPGSZW-1){1'b0}}, 
+		status_word <= { r_vpage,
+				{(LGPGSZB-4){1'b0}},
 				(table_err), (exe_miss),
 				(ro_miss), (simple_miss) };
 
@@ -779,7 +765,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
-	// Nothing .... currently
+	wire [(PAW-1):0]	unused;
+	assign	unused = r_ppage;
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
