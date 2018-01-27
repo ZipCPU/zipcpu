@@ -114,6 +114,9 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	reg	[(BUSW-1):0]	r_pc_cache, r_last_cache;
 	reg	[(AW+1):0]	r_pc, r_lastpc;
 	reg	isrc;
+
+	initial	r_pc = 2'b00;
+	initial	r_lastpc = 2'b00;
 	always @(posedge i_clk)
 	begin
 		// We don't have the logic to select what to read, we must
@@ -614,10 +617,18 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if (o_v)
 	begin
-		assert(tags[o_pc[(CW-1):PW]] == o_pc[(AW-1):CW]);
-		assert(vmask[o_pc[(CW-1):PW]]);
-		assert(o_i == cache[o_pc[(CW-1):0]]);
-		assert(o_illegal == (illegal_cache == o_pc[(AW-1):PW]));
+		assert(tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
+		assert(vmask[o_pc[(CW+1):PW+2]]);
+		assert(o_i == cache[o_pc[(CW+1):2]]);
+		assert(o_illegal == (illegal_cache == o_pc[(AW+1):PW+2]));
+	end
+
+	always @(*)
+	begin
+		assume(i_pc[1:0] == 2'b00);
+		assert(o_pc[1:0] == 2'b00);
+		assert(r_pc[1:0] == 2'b00);
+		assert(r_lastpc[1:0] == 2'b00);
 	end
 
 	always @(posedge i_clk)
@@ -626,8 +637,15 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 			&&(!$past(i_new_pc))
 			&&(!$past(i_stall_n)))
 		begin
-			assert(tags[o_pc[(CW-1):PW]] == o_pc[(AW-1):CW]);
+			assert(tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
 		end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_v))&&($past(i_stall_n)))
+	begin
+		// Should always advance the instruction
+		assert((!o_v)||(o_pc != $past(o_pc)));
+	end
 
 `endif	// FORMAL
 
