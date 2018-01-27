@@ -560,7 +560,7 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	pf_new_pc = (new_pc)||((dcd_early_branch_stb)&&(!clear_pipeline));
 
 	wire	[(AW+1):0]	pf_request_address;
-	assign	pf_request_address = ((dcd_early_branch)&&(!clear_pipeline))
+	assign	pf_request_address = ((dcd_early_branch_stb)&&(!clear_pipeline))
 				? dcd_branch_pc:pf_pc;
 	assign	pf_gie = gie;
 `ifdef	OPT_SINGLE_FETCH
