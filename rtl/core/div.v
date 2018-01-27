@@ -252,7 +252,7 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	if (i_reset)
 		pre_sign <= 1'b0;
 	else if (i_wr)
-		pre_sign <= i_signed;
+		pre_sign <= (i_signed)&&((i_numerator[BW-1])||(i_denominator[BW-1]));
 	else
 		pre_sign <= 1'b0;
 
@@ -436,6 +436,11 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_wr)))
 		assert(!pre_sign);
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wr))&&($past(i_signed))
+			&&(|$past({i_numerator[BW-1],i_denominator[BW-1]})))
+		assert(pre_sign);
+
 	// always @(posedge i_clk)
 	// if ((f_past_valid)&&(!$past(pre_sign)))
 		// assert(!r_sign);
