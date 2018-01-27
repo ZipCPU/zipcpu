@@ -243,6 +243,7 @@
 #define	alu_gie	VVAR(_thecpu__DOT__r_op_gie)
 #define	alu_pc	VVAR(_thecpu__DOT__op_pc)
 #endif
+#define	op_pc	VVAR(_thecpu__DOT__op_pc)
 #define	op_gie	VVAR(_thecpu__DOT__r_op_gie)
 
 #define	r_op_pc	VVAR(_thecpu__DOT__op_pc)
@@ -932,7 +933,7 @@ public:
 			//m_core->v__DOT__thecpu__DOT__instruction_gie,
 			m_core->r_gie,
 			0,
-			(m_core->pf_instruction_pc)<<2,
+			(m_core->pf_instruction_pc),
 			true); ln++;
 			// m_core->pf_pc); ln++;
 
@@ -944,7 +945,8 @@ public:
 #else
 			0,
 #endif
-			(((m_core->dcd_pc+1)&-2)<<1)-4,
+			((m_core->dcd_phase) ?
+				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
 #ifdef	OPT_CIS
 			m_core->dcd_phase
 #else
@@ -1321,7 +1323,8 @@ public:
 #else
 			0,
 #endif
-			(((m_core->dcd_pc+1)&-2)<<1)-4,
+			((m_core->dcd_phase) ?
+				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
 #ifdef	OPT_CIS
 			m_core->dcd_phase
 #else
@@ -1564,7 +1567,8 @@ public:
 #else
 				0,
 #endif
-				((m_core->dcd_pc&-2)<<1)-4,
+				(m_core->dcd_phase)?(m_core->dcd_pc-2)
+					:(m_core->dcd_pc-4),
 #ifdef	OPT_CIS
 				m_core->dcd_phase,
 #else
@@ -1703,8 +1707,7 @@ public:
 	}
 
 	unsigned	op_pc(void) {
-#define	op_pc	VVAR(_thecpu__DOT__op_pc)
-		return (m_core->op_pc<<2)-4;
+		return m_core->op_pc-4;
 	}
 
 	bool	pfstall(void) {
@@ -1761,7 +1764,7 @@ public:
 			r--;
 		return r;
 		*/
-		return (m_core->alu_pc<<2)-4;
+		return m_core->alu_pc-4;
 	}
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
@@ -1893,7 +1896,7 @@ public:
 #else
 		m_core->pf_pc = address & -4;
 #define	pf_request_address	VVAR(_thecpu__DOT__pf_request_address)
-		m_core->pf_request_address = address >> 2;
+		m_core->pf_request_address = address;
 #endif
 		// m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 		m_core->new_pc = 1;
