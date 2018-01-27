@@ -91,7 +91,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	//
 	parameter			F_LGDEPTH = 3;
 	//
-	//
+	// F_OPT_CLK2FFLOGIC shouldn't be needed.  However, if this component
+	// is being used as a component of a multi-clock formal design, then
+	// it will be necessary.  Set this any-time the design is being built
+	// with the yosys clk2fflogic command used as part of the yosys script.
 	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_reset.
