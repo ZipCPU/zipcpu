@@ -103,19 +103,16 @@
 //	   1-bit	Read-only / ~written (user set/read/written)
 //				If set, this page will cause a fault on any
 //				attempt to write this memory.
+//	   1-bit	This page may be executed
+//	   1-bit	Cacheable
+//				This is not a hardware page, but a memory page.
+//				Therefore, the values within this page may be
+//				cached.
 //	   1-bit	Accessed
 //				This an be used to implement a least-recently
 //				used measure.  The hardware will set this value
 //				when the page is accessed.  The user can also
 //				set or clear this at will.
-//	   1-bit	Cacheable
-//				This is not a hardware page, but a memory page.
-//				Therefore, the values within this page may be
-//				cached.
-//	   1-bit	This context (Unused ?)
-//				This is a read-only bit, indicating that the
-//				context register of this address matches the
-//				context register in the control word.
 //
 //		(Loaded flag	Not necessary, just map the physical page to 0)
 //
@@ -140,10 +137,10 @@
 //		bits in the control register.
 //
 //	+----+----+-----+----+----+----+----+--+--+--+--+
-//	|                         | Lower 8b| R| A| C| T|
-//	|  20-bit Virtual page ID | Context | O| C| C| H|
-//	|(top 20 bits of the addr)|   ID    | n| C| H| S|
-//	|                         |         | W| S| E| P|
+//	|                         | Lower 8b| R| E| C| A|
+//	|  20-bit Virtual page ID | Context | O| X| C| C|
+//	|(top 20 bits of the addr)|   ID    | n| E| H| C|
+//	|                         |         | W| F| E| S|
 //	+----+----+-----+----+----+----+----+--+--+--+--+
 //
 //	+----+----+-----+----+----+----+----+--+--+--+--+
@@ -216,9 +213,9 @@
 `default_nettype	none
 //
 `define	ROFLAG	3	// Read-only flag
-`define	AXFLAG	2	// Accessed flag
+`define	EXEFLG	2	// No-execute flag (invalid for I-cache)
 `define	CHFLAG	1	// Cachable flag
-`define	EXEFLG	0	// No-execute flag (invalid for I-cache)
+`define	AXFLAG	0	// Accessed flag
 //
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				i_wbs_data, o_wbs_ack, o_wbs_stall, o_wbs_data,
@@ -240,8 +237,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 `else
 			LGTBL=4'h6,
 `endif
-			// The requested log page size in bytes
-			PLGPGSZB=12,
+			// The requested log page size in 8-bit bytes
+			PLGPGSZB=20,
 			// Number of bits describing context
 `ifdef	FORMAL
 			PLGCTXT=2;
@@ -260,11 +257,12 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			// number of bits for an address within a page is 5
 			LGPGSZB=(PLGPGSZB < 5)? 5:PLGPGSZB,	// in bytes
 			LGPGSZW=LGPGSZB-2,			// in words
-			// The number of context bits is twice the number of
-			// bits left over from DW after removing the LGPGSZ
-			// and flags bits.
-			LGCTXT=((2*(LGPGSZB-4))>PLGCTXT)?
-				(2*(LGPGSZB-4)):PLGCTXT,
+			// The context value for a given page can be split
+			// across both virtual and physical words.  It cannot
+			// have so many bits to it that it takes more bits
+			// then are available.
+			LGCTXT=((2*LGPGSZB-4)>PLGCTXT)?
+				PLGCTXT:(2*LGPGSZB-4),
 			// LGLCTX is the number of context bits in the low word
 			LGLCTX=(LGCTXT > (LGPGSZB-4))?(LGPGSZB-4):LGCTXT,
 			// LGHCTX is the number of context bits in the high word
@@ -320,11 +318,11 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 //
 //
 //
-	reg	[3:0]			tlb_flags	[0:(TBL_SIZE-1)];
+	reg	[3:1]			tlb_flags	[0:(TBL_SIZE-1)];
 	reg	[(LGCTXT-1):0]		tlb_cdata	[0:(TBL_SIZE-1)];
 	reg	[(VAW-1):0]		tlb_vdata	[0:(TBL_SIZE-1)];
 	reg	[(PAW-1):0]		tlb_pdata	[0:(TBL_SIZE-1)];
-	reg	[(TBL_SIZE-1):0]	tlb_valid;
+	reg	[(TBL_SIZE-1):0]	tlb_valid, tlb_accessed;
 
 	wire	adr_control, adr_vtable, adr_ptable;
 	wire	wr_control, wr_vtable, wr_ptable;
@@ -382,6 +380,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	//
 	//////////////////////////////////////////
+	initial	tlb_accessed = -1;
 	always @(posedge i_clk)
 	begin
 		// Write to the Translation lookaside buffer
@@ -391,20 +390,27 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			tlb_pdata[wr_tlb_addr]<=i_wbs_data[(AW+1):LGPGSZB];
 		// Set the context register for the page
 		if (wr_vtable)
-			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:0];
+			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
+		if (wr_vtable)
+			tlb_accessed[wr_tlb_addr] <= 1'b0;
 		// Otherwise, keep track of the accessed bit if we
 		// ever access this page
 		else if ((!kernel_context)&&(pending_page_valid))
-			tlb_flags[s_tlb_addr][`AXFLAG] <= 1'b1;
-		else if ((!kernel_context)&&(this_page_valid));
-			tlb_flags[s_tlb_addr][`AXFLAG] <= 1'b1;
+			tlb_accessed[s_tlb_addr] <= 1'b1;
+		else if ((!kernel_context)&&(this_page_valid))
+			tlb_accessed[s_tlb_addr] <= 1'b1;
 		if (wr_vtable)
-			tlb_cdata[wr_tlb_addr][((LGCTXT>=8)? 7:(LGCTXT-1)):0]
-				<= i_wbs_data[((LGCTXT>=8)? 11:(4+LGCTXT-1)):4];
-		if ((wr_ptable)&&(LGCTXT > 8))
-			tlb_cdata[wr_tlb_addr][(LGCTXT-1):8]
-				<= i_wbs_data[(4+LGCTXT-8-1):4];
+			tlb_cdata[wr_tlb_addr][(LGLCTX-1):0]
+				<= i_wbs_data[(LGLCTX+4-1):4];
 	end
+	generate if (LGHCTX > 0)
+	begin : HCTX
+		always @(posedge i_clk)
+		if (wr_ptable)
+			tlb_cdata[wr_tlb_addr][(LGCTXT-1):LGLCTX]
+				<= i_wbs_data[(LGHCTX+4-1):4];
+	end endgenerate
+
 	// Writing to the control word
 	initial z_context = 1'b1;
 	initial r_context_word = 0;
@@ -433,7 +439,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	assign	w_vtable_reg[(DW-1):LGPGSZB] = tlb_vdata[wr_tlb_addr];
 	assign	w_vtable_reg[(LGLCTX+4-1):4] = { tlb_cdata[wr_tlb_addr][(LGLCTX-1):0] };
-	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr] };
+	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], tlb_accessed[wr_tlb_addr] };
 	//
 	assign	w_ptable_reg[(DW-1):LGPGSZB] = { {(DW-PAW-LGPGSZB){1'b0}},
 					tlb_pdata[wr_tlb_addr] };
@@ -767,6 +773,11 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// verilator lint_off UNUSED
 	wire [(PAW-1):0]	unused;
 	assign	unused = r_ppage;
+	generate if (4+LGCTXT < LGPGSZB)
+	begin
+		wire	unused_data;
+		assign	unused_data = i_wbs_data[LGPGSZB-1:4+LGCTXT];
+	end endgenerate
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
@@ -960,7 +971,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&($past(last_page_valid))&&(!$past(kernel_context))
 			&&($past(o_stb))&&($past(i_wbm_cyc)))
-		assert(tlb_flags[$past(s_tlb_addr)][`AXFLAG]);
+		assert(tlb_accessed[$past(s_tlb_addr)]);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(kernel_context))&&(o_stb))
@@ -1019,7 +1030,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			assert(last_vpage == $past(r_vpage));
 			assert(last_page_valid);
 			assert(!miss_pending);
-			assert(tlb_flags[s_tlb_addr][`AXFLAG]);
+			assert(tlb_accessed[s_tlb_addr]);
 		end else if (($past(s_tlb_hit))&&($past(ro_miss)))
 		begin
 			assert(miss_pending);
