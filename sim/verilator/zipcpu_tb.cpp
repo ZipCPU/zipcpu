@@ -218,10 +218,11 @@
 #define	regset		VVAR(_thecpu__DOT__regset)
 
 
-
+#ifdef	OPT_CIS
 #define	dcd_phase	VVAR(_thecpu__DOT__dcd_phase)
 #define	op_phase	VVAR(_thecpu__DOT__r_op_phase)
 #define	alu_phase	VVAR(_thecpu__DOT__r_alu_phase)
+#endif
 
 #ifdef	OPT_SINGLE_FETCH
 #define	pf_instruction_pc	VVAR(_thecpu__DOT__pf_addr)
@@ -243,7 +244,6 @@
 #define	alu_gie	VVAR(_thecpu__DOT__r_op_gie)
 #define	alu_pc	VVAR(_thecpu__DOT__op_pc)
 #endif
-#define	op_pc	VVAR(_thecpu__DOT__op_pc)
 #define	op_gie	VVAR(_thecpu__DOT__r_op_gie)
 
 #define	r_op_pc	VVAR(_thecpu__DOT__op_pc)
@@ -823,9 +823,9 @@ public:
 			(m_core->pf_cyc)?"CYC":"   ",
 			(m_core->pf_stb)?"STB":"   ",
 			"  ", // (m_core->pf_we )?"WE":"  ",
-			(m_core->pu__DOT__pf_addr<<2),
+			(m_core->pf_addr<<2),
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
-			(m_core->pu__DOT__pf_ack)?"ACK":"   ",
+			(m_core->pf_ack)?"ACK":"   ",
 			"   ",//(m_core->v__DOT__thecpu__DOT__pf_stall)?"STL":"   ",
 			(m_core->cpu_idata)); ln++;
 #else
@@ -945,11 +945,12 @@ public:
 #else
 			0,
 #endif
+#ifdef	OPT_CIS
 			((m_core->dcd_phase) ?
 				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
-#ifdef	OPT_CIS
 			m_core->dcd_phase
 #else
+			m_core->dcd_pc - 4,
 			false
 #endif
 			); ln++;
@@ -963,11 +964,11 @@ public:
 			m_core->op_valid,
 			m_core->op_gie,
 			m_core->op_stall,
-			op_pc()+((m_core->op_phase)?4:0),
 #ifdef	OPT_CIS
+			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
 #else
-			false
+			op_pc(), false
 #endif
 			); ln++;
 		if (m_core->op_illegal)
@@ -1323,11 +1324,12 @@ public:
 #else
 			0,
 #endif
+#ifdef	OPT_CIS
 			((m_core->dcd_phase) ?
 				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
-#ifdef	OPT_CIS
 			m_core->dcd_phase
 #else
+			m_core->dcd_pc-4,
 			false
 #endif
 			); ln++;
@@ -1337,10 +1339,11 @@ public:
 			m_core->op_valid,
 			m_core->op_gie,
 			m_core->op_stall,
-			op_pc()+((m_core->op_phase)?4:0),
 #ifdef	OPT_CIS
+			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
 #else
+			op_pc(),
 			false
 #endif
 			); ln++;
@@ -1567,12 +1570,12 @@ public:
 #else
 				0,
 #endif
+#ifdef	OPT_CIS
 				(m_core->dcd_phase)?(m_core->dcd_pc-2)
 					:(m_core->dcd_pc-4),
-#ifdef	OPT_CIS
 				m_core->dcd_phase,
 #else
-				false,
+				m_core->dcd_pc-4, false,
 #endif
 				m_core->dcd_illegal);
 			if (m_dbgfp) {
@@ -1707,7 +1710,7 @@ public:
 	}
 
 	unsigned	op_pc(void) {
-		return m_core->op_pc-4;
+		return m_core->r_op_pc-4;
 	}
 
 	bool	pfstall(void) {
