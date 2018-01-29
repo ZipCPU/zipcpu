@@ -188,7 +188,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		else begin
 			if ((o_valid)&&(i_stall_n))
 				cache_valid[cache_read_addr] <= 1'b0;
-			if ((o_wb_cyc)&&(i_wb_ack))
+			if ((o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
 				cache_valid[cache_write_addr] <= 1'b1;
 		end
 
@@ -212,10 +212,10 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
-		if ((o_wb_cyc)&&(i_wb_err))
-			o_illegal <= 1'b1;
-		else if ((!o_wb_cyc)&&((i_new_pc)||(invalid_bus_cycle)))
+		if ((invalid_bus_cycle)||(i_new_pc))
 			o_illegal <= 1'b0;
+		else if ((o_wb_cyc)&&(i_wb_err))
+			o_illegal <= 1'b1;
 
 `ifdef	FORMAL
 //
@@ -485,6 +485,21 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(*)
 		if (o_wb_cyc)
 			assert(!o_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))
+			&&(!$past(invalid_bus_cycle))&&(!$past(i_new_pc))
+			&&($past(o_wb_cyc))&&($past(i_wb_err)))
+		assert((!o_wb_cyc)&&(o_valid)&&(o_illegal));
+
+	always @(posedge i_clk)
+	if (o_illegal)
+		assert(o_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(i_new_pc))
+		assert(!o_valid);
+
 `endif	// FORMAL
 endmodule
 //
