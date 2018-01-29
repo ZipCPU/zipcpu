@@ -333,7 +333,7 @@ test_start:
 quickskip:
 	noop
 	cmp	$0,r10
-	trap.z	-1
+	trap.z	0
 	add	$1,r0
 	add	$1,r0
 
@@ -343,35 +343,35 @@ quickskip:
 	lsr	$1,r0
 	add	$1,r0
 	bv	first_overflow_passes
-	trap	-1
+	trap	0
 first_overflow_passes:
 ; Overflow set from subtraction
 	ldi	$0x03000,r11
 	BREV	$1,r0
 	sub	$1,r0
 	bv	subtraction_overflow_passes
-	trap	-1
+	trap	0
 subtraction_overflow_passes:
 ; Overflow set from LSR
 	ldi	$0x04000,r11
 	BREV	1,r0
 	lsr	$1,r0
 	bv	lsr_overflow_passes
-	trap	-1
+	trap	0
 lsr_overflow_passes:
 ; Overflow set from LSL
 	ldi	$0x05000,r11
 	BREV	2,R0
 	lsl	$1,r0
 	bv	lsl_overflow_passes
-	trap	-1
+	trap	0
 lsl_overflow_passes:
 ; Overflow set from LSL, negative to positive
 	ldi	$0x06000,r11
 	BREV	1,r0
 	lsl	$1,r0
 	bv	second_lsl_overflow_passes
-	trap	-1
+	trap	0
 second_lsl_overflow_passes:
 ; Test carry
 	ldi	$0x07000,r11
@@ -379,25 +379,25 @@ second_lsl_overflow_passes:
 	add	$1,r0
 	tst	2,cc
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	0
 ; and carry from subtraction
 	ldi	$0x08000,r11
 	clr	r0
 	sub	$1,r0
 	tst	2,cc
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	0
 ; Carry from right shift
 	clr	r0		; r0 = 0
 	lsr	1,r0		; r0 = 0, c = 0
 	add.c	1,r0		; r0 = 0
 	cmp	1,r0		; r0 ?= 1
-	trap.z	-1
+	trap.z	0
 	LDI	1,r0		; r0 = 1
 	lsr	1,r0		; r0 = 0, c = 1
 	add.c	1,r0		; r0 = 1
 	cmp	1,r0
-	trap.nz	-1
+	trap.nz	0
 ;
 	ldi	0x070eca6,r0
 	ldi	0x0408b85,r1
@@ -405,7 +405,7 @@ second_lsl_overflow_passes:
 	lsr	1,r0
 	xor.c	r1,r0
 	cmp	r2,r0
-	trap.nz	-1
+	trap.nz	0
 ;
 ; Let's try a loop: for i=0; i<5; i++)
 ;	We'll use R0=i, Immediates for 5
@@ -419,7 +419,7 @@ for_loop:
 	blt	for_loop
 
 	cmp	r0,r1
-	trap.nz	-1
+	trap.nz	0
 ;
 ; Let's try a reverse loop.  Such loops are usually cheaper to
 ; implement, and this one is no different: 2 loop instructions 
@@ -435,7 +435,7 @@ bgt_loop:
 	sub	$1,r0
 	bge	bgt_loop
 	cmp	5,r1
-	trap.nz	-1
+	trap.nz	0
 
 ; How about the same thing with a >= comparison?
 ; R1 = 5; // Need to do this explicitly
@@ -450,7 +450,7 @@ bge_loop:
 	bge	bge_loop
 
 	cmp	6,r2
-	trap.nz	-1
+	trap.nz	0
 
 ; Let's try the reverse loop again, only this time we'll store our
 ; loop variable in memory.
@@ -474,7 +474,7 @@ mem_loop:
 	sw	r0,(r1)
 	bge	mem_loop
 	cmp	$5,r2
-	trap.ne	-1
+	trap.ne	0
 ;
 ;; Now, let's test whether or not our LSR and carry flags work
 	ldi	$0x0c000,r11
@@ -484,50 +484,50 @@ mem_loop:
 	bnz	test_failure
 	ldi	-1,r0	; Second test: anything greater than zero should set
 	lsr	0,r0	; the carry flag
-	trap.c	-1
+	trap.c	0
 	lsr	1,r0
-	trap.nc	-1
+	trap.nc	0
 ;
 	tst	2,cc	; C bit to be set
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	0
 ;
 	lsr	31,r0
-	trap.nz	-1
+	trap.nz	0
 	lsr	1,r0
-	trap.c	-1
+	trap.c	0
 ;; Now repeat the above tests, looking to see whether or not ASR works
 	ldi	-1,r0
 	asr	32,r0
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	0
 	ldi	-1,r0
 	asr	0,r0
-	trap.c	-1
+	trap.c	0
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	0
 	asr	1,r0
 	tst	2,r14
-	trap.z	-1
+	trap.z	0
 	asr	30,r0
 	tst	2,r14
-	trap.z	-1
+	trap.z	0
 	ldi	-1,r0
 	asr	1,r0
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	0
 ;
 ; Let's test whether LSL works
 	ldi	0x035,r2
 	lsl	8,r2
 	ldi	0x03500,r1
 	cmp	r2,r1
-	trap.ne	-1
+	trap.ne	0
 	ldi	0x074,r0
 	and	0x0ff,r0
 	or	r0,r2
 	cmp	0x03574,r2
-	trap.ne	-1
+	trap.ne	0
 ;
 ; A push test
 	ldi	$0x0e000,r11	; Mark our test
@@ -537,9 +537,9 @@ mem_loop:
 	mov	r2,r5
 	JSR	reverse_bit_order
 	cmp	r1,r4
-	trap.ne
+	trap.ne	0
 	cmp	r2,r5
-	trap.ne
+	trap.ne	0
 ;
 ; A more thorough pipeline stack test
 	ldi	$0x0f000,r11	; Mark our test
@@ -552,19 +552,19 @@ mem_loop:
 	MOV	1(R5),R6
 	JSR	pipeline_stack_test
 	CMP	1,R0
-	trap.ne	-1
+	trap.ne	0
 	CMP	2,R1
-	trap.ne	-1
+	trap.ne	0
 	CMP	3,R2
-	trap.ne	-1
+	trap.ne	0
 	CMP	4,R3
-	trap.ne	-1
+	trap.ne	0
 	CMP	5,R4
-	trap.ne	-1
+	trap.ne	0
 	CMP	6,R5
-	trap.ne	-1
+	trap.ne	0
 	CMP	7,R6
-	trap.ne	-1
+	trap.ne	0
 
 ;
 ; Memory pipeline test
@@ -860,46 +860,46 @@ bytetest:
 	sw	r1,(sp)
 	lb	(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	1(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	2(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	3(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	0
 	;
 	lh	0(sp),r1
 	cmp	65535,r1
-	trap.nz	-1
+	trap.nz	0
 	lh	2(sp),r1
 	cmp	65535,r1
-	trap.nz	-1
+	trap.nz	0
 	;
 	ldi	0xdeadbeef,r1
 	sw	r1,(sp)
 	;
 	lb	(sp),r1
 	cmp	0x0de,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	1(sp),r1
 	cmp	0x0ad,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	2(sp),r1
 	cmp	0x0be,r1
-	trap.nz	-1
+	trap.nz	0
 	lb	3(sp),r1
 	cmp	0x0ef,r1
-	trap.nz	-1
+	trap.nz	0
 	;
 	lh	0(sp),r1
 	cmp	0x0dead,r1
-	trap.nz	-1
+	trap.nz	0
 	lh	2(sp),r1
 	cmp	0x0beef,r1
-	trap.nz	-1
+	trap.nz	0
 	;
 	; Now, let's try partial stores
 	ldi	0xdeadbeef,r1
