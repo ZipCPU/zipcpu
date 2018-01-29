@@ -427,7 +427,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if (i_reset)
 		tlb_valid <= 0;
 	else if (wr_ptable)
-		tlb_valid[wr_tlb_addr]<=(i_wbs_data[(AW+1):LGPGSZB]!=0);
+		tlb_valid[wr_tlb_addr]<=1'b1; //(i_wbs_data[(AW+1):LGPGSZB]!=0);
 
 	/* v*rilator lint_off WIDTH */
 	assign	w_control_data[31:28] = AW[3:0]-4'd1;

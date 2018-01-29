@@ -41,7 +41,8 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 			MEMORY_ADDRESS_WIDTH=15;
 	localparam	AW= CPU_ADDRESS_WIDTH,
 			MAW= MEMORY_ADDRESS_WIDTH,
-			LGTBL = 6;
+			LGTBL = 6,
+			LGPGSZB=12;
 	input			i_clk, i_reset;
 	//
 	input			i_ctrl_cyc_stb;
@@ -81,21 +82,21 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 	wire	[31:0]	rtn_data;
 
 	wire	ign_stb, ign_we, ign_cache;
-	wire	[11:0]	ign_p;
-	wire	[11:0]	ign_v;
+	wire	[(32-LGPGSZB-1):0]	ign_p;
+	wire	[(32-LGPGSZB-1):0]	ign_v;
 
 	//
 	// mut = Module Under Test
 	//
 	zipmmu	#(.ADDRESS_WIDTH(CPU_ADDRESS_WIDTH),
-		.LGTBL(LGTBL))
+		.LGTBL(LGTBL),.PLGPGSZB(LGPGSZB))
 		mut(i_clk, i_reset,
 			// Slave access
 			i_ctrl_cyc_stb, i_wb_we, i_wb_addr[(LGTBL+1):0],
 				i_wb_data,
 				mmus_ack, mmus_stall, mmus_data,
-			i_wbm_cyc, i_wbm_stb, i_exe,
-				i_wb_we, i_wb_addr, i_wb_data, i_wb_sel, i_gie,
+			i_wbm_cyc, i_wbm_stb, i_wb_we, i_exe,
+				i_wb_addr, i_wb_data, i_wb_sel, i_gie,
 			mem_cyc, mem_stb, mem_we, mem_addr, mem_idata, mem_sel,
 				mem_stall, (mem_ack)&&(!mem_err), mem_err, mem_odata,
 			rtn_stall, rtn_ack, o_rtn_err, o_rtn_miss,
@@ -123,7 +124,7 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 
 	// Make Verilator happy
 	// verilator lint_on UNUSED
-	wire	[2+12+12+1+1-1:0]	unused;
+	wire	[2+(32-LGPGSZB)+(32-LGPGSZB)+1+1-1:0]	unused;
 	assign	unused = { ign_stb, ign_we, ign_p, ign_v, ign_cache, mmus_stall };
 	// verilator lint_off UNUSED
 endmodule

@@ -109,11 +109,13 @@ public:
 
 		if ((m_debug)&&(writeout)) {
 			printf("%08lx-MMU: ", m_tickcount);
-			printf("(%s%s%s%s) %08x (%s%s%s)%08x%s %s %08x/%08x %s%s%s%s",
+			printf("(%s%s%s%s%s%s) %08x (%s%s%s)%08x%s %s %08x/%08x %s%s%s%s",
 				(m_core->setup_stb)?"CT":"  ",
 				(m_core->i_wbm_cyc)?"CYC":"   ",
 				(m_core->i_wbm_stb)?"STB":"   ",
 				(m_core->i_wb_we)?"WE":"  ",
+				(m_core->i_gie)?"IE":"  ",
+				(m_core->i_exe)?"EX":"  ",
 				(m_core->i_wb_addr),
 				(m_core->mem_cyc)?"CYC":"   ",
 				(m_core->mem_stb)?"STB":"   ",
@@ -128,26 +130,22 @@ public:
 				(m_core->o_rtn_miss)?"MISS":"    ",
 				(m_core->o_rtn_err )?"ERR":"   ");
 
-			printf("[%d,%d]",
-				m_core->wr_vtable,
-				m_core->wr_ptable);
-			printf("[%d,%d,%04x]",
-				m_core->v__DOT__mut__DOT__wr_control,
-				m_core->v__DOT__mut__DOT__z_context,
+			printf("[%c]",
+				(m_core->wr_control)?'C'
+				:(m_core->wr_vtable)?'V'
+				:(m_core->wr_ptable)?'P'
+				:'-');
+			printf("[%c,%04x]",
+				(m_core->v__DOT__mut__DOT__kernel_context)?'K'
+				:(m_core->v__DOT__mut__DOT__z_context)?'Z':'-',
 				m_core->v__DOT__mut__DOT__r_context_word);
-			/*
-			printf("[%08x,%08x-%08x]", 
-				m_core->v__DOT__mut__DOT__w_vtable_reg,
-				m_core->v__DOT__mut__DOT__w_ptable_reg,
-				m_core->v__DOT__mut__DOT__setup_data);
-			*/
 			printf(" %s[%s%s@%08x,%08x]",
 				(m_core->r_pending)?"R":" ",
 				(m_core->r_we)?"W":" ",
 				(m_core->r_valid)?"V":" ",
 				(m_core->r_addr),
 				(m_core->r_data));
-			printf("@%2x[%s%s%s][%s%s%s%s]",
+			printf("@%2x[%s%s%s][%s%s%s%s%s]",
 				(m_core->v__DOT__mut__DOT__s_tlb_addr),
 				(m_core->v__DOT__mut__DOT__s_pending)?"P":" ",
 				(m_core->v__DOT__mut__DOT__s_tlb_hit)?"HT":"  ",
@@ -155,18 +153,20 @@ public:
 				(m_core->v__DOT__mut__DOT__ro_flag)?"RO":"  ",
 				(m_core->v__DOT__mut__DOT__simple_miss)?"SM":"  ",
 				(m_core->v__DOT__mut__DOT__ro_miss)?"RM":"  ",
+				(m_core->v__DOT__mut__DOT__exe_miss)?"EX":"  ",
 				(m_core->v__DOT__mut__DOT__table_err)?"TE":"  ");
 				//(m_core->v__DOT__mut__DOT__cachable)?"CH":"  ");
 			/*
 			printf(" M[%016lx]",
 				m_core->v__DOT__mut__DOT__r_tlb_match);
-			printf(" P[%3d] = 0x%08x, V=0x%08x, C=0x%08x, CTXT=%04x",
+			*/
+			printf(" P[%3d%c] = 0x%03x, V=0x%03x, C=0x%04x, CTXT=%04x",
 				m_last_tlb_index,
+				((m_core->v__DOT__mut__DOT__tlb_valid>>m_last_tlb_index)&1)?'V':'u',
 				m_core->v__DOT__mut__DOT__tlb_pdata[m_last_tlb_index],
 				m_core->v__DOT__mut__DOT__tlb_vdata[m_last_tlb_index],
 				m_core->v__DOT__mut__DOT__tlb_cdata[m_last_tlb_index],
 				m_core->v__DOT__mut__DOT__r_context_word);
-			*/
 			printf("\n");
 		}
 	}
@@ -276,8 +276,8 @@ public:
 		m_core->i_ctrl_cyc_stb = 1;
 
 
-		if (a & 0x080)
-			m_last_tlb_index = (a>>1)&0x3f;
+		if (a & 0x0200)
+			m_last_tlb_index = (a>>3)&0x3f;
 
 		if (m_core->o_rtn_stall) {
 			while((errcount++ < BOMBCOUNT)&&(m_core->o_rtn_stall))
@@ -654,9 +654,9 @@ void	install_page(ZIPMMU_TB *tb, int idx, unsigned va, unsigned pa, int flags) {
 	int	LGTBL, LGPGSZ, LGCTXT;
 	int	c;
 	unsigned base;
-	bool	hdebug = tb->debug();
+	// bool	hdebug = tb->debug();
 
-	tb->debug(false);
+	// tb->debug(false);
 	c=tb->setup_read(R_CONTROL);
 	printf("CONTEXT-REG = %08x\n", c);
 	LGTBL  = ((c>>24)&15);
@@ -667,15 +667,15 @@ void	install_page(ZIPMMU_TB *tb, int idx, unsigned va, unsigned pa, int flags) {
 	va &= -(1<<LGPGSZ);
 	pa &= -(1<<LGPGSZ);
 
-	printf("INSTALL[%2d] %04x:%05x[%02x]%xV -> %05x[%02x]%xP %s%s\n",
+	printf("INSTALL[%2d] %04x:%03x[%04x]%xV -> %03x[%04x]%xP %s%s\n",
 		idx, c,
-		(va>>LGPGSZ), (c&0x0ff), flags,
-		(pa>>LGPGSZ), ((c>>8)&0x0ff), flags,
+		(va>>LGPGSZ), LOCONTEXT(c)>>4, flags,
+		(pa>>LGPGSZ), HICONTEXT(c)>>4, 0,
 		(flags&MMUFLAG_RONW)?"RO":"  ",
 		(flags&MMUFLAG_CCHE)?"Cachable":"");
-	tb->setup_write(base  , va|(( c    &0x0ff)<<4)|flags);
-	tb->setup_write(base+4, pa|(((c>>8)&0x0ff)<<4));
-	tb->debug(hdebug);
+	tb->setup_write(base  , va|(LOCONTEXT(c))|flags);
+	tb->setup_write(base+4, pa|(HICONTEXT(c)));
+	// tb->debug(hdebug);
 	tb->tick();
 	tb->m_core->i_gie = 1;
 }
@@ -787,6 +787,7 @@ int main(int  argc, char **argv) {
 	printf("\n\nTest: What if we make this into a writeable page?\n");
 	install_page(tb, 0, 0xfffffffc, (4<<LGMEMSIZE)+0*PAGESZ, 0);
 	tb->m_core->i_gie = 1;
+	tb->m_core->i_exe = 0;
 	tb->wb_write(0xfffffff8, 0x0fe, &tberr);
 	if (tberr) {
 		printf("TBERR = %s\nMISS  = %s\nERR   = %s\n",
