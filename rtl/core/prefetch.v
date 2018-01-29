@@ -219,6 +219,11 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// The o_pc output shares its value with the (last) wishbone address
 	assign	o_pc = { o_wb_addr, 2'b00 };
 
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	[1:0]	unused;
+	assign	unused = i_pc[1:0];
+	// verilator lint_on  UNUSED
 `ifdef	FORMAL
 	localparam	F_LGDEPTH=2;
 	reg	f_past_valid;
