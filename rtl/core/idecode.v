@@ -118,6 +118,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	wire		w_wR, w_rA, w_rB, w_wR_n;
 	wire		w_ljmp, w_ljmp_dly, w_cis_ljmp;
 	wire	[31:0]	iword;
+	wire		pf_valid;
+
+	assign	pf_valid = (i_pf_valid)&&(!o_early_branch_stb);
 
 
 	reg	[15:0]	r_nxt_half;
@@ -367,7 +370,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		always @(posedge i_clk)
 		if ((i_reset)||(w_ljmp_dly))
 			r_phase <= 1'b0;
-		else if ((i_ce)&&(i_pf_valid))
+		else if ((i_ce)&&(pf_valid))
 		begin
 			if (o_phase)
 				// CIS instructions only have two parts.  On
@@ -446,7 +449,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				begin
 					if (o_phase)
 						o_pc[AW+1:1] <= o_pc[AW+1:1] + 1'b1;
-					else if (i_pf_valid)
+					else if (pf_valid)
 						o_pc <= { i_pc[AW+1:2], 1'b1, 1'b0 };
 				end else begin
 					// The normal, non-CIS case
@@ -510,7 +513,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 `ifdef	VERILATOR
 			// Support the SIM instruction(s)
-			o_sim <= w_sim;
+			o_sim <= (w_sim)||(w_noop);
 `else
 			o_sim <= 1'b0;
 `endif
@@ -530,9 +533,11 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				r_ljmp <= 1'b0;
 			else if (i_ce)
 			begin
-				if ((OPT_CIS)&&(iword[`CISBIT]))
+				if (o_early_branch_stb)
+					r_ljmp <= 1'b0;
+				else if ((OPT_CIS)&&(iword[`CISBIT]))
 					r_ljmp <= w_cis_ljmp;
-				else if (i_pf_valid)
+				else if (pf_valid)
 					r_ljmp <= (w_ljmp);
 			end
 		assign	o_ljmp = r_ljmp;
@@ -544,7 +549,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		begin
 			r_early_branch     <= 1'b0;
 			r_early_branch_stb <= 1'b0;
-		end else if ((i_ce)&&(i_pf_valid))
+		end else if ((i_ce)&&(pf_valid))
 		begin
 			if (r_ljmp)
 			begin
@@ -623,7 +628,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		if (i_reset)
 			r_pipe <= 1'b0;
 		else if (i_ce)
-			r_pipe <= (r_valid)&&((i_pf_valid)||(o_phase))
+			r_pipe <= (r_valid)&&((pf_valid)||(o_phase))
 				// Both must be memory operations
 				&&(w_mem)&&(o_M)
 				// Both must be writes, or both stores
@@ -654,7 +659,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		if (i_reset)
 			r_valid <= 1'b0;
 		else if (i_ce)
-			r_valid <= ((i_pf_valid)||(o_phase))&&(!o_ljmp);
+			r_valid <= ((pf_valid)||(o_phase))&&(!o_ljmp);
 		else if (!i_stalled)
 			r_valid <= 1'b0;
 
@@ -715,7 +720,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	if (i_reset)
 		f_new_insn <= 1'b0;
 	else
-		f_new_insn <= ((i_pf_valid)&&(!i_stalled));
+		f_new_insn <= ((pf_valid)&&(!i_stalled));
 
 	initial	f_last_insn = 1'b0;
 	always @(posedge i_clk)
@@ -727,15 +732,18 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_last_insn)))
 	begin
-		if ($past(i_pf_valid))
+		if (($past(pf_valid))&&(pf_valid))
 		begin
-			assume(i_pf_valid);
 			assume(i_instruction == $past(i_instruction));
 			assume(i_gie == $past(i_gie));
 			assume(i_pc  == $past(i_pc));
 			assume(i_illegal == $past(i_illegal));
 		end
 	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(o_early_branch_stb))
+		assume(!pf_valid);
 
 	wire	[4+21+32+1+4+1+4+11+AW+3+23-1:0]	f_result;
 	assign	f_result = { o_valid, o_phase, o_illegal,
@@ -749,13 +757,13 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		assert(f_result == $past(f_result));
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_pf_valid))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(pf_valid))
 			&&(!$past(o_ljmp)))
 		assert(o_valid);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(f_new_insn)
-			&&($past(i_pf_valid))&&($past(i_illegal)))
+			&&($past(pf_valid))&&($past(i_illegal)))
 		assert(o_illegal);
 
 
@@ -1295,7 +1303,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_ce))&&(!$past(i_reset)))
 		begin
-			if ($past(i_pf_valid))
+			if ($past(pf_valid))
 			begin
 				if ($past(o_ljmp))
 				begin
@@ -1385,7 +1393,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		if (o_early_branch_stb)
 			assert(o_early_branch);
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_early_branch_stb))&&(!$past(i_pf_valid)))
+	if ((f_past_valid)&&($past(o_early_branch_stb))&&(!$past(pf_valid)))
 		assert(!o_early_branch_stb);
 
 	always @(*)
@@ -1408,7 +1416,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				assert(iword == i_instruction);
 
 			if ((!$past(o_phase))&&($past(i_ce))
-					&&($past(i_pf_valid))
+					&&($past(pf_valid))
 					&&(!$past(w_ljmp_dly))
 					&&($past(i_instruction[`CISBIT]))
 					&&((!$past(w_dcdR_pc))
@@ -1432,7 +1440,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end
 		
 		always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_stalled))&&($past(i_pf_valid))
+		if ((f_past_valid)&&(!$past(i_stalled))&&($past(pf_valid))
 				&&($past(i_ce)))
 		begin
 			assert(o_pc[0] == 1'b0);
@@ -1500,7 +1508,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_ce))&&(!$past(i_reset)))
 			assert((!$past(i_instruction[`CISBIT]))
-				||(!$past(i_pf_valid))||(o_illegal));
+				||(!$past(pf_valid))||(o_illegal));
 	end endgenerate
 
 	always @(posedge i_clk)
@@ -1529,7 +1537,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		if (OPT_OPIPE)
 		begin
 			if (($past(i_ce))
-				&&(($past(i_pf_valid))||($past(o_phase))))
+				&&(($past(pf_valid))||($past(o_phase))))
 			begin
 				if ((!$past(o_M))||(!o_M))
 					assert(!o_pipe);
@@ -1571,5 +1579,18 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(*)
 	if (o_valid)
 		assert((!o_phase)||(!o_early_branch));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_valid))&&($past(o_ljmp))&&($past(!i_stalled)))
+		assert(!o_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_early_branch_stb)))
+	begin
+		assert(!o_phase);
+		if (!$past(i_stalled))
+			assert(!o_valid);
+		assert(!o_ljmp);
+	end
 `endif
 endmodule
