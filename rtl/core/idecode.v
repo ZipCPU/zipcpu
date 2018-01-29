@@ -132,6 +132,11 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			: i_instruction;
 	end else begin : CLR_IWORD
 		assign	iword = { 1'b0, i_instruction[30:0] };
+
+		// verilator lint_off UNUSED
+		wire	[15:0]	unused_nxt_half;
+		assign		unused_nxt_half = r_nxt_half;
+		// verilator lint_on  UNUSED
 	end endgenerate
 
 	generate

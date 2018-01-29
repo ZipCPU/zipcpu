@@ -992,6 +992,12 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 	assign	op_phase = r_op_phase;
 `else
 	assign	op_phase = 1'b0;
+`ifdef	VERILATOR
+	// verilator lint_off UNUSED
+	wire	OPT_CIS_dcdRpc;
+	assign	OPT_CIS_dcdRpc = dcd_Rpc;
+	// verilator lint_on  UNUSED
+`endif
 `endif
 
 	// This is tricky.  First, the PC and Flags registers aren't kept in
