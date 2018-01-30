@@ -2068,7 +2068,7 @@ public:
 				//printf("%8lu @%08x R[%2d] = 0x%08x\n",
 				//	m_time_ps/1000,
 				//	m_core->cpu_ipc, rid, regp[rid]);
-				printf("R[%2d] = 0x%08x\n", rid, regp[rid]);
+				printf("R[%2d] = 0x%08x\n", rid&0x0f,regp[rid]);
 			}
 		} else if ((imm & 0x0ffff0)==0x00210) {
 			// Dump a user register
