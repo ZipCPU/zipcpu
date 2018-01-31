@@ -82,7 +82,7 @@ Articles you might find valuable include:
 - [Formally proving the prefetch](http://zipcpu.com/zipcpu/2017/11/18/prefetch.html)
 
 I'm also working on [formally verifying the entire
-CPU](http://zipcpu/blog/2018/01/22/formal-progress.html).  My goal will be
+CPU](http://zipcpu.com/blog/2018/01/22/formal-progress.html).  My goal will be
 to [prove, via
 yosys-smtbmc](http://zipcpu.com/blog/2017/10/19/formal-intro.html), that the
 ZipCPU will never enter into an invalid state.  I've been successful so far
