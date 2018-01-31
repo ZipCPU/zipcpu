@@ -93,7 +93,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	wraddr = 0;
 
 	reg	misaligned;
-`ifdef	VERILATOR
+
 	always	@(*)
 	if (OPT_ALIGNMENT_ERR)
 	begin
@@ -105,19 +105,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end else
 		misaligned = 1'b0;
-`else
-	always	@(*)
-	if (OPT_ALIGNMENT_ERR)
-	begin
-		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned <= 1'b1;
-		4'b0110: misaligned <= 1'b1;
-		4'b10?1: misaligned <= 1'b1;
-		default: misaligned <= 1'b0;
-		endcase
-	end else
-		misaligned <= 1'b0;
-`endif
 
 	always @(posedge i_clk)
 		fifo_oreg[wraddr] <= { i_oreg, i_op[2:1], i_addr[1:0] };
@@ -476,17 +463,17 @@ endmodule
 //
 //
 // Usage (from yosys): (Before)	(A,!OPTZ)	(A,OPTZ)
-//	Cells:		302	318		386
+//	Cells:		302	314		391
 //	  FDRE		138	140		140
 //	  LUT1		  2	  2		  2
-//	  LUT2		 38	 46		 68
-//	  LUT3		 13	 12		 29
-//	  LUT4		  3	  9		 10
-//	  LUT5		 22	 11		 10
-//	  LUT6		 52	 58		 77
+//	  LUT2		 38	 41		 61
+//	  LUT3		 13	 16		 33
+//	  LUT4		  3	  8		 12
+//	  LUT5		 22	 10		  8
+//	  LUT6		 52	 59		 81
 //	  MUXCY		  6	  6		  6
-//	  MUXF7		 10	 14		 19
-//	  MUXF8		  1	  3		  8
+//	  MUXF7		 10	 13		 21
+//	  MUXF8		  1	  2		 10
 //	  RAM64X1D	  9	  9		  9
 //	  XORCY		  8	  8		  8
 //

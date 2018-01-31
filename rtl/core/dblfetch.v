@@ -504,11 +504,11 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 endmodule
 //
 // Usage:		(this)	(old)  (S6)
-//    Cells		385	585	459
-//	FDRE		106	203	171
+//    Cells		387	585	459
+//	FDRE		108	203	171
 //	LUT1		  2	  3	  2
 //	LUT2		  3	  4	  5
-//	LUT3		 75	104	 71
+//	LUT3		 76	104	 71
 //	LUT4		  0	  2	  2
 //	LUT5		 35	 35	  3
 //	LUT6		  5	 10	 43

@@ -164,14 +164,14 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		assign	w_ljmp = 1'b0;
 	end endgenerate
 
-	wire	[4:0]	w_cis_op;
+	reg	[4:0]	w_cis_op;
 
 	generate if (OPT_CIS)
 	begin : GEN_CIS_OP
-`ifdef	VERILATOR
-		always @(iword)
+
+		always @(*)
 			if (!iword[`CISBIT])
-				w_cis_op = w_op;
+				w_cis_op = iword[26:22];
 			else case(iword[26:24])
 			3'h0: w_cis_op = 5'h00;
 			3'h1: w_cis_op = 5'h01;
@@ -182,26 +182,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			3'h6: w_cis_op = 5'h18;
 			3'h7: w_cis_op = 5'h0d;
 			endcase
-`else
-		reg	[4:0]	rw_cis_op;
+
+	end else begin : GEN_NOCIS_OP
 
 		always @(*)
-			if (!iword[`CISBIT])
-				rw_cis_op = iword[26:22];
-			else case(iword[26:24])
-			3'h0: rw_cis_op = 5'h00;
-			3'h1: rw_cis_op = 5'h01;
-			3'h2: rw_cis_op = 5'h02;
-			3'h3: rw_cis_op = 5'h10;
-			3'h4: rw_cis_op = 5'h12;
-			3'h5: rw_cis_op = 5'h13;
-			3'h6: rw_cis_op = 5'h18;
-			3'h7: rw_cis_op = 5'h0d;
-			endcase
-		assign	w_cis_op = rw_cis_op;
-`endif
-	end else begin : GEN_NOCIS_OP
-		assign	w_cis_op = w_op;
+			w_cis_op = w_op;
+
 	end endgenerate
 
 	// Decode instructions

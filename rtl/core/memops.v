@@ -86,7 +86,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	input	wire	[31:0]	i_wb_data;
 
 	reg	misaligned;
-`ifdef	VERILATOR
+
 	generate if (OPT_ALIGNMENT_ERR)
 	begin : GENERATE_ALIGNMENT_ERR
 		always @(*)
@@ -100,21 +100,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	end else
 		always @(*)	misaligned = 1'b0;
 	endgenerate
-`else
-	generate if (OPT_ALIGNMENT_ERR)
-	begin : GENERATE_ALIGNMENT_ERR
-		always @(*)
-		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned <= 1'b1; // Words must be halfword aligned
-		4'b0110: misaligned <= 1'b1; // Words must be word aligned
-		4'b10?1: misaligned <= 1'b1; // Halfwords must be aligned
-		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
-		default: misaligned <= 1'b0;
-		endcase
-	end else
-		always @(*) misaligned <= 1'b0;
-	endgenerate
-`endif
 
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	wire	gbl_stb, lcl_stb;
@@ -198,11 +183,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			endcase
 
 		o_wb_addr <= i_addr[(AW+1):2];
-`ifdef	SET_SEL_ON_READ
-		if (i_op[0] == 1'b0)
-			o_wb_sel <= 4'hf;
-		else
-`endif
 		casez({ i_op[2:1], i_addr[1:0] })
 		4'b01??: o_wb_sel <= 4'b1111;
 		4'b100?: o_wb_sel <= 4'b1100;
@@ -626,14 +606,14 @@ endmodule
 //
 // Usage (from yosys):
 //		(BFOR)	(!ZOI,ALIGN)	(ZOI,ALIGN)	(!ZOI,!ALIGN)
-//	Cells	 230		220		273		218
+//	Cells	 230		229		281		225
 //	  FDRE	 114		116		116		116
-//	  LUT2	  17		 23		 77		 23
-//	  LUT3	   9		 24		  1		 24
-//	  LUT4	  15		  2		 10		  2
-//	  LUT5	  18		 20		 14		 19
-//	  LUT6	  33		 24		 54		 23
-//	  MUX7	  16		 10		  1		 10
+//	  LUT2	  17		 20		 76		 19
+//	  LUT3	   9		 20		 17		 20
+//	  LUT4	  15		 14		 11		 14
+//	  LUT5	  18		 17		  7		 15
+//	  LUT6	  33		 39		 54		 38
+//	  MUX7	  16		  2		  		  2
 //	  MUX8	   8		  1				  1
 //
 //
