@@ -1987,52 +1987,102 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 `ifdef	DEBUG_SCOPE
 	//{{{
+	wire	this_write;
+	assign	this_write = ((mem_valid)||((!clear_pipeline)&&(!alu_illegal)
+				&&(((alu_wR)&&(alu_valid))
+					||(div_valid)||(fpu_valid))));
+	reg	last_write;
 	always @(posedge i_clk)
-		o_debug <= {
-		/*
-			o_break, i_wb_err, pf_pc[1:0],
-			flags,
-			pf_valid, dcd_valid, op_valid, alu_valid, mem_valid,
-			op_ce, alu_ce, mem_ce,
-			//
-			master_ce, op_valid_alu, op_valid_mem,
-			//
-			alu_stall, mem_busy, op_pipe, mem_pipe_stalled,
-			mem_we,
-			// ((op_valid_alu)&&(alu_stall))
-			// ||((op_valid_mem)&&(~op_pipe)&&(mem_busy))
-			// ||((op_valid_mem)&&( op_pipe)&&(mem_pipe_stalled)));
-			// op_Av[23:20], op_Av[3:0],
-			gie, sleep, wr_reg_ce, wr_gpreg_vl[4:0]
-		*/
-		/*
-			i_rst, master_ce, (new_pc),
-			((dcd_early_branch)&&(dcd_valid)),
-			pf_valid, pf_illegal,
-			op_ce, dcd_ce, dcd_valid, dcd_stalled,
-			pf_cyc, pf_stb, pf_we, pf_ack, pf_stall, pf_err,
-			pf_pc[7:0], pf_addr[7:0]
-		*/
+		last_write <= this_write;
 
-			i_wb_err, gie, alu_illegal,
-			      (new_pc)||((dcd_early_branch)&&(~clear_pipeline)),
-			mem_busy,
-				(mem_busy)?{ (o_wb_gbl_stb|o_wb_lcl_stb), o_wb_we,
-					o_wb_addr[8:0] }
-					: { pf_instruction[31:21] },
-			pf_valid, (pf_valid) ? alu_pc[16:2]
-				:{ pf_cyc, pf_stb, pf_pc[14:2] }
+	reg	[4:0]	last_wreg;
+	always @(posedge i_clk)
+		last_wreg <= wr_reg_id;
 
-		/*
-			i_wb_err, gie, new_pc, dcd_early_branch,	// 4
-			pf_valid, pf_cyc, pf_stb, pf_instruction_pc[0],	// 4
-			pf_instruction[30:27],				// 4
-			dcd_gie, mem_busy, o_wb_gbl_cyc, o_wb_gbl_stb,	// 4
-			dcd_valid,
-			((dcd_early_branch)&&(~clear_pipeline))		// 15
-					? dcd_branch_pc[14:0]:pf_pc[14:0]
-		*/
+	reg	halt_primed;
+	initial	halt_primed = 0;
+	always @(posedge i_clk)
+		if (master_ce)
+			halt_primed <= 1'b1;
+		else if (debug_trigger)
+			halt_primed <= 1'b0;
+
+	reg	[6:0]	halt_count;
+	initial	halt_count = 0;
+	always @(posedge i_clk)
+		if ((i_rst)||(!i_halt)||(r_halted)||(!halt_primed))
+			halt_count <= 0;
+		else if (!(&halt_count))
+			halt_count <= halt_count + 1'b1;
+
+	reg	[9:0]	mem_counter;
+	initial	mem_counter = 0;
+	always @(posedge i_clk)
+		if ((i_rst)||(!halt_primed)||(!mem_busy))
+			mem_counter <= 0;
+		else if (!(&mem_counter))
+			mem_counter <= mem_counter + 1'b1;
+
+	reg	[15:0]	long_trigger;
+	always @(posedge i_clk)
+		long_trigger[15:1] <= long_trigger[14:0];
+	always @(posedge i_clk)
+		long_trigger[0] <= ((last_write)&&(last_wreg == wr_reg_id))
+				||(&halt_count)||(&mem_counter);
+
+	reg		debug_trigger;
+	initial	debug_trigger = 1'b0;
+	always @(posedge i_clk)
+		debug_trigger <= (!i_halt)&&(o_break)||(long_trigger == 16'hffff);
+
+	wire	[31:0]	debug_flags;
+	assign debug_flags = { debug_trigger, 3'b101,
+				master_ce, i_halt, o_break, sleep,
+				gie, ibus_err_flag, trap, ill_err_i,
+				w_clear_icache, pf_valid, pf_illegal, dcd_ce,
+				dcd_valid, dcd_stalled, op_ce, op_valid,
+				op_pipe, alu_ce, alu_busy, alu_wR,
+				alu_illegal, alu_wF, mem_ce, mem_we,
+				mem_busy, mem_pipe_stalled, (new_pc), (dcd_early_branch) };
+
+	wire	[25:0]	bus_debug;
+	assign	bus_debug = { debug_trigger,
+			mem_ce, mem_we, mem_busy, mem_pipe_stalled,
+			o_wb_gbl_cyc, o_wb_gbl_stb, o_wb_lcl_cyc, o_wb_lcl_stb,
+				o_wb_we, i_wb_ack, i_wb_stall, i_wb_err,
+			pf_cyc, pf_stb, pf_ack, pf_stall,
+				pf_err,
+			mem_cyc_gbl, mem_stb_gbl, mem_cyc_lcl, mem_stb_lcl,
+				mem_we, mem_ack, mem_stall, mem_err
 			};
+
+	wire	[27:0]	dbg_pc;
+	generate if (AW-1 < 27)
+	begin
+		assign	dbg_pc[(AW-1):0] = pf_pc[(AW+1):2];
+		assign	dbg_pc[27:(AW-1)] = 0;
+	end else // if (AW-1 >= 27)
+	begin
+		assign	dbg_pc[27:0] = pf_pc[29:2];
+	end endgenerate
+
+	always @(posedge i_clk)
+	begin
+		if ((i_halt)||(!master_ce)||(debug_trigger)||(o_break))
+			o_debug <= debug_flags;
+		else if ((mem_valid)||((~clear_pipeline)&&(~alu_illegal)
+					&&(((alu_wR)&&(alu_valid))
+						||(div_valid)||(fpu_valid))))
+			o_debug <= { debug_trigger, 1'b0, wr_reg_id[3:0], wr_gpreg_vl[25:0]};
+		else if (clear_pipeline)
+			o_debug <= { debug_trigger, 3'b100, dbg_pc };
+		else if ((o_wb_gbl_stb)|(o_wb_lcl_stb))
+			o_debug <= {debug_trigger,  2'b11, o_wb_gbl_stb, o_wb_we,
+				(o_wb_we)?o_wb_data[26:0] : o_wb_addr[26:0] };
+		else
+			o_debug <= debug_flags;
+		// o_debug[25:0] <= bus_debug;
+	end
 	//}}}
 `endif
 
