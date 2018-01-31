@@ -73,43 +73,38 @@ out there as well.
 
 ## Current Status
 
-20170309: The CPU has just been updated for 8-bit byte support.  Several additional changes include:
-- The CPU has been rebuilt to add four new instructions, LB (load byte), SB (store byte), LH (load half-word or short), and SH (store half-word or short). 
-- The LOD/STO instructions have been renamed LW (load word) and SW (store word) respectively.
-- The CPU is now also, as a result, completely big--endian, which it only sort of was before. 
-- The maximum wishbone bus address width of the CPU is no longer 32-bits, where each address references a 32-bit number (16GB), but rather 30-bits (4GB).  The final two bits are used to determine the values of the (new) select lines.  This means that the ZipCPU now suffers from the same 4GB memory limit as all other 32-bit CPUs.
-- The instruction set has been reordered--programs written for the 32-bit byte master branch will not work on this 8-bit byte branch.
-- The greater than (GT) condition has been replaced by a not-carry (NC) condition, in order to simplify what the compiler needs to do for unsigned numbers.
-- The machine ID in the ZipCPU ELF/object files has been changed from 0xdadd to 0xdad1, to reflect this change.  (This is an unregistered ID, so ... there _may_ be other computers out there with this ELF ID ...)
-- The ZipCPU supports several new simulation support or SIM instructions.  These can be used to write messages to the simulator console if desired.
-- There are now two simulators for the ZipCPU: A [C++ simulator](sim/cpp) that is independent of the Verilog, and a [Verilator](https://www.veripool.org/wiki/verilator) based [simulator](sim/verilated) that exercises the CPUs core logic.
-- The two simulators are designed to closely match the performance of a bare-bones [basic ZipCPU system](https://github.com/ZipCPU/zbasic).  Further, the [newlib library](https://sourceware.org/newlib) as built is designed to support this minimum ZipCPU implementation.
-- The Assembler now implements the Compressed Instruction Set (CIS) by default when it can.  (This instruction set was formerly and inappropriately named the VLIW instruction set.  It has since been redesigned.)  Instruction words using this format can pack two instructions into a single instruction word.
+I've recently blogged about the ZipCPU at [zipcpu.com](http://zipcpu.com)!
+Articles you might find valuable include:
 
-Unlike the ZipCPU before these changes, [newlib](https://sourceware.org/newlib) now compiles and appears to work with the ZipCPU (without floating point support).
+- [An overview of the ZipCPU's ISA](http://zipcpu.com/zipcpu/2018/01/01/zipcpu-isa.html)
+- [How-to build the tool-chain, and test the CPU](http://zipcpu.com/zipcpu/2018/01/31/cpu-build.html)
+- [Formal properties of a WB bus](http://zipcpu.com/zipcpu/2017/11/07/wb-formal.html)
+- [Formally proving the prefetch](http://zipcpu.com/zipcpu/2017/11/18/prefetch.html)
 
-Also, unlike before, the ZipCPU is now small enough to be able to include a
-[divide unit](rtl/core/div.v), and a [double-fetch](rtl/core/dblfetch.v)
-(uses pipelined WB for one word) when built
-for the [Spartan-6/LX4](https://github.com/ZipCPU/s6soc).
+I'm also working on [formally verifying the entire
+CPU](http://zipcpu/zipcpu/2018/01/22/formal-progress.html).  My goal will be
+to [prove, via
+yosys-smtbmc](http://zipcpu.com/blog/2017/10/19/formal-intro.html), that the
+ZipCPU will never enter into an invalid state.  I've been successful so far
+proving the various components of the ZipCPU.  What remains is the CPU
+itself.
 
-Other distributions include the [OpenArty](https://github.com/ZipCPU/openarty)
-distribution (with network hardware support), and a very minimal
-[S6SoC](https://github.com/ZipCPU/s6soc) distribution for Digilent's CMod-S6.
-
-I'm currently trying to build video support for the Nexys Video (as of
-20170717), but that's simply an ongoing project.
 
 ## Not yet integrated
 
 - An [MMU](rtl/peripherals/zipmmu.v) has been written for the ZipCPU, and even
-  integrated into it, but it has not yet been tested.
+  integrated into it, but it has not yet been tested.  Using
+  [formal methods](http://zipcpu.com/blog/2017/10/19/formal-intro.html),
+  I've now proved that this component works.  A
+  [test bench](sim/verilator/zipmmu_tb.cpp) also exists
+  to exercise it.
 
 - Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been
   written for the ZipCPU, but not yet integrated into it
 
 - I would also like to integrate [SDCard
-  support](https://github.com/ZipCPU/sdspi) into the [newlib](https://sourceware.org/newlib) C-library to give
+  support](https://github.com/ZipCPU/sdspi) into the
+  [newlib](https://sourceware.org/newlib) C-library to give
   the CPU file access.  If and when this takes place, it will take place as
   part of the [ZBasic repository](https://github.com/ZipCPU/zbasic) first.
 
@@ -118,8 +113,12 @@ I'm currently trying to build video support for the Nexys Video (as of
   by providing "O/S" level interrupt support when using the library.  This
   integration has not (yet) been accomplished.
 
+  On the other hand, if the [MMU](rtl/peripherals/zipmmu.v) is available,
+  I might rather just create a Linux distribution.
+
 ## Commercial Opportunities
 
-If the GPLv3 license is insufficient for your needs, other licenses (for all but
-the tool-chain) can be purchased from Gisselquist Technology, LLC.
+If the [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.en.html) is
+insufficient for your needs, other licenses (for all but the tool-chain) can
+be purchased from Gisselquist Technology, LLC.
 
