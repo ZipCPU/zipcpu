@@ -267,7 +267,7 @@ traptest:
 	bra	traptest_supervisor
 	NEXIT	-1
 traptest_user:
-	trap	0
+	trap	1
 	busy
 traptest_supervisor:
 	mov	traptest_user(pc),upc
@@ -333,7 +333,7 @@ test_start:
 quickskip:
 	noop
 	cmp	$0,r10
-	trap.z	-1
+	trap.z	1
 	add	$1,r0
 	add	$1,r0
 
@@ -343,35 +343,35 @@ quickskip:
 	lsr	$1,r0
 	add	$1,r0
 	bv	first_overflow_passes
-	trap	-1
+	trap	1
 first_overflow_passes:
 ; Overflow set from subtraction
 	ldi	$0x03000,r11
 	BREV	$1,r0
 	sub	$1,r0
 	bv	subtraction_overflow_passes
-	trap	-1
+	trap	1
 subtraction_overflow_passes:
 ; Overflow set from LSR
 	ldi	$0x04000,r11
 	BREV	1,r0
 	lsr	$1,r0
 	bv	lsr_overflow_passes
-	trap	-1
+	trap	1
 lsr_overflow_passes:
 ; Overflow set from LSL
 	ldi	$0x05000,r11
 	BREV	2,R0
 	lsl	$1,r0
 	bv	lsl_overflow_passes
-	trap	-1
+	trap	1
 lsl_overflow_passes:
 ; Overflow set from LSL, negative to positive
 	ldi	$0x06000,r11
 	BREV	1,r0
 	lsl	$1,r0
 	bv	second_lsl_overflow_passes
-	trap	-1
+	trap	1
 second_lsl_overflow_passes:
 ; Test carry
 	ldi	$0x07000,r11
@@ -379,25 +379,25 @@ second_lsl_overflow_passes:
 	add	$1,r0
 	tst	2,cc
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	1
 ; and carry from subtraction
 	ldi	$0x08000,r11
 	clr	r0
 	sub	$1,r0
 	tst	2,cc
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	1
 ; Carry from right shift
 	clr	r0		; r0 = 0
 	lsr	1,r0		; r0 = 0, c = 0
 	add.c	1,r0		; r0 = 0
 	cmp	1,r0		; r0 ?= 1
-	trap.z	-1
+	trap.z	1
 	LDI	1,r0		; r0 = 1
 	lsr	1,r0		; r0 = 0, c = 1
 	add.c	1,r0		; r0 = 1
 	cmp	1,r0
-	trap.nz	-1
+	trap.nz	1
 ;
 	ldi	0x070eca6,r0
 	ldi	0x0408b85,r1
@@ -405,7 +405,7 @@ second_lsl_overflow_passes:
 	lsr	1,r0
 	xor.c	r1,r0
 	cmp	r2,r0
-	trap.nz	-1
+	trap.nz	1
 ;
 ; Let's try a loop: for i=0; i<5; i++)
 ;	We'll use R0=i, Immediates for 5
@@ -419,7 +419,7 @@ for_loop:
 	blt	for_loop
 
 	cmp	r0,r1
-	trap.nz	-1
+	trap.nz	1
 ;
 ; Let's try a reverse loop.  Such loops are usually cheaper to
 ; implement, and this one is no different: 2 loop instructions 
@@ -435,7 +435,7 @@ bgt_loop:
 	sub	$1,r0
 	bge	bgt_loop
 	cmp	5,r1
-	trap.nz	-1
+	trap.nz	1
 
 ; How about the same thing with a >= comparison?
 ; R1 = 5; // Need to do this explicitly
@@ -450,7 +450,7 @@ bge_loop:
 	bge	bge_loop
 
 	cmp	6,r2
-	trap.nz	-1
+	trap.nz	1
 
 ; Let's try the reverse loop again, only this time we'll store our
 ; loop variable in memory.
@@ -474,7 +474,7 @@ mem_loop:
 	sw	r0,(r1)
 	bge	mem_loop
 	cmp	$5,r2
-	trap.ne	-1
+	trap.ne	1
 ;
 ;; Now, let's test whether or not our LSR and carry flags work
 	ldi	$0x0c000,r11
@@ -484,50 +484,50 @@ mem_loop:
 	bnz	test_failure
 	ldi	-1,r0	; Second test: anything greater than zero should set
 	lsr	0,r0	; the carry flag
-	trap.c	-1
+	trap.c	1
 	lsr	1,r0
-	trap.nc	-1
+	trap.nc	1
 ;
 	tst	2,cc	; C bit to be set
 	mov.z	cc,r2
-	trap.z	-1
+	trap.z	1
 ;
 	lsr	31,r0
-	trap.nz	-1
+	trap.nz	1
 	lsr	1,r0
-	trap.c	-1
+	trap.c	1
 ;; Now repeat the above tests, looking to see whether or not ASR works
 	ldi	-1,r0
 	asr	32,r0
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	1
 	ldi	-1,r0
 	asr	0,r0
-	trap.c	-1
+	trap.c	1
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	1
 	asr	1,r0
 	tst	2,r14
-	trap.z	-1
+	trap.z	1
 	asr	30,r0
 	tst	2,r14
-	trap.z	-1
+	trap.z	1
 	ldi	-1,r0
 	asr	1,r0
 	cmp	-1,r0
-	trap.nz	-1
+	trap.nz	1
 ;
 ; Let's test whether LSL works
 	ldi	0x035,r2
 	lsl	8,r2
 	ldi	0x03500,r1
 	cmp	r2,r1
-	trap.ne	-1
+	trap.ne	1
 	ldi	0x074,r0
 	and	0x0ff,r0
 	or	r0,r2
 	cmp	0x03574,r2
-	trap.ne	-1
+	trap.ne	1
 ;
 ; A push test
 	ldi	$0x0e000,r11	; Mark our test
@@ -536,10 +536,11 @@ mem_loop:
 	mov	r1,r4
 	mov	r2,r5
 	JSR	reverse_bit_order
+	cmp	r1,r5
+	trap.ne	1
+	brev	r4
 	cmp	r1,r4
-	trap.ne
-	cmp	r2,r5
-	trap.ne
+	trap.ne 1
 ;
 ; A more thorough pipeline stack test
 	ldi	$0x0f000,r11	; Mark our test
@@ -551,20 +552,18 @@ mem_loop:
 	MOV	1(R4),R5
 	MOV	1(R5),R6
 	JSR	pipeline_stack_test
-	CMP	1,R0
-	trap.ne	-1
 	CMP	2,R1
-	trap.ne	-1
+	trap.ne	1
 	CMP	3,R2
-	trap.ne	-1
+	trap.ne	1
 	CMP	4,R3
-	trap.ne	-1
+	trap.ne	1
 	CMP	5,R4
-	trap.ne	-1
+	trap.ne	1
 	CMP	6,R5
-	trap.ne	-1
+	trap.ne	1
 	CMP	7,R6
-	trap.ne	-1
+	trap.ne	1
 
 ;
 ; Memory pipeline test
@@ -587,14 +586,14 @@ mem_loop:
 	SW	R0,(SP)
 	LW	(SP),R1
 	CMP	R0,R1
-	TRAP.NZ	-1
+	TRAP.NZ	1
 	CMP	0x13000,R11
 	BZ	bcmemtest_cmploc_1
 	SW	R11,(SP)
 bcmemtest_cmploc_1:
 	LW	(SP),R0
 	CMP	R0,R11
-	TRAP.Z	-1
+	TRAP.Z	1
 	CLR	R0
 	CMP	R0,R11
 	BZ	bcmemtest_cmploc_2
@@ -603,7 +602,7 @@ bcmemtest_cmploc_2:
 	NOOP
 	LW	(SP),R0
 	CMP	R0,R11
-	TRAP.NZ	-1
+	TRAP.NZ	1
 
 ; The byte test --- have our 8-bit byte changes worked?
 	ldi	0x14000, r11
@@ -629,10 +628,9 @@ bcmemtest_cmploc_2:
 ;
 ;// Now, let's test whether or not we can handle a subroutine
 reverse_bit_order:
-	SUB	12,SP
-	SW	R2,(SP)		; R1 will be our loop counter
-	SW	R3,4(SP)	; R2 will be our accumulator and eventual result
-	SW	R4,8(SP)
+	SUB	8,SP
+	SW	R2,(SP)		; R2 will be our loop counter
+	SW	R3,4(SP)	; R3 will be our accumulator and eventual result
 	LDI	32,R2
 	CLR	R3
 reverse_bit_order_loop:
@@ -646,8 +644,7 @@ reverse_bit_order_loop_over:
 	MOV	R3,R1
 	LW	(SP),R2
 	LW	4(SP),R3
-	LW	8(SP),R4
-	ADD	12,SP
+	ADD	8,SP
 	RETN
 ;
 ;; The pipeline stack test examines whether or not a series of memory commands
@@ -724,7 +721,7 @@ mem_pipeline_test:
 	LW	8(SP),R0	; This should load back up our -1 value
 	SW	R0,12(SP)
 	; Insist that the pipeline clear
-	LW	2(SP),R0
+	LW	8(SP),R0
 	; Now let's try loading into R1
 	NOP
 	NOP
@@ -746,9 +743,9 @@ conditional_execution_test:
 	;
 	XOR	R0,R0
 	ADD.Z	1,R0
-	TRAP.NZ	-1
+	TRAP.NZ	1
 	CMP.Z	0,R0
-	TRAP.Z	-1
+	TRAP.Z	1
 ;
 	LW	(SP),R0
 	ADD	4,SP
@@ -777,60 +774,60 @@ nowait_pipeline_test:
 	CLR	R0
 	ADD	1,R0
 	CMP	1,R0
-	TRAP.NZ	-1
+	TRAP.NZ	1
 ;
 	;	AA: result->input B
 	CLR	R0
 	CLR	R1
 	ADD	1,R0
 	CMP	R0,R1
-	TRAP.Z	-1
+	TRAP.Z	1
 ;
 	;	AA: result->input A on condition
 	XOR	R0,R0
 	ADD.Z	5,R0
 	CMP	5,R0
-	TRAP.NZ	-1
+	TRAP.NZ	1
 ;
 	;	AA: result->input B on condition
 	CLR	R0
 	XOR	R1,R1
 	ADD.Z	5,R0
 	CMP	R0,R1
-	TRAP.Z	-1
+	TRAP.Z	1
 ;
 	;	AA: result->input B plus offset
 	CLR	R0
 	XOR	R1,R1
 	ADD	5,R0
 	CMP	-5(R0),R1
-	TRAP.NZ	-1
+	TRAP.NZ	1
 ;
 ;	;	AA: result->input B plus offset on condition
 	CLR	R0
 	XOR	R1,R1
 	ADD.Z	5,R0
 	CMP	-5(R0),R1
-	TRAP.NZ	-1
+	TRAP.NZ	1
 ;
 	;
 	; Then we need to do ALU-Mem input testing
 	;
 	CLR	R0
-	SW	R0,5(SP)
+	SW	R0,20(SP)
 	LDI	8352,R0
-	LW	5(SP),R0
+	LW	20(SP),R0
 	TST	-1,R0
-	TRAP.NZ	-1
+	TRAP.NZ	1
 ;
 	LDI	937,R0		; Let's try again, this time something that's
 	SW	R0,20(SP)	; not zero
 	NOOP
 	LW	20(SP),R0
 	CMP	938,R0		; Let's not compare with self, let's that
-	TRAP.GE	-1		; masks a problem--compare with a different
+	TRAP.GE	1		; masks a problem--compare with a different
 	CMP	936,R0		; number instead.
-	TRAP.LT	-1
+	TRAP.LT	1
 ;
 	; Mem output->ALU input testing
 	;	We just did that as partof our last test
@@ -841,7 +838,7 @@ nowait_pipeline_test:
 	SW	R2,20(SP)
 	LW	20(SP),R1
 	CMP	937,R1
-	TRAP.NZ
+	TRAP.NZ	1
 	;
 	LW	(SP),R0
 	LW	4(SP),R1
@@ -860,46 +857,46 @@ bytetest:
 	sw	r1,(sp)
 	lb	(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	1(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	2(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	3(sp),r1
 	cmp	255,r1
-	trap.nz	-1
+	trap.nz	1
 	;
 	lh	0(sp),r1
 	cmp	65535,r1
-	trap.nz	-1
+	trap.nz	1
 	lh	2(sp),r1
 	cmp	65535,r1
-	trap.nz	-1
+	trap.nz	1
 	;
 	ldi	0xdeadbeef,r1
 	sw	r1,(sp)
 	;
 	lb	(sp),r1
 	cmp	0x0de,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	1(sp),r1
 	cmp	0x0ad,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	2(sp),r1
 	cmp	0x0be,r1
-	trap.nz	-1
+	trap.nz	1
 	lb	3(sp),r1
 	cmp	0x0ef,r1
-	trap.nz	-1
+	trap.nz	1
 	;
 	lh	0(sp),r1
 	cmp	0x0dead,r1
-	trap.nz	-1
+	trap.nz	1
 	lh	2(sp),r1
 	cmp	0x0beef,r1
-	trap.nz	-1
+	trap.nz	1
 	;
 	; Now, let's try partial stores
 	ldi	0xdeadbeef,r1

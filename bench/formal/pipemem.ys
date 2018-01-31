@@ -1,0 +1,5 @@
+read_verilog -D PIPEMEM -formal ../../rtl/core/pipemem.v
+read_verilog -D PIPEMEM -formal ../../rtl/aux/fwb_master.v
+prep -top pipemem -nordff
+opt -share_all
+write_smt2 -wires pipemem.smt2

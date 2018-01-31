@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -46,7 +46,7 @@
 `define	HALT_BIT	10
 `define	CLEAR_CACHE_BIT	11
 //
-module	zipbones(i_clk, i_rst,
+module	zipbones(i_clk, i_reset,
 		// Wishbone master interface from the CPU
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -94,7 +94,7 @@ module	zipbones(i_clk, i_rst,
 			VAW=VIRTUAL_ADDRESS_WIDTH;
 
 	localparam	AW=ADDRESS_WIDTH;
-	input	wire	i_clk, i_rst;
+	input	wire	i_clk, i_reset;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
 	output	wire	[(PAW-1):0]	o_wb_addr;
@@ -156,12 +156,14 @@ module	zipbones(i_clk, i_rst,
 	//
 	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
-		if ((i_rst)||(cmd_reset))
-			cmd_halt <= START_HALTED;
-		else if (dbg_cmd_write)
-			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
-		else if ((cmd_step)||(cpu_break))
-			cmd_halt  <= 1'b1;
+	if (i_reset)
+		cmd_halt <= START_HALTED;
+	else if (cmd_reset)
+		cmd_halt <= START_HALTED;
+	else if (dbg_cmd_write)
+		cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
+	else if ((cmd_step)||(cpu_break))
+		cmd_halt  <= 1'b1;
 
 	initial	cmd_clear_pf_cache = 1'b1;
 	always @(posedge i_clk)

@@ -354,7 +354,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	reg	[(VAW-1):0]	last_vpage;
 	//
 	wire	[(TBL_SIZE-1):0]	r_tlb_match;
-	reg	[(LGTBL-1):0]		s_tlb_addr;
+	reg	[(LGTBL-1):0]		s_tlb_addr, last_tlb;
 	reg				s_tlb_miss, s_tlb_hit, s_pending;
 	//
 	wire	ro_flag, exe_flag, simple_miss, ro_miss, exe_miss, table_err, cachable;
@@ -392,17 +392,25 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		if (wr_vtable)
 			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
 		if (wr_vtable)
+			tlb_cdata[wr_tlb_addr][(LGLCTX-1):0]
+				<= i_wbs_data[(LGLCTX+4-1):4];
+	end
+
+	initial	tlb_accessed = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		tlb_accessed <= 0;
+	else begin
+		if (wr_vtable)
 			tlb_accessed[wr_tlb_addr] <= 1'b0;
 		// Otherwise, keep track of the accessed bit if we
 		// ever access this page
 		else if ((!kernel_context)&&(pending_page_valid))
 			tlb_accessed[s_tlb_addr] <= 1'b1;
 		else if ((!kernel_context)&&(this_page_valid))
-			tlb_accessed[s_tlb_addr] <= 1'b1;
-		if (wr_vtable)
-			tlb_cdata[wr_tlb_addr][(LGLCTX-1):0]
-				<= i_wbs_data[(LGLCTX+4-1):4];
+			tlb_accessed[last_tlb] <= 1'b1;
 	end
+
 	generate if (LGHCTX > 0)
 	begin : HCTX
 		always @(posedge i_clk)
@@ -608,8 +616,10 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		pf_stb <= 1'b0;
 		last_ppage <= 0;
 		last_vpage <= 0;
+		last_tlb   <= 0;
 	end else if ((!kernel_context)&&(r_pending)&&(!last_page_valid))
 	begin
+		last_tlb   <= s_tlb_addr;
 		last_ppage <= ppage;
 		last_vpage <= vpage;
 		last_exe   <= exe_flag;
@@ -957,6 +967,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if (last_page_valid)
 	begin
 		assert(tlb_valid[f_last_page]);
+		assert(last_tlb   == f_last_page);
 		assert(last_ppage == tlb_pdata[f_last_page]);
 		assert(last_vpage == tlb_vdata[f_last_page]);
 		assert(last_ro    == tlb_flags[f_last_page][`ROFLAG]);
@@ -970,6 +981,12 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&($past(last_page_valid))&&(!$past(kernel_context))
+			&&($past(o_stb))&&($past(i_wbm_cyc)))
+		assert(tlb_accessed[$past(last_tlb)]);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))
+			&&($past(pending_page_valid))&&(!$past(kernel_context))
 			&&($past(o_stb))&&($past(i_wbm_cyc)))
 		assert(tlb_accessed[$past(s_tlb_addr)]);
 

@@ -1,0 +1,5 @@
+read_verilog -D ZIPCOUNTER -formal ../../rtl/peripherals/zipcounter.v
+read_verilog -D ZIPCOUNTER -formal ../../rtl/aux/fwb_slave.v
+prep -top zipcounter -nordff
+opt -share_all
+write_smt2 -wires zipcounter.smt2

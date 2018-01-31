@@ -1,0 +1,6 @@
+read_verilog -D PFCACHE -formal ../../rtl/core/pfcache.v
+read_verilog -D PFCACHE -formal ../../rtl/aux/fwb_master.v
+prep -top pfcache -nordff
+opt -share_all
+clean
+write_smt2 -wires pfcache.smt2

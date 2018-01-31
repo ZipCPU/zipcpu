@@ -1,0 +1,5 @@
+read_verilog -D PREFETCH -formal ../../rtl/aux/fwb_master.v
+read_verilog -D PREFETCH -formal ../../rtl/core/prefetch.v
+prep -top prefetch -nordff
+opt -share_all
+write_smt2 -wires prefetch.smt2

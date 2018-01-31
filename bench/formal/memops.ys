@@ -1,0 +1,5 @@
+read_verilog -D MEMOPS -formal ../../rtl/aux/fwb_master.v
+read_verilog -D MEMOPS -formal ../../rtl/core/memops.v
+prep -top memops
+opt -share_all
+write_smt2 -wires memops.smt2

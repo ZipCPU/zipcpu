@@ -105,9 +105,9 @@ public:
 	}
 
 	virtual	void	reset(void) {
-		m_core->i_rst = 1;
+		m_core->i_reset = 1;
 		tick();
-		m_core->i_rst = 0;
+		m_core->i_reset = 0;
 		// printf("RESET\n");
 	}
 

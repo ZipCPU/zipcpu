@@ -139,7 +139,7 @@ public:
 		DIVASSERT(m_core->o_busy == 0);
 
 		// Request a divide
-		m_core->i_rst = 0;
+		m_core->i_reset = 0;
 		m_core->i_wr = 1;
 		m_core->i_signed = (issigned)?1:0;
 		m_core->i_numerator = n;

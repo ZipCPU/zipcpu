@@ -1,0 +1,6 @@
+read_verilog -D WBPRIARBITER -formal ../../rtl/aux/wbpriarbiter.v
+read_verilog -D WBPRIARBITER -formal ../../rtl/aux/fwb_master.v
+read_verilog -D WBPRIARBITER -formal ../../rtl/aux/fwb_slave.v
+prep -top wbpriarbiter -nordff
+opt -share_all
+write_smt2 -wires wbpriarbiter.smt2

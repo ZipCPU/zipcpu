@@ -206,7 +206,11 @@
 #define	wr_reg_ce	VVAR(_thecpu__DOT__wr_reg_ce)
 #define	wr_flags_ce	VVAR(_thecpu__DOT__wr_flags_ce)
 #define	w_iflags	VVAR(_thecpu__DOT__w_iflags)
-#define	w_uflags	VVAR(_thecpu__DOT__w_iflags)
+#define	w_uflags	VVAR(_thecpu__DOT__w_uflags)
+
+// Op-Sim instructions
+#define	cpu_sim		VVAR(_thecpu__DOT__op_sim)
+#define	cpu_sim_immv	VVAR(_thecpu__DOT__op_sim_immv)
 
 //
 #define	r_sleep		VVAR(_thecpu__DOT__sleep)
@@ -216,16 +220,17 @@
 #define	op_F		VVAR(_thecpu__DOT__op_F)
 //
 #define	regset		VVAR(_thecpu__DOT__regset)
+#define	cpu_regs	regset
 
 
-
-
-#define	dcd_phase	VVAR(_thecpu__DOT__instruction_decoder__DOT__r_phase)
+#ifdef	OPT_CIS
+#define	dcd_phase	VVAR(_thecpu__DOT__dcd_phase)
 #define	op_phase	VVAR(_thecpu__DOT__r_op_phase)
 #define	alu_phase	VVAR(_thecpu__DOT__r_alu_phase)
+#endif
 
 #ifdef	OPT_SINGLE_FETCH
-#define	pf_instruction_pc	VVAR(_thecpu__DOT__pf_addr)
+#define	pf_instruction_pc	VVAR(_thecpu__DOT__pf_addr)<<2
 #else
 #define	pf_instruction_pc	VVAR(_thecpu__DOT__pf_instruction_pc)
 #endif
@@ -306,7 +311,7 @@
 #define	mem_wraddr	VVAR(_thecpu__DOT__domem__DOT__wraddr)
 #define	mem_rdaddr	VVAR(_thecpu__DOT__domem__DOT__rdaddr)
 #define	op_pipe		VVAR(_thecpu__DOT__r_op_pipe)
-#define	dcd_pipe	VVAR(_thecpu__DOT__instruction_decoder__DOT__r_pipe)
+#define	dcd_pipe	VVAR(_thecpu__DOT__instruction_decoder__DOT__genblk5__DOT__r_pipe)
 #define	op_A_alu	VVAR(_thecpu__DOT__op_A_alu)
 #define	op_B_alu	VVAR(_thecpu__DOT__op_B_alu)
 #define	op_A_mem	VVAR(_thecpu__DOT__op_A_mem)
@@ -367,12 +372,14 @@ public:
 	MEMSIM		m_mem;
 	// QSPIFLASHSIM	m_flash;
 	FILE		*m_dbgfp, *m_profile_fp;
-	bool		dbg_flag, m_bomb, m_show_user_timers;
-	int		m_cursor;
+	bool		dbg_flag, m_bomb, m_show_user_timers, m_console, m_exit;
+	int		m_cursor, m_rcode;
 	unsigned long	m_last_instruction_tickcount;
 	ZIPSTATE	m_state;
 
 	ZIPCPU_TB(void) : m_mem_size(RAMWORDS), m_mem(m_mem_size) {
+		m_rcode = 0;
+		m_exit  = false;
 		if (true) {
 			m_dbgfp = fopen("debug.txt", "w");
 			dbg_flag = true;
@@ -823,9 +830,9 @@ public:
 			(m_core->pf_cyc)?"CYC":"   ",
 			(m_core->pf_stb)?"STB":"   ",
 			"  ", // (m_core->pf_we )?"WE":"  ",
-			(m_core->pu__DOT__pf_addr<<2),
+			(m_core->pf_addr<<2),
 			0, // (m_core->v__DOT__thecpu__DOT__pf_data),
-			(m_core->pu__DOT__pf_ack)?"ACK":"   ",
+			(m_core->pf_ack)?"ACK":"   ",
 			"   ",//(m_core->v__DOT__thecpu__DOT__pf_stall)?"STL":"   ",
 			(m_core->cpu_idata)); ln++;
 #else
@@ -933,7 +940,7 @@ public:
 			//m_core->v__DOT__thecpu__DOT__instruction_gie,
 			m_core->r_gie,
 			0,
-			(m_core->pf_instruction_pc)<<2,
+			(m_core->pf_instruction_pc),
 			true); ln++;
 			// m_core->pf_pc); ln++;
 
@@ -945,10 +952,12 @@ public:
 #else
 			0,
 #endif
-			(((m_core->dcd_pc+1)&-2)<<1)-4,
 #ifdef	OPT_CIS
+			((m_core->dcd_phase) ?
+				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
 			m_core->dcd_phase
 #else
+			m_core->dcd_pc - 4,
 			false
 #endif
 			); ln++;
@@ -962,11 +971,11 @@ public:
 			m_core->op_valid,
 			m_core->op_gie,
 			m_core->op_stall,
-			op_pc()+((m_core->op_phase)?4:0),
 #ifdef	OPT_CIS
+			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
 #else
-			false
+			op_pc(), false
 #endif
 			); ln++;
 		if (m_core->op_illegal)
@@ -1322,10 +1331,12 @@ public:
 #else
 			0,
 #endif
-			(((m_core->dcd_pc+1)&-2)<<1)-4,
 #ifdef	OPT_CIS
+			((m_core->dcd_phase) ?
+				(m_core->dcd_pc+2):m_core->dcd_pc) -4,
 			m_core->dcd_phase
 #else
+			m_core->dcd_pc-4,
 			false
 #endif
 			); ln++;
@@ -1335,10 +1346,11 @@ public:
 			m_core->op_valid,
 			m_core->op_gie,
 			m_core->op_stall,
-			op_pc()+((m_core->op_phase)?4:0),
 #ifdef	OPT_CIS
+			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
 #else
+			op_pc(),
 			false
 #endif
 			); ln++;
@@ -1532,8 +1544,14 @@ public:
 			m_core->o_wb_addr & mask, m_core->o_wb_data, m_core->o_wb_sel & 0x0f,
 			m_core->i_wb_ack, m_core->i_wb_stall,m_core->i_wb_data);
 
-
 		TESTB<SIMCLASS>::tick();
+
+		if ((m_core->cpu_sim)
+			&&(m_core->op_valid)
+			&&(m_core->alu_ce)
+			&&(!m_core->new_pc)) {
+			execsim(m_core->cpu_sim_immv);
+		}
 
 		if ((m_dbgfp)&&(gie != m_core->r_gie)) {
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
@@ -1565,11 +1583,12 @@ public:
 #else
 				0,
 #endif
-				((m_core->dcd_pc&-2)<<1)-4,
 #ifdef	OPT_CIS
+				(m_core->dcd_phase)?(m_core->dcd_pc-2)
+					:(m_core->dcd_pc-4),
 				m_core->dcd_phase,
 #else
-				false,
+				m_core->dcd_pc-4, false,
 #endif
 				m_core->dcd_illegal);
 			if (m_dbgfp) {
@@ -1699,13 +1718,14 @@ public:
 	}
 
 	bool	test_success(void) {
+		if ((m_exit)&&(m_rcode == 0))
+			return true;
 		return ((!m_core->r_gie)
 			&&(m_core->r_sleep));
 	}
 
 	unsigned	op_pc(void) {
-#define	op_pc	VVAR(_thecpu__DOT__op_pc)
-		return (m_core->op_pc<<2)-4;
+		return m_core->r_op_pc-4;
 	}
 
 	bool	pfstall(void) {
@@ -1762,7 +1782,7 @@ public:
 			r--;
 		return r;
 		*/
-		return (m_core->alu_pc<<2)-4;
+		return m_core->alu_pc-4;
 	}
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
@@ -1780,6 +1800,8 @@ public:
 #endif
 
 	bool	test_failure(void) {
+		if ((m_exit)&&(m_rcode != 0))
+			return true;
 		if (m_core->r_sleep)
 			return false;
 		return false;
@@ -1894,7 +1916,7 @@ public:
 #else
 		m_core->pf_pc = address & -4;
 #define	pf_request_address	VVAR(_thecpu__DOT__pf_request_address)
-		m_core->pf_request_address = address >> 2;
+		m_core->pf_request_address = address;
 #endif
 		// m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
 		m_core->new_pc = 1;
@@ -1941,6 +1963,157 @@ public:
 				fprintf(fp, "\n");
 		}
 	}
+
+	void dump(const uint32_t *regp) {
+		uint32_t	uccv, iccv;
+
+		if (!m_console)
+			return;
+
+		fflush(stderr);
+		fflush(stdout);
+		printf("ZIPM--DUMP: ");
+		if (m_core->r_gie)
+			printf("Interrupts-enabled\n");
+		else
+			printf("Supervisor mode\n");
+		printf("\n");
+
+		iccv = m_core->w_iflags;
+		uccv = m_core->w_uflags;
+
+		printf("sR0 : %08x ", regp[0]);
+		printf("sR1 : %08x ", regp[1]);
+		printf("sR2 : %08x ", regp[2]);
+		printf("sR3 : %08x\n",regp[3]);
+		printf("sR4 : %08x ", regp[4]);
+		printf("sR5 : %08x ", regp[5]);
+		printf("sR6 : %08x ", regp[6]);
+		printf("sR7 : %08x\n",regp[7]);
+		printf("sR8 : %08x ", regp[8]);
+		printf("sR9 : %08x ", regp[9]);
+		printf("sR10: %08x ", regp[10]);
+		printf("sR11: %08x\n",regp[11]);
+		printf("sR12: %08x ", regp[12]);
+		printf("sSP : %08x ", regp[13]);
+		printf("sCC : %08x ", iccv);
+		printf("sPC : %08x\n",regp[15]);
+
+		printf("\n");
+
+		printf("uR0 : %08x ", regp[16]);
+		printf("uR1 : %08x ", regp[17]);
+		printf("uR2 : %08x ", regp[18]);
+		printf("uR3 : %08x\n",regp[19]);
+		printf("uR4 : %08x ", regp[20]);
+		printf("uR5 : %08x ", regp[21]);
+		printf("uR6 : %08x ", regp[22]);
+		printf("uR7 : %08x\n",regp[23]);
+		printf("uR8 : %08x ", regp[24]);
+		printf("uR9 : %08x ", regp[25]);
+		printf("uR10: %08x ", regp[26]);
+		printf("uR11: %08x\n",regp[27]);
+		printf("uR12: %08x ", regp[28]);
+		printf("uSP : %08x ", regp[29]);
+		printf("uCC : %08x ", uccv);
+		printf("uPC : %08x\n",regp[31]);
+		printf("\n");
+		fflush(stderr);
+		fflush(stdout);
+	}
+
+
+	void	execsim(const uint32_t imm) {
+		uint32_t	*regp = m_core->cpu_regs;
+		int		rbase;
+		rbase = (m_core->r_gie)?16:0;
+
+		fflush(stdout);
+		if ((imm & 0x03fffff)==0)
+			// Ignore a NOOP
+			return;
+		// fprintf(stderr, "SIM-INSN(0x%08x)\n", imm);
+		if ((imm & 0x0fffff)==0x00100) {
+			// SIM Exit(0)
+			m_rcode = 0;
+			m_exit = true;
+		} else if ((imm & 0x0ffff0)==0x00310) {
+			// SIM Exit(User-Reg)
+			int	rcode;
+			rcode = regp[(imm&0x0f)+16] & 0x0ff;
+			m_rcode = rcode;
+			m_exit = true;
+		} else if ((imm & 0x0ffff0)==0x00300) {
+			// SIM Exit(Reg)
+			int	rcode;
+			rcode = regp[(imm&0x0f)+rbase] & 0x0ff;
+			m_rcode = rcode;
+			m_exit = true;
+		} else if ((imm & 0x0fff00)==0x00100) {
+			// SIM Exit(Imm)
+			int	rcode;
+			rcode = imm & 0x0ff;
+			m_exit = true;
+			m_rcode = rcode;
+		} else if ((imm & 0x0fffff)==0x002ff) {
+			// Full/unconditional dump
+			if (m_console) {
+				printf("SIM-DUMP\n");
+				dump(regp);
+			}
+		} else if ((imm & 0x0ffff0)==0x00200) {
+			// Dump a register
+			if (m_console) {
+				int rid = (imm&0x0f)+rbase;
+				//printf("%8lu @%08x R[%2d] = 0x%08x\n",
+				//	m_time_ps/1000,
+				//	m_core->cpu_ipc, rid, regp[rid]);
+				printf("R[%2d] = 0x%08x\n", rid&0x0f,regp[rid]);
+			}
+		} else if ((imm & 0x0ffff0)==0x00210) {
+			// Dump a user register
+			if (m_console) {
+				int rid = (imm&0x0f);
+				/*
+				printf("%8lu @%08x uR[%2d] = 0x%08x\n",
+					m_time_ps/1000, m_core->cpu_ipc,
+					rid, regp[rid+16]);
+				*/
+				printf("uR[%2d] = 0x%08x\n",
+					rid, regp[rid+16]);
+			}
+		} else if ((imm & 0x0ffff0)==0x00230) {
+			// SOUT[User Reg]
+			if (m_console) {
+				int rid = (imm&0x0f)+16;
+				printf("%c", regp[rid]&0x0ff);
+			}
+		} else if ((imm & 0x0fffe0)==0x00220) {
+			// SOUT[User Reg]
+			if (m_console) {
+				int rid = (imm&0x0f)+rbase;
+				printf("%c", regp[rid]&0x0ff);
+			}
+		} else if ((imm & 0x0fff00)==0x00400) {
+			if (m_console) {
+				// SOUT[Imm]
+				printf("%c", imm&0x0ff);
+			}
+		} else { // if ((insn & 0x0f7c00000)==0x77800000)
+			if (m_console) {
+				uint32_t	immv = imm & 0x03fffff;
+				// Simm instruction that we dont recognize
+				// if (imm)
+				// printf("SIM 0x%08x\n", immv);
+				printf("SIM 0x%08x (ipc = %08x, upc = %08x)\n", immv,
+					m_core->cpu_ipc,
+					m_core->cpu_upc);
+			}
+		} if (m_console)
+			fflush(stdout);
+	}
+
+
 };
 
 void	get_value(ZIPCPU_TB *tb) {
@@ -2165,6 +2338,7 @@ int	main(int argc, char **argv) {
 		bool	done = false;
 
 		printf("Running in non-interactive mode\n");
+		tb->m_console = true;
 		tb->reset();
 		tb->m_core->cpu_halt = 1;
 		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|15);
@@ -2188,6 +2362,7 @@ int	main(int argc, char **argv) {
 		bool	done = false;
 
 		printf("Running in non-interactive mode, via step commands\n");
+		tb->m_console = true;
 		tb->reset();
 		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|CPU_sPC);
 		tb->wb_write(CMD_DATA, entry);
@@ -2363,7 +2538,7 @@ int	main(int argc, char **argv) {
 			} else
 				tb->show_state();
 
-			if (tb->m_core->i_rst)
+			if (tb->m_core->i_reset)
 				done =true;
 			if ((tb->m_bomb)||(signalled))
 				done = true;

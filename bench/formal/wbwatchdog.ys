@@ -1,0 +1,4 @@
+read_verilog -D ZIPTIMER -formal ../../rtl/peripherals/wbwatchdog.v
+prep -top wbwatchdog -nordff
+opt -share_all
+write_smt2 -wires wbwatchdog.smt2

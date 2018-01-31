@@ -45,7 +45,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -69,12 +69,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
-module	zipjiffies(i_clk, i_ce,
+`default_nettype	none
+//
+module	zipjiffies(i_clk, i_reset, i_ce,
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 			o_wb_ack, o_wb_stall, o_wb_data,
 		o_int);
 	parameter	BW = 32;
-	input	wire			i_clk, i_ce;
+	input	wire			i_clk, i_reset, i_ce;
 	// Wishbone inputs
 	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
 	input	wire	[(BW-1):0]	i_wb_data;
@@ -94,8 +96,11 @@ module	zipjiffies(i_clk, i_ce,
 	// together, one clock at a time.
 	//
 	reg	[(BW-1):0]	r_counter;
+	initial	r_counter = 0;
 	always @(posedge i_clk)
-		if (i_ce)
+		if (i_reset)
+			r_counter <= 0;
+		else if (i_ce)
 			r_counter <= r_counter+1;
 
 	//
@@ -110,9 +115,13 @@ module	zipjiffies(i_clk, i_ce,
 
 	initial	new_set = 1'b0;
 	always @(posedge i_clk)
+	if (i_reset)
 	begin
-		// Delay things by a clock to simplify our logic
-		new_set <= ((i_wb_cyc)&&(i_wb_stb)&&(i_wb_we));
+		new_set  <= 1'b0;
+		new_when <= 0;
+	end else begin
+		// Delay WB commands (writes) by a clock to simplify our logic
+		new_set <= ((i_wb_stb)&&(i_wb_we));
 		// new_when is a don't care when new_set = 0, so don't worry
 		// about setting it at all times.
 		new_when<= i_wb_data;
@@ -121,7 +130,11 @@ module	zipjiffies(i_clk, i_ce,
 	initial	o_int   = 1'b0;
 	initial	int_set = 1'b0;
 	always @(posedge i_clk)
+	if (i_reset)
 	begin
+		o_int <= 0;
+		int_set <= 0;
+	end else begin
 		o_int <= 1'b0;
 		if ((i_ce)&&(int_set)&&(r_counter == int_when))
 			// Interrupts are self-clearing
@@ -133,18 +146,153 @@ module	zipjiffies(i_clk, i_ce,
 			int_set <= 1'b1;
 		else if ((i_ce)&&(r_counter == int_when))
 			int_set <= 1'b0;
-
-		if ((new_set)&&(till_wb > 0)&&((till_wb<till_when)||(~int_set)))
-			int_when <= new_when;
 	end
+
+	always @(posedge i_clk)
+	if ((new_set)&&(till_wb > 0)&&((till_wb<till_when)||(!int_set)))
+		int_when <= new_when;
 
 	//
 	// Acknowledge any wishbone accesses -- everything we did took only
 	// one clock anyway.
 	//
+	initial	o_wb_ack = 1'b0;
 	always @(posedge i_clk)
-		o_wb_ack <= (i_wb_cyc)&&(i_wb_stb);
+	if (i_reset)
+		o_wb_ack <= 1'b0;
+	else
+		o_wb_ack <= i_wb_stb;
 
 	assign	o_wb_data = r_counter;
 	assign	o_wb_stall = 1'b0;
+
+	// Make verilator happy
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = i_wb_cyc;
+	// verilator lint_on  UNUSED
+`ifdef	FORMAL
+	reg	f_past_valid;
+	initial	f_past_valid = 1'b0;
+	always @(posedge i_clk)
+		f_past_valid <= 1'b1;
+
+	////////////////////////////////////////////////
+	//
+	//
+	// Assumptions about our inputs
+	//
+	//
+	////////////////////////////////////////////////
+	//
+	// Some basic WB assumtions
+
+	// We will not start out in a wishbone cycle
+	initial	assume(!i_wb_cyc);
+
+	// Following any reset the cycle line will be low
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset)))
+		assume(!i_wb_cyc);
+
+	// Anytime the stb is high, the cycle line must also be high
+	always @(posedge i_clk)
+		assume((!i_wb_stb)||(i_wb_cyc));
+
+
+	////////////////////////////////////////////////
+	//
+	//
+	// Assumptions about our bus outputs
+	//
+	//
+	////////////////////////////////////////////////
+	//
+
+	// We never stall the bus
+	always @(*)
+		assert(!o_wb_stall);
+	// We always ack every transaction on the following clock
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb)))
+		assert(o_wb_ack);
+	else
+		assert(!o_wb_ack);
+
+
+	////////////////////////////////////////////////
+	//
+	//
+	// Assumptions about our internal state and our outputs
+	//
+	//
+	////////////////////////////////////////////////
+	//
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset)))
+	begin
+		assert(!o_wb_ack);
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
+			&&($past(i_wb_we)))
+		assert(new_when == $past(i_wb_data));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
+			&&($past(i_wb_we)))
+		assert(new_set);
+	else
+		assert(!new_set);
+
+	//
+	//
+	//
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset)))
+		assert(!o_int);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset)))
+	begin
+		assert(!int_set);
+		assert(!new_set);
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(new_set))
+			&&(!$past(till_wb[BW-1]))
+			&&($past(till_wb) > 0))
+		assert(int_set);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))
+		&&($past(r_counter)==$past(int_when)))
+	begin
+		assert((o_int)||(!$past(int_set)));
+		assert((!int_set)||($past(new_set)));
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(new_set))&&(!$past(int_set)))
+		assert(!int_set);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(new_set))&&($past(till_wb) < 0))
+		assert(o_int);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(new_set))&&($past(till_wb) < 0))
+		assert(o_int);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&
+			((!$past(new_set))
+			||($past(till_wb[BW-1]))
+			||($past(till_wb == 0))))
+		assert(int_when == $past(int_when));
+	//
+`endif
 endmodule
