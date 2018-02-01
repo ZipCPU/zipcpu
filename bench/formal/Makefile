@@ -73,8 +73,8 @@ DCD    := idecode
 DMA    := wbdmac
 DIV    := div
 
-MASTER := $(RTL)/aux/fwb_master.v
-SLAVE  := $(RTL)/aux/fwb_slave.v
+MASTER := $(RTL)/ex/fwb_master.v
+SLAVE  := $(RTL)/ex/fwb_slave.v
 
 $(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER) $(PFONE).ys
 	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -85,13 +85,13 @@ $(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(MASTER) $(PFTWO).ys
 $(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(MASTER) $(PFCACHE).ys
 	yosys -ql $(PFCACHE).yslog -s $(PFCACHE).ys
 
-$(WBDLY).smt2: $(RTL)/aux/$(WBDLY).v $(MASTER) $(SLAVE) $(WBDLY).ys
+$(WBDLY).smt2: $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE) $(WBDLY).ys
 	yosys -ql $(WBDLY).yslog -s $(WBDLY).ys
 
-$(PRIARB).smt2: $(RTL)/aux/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
+$(PRIARB).smt2: $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
 	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
 
-$(DBL).smt2: $(RTL)/aux/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
+$(DBL).smt2: $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
 	yosys -ql $(DBL).yslog -s $(DBL).ys
 
 $(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys

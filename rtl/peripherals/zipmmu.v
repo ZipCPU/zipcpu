@@ -380,7 +380,6 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	//
 	//////////////////////////////////////////
-	initial	tlb_accessed = -1;
 	always @(posedge i_clk)
 	begin
 		// Write to the Translation lookaside buffer

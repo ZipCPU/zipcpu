@@ -38,7 +38,6 @@ all: zipmmu_tb
 
 CORED:= ../../rtl/core
 PRPHD:= ../../rtl/peripherals
-AUXD := ../../rtl/aux
 VOBJ := obj_dir
 VERILATOR := verilator
 VFLAGS    := -Wall -MMD -trace -y $(PRPHD) -cc

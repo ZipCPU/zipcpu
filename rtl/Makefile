@@ -42,7 +42,7 @@ all: zipsystem zipbones cpudefs.h div zipmmu cpuops pfcache
 
 CORED:= core
 PRPHD:= peripherals
-AUXD := aux
+EXD  := ex
 VSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
@@ -52,8 +52,8 @@ VSRC := zipsystem.v cpudefs.v					\
 		$(CORED)/pfcache.v				\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\
 		$(CORED)/div.v					\
-	$(AUXD)/busdelay.v					\
-		$(AUXD)/wbdblpriarb.v $(AUXD)/wbpriarbiter.v	\
+	$(EXD)/busdelay.v					\
+		$(EXD)/wbdblpriarb.v $(EXD)/wbpriarbiter.v	\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VZIP := zipbones.v cpudefs.v					\
 	$(CORED)/zipcpu.v $(CORED)/cpuops.v $(CORED)/idecode.v	\
@@ -61,7 +61,7 @@ VZIP := zipbones.v cpudefs.v					\
 		$(CORED)/pfcache.v				\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\
 		$(CORED)/div.v					\
-	$(AUXD)/busdelay.v $(AUXD)/wbdblpriarb.v		\
+	$(EXD)/busdelay.v $(EXD)/wbdblpriarb.v		\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VOBJ := obj_dir
 SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
@@ -70,7 +70,7 @@ VERILATOR := verilator
 else
 VERILATOR := $(VERILATOR_ROOT)/bin/verilator
 endif
-VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(AUXD)
+VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
 
 
 VERILATE=$(VERILATOR) $(VFLAGS)
