@@ -1,6 +1,6 @@
 read_verilog -D ZIPMMU -formal ../../rtl/peripherals/zipmmu.v
-read_verilog -D ZIPMMU -formal ../../rtl/aux/fwb_slave.v
-read_verilog -D ZIPMMU -formal ../../rtl/aux/fwb_master.v
+read_verilog -D ZIPMMU -formal ../../rtl/ex/fwb_slave.v
+read_verilog -D ZIPMMU -formal ../../rtl/ex/fwb_master.v
 prep -top zipmmu -nordff
 opt -share_all
 clean

@@ -1,5 +1,5 @@
 read_verilog -D ZIPTIMER -formal ../../rtl/peripherals/ziptimer.v
-read_verilog -D ZIPTIMER -formal ../../rtl/aux/fwb_slave.v
+read_verilog -D ZIPTIMER -formal ../../rtl/ex/fwb_slave.v
 prep -top ziptimer -nordff
 opt -share_all
 write_smt2 -wires ziptimer.smt2

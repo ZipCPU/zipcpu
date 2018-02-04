@@ -1,6 +1,6 @@
 read_verilog -D WBDMAC -formal ../../rtl/peripherals/wbdmac.v
-read_verilog -D WBDMAC -formal ../../rtl/aux/fwb_master.v
-read_verilog -D WBDMAC -formal ../../rtl/aux/fwb_slave.v
+read_verilog -D WBDMAC -formal ../../rtl/ex/fwb_master.v
+read_verilog -D WBDMAC -formal ../../rtl/ex/fwb_slave.v
 prep -top wbdmac -nordff
 opt -share_all
 write_smt2 -wires wbdmac.smt2

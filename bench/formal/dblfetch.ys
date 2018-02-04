@@ -1,5 +1,5 @@
 read_verilog -D DBLFETCH -formal ../../rtl/core/dblfetch.v
-read_verilog -D DBLFETCH -formal ../../rtl/aux/fwb_master.v
+read_verilog -D DBLFETCH -formal ../../rtl/ex/fwb_master.v
 prep -top dblfetch -nordff
 opt -share_all
 write_smt2 -wires dblfetch.smt2

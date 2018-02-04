@@ -2,7 +2,7 @@ This directory contains three sub-directories:
 
 - [core](core), where all of the actual components to the CPU proper are contained
 - [peripherals](peripherals), where several common CPU peripherals are kept.  These aren't really external peripherals per se, although they may be implemented as such.  Rather, these peripherals are components that are important to the CPU's functionality.  As such, they are often distributed with the CPU proper, and used internally by supervisor programs.
-- [aux](aux), where some general wishbone cores are kept, such as arbiters, delays, and even where I keep a copy of the formal wishbone properties.
+- [ex](ex), where some general wishbone cores are kept, such as arbiters, delays, and even where I keep a copy of the formal wishbone properties.
 
 Within this ZipCPU RTL directory are just the two primary wrappers for the
 ZipCPU: [ZipBones](zipbones.v) and [ZipSystem](zipsystem.v).  These wrappers

@@ -1,6 +1,6 @@
-read_verilog -D WBDBLPRIARB -formal ../../rtl/aux/wbdblpriarb.v
-read_verilog -D WBDBLPRIARB -formal ../../rtl/aux/fwb_master.v
-read_verilog -D WBDBLPRIARB -formal ../../rtl/aux/fwb_slave.v
+read_verilog -D WBDBLPRIARB -formal ../../rtl/ex/wbdblpriarb.v
+read_verilog -D WBDBLPRIARB -formal ../../rtl/ex/fwb_master.v
+read_verilog -D WBDBLPRIARB -formal ../../rtl/ex/fwb_slave.v
 prep -top wbdblpriarb -nordff
 opt -share_all
 write_smt2 -wires wbdblpriarb.smt2
