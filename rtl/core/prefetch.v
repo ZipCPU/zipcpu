@@ -529,6 +529,94 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(invalid)))
 			assert(!invalid);
+
+	reg	[AW:0]		const_addr;
+	reg	[DW-1:0]	const_insn;
+	assign	const_addr = $anyconst;
+	assign	const_insn = $anyconst;
+
+	wire	f_this_addr, f_this_pc, f_this_req, f_this_data;
+	assign	f_this_addr = (o_wb_addr ==   const_addr[AW-1:0]);
+	assign	f_this_pc   = (o_pc      == { const_addr[AW-1:0], 2'b00 });
+	assign	f_this_req  = (i_pc      == { const_addr[AW-1:0], 2'b00 });
+	assign	f_this_data = (i_wb_data ==   const_insn);
+
+	reg	f_addr_pending;
+	initial	f_addr_pending = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_addr_pending <= 1'b0;
+	else if (!o_wb_cyc)
+		f_addr_pending <= 1'b0;
+	else if ((o_wb_stb)&&(f_this_addr))
+	begin
+		if ((!i_wb_ack)&&(!i_wb_err))
+			f_addr_pending <= 1'b1;
+	end
+
+	always @(*)
+	if ((o_wb_stb)&&(f_this_addr)&&(!i_wb_stall))
+	begin
+		if (!const_addr[AW])
+			assume(!i_wb_err);
+		else
+			assume(!i_wb_ack);
+		if (i_wb_ack)
+			assume(f_this_data);
+	end else if ((o_wb_cyc)&&(f_addr_pending))
+	begin
+		if (!const_addr[AW])
+			assume(!i_wb_err);
+		else
+			assume(!i_wb_ack);
+		if (i_wb_ack)
+			assume(f_this_data);
+	end
+
+	always @(*)
+	if ((o_valid)&&(f_this_pc)&&(!o_illegal))
+		assert(o_insn == const_insn);
+	always @(*)
+	if ((o_valid)&&(f_this_pc))
+		assert(o_illegal == const_addr[AW]);
+
+	reg	f_insn_pending;
+
+	initial	f_insn_pending = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_insn_pending <= 1'b0;
+	else if (i_clear_cache)
+		f_insn_pending <= 1'b0;
+	else if ((i_new_pc)&&(f_this_req))
+		f_insn_pending <= 1'b1;
+	else if ((o_valid)||(i_new_pc))
+		f_insn_pending <= 1'b0;
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_wb_cyc))&&(o_wb_cyc)&&(f_insn_pending))
+		assert(f_this_pc);
+
+	always @(posedge i_clk)
+	if (((f_past_valid)&&($past(o_wb_cyc))&&($past(f_insn_pending)))
+		&&(!$past(i_reset))&&(!$past(i_clear_cache))
+		&&(!$past(i_new_pc)))
+	begin
+		if(!o_wb_cyc)
+			assert((o_valid)&&(f_this_pc));
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(o_wb_cyc))&&(!o_wb_cyc))
+		assert(!f_insn_pending);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_wb_cyc))&&(o_wb_cyc)&&(f_this_addr))
+		assert(f_addr_pending);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_wb_cyc))&&(f_insn_pending))
+		assert(f_this_addr);
 `endif
 endmodule
 //

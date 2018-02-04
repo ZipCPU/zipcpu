@@ -500,6 +500,56 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	if ((f_past_valid)&&(i_new_pc))
 		assert(!o_valid);
 
+	reg	[AW:0]		const_addr;
+	reg	[DW-1:0]	const_insn;
+	assign	const_addr = $anyconst;
+	assign	const_insn = $anyconst;
+
+	wire	f_this_addr, f_this_pc, f_this_req, f_this_data;
+	assign	f_this_addr = (o_wb_addr ==   const_addr[AW-1:0]);
+	assign	f_this_pc   = (o_pc      == { const_addr[AW-1:0], 2'b00 });
+	assign	f_this_req  = (i_pc      == { const_addr[AW-1:0], 2'b00 });
+	assign	f_this_data = (i_wb_data ==   const_insn);
+
+	always @(*)
+	if ((o_valid)&&(f_this_pc))
+	begin
+		assert(o_illegal == const_addr[AW]);
+		if (!o_illegal)
+			assert(o_insn    == const_insn);
+	end
+
+	reg	[1:0]	f_phase;
+
+	initial	f_phase = 2'b00;
+	always @(posedge i_clk)
+	if ((i_reset)||(!o_wb_cyc))
+		f_phase <= 2'b00;
+	else if ((o_wb_stb)&&(f_this_addr)&&(!i_wb_stall))
+		f_phase <= { 1'b1, f_outstanding[0] };
+
+	always @(*)
+		assert(f_phase != 2'b01);
+
+	wire	f_this_return;
+	assign	f_this_return = (!i_reset)&&(
+			((f_phase[1])&&(f_phase[0] == last_ack))
+			||((!f_phase[1])&&(o_wb_stb)&&(f_this_addr)
+				&&(!i_wb_stall)&&(f_outstanding[0] ==last_ack))
+			);
+	always @(*)
+	if (f_this_return)
+	begin
+		if (const_addr[AW])
+			assume(!i_wb_ack);
+		else
+			assume(!i_wb_err);
+
+		if (i_wb_ack)
+			assume(i_wb_data == const_insn);
+	end
+
+
 `endif	// FORMAL
 endmodule
 //
