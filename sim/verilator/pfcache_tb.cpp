@@ -144,11 +144,11 @@ public:
 
 		TESTB<Vpfcache>::tick();
 
-		if (m_core->o_v) {
+		if (m_core->o_valid) {
 			uint32_t	pc, insn;
 
 			pc   = m_core->o_pc;
-			insn = m_core->o_i;
+			insn = m_core->o_insn;
 			if (insn != m_mem[(pc>>2) & (RAMWORDS-1)]) {
 				fprintf(stderr, "ERR: PF[%08x] = %08x != %08x\n", pc,
 					insn, m_mem[(pc>>2) & (RAMWORDS-1)]);
@@ -164,7 +164,7 @@ public:
 	void fetch_insn(void) {
 		uint32_t	timeout = 0;
 
-		if ((m_core->o_v)&&(m_core->i_stall_n))
+		if ((m_core->o_valid)&&(m_core->i_stall_n))
 			m_core->i_pc++;
 
 		m_core->i_reset       = 0;
@@ -173,7 +173,7 @@ public:
 		m_core->i_stall_n     = 1;
 		do {
 			tick();
-		} while((!m_core->o_v)&&(!m_core->o_illegal)&&(timeout++ < MAXTIMEOUT));
+		} while((!m_core->o_valid)&&(!m_core->o_illegal)&&(timeout++ < MAXTIMEOUT));
 
 		if (timeout >= MAXTIMEOUT)
 			m_bomb = true;
@@ -185,28 +185,28 @@ public:
 	void	skip_fetch(void) {
 		uint32_t	prevalid, insn;
 
-		if ((m_core->o_v)&&(m_core->i_stall_n))
+		if ((m_core->o_valid)&&(m_core->i_stall_n))
 			m_core->i_pc++;
 
 		m_core->i_reset       = 0;
 		m_core->i_new_pc      = 0;
 		m_core->i_clear_cache = 0;
 		m_core->i_stall_n     = 0;
-		insn = m_core->o_i;
-		prevalid= m_core->o_v;
+		insn = m_core->o_insn;
+		prevalid= m_core->o_valid;
 
 		tick();
 
 		if (prevalid) {
-			// if (!m_core->o_v) {
+			// if (!m_core->o_valid) {
 				// fprintf(stderr, "ERR: VALID dropped on stall!\n");
 				// closetrace();
-				// assert(m_core->o_v);
+				// assert(m_core->o_valid);
 			// }
-			if (insn != m_core->o_i) {
+			if (insn != m_core->o_insn) {
 				fprintf(stderr, "ERR: VALID INSN CHANGED on stall!\n");
 				closetrace();
-				assert(insn == m_core->o_i);
+				assert(insn == m_core->o_insn);
 			}
 		}
 	}
@@ -229,12 +229,12 @@ public:
 		m_core->i_new_pc      = 0;
 		m_core->i_stall_n     = 0;
 
-		while((!m_core->o_v)&&(timeout++ < MAXTIMEOUT))
+		while((!m_core->o_valid)&&(timeout++ < MAXTIMEOUT))
 			tick();
 
 		if (timeout >= MAXTIMEOUT)
 			m_bomb = true;
-		if (m_core->o_v)
+		if (m_core->o_valid)
 			assert(m_core->o_pc == target);
 	}
 };
