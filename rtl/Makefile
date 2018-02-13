@@ -70,7 +70,7 @@ VERILATOR := verilator
 else
 VERILATOR := $(VERILATOR_ROOT)/bin/verilator
 endif
-VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
+VFLAGS := -Wall -MMD -D__WORDSIZE=64 --trace -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
 
 
 VERILATE=$(VERILATOR) $(VFLAGS)
