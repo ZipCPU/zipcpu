@@ -122,7 +122,7 @@
 all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
 
 CXX	:= g++
-CFLAGS	:= -Wall -Og -g
+CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
