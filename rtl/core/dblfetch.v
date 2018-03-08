@@ -91,7 +91,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_wb_stb <= 1'b0;
 		end else if (o_wb_cyc)
 		begin
-			if ((o_wb_stb)&&(!i_wb_stall))
+			if ((!o_wb_stb)||(!i_wb_stall))
 				o_wb_stb <= (!last_stb);
 
 			// Relase the bus on the second ack
