@@ -49,10 +49,15 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 		, i_mmu_ack, i_mmu_we, i_mmu_paddr
 `endif
 		);
-	parameter	LGCACHELEN = 5, ADDRESS_WIDTH=24,
+`ifdef	FORMAL
+	parameter	LGCACHELEN = 5, ADDRESS_WIDTH=30,
 			LGLINES=2; // Log of the number of separate cache lines
+`else
+	parameter	LGCACHELEN = 12, ADDRESS_WIDTH=30,
+			LGLINES=6; // Log of the number of separate cache lines
+`endif
 	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
-	localparam	CACHELEN=(1<<LGCACHELEN); // Size of our cache memory
+	localparam	CACHELEN=(1<<LGCACHELEN); //Wrd Size of our cache memory
 	localparam	CW=LGCACHELEN;	// Short hand for LGCACHELEN
 	localparam	PW=LGCACHELEN-LGLINES; // Size of a cache line
 	localparam	BUSW = 32;	// Number of data lines on the bus
