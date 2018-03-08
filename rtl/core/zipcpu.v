@@ -885,9 +885,10 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 	initial	r_op_break = 1'b0;
 	always @(posedge i_clk)
-		if ((i_rst)||(clear_pipeline))	r_op_break <= 1'b0;
+		if ((i_rst)||(clear_pipeline))
+			r_op_break <= 1'b0;
 		else if (op_ce)
-			r_op_break <= (dcd_break);
+			r_op_break <= (dcd_valid)&&(dcd_break);
 		else if (!op_valid)
 			r_op_break <= 1'b0;
 	assign	op_break = r_op_break;
@@ -1987,53 +1988,11 @@ module	zipcpu(i_clk, i_rst, i_interrupt,
 
 `ifdef	DEBUG_SCOPE
 	//{{{
-	wire	this_write;
-	assign	this_write = ((mem_valid)||((!clear_pipeline)&&(!alu_illegal)
-				&&(((alu_wR)&&(alu_valid))
-					||(div_valid)||(fpu_valid))));
-	reg	last_write;
-	always @(posedge i_clk)
-		last_write <= this_write;
-
-	reg	[4:0]	last_wreg;
-	always @(posedge i_clk)
-		last_wreg <= wr_reg_id;
-
-	reg	halt_primed;
-	initial	halt_primed = 0;
-	always @(posedge i_clk)
-		if (master_ce)
-			halt_primed <= 1'b1;
-		else if (debug_trigger)
-			halt_primed <= 1'b0;
-
-	reg	[6:0]	halt_count;
-	initial	halt_count = 0;
-	always @(posedge i_clk)
-		if ((i_rst)||(!i_halt)||(r_halted)||(!halt_primed))
-			halt_count <= 0;
-		else if (!(&halt_count))
-			halt_count <= halt_count + 1'b1;
-
-	reg	[9:0]	mem_counter;
-	initial	mem_counter = 0;
-	always @(posedge i_clk)
-		if ((i_rst)||(!halt_primed)||(!mem_busy))
-			mem_counter <= 0;
-		else if (!(&mem_counter))
-			mem_counter <= mem_counter + 1'b1;
-
-	reg	[15:0]	long_trigger;
-	always @(posedge i_clk)
-		long_trigger[15:1] <= long_trigger[14:0];
-	always @(posedge i_clk)
-		long_trigger[0] <= ((last_write)&&(last_wreg == wr_reg_id))
-				||(&halt_count)||(&mem_counter);
 
 	reg		debug_trigger;
 	initial	debug_trigger = 1'b0;
 	always @(posedge i_clk)
-		debug_trigger <= (!i_halt)&&(o_break)||(long_trigger == 16'hffff);
+		debug_trigger <= (!i_halt)&&(o_break);
 
 	wire	[31:0]	debug_flags;
 	assign debug_flags = { debug_trigger, 3'b101,
