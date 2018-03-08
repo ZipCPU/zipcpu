@@ -169,7 +169,7 @@ module	fwb_slave(i_clk, i_reset,
 
 	// Things can only change on the positive edge of the clock
 	generate if (F_OPT_CLK2FFLOGIC)
-	begin
+	begin : FORCE_POSEDGE_CLK
 		always @($global_clock)
 		if ((f_past_valid)&&(!$rose(i_clk)))
 		begin
@@ -183,6 +183,12 @@ module	fwb_slave(i_clk, i_reset,
 			assert($stable(i_wb_err));
 		end
 	end endgenerate
+
+	always @(*)
+	if (!f_past_valid)
+	begin
+		assume(!i_wb_cyc);
+	end
 
 	//
 	//
