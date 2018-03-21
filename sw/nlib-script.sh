@@ -71,5 +71,4 @@ CLFS_TARGET="zip"
 GCC_BASE=${INSTALL_BASE}/../build-gcc/
 PATH=$PATH:${INSTALL_BASE}/cross-tools/bin:${GCC_BASE}/gcc
 ../$VERSION-zip/configure --prefix=${INSTALL_BASE}/cross-tools	\
-        --target=${CLFS_TARGET}	--host=$MACHTYPE --without-fp
-
+        --target=${CLFS_TARGET}	--host=$MACHTYPE

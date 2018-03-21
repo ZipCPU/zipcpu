@@ -88,7 +88,7 @@ LD_FOR_TARGET=${INSTALL_BASE}/cross-tools/bin/zip-ld
         --disable-multilib				\
         --disable-threads --disable-tls			\
         --enable-checking --disable-nls			\
-        --without-fp --with-newlib
+        --with-newlib
 
 echo $PATH | grep ${INSTALL_BASE}/cross-tools/bin \
 	|| export PATH=$PATH:${INSTALL_BASE}/cross-tools/bin
