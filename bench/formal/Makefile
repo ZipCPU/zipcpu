@@ -145,7 +145,7 @@ $(PFTWO).check: $(PFTWO).smt2
 	@rm -f $@
 	$(SMTBMC) $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
 	$(SMTBMC) $(INDARGS) -t 38 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 40 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
+	$(SMTBMC) -c $(BMCARGS) -t 40 --dump-vcd $(PFTWO)%.vcd $(PFTWO).smt2
 	touch $@
 
 $(PFCACHE) : $(PFCACHE).check
