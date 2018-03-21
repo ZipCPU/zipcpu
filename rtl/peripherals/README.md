@@ -17,6 +17,8 @@ include:
 - [zipmmu.v](./zipmmu.v), an experimental MMU.  Has only been tested offline.
   An implementation exists which integrates this MMU, however that integration
   has not been tested so there are certainly some integration bugs remaining.
+
+*All of these peripherals* have been formally proven.
    
 If you are looking for the more normal peripherals, block RAM, SDRAM, etc.,
 feel free to examine some of the distributions that use the ZipCPU.
