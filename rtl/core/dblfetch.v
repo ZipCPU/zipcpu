@@ -119,7 +119,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	inflight = 2'b00;
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
-		inflight = 2'b00;
+		inflight <= 2'b00;
 	else begin
 		case({ ((o_wb_stb)&&(!i_wb_stall)), i_wb_ack })
 		2'b01:	inflight <= inflight - 1'b1;
@@ -227,7 +227,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 //
 // Some of these properties can be done in yosys-smtbmc, *or* Verilator
 //
-// Verilator is different from yosys, however, in that Verilator doesn't support
+// Ver1lator is different from yosys, however, in that Verilator doesn't support
 // the $past() directive.  Further, any `assume`'s turn into `assert()`s
 // within Verilator.  We can use this to help prove that the properties
 // of interest truly hold, and that any contracts we create or assumptions we
@@ -237,7 +237,16 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 `define	VERILATOR_FORMAL
 `else
 `ifdef	VERILATOR
-`define	VERILATOR_FORMAL
+//
+// Define VERILATOR_FORMAL here to have Verilator check your formal properties
+// during simulation.  assert() and assume() statements will both have the
+// same effect within VERILATOR of causing your simulation to suddenly end.
+//
+// I have this property commented because it only works on the newest versions
+// of Verilator (3.9 something and later), and I tend to still use Verilator
+// 3.874.
+//
+// `define	VERILATOR_FORMAL
 `endif
 `endif
 
@@ -273,6 +282,9 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 // Generic setup
 //
 //
+`ifdef	DBLFETCH
+`define	ASSUME	assume
+
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin
 		// Assume a clock
@@ -284,6 +296,10 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		end
 	end endgenerate
 
+`else
+`define	ASSUME	assert
+`endif
+
 	/////////////////////////////////////////////////
 	//
 	//
@@ -294,7 +310,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	always @(*)
 		if (!f_past_valid)
-			assume(i_reset);
+			`ASSUME(i_reset);
 
 	//
 	// Nothing changes, but on the positive edge of a clock
@@ -305,16 +321,16 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if (!$rose(i_clk))
 		begin
 			// Control inputs from the CPU
-			assume($stable(i_reset));
-			assume($stable(i_new_pc));
-			assume($stable(i_clear_cache));
-			assume($stable(i_stall_n));
-			assume($stable(i_pc));
+			`ASSUME($stable(i_reset));
+			`ASSUME($stable(i_new_pc));
+			`ASSUME($stable(i_clear_cache));
+			`ASSUME($stable(i_stall_n));
+			`ASSUME($stable(i_pc));
 			// Wishbone inputs
-			assume($stable(i_wb_ack));
-			assume($stable(i_wb_stall));
-			assume($stable(i_wb_err));
-			assume($stable(i_wb_data));
+			`ASSUME($stable(i_wb_ack));
+			`ASSUME($stable(i_wb_stall));
+			`ASSUME($stable(i_wb_err));
+			`ASSUME($stable(i_wb_data));
 		end
 	end endgenerate
 
@@ -571,6 +587,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	wire	f_this_addr, f_this_pc, f_this_req, f_this_data,
 		f_this_insn;
+
 	assign	f_this_addr = (o_wb_addr ==   f_const_addr);
 	assign	f_this_pc   = (o_pc      == { f_const_addr, 2'b00 });
 	assign	f_this_req  = (i_pc      == { f_const_addr, 2'b00 });
@@ -675,13 +692,13 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))
-		&&(!$past(i_reset))
-		&&(!$past(i_new_pc))
-		&&(!$past(i_clear_cache))
-		&&(!$past(invalid_bus_cycle))
-		&&(($past(i_wb_ack))||($past(i_wb_err)))
-		&&((!$past(o_valid))||($past(i_stall_n)))
-		&&(!$past(cache_valid)))
+			&&(!$past(i_reset))
+			&&(!$past(i_new_pc))
+			&&(!$past(i_clear_cache))
+			&&(!$past(invalid_bus_cycle))
+			&&(($past(i_wb_ack))||($past(i_wb_err)))
+			&&((!$past(o_valid))||($past(i_stall_n)))
+			&&(!$past(cache_valid)))
 		assert(o_pc[AW+1:2] == $past(this_return_address));
 
 	always @(posedge i_clk)
@@ -692,9 +709,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))
 			&&(!$past(cache_valid))&&(cache_valid))
-	begin
 		assert(next_pc_address == $past(this_return_address));
-	end
 
 
 
