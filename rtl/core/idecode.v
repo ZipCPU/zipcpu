@@ -507,7 +507,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end
 
 	generate if (OPT_EARLY_BRANCHING)
-	begin
+	begin : GEN_EARLY_BRANCH_LOGIC
 		reg			r_early_branch,
 					r_early_branch_stb,
 					r_ljmp;
@@ -519,12 +519,18 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				r_ljmp <= 1'b0;
 			else if (i_ce)
 			begin
-				if (o_early_branch_stb)
+				if ((r_ljmp)&&(pf_valid))
 					r_ljmp <= 1'b0;
-				else if ((OPT_CIS)&&(iword[`CISBIT]))
-					r_ljmp <= w_cis_ljmp;
+				else if (o_early_branch_stb)
+					r_ljmp <= 1'b0;
 				else if (pf_valid)
-					r_ljmp <= (w_ljmp);
+				begin
+					if ((OPT_CIS)&&(iword[`CISBIT]))
+						r_ljmp <= w_cis_ljmp;
+					else
+						r_ljmp <= (w_ljmp);
+				end else if ((OPT_CIS)&&(o_phase)&&(iword[`CISBIT]))
+					r_ljmp <= w_cis_ljmp;
 			end
 		assign	o_ljmp = r_ljmp;
 
@@ -1578,5 +1584,36 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			assert(!o_valid);
 		assert(!o_ljmp);
 	end
+
+	// Unless another valid instruction comes along, once o_ljmp is asserted
+	// it should stay asserted until either a reset or an early branch
+	// strobe.
+	always @(posedge i_clk)
+	if ((OPT_EARLY_BRANCHING)&&(f_past_valid)
+			&&($past(o_ljmp))&&(!$past(pf_valid))
+			&&(!$past(i_reset))&&(!$past(o_early_branch_stb)))
+		assert(o_ljmp);
+
+	// o_ljmp should only ever be asserted following a valid prefetch
+	// input.  Hence, if the prefetch input isn't valid, then o_ljmp
+	// should be left low
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(o_ljmp))
+			&&( (!$past(pf_valid)) || (!$past(i_ce)) )
+			&&( !$past(o_phase) )
+			&&(!$past(i_reset))&&(!$past(o_early_branch_stb)))
+		assert(!o_ljmp);
+
+	always @(posedge i_clk)
+	if ((OPT_EARLY_BRANCHING)&&(f_past_valid)&&($past(o_ljmp))&&(!o_ljmp)
+			&&(!$past(i_reset)))
+		assert((o_early_branch_stb)&&(!o_valid));
+
+	always @(posedge i_clk)
+		assert((!o_early_branch_stb)||(!o_ljmp));
+
+//	always @(posedge i_clk)
+//	if ((OPT_EARLY_BRANCHING)&&(f_past_valid)&&($past(o_early_branch_stb)))
+//		assert(!o_valid);
 `endif
 endmodule
