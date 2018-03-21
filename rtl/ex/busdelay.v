@@ -96,7 +96,6 @@ module	busdelay(i_clk, i_reset,
 
 `ifdef	FORMAL
 	wire	[2+AW+DW+DW/8-1:0]	f_wpending;
-	assign	f_wpending = { r_stb, r_we, r_addr, r_data, r_sel };
 `endif
 
 	generate
@@ -125,7 +124,7 @@ module	busdelay(i_clk, i_reset,
 			o_dly_cyc <= (i_wb_cyc)&&(!i_reset)&&(!o_wb_err)
 				&&((!i_dly_err)||(!o_dly_cyc));
 	
-			if (!i_dly_stall)
+			if ((!i_dly_stall)||(!o_dly_stb))
 			begin
 				r_we   <= i_wb_we;
 				r_addr <= i_wb_addr;
@@ -148,13 +147,6 @@ module	busdelay(i_clk, i_reset,
 				end
 
 				r_stb <= 1'b0;
-			end else if (!o_dly_stb)
-			begin
-				o_dly_we   <= i_wb_we;
-				o_dly_addr <= i_wb_addr;
-				o_dly_data <= i_wb_data;
-				o_dly_sel  <= i_wb_sel;
-				o_dly_stb  <= i_wb_stb;
 			end else if ((!r_stb)&&(!o_wb_stall))
 			begin
 				r_we   <= i_wb_we;
@@ -196,7 +188,6 @@ module	busdelay(i_clk, i_reset,
 `ifdef	FORMAL
 		assign	f_wpending = { r_stb, r_we, r_addr, r_data, r_sel };
 `endif
-
 	end else begin
 
 		initial	o_dly_cyc   = 1'b0;
@@ -209,7 +200,11 @@ module	busdelay(i_clk, i_reset,
 		initial	o_wb_err    = 0;
 
 		always @(posedge i_clk)
-			if ((i_reset)||(i_dly_err))
+			if (i_reset)
+				o_dly_cyc <= 1'b0;
+			else if ((i_dly_err)&&(o_dly_cyc))
+				o_dly_cyc <= 1'b0;
+			else if ((o_wb_err)&&(i_wb_cyc))
 				o_dly_cyc <= 1'b0;
 			else
 				o_dly_cyc <= i_wb_cyc;
@@ -218,7 +213,13 @@ module	busdelay(i_clk, i_reset,
 		// o_wb_stall criteria below, which would otherwise *and*
 		// these two.
 		always @(posedge i_clk)
-			if ((i_reset)||(i_dly_err)||(!i_wb_cyc))
+			if (i_reset)
+				o_dly_stb <= 1'b0;
+			else if ((i_dly_err)&&(o_dly_cyc))
+				o_dly_stb <= 1'b0;
+			else if ((o_wb_err)&&(i_wb_cyc))
+				o_dly_stb <= 1'b0;
+			else if (!i_wb_cyc)
 				o_dly_stb <= 1'b0;
 			else if (!o_wb_stall)
 				o_dly_stb <= (i_wb_stb);
@@ -379,7 +380,7 @@ module	busdelay(i_clk, i_reset,
 	if (!DELAY_STALL)
 	begin
 		if ((f_past_valid)&&($past(f_wb_req))&&(!$past(i_reset))
-				&&(!o_wb_err))
+				&&(!$past(o_wb_err))&&(!o_wb_err))
 			assert(($past(f_wb_request) == f_dly_request));
 		if ((f_past_valid)&&($past(i_reset)))
 			assert(!o_dly_stb);
@@ -426,7 +427,7 @@ module	busdelay(i_clk, i_reset,
 	always @(posedge i_clk)
 		if ((!DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset))
 				&&($past(i_wb_stb))&&(!$past(o_wb_stall))
-				&&(!o_wb_err))
+				&&(!$past(o_wb_err))&&(!o_wb_err))
 			assert(f_dly_request == $past(f_wb_request));
 
 	always @(posedge i_clk)
