@@ -280,6 +280,14 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = i_lock;
+
+	generate if (AW < 22)
+	begin : TOO_MANY_ADDRESS_BITS
+
+		wire	[(21-AW):0] unused_addr;
+		assign	unused_addr = i_addr[23:(AW+2)];
+
+	end endgenerate
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
