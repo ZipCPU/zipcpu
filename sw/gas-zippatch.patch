@@ -1,5 +1,5 @@
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/archures.c binutils-2.27-zip/bfd/archures.c
---- binutils-2.27/bfd/archures.c	2016-08-03 03:36:50.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/archures.c binutils-2.27-zip/bfd/archures.c
+--- binutils-2.27-original/bfd/archures.c	2016-08-03 03:36:50.000000000 -0400
 +++ binutils-2.27-zip/bfd/archures.c	2017-01-04 14:22:45.000000000 -0500
 @@ -525,6 +525,8 @@
  .#define bfd_mach_nios2r2	2
@@ -26,8 +26,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/archures.c binutils-2.27-zip/bfd/
  #endif
    0
  };
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/bfd-in2.h binutils-2.27-zip/bfd/bfd-in2.h
---- binutils-2.27/bfd/bfd-in2.h	2016-08-03 03:36:50.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/bfd-in2.h binutils-2.27-zip/bfd/bfd-in2.h
+--- binutils-2.27-original/bfd/bfd-in2.h	2016-08-03 03:36:50.000000000 -0400
 +++ binutils-2.27-zip/bfd/bfd-in2.h	2017-01-04 22:04:11.000000000 -0500
 @@ -2336,6 +2336,8 @@
  #define bfd_mach_nios2r2       2
@@ -61,8 +61,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/bfd-in2.h binutils-2.27-zip/bfd/b
    BFD_RELOC_UNUSED };
  
  typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/config.bfd binutils-2.27-zip/bfd/config.bfd
---- binutils-2.27/bfd/config.bfd	2016-08-03 03:36:50.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/config.bfd binutils-2.27-zip/bfd/config.bfd
+--- binutils-2.27-original/bfd/config.bfd	2016-08-03 03:36:50.000000000 -0400
 +++ binutils-2.27-zip/bfd/config.bfd	2016-12-31 17:11:00.961307172 -0500
 @@ -1742,6 +1742,10 @@
      targ_underscore=yes
@@ -75,8 +75,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/config.bfd binutils-2.27-zip/bfd/
    *-*-ieee*)
      targ_defvec=ieee_vec
      ;;
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/configure binutils-2.27-zip/bfd/configure
---- binutils-2.27/bfd/configure	2016-08-03 04:33:36.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/configure binutils-2.27-zip/bfd/configure
+--- binutils-2.27-original/bfd/configure	2016-08-03 04:33:36.000000000 -0400
 +++ binutils-2.27-zip/bfd/configure	2016-12-31 17:12:22.360697343 -0500
 @@ -14542,6 +14542,7 @@
      xtensa_elf32_le_vec)	 tb="$tb xtensa-isa.lo xtensa-modules.lo elf32-xtensa.lo elf32.lo $elf" ;;
@@ -96,8 +96,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/configure binutils-2.27-zip/bfd/c
    esac
  
    case "$COREFILE" in
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/configure.ac binutils-2.27-zip/bfd/configure.ac
---- binutils-2.27/bfd/configure.ac	2016-08-03 03:36:50.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/configure.ac binutils-2.27-zip/bfd/configure.ac
+--- binutils-2.27-original/bfd/configure.ac	2016-08-03 03:36:50.000000000 -0400
 +++ binutils-2.27-zip/bfd/configure.ac	2016-12-31 17:13:38.600136486 -0500
 @@ -717,6 +717,7 @@
      xtensa_elf32_le_vec)	 tb="$tb xtensa-isa.lo xtensa-modules.lo elf32-xtensa.lo elf32.lo $elf" ;;
@@ -117,8 +117,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/configure.ac binutils-2.27-zip/bf
    esac
  
    case "$COREFILE" in
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/cpu-zip.c binutils-2.27-zip/bfd/cpu-zip.c
---- binutils-2.27/bfd/cpu-zip.c	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/cpu-zip.c binutils-2.27-zip/bfd/cpu-zip.c
+--- binutils-2.27-original/bfd/cpu-zip.c	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/bfd/cpu-zip.c	2017-01-04 14:26:27.000000000 -0500
 @@ -0,0 +1,65 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -186,8 +186,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/cpu-zip.c binutils-2.27-zip/bfd/c
 +				// the same family. 
 +};
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/archures.texi binutils-2.27-zip/bfd/doc/archures.texi
---- binutils-2.27/bfd/doc/archures.texi	2016-08-03 04:36:22.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/doc/archures.texi binutils-2.27-zip/bfd/doc/archures.texi
+--- binutils-2.27-original/bfd/doc/archures.texi	2016-08-03 04:36:22.000000000 -0400
 +++ binutils-2.27-zip/bfd/doc/archures.texi	2016-12-31 17:14:43.103668704 -0500
 @@ -492,6 +492,8 @@
  #define bfd_mach_nios2r2       2
@@ -198,8 +198,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/archures.texi binutils-2.27-z
    bfd_arch_last
    @};
  @end example
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/bfd.info binutils-2.27-zip/bfd/doc/bfd.info
---- binutils-2.27/bfd/doc/bfd.info	2016-08-03 04:36:22.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/doc/bfd.info binutils-2.27-zip/bfd/doc/bfd.info
+--- binutils-2.27-original/bfd/doc/bfd.info	2016-08-03 04:36:22.000000000 -0400
 +++ binutils-2.27-zip/bfd/doc/bfd.info	2017-01-04 14:40:21.000000000 -0500
 @@ -8466,6 +8466,8 @@
       #define bfd_mach_nios2r2       2
@@ -210,8 +210,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/bfd.info binutils-2.27-zip/bf
         bfd_arch_last
         };
  
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/reloc.texi binutils-2.27-zip/bfd/doc/reloc.texi
---- binutils-2.27/bfd/doc/reloc.texi	2016-08-03 04:36:22.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/doc/reloc.texi binutils-2.27-zip/bfd/doc/reloc.texi
+--- binutils-2.27-original/bfd/doc/reloc.texi	2016-08-03 04:36:22.000000000 -0400
 +++ binutils-2.27-zip/bfd/doc/reloc.texi	2016-12-31 17:17:15.950640091 -0500
 @@ -4214,6 +4214,19 @@
  @deffnx {} BFD_RELOC_VISIUM_IM16_PCREL
@@ -233,8 +233,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/doc/reloc.texi binutils-2.27-zip/
  
  @example
  
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
---- binutils-2.27/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
+--- binutils-2.27-original/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-24 13:54:25.214097101 -0500
 @@ -0,0 +1,1134 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -1371,8 +1371,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/elf32-zip.c binutils-2.27-zip/bfd
 +};
 +#endif
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/libbfd.h binutils-2.27-zip/bfd/libbfd.h
---- binutils-2.27/bfd/libbfd.h	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/libbfd.h binutils-2.27-zip/bfd/libbfd.h
+--- binutils-2.27-original/bfd/libbfd.h	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/bfd/libbfd.h	2017-01-04 22:04:11.000000000 -0500
 @@ -3125,6 +3125,16 @@
    "BFD_RELOC_VISIUM_HI16_PCREL",
@@ -1391,8 +1391,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/libbfd.h binutils-2.27-zip/bfd/li
   "@@overflow: BFD_RELOC_UNUSED@@",
  };
  #endif
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/Makefile.am binutils-2.27-zip/bfd/Makefile.am
---- binutils-2.27/bfd/Makefile.am	2016-08-03 03:36:50.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/Makefile.am binutils-2.27-zip/bfd/Makefile.am
+--- binutils-2.27-original/bfd/Makefile.am	2016-08-03 03:36:50.000000000 -0400
 +++ binutils-2.27-zip/bfd/Makefile.am	2016-12-31 17:26:07.151146300 -0500
 @@ -173,7 +173,8 @@
  	cpu-xstormy16.lo \
@@ -1430,8 +1430,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/Makefile.am binutils-2.27-zip/bfd
  	elf32.c \
  	elflink.c \
  	elfxx-sparc.c \
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/Makefile.in binutils-2.27-zip/bfd/Makefile.in
---- binutils-2.27/bfd/Makefile.in	2016-08-03 04:06:27.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/Makefile.in binutils-2.27-zip/bfd/Makefile.in
+--- binutils-2.27-original/bfd/Makefile.in	2016-08-03 04:06:27.000000000 -0400
 +++ binutils-2.27-zip/bfd/Makefile.in	2017-01-04 14:29:55.000000000 -0500
 @@ -505,7 +505,8 @@
  	cpu-xstormy16.lo \
@@ -1477,8 +1477,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/Makefile.in binutils-2.27-zip/bfd
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/demo64.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dwarf1.Plo@am__quote@
  @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dwarf2.Plo@am__quote@
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/merge.c binutils-2.27-zip/bfd/merge.c
---- binutils-2.27/bfd/merge.c	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/merge.c binutils-2.27-zip/bfd/merge.c
+--- binutils-2.27-original/bfd/merge.c	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/bfd/merge.c	2017-01-02 14:48:54.000000000 -0500
 @@ -826,7 +826,7 @@
    else
@@ -1489,8 +1489,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/merge.c binutils-2.27-zip/bfd/mer
        if (bfd_seek (output_bfd, pos, SEEK_SET) != 0)
  	return FALSE;
      }
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/reloc.c binutils-2.27-zip/bfd/reloc.c
---- binutils-2.27/bfd/reloc.c	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/reloc.c binutils-2.27-zip/bfd/reloc.c
+--- binutils-2.27-original/bfd/reloc.c	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/bfd/reloc.c	2017-01-04 22:03:52.000000000 -0500
 @@ -7697,7 +7697,32 @@
    BFD_RELOC_VISIUM_IM16_PCREL
@@ -1526,8 +1526,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/reloc.c binutils-2.27-zip/bfd/rel
  ENDSENUM
    BFD_RELOC_UNUSED
  CODE_FRAGMENT
-diff -Naur '--exclude=*.swp' binutils-2.27/bfd/targets.c binutils-2.27-zip/bfd/targets.c
---- binutils-2.27/bfd/targets.c	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/targets.c binutils-2.27-zip/bfd/targets.c
+--- binutils-2.27-original/bfd/targets.c	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/bfd/targets.c	2016-12-31 17:37:14.021847080 -0500
 @@ -910,6 +910,7 @@
  extern const bfd_target xtensa_elf32_le_vec;
@@ -1546,8 +1546,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/bfd/targets.c binutils-2.27-zip/bfd/t
  #endif /* not SELECT_VECS */
  
  /* Always support S-records, for convenience.  */
-diff -Naur '--exclude=*.swp' binutils-2.27/binutils/readelf.c binutils-2.27-zip/binutils/readelf.c
---- binutils-2.27/binutils/readelf.c	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/binutils/readelf.c binutils-2.27-zip/binutils/readelf.c
+--- binutils-2.27-original/binutils/readelf.c	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/binutils/readelf.c	2016-12-31 17:40:19.908241961 -0500
 @@ -154,6 +154,7 @@
  #include "elf/xgate.h"
@@ -1610,8 +1610,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/binutils/readelf.c binutils-2.27-zip/
        return reloc_type == 0;
  
      case EM_AARCH64:
-diff -Naur '--exclude=*.swp' binutils-2.27/config.sub binutils-2.27-zip/config.sub
---- binutils-2.27/config.sub	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/config.sub binutils-2.27-zip/config.sub
+--- binutils-2.27-original/config.sub	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/config.sub	2017-01-11 14:20:34.804049801 -0500
 @@ -316,7 +316,7 @@
  	| visium \
@@ -1637,8 +1637,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/config.sub binutils-2.27-zip/config.s
  
  	# We use `pc' rather than `unknown'
  	# because (1) that's what they normally are, and
-diff -Naur '--exclude=*.swp' binutils-2.27/configure binutils-2.27-zip/configure
---- binutils-2.27/configure	2016-08-03 03:54:55.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/configure binutils-2.27-zip/configure
+--- binutils-2.27-original/configure	2016-08-03 03:54:55.000000000 -0400
 +++ binutils-2.27-zip/configure	2017-01-08 20:37:33.566336786 -0500
 @@ -3548,6 +3548,9 @@
    ft32-*-*)
@@ -1670,8 +1670,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure binutils-2.27-zip/configure
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
-diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/configure.ac
---- binutils-2.27/configure.ac	2016-08-03 04:37:38.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/configure.ac binutils-2.27-zip/configure.ac
+--- binutils-2.27-original/configure.ac	2016-08-03 04:37:38.000000000 -0400
 +++ binutils-2.27-zip/configure.ac	2017-01-08 20:41:54.836485336 -0500
 @@ -884,6 +884,9 @@
    ft32-*-*)
@@ -1703,10 +1703,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/configure.ac binutils-2.27-zip/config
  esac
  
  # If we aren't building newlib, then don't build libgloss, since libgloss
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
---- binutils-2.27/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2017-03-15 23:03:15.801504568 -0400
-@@ -0,0 +1,3340 @@
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
+--- binutils-2.27-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
++++ binutils-2.27-zip/gas/config/tc-zip.c	2018-03-19 20:13:38.103976302 -0400
+@@ -0,0 +1,3400 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -1728,7 +1728,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2018, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -1877,6 +1877,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	return nw;
 +}
 +
++static	int	fits_within(int nbits, int value) {
++	// -2 fits_within two bits
++	// -1 fits_within two bits
++	//  1 fits_within two bits
++	//  2 does not
++	//
++	if (value > 0)
++		return (value <   (1l<<(nbits-1))) ? 1:0;
++	else
++		return (value >= -(1l<<(nbits-1))) ? 1:0;
++}
++
 +static uint32_t
 +zip_brev(uint32_t v) {
 +	unsigned r=0, b;
@@ -1947,9 +1959,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			pzipm->r[insn->i_areg].m_subsy = NULL;
 +			return;
 +		}
-+	} else if (insn->i_rp) {
++	} else if (insn->i_rp)
 +		bknown = MACH_VUNKNOWN;
-+	} else if (ZIP_RNONE == insn->i_breg)
++	else if (ZIP_RNONE == insn->i_breg)
 +		// B-Op is an immediate only
 +		bknown = MACH_VKNOWN;
 +	else if (insn->i_breg >= ZIP_CC)
@@ -2162,6 +2174,39 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	pzipm->r[ZIP_PC].m_known = MACH_VUNKNOWN;
 +}
 +
++static	int	zip_findnearreg_machine(MACHINEREGS *pzipm, unsigned  value) {
++	int	bestrg = ZIP_RNONE, bestd, d;
++	int	rg;
++
++	bestd = 0x7fffffff;
++	bestrg= ZIP_RNONE;
++
++	for(rg=0; rg<ZIP_CC; rg++) {
++		if (pzipm->r[rg].m_known == MACH_VUNKNOWN)
++			continue;
++		if (pzipm->r[rg].m_known == MACH_VSYMKNOWN)
++			continue;
++		if (pzipm->r[rg].m_known == MACH_VUPPERKNOWN)
++			continue;
++		gas_assert(pzipm->r[rg].m_known == MACH_VKNOWN);
++	
++		if (pzipm->r[rg].m_addsy)
++			continue;
++		if (pzipm->r[rg].m_subsy)
++			continue;
++
++		d = abs(pzipm->r[rg].m_value - value);
++		if (d < bestd) {
++			bestd = d;
++			bestrg = rg;
++		}
++	}
++
++	if (fits_within(18,bestd))
++		return bestrg;
++	return ZIP_RNONE;
++}
++
 +#ifdef	ZIP_DEBUG
 +static void
 +zip_debug_machine(MACHINEREGS *pzipm) {
@@ -2362,7 +2407,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_SOUT:  fprintf(stderr, "%7s", "SOUT");  break;
 +		case ZIPO_NDUMP: fprintf(stderr, "%7s", "NDUMP"); break;
 +		case ZIPO_NEXIT: fprintf(stderr, "%7s", "NEXIT"); break;
-+		case ZIPO_NOUT:  fprintf(stderr, "%7s", "OUT");   break;
++		case ZIPO_NOUT:  fprintf(stderr, "%7s", "NOUT");  break;
 +		//
 +		case ZIPO_LJMP:	fprintf(stderr, "%7s", "LJMP"); break;
 +		case ZIPO_LJSR:	fprintf(stderr, "%7s", "LJSR");   break;
@@ -2844,18 +2889,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	}
 +
 +	return 	err;
-+}
-+
-+static	int	fits_within(int nbits, int value) {
-+	// -2 fits_within two bits
-+	// -1 fits_within two bits
-+	//  1 fits_within two bits
-+	//  2 does not
-+	//
-+	if (value > 0)
-+		return (value <   (1l<<(nbits-1))) ? 1:0;
-+	else
-+		return (value >= -(1l<<(nbits-1))) ? 1:0;
 +}
 +
 +static const char *zip_parse(const char *line, ZIPIS *insn) {
@@ -3398,6 +3431,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		case ZIPO_TRAP:
 +			insn->i_areg = ZIP_CC;
 +			if (insn->i_breg == ZIP_RNONE) {
++				// TRAP instructions *ALWAYS* clear the GIE bit
++				insn->i_imm &= (~0x0020);
 +				if (insn->i_cnd == ZIPC_ALWAYS)
 +					insn->i_op = ZIPO_LDI;
 +				else if (fits_within(16, insn->i_imm))
@@ -3405,7 +3440,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				else if (fits_within(18, zip_brev(insn->i_imm)))
 +					insn->i_op = ZIPO_BREV;
 +				else
-+					err = "TRAP immediate not supported";
++					err = "TRAP 18+ bit immediate not supported";
 +			} else
 +				insn->i_op = ZIPO_MOV;
 +			break;
@@ -3640,9 +3675,9 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +	}
 +
 +	// Prohibit moves to/from user regs to merge
-+	if ((opa == ZIPO_MOV)&&(a & 0x44000))
++	if ((opa == ZIPO_MOV)&&(a & 0x42000))
 +		return 0;
-+	if ((opb == ZIPO_MOV)&&(b & 0x44000))
++	if ((opb == ZIPO_MOV)&&(b & 0x42000))
 +		return 0;
 +
 +	imma = zip_non_cis_immediate(a);
@@ -3979,6 +4014,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		(insn->i_rp)&&(symbol_get_frag(insn->i_rp->r_sym)==fragP)?1:0,
 +		this_segment, insn->i_imm);
 +#endif
++	int	rg;
++
 +	switch(insn->i_op) {
 +	case ZIPO_LDI: // May or may not be conditional
 +		if ((sym_known)&&(this_segment)
@@ -4002,8 +4039,37 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		// 0.111.x111.11
 +		insn->i_aux[0] = 0x7fc00000; // NOOP -- if never used.
 +		immv += symv;
++		if ((insn->i_cnd == ZIPC_ALWAYS)
++			&&(zip_param_cis)
++			&&(zip_param_use_machine)&&(pzipm)
++			&&(!fits_within(8,immv))) {
++			// Convert an LDI instruction to a MOV instruction if
++			// it would make that instruction CIS-able.
++
++			if ((rg=zip_findnearreg_machine(pzipm, immv))
++					!= ZIP_RNONE) {
++				int	d;
++				d = immv - pzipm->r[rg].m_value;
++				if (fits_within(3,d)) {
++					insn->i_op = ZIPO_MOV;
++					insn->i_breg = rg;
++					insn->i_naux = 0;
++					insn->i_imm  = d;
++					zip_assemble_insn_words(fragP,
++						seg, insn, relax_state,
++						stretch, pzipm);
++					return;
++				}
++			}
++		}
++
 +		if ((!insn->i_rp)&&(insn->i_cnd == ZIPC_ALWAYS)
 +				&&(fits_within(23, immv))) {
++			// Can we do this with an ordinary load immediate
++			// instruction?
++			//
++			// If we do this, we'll avoid any opportunity to use
++			// the ZipMachine and move something into this address
 +			insn->i_naux = 0;
 +			insn->i_code = LDIOP(immv,insn->i_areg);
 +		} else if (((!insn->i_rp)||(sym_known))
@@ -4019,7 +4085,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +			if (insn->i_rp)
 +				insn->i_rp->r_type = BFD_RELOC_NONE;
 +// 0000 1110 0000 0000 0000 0000 0100 0000
-+		} else if ((zip_param_use_machine)&&(pzipm)&&((!insn->i_rp)||(sym_known))
++		} else if ((zip_param_use_machine)&&(pzipm)
++			&&((!insn->i_rp)||(sym_known))
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&(0==((immv^pzipm->r[insn->i_areg].m_value)
 +					& 0x0ffff0000))) {
@@ -4035,57 +4102,50 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +				pzipm->r[insn->i_areg].m_known = MACH_VUPPERKNOWN;
 +			} else
 +				pzipm->r[insn->i_areg].m_known = MACH_VKNOWN;
++		} else if ((zip_param_use_machine)&&(pzipm)
++			&&((!insn->i_rp)||(sym_known))
++			&&(pzipm->r[insn->i_areg].m_known)
++			&&((rg=zip_findnearreg_machine(pzipm, immv))!= ZIP_RNONE)
++			&&(fits_within(13,pzipm->r[rg].m_value - immv))) {
++fprintf(stderr, "NEW CODE: LDI -> MOV #2\n");
++				// Replace LDI with a MOV instruction
++				insn->i_op = ZIPO_MOV;
++				insn->i_breg = rg;
++				insn->i_naux = 0;
++				insn->i_imm  = pzipm->r[rg].m_value - immv;
++				zip_assemble_insn_words(fragP, seg, insn,
++					relax_state, stretch, pzipm);
++				return;
++		} else if ((zip_param_use_machine)&&(pzipm)
++			&&((!insn->i_rp)||(sym_known))
++			&&(pzipm->r[insn->i_areg].m_known)
++			&&((rg=zip_findnearreg_machine(pzipm, zip_brev(immv)))!= ZIP_RNONE)
++			&&(fits_within(14,zip_brev(pzipm->r[rg].m_value - immv)))) {
++fprintf(stderr, "NEW CODE: LDI[%08x] -> BREV #3\n", immv);
++				// Replace LDI with a MOV instruction
++				insn->i_op = ZIPO_BREV;
++				insn->i_breg = rg;
++				insn->i_naux = 0;
++				insn->i_imm  = zip_brev(pzipm->r[rg].m_value - immv);
++				zip_assemble_insn_words(fragP, seg, insn,
++					relax_state, stretch, pzipm);
++				return;
 +		} else {
 +			//
 +			// If the symbol isn't defined, then any immv value
 +			// will work--we have to come back anyway.
 +			//
-+			int known_bypass = 0, i;
-+
-+			if ((zip_param_use_machine)&&(pzipm)&&(
-+					((!insn->i_rp)
-+						&&(!fits_within(4,immv)))
-+					||((insn->i_rp)&&(sym_known)))) {
-+				for(i=0; i<14; i++) {
-+					int offset = immv-pzipm->r[i].m_value;
-+					if ((pzipm->r[i].m_known==MACH_VKNOWN)
-+						&&(fits_within(13, offset))
-+						&&((insn->i_rp)
-+							||(!fits_within(4, immv)))
-+						) {
-+						// Pick the closest value ... if
-+						// there's a choice
-+						if ((!known_bypass)
-+							||(abs(offset)<known_bypass))
-+							continue;
-+						insn->i_naux = 0;
-+						insn->i_op = ZIPO_MOV;
-+						insn->i_breg = i;
-+						insn->i_imm = offset;
-+
-+						insn->i_code = SMPLMOV(
-+							insn->i_cnd, offset,
-+							i, insn->i_areg);
-+						known_bypass = abs(offset);
-+						if (known_bypass==0)
-+							known_bypass = 1;
-+					}
-+				} known_bypass = (known_bypass)?1:0;
-+			} if (!known_bypass) {
-+				// BREV Extension would modify this statement
-+				insn->i_naux = 1;
-+				insn->i_code = IMMOP(ZIPO_BREV, insn->i_cnd,
-+					zip_brev(immv)&0x01ffff, insn->i_areg);
-+				insn->i_aux[0]=IMMOP(ZIPO_LDILO, insn->i_cnd,
-+					(immv&0x0ffff), insn->i_areg);
-+				if (insn->i_rp)
-+					insn->i_rp->r_type = BFD_RELOC_ZIP_LDI;
-+				else if ((zip_param_cis)&&(zip_can_merge(insn->i_code, insn->i_aux[0]))) {
-+					insn->i_code = zip_insn_merge(insn->i_code, insn->i_aux[0]);
-+					insn->i_naux = 0;
-+				}
-+			} else {
-+fprintf(stderr, "known-bypass\n");
++			// BREV Extension would modify this statement
++			insn->i_naux = 1;
++			insn->i_code = IMMOP(ZIPO_BREV, insn->i_cnd,
++				zip_brev(immv)&0x01ffff, insn->i_areg);
++			insn->i_aux[0]=IMMOP(ZIPO_LDILO, insn->i_cnd,
++				(immv&0x0ffff), insn->i_areg);
++			if (insn->i_rp)
++				insn->i_rp->r_type = BFD_RELOC_ZIP_LDI;
++			else if ((zip_param_cis)&&(zip_can_merge(insn->i_code, insn->i_aux[0]))) {
++				insn->i_code = zip_insn_merge(insn->i_code, insn->i_aux[0]);
++				insn->i_naux = 0;
 +			}
 +		}
 +#ifdef	ZIP_DEBUG
@@ -5047,8 +5107,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.c binutils-2.27-zip
 +		}
 +	}
 +}
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
---- binutils-2.27/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
+--- binutils-2.27-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/config/tc-zip.h	2017-03-03 09:35:34.527310651 -0500
 @@ -0,0 +1,191 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -5242,8 +5302,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/config/tc-zip.h binutils-2.27-zip
 +
 +#endif
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/configure.tgt binutils-2.27-zip/gas/configure.tgt
---- binutils-2.27/gas/configure.tgt	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/configure.tgt binutils-2.27-zip/gas/configure.tgt
+--- binutils-2.27-original/gas/configure.tgt	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/gas/configure.tgt	2016-12-31 17:44:37.270167826 -0500
 @@ -112,6 +112,7 @@
    x86_64*)		cpu_type=i386 arch=x86_64;;
@@ -5262,8 +5322,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/configure.tgt binutils-2.27-zip/g
    *-*-aout | *-*-scout)			fmt=aout ;;
    *-*-cloudabi*)			fmt=elf ;;
    *-*-dragonfly*)			fmt=elf em=dragonfly ;;
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/Makefile.am binutils-2.27-zip/gas/Makefile.am
---- binutils-2.27/gas/Makefile.am	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/Makefile.am binutils-2.27-zip/gas/Makefile.am
+--- binutils-2.27-original/gas/Makefile.am	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/gas/Makefile.am	2016-12-31 17:45:17.941851449 -0500
 @@ -200,6 +200,7 @@
  	config/tc-xtensa.c \
@@ -5281,8 +5341,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/Makefile.am binutils-2.27-zip/gas
  	config/xtensa-relax.h
  
  # OBJ files in config
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/Makefile.in binutils-2.27-zip/gas/Makefile.in
---- binutils-2.27/gas/Makefile.in	2016-08-03 04:16:28.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/Makefile.in binutils-2.27-zip/gas/Makefile.in
+--- binutils-2.27-original/gas/Makefile.in	2016-08-03 04:16:28.000000000 -0400
 +++ binutils-2.27-zip/gas/Makefile.in	2016-12-31 17:49:43.603837948 -0500
 @@ -494,6 +494,7 @@
  	config/tc-xtensa.c \
@@ -5329,8 +5389,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/Makefile.in binutils-2.27-zip/gas
  xtensa-relax.o: config/xtensa-relax.c
  @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT xtensa-relax.o -MD -MP -MF $(DEPDIR)/xtensa-relax.Tpo -c -o xtensa-relax.o `test -f 'config/xtensa-relax.c' || echo '$(srcdir)/'`config/xtensa-relax.c
  @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/xtensa-relax.Tpo $(DEPDIR)/xtensa-relax.Po
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip.exp binutils-2.27-zip/gas/testsuite/gas/zip/zip.exp
---- binutils-2.27/gas/testsuite/gas/zip/zip.exp	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip.exp binutils-2.27-zip/gas/testsuite/gas/zip/zip.exp
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip.exp	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip.exp	2017-01-12 22:12:40.839206088 -0500
 @@ -0,0 +1,17 @@
 +# ZipCPU assembler testsuite
@@ -5350,8 +5410,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip.exp binutil
 +  # run_dump_test "zip_insn_jsr"
 +  # run_dump_test "zip_insn_jsrv"
 +}
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_add.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_add.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.d	2017-01-12 22:01:30.790982203 -0500
 @@ -0,0 +1,41 @@
 +#as: -novliw
@@ -5395,8 +5455,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.d 
 +  70:	78 89 ff ff 	BZ +@0x00020073.*$
 +  74:	78 aa 00 00 	BNZ +@0xfffe0078.*$
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_add.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_add.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_add.s	2017-01-10 12:00:50.870044337 -0500
 @@ -0,0 +1,33 @@
 +	.text
@@ -5432,8 +5492,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_add.s 
 +	add	4,pc
 +	add.z	131071,pc
 +	add.nz	-131072,pc
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_bratest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_bratest.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_bratest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_bratest.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.d	2017-01-10 10:46:16.957469423 -0500
 @@ -0,0 +1,22 @@
 +#as:
@@ -5458,8 +5518,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_brates
 +
 +00000024 <bra_target>:
 +  24:	7f c0 00 00 	NOOP       
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_bratest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_bratest.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_bratest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_bratest.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_bratest.s	2017-01-09 10:28:54.983992877 -0500
 @@ -0,0 +1,14 @@
 +	.text
@@ -5476,8 +5536,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_brates
 +	ldi -1,r0
 +bra_target:
 +	noop
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_ctest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_ctest.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.d	2017-01-16 11:02:02.344009430 -0500
 @@ -0,0 +1,39 @@
 +#as:
@@ -5519,8 +5579,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.
 +  68:	00 98 00 01 	ADD.C  +\$1,R0
 +  6c:	00 b8 00 01 	ADD.NC +\$1,R0
 +  70:	00 b8 00 01 	ADD.NC +\$1,R0
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_ctest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_ctest.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_ctest.s	2017-01-16 10:55:53.054697861 -0500
 @@ -0,0 +1,34 @@
 +	.text
@@ -5557,8 +5617,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ctest.
 +	[nc]	add	1,R0
 +	[geu]	add	1,R0
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_lditest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_lditest.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_lditest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_lditest.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.d	2017-01-10 11:31:45.633275455 -0500
 @@ -0,0 +1,24 @@
 +#as: -nozipm
@@ -5585,8 +5645,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ldites
 +  2c:	42 03 fe ff 	BREV +\$-257,R8
 +  30:	4a 01 fe ff 	LDI +0xff7ffffe,R9.*
 +  34:	4a 40 ff fe 
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_lditest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_lditest.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_lditest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_lditest.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_lditest.s	2017-01-09 10:28:37.472119620 -0500
 @@ -0,0 +1,13 @@
 +	.text
@@ -5602,8 +5662,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_ldites
 +	ldi	-8388608,r7
 +	ldi	-8388609,r8
 +	ldi	-8388610,r9
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_mov.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_mov.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.d	2017-01-12 22:09:54.925246052 -0500
 @@ -0,0 +1,86 @@
 +#as: -novliw -nozipm
@@ -5692,8 +5752,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.d 
 +  c4:	73 40 90 01 	MOV +\$-4095\+R2,CC
 +  c8:	73 41 0f ff 	MOV +\$4095\+R4,CC
 +  cc:	73 41 80 00 	MOV +R6,CC
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_mov.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_mov.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_mov.s	2017-01-12 16:45:17.027962005 -0500
 @@ -0,0 +1,93 @@
 +	.text
@@ -5789,8 +5849,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_mov.s 
 +	mov	4095+r4,cc
 +	mov	r6,cc
 +	;
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_optest.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_optest.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.d	2017-01-12 22:12:11.497444662 -0500
 @@ -0,0 +1,98 @@
 +#as: -novliw -nozipm
@@ -5891,8 +5951,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest
 + 154:	2c 82 00 00 	LW +\(\$-131072\),R5
 + 158:	34 c2 00 00 	SW +R6,\(\$-131072\)
 + 15c:	17 82 00 00 	FPI2F +\$-131072,R2
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_optest.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_optest.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_optest.s	2017-01-12 16:28:47.212542071 -0500
 @@ -0,0 +1,119 @@
 +	.text
@@ -6014,8 +6074,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_optest
 +	; ldi
 +	fpi2f	-0x20000,r2
 +	;
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologue.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologue.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologue.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologue.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.d	2017-01-10 11:09:36.301473902 -0500
 @@ -0,0 +1,32 @@
 +#as: -novliw
@@ -6050,8 +6110,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +  4c:	04 87 40 20 	LW +32\(SP\),R0
 +  50:	68 80 00 30 	ADD +\$48,SP
 +  54:	7b 40 00 00 	RTN +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologue.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologue.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologue.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologue.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologue.s	2017-01-09 07:25:40.495644200 -0500
 @@ -0,0 +1,24 @@
 +some_function:
@@ -6078,8 +6138,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +	ADD	48,SP
 +	RETN
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologuev.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologuev.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologuev.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologuev.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.d	2017-01-12 21:58:59.513900839 -0500
 @@ -0,0 +1,21 @@
 +#as: -nozipm -vliw
@@ -6103,8 +6163,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +  20:	84 14 84 18 	LW +20\(SP\),R0 +| LW +24\(SP\),R0     
 +  24:	84 1c 84 20 	LW +28\(SP\),R0 +| LW +32\(SP\),R0     
 +  28:	ea 30 ff 80 	ADD +\$48,SP +| MOV +R0,PC         
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologuev.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_prologuev.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologuev.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_prologuev.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_prologuev.s	2017-01-10 11:29:18.612449601 -0500
 @@ -0,0 +1,24 @@
 +some_function:
@@ -6131,8 +6191,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_prolog
 +	ADD	48,SP
 +	RETN
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_specials.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_specials.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.d	2017-01-24 08:03:32.892847657 -0500
 @@ -0,0 +1,41 @@
 +#as:
@@ -6176,8 +6236,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +  70:	7f c0 02 27 	NOUT       R7
 +  74:	7f 80 02 33 	SOUT       uR3
 +  78:	7f c0 02 38 	NOUT       uR8
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_specials.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_specials.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_specials.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_specials.s	2017-01-19 07:18:13.405003668 -0500
 @@ -0,0 +1,35 @@
 +	.text
@@ -6215,8 +6275,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_specia
 +	sout	uR3
 +	nout	uR8
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.d
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.d	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_vliw.d binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.d
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_vliw.d	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.d	2017-01-12 21:50:28.719237156 -0500
 @@ -0,0 +1,77 @@
 +#as: -vliw
@@ -6296,8 +6356,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.d
 +  f0:	bb 3f c4 18 	CMP +\$63\+R7,R7 +| LW         24\(SP\),R8 *$
 +  f4:	cd 1c de 7c 	SW +R9,\$28\(SP\) +| LDI +\$124,R11 *$
 +  f8:	1b 40 40 01 	MOV +\$1\+R1,R3
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.s
---- binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.s	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_vliw.s binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.s
+--- binutils-2.27-original/gas/testsuite/gas/zip/zip_insn_vliw.s	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/gas/testsuite/gas/zip/zip_insn_vliw.s	2017-01-12 16:55:54.690241718 -0500
 @@ -0,0 +1,110 @@
 +	.text
@@ -6410,8 +6470,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/testsuite/gas/zip/zip_insn_vliw.s
 +	mov	1+r1,r3
 +
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/gas/write.c binutils-2.27-zip/gas/write.c
---- binutils-2.27/gas/write.c	2016-08-03 03:36:51.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/write.c binutils-2.27-zip/gas/write.c
+--- binutils-2.27-original/gas/write.c	2016-08-03 03:36:51.000000000 -0400
 +++ binutils-2.27-zip/gas/write.c	2016-12-31 17:51:52.470985149 -0500
 @@ -2676,7 +2676,7 @@
  
@@ -6422,8 +6482,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/gas/write.c binutils-2.27-zip/gas/wri
  		  addressT after;
  
  		  if (symbolP)
-diff -Naur '--exclude=*.swp' binutils-2.27/include/dis-asm.h binutils-2.27-zip/include/dis-asm.h
---- binutils-2.27/include/dis-asm.h	2016-08-03 03:36:53.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/include/dis-asm.h binutils-2.27-zip/include/dis-asm.h
+--- binutils-2.27-original/include/dis-asm.h	2016-08-03 03:36:53.000000000 -0400
 +++ binutils-2.27-zip/include/dis-asm.h	2016-12-31 17:52:29.022758231 -0500
 @@ -318,10 +318,12 @@
  extern int print_insn_rl78_g10		(bfd_vma, disassemble_info *);
@@ -6438,8 +6498,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/dis-asm.h binutils-2.27-zip/i
  
  extern void print_aarch64_disassembler_options (FILE *);
  extern void print_i386_disassembler_options (FILE *);
-diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/common.h binutils-2.27-zip/include/elf/common.h
---- binutils-2.27/include/elf/common.h	2016-08-03 03:36:53.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/common.h binutils-2.27-zip/include/elf/common.h
+--- binutils-2.27-original/include/elf/common.h	2016-08-03 03:36:53.000000000 -0400
 +++ binutils-2.27-zip/include/elf/common.h	2016-12-31 17:53:58.942198950 -0500
 @@ -411,6 +411,9 @@
  /* Old constant that might be in use by some software. */
@@ -6451,8 +6511,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/common.h binutils-2.27-zi
  /* See the above comment before you add a new EM_* value here.  */
  
  /* Values for e_version.  */
-diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/zip.h binutils-2.27-zip/include/elf/zip.h
---- binutils-2.27/include/elf/zip.h	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2.27-zip/include/elf/zip.h
+--- binutils-2.27-original/include/elf/zip.h	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/include/elf/zip.h	2017-01-18 18:19:33.764898333 -0500
 @@ -0,0 +1,58 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -6513,8 +6573,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/include/elf/zip.h binutils-2.27-zip/i
 +END_RELOC_NUMBERS(R_ZIP_max)
 +
 +#endif /* _ELF_ZIP_H */
-diff -Naur '--exclude=*.swp' binutils-2.27/ld/configure.tgt binutils-2.27-zip/ld/configure.tgt
---- binutils-2.27/ld/configure.tgt	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/configure.tgt binutils-2.27-zip/ld/configure.tgt
+--- binutils-2.27-original/ld/configure.tgt	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/ld/configure.tgt	2016-12-31 17:55:04.013793303 -0500
 @@ -816,6 +816,8 @@
  			;;
@@ -6525,8 +6585,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/ld/configure.tgt binutils-2.27-zip/ld
  *-*-ieee*)		targ_emul=vanilla
  			;;
  *-tandem-none)		targ_emul=st2000
-diff -Naur '--exclude=*.swp' binutils-2.27/ld/emulparams/elf32zip.sh binutils-2.27-zip/ld/emulparams/elf32zip.sh
---- binutils-2.27/ld/emulparams/elf32zip.sh	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/emulparams/elf32zip.sh binutils-2.27-zip/ld/emulparams/elf32zip.sh
+--- binutils-2.27-original/ld/emulparams/elf32zip.sh	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/ld/emulparams/elf32zip.sh	2017-01-05 08:22:45.000000000 -0500
 @@ -0,0 +1,50 @@
 +################################################################################
@@ -6579,8 +6639,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/ld/emulparams/elf32zip.sh binutils-2.
 +COMMONPAGESIZE=0x1000
 +EMBEDDED=yes
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/ld/Makefile.am binutils-2.27-zip/ld/Makefile.am
---- binutils-2.27/ld/Makefile.am	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/Makefile.am binutils-2.27-zip/ld/Makefile.am
+--- binutils-2.27-original/ld/Makefile.am	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/ld/Makefile.am	2016-12-31 17:57:39.684819835 -0500
 @@ -286,6 +286,7 @@
  	eelf32xc16xs.c \
@@ -6600,8 +6660,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/ld/Makefile.am binutils-2.27-zip/ld/M
  eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
    $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
  
-diff -Naur '--exclude=*.swp' binutils-2.27/ld/Makefile.in binutils-2.27-zip/ld/Makefile.in
---- binutils-2.27/ld/Makefile.in	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/Makefile.in binutils-2.27-zip/ld/Makefile.in
+--- binutils-2.27-original/ld/Makefile.in	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/ld/Makefile.in	2016-12-31 17:59:30.788122513 -0500
 @@ -654,6 +654,7 @@
  	eelf32xc16xs.c \
@@ -6629,8 +6689,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/ld/Makefile.in binutils-2.27-zip/ld/M
  eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
    $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
  
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/configure binutils-2.27-zip/opcodes/configure
---- binutils-2.27/opcodes/configure	2016-08-03 04:33:39.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/configure binutils-2.27-zip/opcodes/configure
+--- binutils-2.27-original/opcodes/configure	2016-08-03 04:33:39.000000000 -0400
 +++ binutils-2.27-zip/opcodes/configure	2017-01-05 08:50:32.000000000 -0500
 @@ -12685,7 +12685,7 @@
  	bfd_xtensa_arch)	ta="$ta xtensa-dis.lo" ;;
@@ -6641,8 +6701,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/configure binutils-2.27-zip/o
  	"")			;;
  	*)		as_fn_error "*** unknown target architecture $arch" "$LINENO" 5 ;;
  	esac
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/configure.ac binutils-2.27-zip/opcodes/configure.ac
---- binutils-2.27/opcodes/configure.ac	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/configure.ac binutils-2.27-zip/opcodes/configure.ac
+--- binutils-2.27-original/opcodes/configure.ac	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/opcodes/configure.ac	2017-01-05 08:49:53.000000000 -0500
 @@ -353,7 +353,7 @@
  	bfd_xtensa_arch)	ta="$ta xtensa-dis.lo" ;;
@@ -6653,8 +6713,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/configure.ac binutils-2.27-zi
  	"")			;;
  	*)		AC_MSG_ERROR(*** unknown target architecture $arch) ;;
  	esac
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/disassemble.c binutils-2.27-zip/opcodes/disassemble.c
---- binutils-2.27/opcodes/disassemble.c	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/disassemble.c binutils-2.27-zip/opcodes/disassemble.c
+--- binutils-2.27-original/opcodes/disassemble.c	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/opcodes/disassemble.c	2016-12-31 18:02:03.139162969 -0500
 @@ -98,6 +98,7 @@
  #define ARCH_xtensa
@@ -6676,8 +6736,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/disassemble.c binutils-2.27-z
  #ifdef ARCH_vax
      case bfd_arch_vax:
        disassemble = print_insn_vax;
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.am binutils-2.27-zip/opcodes/Makefile.am
---- binutils-2.27/opcodes/Makefile.am	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/Makefile.am binutils-2.27-zip/opcodes/Makefile.am
+--- binutils-2.27-original/opcodes/Makefile.am	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/opcodes/Makefile.am	2017-01-05 08:28:32.000000000 -0500
 @@ -86,7 +86,9 @@
  	w65-opc.h \
@@ -6709,8 +6769,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.am binutils-2.27-zip
  POTFILES = $(HFILES) $(CFILES)
  po/POTFILES.in: @MAINT@ Makefile
  	for f in $(POTFILES); do echo $$f; done | LC_ALL=C sort > tmp \
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip/opcodes/Makefile.in
---- binutils-2.27/opcodes/Makefile.in	2016-08-03 03:36:54.000000000 -0400
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/Makefile.in binutils-2.27-zip/opcodes/Makefile.in
+--- binutils-2.27-original/opcodes/Makefile.in	2016-08-03 03:36:54.000000000 -0400
 +++ binutils-2.27-zip/opcodes/Makefile.in	2017-01-05 08:28:04.000000000 -0500
 @@ -386,7 +386,9 @@
  	w65-opc.h \
@@ -6743,10 +6803,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/Makefile.in binutils-2.27-zip
  
  .c.o:
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
---- binutils-2.27/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2017-03-03 09:34:03.983308793 -0500
-@@ -0,0 +1,474 @@
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
+--- binutils-2.27-original/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
++++ binutils-2.27-zip/opcodes/zip-dis.c	2018-03-22 17:57:34.688834861 -0400
+@@ -0,0 +1,527 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -6836,6 +6896,25 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// 0111.1000.10cc.c0ii.iiii.iiii.iiii.iiii
 +	if ((nxtword&0xffc40000) == 0x78800000)
 +		return 1;
++	// OR ... the second word could be a
++	// load into the PC
++	// 0.1111.10010.ccc.0.iiiiiiiiiiiiiiiiii	LW.X #imm,PC
++	// 0.1111.10010.ccc.1.rrrr.iiiiiiiiiiiiii	LW.X #(R),PC
++	//
++	// These must be unconditional, since the MOV above is
++	// also unconditional
++	// 0111.1100.10cc.cxxxxx....	LW.X #(R),PC
++	if ((nxtword&0xfff80000) == 0x7c800000)
++		return 1;
++	//
++	// OR ... the second word could be a
++	// Register move into the PC from the current
++	// register set
++	// 0.1111.01101.ccc.0.rrrr.0.iiiiiiiiiiiii	MOV #(R),PC
++	// 0111.1011.01cc.c0rr.rr0i.iiiiiiiiiiii	MOV #(R),PC
++	if ((nxtword&0xfffc2000) == 0x7b400000)
++		return 1;
++	//
 +	return 0;
 +}
 +
@@ -6851,7 +6930,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +}
 +
 +static	inline	int
-+TWOWORD_CIS_JSR(uint32_t iword) {
++TWOWORD_CIS_LJSR(uint32_t iword) {
 +	// MOV 2(PC) | LOD (PC),PC
 +	//
 +	// 1.0000.111.1.1111.010
@@ -6863,7 +6942,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +
 +static	inline	int
 +CIS_JSR(uint32_t iword __attribute__((unused)) ) {
-+	if (TWOWORD_CIS_JSR(iword))
++	if (TWOWORD_CIS_LJSR(iword))
 +		return 1;
 +	// MOV 1(PC) | MOV Rx,PC
 +	//
@@ -6885,7 +6964,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	// MOV 2(PC),PC
 +	if (iword == 0x0343c002)
 +		return 1;
-+	if (TWOWORD_CIS_JSR(iword))
++	if (TWOWORD_CIS_LJSR(iword))
 +		return 1;
 +	// The conditional LJMP is three words, which we don't handle ...
 +	// Any BREV command could be the beginning of a twoword instruction
@@ -6959,18 +7038,52 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +
 +		return;
 +	} else if (TWOWORD_JSR(ins, nxtword)) {
-+		int cv = zip_getbits(nxtword, ZIP_BITFIELD(3,19));
-+		int iv = zip_sbits(nxtword, 18);
++		if ((nxtword&0xffc40000) == 0x78800000) {
++			int cv = zip_getbits(nxtword, ZIP_BITFIELD(3,19));
++			int iv = zip_sbits(nxtword, 18);
 +
-+		*refaddr = iv + addr + 8;
-+		sprintf(line, "%s%s", "JSR", zip_ccstr[cv]);
-+		sprintf(line, "%-11s", line);
-+		sprintf(line, "%s0x%08x", line, *refaddr);
++			*refaddr = iv + addr + 8;
++			sprintf(line, "%s%s", "JSR", zip_ccstr[cv]);
++			sprintf(line, "%-11s", line);
++			sprintf(line, "%s0x%08x", line, *refaddr);
 +
-+		return;
-+	} else if (TWOWORD_CIS_JSR(ins)) {
++			return;
++		} else if ((nxtword&0xfff80000) == 0x7c800000) {
++			// OR ... the second word could be a load into the PC
++			if ((nxtword>>18)&1) {
++				// LW #(Rw),PC
++				int iv = zip_sbits(nxtword, 14);
++				int rb = zip_ubits(nxtword>>14, 4);
++
++				sprintf(line,"%-11s#%d(%s)", "IJSR", iv,
++					zip_regstr[rb]);
++				*refaddr = 0;
++			} else {
++				// LW (#),PC
++				int iv = zip_sbits(nxtword, 18);
++				sprintf(line,"%-11s(#%d)", "IJSR", iv);
++				*refaddr = iv;
++			}
++			return;
++		} else { // if ((nxtword&0xfffc2000) == 0x7b400000)
++			// OR ... the second word could be a register move into
++			// the PC from the current register set
++			int rb = zip_ubits(nxtword>>14, 4);
++			int iv = zip_sbits(nxtword, 13);
++
++			*refaddr = 0;
++			if (iv == 0)
++				sprintf(line, "%-11s %s", "JSR",
++						zip_regstr[rb]);
++			else
++				sprintf(line, "%-11s#%d+%s", "JSR",iv,
++						zip_regstr[rb]);
++
++			return;
++		}
++	} else if (TWOWORD_CIS_LJSR(ins)) {
 +		*refaddr = nxtword;
-+		sprintf(line, "%-11s", "JSR");
++		sprintf(line, "%-11s", "LJSR");
 +		sprintf(line, "%s0x%08x", line, *refaddr);
 +		return;
 +	} else if (CIS_JSR(ins)) {
@@ -7168,7 +7281,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		if ((*info->read_memory_func)(vma, ibytes, 12, info) ==0)
 +			refaddr = (ibytes[8]<<24)|(ibytes[9]<<16)|(ibytes[10]<<8)|(ibytes[11]);
 +		sprintf(&astr[strlen(astr)], "@0x%08x", refaddr);
-+	} else if (TWOWORD_CIS_JSR(iword)) {
++	} else if (TWOWORD_CIS_LJSR(iword)) {
 +		refaddr = nxtword;
 +		sprintf(astr, "%-11s0x%08x", "JSR", refaddr);
 +	} else
@@ -7209,7 +7322,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +		return 8;
 +	if (TWOWORD_JSR(iword,nxtword))
 +		return 8;
-+	if (TWOWORD_CIS_JSR(iword))
++	if (TWOWORD_CIS_LJSR(iword))
 +		return 8;
 +	return 4;
 +}
@@ -7221,8 +7334,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.c binutils-2.27-zip/o
 +	return print_zip_insn;
 +}
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/opcodes/zip-dis.h
---- binutils-2.27/opcodes/zip-dis.h	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2.27-zip/opcodes/zip-dis.h
+--- binutils-2.27-original/opcodes/zip-dis.h	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/opcodes/zip-dis.h	2016-12-31 18:10:03.512012534 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -7270,8 +7383,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-dis.h binutils-2.27-zip/o
 +zip_get_disassembler(bfd *abfd);
 +
 +#endif
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
---- binutils-2.27/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
+--- binutils-2.27-original/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/opcodes/zip-opc.c	2017-03-06 14:00:55.404955681 -0500
 @@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
@@ -7636,8 +7749,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.c binutils-2.27-zip/o
 +const int	nzip_oplist = (sizeof(zip_oplist_raw)/sizeof(ZOPCODE));
 +const int	nzip_opbottom = (sizeof(zip_opbottomlist_raw)/sizeof(ZOPCODE));
 +
-diff -Naur '--exclude=*.swp' binutils-2.27/opcodes/zip-opc.h binutils-2.27-zip/opcodes/zip-opc.h
---- binutils-2.27/opcodes/zip-opc.h	1969-12-31 19:00:00.000000000 -0500
+diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2.27-zip/opcodes/zip-opc.h
+--- binutils-2.27-original/opcodes/zip-opc.h	1969-12-31 19:00:00.000000000 -0500
 +++ binutils-2.27-zip/opcodes/zip-opc.h	2017-02-10 17:48:01.761470841 -0500
 @@ -0,0 +1,77 @@
 +////////////////////////////////////////////////////////////////////////////////
