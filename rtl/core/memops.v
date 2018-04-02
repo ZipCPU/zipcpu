@@ -245,10 +245,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		endcase
 	end
 
+	reg	lock_gbl, lock_lcl;
+
 	generate
 	if (IMPLEMENT_LOCK != 0)
 	begin
-		reg	lock_gbl, lock_lcl;
 
 		initial	lock_gbl = 1'b0;
 		initial	lock_lcl = 1'b0;
@@ -271,8 +272,12 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
 	end else begin
+
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
+
+		always @(*)
+			{ lock_gbl, lock_lcl } <= 2'b00;
 	end endgenerate
 
 
@@ -476,6 +481,18 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	end
 
 	always @(posedge i_clk)
+	if (o_busy)
+		`ASSUME(!i_stb);
+
+	always @(posedge i_clk)
+	if (o_wb_cyc_gbl)
+		assert((o_busy)||(lock_gbl));
+
+	always @(posedge i_clk)
+	if (o_wb_cyc_lcl)
+		assert((o_busy)||(lock_lcl));
+
+	always @(posedge i_clk)
 		if (f_outstanding > 0)
 			assert(o_busy);
 
@@ -581,8 +598,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	always @(posedge i_clk)
 		if ((i_stb)&&(f_cyc)&&(WITH_LOCAL_BUS))
 		begin
-			`ASSUME((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
-			`ASSUME((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
+			// `ASSUME((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
+			// `ASSUME((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
+			restrict((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
+			restrict((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
 		end
 
 	always @(posedge i_clk)

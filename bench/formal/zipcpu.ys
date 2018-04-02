@@ -1,0 +1,18 @@
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/zipcpu.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/cpuops.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/mpyop.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/memops.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/pipemem.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/core/idecode.v
+read_verilog -D ZIPCPU -I ../../rtl -formal ../../rtl/ex/wbdblpriarb.v
+#
+read_verilog -D ZIPCPU -formal ../../rtl/ex/fwb_counter.v
+read_verilog -D ZIPCPU -formal ../../rtl/ex/fwb_master.v
+read_verilog -D ZIPCPU -formal ../../rtl/ex/fwb_slave.v
+read_verilog -D ZIPCPU -formal abs_prefetch.v
+read_verilog -D ZIPCPU -formal abs_div.v
+#
+prep -top zipcpu -nordff
+opt -share_all
+clean
+write_smt2 -wires zipcpu.smt2

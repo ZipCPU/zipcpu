@@ -41,7 +41,7 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb
+TESTS += busdelay wbpriarbiter wbdblpriarb cpu
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -55,7 +55,7 @@ BMCARGS := --presat $(SOLVER)
 # BMCARGS := $(SOLVER)
 INDARGS := $(SOLVER) -i
 
-PFONE  :=prefetch
+PFONE  := prefetch
 PFTWO  := dblfetch
 PFCACHE:= pfcache
 WBDLY  := busdelay
@@ -72,6 +72,9 @@ INT    := icontrol
 DCD    := idecode
 DMA    := wbdmac
 DIV    := div
+CPU    := zipcpu
+.PHONY: cpu
+cpu: zipcpu
 
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
@@ -126,6 +129,18 @@ $(DMA).smt2: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).ys
 
 $(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
 	yosys -ql $(DIV).yslog -s $(DIV).ys
+
+$(CPU).smt2: $(RTL)/core/$(CPU).v
+$(CPU).smt2: $(RTL)/core/cpuops.v
+$(CPU).smt2: $(RTL)/core/mpyop.v
+$(CPU).smt2: $(RTL)/core/idecode.v
+$(CPU).smt2: $(RTL)/core/pipemem.v
+$(CPU).smt2: $(RTL)/core/memops.v
+$(CPU).smt2: $(RTL)/ex/wbdblpriarb.v
+$(CPU).smt2: $(RTL)/ex/fwb_counter.v
+$(CPU).smt2: $(RTL)/cpudefs.v
+$(CPU).smt2: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v $(CPU).ys
+	yosys -ql $(CPU).yslog -s $(CPU).ys
 
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
@@ -265,6 +280,13 @@ $(DIV).check: $(DIV).smt2
 	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(DIV).vcd $(DIV).smt2
 	$(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(DIV).vcd $(DIV).smt2
+	touch $@
+
+$(CPU) : $(CPU).check
+$(CPU).check: $(CPU).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(CPU).vcd $(CPU).smt2
+	# $(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(CPU).vcd $(CPU).smt2
 	touch $@
 
 .PHONY: clean

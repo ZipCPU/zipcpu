@@ -385,9 +385,10 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			&&(i_pipe_stb))
 		begin
 			if (o_wb_cyc_lcl)
-				`ASSUME(i_addr[31:24] == 8'hff);
+				// `ASSUME(i_addr[31:24] == 8'hff);
+				restrict(i_addr[31:24] == 8'hff);
 			else
-				`ASSUME(i_addr[31:24] != 8'hff);
+				restrict(i_addr[31:24] != 8'hff);
 		end
 
 	always @(*)
