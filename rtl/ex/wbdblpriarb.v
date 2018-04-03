@@ -387,7 +387,6 @@ module	wbdblpriarb(i_clk, i_reset,
 			i_b_cyc_b, i_b_stb_b, i_b_we, i_b_adr, i_b_dat, i_b_sel,
 			(o_cyc_b)&&(o_b_ack), o_b_stall, 32'h0, (o_cyc_b)&&(o_b_err),
 			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b);
-`endif
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset)))
