@@ -1,0 +1,45 @@
+[options]
+mode prove
+depth 40
+
+[engines]
+abc pdr
+# aiger avy
+# aiger suprove
+
+[script]
+read_verilog -D ZIPCPU -formal zipcpu.v
+read_verilog -D ZIPCPU -formal cpuops.v
+read_verilog -D ZIPCPU -formal memops.v
+read_verilog -D ZIPCPU -formal pipemem.v
+read_verilog -D ZIPCPU -formal idecode.v
+read_verilog -D ZIPCPU -formal wbdblpriarb.v
+#
+read_verilog -D ZIPCPU -formal fwb_counter.v
+read_verilog -D ZIPCPU -formal fwb_master.v
+read_verilog -D ZIPCPU -formal fwb_slave.v
+read_verilog -D ZIPCPU -formal f_idecode.v
+read_verilog -D ZIPCPU -formal abs_prefetch.v
+read_verilog -D ZIPCPU -formal abs_div.v
+read_verilog -D ZIPCPU -formal abs_mpy.v
+#
+prep -top zipcpu -nordff
+
+[files]
+../../rtl/core/zipcpu.v
+../../rtl/core/cpuops.v
+../../rtl/core/memops.v
+../../rtl/core/pipemem.v
+../../rtl/core/idecode.v
+../../rtl/ex/wbdblpriarb.v
+#
+../../rtl/ex/fwb_counter.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v
+#
+../../rtl/cpudefs.v
+f_idecode.v
+abs_prefetch.v
+abs_div.v
+abs_mpy.v
+#

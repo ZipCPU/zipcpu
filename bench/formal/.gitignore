@@ -2,3 +2,5 @@
 *.smt2
 *.yslog
 *.blif
+zipcpu
+old
