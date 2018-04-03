@@ -108,8 +108,13 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	//
 	// Pull in the multiply logic from elsewhere
 	//
-	mpyop thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0], i_a, i_b,
-		mpydone, mpybusy, mpy_result, mpyhi);
+`ifdef	FORMAL
+`define	MPYOP	abs_mpy
+`else
+`define	MPYOP	mpyop
+`endif
+	`MPYOP thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
+		i_a, i_b, mpydone, mpybusy, mpy_result, mpyhi);
 
 	//
 	// The master ALU case statement

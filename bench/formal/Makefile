@@ -132,14 +132,14 @@ $(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
 
 $(CPU).smt2: $(RTL)/core/$(CPU).v
 $(CPU).smt2: $(RTL)/core/cpuops.v
-$(CPU).smt2: $(RTL)/core/mpyop.v
 $(CPU).smt2: $(RTL)/core/idecode.v
 $(CPU).smt2: $(RTL)/core/pipemem.v
 $(CPU).smt2: $(RTL)/core/memops.v
 $(CPU).smt2: $(RTL)/ex/wbdblpriarb.v
 $(CPU).smt2: $(RTL)/ex/fwb_counter.v
 $(CPU).smt2: $(RTL)/cpudefs.v
-$(CPU).smt2: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v $(CPU).ys
+$(CPU).smt2: f_idecode.v
+$(CPU).smt2: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v abs_mpy.v $(CPU).ys
 	yosys -ql $(CPU).yslog -s $(CPU).ys
 
 
