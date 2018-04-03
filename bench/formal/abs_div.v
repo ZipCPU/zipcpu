@@ -135,6 +135,9 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
+	if (i_reset)
+		o_valid <= 1'b0;
+	else
 		o_valid <= (r_busy_counter == 1);
 
 	wire	[3:0]	any_flags;
