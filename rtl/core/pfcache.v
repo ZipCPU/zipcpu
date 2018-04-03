@@ -137,7 +137,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	reg			r_v_from_pc, r_v_from_last, r_new_request;
 	reg			rvsrc, tagsrc;
-	wire			w_new_request, w_v_from_pc, w_v_from_last;
+	wire			w_v_from_pc, w_v_from_last;
 	reg	[(AW+1):0]	lastpc;
 	reg	[(CW-1):0]	wraddr;
 	reg	[(AW-1):CW]	tagvalipc, tagvallst;
