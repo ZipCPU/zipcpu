@@ -19,7 +19,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -615,6 +615,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	begin
 		reg	r_pipe;
 
+		wire	[13:0]	pipe_addr_diff;
+		assign		pipe_addr_diff = w_I[13:0] - r_I[13:0];
+
 		initial	r_pipe = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
@@ -629,18 +632,24 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				&&(w_rB == o_rB)
 				// Both must use the same register for B
 				&&(w_dcdB[3:0] == o_dcdB[3:0])
+				// CC or PC registers are not valid addresses
+				&&(w_dcdB[3:1] != 3'h7)
 				// But ... the result can never be B
 				&&((o_op[0])
 					||(w_dcdB[3:0] != o_dcdA[3:0]))
 				// Needs to be to the mode, supervisor or user
 				&&(i_gie == o_gie)
+				// Reads to CC or PC not allowed
+				&&((o_op[0])||(w_dcdR[3:1] != 3'h7))
+				// Prior-reads to CC or PC not allowed
+				&&((o_op[0])||(o_dcdR[3:1] != 3'h7))
 				// Same condition, or no condition before
 				&&((w_cond[2:0]==o_cond[2:0])
 					||(o_cond[2:0] == 3'h0))
 				// Same or incrementing immediate
 				&&(w_I[13]==r_I[13])
-				&&((w_I[13:2]==r_I[13:2])
-					||({1'b0, w_I[13:2]}==(r_I[13:2]+12'h1)));
+				&&((w_I==r_I)
+					||(pipe_addr_diff <= 14'h4));
 		assign o_pipe = r_pipe;
 	end else begin
 		assign o_pipe = 1'b0;
@@ -1539,9 +1548,16 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 					assert(!o_pipe);
 				else if ($past(o_dcdB) != o_dcdB)
 					assert(!o_pipe);
+				else if (($past(o_wR))
+						&&($past(o_dcdB[3:1]) == 3'h7))
+					assert(!o_pipe);
+				else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
+					assert(!o_pipe);
 				else if (o_wR != $past(o_wR))
 					assert(!o_pipe);
 				else if ((o_wR)&&($past(o_dcdR) == o_dcdB))
+					assert(!o_pipe);
+				else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
 					assert(!o_pipe);
 				else if ($past(o_gie) != $past(i_gie))
 					assert(!o_pipe);
@@ -1550,8 +1566,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 					assert(!o_pipe);
 				else if ($past(r_I[22])!=r_I[22])
 					assert(!o_pipe);
-				else if (($past(r_I[22:2])!=r_I[22:2])
-					&&($past(r_I[22:2])+1'b1!=r_I[22:2]))
+				else if (r_I[22:0] - $past(r_I[22:0])>23'h4)
 					assert(!o_pipe);
 				else if (!$past(o_valid))
 					assert(!o_pipe);
