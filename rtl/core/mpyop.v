@@ -73,10 +73,12 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 		assign	o_valid    = 1'b1;
 		always @(*) o_hi = 1'b0; // Not needed
 
+`ifdef	VERILATOR
 		// verilator lint_off UNUSED
 		wire	[32+32+5-1:0]	mpy_unused;
 		assign	mpy_unused = { i_clk, i_reset, i_stb, i_op, i_a, i_b };
 		// verilator lint_on  UNUSED
+`endif
 	end else if (IMPLEMENT_MPY == 1)
 	begin // Our single clock option (no extra clocks)
 
@@ -91,10 +93,12 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 		assign	o_valid = 1'b0;
 		always @(*) o_hi = i_op[1];
 
+`ifdef	VERILATOR
 		// verilator lint_off UNUSED
 		wire	[3:0]	mpy_unused;
 		assign	mpy_unused = { i_clk, i_reset, i_stb, i_op[1] };
 		// verilator lint_on  UNUSED
+`endif
 
 	end else if (IMPLEMENT_MPY == 2)
 	begin // Our two clock option (ALU must pause for 1 clock)
@@ -121,11 +125,6 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 		always @(posedge i_clk)
 		if (i_stb)
 			o_hi  <= i_op[1];
-
-		// verilator lint_off UNUSED
-		wire	[3:0]	mpy_unused;
-		assign	mpy_unused = { i_clk, i_reset, i_stb, i_op[1] };
-		// verilator lint_on  UNUSED
 
 	end else if (IMPLEMENT_MPY == 3)
 	begin // Our three clock option (ALU pauses for 2 clocks)
