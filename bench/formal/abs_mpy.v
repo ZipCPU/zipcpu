@@ -93,7 +93,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 			r_busy <= 1'b0;
 		else if (i_stb)
 			r_busy <= (next_delay_to_valid != 0);
-		else
+		else if (r_busy)
 			r_busy <= (delay_to_valid != 3'h1);
 
 		always @(posedge i_clk)
