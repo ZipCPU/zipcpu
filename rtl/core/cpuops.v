@@ -4,9 +4,8 @@
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	This supports the instruction set reordering of operations
-//		created by the second generation instruction set, as well as
-//	the new operations of POPC (population count) and BREV (bit reversal).
+// Purpose:	This is the ZipCPU ALU function.  It handles all of the
+//		instruction opcodes 0-13.  (14-15 are divide opcodes).
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -14,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -40,12 +39,11 @@
 //
 `default_nettype	none
 //
-`include "cpudefs.v"
 //
-module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
+module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
-	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
-	input	wire	i_clk, i_reset, i_ce;
+	parameter	IMPLEMENT_MPY = 1;
+	input	wire	i_clk, i_reset, i_stb;
 	input	wire	[3:0]	i_op;
 	input	wire	[31:0]	i_a, i_b;
 	output	reg	[31:0]	o_c;
@@ -81,19 +79,19 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	wire	z, n, v;
 	reg	c, pre_sign, set_ovfl, keep_sgn_on_ovfl;
 	always @(posedge i_clk)
-		if (i_ce) // 1 LUT
+		if (i_stb) // 1 LUT
 			set_ovfl<=(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 				||((i_op==4'h2)&&(i_a[31] == i_b[31])) // ADD
 				||(i_op == 4'h6) // LSL
 				||(i_op == 4'h5)); // LSR
 	always @(posedge i_clk)
-		if (i_ce) // 1 LUT
+		if (i_stb) // 1 LUT
 			keep_sgn_on_ovfl<=
 				(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 				||((i_op==4'h2)&&(i_a[31] == i_b[31]))); // ADD
 
 	wire	[63:0]	mpy_result; // Where we dump the multiply result
-	reg	mpyhi;		// Return the high half of the multiply
+	wire	mpyhi;		// Return the high half of the multiply
 	wire	mpybusy;	// The multiply is busy if true
 	wire	mpydone;	// True if we'll be valid on the next clock;
 
@@ -104,221 +102,24 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	// this will cost a minimum of 132 6-LUTs.
 
 	wire	this_is_a_multiply_op;
-	assign	this_is_a_multiply_op = (i_ce)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
+	assign	this_is_a_multiply_op = (i_stb)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
 
-	generate
-	if (IMPLEMENT_MPY == 0)
-	begin // No multiply support.
-		assign	mpy_result = 64'h00;
-		assign	mpybusy    = 1'b0;
-		assign	mpydone    = 1'b1;
-		always @(*) mpyhi = 1'b0; // Not needed
-	end else if (IMPLEMENT_MPY == 1)
-	begin // Our single clock option (no extra clocks)
-		wire	signed	[63:0]	w_mpy_a_input, w_mpy_b_input;
-		assign	w_mpy_a_input = {{(32){(i_a[31])&(i_op[0])}},i_a[31:0]};
-		assign	w_mpy_b_input = {{(32){(i_b[31])&(i_op[0])}},i_b[31:0]};
-		assign	mpy_result = w_mpy_a_input * w_mpy_b_input;
-		assign	mpybusy = 1'b0;
-		assign	mpydone = 1'b0;
-		always @(*) mpyhi = 1'b0; // Not needed
-	end else if (IMPLEMENT_MPY == 2)
-	begin // Our two clock option (ALU must pause for 1 clock)
-		reg	signed	[63:0]	r_mpy_a_input, r_mpy_b_input;
-		always @(posedge i_clk)
-		begin
-			r_mpy_a_input <={{(32){(i_a[31])&(i_op[0])}},i_a[31:0]};
-			r_mpy_b_input <={{(32){(i_b[31])&(i_op[0])}},i_b[31:0]};
-		end
-
-		assign	mpy_result = r_mpy_a_input * r_mpy_b_input;
-		assign	mpybusy = 1'b0;
-
-		reg	mpypipe;
-		initial	mpypipe = 1'b0;
-		always @(posedge i_clk)
-			if (i_reset)
-				mpypipe <= 1'b0;
-			else
-				mpypipe <= (this_is_a_multiply_op);
-
-		assign	mpydone = mpypipe; // this_is_a_multiply_op;
-		always @(posedge i_clk)
-			if (this_is_a_multiply_op)
-				mpyhi  = i_op[1];
-	end else if (IMPLEMENT_MPY == 3)
-	begin // Our three clock option (ALU pauses for 2 clocks)
-		reg	signed	[63:0]	r_smpy_result;
-		reg		[63:0]	r_umpy_result;
-		reg	signed	[31:0]	r_mpy_a_input, r_mpy_b_input;
-		reg		[1:0]	mpypipe;
-		reg		[1:0]	r_sgn;
-
-		initial	mpypipe = 2'b0;
-		always @(posedge i_clk)
-			if (i_reset)
-				mpypipe <= 2'b0;
-			else
-			mpypipe <= { mpypipe[0], this_is_a_multiply_op };
-
-		// First clock
-		always @(posedge i_clk)
-		begin
-			r_mpy_a_input <= i_a[31:0];
-			r_mpy_b_input <= i_b[31:0];
-			r_sgn <= { r_sgn[0], i_op[0] };
-		end
-
-		// Second clock
-`ifdef	VERILATOR
-		wire	signed	[63:0]	s_mpy_a_input, s_mpy_b_input;
-		wire		[63:0]	u_mpy_a_input, u_mpy_b_input;
-
-		assign	s_mpy_a_input = {{(32){r_mpy_a_input[31]}},r_mpy_a_input};
-		assign	s_mpy_b_input = {{(32){r_mpy_b_input[31]}},r_mpy_b_input};
-		assign	u_mpy_a_input = {32'h00,r_mpy_a_input};
-		assign	u_mpy_b_input = {32'h00,r_mpy_b_input};
-		always @(posedge i_clk)
-			r_smpy_result <= s_mpy_a_input * s_mpy_b_input;
-		always @(posedge i_clk)
-			r_umpy_result <= u_mpy_a_input * u_mpy_b_input;
+	//
+	// Pull in the multiply logic from elsewhere
+	//
+`ifdef	FORMAL
+`define	MPYOP	abs_mpy
 `else
-
-		wire		[31:0]	u_mpy_a_input, u_mpy_b_input;
-
-		assign	u_mpy_a_input = r_mpy_a_input;
-		assign	u_mpy_b_input = r_mpy_b_input;
-
-		always @(posedge i_clk)
-			r_smpy_result <= r_mpy_a_input * r_mpy_b_input;
-		always @(posedge i_clk)
-			r_umpy_result <= u_mpy_a_input * u_mpy_b_input;
+`define	MPYOP	mpyop
 `endif
-
-		always @(posedge i_clk)
-			if (this_is_a_multiply_op)
-				mpyhi  <= i_op[1];
-		assign	mpybusy = mpypipe[0];
-		assign	mpy_result = (r_sgn[1])?r_smpy_result:r_umpy_result;
-		assign	mpydone = mpypipe[1];
-
-		// Results are then set on the third clock
-	end else // if (IMPLEMENT_MPY <= 4)
-	begin // The three clock option
-		reg	[63:0]	r_mpy_result;
-		reg	[31:0]	r_mpy_a_input, r_mpy_b_input;
-		reg		r_mpy_signed;
-		reg	[2:0]	mpypipe;
-
-		// First clock, latch in the inputs
-		initial	mpypipe = 3'b0;
-		always @(posedge i_clk)
-		begin
-			// mpypipe indicates we have a multiply in the
-			// pipeline.  In this case, the multiply
-			// pipeline is a two stage pipeline, so we need 
-			// two bits in the pipe.
-			if (i_reset)
-				mpypipe <= 3'h0;
-			else begin
-				mpypipe[0] <= this_is_a_multiply_op;
-				mpypipe[1] <= mpypipe[0];
-				mpypipe[2] <= mpypipe[1];
-			end
-
-			if (i_op[0]) // i.e. if signed multiply
-			begin
-				r_mpy_a_input <= {(~i_a[31]),i_a[30:0]};
-				r_mpy_b_input <= {(~i_b[31]),i_b[30:0]};
-			end else begin
-				r_mpy_a_input <= i_a[31:0];
-				r_mpy_b_input <= i_b[31:0];
-			end
-			// The signed bit really only matters in the
-			// case of 64 bit multiply.  We'll keep track
-			// of it, though, and pretend in all other
-			// cases.
-			r_mpy_signed  <= i_op[0];
-
-			if (this_is_a_multiply_op)
-				mpyhi  <= i_op[1];
-		end
-
-		assign	mpybusy = |mpypipe[1:0];
-		assign	mpydone = mpypipe[2];
-
-		// Second clock, do the multiplies, get the "partial
-		// products".  Here, we break our input up into two
-		// halves, 
-		//
-		//   A  = (2^16 ah + al)
-		//   B  = (2^16 bh + bl)
-		//
-		// and use these to compute partial products.
-		//
-		//   AB = (2^32 ah*bh + 2^16 (ah*bl + al*bh) + (al*bl)
-		//
-		// Since we're following the FOIL algorithm to get here,
-		// we'll name these partial products according to FOIL.
-		//
-		// The trick is what happens if A or B is signed.  In
-		// those cases, the real value of A will not be given by
-		//	A = (2^16 ah + al)
-		// but rather
-		//	A = (2^16 ah[31^] + al) - 2^31
-		//  (where we have flipped the sign bit of A)
-		// and so ...
-		//
-		// AB= (2^16 ah + al - 2^31) * (2^16 bh + bl - 2^31)
-		//	= 2^32(ah*bh)
-		//		+2^16 (ah*bl+al*bh)
-		//		+(al*bl)
-		//		- 2^31 (2^16 bh+bl + 2^16 ah+al)
-		//		- 2^62
-		//	= 2^32(ah*bh)
-		//		+2^16 (ah*bl+al*bh)
-		//		+(al*bl)
-		//		- 2^31 (2^16 bh+bl + 2^16 ah+al + 2^31)
-		//
-		reg	[31:0]	pp_f, pp_l; // F and L from FOIL
-		reg	[32:0]	pp_oi; // The O and I from FOIL
-		reg	[32:0]	pp_s;
-		always @(posedge i_clk)
-		begin
-			pp_f<=r_mpy_a_input[31:16]*r_mpy_b_input[31:16];
-			pp_oi<=r_mpy_a_input[31:16]*r_mpy_b_input[15: 0]
-				+ r_mpy_a_input[15: 0]*r_mpy_b_input[31:16];
-			pp_l<=r_mpy_a_input[15: 0]*r_mpy_b_input[15: 0];
-			// And a special one for the sign
-			if (r_mpy_signed)
-				pp_s <= 32'h8000_0000-(
-				  	r_mpy_a_input[31:0]
-					+ r_mpy_b_input[31:0]);
-			else
-				pp_s <= 33'h0;
-		end
-
-		// Third clock, add the results and produce a product
-		always @(posedge i_clk)
-		begin
-			r_mpy_result[15:0] <= pp_l[15:0];
-			r_mpy_result[63:16] <=
-			  	{ 32'h00, pp_l[31:16] }
-				+ { 15'h00, pp_oi }
-				+ { pp_s, 15'h00 }
-				+ { pp_f, 16'h00 };
-		end
-
-		assign	mpy_result = r_mpy_result;
-		// Fourth clock -- results are clocked into writeback
-	end
-	endgenerate // All possible multiply results have been determined
+	`MPYOP thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
+		i_a, i_b, mpydone, mpybusy, mpy_result, mpyhi);
 
 	//
 	// The master ALU case statement
 	//
 	always @(posedge i_clk)
-	if (i_ce)
+	if (i_stb)
 	begin
 		pre_sign <= (i_a[31]);
 		c <= 1'b0;
@@ -347,9 +148,11 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	always @(posedge i_clk)
 		if (i_reset)
 			r_busy <= 1'b0;
+		else if (IMPLEMENT_MPY > 1)
+			r_busy <= ((i_stb)&&(this_is_a_multiply_op))||mpybusy;
 		else
-			r_busy <= ((IMPLEMENT_MPY > 1)
-					&&(this_is_a_multiply_op))||mpybusy;
+			r_busy <= 1'b0;
+
 	assign	o_busy = (r_busy); // ||((IMPLEMENT_MPY>1)&&(this_is_a_multiply_op));
 
 
@@ -365,8 +168,44 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		if (i_reset)
 			o_valid <= 1'b0;
 		else if (IMPLEMENT_MPY <= 1)
-			o_valid <= (i_ce);
+			o_valid <= (i_stb);
 		else
-			o_valid <=((i_ce)&&(!this_is_a_multiply_op))||(mpydone);
+			o_valid <=((i_stb)&&(!this_is_a_multiply_op))||(mpydone);
 
+`ifdef	FORMAL
+	initial	assume(i_reset);
+	reg	f_past_valid;
+
+	initial	f_past_valid = 1'b0;
+	always @(posedge i_clk)
+		f_past_valid = 1'b1;
+
+`ifdef	CPUOPS
+`define	ASSUME	assume
+`define	ASSERT	assert
+`else
+`define	ASSUME	assert
+`define	ASSERT	assume
+`endif
+
+	// No request should be given us if/while we are busy
+	always @(posedge i_clk)
+	if (o_busy)
+		`ASSUME(!i_stb);
+
+	// Following any request other than a multiply request, we should
+	// respond in the next cycle
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(o_busy))&&(!$past(this_is_a_multiply_op)))
+		`ASSERT(!o_busy);
+
+	// Valid and busy can never both be asserted
+	always @(posedge i_clk)
+		`ASSERT((!o_valid)||(!r_busy));
+
+	// Following any busy, we should always become valid
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_busy))&&(!o_busy))
+		`ASSERT($past(i_reset) || o_valid);
+`endif
 endmodule
