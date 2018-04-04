@@ -41,7 +41,7 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpu
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -51,8 +51,6 @@ SMTBMC  := yosys-smtbmc
 SOLVER  := -s yices
 # SOLVER  := -s boolector
 BMCARGS := --presat $(SOLVER)
-# BMCARGS := $(SOLVER) --unroll
-# BMCARGS := $(SOLVER)
 INDARGS := $(SOLVER) -i
 
 PFONE  := prefetch
@@ -71,6 +69,7 @@ WDG    := wbwatchdog
 INT    := icontrol
 DCD    := idecode
 DMA    := wbdmac
+ALU    := cpuops
 DIV    := div
 CPU    := zipcpu
 .PHONY: cpu
@@ -121,11 +120,14 @@ $(WDG).smt2: $(RTL)/peripherals/$(WDG).v $(SLAVE) $(WDG).ys
 $(INT).smt2: $(RTL)/peripherals/$(INT).v $(SLAVE) $(INT).ys
 	yosys -ql $(INT).yslog -s $(INT).ys
 
-$(DCD).smt2: $(RTL)/core/$(DCD).v $(DCD).ys
+$(DCD).smt2: $(RTL)/core/$(DCD).v $(DCD).ys f_idecode.v
 	yosys -ql $(DCD).yslog -s $(DCD).ys
 
 $(DMA).smt2: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).ys
 	yosys -ql $(DMA).yslog -s $(DMA).ys
+
+$(ALU).smt2: $(RTL)/core/$(ALU).v abs_mpy.v $(ALU).ys
+	yosys -ql $(ALU).yslog -s $(ALU).ys
 
 $(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
 	yosys -ql $(DIV).yslog -s $(DIV).ys
@@ -275,6 +277,13 @@ $(DMA).check: $(DMA).smt2
 	$(SMTBMC)    $(INDARGS) -t 20 --dump-vcd $(DMA).vcd $(DMA).smt2
 	touch $@
 
+$(ALU) : $(ALU).check
+$(ALU).check: $(ALU).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 10 --dump-vcd $(ALU).vcd $(ALU).smt2
+	$(SMTBMC)    $(INDARGS) -t  8 --dump-vcd $(ALU).vcd $(ALU).smt2
+	touch $@
+
 $(DIV) : $(DIV).check
 $(DIV).check: $(DIV).smt2
 	@rm -f $@
@@ -307,5 +316,7 @@ clean:
 	rm -f $(INT).smt2     $(INT)*.vcd     $(INT).yslog
 	rm -f $(DCD).smt2     $(DCD)*.vcd     $(DCD).yslog
 	rm -f $(DMA).smt2     $(DMA)*.vcd     $(DMA).yslog
+	rm -f $(ALU).smt2     $(ALU)*.vcd     $(ALU).yslog
 	rm -f $(DIV).smt2     $(DIV)*.vcd     $(DIV).yslog
+	rm -f $(CPU).smt2     $(CPU)*.vcd     $(CPU).yslog $(CPU)/
 	rm -f *.check
