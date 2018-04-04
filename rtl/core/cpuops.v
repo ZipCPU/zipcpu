@@ -39,12 +39,11 @@
 //
 `default_nettype	none
 //
-`include "cpudefs.v"
 //
-module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
+module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
-	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
-	input	wire	i_clk, i_reset, i_ce;
+	parameter	IMPLEMENT_MPY = 1;
+	input	wire	i_clk, i_reset, i_stb;
 	input	wire	[3:0]	i_op;
 	input	wire	[31:0]	i_a, i_b;
 	output	reg	[31:0]	o_c;
@@ -80,13 +79,13 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	wire	z, n, v;
 	reg	c, pre_sign, set_ovfl, keep_sgn_on_ovfl;
 	always @(posedge i_clk)
-		if (i_ce) // 1 LUT
+		if (i_stb) // 1 LUT
 			set_ovfl<=(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 				||((i_op==4'h2)&&(i_a[31] == i_b[31])) // ADD
 				||(i_op == 4'h6) // LSL
 				||(i_op == 4'h5)); // LSR
 	always @(posedge i_clk)
-		if (i_ce) // 1 LUT
+		if (i_stb) // 1 LUT
 			keep_sgn_on_ovfl<=
 				(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 				||((i_op==4'h2)&&(i_a[31] == i_b[31]))); // ADD
@@ -103,7 +102,7 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	// this will cost a minimum of 132 6-LUTs.
 
 	wire	this_is_a_multiply_op;
-	assign	this_is_a_multiply_op = (i_ce)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
+	assign	this_is_a_multiply_op = (i_stb)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
 
 	//
 	// Pull in the multiply logic from elsewhere
@@ -120,7 +119,7 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	// The master ALU case statement
 	//
 	always @(posedge i_clk)
-	if (i_ce)
+	if (i_stb)
 	begin
 		pre_sign <= (i_a[31]);
 		c <= 1'b0;
@@ -149,9 +148,11 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 	always @(posedge i_clk)
 		if (i_reset)
 			r_busy <= 1'b0;
+		else if (IMPLEMENT_MPY > 1)
+			r_busy <= ((i_stb)&&(this_is_a_multiply_op))||mpybusy;
 		else
-			r_busy <= ((IMPLEMENT_MPY > 1)
-					&&(this_is_a_multiply_op))||mpybusy;
+			r_busy <= 1'b0;
+
 	assign	o_busy = (r_busy); // ||((IMPLEMENT_MPY>1)&&(this_is_a_multiply_op));
 
 
@@ -167,9 +168,9 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 		if (i_reset)
 			o_valid <= 1'b0;
 		else if (IMPLEMENT_MPY <= 1)
-			o_valid <= (i_ce);
+			o_valid <= (i_stb);
 		else
-			o_valid <=((i_ce)&&(!this_is_a_multiply_op))||(mpydone);
+			o_valid <=((i_stb)&&(!this_is_a_multiply_op))||(mpydone);
 
 `ifdef	FORMAL
 	initial	assume(i_reset);
@@ -187,16 +188,24 @@ module	cpuops(i_clk,i_reset, i_ce, i_op, i_a, i_b, o_c, o_f, o_valid,
 `define	ASSERT	assume
 `endif
 
+	// No request should be given us if/while we are busy
 	always @(posedge i_clk)
 	if (o_busy)
-		`ASSUME(!i_ce);
+		`ASSUME(!i_stb);
 
+	// Following any request other than a multiply request, we should
+	// respond in the next cycle
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(o_busy))&&(!$past(this_is_a_multiply_op)))
 		`ASSERT(!o_busy);
 
+	// Valid and busy can never both be asserted
 	always @(posedge i_clk)
 		`ASSERT((!o_valid)||(!r_busy));
 
+	// Following any busy, we should always become valid
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_busy))&&(!o_busy))
+		`ASSERT($past(i_reset) || o_valid);
 `endif
 endmodule
