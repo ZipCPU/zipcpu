@@ -73,10 +73,11 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	parameter	[0:0]	OPT_MPY = 1'b1;
 	parameter	[0:0]	OPT_EARLY_BRANCHING = 1'b1;
 	parameter	[0:0]	OPT_DIVIDE = 1'b1;
-	parameter	[0:0]	OPT_FPU = 1'b0;
-	parameter	[0:0]	OPT_CIS = 1'b1;
-	parameter	[0:0]	OPT_LOCK = 1'b1;
-	parameter	[0:0]	OPT_OPIPE = 1'b1;
+	parameter	[0:0]	OPT_FPU    = 1'b0;
+	parameter	[0:0]	OPT_CIS    = 1'b1;
+	parameter	[0:0]	OPT_LOCK   = 1'b1;
+	parameter	[0:0]	OPT_OPIPE  = 1'b1;
+	parameter	[0:0]	OPT_SIM    = 1'b0;
 	localparam		AW = ADDRESS_WIDTH;
 	//
 	input	wire		i_clk, i_reset, i_ce, i_stalled;
@@ -402,12 +403,10 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			if ((!OPT_FPU)&&(w_fpu))
 				o_illegal <= 1'b1;
 
-`ifndef	VERILATOR
+			if ((!OPT_SIM)&&(w_sim))
 			// Simulation instructions on real hardware should
 			// always cause an illegal instruction error
-			if (w_sim)
 				o_illegal <= 1'b1;
-`endif
 
 			// There are two (missing) special instructions
 			// These should cause an illegal instruction error
@@ -497,13 +496,15 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			else
 				r_nxt_half <= 0;
 
-`ifdef	VERILATOR
-			// Support the SIM instruction(s)
-			o_sim <= (w_sim)||(w_noop);
-`else
-			o_sim <= 1'b0;
-`endif
-			o_sim_immv <= iword[22:0];
+			if (OPT_SIM)
+			begin
+				// Support the SIM instruction(s)
+				o_sim <= (w_sim)||(w_noop);
+				o_sim_immv <= iword[22:0];
+			end else begin
+				o_sim <= 1'b0;
+				o_sim_immv <= 0;
+			end
 		end
 
 	generate if (OPT_EARLY_BRANCHING)
@@ -824,7 +825,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			assert(w_cis_op == 5'h02);
 
 		assert(w_cond == 4'h8);
-		
+
 		if (iword[`CISIMMSEL])
 			assert(w_I == { {(23-3){iword[18]}}, iword[18:16] });
 		else
@@ -1439,7 +1440,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			else
 				assert(o_gie == $past(o_gie));
 		end
-		
+
 		always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_stalled))&&($past(pf_valid))
 				&&($past(i_ce)))
@@ -1626,6 +1627,65 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	always @(posedge i_clk)
 		assert((!o_early_branch_stb)||(!o_ljmp));
+
+	always @(posedge i_clk)
+		assert((!o_valid)||(!o_ljmp)||(o_phase == o_pc[1]));
+	always @(*)
+		assume(i_pc[1:0] == 2'b00);
+
+	wire	fc_illegal, fc_wF, fc_ALU, fc_M, fc_DV, fc_FP, fc_break,
+		fc_lock, fc_wR, fc_rA, fc_rB, fc_sim;
+	wire	[6:0]	fc_dcdR, fc_dcdA, fc_dcdB;
+	wire	[31:0]	fc_I;
+	wire	[3:0]	fc_cond;
+	wire	[3:0]	fc_op;
+	wire	[22:0]	fc_sim_immv;
+	f_idecode #(
+		.ADDRESS_WIDTH(AW),
+		.OPT_MPY(OPT_MPY),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+		.OPT_DIVIDE(OPT_DIVIDE),
+		.OPT_FPU(OPT_FPU),
+		.OPT_CIS(OPT_CIS),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_OPIPE(OPT_OPIPE),
+		.OPT_SIM(OPT_SIM),
+		) formal_decoder(
+			(o_phase)? { 1'b1,15'h0, 1'b1, r_nxt_half[14:0] }
+				: i_instruction,
+			(i_instruction[31])&&(!o_phase), i_gie,
+		fc_illegal,
+		fc_dcdR, fc_dcdA,fc_dcdB, fc_I, fc_cond, fc_wF, fc_op,
+		fc_ALU, fc_M, fc_DV, fc_FP, fc_break, fc_lock,
+		fc_wR, fc_rA, fc_rB, fc_sim, fc_sim_immv);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_ce))&&(o_valid))
+	begin
+		if (!$past(i_reset))
+			assert(($past(fc_illegal)||$past(i_illegal))== o_illegal);
+		if (!o_illegal)
+		begin
+		assert($past(fc_dcdR)== o_dcdR);
+		assert($past(fc_dcdA)== o_dcdA);
+		assert($past(fc_dcdB)== o_dcdB);
+		assert($past(fc_I)   == o_I);
+		assert($past(fc_cond)== o_cond);
+		assert($past(fc_wF)  == o_wF);
+		assert($past(fc_op)  == o_op);
+		assert($past(fc_ALU) == o_ALU);
+		assert($past(fc_M)   == o_M);
+		assert($past(fc_DV)  == o_DV);
+		assert($past(fc_FP)  == o_FP);
+		assert($past(fc_break)== o_break);
+		assert($past(fc_lock) == o_lock);
+		assert($past(fc_wR)  == o_wR);
+		assert($past(fc_rA)  == o_rA);
+		assert($past(fc_rB)  == o_rB);
+		assert($past(fc_sim)  == o_sim);
+		assert($past(fc_sim_immv)  == o_sim_immv);
+		end
+	end
 
 //	always @(posedge i_clk)
 //	if ((OPT_EARLY_BRANCHING)&&(f_past_valid)&&($past(o_early_branch_stb)))

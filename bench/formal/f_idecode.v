@@ -106,7 +106,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 
 		assign	iword = ((!i_instruction[31])||(i_phase))
 			? i_instruction
-			: { i_instruction[15:0], i_instruction[15:0] };
+			: { 1'b1, i_instruction[14:0], i_instruction[15:0] };
 
 	end else begin : CLR_IWORD
 
@@ -323,12 +323,10 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 		if ((!OPT_FPU)&&(w_fpu))
 			o_illegal <= 1'b1;
 
-`ifdef	MAKE_SIM_ILLEGAL
+		if ((!OPT_SIM)&&(w_sim))
 			// Simulation instructions on real hardware should
 			// always cause an illegal instruction error
-			if (w_sim)
-				o_illegal <= 1'b1;
-`endif
+			o_illegal <= 1'b1;
 
 		// There are two (missing) special instructions
 		// These should cause an illegal instruction error
@@ -358,6 +356,6 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	assign	o_rA   = w_rA;
 	assign	o_rB   = w_rB;
 	assign	o_sim      = (OPT_SIM) ? ((w_sim)||(w_noop)) : 1'b0;
-	assign	o_sim_immv = iword[22:0];
+	assign	o_sim_immv = (OPT_SIM) ? iword[22:0] : 0;
 
 endmodule
