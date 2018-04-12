@@ -49,7 +49,11 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
+		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
+`ifdef	FORMAL
+		, f_nreqs, f_nacks, f_outstanding
+`endif
+		);
 	parameter	ADDRESS_WIDTH=30;
 	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
 			WITH_LOCAL_BUS=1'b1,
@@ -83,11 +87,17 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	// Wishbone inputs
 	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
+// Formal
+	parameter	F_LGDEPTH=5;
+`ifdef	FORMAL
+	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+`endif
 
-	reg	cyc;
-	reg			r_wb_cyc_gbl, r_wb_cyc_lcl;
+
+	reg			cyc;
+	reg			r_wb_cyc_gbl, r_wb_cyc_lcl, fifo_full;
 	reg	[3:0]		rdaddr, wraddr;
-	wire	[3:0]		nxt_rdaddr;
+	wire	[3:0]		nxt_rdaddr, fifo_fill;
 	reg	[(4+5-1):0]	fifo_oreg [0:15];
 	initial	rdaddr = 0;
 	initial	wraddr = 0;
@@ -126,6 +136,19 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		rdaddr <= 0;
 	else if ((i_wb_ack)&&(cyc))
 		rdaddr <= rdaddr + 1'b1;
+
+	assign	fifo_fill = wraddr - rdaddr;
+
+	initial	fifo_full = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		fifo_full <= 0;
+	else if (((i_wb_err)&&(cyc))||((i_pipe_stb)&&(misaligned)))
+		fifo_full <= 0;
+	else if (i_pipe_stb)
+		fifo_full <= (fifo_fill >= 4'hc);
+	else
+		fifo_full <= (fifo_fill >= 4'hd);
 
 	assign	nxt_rdaddr = rdaddr + 1'b1;
 
@@ -249,8 +272,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			endcase
 		end
 
-	assign	o_pipe_stalled = (cyc)
-			&&((i_wb_stall)||((!o_wb_stb_lcl)&&(!o_wb_stb_gbl)));
+	assign	o_pipe_stalled = ((cyc)&&(fifo_full))||((cyc)
+			&&((i_wb_stall)||((!o_wb_stb_lcl)&&(!o_wb_stb_gbl))));
 
 	generate
 	if (IMPLEMENT_LOCK != 0)
@@ -331,9 +354,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	f_cyc = cyc;
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
 
-	localparam	F_LGDEPTH=5;
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
-
 `ifdef	PIPEMEM
 `define	MASTER	fwb_master
 `else
@@ -341,7 +361,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 `endif
 	`MASTER #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
-			.F_MAX_REQUESTS(14),
+			// .F_MAX_REQUESTS(14), // Not quite true, can do more
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
 		fwb(i_clk, i_reset,
@@ -394,9 +414,14 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	wire	[3:0]	f_pipe_used;
 	assign	f_pipe_used = wraddr - rdaddr;
+	always @(*)
+		`ASSERT(f_pipe_used == fifo_fill);
 	always @(posedge i_clk)
-		if (f_pipe_used == 4'he)
-			`ASSUME(!i_pipe_stb);
+	if (f_pipe_used == 4'he)
+	begin
+		`ASSUME(!i_pipe_stb);
+		`ASSERT((o_busy)&&(o_pipe_stalled));
+	end
 
 	always @(*)
 		if (!IMPLEMENT_LOCK)
@@ -425,9 +450,17 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		if ((f_past_valid)&&(!$past(f_cyc))&&(!$past(i_pipe_stb)))
 			`ASSERT(f_pipe_used == 0);
 
+	always @(*)
+	if (!f_cyc)
+		`ASSERT(f_pipe_used == 0);
+
 	always @(posedge i_clk)
-		if (f_nreqs >= 13)
-			`ASSUME(!i_pipe_stb);
+	if (f_pipe_used >= 13)
+		`ASSUME(!i_pipe_stb);
+
+	always @(posedge i_clk)
+	if ((f_cyc)&&(f_pipe_used >= 13))
+		`ASSERT((o_busy)&&(o_pipe_stalled));
 
 	always @(posedge i_clk)
 		if (i_pipe_stb)
@@ -468,7 +501,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 		`ASSERT(cyc == (r_wb_cyc_lcl)|(r_wb_cyc_gbl));
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(misaligned)))
+	if ((f_past_valid)&&(!i_reset)&&(!$past(misaligned)))
 	begin
 		if (f_stb)
 			`ASSERT(f_pipe_used == f_outstanding + 4'h1);

@@ -51,7 +51,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
+		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
+`ifdef	FORMAL
+		, f_nreqs, f_nacks, f_outstanding
+`endif
+		);
 	parameter	ADDRESS_WIDTH=30;
 	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
 			WITH_LOCAL_BUS=1'b1,
@@ -84,6 +88,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// Wishbone inputs
 	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
+// Formal
+	parameter	F_LGDEPTH = 2;
+`ifdef	FORMAL
+	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+`endif
 
 	reg	misaligned;
 
@@ -337,9 +346,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	wire	f_cyc, f_stb;
 	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
-
-	localparam	F_LGDEPTH = 2;
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
 	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),

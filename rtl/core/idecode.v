@@ -206,8 +206,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	assign	w_sto    = (w_mem)&&( w_cis_op[0]);
 	assign	w_div    = (!iword[`CISBIT])&&(w_op[4:1] == 4'h7);
 	assign	w_fpu    = (!iword[`CISBIT])&&(w_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00)
-				&&(OPT_FPU);
+				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
@@ -261,7 +260,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	// rA - do we need to read register A?
 	assign	w_rA = // Floating point reads reg A
-			(w_fpu)
+			((w_fpu)&&(OPT_FPU))
 			// Divide's read A
 			||(w_div)
 			// ALU ops read A,
@@ -291,7 +290,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	// wF -- do we write flags when we are done?
 	//
 	assign	w_wF     = (w_cmptst)
-			||((w_cond[3])&&((w_fpu)||(w_div)
+			||((w_cond[3])&&(((w_fpu)&&(OPT_FPU))||(w_div)
 				||((w_ALU)&&(!w_mov)&&(!w_ldilo)&&(!w_brev)
 					&&(w_dcdR[3:1] != 3'h7))));
 
@@ -486,7 +485,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			o_ALU  <=  (w_ALU)||(w_ldi)||(w_cmptst)||(w_noop);
 			o_M    <=  w_mem;
 			o_DV   <=  w_div;
-			o_FP   <=  w_fpu;
+			o_FP   <=  (OPT_FPU)&&(w_fpu);
 
 			o_break <= w_break;
 			o_lock  <= (OPT_LOCK)&&(w_lock);
@@ -1238,7 +1237,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		assert(w_cond[2:0] == iword[21:19]);
 		assert((w_wF == w_cond[3])||(w_dcdA[3:1]==3'b111));
 	end else
-		assert(!w_fpu);
+		assert((!w_fpu)||(!OPT_FPU));
 
 	//
 	// Special instructions
@@ -1275,7 +1274,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			assert(!w_sim);
 			assert( w_noop);
 		end
-		assert(!w_fpu);
+		assert((!w_fpu)||(!OPT_FPU));
 		assert(!w_ldi);
 		assert(!w_mpy);
 		assert(!w_div);
@@ -1514,15 +1513,15 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	end endgenerate
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_ce))&&($past(w_fpu)))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))&&($past(w_fpu)))
 	begin
 		if (OPT_FPU)
 			assert(o_FP);
-		else
+		else if (!$past(w_special))
 			assert(o_illegal);
 	end
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_ce))&&($past(w_lock)))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))&&($past(w_lock)))
 	begin
 		if (OPT_LOCK)
 			assert(o_lock);
