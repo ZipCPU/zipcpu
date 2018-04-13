@@ -61,7 +61,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			// OPT_ALIGNMENT_ERR
 			OPT_ALIGNMENT_ERR=1'b0;
 	parameter [0:0]	F_OPT_CLK2FFLOGIC=1'b0;
-	localparam	AW=ADDRESS_WIDTH;
+	localparam	AW=ADDRESS_WIDTH,
+			FLN=4;
 	input	wire		i_clk, i_reset;
 	input	wire		i_pipe_stb, i_lock;
 	// CPU interface
@@ -96,8 +97,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	reg			cyc;
 	reg			r_wb_cyc_gbl, r_wb_cyc_lcl, fifo_full;
-	reg	[3:0]		rdaddr, wraddr;
-	wire	[3:0]		nxt_rdaddr, fifo_fill;
+	reg	[(FLN-1):0]		rdaddr, wraddr;
+	wire	[(FLN-1):0]		nxt_rdaddr, fifo_fill;
 	reg	[(4+5-1):0]	fifo_oreg [0:15];
 	initial	rdaddr = 0;
 	initial	wraddr = 0;
@@ -146,9 +147,9 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	else if (((i_wb_err)&&(cyc))||((i_pipe_stb)&&(misaligned)))
 		fifo_full <= 0;
 	else if (i_pipe_stb)
-		fifo_full <= (fifo_fill >= 4'hc);
+		fifo_full <= (fifo_fill >= FLN'hc);
 	else
-		fifo_full <= (fifo_fill >= 4'hd);
+		fifo_full <= (fifo_fill >= FLN'hd);
 
 	assign	nxt_rdaddr = rdaddr + 1'b1;
 
@@ -462,12 +463,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_cyc)&&(f_pipe_used >= 13))
 		`ASSERT((o_busy)&&(o_pipe_stalled));
 
-	always @(posedge i_clk)
-		if (i_pipe_stb)
-			`ASSUME(i_op[2:1] != 2'b00);
-
-
-
 
 	always @(posedge i_clk)
 		`ASSERT((!r_wb_cyc_gbl)||(!r_wb_cyc_lcl));
@@ -516,6 +511,45 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	always @(*)
 		`ASSERT((!lcl_stb)||(!gbl_stb));
+
+	wire	[(1<<FLN)-1:0]	f_gie_mem, f_mem_used, f_gie_or_zero, f_zero,
+				f_gie_xor_test;
+	wire	f_next_gie;
+	//
+	// insist that we only ever accept memory requests for the same GIE
+	// (i.e. 4th bit of register)
+	//
+	always @(*)
+	if ((i_pipe_stb)&&(wraddr != rdaddr))
+		`ASSUME(i_oreg[4] == f_next_gie);
+
+	integer	k;
+	always @(*)
+	begin
+		for(k=0; k<(1<<FLN); k=k+1)
+			f_gie_mem[k] = fifo_oreg[k][8];
+		f_mem_used = 0;
+		for(k = 0 ; k < (1<<FLN); k=k+1)
+		begin
+			if (wraddr == rdaddr)
+				f_mem_used[k] = 1'b0;
+			else if (wraddr > rdaddr)
+			begin
+				if ((k < wraddr)&&(k >= rdaddr))
+					f_mem_used[k] = 1'b1;
+			end else if (k < wraddr)
+				f_mem_used[k] = 1'b1;
+			else if (k >= rdaddr)
+				f_mem_used[k] = 1'b1;
+		end
+	end
+
+	assign	f_gie_or_zero = (f_gie_mem & f_mem_used);
+	assign	f_next_gie    = fifo_oreg[rdaddr][8];
+	assign	f_gie_xor_test= (f_gie_or_zero)^((f_next_gie)?f_mem_used : 0);
+	always @(*)
+	if (wraddr != rdaddr)
+		`ASSERT(f_gie_xor_test == 0);
 `endif
 endmodule
 //
