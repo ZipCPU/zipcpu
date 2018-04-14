@@ -523,6 +523,16 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((i_pipe_stb)&&(wraddr != rdaddr))
 		`ASSUME(i_oreg[4] == f_next_gie);
 
+	always @(*)
+	if (wraddr == rdaddr)
+	begin
+		`ASSERT(!r_wb_cyc_gbl);
+		`ASSERT(!r_wb_cyc_lcl);
+	end else if (f_cyc)
+	begin
+		`ASSERT(fifo_fill == f_outstanding + ((f_stb)?1:0));
+	end
+
 	integer	k;
 	always @(*)
 	begin
