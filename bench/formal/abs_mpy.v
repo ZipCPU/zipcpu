@@ -68,7 +68,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		always @(*) o_hi = 1'b0; // Not needed
 
 	end else //
-	begin // Our single clock option (no extra clocks)
+	begin
 
 		wire	[2:0]	next_delay_to_valid;
 
