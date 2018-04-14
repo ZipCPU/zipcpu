@@ -48,8 +48,8 @@ RTL := ../../rtl
 
 SMTBMC  := yosys-smtbmc
 # SOLVER  := -s z3
-SOLVER  := -s yices
-# SOLVER  := -s boolector
+# SOLVER  := -s yices
+SOLVER  := -s boolector
 BMCARGS := --presat $(SOLVER)
 INDARGS := $(SOLVER) -i
 
@@ -295,7 +295,7 @@ $(CPU) : $(CPU).check
 $(CPU).check: $(CPU).smt2
 	@rm -f $@
 	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(CPU).vcd $(CPU).smt2
-	# $(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(CPU).vcd $(CPU).smt2
+	# $(SMTBMC)  --presat -s boolector  $(INDARGS) -t 38 --dump-vcd $(CPU).vcd $(CPU).smt2
 	touch $@
 
 .PHONY: clean

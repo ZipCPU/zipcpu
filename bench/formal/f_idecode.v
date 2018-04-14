@@ -177,8 +177,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	assign	w_sto    = (w_mem)&&( w_cis_op[0]);
 	assign	w_div    = (!iword[`CISBIT])&&(w_op[4:1] == 4'h7);
 	assign	w_fpu    = (!iword[`CISBIT])&&(w_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00)
-				&&(OPT_FPU);
+				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
@@ -232,7 +231,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 
 	// rA - do we need to read register A?
 	assign	w_rA = // Floating point reads reg A
-			(w_fpu)
+			((w_fpu)&&(OPT_FPU))
 			// Divide's read A
 			||(w_div)
 			// ALU ops read A,
@@ -262,7 +261,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	// wF -- do we write flags when we are done?
 	//
 	assign	w_wF     = (w_cmptst)
-			||((w_cond[3])&&((w_fpu)||(w_div)
+			||((w_cond[3])&&(((w_fpu)&&(OPT_FPU))||(w_div)
 				||((w_ALU)&&(!w_mov)&&(!w_ldilo)&&(!w_brev)
 					&&(w_dcdR[3:1] != 3'h7))));
 
@@ -349,7 +348,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	assign	o_ALU  =  (w_ALU)||(w_ldi)||(w_cmptst)||(w_noop);
 	assign	o_M    = w_mem;
 	assign	o_DV   = w_div;
-	assign	o_FP   = w_fpu;
+	assign	o_FP   = (OPT_FPU)&&(w_fpu);
 	assign	o_break= w_break;
 	assign	o_lock = (OPT_LOCK)&&(w_lock);
 	assign	o_wR   = w_wR;

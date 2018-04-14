@@ -1,11 +1,20 @@
+[tasks]
+abc
+prove
+# pipeline
+# nopipe
+
 [options]
 mode prove
 depth 40
 
 [engines]
-abc pdr
-# aiger avy
-# aiger suprove
+abc: abc pdr
+# abc: aiger avy
+# abc: aiger suprove
+prove:    smtbmc yices
+pipeline: smtbmc yices
+nopipe:   smtbmc yices
 
 [script]
 read_verilog -D ZIPCPU -formal zipcpu.v
