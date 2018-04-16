@@ -514,14 +514,29 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	wire	[(1<<FLN)-1:0]	f_gie_mem, f_mem_used, f_gie_or_zero, f_zero,
 				f_gie_xor_test;
-	wire	f_next_gie;
 	//
 	// insist that we only ever accept memory requests for the same GIE
 	// (i.e. 4th bit of register)
 	//
+	wire	f_next_gie;
+	assign	f_next_gie    = fifo_oreg[rdaddr][8];
 	always @(*)
 	if ((i_pipe_stb)&&(wraddr != rdaddr))
 		`ASSUME(i_oreg[4] == f_next_gie);
+
+	reg	f_pc;
+	initial	f_pc = 1'b0;
+	always @(posedge i_clk)
+	if(i_reset)
+		f_pc <= 1'b0;
+	else if (i_pipe_stb)
+		f_pc <= ((f_pc)||((!i_op[0])&&(i_oreg[3:1] == 3'h7)));
+	else if (!f_cyc)
+		f_pc <= 1'b0;
+
+	always @(*)
+	if (f_pc)
+		`ASSUME(!i_pipe_stb);
 
 	always @(*)
 	if (wraddr == rdaddr)
@@ -532,6 +547,13 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	begin
 		`ASSERT(fifo_fill == f_outstanding + ((f_stb)?1:0));
 	end
+
+
+`ifdef	PIPEMEM
+	wire	[3:0]	lastaddr = wraddr - 1'b1;
+
+	assign	f_gie_or_zero = (f_gie_mem & f_mem_used);
+	assign	f_gie_xor_test= (f_gie_or_zero)^((f_next_gie)?f_mem_used : 0);
 
 	integer	k;
 	always @(*)
@@ -554,12 +576,28 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		end
 	end
 
-	assign	f_gie_or_zero = (f_gie_mem & f_mem_used);
-	assign	f_next_gie    = fifo_oreg[rdaddr][8];
-	assign	f_gie_xor_test= (f_gie_or_zero)^((f_next_gie)?f_mem_used : 0);
+
 	always @(*)
 	if (wraddr != rdaddr)
 		`ASSERT(f_gie_xor_test == 0);
+
+	always @(*)
+	begin
+		for(k=0; k<(1<<FLN); k=k+1)
+		if ((f_mem_used[k])&&(!o_wb_we)&&((!f_pc)||(k!=lastaddr)))
+			`ASSERT(fifo_oreg[k][7:5] != 3'h7);
+	end
+`endif
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(f_past_valid))&&($past(f_cyc))&&($past(f_cyc,2)))
+		`ASSERT($stable(o_wreg[4]));
+
+	always @(*)
+		`ASSERT((!f_cyc)||(!o_valid)||(o_wreg[3:1]!=3'h7));
+
+
+`endif
 `endif
 endmodule
 //

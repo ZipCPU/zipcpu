@@ -4,3 +4,7 @@
 *.blif
 zipcpu
 old
+zipcpu_abc
+zipcpu_prove
+zipcpu_pipeline
+zipcpu_nopipe

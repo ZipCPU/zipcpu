@@ -68,6 +68,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		o_early_branch, o_early_branch_stb, o_branch_pc, o_ljmp,
 		o_pipe,
 		o_sim, o_sim_immv
+`ifdef	FORMAL	
+		, f_hidden_state
+`endif
 		);
 	parameter		ADDRESS_WIDTH=24;
 	parameter	[0:0]	OPT_MPY = 1'b1;
@@ -104,6 +107,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	output	wire		o_pipe;
 	output	reg		o_sim		/* verilator public_flat */;
 	output	reg	[22:0]	o_sim_immv	/* verilator public_flat */;
+`ifdef	FORMAL
+	output	wire	[31:0]	f_hidden_state;
+`endif
 
 
 	wire	[4:0]	w_op;
@@ -430,6 +436,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		o_gie <= i_gie;
 
 	initial	o_pc = 0;
+	initial	o_dcdR = 0;
+	initial	o_dcdA = 0;
 	always @(posedge i_clk)
 		if (i_ce)
 		begin
@@ -696,6 +704,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 `define	ASSERT	assume
 `endif
 
+	assign	f_hidden_state = iword;
+
 	////////////////////////////
 	//
 	//
@@ -788,7 +798,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			&&($past(pf_valid))&&($past(i_illegal)))
 		`ASSERT(o_illegal);
 
-
+`ifdef	IDECODE
 	// Let's walk through some basic instructions
 	// First 8-instructions, SUB - ASR
 	always @(*)
@@ -1210,12 +1220,13 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT(w_I[22:0] == { {(23-8){iword[23]}}, iword[23:16] });
 	end else
 		`ASSERT(!w_ldi);
+`endif	// IDECODE
 
 	always @(posedge i_clk)
 	if ((f_new_insn)&&($past(w_ldi)))
 		`ASSERT(o_ALU);
 
-
+`ifdef	IDECODE
 	always @(*)
 	if ((w_break)||(w_lock)||(w_sim)||(w_noop))
 		`ASSERT(w_special);
@@ -1319,6 +1330,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT(!w_sim);
 		`ASSERT(!w_noop);
 	end
+`endif
 
 	generate if (OPT_EARLY_BRANCHING)
 	begin
@@ -1528,7 +1540,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_ce))&&(!$past(i_reset)))
-`ASSERT((!$past(i_instruction[`CISBIT]))
+			`ASSERT((!$past(i_instruction[`CISBIT]))
 				||(!$past(pf_valid))||(o_illegal));
 	end endgenerate
 
@@ -1657,6 +1669,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(*)
 	if (o_ljmp)
 		`ASSERT(!o_pipe);
+
+	always @(*)
+	`ASSERT(o_dcdR == o_dcdA);
 
 `ifdef	IDECODE
 

@@ -270,6 +270,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[31:0]		pf_instruction;
 	wire	[(AW+1):0]	pf_instruction_pc;
 	wire	pf_valid, pf_gie, pf_illegal;
+`ifdef	FORMAL
+	wire	[31:0]		f_dcd_hidden_state;
+`endif
 	//}}}
 
 	//
@@ -467,6 +470,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			// This also includes whether or not the divide or
 			// floating point units are busy.
 			(master_stall)
+			||((!op_valid_mem)&&(mem_rdbusy))
 			//
 			// Stall if we are going into memory with an operation
 			//	that cannot be pipelined, and the memory is
@@ -569,6 +573,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//}}}
 
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
+			||(ibus_err_flag)||(idiv_err_flag)
 			||((OPT_PIPELINED)&&(
 				((OPT_LOCK)&&(prelock_stall))
 				||((mem_busy)&&(op_illegal))
@@ -705,7 +710,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			dcd_early_branch, dcd_early_branch_stb,
 			dcd_branch_pc, dcd_ljmp,
 			dcd_pipe,
-			dcd_sim, dcd_sim_immv);
+			dcd_sim, dcd_sim_immv
+`ifdef	FORMAL
+			, f_dcd_hidden_state
+`endif
+			);
 	//}}}
 
 	//
@@ -1294,13 +1303,30 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// DEBUG Register write access starts here
 	//
 	//{{{
-	reg		dbgv;
+	reg		dbgv, dbg_clear_pipe;
 	initial	dbgv = 1'b0;
 	always @(posedge i_clk)
-		dbgv <= (!i_reset)&&(i_halt)&&(i_dbg_we)&&(r_halted);
+	if (i_reset)
+		dbgv <= 0;
+	else
+		dbgv <= (i_dbg_we)&&(r_halted);
+
 	reg	[31:0]	dbg_val;
 	always @(posedge i_clk)
 		dbg_val <= i_dbg_data;
+	always @(posedge i_clk)
+	if ((i_reset)||(clear_pipeline))
+		dbg_clear_pipe <= 0;
+	else if ((i_dbg_we)&&(r_halted))
+	begin
+		if ((i_dbg_reg == op_Bid)&&(op_rB))
+			dbg_clear_pipe <= 1'b1;
+		else if (i_dbg_reg[3:1] == 3'h7)
+			dbg_clear_pipe <= 1'b1;
+		else
+			dbg_clear_pipe <= 1'b0;
+	end else
+		dbg_clear_pipe <= 1'b0;
 
 	generate if (OPT_NO_USERMODE)
 	begin
@@ -2062,9 +2088,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 		if (i_reset)
 			pf_pc <= { RESET_BUS_ADDRESS, 2'b00 };
-		else if ((w_switch_to_interrupt)||((!gie)&&(w_clear_icache)))
+		else if ((w_switch_to_interrupt)
+				||((!gie)&&((w_clear_icache)||(dbg_clear_pipe))))
 			pf_pc <= { ipc[(AW+1):2], 2'b00 };
-		else if ((w_release_from_interrupt)||((gie)&&(w_clear_icache)))
+		else if ((w_release_from_interrupt)||((gie)&&((w_clear_icache)||(dbg_clear_pipe))))
 			pf_pc <= { upc[(AW+1):2], 2'b00 };
 		else if ((wr_reg_ce)&&(wr_reg_id[4] == gie)&&(wr_write_pc))
 			pf_pc <= { wr_spreg_vl[(AW+1):2], 2'b00 };
@@ -2102,7 +2129,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	initial	new_pc = 1'b1;
 	always @(posedge i_clk)
-		if ((i_reset)||(w_clear_icache))
+		if ((i_reset)||(w_clear_icache)||(dbg_clear_pipe))
 			new_pc <= 1'b1;
 		else if (w_switch_to_interrupt)
 			new_pc <= 1'b1;
@@ -2289,7 +2316,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Formal methods
 	//{{{
 `ifdef	FORMAL
-// `define	PHASE_ONE
+`define	PHASE_ONE
 // `define	PHASE_TWO
 // `define	PHASE_THREE
 // `define	PHASE_FOUR
@@ -2416,7 +2443,20 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	always @(*)
 	if (div_ce)
-		`PHASE_ONE_ASSERT((op_valid)&&(op_valid_div)&&(!op_illegal));
+		`PHASE_ONE_ASSERT((op_valid_div)&&(op_wR));
+
+	always @(*)
+	if ((dcd_DIV)&&(dcd_valid)&&(!dcd_illegal))
+		`PHASE_ONE_ASSERT(dcd_wR);
+	always @(*)
+	if ((op_valid_div)&&(!alu_illegal)&&(!ill_err_i))
+		`PHASE_ONE_ASSERT(op_wR);
+	always @(*)
+	if (op_valid_div)
+		`PHASE_ONE_ASSERT(!op_illegal);
+	always @(*)
+	if (op_valid_div)
+		`PHASE_ONE_ASSERT(!op_illegal);
 
 	always @(*)
 	if (fpu_ce)
@@ -2475,9 +2515,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		begin
 			`PHASE_ONE_ASSERT(op_opn[0] == dcd_opn[0]);
 			`PHASE_ONE_ASSERT(op_Bid[4:0] == dcd_B[4:0]);
-		end else if ((!op_valid)&&(mem_busy))
-		begin
-			`PHASE_ONE_ASSERT(dcd_opn[0] == !mem_rdbusy);
 		end
 	end
 
@@ -2560,11 +2597,31 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	begin
 		if (pf_valid)
 			`PHASE_ONE_ASSERT(pf_gie == gie);
-		if (dcd_valid)
+		if ((dcd_valid)&&(!dcd_illegal))
+		begin
 			`PHASE_ONE_ASSERT(dcd_gie == gie);
-		if (op_valid)
+			if (gie)
+				`PHASE_ONE_ASSERT(dcd_R[4]);
+			else if ((!dcd_early_branch)&&((dcd_M)
+					||(dcd_DIV)||(dcd_FP)||(!dcd_wR)))
+				`PHASE_ONE_ASSERT(!dcd_gie);
+			if ((dcd_ALU)&&(dcd_opn==4'hd))
+				`PHASE_ONE_ASSERT(((!dcd_rA)&&(dcd_wR))
+					||((!dcd_rA)&&(!dcd_rB)&&(!dcd_wR)));
+			else if (dcd_ALU)
+				`PHASE_ONE_ASSERT(gie == dcd_R[4]);
+		end
+		if ((op_valid)&&(!op_illegal)&&(!alu_illegal)&&(!ill_err_i))
+		begin
 			`PHASE_ONE_ASSERT(op_gie == gie);
-		if (alu_valid)
+			if (gie)
+				`PHASE_ONE_ASSERT((!op_wR)||(op_R[4]));
+			else if ((op_wR)&&((op_valid_mem)
+					||(op_valid_div)||(op_valid_fpu)
+					||((op_valid_alu)&&(op_opn!=4'hd))))
+				`PHASE_ONE_ASSERT(op_R[4] == gie);
+		end
+		if ((alu_valid)||(alu_illegal))
 			`PHASE_ONE_ASSERT(alu_gie == gie);
 		if (div_valid)
 			`PHASE_ONE_ASSERT(alu_gie == gie);
@@ -2600,10 +2657,23 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			`PHASE_ONE_ASSERT(2'b00 =={op_valid_div, op_valid_fpu });
 		else if (op_valid_div)
 			`PHASE_ONE_ASSERT(!op_valid_fpu);
+
+		if (op_illegal)
+			`PHASE_ONE_ASSERT((!op_valid_div)
+				&&(!op_valid_fpu)&&(!op_lock));
 	end else
 		`PHASE_ONE_ASSERT(!op_illegal);
 
 
+	always @(*)
+	if ((ibus_err_flag)||(ill_err_i)||(idiv_err_flag))
+	begin
+		`PHASE_ONE_ASSERT(master_stall);
+		`PHASE_ONE_ASSERT(!mem_ce);
+		`PHASE_ONE_ASSERT(!alu_ce);
+		`PHASE_ONE_ASSERT(!div_ce);
+		`PHASE_ONE_ASSERT(!adf_ce_unconditional);
+	end
 
 	//////////////////////////////////////////////
 	//
@@ -2619,13 +2689,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	begin
 		assume(!i_dbg_we);
 		assume(!i_clear_pf_cache);
-	end
-
-	always @(*)
-	if ((r_halted)&&(i_dbg_we))
-	begin
-		if (op_valid)
-			assume(i_dbg_reg != op_Bid);
 	end
 
 	always @(*)
@@ -2672,6 +2735,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[31:0]		f_const_insn;
 	wire	[(AW+1):0]	f_const_addr, f_next_addr;
 	wire			f_const_phase, f_const_gie, f_const_illegal;
+	wire			f_pf_insn;
 
 	assign	f_const_insn    = $anyconst;
 	assign	f_const_addr    = $anyconst;
@@ -2679,8 +2743,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	assign	f_const_illegal = $anyconst;
 	assign	f_const_gie     = $anyconst;
 
+	assign	f_pf_insn = (pf_valid)&&(pf_instruction_pc[(AW+1):2] == f_const_addr[(AW+1):2]);
+
 	always @(*)
-	if((pf_instruction_pc[(AW+1):2] == f_const_addr[(AW+1):2])&&(pf_valid))
+	if (f_pf_insn)
 		restrict((pf_instruction == f_const_insn)
 				&&(pf_illegal == f_const_illegal));
 
@@ -2702,7 +2768,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[3:0]	fc_cond;
 	wire	[3:0]	fc_op;
 	wire	[22:0]	fc_sim_immv;
-	wire		f_pf_insn, f_dcd_insn, f_op_insn; //f_alu_insn,f_wb_insn
+	wire		f_pre_dcd_insn, f_dcd_insn, f_op_insn; //f_alu_insn,f_wb_insn
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
@@ -2717,17 +2783,19 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			fc_illegal, fc_Rid, fc_Aid, fc_Bid, fc_I, fc_cond,
 			fc_wF, fc_op, fc_ALU, fc_M, fc_DV, fc_FP,
 			fc_break, fc_lock, fc_wR, fc_rA, fc_rB,
-			fc_sim, fc_sim_immv);
+			fc_sim, fc_sim_immv
+			);
 
 	assign	f_next_addr = ((!f_const_insn[31])||(!f_const_phase))
 				? (f_const_addr + 4)
 				: (f_const_addr + 2);
 
-	assign	f_pf_insn = (pf_valid)&&(pf_instruction_pc == f_next_addr)
-				&&(pf_gie == f_const_gie);
-
 	assign	f_dcd_insn = (dcd_valid)&&(dcd_pc == f_next_addr)
 				&&(dcd_phase == f_const_phase)
+				&&(dcd_gie == f_const_gie);
+
+	assign	f_pre_dcd_insn = (dcd_valid)&&(dcd_phase)&&(!f_const_phase)
+			&&(dcd_pc == f_const_addr + 2)
 				&&(dcd_gie == f_const_gie);
 
 	assign	f_op_insn = (op_valid)&&(op_pc == f_next_addr)
@@ -2793,6 +2861,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			begin
 				f_pre_Bv = 0;
 				f_pre_Bv[(AW+1):0] = { upc[(AW+1):2], uhalt_phase, 1'b0 };
+				if ((wr_reg_ce)&&(wr_reg_id == fc_Bid[4:0]))
+					f_pre_Bv = wr_spreg_vl;
 			end
 		end else if (fc_Bid[3:0] == `CPU_CC_REG)
 		begin
@@ -2967,7 +3037,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			($past(div_busy)))
 		assert($stable(alu_pc));
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!i_reset)&&(!$past(clear_pipeline))&&
+	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(clear_pipeline))&&
 			($past(div_busy)))
 		assert($stable(alu_phase));
 	always @(posedge i_clk)
@@ -3004,6 +3074,26 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 		if ((wr_reg_ce)&&((wr_write_cc)||(wr_write_pc)))
 			assert(wr_spreg_vl == wr_gpreg_vl);
+
+	always @(posedge i_clk)
+	if (div_ce)
+	begin
+		assert(op_R[3:1] != 3'h7);
+		assert(op_wR);
+		assert(op_wF);
+	end
+
+	always @(posedge i_clk)
+	if ((w_op_valid)&&(op_ce)&&(dcd_DIV))
+	begin
+		assert(dcd_R[3:1] != 3'h7);
+		assert(dcd_wR);
+		assert(dcd_wF);
+	end
+
+	always @(posedge i_clk)
+	if (div_valid)
+		assert(alu_reg[3:1] != 3'h7);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(wr_reg_ce)
@@ -3046,16 +3136,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		assert(op_valid);
 
 	always @(posedge i_clk)
-	if (((alu_ce)||(mem_ce)||(div_ce))
-	//	&&(op_pc == f_next_addr)
-	//	&&(op_phase == f_const_phase)
-	//	&&(op_gie == f_const_gie)
-	//	&&(!f_op_branch)
-		&&(f_op_insn)
-		&&(!f_const_illegal)&&(!fc_illegal))
+	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal))
 	begin
 		assert(op_valid);
-		if ((!wr_reg_ce)||(wr_reg_id[3:0] != `CPU_PC_REG))
+		if (((alu_ce)||(div_ce)||(mem_ce))
+			&&((!wr_reg_ce)||(wr_reg_id!= { gie, `CPU_PC_REG })))
 		begin
 			if (fc_rA)
 				assert(f_Av == op_Av);
@@ -3063,26 +3148,50 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		end
 		assert(fc_wR == op_wR);
 		assert(fc_wF == op_wF);
-	end
+		assert(fc_Rid[4:0] == op_R);
+	end else if (f_op_insn)
+		assert(op_illegal);
 
 	//
 	// See that we handle illegal instructions properly
 	always @(posedge i_clk)
-	if ((op_ce)&&(f_dcd_insn))
+	if((dcd_valid)&&(dcd_phase)&&(dcd_pc[(AW+1):2]==f_const_addr[(AW+1):2]))
+	begin
+		if (f_const_illegal)
+			assert(dcd_illegal);
+
+		assert(f_dcd_hidden_state[31:16] == {1'b1, f_const_insn[14:0]});
+	end
+
+	always @(*)
+	if (f_pre_dcd_insn)
+	begin
+		assert(dcd_illegal == f_const_illegal);
+	end
+
+	always @(*)
+	if (f_dcd_insn)
 	begin
 		if ((fc_illegal)||(f_const_illegal))
 			assert(dcd_illegal);
-		else
+		else begin
 			assert(!dcd_illegal);
-	end
-
-	always @(posedge i_clk)
-	if ((dcd_pc == f_next_addr)&&(dcd_phase == f_const_phase)&&(dcd_valid)
-			&&(!dcd_early_branch))
-	begin
-		if ((!fc_illegal)&&(!f_const_illegal))
+			assert(fc_Rid[6:0] == { dcd_Rcc, dcd_Rpc, dcd_R });
+			assert(fc_Aid[6:0] == { dcd_Acc, dcd_Apc, dcd_A });
+			assert(fc_Bid[6:0] == { dcd_Bcc, dcd_Bpc, dcd_B });
+			assert(fc_cond == dcd_F);
+			assert(fc_ALU == dcd_ALU);
+			assert(fc_DV == dcd_DIV);
+			assert(fc_wR == dcd_wR);
+			assert(fc_wF == dcd_wF);
+			assert(fc_rA == dcd_rA);
+			assert(fc_rB == dcd_rB);
+			assert(fc_I == dcd_I);
+			assert(dcd_zI == (dcd_I==0));
 			assert(dcd_break == fc_break);
-		// assert(op_illegal == ((fc_illegal)||(f_const_illegal)));
+			assert((f_dcd_hidden_state[31])||(!dcd_phase));
+			assert((f_dcd_hidden_state[31])||(dcd_pc[1:0]==2'b00));
+		end
 	end
 
 	//////////////////////////////////////////////
