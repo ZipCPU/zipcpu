@@ -438,6 +438,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	initial	o_pc = 0;
 	initial	o_dcdR = 0;
 	initial	o_dcdA = 0;
+	initial	o_dcdB = 0;
 	always @(posedge i_clk)
 		if (i_ce)
 		begin

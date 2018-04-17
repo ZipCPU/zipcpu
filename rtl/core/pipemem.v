@@ -51,7 +51,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
 `ifdef	FORMAL
-		, f_nreqs, f_nacks, f_outstanding
+		, f_nreqs, f_nacks, f_outstanding, f_pc
 `endif
 		);
 	parameter	ADDRESS_WIDTH=30;
@@ -92,6 +92,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	parameter	F_LGDEPTH=5;
 `ifdef	FORMAL
 	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	output	reg	f_pc;
 `endif
 
 
@@ -524,7 +525,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((i_pipe_stb)&&(wraddr != rdaddr))
 		`ASSUME(i_oreg[4] == f_next_gie);
 
-	reg	f_pc;
 	initial	f_pc = 1'b0;
 	always @(posedge i_clk)
 	if(i_reset)
@@ -535,7 +535,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		f_pc <= 1'b0;
 
 	always @(*)
-	if (f_pc)
+	if ((f_pc)&&(f_cyc))
 		`ASSUME(!i_pipe_stb);
 
 	always @(*)
@@ -587,7 +587,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		if ((f_mem_used[k])&&(!o_wb_we)&&((!f_pc)||(k!=lastaddr)))
 			`ASSERT(fifo_oreg[k][7:5] != 3'h7);
 	end
-`endif
+`endif // IDECODE
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_past_valid))&&($past(f_cyc))&&($past(f_cyc,2)))
@@ -597,8 +597,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		`ASSERT((!f_cyc)||(!o_valid)||(o_wreg[3:1]!=3'h7));
 
 
-`endif
-`endif
+`endif // FORMAL
 endmodule
 //
 //
