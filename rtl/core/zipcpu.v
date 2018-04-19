@@ -181,7 +181,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	localparam	[0:0]	OPT_PIPELINED = 1'b0;
 `endif
 `ifdef	OPT_PIPELINED_BUS_ACCESS
-	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b1;
+	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
 `else
 	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
 `endif
@@ -2337,29 +2337,33 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Formal methods
 	//{{{
 `ifdef	FORMAL
-`define	PHASE_ONE
+// PHASE_ONE is defined by default if nothing else is defined
 // `define	PHASE_TWO
 // `define	PHASE_THREE
 // `define	PHASE_FOUR
+// `define	PHASE_FIVE
 //
 `define	PHASE_ONE_ASSERT	assert
 `define	PHASE_TWO_ASSERT	assert
 `define	PHASE_THR_ASSERT	assert
 `define	PHASE_FOR_ASSERT	assert
+`define	PHASE_FIV_ASSERT	assert
 //
-`ifdef	PHASE_ONE
+//
+//
+`ifdef	PHASE_TWO
 `undef	PHASE_ONE_ASSERT
 `define	PHASE_ONE_ASSERT	assume
 
-`ifdef	PHASE_TWO
+`ifdef	PHASE_THREE
 `undef	PHASE_TWO_ASSERT
 `define	PHASE_TWO_ASSERT	assume
 
-`ifdef	PHASE_THREE
+`ifdef	PHASE_FOUR
 `undef	PHASE_THR_ASSERT
 `define	PHASE_THR_ASSERT	assume
 
-`ifdef	PHASE_FOUR
+`ifdef	PHASE_FIVE
 `undef	PHASE_FOR_ASSERT
 `define	PHASE_FOR_ASSERT	assume
 
@@ -2391,6 +2395,90 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		assume(!i_wb_err);
 	end
 
+	//////////////////////////////////////////////
+	//
+	//
+	// Problem limiting assumptions
+	//
+	//
+	//////////////////////////////////////////////
+	//
+	// Take care that the assumptions below are actually representative
+	// of how the CPU is used.  One "careless" assumption could render
+	// the proof meaningless.
+	//
+	// Because of the consequences of a careless assumption, we'll work
+	// to place all of our assumptions at the beginning of the formal
+	// properties for any phase.
+	//
+
+	// If the CPU is not halted, the debug interface will not try writing
+	// to the CPU, nor will it try to issue a clear i-cache command
+	always @(*)
+	if (!r_halted)
+	begin
+		assume(!i_dbg_we);
+		assume(!i_clear_pf_cache);
+	end
+
+	// A debug write will only take place during a CPUI halt
+	always @(posedge i_clk)
+	if (i_dbg_we)
+		assume(i_halt);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_dbg_we))&&(!$past(o_dbg_stall)))
+		assume(i_halt);
+
+	always @(*)
+	if ((!r_halted)||(!i_halt))
+		assume(!i_clear_pf_cache);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_clear_pf_cache)))
+		assume(i_halt);
+
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_dbg_we))&&($past(o_dbg_stall)))
+		assume(($stable(i_dbg_we))&&($stable(i_dbg_data)));
+
+
+	// Any attempt to set the PC will leave the bottom two bits clear
+	always @(*)
+	if ((wr_reg_ce)&&(wr_reg_id[3:0] == `CPU_PC_REG))
+		assume(wr_gpreg_vl[1:0] == 2'b00);
+
+	// Once a halt is requested, the halt request will remain active until
+	// the CPU comes to a complete halt.
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_halt))&&(!$past(r_halted)))
+		assume(i_halt);
+
+	// Once asserted, an interrupt will stay asserted while the CPU is
+	// in user mode
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_interrupt)))
+	begin
+		if ($past(gie))
+			assume(i_interrupt);
+	end
+
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+////                                                                       ////
+////                                                                       ////
+////  Formal proof, phase one                                              ////
+////                                                                       ////
+////  This section of the proof is built around fairly simple properties.  ////
+////  It is focused upon making sure that the assertions of the component  ////
+////  properties hold.  The goal here is to avoid any significantly        ////
+////  complex properties--we'll catch those in the next section.           ////
+////                                                                       ////
+////                                                                       ////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
@@ -2491,7 +2579,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Assertions about the prefetch (output) stage
 	//
 	////////////////////////////////////////////////
-
+	always @(posedge i_clk)
+	if ((!clear_pipeline)&&(pf_valid))
+		`PHASE_ONE_ASSERT(pf_gie == gie);
 
 	always @(*)
 	if ((pf_valid)&&(!clear_pipeline))
@@ -2504,10 +2594,51 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	////////////////////////////////////////////////
 	//
 	//
-	always @(*)
-	if ((dcd_DIV)&&(dcd_valid)&&(!dcd_illegal))
-		`PHASE_ONE_ASSERT(dcd_wR);
+	always @(posedge i_clk)
+	if ((dcd_valid)&&(!dcd_illegal)&&(!clear_pipeline))
+	begin
+		`PHASE_ONE_ASSERT(dcd_gie == gie);
+		if ((gie)||(dcd_phase))
+		begin
+			`PHASE_ONE_ASSERT((!dcd_wR)||(dcd_R[4]==dcd_gie));
+			`PHASE_ONE_ASSERT((!dcd_rA)||(dcd_A[4]==dcd_gie));
+			`PHASE_ONE_ASSERT((!dcd_rB)||(dcd_B[4]==dcd_gie));
+		end else if ((!dcd_early_branch)&&((dcd_M)
+				||(dcd_DIV)||(dcd_FP)||(!dcd_wR)))
+			`PHASE_ONE_ASSERT(!dcd_gie);
+		if ((dcd_ALU)&&(dcd_opn==`CPU_MOV_OP))
+			`PHASE_ONE_ASSERT(((!dcd_rA)&&(dcd_wR))
+				||((!dcd_rA)&&(!dcd_rB)&&(!dcd_wR)));
+		else if (dcd_ALU)
+			`PHASE_ONE_ASSERT(
+				(gie == dcd_R[4])
+				&&(gie == dcd_A[4])
+				&&((!dcd_rB)||(gie == dcd_B[4]))
+				&&(dcd_gie == gie));
+	end
 
+	//
+	// Only one type of instruction can ever be valid at any given time
+	//
+	always @(*)
+	if ((dcd_valid)&&(!dcd_illegal))
+	begin
+		if (dcd_M)
+			`PHASE_ONE_ASSERT((!dcd_ALU)&&(!dcd_FP)&&(!dcd_lock)&&(!dcd_break)&&(!dcd_sim)&&(!dcd_DIV));
+		if (dcd_ALU)
+			`PHASE_ONE_ASSERT((!dcd_DIV)&&(!dcd_FP)&&(!dcd_lock)&&(!dcd_sim)&&(!dcd_break));
+		if (dcd_FP)
+			`PHASE_ONE_ASSERT((!dcd_lock)&&(!dcd_sim)&&(!dcd_break));
+		if (dcd_sim)
+			`PHASE_ONE_ASSERT((!dcd_lock)&&(!dcd_break));
+		if (dcd_lock)
+			`PHASE_ONE_ASSERT(!dcd_break);
+	end
+
+
+	//
+	// An initial check that the operands are reasonably decoded.
+	//
 	always @(*)
 	if ((dcd_valid)&&(!dcd_illegal))
 	begin
@@ -2529,17 +2660,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`PHASE_ONE_ASSERT(dcd_R == dcd_A);
 	end
 
-	always @(*)
-	if (!IMPLEMENT_DIVIDE)
-		`PHASE_ONE_ASSERT((!div_DIV)&&(!op_valid_div)
-			&&(!div_valid)&&(!div_error));
-	else if (op_valid_div)
-	begin
-		`PHASE_ONE_ASSERT(!op_illegal);
-		if ((!alu_illegal)&&(!ill_err_i))
-			`PHASE_ONE_ASSERT(op_wR);
-	end
-
+	//
+	// Let's check that we have the GIE register right.
+	//
 	always @(*)
 	if ((dcd_valid)&&(!dcd_illegal)&&((!dcd_ALU)
 			||(dcd_opn != `CPU_MOV_OP)))
@@ -2559,10 +2682,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(*)
-	if ((dcd_valid)&&(dcd_phase))
-		`PHASE_ONE_ASSERT(dcd_F == 4'h8);
-
-	always @(*)
 	if ((dcd_valid)&&(!dcd_illegal)&&(dcd_phase))
 	begin
 		`PHASE_ONE_ASSERT(!dcd_DIV);
@@ -2578,21 +2697,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if ((dcd_valid)&&(!clear_pipeline))
 		`PHASE_ONE_ASSERT(dcd_gie == gie);
-
-	always @(*)
-	if ((dcd_valid)&&(!dcd_illegal))
-	begin
-		if (dcd_M)
-			`PHASE_ONE_ASSERT((!dcd_ALU)&&(!dcd_FP)&&(!dcd_lock)&&(!dcd_break)&&(!dcd_sim)&&(!dcd_DIV));
-		if (dcd_ALU)
-			`PHASE_ONE_ASSERT((!dcd_DIV)&&(!dcd_FP)&&(!dcd_lock)&&(!dcd_sim)&&(!dcd_break));
-		if (dcd_FP)
-			`PHASE_ONE_ASSERT((!dcd_lock)&&(!dcd_sim)&&(!dcd_break));
-		if (dcd_sim)
-			`PHASE_ONE_ASSERT((!dcd_lock)&&(!dcd_break));
-		if (dcd_lock)
-			`PHASE_ONE_ASSERT(!dcd_break);
-	end
 
 	always @(*)
 	if ((dcd_valid)&&(dcd_DIV)&&(!clear_pipeline)&&(!dcd_illegal))
@@ -2637,6 +2741,72 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	if ((op_valid_mem)&&(op_pipe)&&(mem_busy)&&(!mem_rdbusy))
 		`PHASE_ONE_ASSERT(op_opn[0] == 1'b1);
 
+	always @(*)
+	if ((dcd_valid)&&(!dcd_M))
+		`PHASE_ONE_ASSERT((dcd_illegal)||(!dcd_pipe));
+
+	always @(*)
+	if ((dcd_valid)&&(dcd_pipe))
+		`PHASE_ONE_ASSERT(dcd_B[3:1] != 3'h7);
+
+
+	//
+	// Decdoe option processing
+	//
+
+	// OPT_CIS ... the compressed instruction set
+	always @(*)
+	if ((!OPT_CIS)&&(dcd_valid))
+	begin
+		`PHASE_ONE_ASSERT(!dcd_phase);
+		`PHASE_ONE_ASSERT(dcd_pc[1:0] == 2'b0);
+	end
+
+	always @(*)
+	if ((dcd_valid)&&(dcd_phase))
+		`PHASE_ONE_ASSERT(dcd_F == 4'h8);
+
+
+	// OPT_LOCK
+	always @(*)
+	if ((!OPT_LOCK)&&(dcd_valid))
+		`PHASE_ONE_ASSERT(!dcd_lock);
+
+	// EARLY_BRANCHING
+	always @(*)
+	if (!EARLY_BRANCHING)
+		`PHASE_ONE_ASSERT((!dcd_early_branch)
+					&&(!dcd_early_branch_stb)
+					&&(!dcd_ljmp));
+
+	// IMPLEMENT_MULTIPLY
+	always @(*)
+	if ((IMPLEMENT_MPY == 0)&&(dcd_valid)&&(!dcd_illegal))
+	begin
+		`PHASE_ONE_ASSERT(dcd_opn != 4'ha);
+		`PHASE_ONE_ASSERT(dcd_opn != 4'hb);
+		`PHASE_ONE_ASSERT(dcd_opn != 4'hc);
+	end
+
+	// IMPLEMENT_DIVIDE
+	always @(*)
+	if (!IMPLEMENT_DIVIDE)
+		`PHASE_ONE_ASSERT(!dcd_DIV);
+
+	always @(*)
+	if ((dcd_DIV)&&(dcd_valid)&&(!dcd_illegal))
+		`PHASE_ONE_ASSERT(dcd_wR);
+
+	always @(*)
+	if (!IMPLEMENT_DIVIDE)
+		`PHASE_ONE_ASSERT((!div_DIV)&&(!op_valid_div)
+			&&(!div_valid)&&(!div_error));
+	else if (op_valid_div)
+	begin
+		`PHASE_ONE_ASSERT(!op_illegal);
+		if ((!alu_illegal)&&(!ill_err_i))
+			`PHASE_ONE_ASSERT(op_wR);
+	end
 
 	////////////////////////////////////////////////
 	//
@@ -2645,6 +2815,16 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	////////////////////////////////////////////////
 	//
 	//
+	always @(*)
+	if ((!OPT_CIS)&&(op_valid))
+		`PHASE_ONE_ASSERT((!op_phase)||(op_illegal));
+	always @(*)
+	if ((!OPT_CIS)&&(op_valid))
+		`PHASE_ONE_ASSERT(op_pc[1:0] == 2'b0);
+	always @(*)
+	if ((!OPT_LOCK)&&(op_valid))
+		`PHASE_ONE_ASSERT((!op_lock)||(op_illegal));
+
 	always @(*)
 	if ((op_valid_mem)&&(op_pipe)&&(mem_rdbusy))
 		`PHASE_ONE_ASSERT(op_opn[0] == 1'b0);
@@ -2655,6 +2835,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if (op_ce)
 		`PHASE_ONE_ASSERT((dcd_valid)||(dcd_illegal)||(dcd_early_branch));
+	always @(*)
+	if ((IMPLEMENT_MPY == 0)&&(op_valid)&&(!op_illegal))
+	begin
+		`PHASE_ONE_ASSERT(op_opn != 4'ha);
+		`PHASE_ONE_ASSERT(op_opn != 4'hb);
+		`PHASE_ONE_ASSERT(op_opn != 4'hc);
+	end
+
 	always @(*)
 	if (mem_ce)
 		`PHASE_ONE_ASSERT((op_valid)&&(op_valid_mem)&&(!op_illegal));
@@ -2744,6 +2932,111 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`PHASE_ONE_ASSERT(op_R[3:1] != 3'h7);
 
 
+	always @(posedge i_clk)
+	if ((op_valid)&&(!op_illegal)
+			&&(!alu_illegal)&&(!ill_err_i)&&(!clear_pipeline))
+	begin
+		`PHASE_ONE_ASSERT(op_gie == gie);
+		if ((gie)||(op_phase))
+		begin
+			`PHASE_ONE_ASSERT((!op_wR)||(op_R[4] == gie));
+			`PHASE_ONE_ASSERT((!op_rA)||(op_Aid[4] == gie));
+			`PHASE_ONE_ASSERT((!op_rB)||(op_Bid[4] == gie));
+		end else if (((op_valid_mem)
+				||(op_valid_div)||(op_valid_fpu)
+				||((op_valid_alu)&&(op_opn!=`CPU_MOV_OP))))
+		begin
+			`PHASE_ONE_ASSERT((!op_wR)||(op_R[4] == gie));
+			`PHASE_ONE_ASSERT((!op_rA)||(op_Aid[4] == gie));
+			`PHASE_ONE_ASSERT((!op_rB)||(op_Bid[4] == gie));
+		end
+	end
+
+	always @(posedge i_clk)
+	if (op_valid)
+	begin
+		// `PHASE_ONE_ASSERT(|{op_illegal,op_valid_alu,op_valid_div,
+		// 			op_valid_fpu,op_break,op_lock, op_sim});
+		if (op_valid_mem)
+			`PHASE_ONE_ASSERT(3'b000=={op_valid_alu, op_valid_div, op_valid_fpu });
+		else if (op_valid_alu)
+			`PHASE_ONE_ASSERT(2'b00 =={op_valid_div, op_valid_fpu });
+		else if (op_valid_div)
+			`PHASE_ONE_ASSERT(!op_valid_fpu);
+
+		if (op_illegal)
+			`PHASE_ONE_ASSERT((!op_valid_div)
+				&&(!op_valid_fpu)&&(!op_lock));
+	end else
+		`PHASE_ONE_ASSERT(!op_illegal);
+
+	always @(*)
+	begin
+		if (alu_ce)
+			`PHASE_ONE_ASSERT(adf_ce_unconditional);
+		if (div_ce)
+			`PHASE_ONE_ASSERT(adf_ce_unconditional);
+		if (fpu_ce)
+			`PHASE_ONE_ASSERT(adf_ce_unconditional);
+
+		if ((op_valid)&&(op_illegal))
+			`PHASE_ONE_ASSERT(op_valid_alu);
+	end
+
+	always @(*)
+	if ((ibus_err_flag)||(ill_err_i)||(idiv_err_flag))
+	begin
+		`PHASE_ONE_ASSERT(master_stall);
+		`PHASE_ONE_ASSERT(!mem_ce);
+		`PHASE_ONE_ASSERT(!alu_ce);
+		`PHASE_ONE_ASSERT(!div_ce);
+		`PHASE_ONE_ASSERT(!adf_ce_unconditional);
+	end
+
+	always @(posedge i_clk)
+	if ((adf_ce_unconditional)||(mem_ce))
+		`PHASE_ONE_ASSERT(op_valid);
+
+	always @(posedge i_clk)
+		if (alu_stall)
+			`PHASE_ONE_ASSERT(!alu_ce);
+	always @(posedge i_clk)
+		if (mem_stalled)
+			`PHASE_ONE_ASSERT(!mem_ce);
+	always @(posedge i_clk)
+		if (div_busy)
+			`PHASE_ONE_ASSERT(!div_ce);
+
+	always @(*)
+	if ((!i_reset)&&(break_pending)&&(!clear_pipeline))
+		`PHASE_ONE_ASSERT((op_valid)&&(op_break));
+
+	always @(*)
+	if ((op_valid_mem)&&(op_pipe)&&(mem_busy))
+		`PHASE_ONE_ASSERT((op_Bv[AW+1:2] == mem_addr)
+			||(op_Bv[AW+1:2] == mem_addr+1'b1));
+
+	always @(*)
+	if ((dcd_valid)&&(dcd_pipe))
+		`PHASE_ONE_ASSERT((op_Aid[3:1] != 3'h7)||(op_opn[0]));
+
+	always @(*)
+	if ((op_valid)&(!op_valid_mem))
+		`PHASE_ONE_ASSERT((op_illegal)||(!op_pipe));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(op_valid_mem)&&(op_pipe))
+	begin
+		if (mem_busy)
+		`PHASE_ONE_ASSERT((op_Bv[(AW+1):2]==mem_addr[(AW-1):0])
+			||(op_Bv[(AW+1):2]==mem_addr[(AW-1):0]+1'b1));
+
+		if ($past(mem_ce))
+			`PHASE_ONE_ASSERT(op_Bid == $past(op_Bid));
+
+		`PHASE_ONE_ASSERT((op_Aid[3:1] != 3'h7)||(op_opn[0]));
+		`PHASE_ONE_ASSERT((op_Bid[3:1] != 3'h7));
+	end
 
 	////////////////////////////////////////////////
 	//
@@ -2766,7 +3059,50 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	if ((!clear_pipeline)&&((mem_valid)||(div_valid)||(div_busy)
 					||(mem_rdbusy)||(alu_valid)))
 		`PHASE_ONE_ASSERT(alu_gie == gie);
+	always @(*)
+	if ((!OPT_CIS)&&(alu_pc_valid))
+		`PHASE_ONE_ASSERT(alu_pc[1:0] == 2'b0);
+	always @(*)
+	if (!OPT_LOCK)
+		`PHASE_ONE_ASSERT((!bus_lock)&&(!prelock_stall));
+	always @(*)
+	if (!IMPLEMENT_DIVIDE)
+		`PHASE_ONE_ASSERT((!div_busy)&&(!div_valid)&&(!div_ce));
+	always @(*)
+	if (IMPLEMENT_MPY == 0)
+		`PHASE_ONE_ASSERT(alu_busy == 1'b0);
 
+
+	always @(*)
+	if (!clear_pipeline)
+	begin
+		if ((alu_valid)||(alu_illegal))
+			`PHASE_ONE_ASSERT(alu_gie == gie);
+		if (div_valid)
+			`PHASE_ONE_ASSERT(alu_gie == gie);
+	end
+
+	always @(*)
+	if (alu_busy)
+	begin
+		`PHASE_ONE_ASSERT(!mem_rdbusy);
+		`PHASE_ONE_ASSERT(!div_busy);
+		`PHASE_ONE_ASSERT(!fpu_busy);
+	end else if (mem_rdbusy)
+	begin
+		`PHASE_ONE_ASSERT(!div_busy);
+		`PHASE_ONE_ASSERT(!fpu_busy);
+	end else if (div_busy)
+		`PHASE_ONE_ASSERT(!fpu_busy);
+
+	always @(posedge i_clk)
+	if ((div_valid)||(div_busy))
+		`PHASE_ONE_ASSERT(alu_reg[3:1] != 3'h7);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(wr_reg_ce)
+			&&((!$past(r_halted))||(!$past(i_dbg_we))))
+		`PHASE_ONE_ASSERT(alu_gie == gie);
 
 
 	////////////////////////////////////////////////
@@ -2776,12 +3112,51 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	////////////////////////////////////////////////
 	//
 	//
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_reset))&&($past(gie) != gie))
+		`PHASE_ONE_ASSERT(clear_pipeline);
+
 	always @(*)
 	if (!IMPLEMENT_FPU)
-		`PHASE_ONE_ASSERT((!dcd_FP)&&(!op_valid_fpu)
-			&&(!fpu_valid)&&(!fpu_error));
-	else if (fpu_ce)
-		`PHASE_ONE_ASSERT((!op_stall)&&(!op_illegal));
+	begin
+		`PHASE_ONE_ASSERT((!dcd_valid)||(dcd_illegal)||(!dcd_FP));
+		`PHASE_ONE_ASSERT(!op_valid_fpu);
+		`PHASE_ONE_ASSERT((!fpu_valid)&&(!fpu_error));
+		`PHASE_ONE_ASSERT(!ifpu_err_flag);
+		`PHASE_ONE_ASSERT(!ufpu_err_flag);
+	end else if (fpu_ce)
+		`PHASE_ONE_ASSERT((!op_stall)&&(op_valid_fpu)&&(!op_illegal));
+
+	always @(*)
+	if (!IMPLEMENT_DIVIDE)
+		`PHASE_ONE_ASSERT(div_valid);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(r_halted))
+	begin
+		`PHASE_ONE_ASSERT(!div_busy);
+		`PHASE_ONE_ASSERT(!mem_busy);
+		`PHASE_ONE_ASSERT(!alu_busy);
+		`PHASE_ONE_ASSERT(!div_valid);
+		`PHASE_ONE_ASSERT(!mem_valid);
+		`PHASE_ONE_ASSERT(!alu_valid);
+	end
+
+	/////////////////////
+	// CONTRACT: Only one item can ever be valid at a time
+	always @(posedge i_clk)
+		if (alu_valid)
+		begin
+			`PHASE_ONE_ASSERT(!mem_valid);
+			`PHASE_ONE_ASSERT(!div_valid);
+			`PHASE_ONE_ASSERT(!fpu_valid);
+		end else if (mem_valid)
+		begin
+			`PHASE_ONE_ASSERT(!div_valid);
+			`PHASE_ONE_ASSERT(!fpu_valid);
+		end else if (div_valid)
+			`PHASE_ONE_ASSERT(!fpu_valid);
+
 
 	//////////////////////////////////////////////
 	//
@@ -2817,100 +3192,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Ad-hoc phase-one assertions
 	//////////////////////////////////////////////
 	//
-	always @(*)
-	if ((!i_reset)&&(break_pending)&&(!clear_pipeline))
-		`PHASE_ONE_ASSERT((op_valid)&&(op_break));
-
-	always @(*)
-	if ((op_valid_mem)&&(op_pipe)&&(mem_busy))
-		`PHASE_ONE_ASSERT((op_Bv[AW+1:2] == mem_addr)
-			||(op_Bv[AW+1:2] == mem_addr+1'b1));
-
-	always @(*)
-	if ((dcd_valid)&&(!dcd_M))
-		`PHASE_ONE_ASSERT((dcd_illegal)||(!dcd_pipe));
-
-	always @(*)
-	if ((dcd_valid)&&(dcd_pipe))
-		`PHASE_ONE_ASSERT(dcd_B[3:1] != 3'h7);
-	always @(*)
-	if ((dcd_valid)&&(dcd_pipe))
-		`PHASE_ONE_ASSERT((op_Aid[3:1] != 3'h7)||(op_opn[0]));
-
-	always @(*)
-	if ((op_valid)&(!op_valid_mem))
-		`PHASE_ONE_ASSERT((op_illegal)||(!op_pipe));
-
-	/*
-	always @(*)
-	if ((pf_valid)&&(dcd_valid)&&(!dcd_early_branch))
-		assert((pf_instruction_pc >= dcd_pc)
-			||(pf_instruction_pc[AW+1]!=dcd_pc[AW+1]));
-	*/
-
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(op_valid_mem)&&(op_pipe))
-	begin
-		if (mem_busy)
-		`PHASE_ONE_ASSERT((op_Bv[(AW+1):2]==mem_addr[(AW-1):0])
-			||(op_Bv[(AW+1):2]==mem_addr[(AW-1):0]+1'b1));
-
-		if ($past(mem_ce))
-			`PHASE_ONE_ASSERT(op_Bid == $past(op_Bid));
-
-		`PHASE_ONE_ASSERT((op_Aid[3:1] != 3'h7)||(op_opn[0]));
-		`PHASE_ONE_ASSERT((op_Bid[3:1] != 3'h7));
-	end
-
-	always @(posedge i_clk)
-	if (!clear_pipeline)
-	begin
-		if (pf_valid)
-			`PHASE_ONE_ASSERT(pf_gie == gie);
-		if ((dcd_valid)&&(!dcd_illegal))
-		begin
-			`PHASE_ONE_ASSERT(dcd_gie == gie);
-			if ((gie)||(dcd_phase))
-			begin
-				`PHASE_ONE_ASSERT((!dcd_wR)||(dcd_R[4]==dcd_gie));
-				`PHASE_ONE_ASSERT((!dcd_rA)||(dcd_A[4]==dcd_gie));
-				`PHASE_ONE_ASSERT((!dcd_rB)||(dcd_B[4]==dcd_gie));
-			end else if ((!dcd_early_branch)&&((dcd_M)
-					||(dcd_DIV)||(dcd_FP)||(!dcd_wR)))
-				`PHASE_ONE_ASSERT(!dcd_gie);
-			if ((dcd_ALU)&&(dcd_opn==`CPU_MOV_OP))
-				`PHASE_ONE_ASSERT(((!dcd_rA)&&(dcd_wR))
-					||((!dcd_rA)&&(!dcd_rB)&&(!dcd_wR)));
-			else if (dcd_ALU)
-				`PHASE_ONE_ASSERT(
-					(gie == dcd_R[4])
-					&&(gie == dcd_A[4])
-					&&((!dcd_rB)||(gie == dcd_B[4]))
-					&&(dcd_gie == gie));
-		end
-		if ((op_valid)&&(!op_illegal)&&(!alu_illegal)&&(!ill_err_i))
-		begin
-			`PHASE_ONE_ASSERT(op_gie == gie);
-			if ((gie)||(op_phase))
-			begin
-				`PHASE_ONE_ASSERT((!op_wR)||(op_R[4] == gie));
-				`PHASE_ONE_ASSERT((!op_rA)||(op_Aid[4] == gie));
-				`PHASE_ONE_ASSERT((!op_rB)||(op_Bid[4] == gie));
-			end else if (((op_valid_mem)
-					||(op_valid_div)||(op_valid_fpu)
-					||((op_valid_alu)&&(op_opn!=`CPU_MOV_OP))))
-			begin
-				`PHASE_ONE_ASSERT((!op_wR)||(op_R[4] == gie));
-				`PHASE_ONE_ASSERT((!op_rA)||(op_Aid[4] == gie));
-				`PHASE_ONE_ASSERT((!op_rB)||(op_Bid[4] == gie));
-			end
-		end
-		if ((alu_valid)||(alu_illegal))
-			`PHASE_ONE_ASSERT(alu_gie == gie);
-		if (div_valid)
-			`PHASE_ONE_ASSERT(alu_gie == gie);
-	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(mem_rdbusy)))
@@ -2919,85 +3200,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	if (mem_valid)
 		`PHASE_ONE_ASSERT(mem_wreg[4] == alu_gie);
 
-	always @(*)
-	if (alu_busy)
-	begin
-		`PHASE_ONE_ASSERT(!mem_rdbusy);
-		`PHASE_ONE_ASSERT(!div_busy);
-		`PHASE_ONE_ASSERT(!fpu_busy);
-	end else if (mem_rdbusy)
-	begin
-		`PHASE_ONE_ASSERT(!div_busy);
-		`PHASE_ONE_ASSERT(!fpu_busy);
-	end else if (div_busy)
-		`PHASE_ONE_ASSERT(!fpu_busy);
-
-	always @(posedge i_clk)
-	if (op_valid)
-	begin
-		// `PHASE_ONE_ASSERT(|{op_illegal,op_valid_alu,op_valid_div,
-		// 			op_valid_fpu,op_break,op_lock, op_sim});
-		if (op_valid_mem)
-			`PHASE_ONE_ASSERT(3'b000=={op_valid_alu, op_valid_div, op_valid_fpu });
-		else if (op_valid_alu)
-			`PHASE_ONE_ASSERT(2'b00 =={op_valid_div, op_valid_fpu });
-		else if (op_valid_div)
-			`PHASE_ONE_ASSERT(!op_valid_fpu);
-
-		if (op_illegal)
-			`PHASE_ONE_ASSERT((!op_valid_div)
-				&&(!op_valid_fpu)&&(!op_lock));
-	end else
-		`PHASE_ONE_ASSERT(!op_illegal);
-
-
-	always @(*)
-	if ((ibus_err_flag)||(ill_err_i)||(idiv_err_flag))
-	begin
-		`PHASE_ONE_ASSERT(master_stall);
-		`PHASE_ONE_ASSERT(!mem_ce);
-		`PHASE_ONE_ASSERT(!alu_ce);
-		`PHASE_ONE_ASSERT(!div_ce);
-		`PHASE_ONE_ASSERT(!adf_ce_unconditional);
-	end
-
-	always @(*)
-	begin
-		if (alu_ce)
-			`PHASE_ONE_ASSERT(adf_ce_unconditional);
-		if (div_ce)
-			`PHASE_ONE_ASSERT(adf_ce_unconditional);
-		if (fpu_ce)
-			`PHASE_ONE_ASSERT(adf_ce_unconditional);
-
-		if ((op_valid)&&(op_illegal))
-			`PHASE_ONE_ASSERT(op_valid_alu);
-	end
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(r_halted))
-	begin
-		`PHASE_ONE_ASSERT(!div_busy);
-		`PHASE_ONE_ASSERT(!mem_busy);
-		`PHASE_ONE_ASSERT(!alu_busy);
-		`PHASE_ONE_ASSERT(!div_valid);
-		`PHASE_ONE_ASSERT(!mem_valid);
-		`PHASE_ONE_ASSERT(!alu_valid);
-	end
-
-	always @(posedge i_clk)
-	if ((adf_ce_unconditional)||(mem_ce))
-		`PHASE_ONE_ASSERT(op_valid);
-
-	always @(posedge i_clk)
-		if (alu_stall)
-			`PHASE_ONE_ASSERT(!alu_ce);
-	always @(posedge i_clk)
-		if (mem_stalled)
-			`PHASE_ONE_ASSERT(!mem_ce);
-	always @(posedge i_clk)
-		if (div_busy)
-			`PHASE_ONE_ASSERT(!div_ce);
 
 	always @(posedge i_clk)
 	if ((op_valid_mem)&&(f_mem_pc))
@@ -3054,40 +3256,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`PHASE_ONE_ASSERT($stable(alu_gie));
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset))&&($past(gie) != gie))
-		`PHASE_ONE_ASSERT(clear_pipeline);
-
-	always @(posedge i_clk)
 	if (mem_rdbusy)
 		`PHASE_ONE_ASSERT(!new_pc);
-
-
-	// CONTRACT: Only one item can ever be valid at a time
-	always @(posedge i_clk)
-		if (alu_valid)
-		begin
-			`PHASE_ONE_ASSERT(!mem_valid);
-			`PHASE_ONE_ASSERT(!div_valid);
-			`PHASE_ONE_ASSERT(!fpu_valid);
-		end else if (mem_valid)
-		begin
-			`PHASE_ONE_ASSERT(!div_valid);
-			`PHASE_ONE_ASSERT(!fpu_valid);
-		end else if (div_valid)
-			`PHASE_ONE_ASSERT(!fpu_valid);
 
 	always @(posedge i_clk)
 		if ((wr_reg_ce)&&((wr_write_cc)||(wr_write_pc)))
 			`PHASE_ONE_ASSERT(wr_spreg_vl == wr_gpreg_vl);
-
-	always @(posedge i_clk)
-	if ((div_valid)||(div_busy))
-		`PHASE_ONE_ASSERT(alu_reg[3:1] != 3'h7);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(wr_reg_ce)
-			&&((!$past(r_halted))||(!$past(i_dbg_we))))
-		`PHASE_ONE_ASSERT(alu_gie == gie);
 
 	always @(*)
 	if ((dcd_phase)&&(dcd_valid))
@@ -3101,73 +3275,22 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`PHASE_ONE_ASSERT((!alu_wR)||(alu_reg[4]));
 
 
-	//////////////////////////////////////////////
-	//
-	//
-	// Problem limiting assumptions
-	//
-	//
-	//////////////////////////////////////////////
-	//
-	// Careless assumptions might be located here
-	always @(*)
-	if (!r_halted)
-	begin
-		assume(!i_dbg_we);
-		assume(!i_clear_pf_cache);
-	end
 
-	always @(*)
-	if ((wr_reg_ce)&&(wr_reg_id[3:0] == `CPU_PC_REG))
-		assume(wr_gpreg_vl[1:0] == 2'b00);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_halt))&&(!$past(r_halted)))
-		assume(i_halt);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_interrupt)))
-	begin
-		if ($past(gie))
-			assume(i_interrupt);
-	end
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_dbg_we))&&($past(o_dbg_stall)))
-		assume(($stable(i_dbg_we))&&($stable(i_dbg_data)));
-
-	always @(posedge i_clk)
-	if (i_dbg_we)
-		assume(i_halt);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_dbg_we))&&(!$past(o_dbg_stall)))
-		assume(i_halt);
-
-	always @(*)
-	if ((!r_halted)||(!i_halt))
-		assume(!i_clear_pf_cache);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_clear_pf_cache)))
-		assume(i_halt);
-
-
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-`ifdef	PHASE_ONE
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+////                                                                       ////
+////                                                                       ////
+////  Formal proof, phase two                                              ////
+////                                                                       ////
+////  Once we've proved the properties contained in the first half of the  ////
+////  proof (above), we can then turn to the second half where we willl    ////
+////  assume those properties are true and attempt to prove some more      ////
+////  complex properties                                                   ////
+////                                                                       ////
+////                                                                       ////
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+`ifdef	PHASE_TWO
 	//
 	// At this point, we've passed all of the phase one
 	// assertions above in one round of formal.  We are now
@@ -3524,8 +3647,56 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				`PHASE_TWO_ASSERT($stable(f_op_data));
 		end
 
+	////////////////////////////////
+	//
+	// CONTRACT: The operands to an ALU/MEM/DIV operation
+	//   must be valid.
+	//
+	always @(posedge i_clk)
+	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal))
+	begin
+		if (((!wr_reg_ce)||(wr_reg_id!= { gie, `CPU_PC_REG }))
+			&&(!dbg_clear_pipe)&&(!clear_pipeline))
+		begin
+			if (fc_rA)
+				`PHASE_TWO_ASSERT(f_Av == op_Av);
+			`PHASE_TWO_ASSERT(f_Bv == op_Bv);
+		end
+	end
+
+	always @(posedge i_clk)
+	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal))
+	begin
+		`PHASE_TWO_ASSERT(op_valid);
+		`PHASE_TWO_ASSERT(fc_wR == op_wR);
+		`PHASE_TWO_ASSERT(fc_rB == op_rB);
+		`PHASE_TWO_ASSERT(fc_wF == op_wF);
+		`PHASE_TWO_ASSERT(fc_Rid[4:0] == op_R);
+		`PHASE_TWO_ASSERT(fc_DV  == op_valid_div);
+		`PHASE_TWO_ASSERT(fc_ALU == op_valid_alu);
+		if ((!alu_illegal)&&(!ill_err_i)&&(!clear_pipeline))
+		begin
+			`PHASE_TWO_ASSERT(fc_M   == op_valid_mem);
+			`PHASE_TWO_ASSERT(fc_op  == op_opn);
+		end
+		`PHASE_TWO_ASSERT(fc_break == op_break);
+		`PHASE_TWO_ASSERT(fc_lock == op_lock);
+		`PHASE_TWO_ASSERT((!wr_reg_ce)||(wr_reg_id != fc_Bid)
+				||(!fc_rB)||(fc_I == 0));
+	end else if (f_op_insn)
+		`PHASE_TWO_ASSERT(op_illegal);
+
+
+	/////////
+	//
+	// CIS instructions, enabled by OPT_CIS
+	//
+	/////////
+
+	// If we are on the second half of a compressed instruction,
+	// then there are some criteria regarding what operations are possible.
 	always @(*)
-	if ((f_const_insn[31])&&(OPT_CIS)&&(op_pc == f_next_addr)
+	if ((OPT_CIS)&&(f_const_insn[31])&&(op_pc == f_next_addr)
 		&&(op_valid)&&(!f_op_branch))
 	begin
 		// The following instructions are not valid
@@ -3539,22 +3710,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(*)
-	if ((f_op_branch)&&(op_valid))
-	begin
-		`PHASE_TWO_ASSERT(!op_valid_alu);
-		`PHASE_TWO_ASSERT(!op_valid_mem);
-		`PHASE_TWO_ASSERT(!op_valid_div);
-		`PHASE_TWO_ASSERT(!op_valid_fpu);
-		`PHASE_TWO_ASSERT(!op_illegal);
-		`PHASE_TWO_ASSERT(!op_rA);
-		`PHASE_TWO_ASSERT(!op_rB);
-		`PHASE_TWO_ASSERT(!op_wR);
-		`PHASE_TWO_ASSERT(op_opn == `CPU_MOV_OP);
-	end
-
-
-	always @(*)
-	if ((f_const_insn[31])&&(op_valid)&&(op_pc == f_next_addr))
+	if ((OPT_CIS)&&(f_const_insn[31])&&(op_valid)&&(op_pc == f_next_addr))
 	begin
 		`PHASE_TWO_ASSERT(!op_valid_div);
 		if ((op_valid_alu)&&(!op_illegal))
@@ -3570,6 +3726,26 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			`PHASE_TWO_ASSERT(op_opn != 4'hb);
 			`PHASE_TWO_ASSERT(op_opn != 4'hc);
 		end
+	end
+
+
+	// If the item going through the isn't an instruction, but rather the
+	// shell of an instruction following an early branch, then none of
+	// the various valid's shall be true.  It will instead be implemnted
+	// as an empty instruction that neither reads operands nor writes
+	// a result back.
+	always @(*)
+	if ((f_op_branch)&&(op_valid))
+	begin
+		`PHASE_TWO_ASSERT(!op_valid_alu);
+		`PHASE_TWO_ASSERT(!op_valid_mem);
+		`PHASE_TWO_ASSERT(!op_valid_div);
+		`PHASE_TWO_ASSERT(!op_valid_fpu);
+		`PHASE_TWO_ASSERT(!op_illegal);
+		`PHASE_TWO_ASSERT(!op_rA);
+		`PHASE_TWO_ASSERT(!op_rB);
+		`PHASE_TWO_ASSERT(!op_wR);
+		`PHASE_TWO_ASSERT(op_opn == `CPU_MOV_OP);
 	end
 
 
@@ -3614,35 +3790,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 	// From user mode, the user is not allowed to write
 	// to a supervisor register
-	always @(posedge i_clk)
-	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal))
-	begin
-		`PHASE_TWO_ASSERT(op_valid);
-		if (((!wr_reg_ce)||(wr_reg_id!= { gie, `CPU_PC_REG }))
-			&&(!dbg_clear_pipe)&&(!clear_pipeline))
-		begin
-			if (fc_rA)
-				`PHASE_TWO_ASSERT(f_Av == op_Av);
-			`PHASE_TWO_ASSERT(f_Bv == op_Bv);
-		end
-		`PHASE_TWO_ASSERT(fc_wR == op_wR);
-		`PHASE_TWO_ASSERT(fc_rB == op_rB);
-		`PHASE_TWO_ASSERT(fc_wF == op_wF);
-		`PHASE_TWO_ASSERT(fc_Rid[4:0] == op_R);
-		`PHASE_TWO_ASSERT(fc_DV  == op_valid_div);
-		`PHASE_TWO_ASSERT(fc_ALU == op_valid_alu);
-		if ((!alu_illegal)&&(!ill_err_i))
-		begin
-			`PHASE_TWO_ASSERT(fc_M   == op_valid_mem);
-			`PHASE_TWO_ASSERT(fc_op  == op_opn);
-		end
-		`PHASE_TWO_ASSERT(fc_break == op_break);
-		`PHASE_TWO_ASSERT(fc_lock == op_lock);
-		`PHASE_TWO_ASSERT((!wr_reg_ce)||(wr_reg_id != fc_Bid)
-				||(!fc_rB)||(fc_I == 0));
-	end else if (f_op_insn)
-		`PHASE_TWO_ASSERT(op_illegal);
-
+	//
+	//
 	//
 	// See that we handle illegal instructions properly
 	always @(posedge i_clk)

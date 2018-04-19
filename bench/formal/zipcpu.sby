@@ -1,23 +1,36 @@
 [tasks]
-abc
-prove
-# pipeline
-# nopipe
+prove_first	first_half  full_proof
+prove_second	second_half full_proof
+nopipe_first	first_half  nopipe
+nopipe_second	second_half nopipe
+lowlogic_first	first_half  lowlogic nopipe
+lowlogic_second	second_half lowlogic nopipe
 
 [options]
 mode prove
-depth 40
+depth 18
 
 [engines]
-abc: abc pdr
-# abc: aiger avy
-# abc: aiger suprove
-prove:    smtbmc yices
-pipeline: smtbmc yices
-nopipe:   smtbmc yices
+smtbmc boolector
 
 [script]
+nopipe:
+setparam -set IMPLEMENT_FPU 0 zipcpu
+setparam -set IMPLEMENT_MPY 0 -set IMPLEMENT_DIVIDE 0 zipcpu
+setparam -set EARLY_BRANCHING 0 -set OPT_CIS 1 -set OPT_PIPELINED 0 zipcpu
+
+lowlogic:
+setparam -set OPT_CIS 0
+--
+
+first_half:
 read_verilog -D ZIPCPU -formal zipcpu.v
+--
+
+second_half:
+read_verilog -D ZIPCPU -DPHASE_ONE -formal zipcpu.v
+--
+
 read_verilog -D ZIPCPU -formal cpuops.v
 read_verilog -D ZIPCPU -formal memops.v
 read_verilog -D ZIPCPU -formal pipemem.v
@@ -32,6 +45,7 @@ read_verilog -D ZIPCPU -formal abs_prefetch.v
 read_verilog -D ZIPCPU -formal abs_div.v
 read_verilog -D ZIPCPU -formal abs_mpy.v
 #
+
 prep -top zipcpu -nordff
 
 [files]

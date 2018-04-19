@@ -132,18 +132,6 @@ $(ALU).smt2: $(RTL)/core/$(ALU).v abs_mpy.v $(ALU).ys
 $(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
 	yosys -ql $(DIV).yslog -s $(DIV).ys
 
-$(CPU).smt2: $(RTL)/core/$(CPU).v
-$(CPU).smt2: $(RTL)/core/cpuops.v
-$(CPU).smt2: $(RTL)/core/idecode.v
-$(CPU).smt2: $(RTL)/core/pipemem.v
-$(CPU).smt2: $(RTL)/core/memops.v
-$(CPU).smt2: $(RTL)/ex/wbdblpriarb.v
-$(CPU).smt2: $(RTL)/ex/fwb_counter.v
-$(CPU).smt2: $(RTL)/cpudefs.v
-$(CPU).smt2: f_idecode.v
-$(CPU).smt2: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v abs_mpy.v $(CPU).ys
-	yosys -ql $(CPU).yslog -s $(CPU).ys
-
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
 #	yosys -ql $(PFONE).yslog -s $(PFONE).ys
@@ -292,10 +280,18 @@ $(DIV).check: $(DIV).smt2
 	touch $@
 
 $(CPU) : $(CPU).check
-$(CPU).check: $(CPU).smt2
+$(CPU).check: $(RTL)/core/$(CPU).v
+$(CPU).check: $(RTL)/core/cpuops.v
+$(CPU).check: $(RTL)/core/idecode.v
+$(CPU).check: $(RTL)/core/pipemem.v
+$(CPU).check: $(RTL)/core/memops.v
+$(CPU).check: $(RTL)/ex/wbdblpriarb.v
+$(CPU).check: $(RTL)/ex/fwb_counter.v
+$(CPU).check: $(RTL)/cpudefs.v
+$(CPU).check: f_idecode.v
+$(CPU).check: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v abs_mpy.v $(CPU).sby
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(CPU).vcd $(CPU).smt2
-	# $(SMTBMC)  --presat -s boolector  $(INDARGS) -t 38 --dump-vcd $(CPU).vcd $(CPU).smt2
+	sby -f $(CPU).sby prove_first prove_second
 	touch $@
 
 .PHONY: clean
