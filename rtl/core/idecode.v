@@ -642,7 +642,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				// Both must be register ops
 				&&(w_rB == o_rB)
 				// Both must use the same register for B
-				&&(w_dcdB[3:0] == o_dcdB[3:0])
+				&&((!o_rB)||(w_dcdB[3:0] == o_dcdB[3:0]))
 				// CC or PC registers are not valid addresses
 				&&(w_dcdB[3:1] != 3'h7)
 				// But ... the result can never be B
