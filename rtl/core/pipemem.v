@@ -63,6 +63,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	parameter [0:0]	F_OPT_CLK2FFLOGIC=1'b0;
 	localparam	AW=ADDRESS_WIDTH,
 			FLN=4;
+	parameter [(FLN-1):0]	OPT_MAXDEPTH=4'hd;
 	input	wire		i_clk, i_reset;
 	input	wire		i_pipe_stb, i_lock;
 	// CPU interface
@@ -148,9 +149,9 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	else if (((i_wb_err)&&(cyc))||((i_pipe_stb)&&(misaligned)))
 		fifo_full <= 0;
 	else if (i_pipe_stb)
-		fifo_full <= (fifo_fill >= FLN'hc);
+		fifo_full <= (fifo_fill < OPT_MAXDEPTH);
 	else
-		fifo_full <= (fifo_fill >= FLN'hd);
+		fifo_full <= (fifo_fill <= OPT_MAXDEPTH);
 
 	assign	nxt_rdaddr = rdaddr + 1'b1;
 
@@ -419,11 +420,15 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(*)
 		`ASSERT(f_pipe_used == fifo_fill);
 	always @(posedge i_clk)
-	if (f_pipe_used == 4'he)
+	if (f_pipe_used == OPT_MAXDEPTH)
+
 	begin
 		`ASSUME(!i_pipe_stb);
 		`ASSERT((o_busy)&&(o_pipe_stalled));
 	end
+
+	always @(*)
+		`ASSERT(fifo_fill <= OPT_MAXDEPTH);
 
 	always @(*)
 		if (!IMPLEMENT_LOCK)

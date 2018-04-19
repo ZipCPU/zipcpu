@@ -103,6 +103,7 @@
 module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 		o_busy, o_valid, o_err, o_quotient, o_flags);
 	parameter		BW=32, LGBW = 5;
+	parameter	[4:0]	MAXDELAY = 3;
 	input	wire		i_clk, i_reset;
 	// Input parameters
 	input	wire		i_wr, i_signed;
@@ -122,6 +123,9 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	always @(*)
 		assume(wait_time > 5'h1);
 
+	always @(*)
+		assume((MAXDELAY == 0)||(wait_time < MAXDELAY));
+
 	initial	r_busy_counter = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -130,6 +134,9 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 		r_busy_counter <= wait_time;
 	else if (r_busy_counter > 0)
 		r_busy_counter <= r_busy_counter - 1'b1;
+
+	always @(*)
+	assert((MAXDELAY == 0)||(r_busy_counter < MAXDELAY));
 
 	assign	o_busy = (r_busy_counter != 0);
 

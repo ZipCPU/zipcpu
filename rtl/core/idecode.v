@@ -369,13 +369,6 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				// the second part (o_phase is true), return
 				// back to the first
 				r_phase <= 0;
-			else if ((i_instruction[`CISBIT])&&(w_dcdR_pc)&&(w_wR))
-				// CIS instructions are unconditional.
-				// Therefore, any write to the PC will affect
-				// the PC, and the second half of the
-				// instruction will be irrelevant and may be
-				// ignored.
-				r_phase <= 0;
 			else
 				r_phase <= (i_instruction[`CISBIT]);
 		end else if (i_ce)
@@ -393,7 +386,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			o_illegal <= 1'b0;
 		else if (i_ce)
 		begin
-			o_illegal <= (i_illegal);
+			o_illegal <= (i_illegal)&&((!o_phase)||(!o_valid))
+				||((o_illegal)&&(o_phase)&&(o_valid));
 			if ((!OPT_CIS)&&(i_instruction[`CISBIT]))
 				o_illegal <= 1'b1;
 			if ((!OPT_MPY)&&(w_mpy))
@@ -450,7 +444,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				begin
 					if (o_phase)
 						o_pc[AW+1:1] <= o_pc[AW+1:1] + 1'b1;
-					else if (pf_valid)
+					else
 						o_pc <= { i_pc[AW+1:2], 1'b1, 1'b0 };
 				end else begin
 					// The normal, non-CIS case
@@ -588,6 +582,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end else
 			r_early_branch_stb <= 1'b0;
 
+		initial	r_branch_pc = 0;
 		always @(posedge i_clk)
 			if (i_ce)
 			begin
@@ -796,7 +791,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(f_new_insn)
-			&&($past(pf_valid))&&($past(i_illegal)))
+			&&($past(pf_valid))&&($past(i_illegal))&&(!$past(o_phase)))
 		`ASSERT(o_illegal);
 
 `ifdef	IDECODE
@@ -1485,7 +1480,14 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			end else if ($past(iword[`CISBIT])&&($past(o_phase)))
 				`ASSERT(o_pc[(AW+1):1] == $past(o_pc[(AW+1):1]) + 1'b1);
 			else if ($past(iword[`CISBIT]))
+			begin
 				`ASSERT(o_pc[(AW+1):1] == { $past(i_pc[(AW+1):2]), 1'b1});
+				if (o_valid)
+				begin
+					`ASSERT(o_pc[1]);
+					`ASSERT(o_phase);
+				end
+			end
 		end
 
 
@@ -1706,7 +1708,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	if ((f_past_valid)&&($past(i_ce))&&(o_valid))
 	begin
 		if (!$past(i_reset))
-			`ASSERT(($past(fc_illegal)||$past(i_illegal))== o_illegal);
+			`ASSERT(($past(fc_illegal)
+				||$past((i_illegal)&&(!o_phase))
+				||$past((o_illegal)&&(o_phase)))== o_illegal);
 		if (!o_illegal)
 		begin
 			`ASSERT($past(fc_dcdR)== o_dcdR);
