@@ -15,12 +15,12 @@ smtbmc boolector
 
 [script]
 nopipe:
-setparam -set IMPLEMENT_FPU 0 zipcpu
-setparam -set IMPLEMENT_MPY 0 -set IMPLEMENT_DIVIDE 0 zipcpu
-setparam -set EARLY_BRANCHING 0 -set OPT_CIS 1 -set OPT_PIPELINED 0 zipcpu
+chparam -set IMPLEMENT_FPU 0 zipcpu
+chparam -set IMPLEMENT_MPY 0 -set IMPLEMENT_DIVIDE 0 zipcpu
+chparam -set EARLY_BRANCHING 0 -set OPT_CIS 1 -set OPT_PIPELINED 0 zipcpu
 
 lowlogic:
-setparam -set OPT_CIS 0
+chparam -set OPT_CIS 0 zipcpu
 --
 
 first_half:
