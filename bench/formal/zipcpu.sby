@@ -46,7 +46,7 @@ read_verilog -D ZIPCPU -formal abs_div.v
 read_verilog -D ZIPCPU -formal abs_mpy.v
 #
 
-prep -top zipcpu -nordff
+prep -top zipcpu
 
 [files]
 ../../rtl/core/zipcpu.v
