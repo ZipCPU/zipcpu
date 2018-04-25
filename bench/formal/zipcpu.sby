@@ -28,7 +28,7 @@ read_verilog -D ZIPCPU -formal zipcpu.v
 --
 
 second_half:
-read_verilog -D ZIPCPU -DPHASE_ONE -formal zipcpu.v
+read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
 --
 
 read_verilog -D ZIPCPU -formal cpuops.v

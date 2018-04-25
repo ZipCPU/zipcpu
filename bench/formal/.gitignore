@@ -5,6 +5,10 @@
 zipcpu
 old
 zipcpu_abc
-zipcpu_prove
+zipcpu_prove_first
+zipcpu_prove_second
 zipcpu_pipeline
-zipcpu_nopipe
+zipcpu_nopipe_first
+zipcpu_nopipe_second
+zipcpu_lowlogic_first
+zipcpu_lowlogic_second
