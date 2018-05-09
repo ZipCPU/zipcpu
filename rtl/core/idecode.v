@@ -430,31 +430,37 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		o_gie <= i_gie;
 
 	initial	o_pc = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		o_pc <= 0;
+	else if ((i_ce)&&((o_phase)||(i_pf_valid)))
+	begin
+		o_pc[0] <= 1'b0;
+
+		if (OPT_CIS)
+		begin
+			if (iword[`CISBIT])
+			begin
+				if (o_phase)
+					o_pc[AW+1:1] <= o_pc[AW+1:1] + 1'b1;
+				else
+					o_pc <= { i_pc[AW+1:2], 1'b1, 1'b0 };
+			end else begin
+				// The normal, non-CIS case
+				o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
+			end
+		end else begin
+			// The normal, non-CIS case
+			o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
+		end
+	end
+
 	initial	o_dcdR = 0;
 	initial	o_dcdA = 0;
 	initial	o_dcdB = 0;
 	always @(posedge i_clk)
 		if (i_ce)
 		begin
-			o_pc[0] <= 1'b0;
-
-			if (OPT_CIS)
-			begin
-				if (iword[`CISBIT])
-				begin
-					if (o_phase)
-						o_pc[AW+1:1] <= o_pc[AW+1:1] + 1'b1;
-					else
-						o_pc <= { i_pc[AW+1:2], 1'b1, 1'b0 };
-				end else begin
-					// The normal, non-CIS case
-					o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
-				end
-			end else begin
-				// The normal, non-CIS case
-				o_pc <= { i_pc[AW+1:2] + 1'b1, 2'b00 };
-			end
-
 			// Under what condition will we execute this
 			// instruction?  Only the load immediate instruction
 			// is completely unconditional.
@@ -623,7 +629,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	//
 	reg	r_valid;
 	generate if (OPT_OPIPE)
-	begin
+	begin : GEN_OPIPE
 		reg	r_pipe;
 
 		wire	[13:0]	pipe_addr_diff;
@@ -640,16 +646,17 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				// Both must be writes, or both stores
 				&&(o_op[0] == w_cis_op[0])
 				// Both must be register ops
-				&&(w_rB == o_rB)
+				&&(w_rB)&&(o_rB)
 				// Both must use the same register for B
-				&&((!o_rB)||(w_dcdB[3:0] == o_dcdB[3:0]))
+				&&(w_dcdB[3:0] == o_dcdB[3:0])
 				// CC or PC registers are not valid addresses
+				&&(o_dcdB[3:1] != 3'h7)
 				&&(w_dcdB[3:1] != 3'h7)
 				// But ... the result can never be B
 				&&((o_op[0])
 					||(w_dcdB[3:0] != o_dcdA[3:0]))
 				// Needs to be to the mode, supervisor or user
-				&&(i_gie == o_gie)
+				// &&(i_gie == o_gie) // Guaranteed by ISA
 				// Reads to CC or PC not allowed
 				&&((o_op[0])||(w_dcdR[3:1] != 3'h7))
 				// Prior-reads to CC or PC not allowed
@@ -772,6 +779,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	always @(*)
 		`ASSUME(i_pc[1:0] == 2'b00);
+	always @(*)
+	if ((o_valid)&&(!o_early_branch))
+		`ASSERT(o_pc[1] == o_phase);
 
 	wire	[4+21+32+1+4+1+4+11+AW+3+23-1:0]	f_result;
 	assign	f_result = { o_valid, o_phase, o_illegal,
@@ -1469,7 +1479,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end
 
 		always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_stalled))&&($past(pf_valid))
+		if ((!f_past_valid)||($past(i_reset)))
+			`ASSERT(o_pc == 0);
+		else if ((f_past_valid)&&(!$past(i_stalled))&&($past(pf_valid))
 				&&($past(i_ce)))
 		begin
 			`ASSERT(o_pc[0] == 1'b0);
@@ -1581,12 +1593,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 					`ASSERT(!o_pipe);
 				else if ($past(o_rB)!=o_rB)
 					`ASSERT(!o_pipe);
-				else if ($past(o_dcdB) != o_dcdB)
+				else if ((o_rB)&&($past(o_dcdB) != o_dcdB))
 					`ASSERT(!o_pipe);
 				else if (($past(o_wR))
-						&&($past(o_dcdB[3:1]) == 3'h7))
+						&&($past(o_dcdR[3:1]) == 3'h7))
 					`ASSERT(!o_pipe);
-				else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
+				else if ((o_wR)&&(o_dcdR[3:1] == 3'h7))
 					`ASSERT(!o_pipe);
 				else if (o_wR != $past(o_wR))
 					`ASSERT(!o_pipe);
@@ -1664,6 +1676,10 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	always @(posedge i_clk)
 		`ASSERT((!o_valid)||(!o_ljmp)||(o_phase == o_pc[1]));
+
+	always @(posedge i_clk)
+	if (o_phase)
+		`ASSERT(o_phase == o_pc[1]);
 
 	always @(*)
 	if ((o_early_branch)&&(!o_early_branch_stb))

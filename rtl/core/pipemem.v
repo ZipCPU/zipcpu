@@ -535,9 +535,14 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if(i_reset)
 		f_pc <= 1'b0;
 	else if (i_pipe_stb)
-		f_pc <= ((f_pc)||((!i_op[0])&&(i_oreg[3:1] == 3'h7)));
+		f_pc <= (((f_pc)&&(f_cyc))
+				||((!i_op[0])&&(i_oreg[3:1] == 3'h7)));
 	else if (!f_cyc)
 		f_pc <= 1'b0;
+
+	always @(posedge i_clk)
+	if ((f_cyc)&&(o_wb_we))
+		`ASSERT(!f_pc);
 
 	always @(*)
 	if ((f_pc)&&(f_cyc))
