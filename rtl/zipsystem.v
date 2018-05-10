@@ -610,14 +610,9 @@ module	zipsystem(i_clk, i_reset,
 	assign	dmac_int = 1'b0;
 `endif
 
-	wire		ctri_sel, ctri_stall;
-	reg		ctri_ack;
+	wire		ctri_sel, ctri_stall, ctri_ack;
 	wire	[31:0]	ctri_data;
 	assign	ctri_sel = (sys_stb)&&(sel_apic);
-	initial	ctri_ack = 1'b0;
-	always @(posedge i_clk)
-		ctri_ack <= (ctri_sel)&&(!cpu_reset);
-	assign	ctri_stall = 1'b0;
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
 	//
 	// Counter Interrupt controller
@@ -630,8 +625,8 @@ module	zipsystem(i_clk, i_reset,
 					ctri_int);
 	end else begin
 		icontrol #(8+(EXTERNAL_INTERRUPTS-9))
-				ctri(i_clk, cpu_reset, (ctri_sel),
-					sys_data, ctri_data,
+				ctri(i_clk, cpu_reset, (ctri_sel), sys_data,
+					ctri_ack, ctri_stall, ctri_data,
 					alt_int_vector[(EXTERNAL_INTERRUPTS-2):0],
 					ctri_int);
 	end endgenerate
@@ -641,13 +636,14 @@ module	zipsystem(i_clk, i_reset,
 	generate
 	if (EXTERNAL_INTERRUPTS <= 9)
 	begin
+		assign	ctri_ack   = ctri_sel;
 		assign	ctri_stall = 1'b0;
 		assign	ctri_data  = 32'h0000;
 		assign	ctri_int   = 1'b0;
 	end else begin
 		icontrol #(EXTERNAL_INTERRUPTS-9)
-				ctri(i_clk, cpu_reset, (ctri_sel),
-					sys_data, ctri_data,
+				ctri(i_clk, cpu_reset, (ctri_sel), sys_data,
+					ctri_ack, ctri_stall, ctri_data,
 				alt_int_vector[(EXTERNAL_INTERRUPTS-10):0],
 					ctri_int);
 	end endgenerate
@@ -703,22 +699,17 @@ module	zipsystem(i_clk, i_reset,
 	begin
 		icontrol #(6+EXTERNAL_INTERRUPTS)	pic(i_clk, cpu_reset,
 					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic),
-					sys_data, pic_data,
+						&&(sel_pic), sys_data,
+					pic_ack, pic_stall, pic_data,
 					main_int_vector[(6+EXTERNAL_INTERRUPTS-1):0], pic_interrupt);
 	end else begin
 		icontrol #(15)	pic(i_clk, cpu_reset,
 					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic),
-					sys_data, pic_data,
+						&&(sel_pic), sys_data,
+					pic_ack, pic_stall, pic_data,
 					main_int_vector[14:0], pic_interrupt);
 	end endgenerate
 
-	wire	pic_stall;
-	assign	pic_stall = 1'b0;
-	reg	pic_ack;
-	always @(posedge i_clk)
-		pic_ack <= (sys_stb)&&(sel_pic);
 
 	//
 	// The CPU itself
