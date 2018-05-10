@@ -499,6 +499,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			||((!op_valid_mem)&&(mem_rdbusy))
 			||(((op_valid_alu)||(op_valid_div))
 				&&(!adf_ce_unconditional))
+			||(pending_sreg_write)
 			//
 			// Stall if we are going into memory with an operation
 			//	that cannot be pipelined, and the memory is
@@ -1215,9 +1216,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		//}}}
 		assign	dcd_F_stall = ((!dcd_F[3])
 		//{{{
-					||((dcd_rA)&&(dcd_Acc))
-					||((dcd_rB)&&(dcd_Bcc)))
-					&&(op_valid)&&(op_Rcc);
+					||((dcd_rA)&&(dcd_A[3:1]==3'h7))
+					||((dcd_rB)&&(dcd_B[3:1]==3'h7)))
+					&&((op_valid)&&(op_wR)&&(op_R[3:1]==3'h7)
+						||(pending_sreg_write));
 				// &&(dcd_valid) is checked for elsewhere
 		//}}}
 	end else begin
@@ -2589,8 +2591,6 @@ assign	alu_gie = gie;
 	begin
 		`PHASE_ONE_ASSERT(!alu_ce);
 		`PHASE_ONE_ASSERT(!mem_ce);
-		// We'll kill the divide on the next clock
-		// `PHASE_ONE_ASSERT(!div_ce);
 	end
 
 	always @(posedge i_clk)
@@ -2606,6 +2606,17 @@ assign	alu_gie = gie;
 		`PHASE_ONE_ASSERT(!fpu_valid);
 	end
 
+	always @(*)
+	if (dcd_ce)
+		`PHASE_ONE_ASSERT((op_ce)||(!dcd_valid));
+
+	always @(*)
+	if ((op_ce)&&(!clear_pipeline))
+		`PHASE_ONE_ASSERT((adf_ce_unconditional)||(mem_ce)||(!op_valid));
+
+//	always @(*)
+//	if ((wr_reg_ce)&&(wr_reg_id[3:1] == 3'h7))
+//		`PHASE_ONE_ASSERT((adf_ce_unconditional)||(mem_ce)||(!op_valid));
 
 	////////////////////////////////////////////////
 	//
@@ -2684,6 +2695,48 @@ assign	alu_gie = gie;
 				&&((!dcd_rB)||(gie == dcd_B[4]))
 				&&(dcd_gie == gie));
 	end
+
+	always @(*)
+	if ((dcd_valid)&&(!dcd_illegal))
+	begin
+		if (dcd_opn == 4'h0)
+			`PHASE_ONE_ASSERT((dcd_ALU)&&(dcd_rA));
+		if (dcd_opn == 4'h1)
+			`PHASE_ONE_ASSERT((dcd_ALU)&&(dcd_rA));
+		if ((dcd_opn >= 4'h2)&&(dcd_opn <= 4'h7))
+		begin
+			if (dcd_opn[0])
+			begin
+				`PHASE_ONE_ASSERT(
+					((dcd_ALU)&&(dcd_wR)&&(dcd_rA))
+					||((dcd_M)&&(!dcd_wR)&&(dcd_rA)));
+			end else begin
+				`PHASE_ONE_ASSERT(
+					((dcd_ALU)&&(dcd_wR)&&(dcd_rA))
+					||((dcd_M)&&(dcd_wR)&&(!dcd_rA)));
+			end
+		end
+		if ((dcd_opn >= 4'h8)&&(dcd_opn <= 4'hb))
+			`PHASE_ONE_ASSERT((dcd_ALU)&&(dcd_wR));
+		if (dcd_opn == 4'hc)
+			`PHASE_ONE_ASSERT(((dcd_ALU)&&(dcd_wR))
+					||((!dcd_ALU)&&(!dcd_M)&&(!dcd_DIV)&&(dcd_break)&&(!dcd_wR)));
+		if (dcd_opn == 4'hd)
+			`PHASE_ONE_ASSERT(((dcd_ALU)&&(!dcd_rA))
+					||((!dcd_ALU)&&(!dcd_M)&&(!dcd_DIV)&&(dcd_lock)&&(!dcd_wR)&&(!dcd_rA)));
+		if (dcd_opn == 4'he)
+			`PHASE_ONE_ASSERT(((dcd_DIV)&&(dcd_wR)&&(dcd_rA)&&(dcd_R[3:1] != 3'h7))
+					||((!dcd_ALU)&&(!dcd_M)&&(!dcd_DIV)&&(dcd_sim)&&(!dcd_wR)));
+		if (dcd_opn == 4'hf)
+			`PHASE_ONE_ASSERT((dcd_DIV)&&(dcd_wR)&&(dcd_rA)&&(dcd_R[3:1] != 3'h7));
+	end
+
+	always @(*)
+	if ((op_valid)&&(op_rA)&&(op_Aid[3:1] == 3'h7))
+		`PHASE_ONE_ASSERT(!pending_sreg_write);
+	always @(*)
+	if ((op_valid)&&(op_rB)&&(op_Bid[3:1] == 3'h7))
+		`PHASE_ONE_ASSERT(!pending_sreg_write);
 
 	//
 	// Only one type of instruction can ever be valid at any given time
@@ -3763,7 +3816,6 @@ assign	alu_gie = gie;
 		begin
 			if ((fc_rA)&&(fc_Aid[3:1] != 3'h7))
 				`PHASE_TWO_ASSERT(f_Av == op_Av);
-			if ((!fc_rB)||(fc_Bid[3:1] != 3'h7))
 			`PHASE_TWO_ASSERT(f_Bv == op_Bv);
 		end
 	end
