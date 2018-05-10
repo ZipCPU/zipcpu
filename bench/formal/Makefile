@@ -41,15 +41,15 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu # dcache
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
 
 SMTBMC  := yosys-smtbmc
 # SOLVER  := -s z3
-# SOLVER  := -s yices
-SOLVER  := -s boolector
+SOLVER  := -s yices
+# SOLVER  := -s boolector
 BMCARGS := --presat $(SOLVER)
 INDARGS := $(SOLVER) -i
 
@@ -72,6 +72,7 @@ DMA    := wbdmac
 ALU    := cpuops
 DIV    := div
 CPU    := zipcpu
+DCACHE := dcache
 .PHONY: cpu
 cpu: zipcpu
 
@@ -131,6 +132,9 @@ $(ALU).smt2: $(RTL)/core/$(ALU).v abs_mpy.v $(ALU).ys
 
 $(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
 	yosys -ql $(DIV).yslog -s $(DIV).ys
+
+$(DCACHE).smt2: $(RTL)/core/$(DCACHE).v $(MASTER) $(DCACHE).ys
+	yosys -ql $(DCACHE).yslog -s $(DCACHE).ys
 
 
 #$(PFONE).smt2: $(RTL)/$(PFONE).v
@@ -259,6 +263,13 @@ $(ALU).check: $(ALU).smt2
 	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(ALU).vcd $(ALU).smt2
 	touch $@
 
+$(DCACHE) : $(DCACHE).check
+$(DCACHE).check: $(DCACHE).smt2
+	@rm -f $@
+	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
+	$(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
+	touch $@
+
 $(DIV) : $(DIV).check
 $(DIV).check: $(DIV).smt2
 	@rm -f $@
@@ -301,5 +312,6 @@ clean:
 	rm -f $(DMA).smt2     $(DMA)*.vcd     $(DMA).yslog
 	rm -f $(ALU).smt2     $(ALU)*.vcd     $(ALU).yslog
 	rm -f $(DIV).smt2     $(DIV)*.vcd     $(DIV).yslog
+	rm -f $(DCACHE).smt2  $(DCACHE)*.vcd  $(DCACHE).yslog
 	rm -f $(CPU).smt2     $(CPU)*.vcd     $(CPU).yslog $(CPU)/
 	rm -f *.check
