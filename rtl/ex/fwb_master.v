@@ -99,7 +99,7 @@ module	fwb_master(i_clk, i_reset,
 	// command is present in the yosys script.  If clk2fflogic isn't used,
 	// then setting this parameter to zero will eliminate some formal
 	// tests which would then be inappropriate.
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b1;
+	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
 	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
@@ -180,7 +180,8 @@ module	fwb_master(i_clk, i_reset,
 
 	// Things can only change on the positive edge of the clock
 	generate if (F_OPT_CLK2FFLOGIC)
-	begin
+	begin : CHECK_ASYNC
+
 		always @($global_clock)
 		if ((f_past_valid)&&(!$rose(i_clk)))
 		begin
@@ -193,6 +194,7 @@ module	fwb_master(i_clk, i_reset,
 			assume($stable(i_wb_idata));
 			assume($stable(i_wb_err));
 		end
+
 	end endgenerate
 
 	//
