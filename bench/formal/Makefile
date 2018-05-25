@@ -41,7 +41,7 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu # dcache
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -264,10 +264,10 @@ $(ALU).check: $(ALU).smt2
 	touch $@
 
 $(DCACHE) : $(DCACHE).check
-$(DCACHE).check: $(DCACHE).smt2
+$(DCACHE).check: $(RTL)/core/dcache.v
+$(DCACHE).check: $(RTL)/ex/fwb_master.v
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
-	$(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
+	sby -f $(DCACHE).sby
 	touch $@
 
 $(DIV) : $(DIV).check

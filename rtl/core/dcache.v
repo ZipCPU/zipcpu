@@ -78,8 +78,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	parameter	LGCACHELEN = 8,
 			ADDRESS_WIDTH=30,
 			LGNLINES=5, // Log of the number of separate cache lines
-			IMPLEMENT_LOCK=0,
 			NAUX=5;	// # of aux d-wires to keep aligned w/memops
+	parameter [0:0]	OPT_LOCAL_BUS=1'b1;
+	parameter [0:0]	OPT_LOCK=1'b1;
 	localparam 	SDRAM_BIT = 26;
 	localparam	FLASH_BIT = 22;
 	localparam	BLKRAM_BIT= 15;
@@ -96,7 +97,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	input	[(DW-1):0]	i_data;
 	input	[(NAUX-1):0]	i_oreg;	// Aux data, such as reg to write to
 	// Outputs, going back to the CPU
-	output	wire		o_busy, o_pipe_stalled, o_valid, o_err;
+	output	reg		o_busy;
+	output	wire		o_pipe_stalled, o_valid, o_err;
 	output reg [(NAUX-1):0]	o_wreg;
 	output	reg [(DW-1):0]	o_data;
 	// Wishbone bus master outputs
@@ -124,9 +126,11 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	// data in the meantime.
 	reg			c_wr;
 	reg	[(DW-1):0]	c_wdata;
+	reg	[(DW-1):0]	c_wdata;
 	reg	[(CS-1):0]	c_waddr;
 
 	reg	[(AW-LS-1):0]	last_tag;
+	reg			last_tag_valid;
 
 
 	wire	[(LGNLINES-1):0]	i_cline;
@@ -136,23 +140,33 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	i_caddr = i_addr[(CS-1):0];
 
 	wire	cache_miss_inow, w_cachable;
-	assign	cache_miss_inow = (last_tag != i_addr[(AW-1):LS])||(!c_v[i_cline]);
-	assign	w_cachable = (i_addr[(DW-1):24]!=8'hff)&&(!i_lock)&&(
-				((SDRAM_BIT>0)&&(i_addr[SDRAM_BIT]))
-				||((FLASH_BIT>0)&&(i_addr[FLASH_BIT]))
-				||((BLKRAM_BIT>0)&&(i_addr[BLKRAM_BIT])));
+	assign	cache_miss_inow = (!last_tag_valid)
+					||(last_tag != i_addr[(AW-1):LS])
+					||(!c_v[i_cline]);
+	assign	w_cachable = ((!OPT_LOCAL_BUS)||(i_addr[(DW-1):(DW-8)]!=8'hff))
+				&&((!i_lock)||(!OPT_LOCK))
+				&&(((SDRAM_BIT>0)&&(i_addr[SDRAM_BIT]))
+				  ||((FLASH_BIT>0)&&(i_addr[FLASH_BIT]))
+				  ||((BLKRAM_BIT>0)&&(i_addr[BLKRAM_BIT])));
 
 	reg	r_cachable, r_svalid, r_dvalid, r_rd, r_cache_miss,
 		r_rd_pending;
-	reg	[(AW-1):0]	r_addr;
+	reg	[(AW-1):0]		r_addr;
 	wire	[(LGNLINES-1):0]	r_cline;
-	wire	[(CS-1):0]	r_caddr;
-	wire	[(AW-LS-1):0]	r_ctag;
+	wire	[(CS-1):0]		r_caddr;
+	wire	[(AW-LS-1):0]		r_ctag;
 
 	assign	r_cline = r_addr[(CS-1):LS];
 	assign	r_caddr = r_addr[(CS-1):0];
 	assign	r_ctag  = r_addr[(AW-1):LS];
 
+/*
+	integer k;
+	initial begin
+		for(k=0; k<(1<<(LGNLINES)); k=k+1)
+			c_vtags[k] <= k;
+	end
+*/
 
 	reg	wr_cstb, r_iv, pipeable_op, non_pipeable_op, in_cache;
 	reg	[(AW-LS-1):0]	r_itag;
@@ -176,6 +190,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		r_cache_miss <= 1'b0;
 		r_addr <= 0;
 		r_rd_pending <= 0;
+		last_tag_valid <= 0;
 	end else begin
 		// The single clock path
 		// The valid for the single clock path
@@ -207,9 +222,12 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		// r_itag contains the tag we didn't have available to us on the
 		// last clock, r_ctag is a bit select from r_addr containing a
 		// one clock delayed address.
-		r_dvalid <= (r_itag == r_ctag)&&(r_iv)&&(r_cachable)&&(r_rd_pending);
+		r_dvalid <= (!r_svalid)&&(r_itag == r_ctag)&&(r_iv)&&(r_cachable)&&(r_rd_pending);
 		if ((r_itag == r_ctag)&&(r_iv)&&(r_cachable))
+		begin
+			last_tag_valid <= 1'b1;
 			last_tag <= r_ctag;
+		end
 
 		// r_cache miss takes a clock cycle.  It is only ever true for
 		// something that should be cachable, but isn't in the cache.
@@ -332,10 +350,16 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				cyc <= 1'b1;
 				stb <= 1'b1;
 
-				r_wb_cyc_gbl <= (i_addr[31:24]!=8'hff);
-				r_wb_cyc_lcl <= (i_addr[31:24]==8'hff);
-				o_wb_stb_gbl <= (i_addr[31:24]!=8'hff);
-				o_wb_stb_lcl <= (i_addr[31:24]==8'hff);
+				if (OPT_LOCAL_BUS)
+				begin
+				r_wb_cyc_gbl <= (i_addr[DW-1:DW-8]!=8'hff);
+				r_wb_cyc_lcl <= (i_addr[DW-1:DW-8]==8'hff);
+				o_wb_stb_gbl <= (i_addr[DW-1:DW-8]!=8'hff);
+				o_wb_stb_lcl <= (i_addr[DW-1:DW-8]==8'hff);
+				end else begin
+					r_wb_cyc_gbl <= 1'b1;
+					o_wb_stb_gbl <= 1'b1;
+				end
 				last_ack <= 1'b1;
 
 			end else if (r_cache_miss)
@@ -359,10 +383,16 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 				cyc <= 1'b1;
 				stb <= 1'b1;
-				r_wb_cyc_gbl <= (i_addr[31:24]!=8'hff);
-				r_wb_cyc_lcl <= (i_addr[31:24]==8'hff);
-				o_wb_stb_gbl <= (i_addr[31:24]!=8'hff);
-				o_wb_stb_lcl <= (i_addr[31:24]==8'hff);
+				if (OPT_LOCAL_BUS)
+				begin
+				r_wb_cyc_gbl <= (i_addr[DW-1:DW-8]!=8'hff);
+				r_wb_cyc_lcl <= (i_addr[DW-1:DW-8]==8'hff);
+				o_wb_stb_gbl <= (i_addr[DW-1:DW-8]!=8'hff);
+				o_wb_stb_lcl <= (i_addr[DW-1:DW-8]==8'hff);
+				end else begin
+				r_wb_cyc_gbl <= 1'b1;
+				o_wb_stb_gbl <= 1'b1;
+				end
 				last_ack <= 1'b1;
 			end // else we stay idle
 
@@ -390,8 +420,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				last_ack <= last_ack || (&wr_addr[LS-1:0]);
 
 			if ((i_wb_ack)&&(!end_of_line))
-				c_vtags[o_wb_addr[(CS-1):LS]]
-						<= o_wb_addr[(AW-1):LS];
+				c_vtags[r_addr[(CS-1):LS]]
+						<= r_addr[(AW-1):LS];
 
 			if (((i_wb_ack)&&(end_of_line))||(i_wb_err))
 			begin
@@ -500,6 +530,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 		if (r_svalid)
 			o_data <= cached_idata;
+		else if (state == `DC_READS)
+			o_data <= i_wb_data;
 		else
 			o_data <= cached_rdata;
 
@@ -507,6 +539,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 	if (i_reset)
 		o_valid <= 1'b0;
+	else if (state == `DC_READS)
+		o_valid <= i_wb_ack;
 	else
 		o_valid <= (r_svalid)||(r_dvalid);
 
@@ -517,7 +551,22 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	else
 		o_err <= (cyc)&&(i_wb_err);
 
-	assign	o_busy = ((r_rd_pending)&&(!r_svalid))||(cyc);
+	initial	o_busy = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		o_busy <= 1'b0;
+	else if (i_pipe_stb)
+		o_busy <= 1'b1;
+	else if (r_rd_pending)
+		o_busy <= 1'b1;
+	else if (cyc)
+		o_busy <= 1'b1;
+	else // if ((r_dvalid)||(r_svalid))
+		o_busy <= 1'b0;
+
+	always @(posedge i_clk)
+	if (!$past(o_busy))
+		assert(!r_dvalid);
 
 	//
 	// We can use our FIFO addresses to pre-calculate when an ACK is going
@@ -536,19 +585,27 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		lock_gbl <= 1'b0;
 		lock_lcl<= 1'b0;
 	end else begin
-		lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-		lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+		lock_gbl <= (OPT_LOCK)&&(i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
+		lock_lcl <= (OPT_LOCK)&&(i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
 	end
 
 	assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 	assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
 
 `ifdef	FORMAL
+// ifdef DCACHE
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
+	////////////////////////////////////////////////
+	//
+	// Reset properties
+	//
+	////////////////////////////////////////////////
+	//
+	//
 	always @(*)
 	if(!f_past_valid)
 		assume(i_reset);
@@ -574,11 +631,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		assert(lock_lcl == 0);
 	end
 
-	////////////////////////////
+	////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 	always @(*)
 	if (o_pipe_stalled)
 		assume(!i_pipe_stb);
@@ -598,11 +657,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			assume($stable(i_data));
 	end
 
-	////////////////////////////
+	////////////////////////////////////////////////
 	//
 	// Wishbone properties
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 	localparam	F_LGDEPTH=LS+1;
 	wire	f_cyc, f_stb;
 
@@ -614,7 +675,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
 	fwb_master #(
-		.AW(AW), .F_MAX_STALL(1),
+		.AW(AW), .DW(DW), .F_MAX_STALL(1),
 			.F_MAX_ACK_DELAY(1),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS((1<<LS)),
@@ -622,50 +683,120 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			.F_OPT_DISCONTINUOUS(0),
 			.F_OPT_CLK2FFLOGIC(0)
 		) fwb(i_clk, i_reset,
-			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, 4'hf,
+			cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, 4'hf,
 				i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 		f_nreqs, f_nacks, f_outstanding);
 
-	////////////////////////////
+	////////////////////////////////////////////////
 	//
 	// Arbitrary address properties
 	//
-	////////////////////////////
-	wire	[AW-1:0]	f_const_addr;
-	wire	[AW-LS-1:0]	f_const_tag;
+	////////////////////////////////////////////////
+	//
+	//
+	wire	[AW:0]		f_const_addr;
+	wire	[AW-LS-1:0]	f_const_tag, f_ctag_here, f_wb_tag;
 	wire	[CS-LS-1:0]	f_const_tag_addr;
 	wire			f_const_buserr;
-	reg	[DW-1:0]	f_const_data;
-	reg	[AW-1:0]	f_pending_addr;
+	reg	[DW-1:0]	f_const_data, f_cmem_here;
+	reg	[AW:0]		f_pending_addr;
+	reg			f_pending_rd;
 
 	assign	f_const_addr   = $anyconst;
 	assign	f_const_buserr = $anyconst;
 	assign	f_const_tag    = f_const_addr[AW-1:LS];
 	assign	f_const_tag_addr = f_const_addr[CS-1:LS];
+	assign	f_cmem_here    = c_mem[f_const_addr[CS-1:0]];
+	assign	f_ctag_here    = c_vtags[f_const_addr[CS-1:LS]];
+	assign	f_wb_tag       = o_wb_addr[AW-1:LS];
+
+	generate if ((AW > DW - 8)&&(OPT_LOCAL_BUS))
+	begin
+
+		always @(*)
+		if (f_const_addr[AW])
+			assume(&f_const_addr[(AW-1):(DW-8)]);
+		else
+			assume(!&f_const_addr[(AW-1):(DW-8)]);
+	end endgenerate
+
+	reg	[AW-1:0]	wb_start;
+	assign	wb_start = (f_stb) ? (o_wb_addr - f_nreqs) : o_wb_addr;
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&((!$past(i_pipe_stb))||(!$past(i_op))))
+	if ((f_past_valid)&&(!i_reset)&&(!f_const_buserr)) // &&((!$past(i_pipe_stb))||(!$past(i_op))))
 	begin
-		if ((c_v[f_const_tag_addr])
-			&&(c_vtags[f_const_tag_addr] ==f_const_addr[AW-1:LS]))
-			assert(c_mem[f_const_addr[CS-1:0]] == f_const_data);
+		if ((cyc)&&(o_wb_we)&&(f_stb)
+				&&(wb_start[AW-1:0] == f_const_addr[AW-1:0])
+				&&(( (o_wb_stb_lcl)&&(f_const_addr[AW]))
+				     ||((o_wb_stb_gbl)&&(!f_const_addr[AW])) ))
+			assert(o_wb_data == f_const_data);
+		else if ((!f_const_addr[AW])&&(c_v[f_const_tag_addr])
+			&&(f_ctag_here ==f_const_addr[AW-1:LS]))
+		begin
+			if ((c_wr)&&(c_waddr[CS-1:0] == f_const_addr[CS-1:0]))
+				assert(c_wdata == f_const_data);
+			else
+				assert(f_cmem_here == f_const_data);
+		end
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(state == `DC_READC))
+	begin
+		assert(f_wb_tag == r_ctag);
+		if ((wb_start[AW-1:LS] == f_const_tag)
+			&&(!c_v[f_const_tag_addr])
+			&&(f_const_addr[AW] == r_wb_cyc_lcl)
+			&&(f_nacks > f_const_addr[LS-1:0]))
+		begin
+			// We are reading the cache line containing our
+			// constant address f_const_addr.  Make sure the data
+			// is correct.
+			if ((c_wr)&&(c_waddr[CS-1:0] == f_const_addr[CS-1:0]))
+				assert(c_wdata == f_const_data);
+			else
+				assert(f_cmem_here == f_const_data);
+		end
+
+		if (f_nacks > 0)
+			assert(!c_v[wb_start[CS-1:LS]]);
+	end
+
+	always @(posedge i_clk)
+	if ((state == `DC_READC)&&(f_nacks > 0))
+	begin
+		assert(c_vtags[wb_start[(CS-1):LS]] <= wb_start[(AW-1):LS]);
+		assert(c_vtags[wb_start[(CS-1):LS]] <= r_addr[AW-1:LS]);
 	end
 
 	wire	[AW-1:0]	f_cache_waddr;
 	wire			f_this_cache_waddr;
 
-	assign	f_cache_waddr[AW-1:LS] = c_vtags[c_waddr[CS-1:LS]];
-	assign	f_cache_waddr[LS-1: 0] = c_waddr;
-	assign	f_this_cache_waddr = (f_cache_waddr == f_const_addr);
-	always @(posedge i_clk)
-	if ((f_past_valid)&&((state == `DC_READC)||($past(state)==`DC_READC)))
+	always @(*)
 	begin
-		if ((c_wr)&&(f_this_cache_waddr)&&(state == `DC_READC))
+		// f_cache_waddr[AW-1:LS] = c_vtags[c_waddr[CS-1:CS-LS]];
+		f_cache_waddr[AW-1:LS] = wb_start[AW-1:LS];
+		f_cache_waddr[CS-1: 0] = c_waddr[CS-1:0];
+	end
+
+	assign	f_this_cache_waddr = (!f_const_addr[AW])
+				&&(f_cache_waddr == f_const_addr[AW-1:0]);
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(state == `DC_READC))
+	begin
+		if ((c_wr)&&(c_waddr[LS-1:0] != 0)&&(f_this_cache_waddr))
 			assert(c_wdata == f_const_data);
 	end
 
+	// wire	w_a, w_b, w_c, w_d, w_all;
+	// assign	w_a = i_pipe_stb;
+	// assign	w_b = (i_addr[(AW-1):0] == 
 	always @(posedge i_clk)
-	if ((i_pipe_stb)&&(i_addr[(AW-1):0] == f_const_addr)&&(i_op))
+	if ((i_pipe_stb)&&(i_addr[(AW-1):0] == f_const_addr[AW-1:0])
+			&&(f_const_addr[AW] == ((OPT_LOCAL_BUS)
+						&&(&i_addr[(DW-1):(DW-8)])))
+			&&(i_op))
 		f_const_data <= i_data;
 
 	initial	f_pending_addr = 0;
@@ -673,25 +804,66 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if (i_reset)
 		f_pending_addr <= 0;
 	else if (!o_busy)
-		f_pending_addr <= i_addr[(AW-1):0];
+		f_pending_addr <= { (OPT_LOCAL_BUS)&&(&i_addr[DW-1:DW-8]),
+					i_addr[(AW-1):0] };
+
+	initial	f_pending_rd = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_pending_rd <= 0;
+	else if ((!o_busy)&&(i_pipe_stb))
+		f_pending_rd <= (!i_op);
+	else if (o_valid)
+		f_pending_rd <= 1'b0;
 
 	always @(*)
-		assert(r_addr == f_pending_addr);
+	if ((state == `DC_READC)&&(!f_stb))
+		assert(f_nreqs == (1<<LS));
+
+	always @(*)
+	if ((state == `DC_READC)&&(f_stb))
+		assert(f_nreqs == { 1'b0, o_wb_addr[LS-1:0] });
+
+	always @(posedge i_clk)
+	if (state == `DC_READC)
+	begin
+		if ($past(i_wb_ack))
+			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
+		else if (f_nacks > 0)
+		begin
+			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
+			assert(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]);
+		end
+	end
+
+	always @(*)
+		assert(r_addr == f_pending_addr[AW-1:0]);
+	always @(*)
+	if (f_pending_addr[AW])
+	begin
+		assert(state != `DC_READC);
+		assert((!o_wb_we)||(!o_wb_cyc_gbl));
+	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(o_valid)&&($past(f_pending_addr) == f_const_addr))
 	begin
 		if (f_const_buserr)
 			assert(o_err);
-		else
+		else if (f_pending_rd)
 			assert(o_data == f_const_data);
 	end
 
-	wire	[AW-1:0]	f_return_address;
+	wire	[AW:0]		f_return_address;
 	wire			f_this_return;
 
+	assign	f_return_address[AW]      = o_wb_cyc_lcl;
 	assign	f_return_address[AW-1:LS] = o_wb_addr[AW-1:LS];
-	assign	f_return_address[LS-1:0]
+	always @(*)
+	if (state == `DC_READS)
+		f_return_address[LS-1:0] = o_wb_addr[LS-1:0];
+	else
+		f_return_address[LS-1:0]
 				= (o_wb_addr[LS-1:0] - f_outstanding[LS-1:0]);
 	assign	f_this_return = (f_return_address == f_const_addr);
 	always @(*)
@@ -699,16 +871,33 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	begin
 		if (f_const_buserr)
 			assume(!i_wb_ack);
-		else
+		else begin
 			assume(!i_wb_err);
-		assume(i_wb_data == f_const_data);
+			assume(i_wb_data == f_const_data);
+		end
 	end
 
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	// Checking the lock
+	//
+	////////////////////////////////////////////////
+	//
+	//
+
+	always @(*)
+		assert((!lock_gbl)||(!lock_lcl));
+	always @(*)
+	if (!OPT_LOCK)
+		assert((!lock_gbl)&&(!lock_lcl));
+
+	////////////////////////////////////////////////
 	//
 	// State based properties
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 
 	always @(*)
 	if (state == `DC_IDLE)
@@ -723,36 +912,178 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		assert( o_wb_cyc_gbl);
 		assert(!o_wb_cyc_lcl);
 		assert(!o_wb_we);
+		assert(r_rd_pending);
 		if (($past(cyc))&&(!$past(o_wb_stb_gbl)))
 			assert(!o_wb_stb_gbl);
 	end
 
-	////////////////////////////
+	always @(*)
+	if (state == `DC_READC)
+		assert(!o_wb_we);
+	else if (state == `DC_READS)
+		assert(!o_wb_we);
+	else if (state == `DC_WRITE)
+		assert(o_wb_we);
+
+	always @(*)
+	if (state == `DC_IDLE)
+		assert(!cyc);
+	else
+		assert(cyc);
+
+	always @(*)
+	if (state != `DC_IDLE)
+		assert(o_busy);
+
+	always @(*)
+		assert(cyc == ((r_wb_cyc_gbl)||(r_wb_cyc_lcl)));
+
+	always @(*)
+	if ((cyc)&&(o_wb_we))
+		assert(!r_rd_pending);
+
+	always @(*)
+	if ((f_nreqs == f_nacks)&&(!f_stb))
+		assert(!cyc);
+
+	always @(posedge i_clk)
+	if (state == `DC_READC)
+		assert(((SDRAM_BIT >0)&&(o_wb_addr[SDRAM_BIT]))
+				||(  (FLASH_BIT >0)&&(o_wb_addr[FLASH_BIT]))
+				||(  (BLKRAM_BIT>0)&&(o_wb_addr[BLKRAM_BIT])));
+	else if (state == `DC_READS)
+		assert(((lock_gbl)||(i_lock))
+			||(r_wb_cyc_lcl)
+			||(((SDRAM_BIT==0)||(!o_wb_addr[SDRAM_BIT]))
+			&&((FLASH_BIT ==0)||(!o_wb_addr[FLASH_BIT]))
+			&&((BLKRAM_BIT==0)||(!o_wb_addr[BLKRAM_BIT]))));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(OPT_LOCK)&&($past(i_lock))
+			&&((!$past(o_valid)) || ($past(i_pipe_stb))))
+		assume($stable(i_lock));
+
+
+	////////////////////////////////////////////////
 	//
 	// Ad-hoc properties
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 
 	always @(*)
-		assert(cyc == f_cyc);
+	if (cyc)
+		assert(f_cyc);
 
-	////////////////////////////
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(cyc))&&(!c_wr)&&(last_tag_valid)
+			&&(!r_rd_pending))
+		assert((c_v[last_tag[(CS-LS-1):0]])
+			&&(c_vtags[last_tag[(CS-LS-1):0]] == last_tag));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(last_tag == f_const_tag)&&(f_const_buserr)
+			&&(!f_const_addr[AW]))
+		assert(!last_tag_valid);
+
+	always @(*)
+		assert((SDRAM_BIT  == 0)||(SDRAM_BIT  < ADDRESS_WIDTH));
+	always @(*)
+		assert((FLASH_BIT  == 0)||(FLASH_BIT  < ADDRESS_WIDTH));
+	always @(*)
+		assert((BLKRAM_BIT == 0)||(BLKRAM_BIT < ADDRESS_WIDTH));
+
+	always @(*)
+	if (!OPT_LOCAL_BUS)
+	begin
+		assert(r_wb_cyc_lcl == 1'b0);
+		assert(o_wb_stb_lcl == 1'b0);
+		assert(lock_lcl == 1'b0);
+	end
+
+	always @(*)
+	if (f_const_buserr)
+	begin
+		assert((!c_v[f_const_tag_addr])||(f_const_addr[AW])
+			||(f_ctag_here != f_const_tag));
+
+		if ((state == `DC_READC)&&(wb_start[AW-1:LS] == f_const_tag))
+		begin
+			assert(f_nacks <= f_const_tag[LS-1:0]);
+			if (f_nacks == f_const_tag[LS-1:0])
+				assume(!i_wb_ack);
+		end
+	end
+
+	always @(posedge i_clk)
+	if ((state == `DC_READC)&&(!stb))
+	begin
+		assert(o_wb_addr[LS-1:0] == 0);
+		assert(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
+	end else if ((state == `DC_READC)&&(stb))
+	begin
+		assert(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
+		assert(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
+	end
+
+	always @(posedge i_clk)
+	if (state == `DC_READC)
+	begin
+		if (f_nacks < (1<<LS)-1)
+			assert(!end_of_line);
+		else if (f_nacks == (1<<LS)-1)
+			assert(end_of_line);
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(r_rd)&&(!$past(i_reset)))
+	begin
+		assert((o_busy)||(r_svalid));
+	end
+
+/*
+	wire	[LGNLINES-1:0]	f_const_vtag_addr;
+	wire	[AW-1:LGNLINES]	f_const_vtag;
+	assign	f_const_vtag_addr = $anyconst;
+	assign	f_const_vtag = c_vtags[f_const_vtag_addr];
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(f_past_valid)))
+		assert(f_const_vtag[LGNLINES-1:0]	
+			== f_const_vtag_addr[LGNLINES-1:0]);
+*/
+
+	////////////////////////////////////////////////
 	//
 	// Cover statements
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 
 	always @(posedge i_clk)
 		cover(o_valid);
 
-	////////////////////////////
+	////////////////////////////////////////////////
 	//
 	// Carelesss assumption section
 	//
-	////////////////////////////
+	////////////////////////////////////////////////
+	//
+	//
 	always @(*)
-		assume(w_cachable);
-	always @(*)
-		assume((!i_wb_err)&&(f_const_buserr == 1'b0));
+	if((OPT_LOCK)&&(OPT_LOCAL_BUS))
+	begin
+		if ((i_lock)&&(o_wb_cyc_gbl)&&(i_pipe_stb))
+			assume(!&i_addr[(DW-1):(DW-8)]);
+		else if ((i_lock)&&(o_wb_cyc_lcl)&&(i_pipe_stb))
+			assume(&i_addr[(DW-1):(DW-8)]);
+	end
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(cyc))&&(!cyc))
+		assume((!i_wb_err)&&(!i_wb_ack));
+
+
 `endif
 endmodule
