@@ -40,7 +40,7 @@
 //	virtual page size--lest in the middle of reading a page a TLB miss
 //	take place referencing only a part of the cacheable page.
 //
-//	
+//
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -93,7 +93,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
 	localparam	CS = LGCACHELEN; // Number of bits in a cache address
 	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
-	localparam	LGAUX = 3; // log_2 of the maximum number of piped data 
+	localparam	LGAUX = 3; // log_2 of the maximum number of piped data
 	localparam	DW = 32; // Bus data width
 	input			i_clk, i_reset;
 	// Interface from the CPU
@@ -505,7 +505,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 			if ((stb)&&(!i_wb_stall)&&(i_pipe_stb))
 				o_wb_addr <= i_addr[(AW+1):2];
-			
+
 			if (((i_wb_ack)&&(last_ack))||(i_wb_err))
 			begin
 				state        <= `DC_IDLE;
@@ -525,7 +525,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	// line has already been determined, as have the write value and address
 	// on the last clock.  Further, this structure is defined to match the
 	// block RAM design of as many architectures as possible.
-	// 
+	//
 	always @(posedge i_clk)
 	if (c_wr)
 	begin
@@ -1146,17 +1146,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			||(c_wsel == 4'h4)
 			||(c_wsel == 4'h2)
 			||(c_wsel == 4'h1));
-
-/*
-	wire	[LGNLINES-1:0]	f_const_vtag_addr;
-	wire	[AW-1:LGNLINES]	f_const_vtag;
-	assign	f_const_vtag_addr = $anyconst;
-	assign	f_const_vtag = c_vtags[f_const_vtag_addr];
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(f_past_valid)))
-		assert(f_const_vtag[LGNLINES-1:0]	
-			== f_const_vtag_addr[LGNLINES-1:0]);
-*/
 
 	////////////////////////////////////////////////
 	//
