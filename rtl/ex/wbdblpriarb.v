@@ -131,6 +131,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
 	input	wire			i_ack, i_stall, i_err;
+`ifdef	FORMAL
 	output	wire	[(F_LGDEPTH-1):0]
 			f_nreqs_a, f_nacks_a, f_outstanding_a,
 			f_nreqs_b, f_nacks_b, f_outstanding_b,
@@ -138,6 +139,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b,
 			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a,
 			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b;
+`endif
 
 	// All of our logic is really captured in the 'r_a_owner' register.
 	// This register determines who owns the bus.  If no one is requesting
