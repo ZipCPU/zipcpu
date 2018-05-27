@@ -261,7 +261,7 @@
 `endif	// OPT_SINGLE_FETCH
 //
 //
-// [EXPERIMENTAL]
+// [EXPERIMENTAL--and not (yet) finished]
 // OPT_MMU determines whether or not an MMU will be included in the ZipSystem
 // containing the ZipCPU.  When set, the ZipCPU will route all memory accesses
 // through the MMU as an address translator, creating a form of Virtual memory.

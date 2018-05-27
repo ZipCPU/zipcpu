@@ -550,6 +550,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 		assign	mmu_mskadr = 0;
 	end endgenerate
 `endif
+
 	/////////////////////////////////////////////////
 	//
 	// Handle bus errors here.  If a bus read request
