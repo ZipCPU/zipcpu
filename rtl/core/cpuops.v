@@ -40,9 +40,11 @@
 `default_nettype	none
 //
 //
+`include "cpudefs.v"
+//
 module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
-	parameter	IMPLEMENT_MPY = 1;
+	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
 	input	wire	i_clk, i_reset, i_stb;
 	input	wire	[3:0]	i_op;
 	input	wire	[31:0]	i_a, i_b;
@@ -112,7 +114,7 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 `else
 `define	MPYOP	mpyop
 `endif
-	`MPYOP thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
+	`MPYOP #(.IMPLEMENT_MPY(IMPLEMENT_MPY)) thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
 		i_a, i_b, mpydone, mpybusy, mpy_result, mpyhi);
 
 	//
