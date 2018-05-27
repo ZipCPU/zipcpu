@@ -370,9 +370,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire		alu_valid, alu_busy;
 	wire		set_cond;
 	reg		alu_wR, alu_wF;
-	wire		alu_gie, alu_illegal;
-	wire		alu_sreg_stall;
-
+	wire		alu_gie, alu_illegal, alu_sreg_stall;
 
 
 	wire	mem_ce, mem_stalled;
@@ -415,7 +413,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[(AW+1):0]	upc;
 	//}}}
 
-	parameter	F_LGDEPTH=8;
 `ifdef	FORMAL
 	wire	[F_LGDEPTH-1:0]
 		f_gbl_arb_nreqs, f_gbl_arb_nacks, f_gbl_arb_outstanding,
@@ -457,7 +454,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	cc_invalid_for_dcd;
 	wire	pending_sreg_write;
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_OP_STALL
 		reg	r_cc_invalid_for_dcd;
 		always @(posedge i_clk)
 			r_cc_invalid_for_dcd <= (wr_flags_ce)
@@ -556,7 +553,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//	through the ALU.  Break instructions are not allowed through
 	//	the ALU.
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_ALU_STALL
 		assign	alu_stall = (((master_stall)||(mem_rdbusy))&&(op_valid_alu)) //Case 1&2
 			||(wr_reg_ce)&&(wr_write_cc);
 		assign	alu_ce = (master_ce)&&(op_valid_alu)&&(!alu_stall)
@@ -617,6 +614,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	assign	alu_sreg_stall = ((op_valid_alu)&&(mem_busy)
 			&&(op_wR)&&(op_R[4:1] == { gie, 3'h7}));
+
 	// ALU, DIV, or FPU CE ... equivalent to the OR of all three of these
 	assign	adf_ce_unconditional =
 			(!master_stall)&&(!op_valid_mem)&&(!mem_rdbusy)
@@ -765,7 +763,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 	//{{{
 	generate if (OPT_PIPELINED_BUS_ACCESS)
-	begin
+	begin : GEN_OP_PIPE
 		reg		r_op_pipe;
 
 		initial	r_op_pipe = 1'b0;
@@ -784,7 +782,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			r_op_pipe <= 1'b0;
 		else if (op_ce)
 			r_op_pipe <= (dcd_pipe)&&(op_valid_mem);
-		else if ((wr_reg_ce)&&(wr_reg_ce == op_Bid[4:0]))
+		else if ((wr_reg_ce)&&(wr_reg_id == op_Bid[4:0]))
 			r_op_pipe <= 1'b0;
 		else if (mem_ce) // Clear us any time an op_ is clocked in
 			r_op_pipe <= 1'b0;
@@ -1067,7 +1065,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `endif
 
 	reg	[3:0]	r_op_opn;
-	reg		r_op_gie;
 
 	initial	op_pc= 0;
 	always @(posedge i_clk)
@@ -1261,6 +1258,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		assign	div_valid = 1'b0;
 		assign	div_result= 32'h00;
 		assign	div_flags = 4'h0;
+
+		// Make verilator happy here
+		// verilator lint_off UNUSED
+		wire	unused_divide;
+		assign	unused_divide = div_ce;
+		// verilator lint_on  UNUSED
 	end endgenerate
 	//}}}
 
@@ -1310,7 +1313,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		end
 
 	generate if (OPT_CIS)
-	begin
+	begin : GEN_ALU_PHASE
 
 		reg	r_alu_phase;
 		initial	r_alu_phase = 1'b0;
@@ -1404,7 +1407,7 @@ assign	alu_gie = gie;
 	//}}}
 
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_ALU_PC
 		reg	[(AW+1):0]	r_alu_pc;
 		initial	r_alu_pc = 0;
 		always @(posedge i_clk)
@@ -1499,7 +1502,7 @@ assign	alu_gie = gie;
 	// Memory interface
 	//{{{
 	generate if (OPT_PIPELINED_BUS_ACCESS)
-	begin
+	begin : MEM
 
 		pipemem	#(.ADDRESS_WIDTH(AW),
 			.IMPLEMENT_LOCK(OPT_LOCK),
@@ -1523,7 +1526,7 @@ assign	alu_gie = gie;
 `endif
 			);
 		//}}}
-	end else begin
+	end else begin : MEM
 
 		memops	#(.ADDRESS_WIDTH(AW),
 			.IMPLEMENT_LOCK(OPT_LOCK),
@@ -1654,7 +1657,7 @@ assign	alu_gie = gie;
 		if (wr_reg_ce)
 		begin
 			if (OPT_NO_USERMODE)
-				regset[wr_reg_id[3:0]] <= wr_gpreg_vl;
+				regset[{1'b0,wr_reg_id[3:0]}] <= wr_gpreg_vl;
 			else
 				regset[wr_reg_id] <= wr_gpreg_vl;
 		end
@@ -1716,7 +1719,7 @@ assign	alu_gie = gie;
 			break_en <= wr_spreg_vl[`CPU_BREAK_BIT];
 
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_PENDING_BREAK
 		reg	r_break_pending;
 
 		initial	r_break_pending = 1'b0;
@@ -1752,7 +1755,7 @@ assign	alu_gie = gie;
 	// instruction: users are not allowed to halt the CPU.
 	initial	sleep = 1'b0;
 	generate if (OPT_NO_USERMODE)
-	begin
+	begin : GEN_NO_USERMODE_SLEEP
 		reg	r_sleep_is_halt;
 		initial	r_sleep_is_halt = 1'b0;
 		always @(posedge i_clk)
@@ -1772,7 +1775,7 @@ assign	alu_gie = gie;
 			else if ((wr_reg_ce)&&(wr_write_cc)
 					&&(wr_spreg_vl[`CPU_GIE_BIT]))
 				sleep <= 1'b1;
-	end else begin
+	end else begin : GEN_SLEEP
 
 		always @(posedge i_clk)
 			if ((i_reset)||(w_switch_to_interrupt))
@@ -1813,7 +1816,7 @@ assign	alu_gie = gie;
 		assign	w_switch_to_interrupt    = 1'b0;
 		assign	w_release_from_interrupt = 1'b0;
 
-	end else begin
+	end else begin : GEN_PENDING_INTERRUPT
 		reg	r_pending_interrupt;
 
 		always @(posedge i_clk)
@@ -1867,7 +1870,7 @@ assign	alu_gie = gie;
 	generate if (OPT_NO_USERMODE)
 	begin
 		assign	gie = 1'b0;
-	end else begin
+	end else begin : SET_GIE
 
 		reg	r_gie;
 
@@ -1888,7 +1891,7 @@ assign	alu_gie = gie;
 		assign	trap   = 1'b0;
 		assign	ubreak = 1'b0;
 
-	end else begin
+	end else begin : SET_TRAP_N_UBREAK
 
 		reg	r_trap;
 
@@ -1934,7 +1937,7 @@ assign	alu_gie = gie;
 
 		assign	ill_err_u = 1'b0;
 
-	end else begin
+	end else begin : SET_USER_ILLEGAL_INSN
 
 		reg	r_ill_err_u;
 
@@ -1972,7 +1975,7 @@ assign	alu_gie = gie;
 
 		assign	ubus_err_flag = 1'b0;
 
-	end else begin
+	end else begin : SET_USER_BUSERR
 
 		reg	r_ubus_err_flag;
 
@@ -2063,7 +2066,7 @@ assign	alu_gie = gie;
 	end endgenerate
 
 	generate if (OPT_CIS)
-	begin
+	begin : GEN_HALT_PHASES
 		reg		r_ihalt_phase;
 
 		initial	r_ihalt_phase = 0;
@@ -2118,7 +2121,7 @@ assign	alu_gie = gie;
 
 		assign	upc = {(AW+2){1'b0}};
 
-	end else begin
+	end else begin : SET_USER_PC
 
 		reg	[(AW+1):0]	r_upc;
 
@@ -2227,7 +2230,7 @@ assign	alu_gie = gie;
 	always @(posedge i_clk)
 	if (OPT_NO_USERMODE)
 	begin
-		o_dbg_reg <= regset[i_dbg_reg[3:0]];
+		o_dbg_reg <= regset[{1'b0,i_dbg_reg[3:0]}];
 		if (i_dbg_reg[3:0] == `CPU_PC_REG)
 			o_dbg_reg <= w_debug_pc;
 		else if (i_dbg_reg[3:0] == `CPU_CC_REG)
