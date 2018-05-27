@@ -370,7 +370,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				// back to the first
 				r_phase <= 0;
 			else
-				r_phase <= (i_instruction[`CISBIT]);
+				r_phase <= (i_instruction[`CISBIT])&&(!i_illegal);
 		end else if (i_ce)
 			r_phase <= 1'b0;
 
@@ -781,7 +781,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSUME(i_pc[1:0] == 2'b00);
 	always @(*)
 	if ((o_valid)&&(!o_early_branch))
-		`ASSERT(o_pc[1] == o_phase);
+		`ASSERT((o_illegal)||(o_pc[1] == o_phase));
 
 	wire	[4+21+32+1+4+1+4+11+AW+3+23-1:0]	f_result;
 	assign	f_result = { o_valid, o_phase, o_illegal,
@@ -1456,6 +1456,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 			if ((!$past(o_phase))&&($past(i_ce))
 					&&($past(pf_valid))
+					&&(!$past(i_illegal))
 					&&(!$past(w_ljmp_dly))
 					&&($past(i_instruction[`CISBIT]))
 					&&((!$past(w_dcdR_pc))
@@ -1463,6 +1464,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				`ASSERT(o_phase);
 			else if (($past(o_phase))&&($past(i_ce)))
 				`ASSERT(!o_phase);
+			if (($past(i_ce))&&(!$past(o_phase))
+				&&($past(i_illegal))&&($past(i_pf_valid)))
+				`ASSERT((o_illegal)&&(!o_phase));
 
 			`ASSERT((!o_phase)||(!o_ljmp));
 		end
@@ -1497,7 +1501,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				if (o_valid)
 				begin
 					`ASSERT(o_pc[1]);
-					`ASSERT(o_phase);
+					`ASSERT((o_illegal)||(o_phase));
 				end
 			end
 		end
@@ -1692,6 +1696,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(*)
 	`ASSERT(o_dcdR == o_dcdA);
 
+	always @(*)
+	if ((o_valid)&&(o_phase))
+		`ASSERT(!o_illegal);
 `ifdef	IDECODE
 
 	wire	fc_illegal, fc_wF, fc_ALU, fc_M, fc_DV, fc_FP, fc_break,
