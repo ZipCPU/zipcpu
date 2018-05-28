@@ -77,7 +77,17 @@ module	wbdblpriarb(i_clk, i_reset,
 	i_b_cyc_a,i_b_cyc_b,i_b_stb_a,i_b_stb_b,i_b_we,i_b_adr, i_b_dat, i_b_sel, o_b_ack, o_b_stall, o_b_err,
 	// Both buses
 	o_cyc_a, o_cyc_b, o_stb_a, o_stb_b, o_we, o_adr, o_dat, o_sel,
-		i_ack, i_stall, i_err);
+		i_ack, i_stall, i_err
+`ifdef	FORMAL
+			, f_nreqs_a, f_nacks_a, f_outstanding_a,
+			f_nreqs_b, f_nacks_b, f_outstanding_b,
+			f_a_nreqs_a, f_a_nacks_a, f_a_outstanding_a,
+			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b,
+			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a,
+			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b
+`endif
+	);
+
 	parameter			DW=32, AW=32;
 	//
 	// ZERO_ON_IDLE uses more logic than the alternative.  It should be
@@ -90,6 +100,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	//
 	//
 	parameter			F_LGDEPTH = 3;
+	//
+	//
+	parameter	F_MAX_STALL = 0;
+	parameter	F_MAX_ACK_DELAY=0;
 	//
 	// F_OPT_CLK2FFLOGIC shouldn't be needed.  However, if this component
 	// is being used as a component of a multi-clock formal design, then
@@ -117,6 +131,15 @@ module	wbdblpriarb(i_clk, i_reset,
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
 	input	wire			i_ack, i_stall, i_err;
+`ifdef	FORMAL
+	output	wire	[(F_LGDEPTH-1):0]
+			f_nreqs_a, f_nacks_a, f_outstanding_a,
+			f_nreqs_b, f_nacks_b, f_outstanding_b,
+			f_a_nreqs_a, f_a_nacks_a, f_a_outstanding_a,
+			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b,
+			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a,
+			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b;
+`endif
 
 	// All of our logic is really captured in the 'r_a_owner' register.
 	// This register determines who owns the bus.  If no one is requesting
@@ -312,17 +335,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	end
 
 
-	wire	[(F_LGDEPTH-1):0]
-			f_nreqs_a, f_nacks_a, f_outstanding_a,
-			f_nreqs_b, f_nacks_b, f_outstanding_b,
-			f_a_nreqs_a, f_a_nacks_a, f_a_outstanding_a,
-			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b,
-			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a,
-			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b;
-
-	fwb_master #(.F_MAX_STALL(0),
+	fwb_master #(.AW(AW), .DW(DW),
+			.F_MAX_STALL(F_MAX_STALL),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_MAX_ACK_DELAY(0),
+			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
@@ -330,9 +346,10 @@ module	wbdblpriarb(i_clk, i_reset,
 			o_cyc_a, o_stb_a, o_we, o_adr, o_dat, o_sel,
 			(o_cyc_a)&&(i_ack), i_stall, 32'h0, (o_cyc_a)&&(i_err),
 			f_nreqs_a, f_nacks_a, f_outstanding_a);
-	fwb_master #(.F_MAX_STALL(0),
+	fwb_master #(.AW(AW), .DW(DW),
+			.F_MAX_STALL(F_MAX_STALL),
+			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_MAX_ACK_DELAY(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
@@ -340,7 +357,14 @@ module	wbdblpriarb(i_clk, i_reset,
 			o_cyc_b, o_stb_b, o_we, o_adr, o_dat, o_sel,
 			(o_cyc_b)&&(i_ack), i_stall, 32'h0, (o_cyc_b)&&(i_err),
 			f_nreqs_b, f_nacks_b, f_outstanding_b);
-	fwb_slave  #(.F_MAX_STALL(0),
+
+`ifdef	WBDBLPRIARB
+`define	F_SLAVE	fwb_slave
+`else
+`define	F_SLAVE	fwb_counter
+`endif
+
+	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
@@ -350,7 +374,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			i_a_cyc_a, i_a_stb_a, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
 			(o_cyc_a)&&(o_a_ack), o_a_stall, 32'h0, (o_cyc_a)&&(o_a_err),
 			f_a_nreqs_a, f_a_nacks_a, f_a_outstanding_a);
-	fwb_slave  #(.F_MAX_STALL(0),
+	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
@@ -360,7 +384,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			i_a_cyc_b, i_a_stb_b, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
 			(o_cyc_b)&&(o_a_ack), o_a_stall, 32'h0, (o_cyc_b)&&(o_a_err),
 			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b);
-	fwb_slave  #(.F_MAX_STALL(0),
+	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
@@ -370,7 +394,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			i_b_cyc_a, i_b_stb_a, i_b_we, i_b_adr, i_b_dat, i_b_sel,
 			(o_cyc_a)&&(o_b_ack), o_b_stall, 32'h0, (o_cyc_a)&&(o_b_err),
 			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a);
-	fwb_slave  #(.F_MAX_STALL(0),
+	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
@@ -440,10 +464,10 @@ module	wbdblpriarb(i_clk, i_reset,
 			`ASSUME((i_b_stb_b)&&(!i_b_stb_a));
 
 	always @(posedge i_clk)
-		if ((r_a_owner)&&(i_a_cyc_a))
+		if ((!r_a_owner)&&(i_a_cyc_a))
 			`ASSUME((i_a_stb_a)&&(!i_a_stb_b));
 	always @(posedge i_clk)
-		if ((r_a_owner)&&(i_a_cyc_b))
+		if ((!r_a_owner)&&(i_a_cyc_b))
 			`ASSUME((i_a_stb_b)&&(!i_a_stb_a));
 
 `endif

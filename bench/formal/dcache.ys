@@ -1,0 +1,6 @@
+read_verilog -D DCACHE -formal ../../rtl/core/dcache.v
+read_verilog -D DCACHE -formal ../../rtl/ex/fwb_master.v
+prep -top dcache -nordff
+opt
+clean
+write_smt2 -wires dcache.smt2

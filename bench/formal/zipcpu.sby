@@ -1,0 +1,74 @@
+[tasks]
+prove_first	first_half  full_proof
+prove_second	second_half full_proof
+nopipe_first	first_half  nopipe
+nopipe_second	second_half nopipe
+lowlogic_first	first_half  lowlogic nopipe
+lowlogic_second	second_half lowlogic nopipe
+
+[options]
+mode prove
+depth 18
+
+[engines]
+smtbmc boolector
+
+[script]
+first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v
+second_half: read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
+
+chparam -set IMPLEMENT_FPU    0 zipcpu
+
+full_proof:
+chparam -set IMPLEMENT_MPY    1 zipcpu
+chparam -set IMPLEMENT_DIVIDE 1 zipcpu
+chparam -set EARLY_BRANCHING  1 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    1 zipcpu
+
+nopipe:
+chparam -set IMPLEMENT_MPY    0 zipcpu
+chparam -set IMPLEMENT_DIVIDE 0 zipcpu
+chparam -set EARLY_BRANCHING  0 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    0 zipcpu
+
+lowlogic:
+chparam -set OPT_CIS 0 zipcpu
+--
+
+read_verilog -D ZIPCPU -formal cpuops.v
+read_verilog -D ZIPCPU -formal memops.v
+read_verilog -D ZIPCPU -formal pipemem.v
+read_verilog -D ZIPCPU -formal idecode.v
+read_verilog -D ZIPCPU -formal wbdblpriarb.v
+#
+read_verilog -D ZIPCPU -formal fwb_counter.v
+read_verilog -D ZIPCPU -formal fwb_master.v
+read_verilog -D ZIPCPU -formal fwb_slave.v
+read_verilog -D ZIPCPU -formal f_idecode.v
+read_verilog -D ZIPCPU -formal abs_prefetch.v
+read_verilog -D ZIPCPU -formal abs_div.v
+read_verilog -D ZIPCPU -formal abs_mpy.v
+#
+
+prep -top zipcpu
+
+[files]
+../../rtl/core/zipcpu.v
+../../rtl/core/cpuops.v
+../../rtl/core/memops.v
+../../rtl/core/pipemem.v
+../../rtl/core/idecode.v
+../../rtl/ex/wbdblpriarb.v
+#
+../../rtl/ex/fwb_counter.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v
+#
+../../rtl/cpudefs.v
+f_idecode.v
+abs_prefetch.v
+abs_div.v
+abs_mpy.v
+#

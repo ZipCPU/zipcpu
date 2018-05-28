@@ -2,3 +2,17 @@
 *.smt2
 *.yslog
 *.blif
+zipcpu
+old
+zipcpu_abc
+zipcpu_prove_first
+zipcpu_prove_second
+zipcpu_pipeline
+zipcpu_nopipe_first
+zipcpu_nopipe_second
+zipcpu_lowlogic_first
+zipcpu_lowlogic_second
+dcache_full
+dcache_bare
+dcache_nolock_system
+dcache_nolock_nolocal

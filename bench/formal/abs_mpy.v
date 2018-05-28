@@ -46,6 +46,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 	// The following parameter selects which multiply algorithm we use.
 	// Timing performance is strictly dependent upon it.
 	parameter	IMPLEMENT_MPY = 1;
+	parameter	MAXDELAY = 3;
 	input	wire		i_clk, i_reset, i_stb;
 	input	wire	[1:0]	i_op; // 2'b00=MPY, 2'b10=MPYUHI, 2'b11=MPYSHI
 	input	wire	[31:0]	i_a, i_b;
@@ -67,8 +68,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		assign	o_valid    = 1'b1;
 		always @(*) o_hi = 1'b0; // Not needed
 
-	end else //
-	begin // Our single clock option (no extra clocks)
+	end else begin // Our single clock option (no extra clocks)
 
 		wire	[2:0]	next_delay_to_valid;
 
@@ -78,6 +78,10 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		reg	[2:0]	delay_to_valid;
 		reg		r_busy;
 
+		always @(*)
+			assume((MAXDELAY == 0)
+				||(next_delay_to_valid < MAXDELAY));
+
 		initial	delay_to_valid = 3'h0;
 		always @(posedge i_clk)
 		if (i_reset)
@@ -86,6 +90,10 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 			delay_to_valid <= next_delay_to_valid;
 		else if (delay_to_valid > 0)
 			delay_to_valid <= delay_to_valid - 1'b1;
+
+		always @(*)
+			assert((MAXDELAY == 0)
+				||(delay_to_valid < MAXDELAY));
 
 		initial	r_busy = 1'b0;
 		always @(posedge i_clk)

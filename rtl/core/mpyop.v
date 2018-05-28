@@ -66,7 +66,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 // o_done
 	generate
 	if (IMPLEMENT_MPY == 0)
-	begin // No multiply support.
+	begin : MPYNONE // No multiply support.
 
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
@@ -80,7 +80,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 		// verilator lint_on  UNUSED
 `endif
 	end else if (IMPLEMENT_MPY == 1)
-	begin // Our single clock option (no extra clocks)
+	begin : MPY1CK // Our single clock option (no extra clocks)
 
 		wire	signed	[63:0]	w_mpy_a_input, w_mpy_b_input;
 
@@ -101,7 +101,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 `endif
 
 	end else if (IMPLEMENT_MPY == 2)
-	begin // Our two clock option (ALU must pause for 1 clock)
+	begin : MPY2CK // Our two clock option (ALU must pause for 1 clock)
 
 		reg	signed	[63:0]	r_mpy_a_input, r_mpy_b_input;
 		always @(posedge i_clk)
@@ -127,7 +127,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 			o_hi  <= i_op[1];
 
 	end else if (IMPLEMENT_MPY == 3)
-	begin // Our three clock option (ALU pauses for 2 clocks)
+	begin : MPY3CK // Our three clock option (ALU pauses for 2 clocks)
 		reg	signed	[63:0]	r_smpy_result;
 		reg		[63:0]	r_umpy_result;
 		reg	signed	[31:0]	r_mpy_a_input, r_mpy_b_input;
@@ -184,7 +184,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 
 		// Results are then set on the third clock
 	end else // if (IMPLEMENT_MPY <= 4)
-	begin // The three clock option
+	begin : MPY4CK // The three clock option
 		reg	[63:0]	r_mpy_result;
 		reg	[31:0]	r_mpy_a_input, r_mpy_b_input;
 		reg		r_mpy_signed;
