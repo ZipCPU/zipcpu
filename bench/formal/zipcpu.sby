@@ -17,8 +17,16 @@ smtbmc boolector
 first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v
 second_half: read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
 
-nopipe:
 chparam -set IMPLEMENT_FPU    0 zipcpu
+
+full_proof:
+chparam -set IMPLEMENT_MPY    1 zipcpu
+chparam -set IMPLEMENT_DIVIDE 1 zipcpu
+chparam -set EARLY_BRANCHING  1 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    1 zipcpu
+
+nopipe:
 chparam -set IMPLEMENT_MPY    0 zipcpu
 chparam -set IMPLEMENT_DIVIDE 0 zipcpu
 chparam -set EARLY_BRANCHING  0 zipcpu
