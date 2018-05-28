@@ -268,7 +268,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//		Variable declarations
 	//
 	//{{{
-	reg	[(AW+1):0]	pf_pc, pf_instruction_pc, pf_request_address;
+	reg	[(AW+1):0]	pf_pc;
+	wire	[(AW+1):0]	pf_request_address, pf_instruction_pc;
 	reg	new_pc;
 	wire	clear_pipeline;
 
@@ -343,20 +344,19 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	reg		op_rA, op_rB;
 	reg	[31:0]	r_op_Av, r_op_Bv;
 	reg	[(AW+1):0]	op_pc;
-	wire	[31:0]	w_op_Av, w_op_Bv;
-	wire	[31:0]	op_Av, op_Bv;
+	wire	[31:0]	w_op_Av, w_op_Bv, op_Av, op_Bv;
+	reg	[31:0]	w_pcB_v, w_pcA_v;
+	reg	[31:0]	w_op_BnI;
 	reg		op_wR, op_wF;
 	wire		op_gie;
 	wire	[3:0]	op_Fl;
 	reg	[6:0]	r_op_F;
 	wire	[7:0]	op_F;
 	wire		op_ce, op_phase, op_pipe;
-	reg	[31:0]	w_op_BnI, w_pcB_v;
 	reg		r_op_break;
 	reg	[3:0]	r_op_opn;
 	wire	w_op_valid;
 	wire	[8:0]	w_cpu_info;
-	wire	[31:0]	w_pcA_v;
 	// Some pipeline control wires
 	reg	op_illegal;
 	wire	op_break;
@@ -845,12 +845,16 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	};
 	//}}}
 
-	assign	w_pcA_v[(AW+1):0] = { (dcd_A[4] == dcd_gie)
-				? { dcd_pc[AW+1:2], 2'b00 }
-				: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
+	always @(*)
+	if ((OPT_NO_USERMODE)||(dcd_A[4] == dcd_gie))
+		w_pcA_v[(AW+1):0] = { dcd_pc[AW+1:2], 2'b00 };
+	else
+		w_pcA_v[(AW+1):0] = { upc[(AW+1):2], uhalt_phase, 1'b0 };
+
 	generate
 	if (AW < 30)
-		assign	w_pcA_v[31:(AW+2)] = 0;
+		always @(*)
+			w_pcA_v[31:(AW+2)] = 0;
 	endgenerate
 
 	generate if (OPT_PIPELINED)
@@ -909,12 +913,15 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			r_op_Av <= wr_gpreg_vl;
 	end
 
-	assign	w_pcB_v[(AW+1):0] = { (dcd_B[4] == dcd_gie)
-					? { dcd_pc[AW+1:2], 2'b00 }
-					: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
+	always @(*)
+	if ((OPT_NO_USERMODE)||(dcd_B[4] == dcd_gie))
+		w_pcB_v[(AW+1):0] = { dcd_pc[AW+1:2], 2'b00 };
+	else
+		w_pcB_v[(AW+1):0] = { upc[(AW+1):2], uhalt_phase, 1'b0 };
 	generate
 	if (AW < 30)
-		assign	w_pcB_v[31:(AW+2)] = 0;
+		always @(*)
+			w_pcB_v[31:(AW+2)] = 0;
 	endgenerate
 
 	always @(*)
@@ -1553,11 +1560,11 @@ assign	alu_gie = gie;
 
 		pipemem	#(.ADDRESS_WIDTH(AW),
 			.IMPLEMENT_LOCK(OPT_LOCK),
-			.WITH_LOCAL_BUS(WITH_LOCAL_BUS),
+			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
 `ifdef	FORMAL
-			.OPT_MAXDEPTH(4'h3),
-`endif
+			, .OPT_MAXDEPTH(4'h3),
 			.F_LGDEPTH(F_LGDEPTH)
+`endif
 			) domem(i_clk,i_reset,
 		///{{{
 			(mem_ce)&&(set_cond), bus_lock,
@@ -1577,8 +1584,10 @@ assign	alu_gie = gie;
 
 		memops	#(.ADDRESS_WIDTH(AW),
 			.IMPLEMENT_LOCK(OPT_LOCK),
-			.WITH_LOCAL_BUS(WITH_LOCAL_BUS),
-			.F_LGDEPTH(F_LGDEPTH)
+			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
+`ifdef	F_LGDEPTH
+			, .F_LGDEPTH(F_LGDEPTH)
+`endif	// F_LGDEPTH
 			) domem(i_clk,i_reset,
 		//{{{
 			(mem_ce)&&(set_cond), bus_lock,
@@ -1604,8 +1613,10 @@ assign	alu_gie = gie;
 
 	// Either the prefetch or the instruction gets the memory bus, but
 	// never both.
-	wbdblpriarb	#(.DW(32),.AW(AW),.F_LGDEPTH(F_LGDEPTH),
-		.F_MAX_STALL(2), .F_MAX_ACK_DELAY(2)
+	wbdblpriarb	#(.DW(32),.AW(AW)
+`ifdef	FORMAL
+		,.F_LGDEPTH(F_LGDEPTH), .F_MAX_STALL(2), .F_MAX_ACK_DELAY(2)
+`endif // FORMAL
 		) pformem(i_clk, i_reset,
 	//{{{
 		// Memory access to the arbiter, priority position

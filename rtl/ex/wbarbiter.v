@@ -109,10 +109,11 @@ module	wbarbiter(i_clk, i_reset,
 	output	wire	[(DW/8-1):0]	o_sel;
 	input	wire			i_ack, i_stall, i_err;
 	//
+`ifdef	FORMAL
 	output	wire	[(F_LGDEPTH-1):0] f_nreqs, f_nacks, f_outstanding,
 			f_a_nreqs, f_a_nacks, f_a_outstanding,
 			f_b_nreqs, f_b_nacks, f_b_outstanding;
-
+`endif
 
 	// Go high immediately (new cycle) if ...
 	//	Previous cycle was low and *someone* is requesting a bus cycle

@@ -60,21 +60,6 @@
 // it handles various instructions within the set:
 //
 //
-// OPT_ILLEGAL_INSTRUCTION is part of a new section of code that is supposed
-// to recognize illegal instructions and interrupt the CPU whenever one such
-// instruction is encountered.  The goal is to create a soft floating point
-// unit via this approach, that can then be replaced with a true floating point
-// unit.  As I'm not there yet, it just catches illegal instructions and
-// interrupts the CPU on any such instruction--when defined.  Otherwise,
-// illegal instructions are quietly ignored and their behaviour is ...
-// undefined. (Many get treated like NOOPs ...)
-//
-// I recommend setting this flag so highly, that I'm likely going to remove
-// the option to turn this off in future versions of this CPU.
-//
-`define	OPT_ILLEGAL_INSTRUCTION
-//
-//
 //
 // OPT_MULTIPLY controls whether or not the multiply is built and included
 // in the ALU by default.  Set this option and a parameter will be set that

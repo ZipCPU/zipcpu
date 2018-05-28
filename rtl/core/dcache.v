@@ -108,7 +108,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	input	[(NAUX-1):0]	i_oreg;	// Aux data, such as reg to write to
 	// Outputs, going back to the CPU
 	output	reg		o_busy;
-	output	wire		o_pipe_stalled, o_valid, o_err;
+	output	wire		o_pipe_stalled;
+	output	reg		o_valid, o_err;
 	output reg [(NAUX-1):0]	o_wreg;
 	output	reg [(DW-1):0]	o_data;
 	// Wishbone bus master outputs
@@ -567,7 +568,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 // 2. The cache, second clock, assuming the data was in the cache at all
 // 3. The cache, after filling the cache
 // 4. The wishbone state machine, upon reading the value desired.
-	wire	[DW-1:0]	pre_data;
+	reg	[DW-1:0]	pre_data;
 	always @(*)
 		if (r_svalid)
 			pre_data = cached_idata;

@@ -637,13 +637,12 @@ module	zipsystem(i_clk, i_reset,
 
 `else	//	INCLUDE_ACCOUNTING_COUNTERS
 
-	generate : ALT_PIC
-	if (EXTERNAL_INTERRUPTS <= 9)
-	begin
+	generate if (EXTERNAL_INTERRUPTS <= 9)
+	begin : ALT_PIC
 		assign	ctri_stall = 1'b0;
 		assign	ctri_data  = 32'h0000;
 		assign	ctri_int   = 1'b0;
-	end else begin
+	end else begin : ALT_PIC
 		icontrol #(EXTERNAL_INTERRUPTS-9)
 				ctri(i_clk, cpu_reset, (ctri_sel),
 					sys_data, ctri_data,

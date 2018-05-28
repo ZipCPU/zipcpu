@@ -286,7 +286,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 
 		always @(*)
-			{ lock_gbl, lock_lcl } <= 2'b00;
+			{ lock_gbl, lock_lcl } = 2'b00;
 	end endgenerate
 
 

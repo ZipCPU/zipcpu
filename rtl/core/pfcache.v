@@ -434,7 +434,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	wraddr    = 0;
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(i_wb_ack))
-			wraddr <= wraddr + 1;
+			wraddr <= wraddr + 1'b1;
 		else if (!o_wb_cyc)
 			wraddr <= { lastpc[(CW+1):PW+2], {(PW){1'b0}} };
 
@@ -449,7 +449,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	o_wb_addr = {(AW){1'b0}};
 	always @(posedge i_clk)
 		if ((o_wb_stb)&&(!i_wb_stall)&&(!last_addr))
-			o_wb_addr[(PW-1):0] <= o_wb_addr[(PW-1):0]+1;
+			o_wb_addr[(PW-1):0] <= o_wb_addr[(PW-1):0]+1'b1;
 		else if (!o_wb_cyc)
 			o_wb_addr <= { lastpc[(AW+1):PW+2], {(PW){1'b0}} };
 
