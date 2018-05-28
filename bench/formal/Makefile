@@ -41,7 +41,7 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcpu
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl

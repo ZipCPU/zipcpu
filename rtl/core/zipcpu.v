@@ -176,9 +176,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
 `endif
 `ifdef	OPT_PIPELINED
-	localparam	[0:0]	OPT_PIPELINED = 1'b1;
+	parameter	[0:0]	OPT_PIPELINED = 1'b1;
 `else
-	localparam	[0:0]	OPT_PIPELINED = 1'b0;
+	parameter	[0:0]	OPT_PIPELINED = 1'b0;
 `endif
 `ifdef	OPT_PIPELINED_BUS_ACCESS
 	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
@@ -187,6 +187,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `endif
 	parameter	[0:0]	IMPLEMENT_LOCK=1;
 	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
+`ifdef	OPT_DCACHE
+	parameter		OPT_LGDCACHE = 10;
+`else
+	parameter		OPT_LGDCACHE = 0;
 
 	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 	localparam	AW=ADDRESS_WIDTH;
@@ -263,21 +267,23 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//		Variable declarations
 	//
 	//{{{
-	reg	[(AW+1):0]	pf_pc;
+	reg	[(AW+1):0]	pf_pc, pf_instruction_pc, pf_request_address;
 	reg	new_pc;
 	wire	clear_pipeline;
-	assign	clear_pipeline = new_pc;
 
-	wire		dcd_stalled;
-	wire		pf_cyc, pf_stb, pf_we, pf_ack, pf_stall, pf_err;
+	wire			dcd_stalled;
+	wire			pf_cyc, pf_stb, pf_we, pf_ack, pf_stall, pf_err;
 	wire	[(AW-1):0]	pf_addr;
 	wire	[31:0]		pf_data;
 	wire	[31:0]		pf_instruction;
-	wire	[(AW+1):0]	pf_instruction_pc;
-	wire	pf_valid, pf_gie, pf_illegal;
+	wire			pf_valid, pf_gie, pf_illegal;
+	wire			pf_stalled;
+	wire			pf_new_pc;
 `ifdef	FORMAL
 	wire	[31:0]		f_dcd_hidden_state;
 `endif
+
+	assign	clear_pipeline = new_pc;
 	//}}}
 
 	//
@@ -304,6 +310,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[31:0]	dcd_I;
 	wire		dcd_zI;	// true if dcd_I == 0
 	wire	dcd_A_stall, dcd_B_stall, dcd_F_stall;
+	wire	dcd_gie_unused;
+
 
 	wire	dcd_illegal;
 	wire			dcd_early_branch, dcd_early_branch_stb;
@@ -311,6 +319,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	wire		dcd_sim;
 	wire	[22:0]	dcd_sim_immv;
+	wire		prelock_stall;
+	wire		cc_invalid_for_dcd;
+	wire		pending_sreg_write;
 	//}}}
 
 
@@ -339,6 +350,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	reg	[6:0]	r_op_F;
 	wire	[7:0]	op_F;
 	wire		op_ce, op_phase, op_pipe;
+	reg	[31:0]	w_op_BnI, w_pcB_v;
+	reg		r_op_break;
+	reg	[3:0]	r_op_opn;
+	wire	w_op_valid;
+	wire	[8:0]	w_cpu_info;
+	wire	[31:0]	w_pcA_v;
 	// Some pipeline control wires
 	reg	op_illegal;
 	wire	op_break;
@@ -371,12 +388,13 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire		set_cond;
 	reg		alu_wR, alu_wF;
 	wire		alu_gie, alu_illegal, alu_sreg_stall;
+	reg		r_alu_illegal;
 
 
-	wire	mem_ce, mem_stalled;
-	wire	mem_pipe_stalled;
-	wire	mem_valid, mem_ack, mem_stall, mem_err, bus_err,
-		mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl, mem_we;
+	wire			mem_ce, mem_stalled;
+	wire			mem_pipe_stalled;
+	wire			mem_valid, mem_ack, mem_stall, mem_err, bus_err,
+				mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl, mem_we;
 	wire	[4:0]		mem_wreg;
 
 	wire			mem_busy, mem_rdbusy;
@@ -384,7 +402,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[31:0]		mem_data, mem_result;
 	wire	[3:0]		mem_sel;
 
-	wire	div_ce, div_error, div_busy, div_valid;
+	wire		div_ce, div_error, div_busy, div_valid;
 	wire	[31:0]	div_result;
 	wire	[3:0]	div_flags;
 
@@ -392,6 +410,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	[31:0]	fpu_result;
 	wire	[3:0]	fpu_flags;
 	wire		adf_ce_unconditional;
+
+	wire		bus_lock;
+
+	reg		dbgv, dbg_clear_pipe;
+	reg	[31:0]	dbg_val;
 
 	assign	div_ce = (op_valid_div)&&(adf_ce_unconditional)&&(set_cond);
 	assign	fpu_ce = (op_valid_fpu)&&(adf_ce_unconditional)&&(set_cond);
@@ -408,9 +431,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			wr_write_scc, wr_write_ucc;
 	wire	[4:0]	wr_reg_id;
 	wire	[31:0]	wr_gpreg_vl, wr_spreg_vl;
-	wire	w_switch_to_interrupt, w_release_from_interrupt;
+	wire		w_switch_to_interrupt, w_release_from_interrupt;
 	reg	[(AW+1):0]	ipc;
 	wire	[(AW+1):0]	upc;
+	reg		last_write_to_cc;
+	wire		cc_write_hold;
+	reg		r_clear_icache;
 	//}}}
 
 `ifdef	FORMAL
@@ -450,9 +476,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//	PIPELINE STAGE #3 :: Read Operands
 	//		Calculate stall conditions
 	//{{{
-	wire	prelock_stall;
-	wire	cc_invalid_for_dcd;
-	wire	pending_sreg_write;
 	generate if (OPT_PIPELINED)
 	begin : GEN_OP_STALL
 		reg	r_cc_invalid_for_dcd;
@@ -563,7 +586,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end else begin
 
 		assign	alu_stall = (op_valid_alu)&&(master_stall);
-		assign	alu_ce = (master_ce)&&(op_valid_alu)&&(!alu_stall);
+		assign	alu_ce = (master_ce)&&(op_valid_alu)&&(!alu_stall)
+					&&(!clear_pipeline);
 
 	end endgenerate
 	//
@@ -591,7 +615,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end else if (OPT_PIPELINED)
 	begin
 		assign	mem_stalled = (master_stall)||((op_valid_mem)&&(
-				(bus_err)||(bus_err)||(div_error)
+				(bus_err)||(div_error)
 				// Stall waiting for flags to be valid
 				// Or waiting for a write to the PC register
 				// Or CC register, since that can change the
@@ -599,17 +623,19 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				||((wr_reg_ce)
 					&&((wr_write_pc)||(wr_write_cc)))));
 	end else begin
-		assign	mem_stalled = (op_valid_mem)&&(!master_ce);
+
+		assign	mem_stalled = (master_stall)||(op_valid_mem)&&(!master_ce);
+
 	end endgenerate
 	//}}}
 
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
-			||(ibus_err_flag)||(idiv_err_flag)
+			||(ibus_err_flag)||(idiv_err_flag)||(pending_interrupt)
 			||((OPT_PIPELINED)&&(
 				((OPT_LOCK)&&(prelock_stall))
 				||((mem_busy)&&(op_illegal))
 				||(alu_illegal)
-				||(op_break)||(o_break)||(pending_interrupt)
+				||(op_break)||(o_break)
 				||(alu_busy)||(div_busy)||(fpu_busy)));
 
 	assign	alu_sreg_stall = ((op_valid_alu)&&(mem_busy)
@@ -627,13 +653,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 	//
 	//{{{
-	wire	pf_stalled;
 	assign	pf_stalled = (dcd_stalled)||(dcd_phase);
 
-	wire	pf_new_pc;
 	assign	pf_new_pc = (new_pc)||((dcd_early_branch_stb)&&(!clear_pipeline));
 
-	wire	[(AW+1):0]	pf_request_address;
 	assign	pf_request_address = ((dcd_early_branch_stb)&&(!clear_pipeline))
 				? dcd_branch_pc:pf_pc;
 	assign	pf_gie = gie;
@@ -713,8 +736,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `endif	// OPT_SINGLE_FETCH
 `endif	// FORMAL
 	//}}}
-
-	wire	dcd_gie_unused;
 
 	//
 	//
@@ -805,7 +826,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	end endgenerate
 
-	wire	[8:0]	w_cpu_info;
 	assign	w_cpu_info = {
 	//{{{
 	1'b1,
@@ -824,7 +844,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	};
 	//}}}
 
-	wire	[31:0]	w_pcA_v;
 	assign	w_pcA_v[(AW+1):0] = { (dcd_A[4] == dcd_gie)
 				? { dcd_pc[AW+1:2], 2'b00 }
 				: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
@@ -853,7 +872,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		end
 
 	end else begin
-		always @(*)
+		initial	op_R   = 0;
+		initial	op_Aid = 0;
+		initial	op_Bid = 0;
+		initial	op_rA  = 0;
+		initial	op_rB  = 0;
+		initial	op_Rcc = 0;
+		always @(posedge i_clk)
+		if(op_ce)
 		begin
 			op_R   = dcd_R;
 			op_Aid = dcd_A;
@@ -882,7 +908,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			r_op_Av <= wr_gpreg_vl;
 	end
 
-	reg	[31:0]	w_op_BnI, w_pcB_v;
 	assign	w_pcB_v[(AW+1):0] = { (dcd_B[4] == dcd_gie)
 					? { dcd_pc[AW+1:2], 2'b00 }
 					: { upc[(AW+1):2], uhalt_phase, 1'b0 } };
@@ -940,7 +965,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		end // Bit order is { (flags_not_used), VNCZ mask, VNCZ value }
 	assign	op_F = { r_op_F[3], r_op_F[6:0] };
 
-	wire	w_op_valid;
 	assign	w_op_valid = (!clear_pipeline)&&(dcd_valid)
 					&&(!dcd_ljmp)&&(!dcd_early_branch);
 	initial	op_valid     = 1'b0;
@@ -966,11 +990,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			//   Hence, the test on dcd_stalled here.  If we must
 			//   wait until our operands are valid, then we aren't
 			//   valid yet until then.
-			op_valid<= (w_op_valid)||(dcd_early_branch);
-			op_valid_alu <= (w_op_valid)&&((dcd_ALU)||(dcd_illegal)
-					||(dcd_early_branch));
-			op_valid_mem <= (dcd_M)&&(!dcd_illegal)&&(!op_illegal)
-					&&(!dcd_early_branch)&&(w_op_valid);
+			op_valid     <= (w_op_valid)||(dcd_early_branch);
+			op_valid_alu <= (w_op_valid)&&((dcd_ALU)||(dcd_illegal));
+			op_valid_mem <= (dcd_M)&&(!dcd_illegal)
+					&&((!OPT_PIPELINED)||(!op_illegal))
+					&&(w_op_valid);
 			op_valid_div <= (dcd_DIV)&&(!dcd_illegal)&&(w_op_valid);
 			op_valid_fpu <= (dcd_FP)&&(!dcd_illegal)&&(w_op_valid);
 		end else if ((adf_ce_unconditional)||(mem_ce))
@@ -991,7 +1015,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// to be, step through it, and then replace it back.  In this fashion,
 	// a debugger can step through code.
 	// assign w_op_break = (dcd_break)&&(r_dcd_I[15:0] == 16'h0001);
-	reg	r_op_break;
 
 	initial	r_op_break = 1'b0;
 	always @(posedge i_clk)
@@ -1064,7 +1087,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `endif
 `endif
 
-	reg	[3:0]	r_op_opn;
 
 	initial	op_pc= 0;
 	always @(posedge i_clk)
@@ -1252,7 +1274,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				div_ce, op_opn[0],
 			op_Av, op_Bv, div_busy, div_valid, div_error, div_result,
 			div_flags);
+
 	end else begin
+
 		assign	div_error = 1'b0; // Can't be high unless div_valid
 		assign	div_busy  = 1'b0;
 		assign	div_valid = 1'b0;
@@ -1352,7 +1376,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// DEBUG Register write access starts here
 	//
 	//{{{
-	reg		dbgv, dbg_clear_pipe;
 	initial	dbgv = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -1360,7 +1383,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	else
 		dbgv <= (i_dbg_we)&&(r_halted);
 
-	reg	[31:0]	dbg_val;
 	always @(posedge i_clk)
 		dbg_val <= i_dbg_data;
 	always @(posedge i_clk)
@@ -1368,7 +1390,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		dbg_clear_pipe <= 0;
 	else if ((i_dbg_we)&&(r_halted))
 	begin
-		if ((i_dbg_reg == op_Bid)&&(op_rB))
+		if (!OPT_PIPELINED)
+			dbg_clear_pipe <= 1'b1;
+		else if ((i_dbg_reg == op_Bid)&&(op_rB))
 			dbg_clear_pipe <= 1'b1;
 		else if (i_dbg_reg[3:1] == 3'h7)
 			dbg_clear_pipe <= 1'b1;
@@ -1424,7 +1448,6 @@ assign	alu_gie = gie;
 		assign	alu_pc = op_pc;
 	end endgenerate
 
-	reg	r_alu_illegal;
 	initial	r_alu_illegal = 0;
 	always @(posedge i_clk)
 		if (clear_pipeline)
@@ -1453,7 +1476,6 @@ assign	alu_gie = gie;
 
 	// Bus lock logic
 	//{{{
-	wire	bus_lock;
 	generate
 	if ((OPT_PIPELINED)&&(!OPT_LOCK))
 	begin : BUSLOCK
@@ -1501,7 +1523,28 @@ assign	alu_gie = gie;
 
 	// Memory interface
 	//{{{
-	generate if (OPT_PIPELINED_BUS_ACCESS)
+	generate if (OPT_LGDCACHE > 0)
+	begin : MEM
+
+		dcache #(.LGCACHELEN(OPT_LGDCACHE), .ADDRESS_WIDTH(AW),
+			.LGNLINES(6), .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			.OPT_LOCK(OPT_LOCK), .F_LGDEPTH(F_LGDEPTH))
+			domem(i_clk, i_reset,
+		///{{{
+				(mem_ce)&&(set_cond), bus_lock,
+				(op_opn[2:0]), op_Bv, op_Av, op_R,
+				mem_busy, mem_pipe_stalled,
+				mem_valid, bus_err, mem_wreg, mem_result,
+			mem_cyc_gbl, mem_cyc_lcl,
+				mem_stb_gbl, mem_stb_lcl,
+				mem_we, mem_addr, mem_data, mem_sel,
+				mem_ack, mem_stall, mem_err, i_wb_data
+`ifdef	FORMAL
+			, f_mem_nreqs, f_mem_nacks, f_mem_outstanding, f_mem_pc
+`endif
+			);
+		///}}}
+	end else if (OPT_PIPELINED_BUS_ACCESS)
 	begin : MEM
 
 		pipemem	#(.ADDRESS_WIDTH(AW),
@@ -1622,7 +1665,8 @@ assign	alu_gie = gie;
 	assign	wr_reg_ce = (dbgv)||(mem_valid)
 				||((!clear_pipeline)&&(!alu_illegal)
 					&&(((alu_wR)&&(alu_valid))
-						||(div_valid)||(fpu_valid)));
+						||((div_valid)&&(!div_error))
+						||((fpu_valid)&&(!fpu_error))));
 	// Which register shall be written?
 	//	COULD SIMPLIFY THIS: by adding three bits to these registers,
 	//		One or PC, one for CC, and one for GIE match
@@ -2066,7 +2110,7 @@ assign	alu_gie = gie;
 	end endgenerate
 
 	generate if (OPT_CIS)
-	begin : GEN_HALT_PHASES
+	begin : GEN_IHALT_PHASE
 		reg		r_ihalt_phase;
 
 		initial	r_ihalt_phase = 0;
@@ -2077,32 +2121,32 @@ assign	alu_gie = gie;
 				r_ihalt_phase <= alu_phase;
 
 		assign	ihalt_phase = r_ihalt_phase;
-
-		if (OPT_NO_USERMODE)
-		begin
-
-			assign	uhalt_phase = 1'b0;
-
-		end else begin
-
-			reg		r_uhalt_phase;
-
-			initial	r_uhalt_phase = 0;
-			always @(posedge i_clk)
-				if ((i_reset)||(w_release_from_interrupt))
-					r_uhalt_phase <= 1'b0;
-				else if ((alu_gie)&&(alu_pc_valid))
-					r_uhalt_phase <= alu_phase;
-				else if ((!alu_gie)&&(wr_reg_ce)&&(wr_write_pc)
-					&&(wr_reg_id[4]))
-					r_uhalt_phase <= wr_spreg_vl[1];
-
-			assign	uhalt_phase = r_uhalt_phase;
-		end
-	end else begin
+	end else begin : GEN_IHALT_PHASE
 
 		assign	ihalt_phase = 1'b0;
+
+	end endgenerate
+
+	generate if ((!OPT_CIS) || (OPT_NO_USERMODE))
+	begin : GEN_UHALT_PHASE
+
 		assign	uhalt_phase = 1'b0;
+
+	end else begin : GEN_UHALT_PHASE
+
+		reg		r_uhalt_phase;
+
+		initial	r_uhalt_phase = 1'b0;
+		always @(posedge i_clk)
+		if ((i_reset)||(w_release_from_interrupt))
+			r_uhalt_phase <= 1'b0;
+		else if ((alu_gie)&&(alu_pc_valid))
+			r_uhalt_phase <= alu_phase;
+		else if ((!alu_gie)&&(wr_reg_ce)&&(wr_write_pc)
+				&&(wr_reg_id[4]))
+			r_uhalt_phase <= wr_spreg_vl[1];
+
+		assign	uhalt_phase = r_uhalt_phase;
 
 	end endgenerate
 
@@ -2162,9 +2206,6 @@ assign	alu_gie = gie;
 		else if ((new_pc)||((!pf_stalled)&&(pf_valid)))
 			pf_pc <= { pf_pc[(AW+1):2] + 1'b1, 2'b00 };
 
-	reg	last_write_to_cc;
-	wire	cc_write_hold;
-
 	initial	last_write_to_cc = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -2176,7 +2217,6 @@ assign	alu_gie = gie;
 	// If we aren't pipelined, or equivalently if we have no cache, these
 	// instructions will get quietly (or not so quietly) ignored by the
 	// optimizer.
-	reg	r_clear_icache;
 	initial	r_clear_icache = 1'b1;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -2633,7 +2673,7 @@ assign	alu_gie = gie;
 		`PHASE_ONE_ASSERT(!dcd_pc[0]);
 
 	always @(*)
-	if (dcd_valid)
+	if ((dcd_valid)&&(!dcd_illegal))
 		`PHASE_ONE_ASSERT((!dcd_pc[1])||(dcd_phase));
 
 	always @(*)
@@ -2803,6 +2843,8 @@ assign	alu_gie = gie;
 		`PHASE_ONE_ASSERT((dcd_gie == gie)||(clear_pipeline));
 		`PHASE_ONE_ASSERT(dcd_opn[0] == !dcd_wR);
 		`PHASE_ONE_ASSERT(dcd_opn[0] ==  dcd_rA);
+		`PHASE_ONE_ASSERT(dcd_wF == 1'b0);
+		`PHASE_ONE_ASSERT(dcd_opn[2:1] != 2'b00);
 	end
 
 	always @(*)
@@ -2875,7 +2917,7 @@ assign	alu_gie = gie;
 
 
 	//
-	// Decdoe option processing
+	// Decode option processing
 	//
 
 	// OPT_CIS ... the compressed instruction set
@@ -2923,7 +2965,7 @@ assign	alu_gie = gie;
 
 	always @(*)
 	if (!IMPLEMENT_DIVIDE)
-		`PHASE_ONE_ASSERT((!div_DIV)&&(!op_valid_div)
+		`PHASE_ONE_ASSERT((!dcd_DIV)&&(!op_valid_div)
 			&&(!div_valid)&&(!div_error));
 	else if (op_valid_div)
 	begin
@@ -3041,7 +3083,9 @@ assign	alu_gie = gie;
 	if (op_valid_mem)
 	begin
 		`PHASE_ONE_ASSERT(op_wR == !op_opn[0]);
+		`PHASE_ONE_ASSERT(op_wF == 1'b0);
 		`PHASE_ONE_ASSERT(op_rA ==  op_opn[0]);
+		`PHASE_ONE_ASSERT(op_opn[2:1] != 2'b00);
 	end
 
 	always @(*)
@@ -3261,7 +3305,7 @@ assign	alu_gie = gie;
 
 	always @(*)
 	if (!IMPLEMENT_DIVIDE)
-		`PHASE_ONE_ASSERT(div_valid);
+		`PHASE_ONE_ASSERT(!div_valid);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(r_halted))
@@ -3288,6 +3332,27 @@ assign	alu_gie = gie;
 			`PHASE_ONE_ASSERT(!fpu_valid);
 		end else if (div_valid)
 			`PHASE_ONE_ASSERT(!fpu_valid);
+
+	always @(*)
+	if ((wr_reg_ce)||(wr_flags_ce))
+		`PHASE_ONE_ASSERT(!alu_illegal);
+
+	always @(*)
+	if (wr_reg_ce)
+	begin
+		// Since writes are asynchronous, they can create errors later
+		`PHASE_ONE_ASSERT((!bus_err)||(!mem_valid));
+		`PHASE_ONE_ASSERT(!fpu_error);
+		`PHASE_ONE_ASSERT(!div_error);
+	end
+
+	always @(*)
+	if (wr_flags_ce)
+	begin
+		`PHASE_ONE_ASSERT((!bus_err)||(!mem_valid));
+		`PHASE_ONE_ASSERT(!fpu_error);
+		`PHASE_ONE_ASSERT(!div_error);
+	end
 
 
 	//////////////////////////////////////////////
@@ -3412,11 +3477,11 @@ assign	alu_gie = gie;
 		`PHASE_ONE_ASSERT(alu_illegal);
 
 	always @(*)
-	if ((alu_valid)&&(alu_wR)&&(!clear_pipeline)&&(alu_reg[3:1] == 3'h7))
+	if ((OPT_PIPELINED)&&(alu_valid)&&(alu_wR)&&(!clear_pipeline)&&(alu_reg[3:1] == 3'h7))
 		`PHASE_ONE_ASSERT(pending_sreg_write);
 
 	always @(*)
-	if ((mem_valid)&&(mem_wreg[3:1] == 3'h7))
+	if ((OPT_PIPELINED)&&(mem_valid)&&(mem_wreg[3:1] == 3'h7))
 		`PHASE_ONE_ASSERT(pending_sreg_write);
 
 	always @(*)
@@ -3424,12 +3489,28 @@ assign	alu_gie = gie;
 		`PHASE_ONE_ASSERT(!pending_sreg_write);
 
 	always @(*)
-	if (mem_rdbusy)
+	if ((OPT_PIPELINED)&&(mem_rdbusy))
 		`PHASE_ONE_ASSERT(pending_sreg_write == f_mem_pc);
 
 	always @(*)
 	if ((op_valid_alu)||(op_valid_div)||(op_valid_mem)||(op_valid_fpu))
 		`PHASE_ONE_ASSERT(op_valid);
+
+	always @(*)
+	if (!OPT_PIPELINED)
+	begin
+		if (op_valid)
+		begin
+			`PHASE_ONE_ASSERT(!mem_busy);
+			`PHASE_ONE_ASSERT(!alu_busy);
+			`PHASE_ONE_ASSERT(!div_busy);
+			`PHASE_ONE_ASSERT(!wr_reg_ce);
+			`PHASE_ONE_ASSERT(!wr_flags_ce);
+		end
+	end
+
+always @(*) if (!OPT_PIPELINED) assume(!i_dbg_we);
+always @(*) if (!OPT_PIPELINED) assume(!i_clear_pf_cache);
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////

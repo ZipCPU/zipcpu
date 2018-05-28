@@ -458,6 +458,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	initial	o_dcdR = 0;
 	initial	o_dcdA = 0;
 	initial	o_dcdB = 0;
+	initial	o_DV   = 0;
+	initial	o_FP   = 0;
 	always @(posedge i_clk)
 		if (i_ce)
 		begin
@@ -500,7 +502,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			// or flags, which should already be true.
 			o_ALU  <=  (w_ALU)||(w_ldi)||(w_cmptst)||(w_noop);
 			o_M    <=  w_mem;
-			o_DV   <=  w_div;
+			o_DV   <=  (OPT_DIVIDE)&&(w_div);
 			o_FP   <=  (OPT_FPU)&&(w_fpu);
 
 			o_break <= w_break;

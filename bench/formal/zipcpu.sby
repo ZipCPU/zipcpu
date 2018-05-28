@@ -14,21 +14,19 @@ depth 18
 smtbmc boolector
 
 [script]
+first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v
+second_half: read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
+
 nopipe:
-chparam -set IMPLEMENT_FPU 0 zipcpu
-chparam -set IMPLEMENT_MPY 0 -set IMPLEMENT_DIVIDE 0 zipcpu
-chparam -set EARLY_BRANCHING 0 -set OPT_CIS 1 -set OPT_PIPELINED 0 zipcpu
+chparam -set IMPLEMENT_FPU    0 zipcpu
+chparam -set IMPLEMENT_MPY    0 zipcpu
+chparam -set IMPLEMENT_DIVIDE 0 zipcpu
+chparam -set EARLY_BRANCHING  0 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    0 zipcpu
 
 lowlogic:
 chparam -set OPT_CIS 0 zipcpu
---
-
-first_half:
-read_verilog -D ZIPCPU -formal zipcpu.v
---
-
-second_half:
-read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
 --
 
 read_verilog -D ZIPCPU -formal cpuops.v

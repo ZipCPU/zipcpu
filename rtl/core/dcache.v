@@ -80,7 +80,11 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			o_busy, o_pipe_stalled, o_valid, o_err, o_wreg,o_data,
 		o_wb_cyc_gbl, o_wb_cyc_lcl, o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
+		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
+`ifdef	FORMAL
+		, f_nreqs, f_nacks, f_outstanding, f_pc
+`endif
+	);
 	parameter	LGCACHELEN = 8,
 			ADDRESS_WIDTH=30,
 			LGNLINES=5, // Log of the number of separate cache lines
@@ -117,6 +121,10 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	// Wishbone bus slave response inputs
 	input				i_wb_ack, i_wb_stall, i_wb_err;
 	input		[(DW-1):0]	i_wb_data;
+`ifdef FORMAL
+	output	wire [(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	output	wire			f_pc;
+`endif
 
 
 	reg	cyc, stb, last_ack, end_of_line, last_line_stb;
@@ -711,8 +719,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(*)
 		assert((!o_wb_cyc_gbl)||(!o_wb_cyc_lcl));
 
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
-
 	fwb_master #(
 		.AW(AW), .DW(DW), .F_MAX_STALL(1),
 			.F_MAX_ACK_DELAY(1),
@@ -1146,6 +1152,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			||(c_wsel == 4'h4)
 			||(c_wsel == 4'h2)
 			||(c_wsel == 4'h1));
+
+	always @(*)
+		f_pc = (o_wreg[3:1] == 3'h7);
 
 	////////////////////////////////////////////////
 	//
