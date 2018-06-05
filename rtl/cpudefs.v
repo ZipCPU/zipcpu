@@ -28,7 +28,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -221,6 +221,15 @@
 //
 `define	OPT_TRADITIONAL_PFCACHE
 //
+//
+//
+//
+// OPT_DCACHE enables a CPU data cache for (hopefully) better performance
+// in terms of speed.  It requires telling the CPU which parts of memory
+// can be cachable in terms of three separate address regions: one for the
+// SDRAM, one for the flash, and another for the block RAM.
+//
+`define	OPT_DCACHE
 //
 //
 //

@@ -123,12 +123,9 @@ module	ziptimer(i_clk, i_reset, i_ce,
 
 		// If setting auto-reload mode, and the value to other
 		// than zero, set the auto-reload value
-		initial	r_reload_value = 0;
 		always @(posedge i_clk)
-			if (i_reset)
-				r_reload_value <= 0;
-			else if (wb_write)
-				r_reload_value <= i_wb_data[(VW-1):0];
+		if (wb_write)
+			r_reload_value <= i_wb_data[(VW-1):0];
 		assign	reload_value = r_reload_value;
 	end else begin
 		assign	auto_reload = 1'b0;
@@ -193,7 +190,6 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
-
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
@@ -209,7 +205,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 		assert(r_value     == 0);
 		assert(r_running   == 0);
 		assert(auto_reload == 0);
-		assert(reload_value== 0);
+		// assert(reload_value== 0);
 		assert(r_zero      == 1'b1);
 	end
 

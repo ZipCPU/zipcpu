@@ -11,7 +11,7 @@ mode prove
 depth 18
 
 [engines]
-smtbmc boolector
+smtbmc
 
 [script]
 first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v

@@ -131,18 +131,20 @@ public:
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==2)
 		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
-#define	r_mpy_a_input	VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__MPY2CK__DOT__r_mpy_a_input)
-#define	r_mpy_b_input	VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__MPY2CK__DOT__r_mpy_b_input)
+#define	MPY2VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPY2CK__DOT_ ## A)
+#define	r_mpy_a_input	MPY2VAR(_r_mpy_a_input)
+#define	r_mpy_b_input	MPY2VAR(_r_mpy_b_input)
 #define	mpy_result	VVAR(_mpy_result)
 			m_core->r_mpy_a_input,
 			m_core->r_mpy_b_input,
 			m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==3)
-#define	r_mpy_a_input	VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__genblk1__DOT__MPY3CK__DOT__r_mpy_a_input)
-#define	r_mpy_b_input	VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__genblk1__DOT__MPY3CK__DOT__r_mpy_b_input)
-#define	r_smpy_result	VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__genblk1__DOT__MPY3CK__DOT__r_smpy_result)
-#define	mpypipe		VVAR(_thempy__DOT__genblk1__DOT__genblk1__DOT__genblk1__DOT__MPY3CK__DOT__mpypipe)
+#define	MPY3VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPN2__DOT__MPY3CK__DOT_ ## A)
+#define	r_mpy_a_input	MPY3VAR(_r_mpy_a_input)
+#define	r_mpy_b_input	MPY3VAR(_r_mpy_b_input)
+#define	r_smpy_result	MPY3VAR(_r_smpy_result)
+#define	mpypipe		MPY3VAR(_mpypipe)
 		sprintf(s, "3,MPY[%08x][%08x][%016llx], P[%d]",
 			m_core->r_mpy_a_input,
 			m_core->r_mpy_b_input,
@@ -263,12 +265,14 @@ public:
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
 		const	int OP_MPY = 0x0c, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
+		const	bool	debug = false;
 		int64_t		ia, ib, sv;
 		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
 
 		clear_ops();
 
+		if (debug)
 		printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
 
 		ia = (long)a; ib = (long)b; sv = ia * ib;

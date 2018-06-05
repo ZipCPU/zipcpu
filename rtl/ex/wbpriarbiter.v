@@ -6,20 +6,19 @@
 //
 // Purpose:	This is a priority bus arbiter.  It allows two separate wishbone
 //		masters to connect to the same bus, while also guaranteeing
-//		that one master can have the bus with no delay any time the
-//		other master is not using the bus.  The goal is to eliminate
-//		the combinatorial logic required in the other wishbone
-//		arbiter, while still guarateeing access time for the priority
-//		channel.
+//	that one master can have the bus with no delay any time the other
+//	master is not using the bus.  The goal is to eliminate the combinatorial
+//	logic required in the other wishbone arbiter, while still guarateeing
+//	access time for the priority channel.
 //
-//		The core logic works like this:
+//	The core logic works like this:
 //
-//		1. When no one requests the bus, 'A' is granted the bus and
-//			guaranteed that any access will go right through.
-//		2. If 'B' requests the bus (asserts cyc), and the bus is idle,
-//			then 'B' will be granted the bus.
-//		3. Bus grants last as long as the 'cyc' line is high.
-//		4. Once 'cyc' is dropped, the bus returns to 'A' as the owner.
+//	1. When no one requests the bus, 'A' is granted the bus and guaranteed
+//		that any access will go right through.
+//	2. If 'B' requests the bus (asserts cyc), and the bus is idle, then
+//		'B' will be granted the bus.
+//	3. Bus grants last as long as the 'cyc' line is high.
+//	4. Once 'cyc' is dropped, the bus returns to 'A' as the owner.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -30,7 +29,7 @@
 // Copyright (C) 2015,2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -260,4 +259,3 @@ module	wbpriarbiter(i_clk,
 
 `endif
 endmodule
-

@@ -257,8 +257,10 @@ module	wbdblpriarb(i_clk, i_reset,
 		end
 	end endgenerate
 `define	ASSUME	assume
+`define	ASSERT	assert
 `else
 `define	ASSUME	assert
+`define	ASSERT	assert
 `endif
 
 	reg	f_past_valid;
@@ -311,10 +313,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	always @(posedge i_clk)
 	begin
 		if (o_cyc_a)
-			assert((i_a_cyc_a)||(i_b_cyc_a));
+			`ASSERT((i_a_cyc_a)||(i_b_cyc_a));
 		if (o_cyc_b)
-			assert((i_a_cyc_b)||(i_b_cyc_b));
-		assert((!o_cyc_a)||(!o_cyc_b));
+			`ASSERT((i_a_cyc_b)||(i_b_cyc_b));
+		`ASSERT((!o_cyc_a)||(!o_cyc_b));
 	end
 
 	always @(posedge i_clk)
@@ -323,14 +325,14 @@ module	wbdblpriarb(i_clk, i_reset,
 		if ($past(f_cyc))
 		begin
 			if (($past(o_cyc_a))&&(o_cyc_a))
-				assert($past(r_a_owner) == r_a_owner);
+				`ASSERT($past(r_a_owner) == r_a_owner);
 			if (($past(o_cyc_b))&&(o_cyc_b))
-				assert($past(r_a_owner) == r_a_owner);
+				`ASSERT($past(r_a_owner) == r_a_owner);
 		end else begin
 			if (($past(i_a_stb_a))||($past(i_a_stb_b)))
-				assert(r_a_owner);
+				`ASSERT(r_a_owner);
 			if (($past(i_b_stb_a))||($past(i_b_stb_b)))
-				assert(!r_a_owner);
+				`ASSERT(!r_a_owner);
 		end
 	end
 
@@ -410,48 +412,48 @@ module	wbdblpriarb(i_clk, i_reset,
 	begin
 		if (r_a_owner)
 		begin
-			assert(f_b_nreqs_a == 0);
-			assert(f_b_nreqs_b == 0);
+			`ASSERT(f_b_nreqs_a == 0);
+			`ASSERT(f_b_nreqs_b == 0);
 			//
-			assert(f_b_nacks_a == 0);
-			assert(f_b_nacks_b == 0);
+			`ASSERT(f_b_nacks_a == 0);
+			`ASSERT(f_b_nacks_b == 0);
 			//
 			if (i_a_cyc_a)
 			begin
-				assert(f_a_outstanding_a == f_outstanding_a);
-				assert(f_a_outstanding_b == 0);
-				assert(f_outstanding_b == 0);
-				assert(f_a_nreqs_b == 0);
-				assert(f_a_nacks_b == 0);
+				`ASSERT(f_a_outstanding_a == f_outstanding_a);
+				`ASSERT(f_a_outstanding_b == 0);
+				`ASSERT(f_outstanding_b == 0);
+				`ASSERT(f_a_nreqs_b == 0);
+				`ASSERT(f_a_nacks_b == 0);
 			end else if (i_a_cyc_b)
 			begin
-				assert(f_a_outstanding_b == f_outstanding_b);
-				assert(f_a_outstanding_a == 0);
-				assert(f_outstanding_a == 0);
-				assert(f_a_nreqs_a == 0);
-				assert(f_a_nacks_a == 0);
+				`ASSERT(f_a_outstanding_b == f_outstanding_b);
+				`ASSERT(f_a_outstanding_a == 0);
+				`ASSERT(f_outstanding_a == 0);
+				`ASSERT(f_a_nreqs_a == 0);
+				`ASSERT(f_a_nacks_a == 0);
 			end
 		end else begin
-			assert(f_a_nreqs_a == 0);
-			assert(f_a_nreqs_b == 0);
+			`ASSERT(f_a_nreqs_a == 0);
+			`ASSERT(f_a_nreqs_b == 0);
 			//
-			assert(f_a_nacks_a == 0);
-			assert(f_a_nacks_b == 0);
+			`ASSERT(f_a_nacks_a == 0);
+			`ASSERT(f_a_nacks_b == 0);
 			//
 			if (i_b_cyc_a)
 			begin
-				assert(f_b_outstanding_a == f_outstanding_a);
-				assert(f_b_outstanding_b == 0);
-				assert(f_outstanding_b == 0);
-				assert(f_b_nreqs_b == 0);
-				assert(f_b_nacks_b == 0);
+				`ASSERT(f_b_outstanding_a == f_outstanding_a);
+				`ASSERT(f_b_outstanding_b == 0);
+				`ASSERT(f_outstanding_b == 0);
+				`ASSERT(f_b_nreqs_b == 0);
+				`ASSERT(f_b_nacks_b == 0);
 			end else if (i_b_cyc_b)
 			begin
-				assert(f_b_outstanding_b == f_outstanding_b);
-				assert(f_b_outstanding_a == 0);
-				assert(f_outstanding_a == 0);
-				assert(f_b_nreqs_a == 0);
-				assert(f_b_nacks_a == 0);
+				`ASSERT(f_b_outstanding_b == f_outstanding_b);
+				`ASSERT(f_b_outstanding_a == 0);
+				`ASSERT(f_outstanding_a == 0);
+				`ASSERT(f_b_nreqs_a == 0);
+				`ASSERT(f_b_nacks_a == 0);
 			end
 		end
 	end

@@ -249,12 +249,7 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	// be true for the one clock, and then it must clear itself.
 	initial	pre_sign = 1'b0;
 	always @(posedge i_clk)
-	if (i_reset)
-		pre_sign <= 1'b0;
-	else if (i_wr)
-		pre_sign <= (i_signed)&&((i_numerator[BW-1])||(i_denominator[BW-1]));
-	else
-		pre_sign <= 1'b0;
+		pre_sign <= (i_wr)&&(i_signed)&&((i_numerator[BW-1])||(i_denominator[BW-1]));
 
 	// As a result of our operation, we need to set the flags.  The most
 	// difficult of these is the "Z" flag indicating that the result is
@@ -403,7 +398,7 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 		assert(!zero_divisor);
 		assert(r_bit==0);
 		assert(!last_bit);
-		assert(!pre_sign);
+		// assert(!pre_sign);
 		assert(!r_z);
 		assert(r_dividend==0);
 		assert(o_quotient==0);

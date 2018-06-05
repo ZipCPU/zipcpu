@@ -136,9 +136,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	initial	invalid_bus_cycle = 1'b0;
 	always @(posedge i_clk)
-		if (i_reset)
-			invalid_bus_cycle <= 1'b0;
-		else if ((o_wb_cyc)&&(i_new_pc))
+		if ((o_wb_cyc)&&(i_new_pc))
 			invalid_bus_cycle <= 1'b1;
 		else if (!o_wb_cyc)
 			invalid_bus_cycle <= 1'b0;
@@ -429,21 +427,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	always @(*)
 		assume(i_pc[1:0] == 2'b00);
-
-	//
-	// Following a reset, all pipelines clear and the next stage is
-	// guaranteed to be ready.
-	//
-	initial	assume(i_stall_n);
-	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_past_reset))
-			assume(i_stall_n);
-
-	// The CPU will never suddenly become busy unless it has accepted a
-	// valid instruction.
-	always @(posedge i_clk)
-		if ((f_past_valid)&&(!f_past_o_valid)&&(f_past_stall_n))
-			assume(i_stall_n);
 `endif
 
 `ifdef	FORMAL
@@ -762,12 +745,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 endmodule
 //
 // Usage:		(this)	(prior)	(old)  (S6)
-//    Cells		376	387	585	459
+//    Cells		374	387	585	459
 //	FDRE		135	108	203	171
 //	LUT1		  2	  3	  2
 //	LUT2		  9	  3	  4	  5
-//	LUT3		 99	 76	104	 71
-//	LUT4		  3	  0	  2	  2
+//	LUT3		 98	 76	104	 71
+//	LUT4		  2	  0	  2	  2
 //	LUT5		  3	 35	 35	  3
 //	LUT6		  6	  5	 10	 43
 //	MUXCY		 58	 62	 93	 62

@@ -55,6 +55,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 	output	wire	[63:0]	o_result; // Where we dump the multiply result
 	output	reg		o_hi;	// Return the high half of the multiply
 
+`define	ASSERT	assert
 // i_stb instead of this_is_a_multiply_op
 // o_result
 // o_busy
@@ -92,7 +93,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 			delay_to_valid <= delay_to_valid - 1'b1;
 
 		always @(*)
-			assert((MAXDELAY == 0)
+			`ASSERT((MAXDELAY == 0)
 				||(delay_to_valid < MAXDELAY));
 
 		initial	r_busy = 1'b0;

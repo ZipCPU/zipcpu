@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -111,6 +111,26 @@
 #define	VVAR(A)	v__DOT_ ## A
 #endif
 
+#define	CPUVAR(A)	VVAR(_thecpu__DOT_ ##A)
+
+#ifdef	OPT_DCACHE
+///
+	// dcache
+  #define	MEMVAR(A)	CPUVAR(_MEM_DCACHE__DOT__docache__DOT_ ## A)
+///
+#elif defined(OPT_PIPELINED_BUS_ACCESS)
+///
+	// pipemem
+  #define	MEMVAR(A) CPUVAR(_NO_CACHE__DOT__MEM__DOT__domem__DOT_ ## A)
+  #define	mem_wraddr	MEMVAR(_wraddr)
+  #define	mem_rdaddr	MEMVAR(_rdaddr)
+///
+#else
+///
+	// memops
+  #define	MEMVAR(A) CPUVAR(_NO_CACHE__DOT__MEM__DOT__domem__DOT_ ## A)
+#endif
+
 #define	cpu_halt	VVAR(_cmd_halt)
 #define	cmd_reset	VVAR(_cmd_reset)
 #define	cmd_step	VVAR(_cmd_step)
@@ -124,8 +144,8 @@
 #define	early_branch_pc VVAR(_thecpu__DOT__instruction_decoder__DOT__GEN_EARLY_BRANCH_LOGIC__DOT__r_branch_pc)
 
 #define	dcdRmx		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber15)
-#define	dcdA		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber16)
-#define	dcdB		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber17)
+#define	dcdA		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber15)
+#define	dcdB		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber16)
 
 #define	new_pc		VVAR(_thecpu__DOT__new_pc)
 #define	cpu_ipc		VVAR(_thecpu__DOT__ipc)
@@ -150,7 +170,11 @@
 #define	pf_instruction		VVAR(_thecpu__DOT__pf_instruction)
 
 // Decode
+#ifdef	OPT_PIPELINED
 #define	dcd_ce		VVAR(_thecpu__DOT__dcd_ce)
+#else
+#define	dcd_ce		VVAR(_thecpu__DOT__dcd_stalled)^1
+#endif
 #define	dcd_stalled	VVAR(_thecpu__DOT__dcd_stalled)
 #define	dcd_gie		VVAR(_thecpu__DOT__SET_GIE__DOT__r_gie)
 #define	dcd_illegal	VVAR(_thecpu__DOT__dcd_illegal)
@@ -168,12 +192,16 @@
 
 // Op
 #define	op_ce		VVAR(_thecpu__DOT__op_ce)
-#define	op_stall	VVAR(_thecpu__DOT__op_stall)
 #define	op_illegal	VVAR(_thecpu__DOT__op_illegal)
 #define	op_valid	VVAR(_thecpu__DOT__op_valid)
 #define	op_valid_mem	VVAR(_thecpu__DOT__op_valid_mem)
 #define	op_valid_alu	VVAR(_thecpu__DOT__op_valid_alu)
+#ifdef	OPT_PIPELINED
 #define	op_R		VVAR(_thecpu__DOT__op_R)
+#define	op_stall	VVAR(_thecpu__DOT__op_stall)
+#else
+#define	op_R		dcdR
+#endif
 #define	op_wR		VVAR(_thecpu__DOT__op_wR)
 #define	op_wF		VVAR(_thecpu__DOT__op_wF)
 
@@ -186,29 +214,41 @@
 #define	alu_pc_valid	VVAR(_thecpu__DOT__alu_pc_valid)
 #define	alu_flags	VVAR(_thecpu__DOT__alu_flags)
 #define	alu_wR		VVAR(_thecpu__DOT__alu_wR)
-#define	alu_illegal	VVAR(_thecpu__DOT__r_alu_illegal)
+#ifdef	OPT_PIPELINED
+#define	alu_illegal	VVAR(_thecpu__DOT__SET_ALU_ILLEGAL__DOT__r_alu_illegal)
+#else
+#define	alu_illegal	op_illegal
+#endif
 #define	set_cond	VVAR(_thecpu__DOT__set_cond)
 
 // MEM
-#define	mem_valid	VVAR(_thecpu__DOT__mem_valid)
-#define	mem_pc_valid	VVAR(_thecpu__DOT__mem_pc_valid)
-#define	mem_ce		VVAR(_thecpu__DOT__mem_ce)
-#define	mem_cyc		VVAR(_thecpu__DOT__MEM__DOT__domem__DOT__cyc)
-#define	mem_rdbusy	VVAR(_thecpu__DOT__mem_rdbusy)
+#define	mem_valid	CPUVAR(_mem_valid)
+#define	mem_pc_valid	CPUVAR(_mem_pc_valid)
+#define	mem_ce		CPUVAR(_mem_ce)
+#define	mem_cyc		MEMVAR(_cyc)
+#define	mem_rdbusy	CPUVAR(_mem_rdbusy)
+#define	mem_wreg	CPUVAR(_mem_wreg)
 
 // DIV
-#define	div_valid	VVAR(_thecpu__DOT__div_valid)
-#define	div_ce		VVAR(_thecpu__DOT__div_ce)
+#ifdef OPT_DIVIDE
+  #define	div_valid	CPUVAR(_div_valid)
+  #define	div_ce		CPUVAR(_div_ce)
+  #define	div_busy	CPUVAR(_div_busy)
+#endif
 
 //
-#define	wr_reg_id	VVAR(_thecpu__DOT__wr_reg_id)
-#define	wr_reg_ce	VVAR(_thecpu__DOT__wr_reg_ce)
-#define	wr_gpreg_vl	VVAR(_thecpu__DOT__wr_gpreg_vl)
-#define	wr_spreg_vl	VVAR(_thecpu__DOT__wr_spreg_vl)
-#define	wr_reg_ce	VVAR(_thecpu__DOT__wr_reg_ce)
-#define	wr_flags_ce	VVAR(_thecpu__DOT__wr_flags_ce)
-#define	w_iflags	VVAR(_thecpu__DOT__w_iflags)
-#define	w_uflags	VVAR(_thecpu__DOT__w_uflags)
+#define	wr_reg_id	CPUVAR(_wr_reg_id)
+#define	wr_reg_ce	CPUVAR(_wr_reg_ce)
+#define	wr_gpreg_vl	CPUVAR(_wr_gpreg_vl)
+#ifdef	OPT_DIVIDE
+#define	wr_spreg_vl	CPUVAR(_wr_spreg_vl)
+#else
+#define	wr_spreg_vl	wr_gpreg_vl
+#endif
+#define	wr_reg_ce	CPUVAR(_wr_reg_ce)
+#define	wr_flags_ce	CPUVAR(_wr_flags_ce)
+#define	w_iflags	CPUVAR(_w_iflags)
+#define	w_uflags	CPUVAR(_w_uflags)
 
 // Op-Sim instructions
 #define	cpu_sim		VVAR(_thecpu__DOT__op_sim)
@@ -298,8 +338,8 @@
 #define	mpc_data	VVAR(_mpc_data)
 #define	mic_data	VVAR(_mic_data)
 
-#define	r_wb_cyc_gbl	VVAR(_thecpu__DOT__MEM__DOT__domem__DOT__r_wb_cyc_gbl)
-#define	r_wb_cyc_lcl	VVAR(_thecpu__DOT__MEM__DOT__domem__DOT__r_wb_cyc_lcl)
+#define	r_wb_cyc_gbl	MEMVAR(_r_wb_cyc_gbl)
+#define	r_wb_cyc_lcl	MEMVAR(_r_wb_cyc_lcl)
 #define	r_wb_stb_gbl	VVAR(_thecpu__DOT__mem_stb_gbl)
 #define	r_wb_stb_lcl	VVAR(_thecpu__DOT__mem_stb_lcl)
 #define	mem_stb_gbl	VVAR(_thecpu__DOT__mem_stb_gbl)
@@ -310,18 +350,19 @@
 #define	mem_data	VVAR(_thecpu__DOT__mem_data)
 #define	mem_addr	VVAR(_thecpu__DOT__mem_addr)
 #define	mem_result	VVAR(_thecpu__DOT__mem_result)
-#define	mem_wraddr	VVAR(_thecpu__DOT__MEM__DOT__domem__DOT__wraddr)
-#define	mem_rdaddr	VVAR(_thecpu__DOT__MEM__DOT__domem__DOT__rdaddr)
 #define	op_pipe		VVAR(_thecpu__DOT__GEN_OP_PIPE__DOT__r_op_pipe)
 #define	dcd_pipe	VVAR(_thecpu__DOT__instruction_decoder__DOT__GEN_OPIPE__DOT__r_pipe)
 #define	op_A_alu	VVAR(_thecpu__DOT__op_A_alu)
 #define	op_B_alu	VVAR(_thecpu__DOT__op_B_alu)
 #define	op_A_mem	VVAR(_thecpu__DOT__op_A_mem)
 #define	op_B_mem	VVAR(_thecpu__DOT__op_B_mem)
+#ifdef	OPT_PIPELINED
 #define	op_opn		VVAR(_thecpu__DOT__r_op_opn)
+#else
+#define	op_opn		dcd_opn
+#endif
 #define	alu_result	VVAR(_thecpu__DOT__alu_result)
 #define	alu_busy	VVAR(_thecpu__DOT__doalu__DOT__r_busy)
-#define	div_busy	VVAR(_thecpu__DOT__div_busy)
 #define	alu_reg		VVAR(_thecpu__DOT__alu_reg)
 #define	switch_to_interrupt	VVAR(_thecpu__DOT__w_switch_to_interrupt)
 #define	release_from_interrupt	VVAR(_thecpu__DOT__w_release_from_interrupt)
@@ -877,11 +918,15 @@ public:
 			(m_core->mem_result));
 // #define	OPT_PIPELINED_BUS_ACCESS
 #ifdef	OPT_PIPELINED_BUS_ACCESS
+#ifndef	OPT_DCACHE
 		printw(" %x%x%c%c",
 			(m_core->mem_wraddr),
 			(m_core->mem_rdaddr),
 			(m_core->op_pipe)?'P':'-',
 			(mem_pipe_stalled())?'S':'-'); ln++;
+#else
+		ln++;
+#endif
 #else
 		ln++;
 #endif
@@ -972,7 +1017,11 @@ public:
 			m_core->op_ce,
 			m_core->op_valid,
 			m_core->op_gie,
+#ifdef	op_stall
 			m_core->op_stall,
+#else
+			0,
+#endif
 #ifdef	OPT_CIS
 			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
@@ -1054,6 +1103,8 @@ public:
 		mvprintw(ln-3, 48, "Op(%x)%8x,%8x->",
 			m_core->op_opn,
 			m_core->op_Aid, m_core->op_Bid);
+#else
+		mvprintw(ln-3, 48, "");
 #endif
 		if (m_core->alu_valid)
 			printw("%08x", m_core->alu_result);
@@ -1062,18 +1113,26 @@ public:
 		mvprintw(ln-1, 48, "%s%s%s ",
 			(m_core->alu_valid)?"A"
 			  :((m_core->alu_busy)?"a":" "),
+#ifdef	OPT_DIVIDE
 			(m_core->div_valid)?"D"
 			  :((m_core->div_busy)?"d":" "),
 			(m_core->div_valid)?"F"
-			  :((m_core->div_busy)?"f":" "));
-		printw("MEM: %s%s %s%s %s %-5s",
-			(m_core->op_valid_mem)?"M":" ",
-			(m_core->mem_ce)?"CE":"  ",
-			(m_core->mem_we)?"Wr ":"Rd ",
-			(mem_stalled())?"PIPE":"    ",
-			(m_core->mem_valid)?"V":" ",
-#define	mem_wreg	VVAR(_thecpu__DOT__mem_wreg)
-			zip_regstr[(m_core->mem_wreg&0x1f)^0x10]);
+			  :((m_core->div_busy)?"f":" ")
+#else
+			  " ", " "
+#endif
+			  );
+		if ((m_core->mem_ce)||(m_core->mem_valid)) {
+			printw("MEM: %s%s %s%s %s %-5s",
+				(m_core->op_valid_mem)?"M":" ",
+				(m_core->mem_ce)?"CE":"  ",
+				(m_core->mem_we)?"Wr ":"Rd ",
+				(mem_stalled())?"PIPE":"    ",
+				(m_core->mem_valid)?"V":" ",
+				zip_regstr[(m_core->mem_wreg&0x1f)^0x10]);
+		} else {
+			printw("%18s", "");
+		}
 	}
 
 	void	show_user_timers(bool v) {
@@ -1347,7 +1406,11 @@ public:
 			m_core->op_ce,
 			m_core->op_valid,
 			m_core->op_gie,
+#ifdef	OPT_PIPELINED
 			m_core->op_stall,
+#else
+			0,
+#endif
 #ifdef	OPT_CIS
 			op_pc()+((m_core->op_phase)?4:0),
 			m_core->op_phase
@@ -1608,7 +1671,11 @@ public:
 				m_core->op_ce,
 				m_core->op_valid,
 				m_core->op_gie,
+#ifdef	OPT_PIPELINED
 				m_core->op_stall,
+#else
+				0,
+#endif
 				op_pc(),
 #ifdef	OPT_CIS
 				m_core->op_phase,
@@ -1649,6 +1716,7 @@ public:
 
 		}
 
+#ifdef	OPT_DIVIDE
 		if ((m_dbgfp)&&((m_core->div_valid)
 			||(m_core->div_ce)
 			||(m_core->div_busy)
@@ -1669,6 +1737,7 @@ public:
 				(m_core->alu_pc_valid)?"VALID":"",
 				(m_core->alu_gie)?"ALU-GIE":"");
 		}
+#endif
 
 #ifdef	ZIPSYSTEM
 #define	dma_state	VVAR(_dma_controller__DOT__dma_state)

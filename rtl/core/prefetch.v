@@ -300,19 +300,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_clear_cache)))
 			`ASSUME(i_new_pc);
-	//
-	// Following a reset, all pipelines clear and the next stage is
-	// guaranteed to be ready.
-	//
-	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_reset)))
-			`ASSUME(i_stalled_n);
-
-	// The CPU will never suddenly become busy unless it has accepted a
-	// valid instruction.
-	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(!o_valid))&&($past(i_stalled_n)))
-			`ASSUME(i_stalled_n);
 
 	//
 	//

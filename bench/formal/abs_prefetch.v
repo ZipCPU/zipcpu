@@ -136,6 +136,9 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	assign	o_insn    = $anyseq;
 
 `ifdef	FORMAL
+`define	ASSUME	assume
+`define	ASSERT	assert
+
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
 	reg	f_past_valid;
@@ -144,7 +147,7 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		f_past_valid = 1'b1;
 	always @(*)
 	if (!f_past_valid)
-		assert(i_reset);
+		`ASSERT(i_reset);
 
 	/////////////////////////////////////////////////
 	//
@@ -156,13 +159,7 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	//
 	// Assume we start from a reset condition
-	initial	assert(i_reset);
-
-	// Assume that any reset is either accompanied by a new address,
-	// or a new address immediately follows it.
-//	always @(posedge i_clk)
-//	if ((f_past_valid)&&(!$past(i_reset)))
-//		assert((i_new_pc)||($past(i_new_pc)));
+	initial	`ASSERT(i_reset);
 
 	/////////////////////////////////////////////////
 	//
@@ -184,28 +181,24 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// twice in a row.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_valid))&&($past(i_stall_n))&&(o_valid))
-		assert(o_pc != $past(o_pc));
+		assume(o_pc != $past(o_pc));
 
 	always @(*)
 	begin
-		assert(i_pc[1:0] == 2'b00);
-		assert(o_pc[1:0] == 2'b00);
+		`ASSERT(i_pc[1:0] == 2'b00);
+		assume(o_pc[1:0] == 2'b00);
 	end
 
 
 	//
 	// Assume we start from a reset condition
-	initial	assume(i_reset);
+	initial	`ASSUME(i_reset);
 
 	// Assume that any reset is either accompanied by a new address,
 	// or a new address immediately follows it.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_reset)))
-		assert(i_new_pc);
-
-//	always @(posedge i_clk)
-//	if ((f_past_valid)&&($past(i_clear_cache)))
-//		assert(!i_clear_cache);
+		`ASSERT(i_new_pc);
 
 	//
 	//
@@ -214,37 +207,22 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// the synthesis tool to remove them.
 	//
 	always @(*)
-		assert(i_pc[1:0] == 2'b00);
+		`ASSERT(i_pc[1:0] == 2'b00);
 
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_reset)))
-		assert(i_new_pc);
+		`ASSERT(i_new_pc);
 
 	// There will also be a i_new_pc request following any request to clear
 	// the cache.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_clear_cache)))
-		assert(i_new_pc);
+		`ASSERT(i_new_pc);
 
 	always @(*)
-		assume(i_pc[1:0] == 2'b00);
-
-	//
-	// Following a reset, all pipelines clear and the next stage is
-	// guaranteed to be ready.
-	//
-	initial	assume(i_stall_n);
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
-		assert(i_stall_n);
-
-	// The CPU will never suddenly become busy unless it has accepted a
-	// valid instruction.
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(o_valid))&&($past(i_stall_n)))
-		assert(i_stall_n);
+		`ASSUME(i_pc[1:0] == 2'b00);
 
 	/////////////////////////////////////////////////
 	//
@@ -262,7 +240,7 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
 			&&($past(o_valid))&&(!$past(i_stall_n)))
 	begin
-		assert($stable(o_pc));
+		assume($stable(o_pc));
 		assume($stable(o_insn));
 		assume($stable(o_valid));
 		assume($stable(o_illegal));
@@ -272,15 +250,15 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// As with i_pc[1:0], the bottom two bits of the address are unused.
 	// Let's assert here that they remain zero.
 	always @(*)
-		assert(o_pc[1:0] == 2'b00);
+		assume(o_pc[1:0] == 2'b00);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(o_illegal))&&(o_illegal))
-		assert(o_valid);
+		assume(o_valid);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_new_pc)))
-		assert(!o_valid);
+		assume(!o_valid);
 
 `endif	// FORMAL
 

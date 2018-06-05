@@ -90,10 +90,12 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			LGNLINES=5, // Log of the number of separate cache lines
 			NAUX=5;	// # of aux d-wires to keep aligned w/memops
 	parameter [0:0]	OPT_LOCAL_BUS=1'b1;
+	parameter [0:0]	OPT_PIPE=1'b1;
 	parameter [0:0]	OPT_LOCK=1'b1;
-	localparam 	SDRAM_BIT = 26;
-	localparam	FLASH_BIT = 22;
-	localparam	BLKRAM_BIT= 15;
+	parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0;
+	parameter [AW-1:0] 	BLKRAM_ADDR = 30'h4000000,
+				BLKRAM_MASK = 30'h4000000;
+	parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0;
 	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
 	localparam	CS = LGCACHELEN; // Number of bits in a cache address
 	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
@@ -108,7 +110,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	input	[(NAUX-1):0]	i_oreg;	// Aux data, such as reg to write to
 	// Outputs, going back to the CPU
 	output	reg		o_busy;
-	output	wire		o_pipe_stalled;
+	output	reg		o_pipe_stalled;
 	output	reg		o_valid, o_err;
 	output reg [(NAUX-1):0]	o_wreg;
 	output	reg [(DW-1):0]	o_data;
@@ -160,10 +162,10 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 					||(last_tag != i_addr[(AW+1):LS+2])
 					||(!c_v[i_cline]);
 	assign	w_cachable = ((!OPT_LOCAL_BUS)||(i_addr[(DW-1):(DW-8)]!=8'hff))
-				&&((!i_lock)||(!OPT_LOCK))
-				&&(((SDRAM_BIT>0)&&(i_addr[SDRAM_BIT]))
-				  ||((FLASH_BIT>0)&&(i_addr[FLASH_BIT]))
-				  ||((BLKRAM_BIT>0)&&(i_addr[BLKRAM_BIT])));
+		&&((!i_lock)||(!OPT_LOCK))
+		&&(((SDRAM_ADDR  != 0)&&((i_addr[AW+1:2] & SDRAM_MASK) ==SDRAM_ADDR))
+		  ||((FLASH_ADDR != 0)&&((i_addr[AW+1:2] & FLASH_MASK) ==FLASH_ADDR))
+		  ||((BLKRAM_ADDR!= 0)&&((i_addr[AW+1:2] & BLKRAM_MASK)==BLKRAM_ADDR)));
 
 	reg	r_cachable, r_svalid, r_dvalid, r_rd, r_cache_miss,
 		r_rd_pending;
@@ -220,19 +222,21 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		//
 		// Some preliminaries that needed to be calculated on the first
 		// clock
+		if ((!o_pipe_stalled)&&(!r_rd_pending))
+			r_addr <= i_addr[(AW+1):2];
 		if (!o_busy)
 		begin
 			r_iv   <= c_v[i_cline];
 			r_itag <= c_vtags[i_cline];
-			r_addr <= i_addr[(AW+1):2];
 			r_cachable <= (!i_op[0])&&(w_cachable)&&(i_pipe_stb);
 			o_wreg <= i_oreg;
 			r_rd_pending <= (i_pipe_stb)&&(!i_op[0]);
 		end else begin
 			r_iv   <= c_v[r_cline];
 			r_itag <= c_vtags[r_cline];
-			r_rd_pending <= (r_rd_pending)&&((r_itag != r_ctag)
-				||(!r_iv)||(!r_cachable))&&(!r_svalid);
+			r_rd_pending <= (r_rd_pending)&&(!r_svalid)
+					&&(!r_dvalid)
+					&&((r_cachable)||(!i_wb_ack));
 		end
 		r_rd <= (i_pipe_stb)&&(!i_op[0]);
 		// r_itag contains the tag we didn't have available to us on the
@@ -295,8 +299,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end
 
-	reg	[1:0]	state;
-
+	reg			set_vflag;
+	reg	[1:0]		state;
+	reg	[LS+1:0]	npending;
 	reg	[(CS-1):0]	wr_addr;
 
 	initial	r_wb_cyc_gbl = 0;
@@ -305,6 +310,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	o_wb_stb_lcl = 0;
 	initial	c_v = 0;
 	initial	cyc = 0;
+	initial	stb = 0;
 	initial	c_wr = 0;
 	initial	state = `DC_IDLE;
 	always @(posedge i_clk)
@@ -321,16 +327,18 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		last_line_stb <= 1'b0;
 		end_of_line <= 1'b0;
 		state <= `DC_IDLE;
-		last_ack <= 1'b0;
 		cyc <= 1'b0;
+		stb <= 1'b0;
 		state <= `DC_IDLE;
+		set_vflag <= 1'b0;
 	end else begin
 		// By default, update the cache from the write 1-clock ago
 		// c_wr <= (wr_cstb)&&(wr_wtag == wr_vtag);
 		// c_waddr <= wr_addr[(CS-1):0];
 		c_wr <= 0;
 
-		if ((c_wr)&&(!cyc))
+		set_vflag <= 1'b0;
+		if ((!cyc)&&(set_vflag))
 			c_v[c_waddr[(CS-1):LS]] <= 1'b1;
 
 		wr_cstb <= 1'b0;
@@ -397,7 +405,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 					r_wb_cyc_gbl <= 1'b1;
 					o_wb_stb_gbl <= 1'b1;
 				end
-				last_ack <= 1'b1;
 
 			end else if (r_cache_miss)
 			begin
@@ -409,7 +416,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				stb <= 1'b1;
 				r_wb_cyc_gbl <= 1'b1;
 				o_wb_stb_gbl <= 1'b1;
-				last_ack <= (LS == 0);
 				wr_addr[LS-1:0] <= 0;
 			end else if ((i_pipe_stb)&&(!w_cachable))
 			begin // Read non-cachable memory area
@@ -428,7 +434,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				r_wb_cyc_gbl <= 1'b1;
 				o_wb_stb_gbl <= 1'b1;
 				end
-				last_ack <= 1'b1;
 			end // else we stay idle
 
 		end else if (state == `DC_READC)
@@ -450,11 +455,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			c_waddr <= ((i_wb_ack)?(c_waddr+1'b1):c_waddr);
 			c_wsel  <= 4'hf;
 
-			if (i_wb_ack)
-				last_ack <= last_ack || (&wr_addr[LS-1:1]);
-			else
-				last_ack <= last_ack || (&wr_addr[LS-1:0]);
-
+			set_vflag <= 1'b1;
 			if ((i_wb_ack)&&(!end_of_line))
 				c_vtags[r_addr[(CS-1):LS]]
 						<= r_addr[(AW-1):LS];
@@ -463,6 +464,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			begin
 				state          <= `DC_IDLE;
 				cyc <= 1'b0;
+				stb <= 1'b0;
 				r_wb_cyc_gbl <= 1'b0;
 				r_wb_cyc_lcl <= 1'b0;
 				o_wb_stb_gbl <= 1'b0;
@@ -489,6 +491,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			begin
 				state        <= `DC_IDLE;
 				cyc          <= 1'b0;
+				stb          <= 1'b0;
 				r_wb_cyc_gbl <= 1'b0;
 				r_wb_cyc_lcl <= 1'b0;
 				o_wb_stb_gbl <= 1'b0;
@@ -512,13 +515,16 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 			wr_cstb  <= (stb)&&(!i_wb_stall)&&(in_cache);
 
-			if ((stb)&&(!i_wb_stall)&&(i_pipe_stb))
+			if ((stb)&&(!i_wb_stall))
 				o_wb_addr <= i_addr[(AW+1):2];
 
-			if (((i_wb_ack)&&(last_ack))||(i_wb_err))
+			if (((i_wb_ack)&&(last_ack)
+						&&((!OPT_PIPE)||(!i_pipe_stb)))
+				||(i_wb_err))
 			begin
 				state        <= `DC_IDLE;
 				cyc          <= 1'b0;
+				stb          <= 1'b0;
 				r_wb_cyc_gbl <= 1'b0;
 				r_wb_cyc_lcl <= 1'b0;
 				o_wb_stb_gbl <= 1'b0;
@@ -526,6 +532,39 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			end
 		end
 	end
+
+	always @(posedge i_clk)
+	if ((i_reset)||(!OPT_PIPE)||(i_wb_err)||((!cyc)&&(!i_pipe_stb))
+			||(state == `DC_READC))
+		npending <= 0;
+	else case({ (i_pipe_stb), (cyc)&&(i_wb_ack) })
+	2'b01: npending <= npending - 1'b1;
+	2'b10: npending <= npending + 1'b1;
+	default: begin end
+	endcase
+
+	always @(posedge i_clk)
+	if (state == `DC_IDLE)
+	begin
+		last_ack <= 1'b0;
+		if ((i_pipe_stb)&&(i_op[0]))
+			last_ack <= 1'b1;
+		else if (r_cache_miss)
+			last_ack <= (LS == 0);
+		else if ((i_pipe_stb)&&(!w_cachable))
+			last_ack <= 1'b1;
+	end else if (state == `DC_READC)
+	begin
+		if (i_wb_ack)
+			last_ack <= last_ack || (&wr_addr[LS-1:1]);
+		else
+			last_ack <= last_ack || (&wr_addr[LS-1:0]);
+	end else case({ (i_pipe_stb), ((cyc)&&(i_wb_ack)) })
+	2'b01: last_ack <= (npending[4:1] <= 1);
+	2'b10: last_ack <= (!cyc)||(npending == 0);
+	default: begin end
+	endcase
+
 
 	//
 	// Writes to the cache
@@ -622,7 +661,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	// to be the last_noncachable_ack.
 
 
-	assign o_pipe_stalled= o_busy;
+	always @(*)
+	if (OPT_PIPE)
+		o_pipe_stalled = (cyc)&&((!o_wb_we)||(i_wb_stall))
+					||(r_rd_pending)||(r_svalid)||(r_dvalid)
+					||(o_valid);
+	else
+		o_pipe_stalled = o_busy;
 
 	reg	lock_gbl, lock_lcl;
 	initial	lock_gbl = 0;
@@ -721,8 +766,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		assert((!o_wb_cyc_gbl)||(!o_wb_cyc_lcl));
 
 	fwb_master #(
-		.AW(AW), .DW(DW), .F_MAX_STALL(1),
-			.F_MAX_ACK_DELAY(1),
+		.AW(AW), .DW(DW), .F_MAX_STALL(2),
+			.F_MAX_ACK_DELAY(3),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS((1<<LS)),
 			.F_OPT_SOURCE(1'b1),
@@ -911,12 +956,15 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 	if (state == `DC_READC)
 	begin
-		if ($past(i_wb_ack))
+		if (($past(i_wb_ack))&&(!$past(f_stb)))
 			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
 		else if (f_nacks > 0)
 		begin
 			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
 			assert(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]);
+		end else begin
+			assert(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]-1'b1);
+			assert(&c_waddr[LS-1:0]);
 		end
 	end
 
@@ -1007,6 +1055,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		assert(!o_wb_cyc_lcl);
 		assert(!o_wb_we);
 		assert(r_rd_pending);
+		assert(r_cachable);
 		if (($past(cyc))&&(!$past(o_wb_stb_gbl)))
 			assert(!o_wb_stb_gbl);
 	end
@@ -1042,15 +1091,15 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	always @(posedge i_clk)
 	if (state == `DC_READC)
-		assert(((SDRAM_BIT >0)&&(o_wb_addr[SDRAM_BIT-2]))
-				||(  (FLASH_BIT >0)&&(o_wb_addr[FLASH_BIT-2]))
-				||(  (BLKRAM_BIT>0)&&(o_wb_addr[BLKRAM_BIT-2])));
+		assert(((SDRAM_ADDR != 0)&&((o_wb_addr&SDRAM_MASK)==SDRAM_ADDR))
+		     ||((FLASH_ADDR != 0)&&((o_wb_addr&FLASH_MASK)==FLASH_ADDR))
+		     ||((BLKRAM_ADDR!= 0)&&((o_wb_addr&BLKRAM_MASK)==BLKRAM_ADDR)));
 	else if (state == `DC_READS)
-		assert(((lock_gbl)||(i_lock))
-			||(r_wb_cyc_lcl)
-			||(((SDRAM_BIT==0)||(!o_wb_addr[SDRAM_BIT-2]))
-			&&((FLASH_BIT ==0)||(!o_wb_addr[FLASH_BIT-2]))
-			&&((BLKRAM_BIT==0)||(!o_wb_addr[BLKRAM_BIT-2]))));
+		assert(((lock_gbl)||((OPT_LOCK)&&(i_lock)))
+		||(r_wb_cyc_lcl)
+		||(((SDRAM_ADDR == 0)||((o_wb_addr&SDRAM_MASK)!=SDRAM_ADDR))
+		     &&((FLASH_ADDR == 0)||((o_wb_addr&FLASH_MASK)!=FLASH_ADDR))
+		     &&((BLKRAM_ADDR== 0)||((o_wb_addr&BLKRAM_MASK)!=BLKRAM_ADDR))));
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(OPT_LOCK)&&($past(i_lock))
@@ -1065,6 +1114,19 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	////////////////////////////////////////////////
 	//
 	//
+	always @(*)
+	if ((OPT_PIPE)&&(state == `DC_WRITE)&&(!i_wb_stall))
+		assert(!o_pipe_stalled);
+
+	// always @(*)
+	// if ((OPT_PIPE)&&(state == `DC_READS)&&(!i_wb_stall))
+		// assert(!o_pipe_stalled);
+
+	always @(posedge i_clk)
+	if (state == `DC_WRITE)
+		assert(o_wb_we);
+	else if ((state == `DC_READS)||(state == `DC_READC))
+		assert(!o_wb_we);
 
 	always @(*)
 	if (cyc)
@@ -1080,13 +1142,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_past_valid)&&(last_tag == f_const_tag)&&(f_const_buserr)
 			&&(!f_const_addr[AW]))
 		assert(!last_tag_valid);
-
-	always @(*)
-		assert((SDRAM_BIT  == 0)||(SDRAM_BIT  < ADDRESS_WIDTH));
-	always @(*)
-		assert((FLASH_BIT  == 0)||(FLASH_BIT  < ADDRESS_WIDTH));
-	always @(*)
-		assert((BLKRAM_BIT == 0)||(BLKRAM_BIT < ADDRESS_WIDTH));
 
 	always @(*)
 	if (!OPT_LOCAL_BUS)
@@ -1157,6 +1212,12 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(*)
 		f_pc = (o_wreg[3:1] == 3'h7);
 
+	always @(*)
+	if (!OPT_PIPE)
+		assert(o_pipe_stalled == o_busy);
+	else if (o_pipe_stalled)
+		assert(o_busy);
+
 	////////////////////////////////////////////////
 	//
 	// Cover statements
@@ -1188,6 +1249,39 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_past_valid)&&(!$past(cyc))&&(!cyc))
 		assume((!i_wb_err)&&(!i_wb_ack));
 
+	//
+	// Only ever abort on reset
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(cyc))&&(!$past(i_wb_err)))
+	begin
+		if (($past(i_pipe_stb))&&(!$past(o_pipe_stalled)))
+			assert(cyc);
+		else if ($past(f_outstanding > 1))
+			assert(cyc);
+		else if (($past(f_outstanding == 1))
+				&&((!$past(i_wb_ack))
+					||(($past(f_stb))
+						&&(!$past(i_wb_stall)))))
+			assert(cyc);
+		else if (($past(f_outstanding == 0))
+				&&($past(f_stb)&&(!$past(i_wb_ack))))
+			assert(cyc);
+	end
 
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&(state != `DC_READC)&&(OPT_PIPE))
+	begin
+		if ($past(i_pipe_stb))
+			assert(npending == f_outstanding+1);
+		else
+			assert(npending == f_outstanding);
+	end
+
+	always @(posedge i_clk)
+	if ((OPT_PIPE)&&(state != `DC_READC)&&(state != `DC_IDLE))
+		assert(last_ack == (npending != 0));
+
+	always @(*)
+	assert(stb == f_stb);
 `endif
 endmodule
