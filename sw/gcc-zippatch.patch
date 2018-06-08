@@ -162,12 +162,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure.ac gcc-6.2.0-zip/configure.ac
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cfgexpand.c gcc-6.2.0-zip/gcc/cfgexpand.c
 --- gcc-6.2.0/gcc/cfgexpand.c	2016-04-27 08:23:50.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/cfgexpand.c	2016-12-31 16:38:36.195534819 -0500
-@@ -74,6 +74,15 @@
++++ gcc-6.2.0-zip/gcc/cfgexpand.c	2018-06-05 21:18:19.438798488 -0400
+@@ -74,6 +74,16 @@
  #include "tree-chkp.h"
  #include "rtl-chkp.h"
  
 +
++// #define	DO_ZIP_DEBUGS
 +#ifdef	DO_ZIP_DEBUGS
 +#include <stdio.h>
 +#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s;%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
@@ -179,7 +180,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cfgexpand.c gcc-6.2.0-zip/gcc/cfgexpa
  /* Some systems use __main in a way incompatible with its use in gcc, in these
     cases use the macros NAME__MAIN to give a quoted symbol and SYMBOL__MAIN to
     give the same symbol without quotes for an alternative entry point.  You
-@@ -1172,7 +1181,7 @@
+@@ -1172,7 +1182,7 @@
  		base_align = crtl->max_used_stack_slot_alignment;
  	      else
  		base_align = MAX (crtl->max_used_stack_slot_alignment,
@@ -188,7 +189,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cfgexpand.c gcc-6.2.0-zip/gcc/cfgexpa
  				  << ASAN_SHADOW_SHIFT);
  	    }
  	  else
-@@ -2225,7 +2234,7 @@
+@@ -2225,7 +2235,7 @@
  	  data.asan_vec.safe_push (offset);
  	  /* Leave space for alignment if STRICT_ALIGNMENT.  */
  	  if (STRICT_ALIGNMENT)
@@ -197,7 +198,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cfgexpand.c gcc-6.2.0-zip/gcc/cfgexpa
  				      << ASAN_SHADOW_SHIFT)
  				     / BITS_PER_UNIT, 1);
  
-@@ -5745,7 +5754,7 @@
+@@ -5745,7 +5755,7 @@
        && (last = get_last_insn ())
        && JUMP_P (last))
      {
@@ -300,6 +301,212 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +#define	TARGET_OPTION_OPTIMIZATION_TABLE	zip_option_optimization_table
 +
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops gcc-6.2.0-zip/gcc/config/zip/genzipops
+--- gcc-6.2.0/gcc/config/zip/genzipops	1969-12-31 19:00:00.000000000 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops	2018-03-22 18:33:09.823726748 -0400
+@@ -0,0 +1,201 @@
++ELF          >     @     @       €N          @ 8 	 @         @       @ @     @ @     ø      ø                   8      8@     8@                                          @       @     ô9      ô9                    >      >`     >`     ˜      À                    (>      (>`     (>`     Ğ      Ğ                   T      T@     T@     D       D              Påtd   Ä6      Ä6@     Ä6@     œ       œ              Qåtd                                                  Råtd   >      >`     >`     ğ      ğ             /lib64/ld-linux-x86-64.so.2          GNU                        GNU Á•F3m›ö+•Z\Lè=à–ö<                         9ò‹                            4                                            B                      ;                      #                      t                      m                      ^                      †                       f                                            W                                                                  P                      I     À@`             libc.so.6 exit sprintf fopen puts __stack_chk_fail unlink strlen fclose stderr fwrite rename fprintf access strcmp __libc_start_main __gmon_start__ GLIBC_2.4 GLIBC_2.2.5                                   ii   •      ui	   Ÿ       ø?`        	           À@`                   @`                    @`                   (@`                   0@`                   8@`                   @@`                   H@`                   P@`                   X@`        
++           `@`                   h@`                   p@`                   x@`                   €@`                   HƒìH‹9  H…Àtè  HƒÄÃ              ÿ59  ÿ%9  @ ÿ%9  h    éàÿÿÿÿ%ú8  h   éĞÿÿÿÿ%ò8  h   éÀÿÿÿÿ%ê8  h   é°ÿÿÿÿ%â8  h   é ÿÿÿÿ%Ú8  h   éÿÿÿÿ%Ò8  h   é€ÿÿÿÿ%Ê8  h   épÿÿÿÿ%Â8  h   é`ÿÿÿÿ%º8  h	   éPÿÿÿÿ%²8  h
++   é@ÿÿÿÿ%ª8  h   é0ÿÿÿÿ%¢8  h   é ÿÿÿÿ%š8  h   éÿÿÿÿ%8  f        1íI‰Ñ^H‰âHƒäğPTIÇÀğ@ HÇÁ€@ HÇÇ>@ è7ÿÿÿôfD  ¸¯@` UH-¨@` HƒøH‰åv¸    H…Àt]¿¨@` ÿàf„     ]Ã@ f.„     ¾¨@` UHî¨@` HÁşH‰åH‰ğHÁè?HÆHÑşt¸    H…Àt]¿¨@` ÿà ]ÃfD  €=8   uUH‰åènÿÿÿ]Æş7  óÃ@ ¿ >` Hƒ? uë“ ¸    H…ÀtñUH‰åÿĞ]ézÿÿÿUH‰åHƒìH‰}øH‹EøH‰Áº¸  ¾   ¿@ èÃşÿÿÉÃUH‰åHƒìH‰}øH‰uğH‹UğH‹Eø¾Á @ H‰Ç¸    è6şÿÿÉÃUH‰åHƒì0H‰}øH‰uğH‰UèH‰MàL‰EØL‰MĞH‹}èH‹uĞH‹MĞH‹UğH‹EøHƒìÿuÿuØÿuàI‰ùI‰ğ¾Ğ @ H‰Ç¸    èÚıÿÿHƒÄ ÉÃUH‰åHìĞ   H‰½hÿÿÿH‰µ`ÿÿÿH‰•XÿÿÿH‰PÿÿÿL‰…HÿÿÿL‰@ÿÿÿH‹EH‰…8ÿÿÿdH‹%(   H‰Eø1ÀH‹•8ÿÿÿH…pÿÿÿ¾³!@ H‰Ç¸    è¤ıÿÿH‹•8ÿÿÿH‹…hÿÿÿ¾È!@ H‰Ç¸    èDıÿÿH‹½8ÿÿÿH‹µPÿÿÿH‹XÿÿÿH‹•`ÿÿÿH‹…hÿÿÿHƒìÿµ`ÿÿÿI‰ùI‰ğ¾ğ!@ H‰Ç¸    èÿüÿÿHƒÄH‹½8ÿÿÿH‹µPÿÿÿH‹@ÿÿÿH‹•`ÿÿÿH‹…hÿÿÿHƒìÿµ`ÿÿÿI‰ùI‰ğ¾€"@ H‰Ç¸    è¶üÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìh?#@ A¹<#@ I‰øH‰ÇèBşÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhD#@ A¹A#@ I‰øH‰ÇèşÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhJ#@ A¹G#@ I‰øH‰ÇèÀıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhP#@ A¹M#@ I‰øH‰ÇèıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhW#@ A¹S#@ I‰øH‰Çè>ıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìh]#@ A¹Y#@ I‰øH‰ÇèıüÿÿHƒÄH‹EødH3%(   tèçúÿÿÉÃUH‰åHì€  H‰½¨ùÿÿH‰µ ùÿÿH‰•˜ùÿÿH‰ùÿÿL‰…ˆùÿÿdH‹%(   H‰Eø1ÀH‹•˜ùÿÿH…ğùÿÿ¾`#@ H‰Ç¸    èøúÿÿH‹•˜ùÿÿH…ğûÿÿ¾ $@ H‰Ç¸    èØúÿÿH‹•˜ùÿÿH…ğıÿÿ¾8$@ H‰Ç¸    è¸úÿÿL…ğıÿÿH½ğûÿÿH‹ùÿÿH•ğùÿÿH‹µ ùÿÿH‹…¨ùÿÿHƒìÿµˆùÿÿM‰ÁI‰øH‰ÇècüÿÿHƒÄH‹•˜ùÿÿH…ğùÿÿ¾¸$@ H‰Ç¸    èRúÿÿH‹•˜ùÿÿH…ğûÿÿ¾ˆ%@ H‰Ç¸    è2úÿÿH‹•˜ùÿÿH…ğıÿÿ¾Ø%@ H‰Ç¸    èúÿÿH‹• ùÿÿH…°ùÿÿ¾Š&@ H‰Ç¸    èòùÿÿL…ğıÿÿH½ğûÿÿH‹ùÿÿH•ğùÿÿHµ°ùÿÿH‹…¨ùÿÿHƒìÿµˆùÿÿM‰ÁI‰øH‰ÇèûÿÿHƒÄH‹EødH3%(   tè'ùÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøHƒìÿuàÿuàÿuàI‰ùI‰ğ¾˜&@ H‰Ç¸    èùÿÿHƒÄ ÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾(@ H‰Ç¸    è¹øÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾`)@ H‰Ç¸    èrøÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾ˆ*@ H‰Ç¸    è+øÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾˜+@ H‰Ç¸    èä÷ÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾à,@ H‰Ç¸    è÷ÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾(.@ H‰Ç¸    èV÷ÿÿÉÃUH‰å¿p/@ èåöÿÿ]ÃUH‰åAUATSHƒì(‰}ÌH‰uÀH‹?0  ¾²/@ H‰Çè:÷ÿÿH‰EØH‹/0  H‰EĞƒ}Ì~!H‹EÀHƒÀH‹ ¶ <-uè›ÿÿÿ¿   è4÷ÿÿƒ}Ì´   H‹EÀHƒÀH‹ H‰Çè‡öÿÿH‰ÃH‹İ/  H‰ÇèuöÿÿH9Ãr~H‹É/  H‹EÀHƒÀL‹ H‹EÀHƒÀH‹ H‰ÇèKöÿÿI‰ÅH‹¡/  H‰Çè9öÿÿI)ÅL‰èLàH‰ŞH‰ÇèUöÿÿ…Àu/H‹EÀHƒÀH‹ ¾    H‰ÇèYöÿÿ…ÀuH‹EÀHƒÀH‹ H‰ÇèÂõÿÿH‹EÀH‹@H‰EĞH‹EØH‰Çè÷ÿÿH‹EØA¸´/@ ¹¸/@ º¹/@ ¾Á/@ H‰ÇèäúÿÿH‹EØA¸È/@ ¹¸/@ ºÌ/@ ¾Õ/@ H‰ÇèÃúÿÿH‹EØA¸Ü/@ ¹¸/@ ºà/@ ¾è/@ H‰Çè¢úÿÿH‹EØA¸ï/@ ¹ô/@ º0@ ¾0@ H‰ÇèúÿÿH‹EØA¸0@ ¹ô/@ º0@ ¾0@ H‰Çè`úÿÿH‹EØA¸$0@ ¹¸/@ º(0@ ¾/0@ H‰Çè?úÿÿH‹EØA¸60@ ¹¸/@ º90@ ¾@0@ H‰ÇèúÿÿH‹EØA¸G0@ ¹¸/@ ºK0@ ¾R0@ H‰ÇèıùÿÿH‹EØA¸Y0@ ¹¸/@ º]0@ ¾i0@ H‰ÇèÜùÿÿH‹EØA¸q0@ ¹¸/@ ºu0@ ¾0@ H‰Çè»ùÿÿH‹EØA¸‡0@ ¹¸/@ º‹0@ ¾—0@ H‰ÇèšùÿÿH‹EØHƒìh3@ A¹ 0@ A¸x1@ ¹
++2@ º2@ ¾3@ H‰Çè¬öÿÿHƒÄH‹EØHƒìh5@ A¹ 3@ A¸ø3@ ¹
++2@ º4@ ¾5@ H‰ÇèxöÿÿHƒÄH‹EØ¾–5@ H‰ÇèÖõÿÿH‹EØ¹?#@ º<#@ ¾´5@ H‰ÇèÆúÿÿH‹EØ¹D#@ ºA#@ ¾´5@ H‰Çè«úÿÿH‹EØ¹J#@ ºG#@ ¾´5@ H‰ÇèúÿÿH‹EØ¹P#@ ºM#@ ¾´5@ H‰ÇèuúÿÿH‹EØ¹W#@ ºS#@ ¾´5@ H‰ÇèZúÿÿH‹EØ¹]#@ ºY#@ ¾´5@ H‰Çè?úÿÿH‹EØ¾¹5@ H‰Çè#õÿÿH‹EØ¹?#@ º<#@ ¾Ö5@ H‰ÇèkúÿÿH‹EØ¹D#@ ºA#@ ¾Ö5@ H‰ÇèPúÿÿH‹EØ¹J#@ ºG#@ ¾Ö5@ H‰Çè5úÿÿH‹EØ¹P#@ ºM#@ ¾Ö5@ H‰ÇèúÿÿH‹EØ¹W#@ ºS#@ ¾Ö5@ H‰ÇèÿùÿÿH‹EØ¹]#@ ºY#@ ¾Ö5@ H‰ÇèäùÿÿH‹EØ¾à5@ H‰ÇèpôÿÿH‹EØ¹?#@ º<#@ ¾ 6@ H‰ÇèFúÿÿH‹EØ¹D#@ ºA#@ ¾ 6@ H‰Çè+úÿÿH‹EØ¹J#@ ºG#@ ¾ 6@ H‰ÇèúÿÿH‹EØ¹P#@ ºM#@ ¾ 6@ H‰ÇèõùÿÿH‹EØ¹W#@ ºS#@ ¾ 6@ H‰ÇèÚùÿÿH‹EØ¹]#@ ºY#@ ¾ 6@ H‰Çè¿ùÿÿH‹EØ¾6@ H‰Çè½óÿÿH‹EØ¹?#@ º<#@ ¾"6@ H‰ÇèLùÿÿH‹EØ¹D#@ ºA#@ ¾"6@ H‰Çè1ùÿÿH‹EØ¹J#@ ºG#@ ¾"6@ H‰ÇèùÿÿH‹EØ¹P#@ ºM#@ ¾"6@ H‰ÇèûøÿÿH‹EØ¹W#@ ºS#@ ¾"6@ H‰ÇèàøÿÿH‹EØ¹]#@ ºY#@ ¾"6@ H‰ÇèÅøÿÿH‹EØ¾'6@ H‰Çè
++óÿÿH‹EØ¹?#@ º<#@ ¾D6@ H‰Çè'ùÿÿH‹EØ¹D#@ ºA#@ ¾D6@ H‰ÇèùÿÿH‹EØ¹J#@ ºG#@ ¾D6@ H‰ÇèñøÿÿH‹EØ¹P#@ ºM#@ ¾D6@ H‰ÇèÖøÿÿH‹EØ¹W#@ ºS#@ ¾D6@ H‰Çè»øÿÿH‹EØ¹]#@ ºY#@ ¾D6@ H‰Çè øÿÿH‹EØ¾I6@ H‰ÇèWòÿÿH‹EØ¹?#@ º<#@ ¾f6@ H‰Çè»øÿÿH‹EØ¹D#@ ºA#@ ¾f6@ H‰Çè øÿÿH‹EØ¹J#@ ºG#@ ¾f6@ H‰Çè…øÿÿH‹EØ¹P#@ ºM#@ ¾f6@ H‰ÇèjøÿÿH‹EØ¹W#@ ºS#@ ¾f6@ H‰ÇèOøÿÿH‹EØ¹]#@ ºY#@ ¾f6@ H‰Çè4øÿÿH‹EØ¾k6@ H‰Çè¤ñÿÿH‹EØ¹?#@ º<#@ ¾ˆ6@ H‰ÇèOøÿÿH‹EØ¹D#@ ºA#@ ¾ˆ6@ H‰Çè4øÿÿH‹EØ¹J#@ ºG#@ ¾ˆ6@ H‰ÇèøÿÿH‹EØ¹P#@ ºM#@ ¾ˆ6@ H‰Çèş÷ÿÿH‹EØ¹W#@ ºS#@ ¾ˆ6@ H‰Çèã÷ÿÿH‹EØ¹]#@ ºY#@ ¾ˆ6@ H‰ÇèÈ÷ÿÿH‹EØH‰ÇèïÿÿH‹g(  H‹UĞH‰ÖH‰Çèpïÿÿ…Àt.H‹M(  H‹n(  H‹UĞ¾6@ H‰Ç¸    èïÿÿ¿   è^ïÿÿ¿    èTïÿÿ@ AWAVA‰ÿAUATL%~%  UH-~%  SI‰öI‰ÕL)åHƒìHÁıè'îÿÿH…ít 1Û„     L‰êL‰öD‰ÿAÿÜHƒÃH9ëuêHƒÄ[]A\A]A^A_Ãf.„     óÃ  HƒìHƒÄÃ         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Filename:	zip-ops.md
++;;
++;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++;;
++;; Purpose:	This is a computer generated machine description of the
++;;		ZipCPU's operations.  It is computer generated simply for
++;;	two reasons.  First, I can't seem to find a way to generate this
++;;	information within GCC's current constructs.  Specifically, the
++;;	CPU's instructions normally set the condition codes, unless they
++;;	are conditional instructions when they don't.  Second, the ZipCPU is
++;;	actually quite regular.  Almost all of the instructions have the same
++;;	form.  This form turns into many, many RTL instructions.  Because the
++;;	CPU doesn't match any of the others within GCC, that means either
++;;	I have a *lot* of cut, copy, paste, and edit to do to create the file
++;;	and upon any and every edit, or I need to build a program to generate
++;;	the remaining .md constructs.  Hence, I chose the latter to minimize
++;;	the amount of work I needed to do.
++;;
++;;
++;; Creator:	Dan Gisselquist, Ph.D.
++;;		Gisselquist Technology, LLC
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Copyright (C) 2017, Gisselquist Technology, LLC
++;;
++;; This program is free software (firmware): you can redistribute it and/or
++;; modify it under the terms of  the GNU General Public License as published
++;; by the Free Software Foundation, either version 3 of the License, or (at
++;; your option) any later version.
++;;
++;; This program is distributed in the hope that it will be useful, but WITHOUT
++;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++;; for more details.
++;;
++;; License:	GPL, v3, as defined and found on www.gnu.org,
++;;		http://www.gnu.org/licenses/gpl.html
++;;
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;;
++ ;
++;
++; %s
++;
++;
++  (define_insn "%s_%s"
++	[(cond_exec (%s (reg:CC CC_REG) (const_int 0))
++			%s)]
++	"%s"	; Condition
++	"%s.%s\t%%1,%%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++ %s (genzipop_long)   ;
++;
++;
++; %s (genzipop_long)
++;
++;
++;
++       (define_insn "%s"
++	[%s
++	(clobber (reg:CC CC_REG))]
++	"%s"
++	"%s\t%%2,%%0	; %s"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++  (define_insn "%s_raw"
++	[%s
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"%s"
++	"%s\t%%1,%%0	; %s_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++ eq Z ne NZ lt LT ge GE ltu C geu NC (set (match_operand:SI 0 "register_operand" "=r")
++		(%s (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))   (set (match_dup 0) (%s (match_dup 0) (match_dup 2)))    (set (match_operand:SI 0 "register_operand" "=r")
++		(%s (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))) (set (match_operand:SI 0 "register_operand" "=r")
++		(%s (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N")))) (set (match_dup 0) (%s (match_dup 0)
++			(plus:SI (match_dup 2) (match_dup 3)))) (set (match_operand:SI 0 "register_operand" "=r")
++		(%s (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))) %s_off        ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.%s	%%1,%%0	; cmov
++	LW.%s	%%1,%%0	; cmov
++	LDI.%s	%%1,%%0	; cmov
++	SW.%s	%%1,%%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++ ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.%s	%%1,%%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++     ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.%s	%%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++        ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.%s	%%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++   ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.%s	%%1,%%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++  ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.%s	%%1,%%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++   ;
++;
++(define_insn "%s_%s"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.%s	%%1,%%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++  USAGE: genzipops <new-zip-ops.md filename> .zip-ops.md zip-ops.md w ADD  plus:SI addsi3 SUB minus:SI subsi3 MPY mult:SI mulsi3 DIVS (ZIP_DIVIDE) div:SI divsi3 DIVU udiv:SI udivsi3 AND and:SI andsi3 OR ior:SI iorsi3 XOR xor:SI xorsi3 ASR ashiftrt:SI ashrsi3 LSL ashift:SI ashlsi3 LSR lshiftrt:SI lshrsi3  (set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32))))        (set (match_dup 0)
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 1))
++			(sign_extend:DI (match_dup 2)))
++			(const_int 32)))) (ZIP_HAS_DI)  (set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
++			(sign_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
++			(const_int 32)))) smulsi_highpart MPYSHI   (set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32))))        (set (match_dup 0)
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 1))
++			(zero_extend:DI (match_dup 2)))
++			(const_int 32))))       (set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
++			(zero_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
++			(const_int 32)))) umulsi_highpart MPYUHI Conditional move instructions cmov Conditional add instructions cadd      Conditional negate instructions cneg Conditional not instructions cnot Conditional and instructions cand Conditional ior instructions cior Conditional xor instructions cxor    ERR: Could not create %s, leaving results in %s
++    ;˜      <Ğÿÿä   <Ñÿÿ´   2Òÿÿ  \Òÿÿ,  ‰ÒÿÿL  éÒÿÿl  §ÕÿÿŒ  g×ÿÿ¬  ¿×ÿÿÌ  Øÿÿì  MØÿÿ  ”Øÿÿ,  ÛØÿÿL  "Ùÿÿl  iÙÿÿŒ  zÙÿÿ¬  ¼áÿÿÌ  ,âÿÿ         zR x      €Ğÿÿ*                  zR x  $      PÏÿÿğ    FJw€ ?;*3$"       D   Ñÿÿ*    A†Ce      d   (Ñÿÿ-    A†Ch      „   5Ñÿÿ`    A†C[     ¤   uÑÿÿ¾   A†C¹    Ä   ÔÿÿÀ   A†C»    ä   ³ÕÿÿX    A†CS       ëÕÿÿG    A†CB     $  ÖÿÿG    A†CB     D  9ÖÿÿG    A†CB     d  `ÖÿÿG    A†CB     „  ‡ÖÿÿG    A†CB     ¤  ®ÖÿÿG    A†CB     Ä  ÕÖÿÿ    A†CL      ä  ÆÖÿÿ>   A†CIŒƒD     èŞÿÿe    BBE B(ŒH0†H8ƒM@r8A0A(B BBB    L  ßÿÿ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           Ğ@     °@                                  Ø@            ô@            >`                          >`                   õşÿo    ˜@            X@            À@     
++       «                                            @`            P                           ˆ@            X@            0       	              şÿÿo    (@     ÿÿÿo           ğÿÿo    @                                                                                                             (>`                     @     &@     6@     F@     V@     f@     v@     †@     –@     ¦@     ¶@     Æ@     Ö@     æ@                     ›/@     §/@     GCC: (Ubuntu 5.4.0-6ubuntu1~16.04.9) 5.4.0 20160609                                   8@                   T@                   t@                   ˜@                   À@                   X@                   @                   (@                  	 X@                  
++ ˆ@                   Ø@                    @                   ğ@                    @                   ô@                    @                   Ä6@                   `7@                   >`                   >`                    >`                   (>`                   ø?`                    @`                   ˆ@`                   À@`                                       ñÿ                      >`                  0@                  p@             .     °@             D     È@`            S     >`             z     Ğ@             †     >`             ¥    ñÿ                    ñÿ                ±     ğ9@             ¿      >`                  ñÿ                Ë      >`             Ü     (>`             å      >`             ø      Ä6@                  @`             !    ğ@            1    Ÿ@     G       9                     M                      -     ˆ@`             i    +@     X       q                     ƒ     @`            Œ    k@     À      •    M	@     `       £    ˜@`            «    ¨@`             ²                     +    ô@             Æ                     Ú                     ö    ­	@     ¾          Ê@     G                            +    ˆ@`             8                     L    X@     G       T                     i                      x   @`             …     @            ”    €@     e       ×     Ğ@`             ¤     	@     -       1     @     *       °    æ@     G       ¸    ƒ@     G       À    ¨@`             Ì    >@     >      Ñ    -@            ×                     ë                     ş                                           &    ö@     *       ,                     A                     S                     g   ¨@`             s                          @     G           Ø@             •    À@`             crtstuff.c __JCR_LIST__ deregister_tm_clones __do_global_dtors_aux completed.7594 __do_global_dtors_aux_fini_array_entry frame_dummy __frame_dummy_init_array_entry genzipops.c __FRAME_END__ __JCR_END__ __init_array_end _DYNAMIC __init_array_start __GNU_EH_FRAME_HDR _GLOBAL_OFFSET_TABLE_ __libc_csu_fini gencior unlink@@GLIBC_2.2.5 _ITM_deregisterTMCloneTable gencmov puts@@GLIBC_2.2.5 TAILPATH genzipop genzip_condop TMPPATH _edata fclose@@GLIBC_2.2.5 strlen@@GLIBC_2.2.5 __stack_chk_fail@@GLIBC_2.4 genzipop_long gencnot __libc_start_main@@GLIBC_2.2.5 __data_start strcmp@@GLIBC_2.2.5 gencand fprintf@@GLIBC_2.2.5 __gmon_start__ __dso_handle _IO_stdin_used __libc_csu_init gen_heading gencxor gencadd __bss_start main usage access@@GLIBC_2.2.5 fopen@@GLIBC_2.2.5 _Jv_RegisterClasses rename@@GLIBC_2.2.5 legal sprintf@@GLIBC_2.2.5 exit@@GLIBC_2.2.5 fwrite@@GLIBC_2.2.5 __TMC_END__ _ITM_registerTMCloneTable gencneg stderr@@GLIBC_2.2.5  .symtab .strtab .shstrtab .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt .init .plt.got .text .fini .rodata .eh_frame_hdr .eh_frame .init_array .fini_array .jcr .dynamic .got.plt .data .bss .comment                                                                                 8@     8                                    #             T@     T                                     1             t@     t      $                              D   öÿÿo       ˜@     ˜      $                             N             À@     À      ˜                          V             X@     X      «                              ^   ÿÿÿo       @           "                            k   şÿÿo       (@     (      0                            z             X@     X      0                            „      B       ˆ@     ˆ      P                                       Ø@     Ø                                    ‰              @            ğ                             ”             ğ@     ğ                                                  @            ò                             £             ô@     ô      	                              ©              @            Á                             ±             Ä6@     Ä6      œ                              ¿             `7@     `7      ”                             É             >`     >                                    Õ             >`     >                                    á              >`      >                                    æ             (>`     (>      Ğ                           ˜             ø?`     ø?                                   ï              @`      @      ˆ                             ø             ˆ@`     ˆ@                                     ş             À@`     ¨@                                          0               ¨@      4                                                   qM                                                         à@      è         /                 	                      ÈI      ©                             
+\ No newline at end of file
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
 +++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-07 12:03:59.062584503 -0500
@@ -750,8 +957,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2017-03-07 12:03:18.566583672 -0500
-@@ -0,0 +1,2679 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2018-06-05 21:17:24.151098201 -0400
+@@ -0,0 +1,2711 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -2502,6 +2709,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +			strcpy(mstr, ":HI");
 +		else if (GET_MODE(x) == SImode)
 +			strcpy(mstr, ":SI");
++		else if (GET_MODE(x) == DImode)
++			strcpy(mstr, ":DI");
++		else if (GET_MODE(x) == SFmode)
++			strcpy(mstr, ":SF");
++		else if (GET_MODE(x) == DFmode)
++			strcpy(mstr, ":DF");
 +		else if (GET_MODE(x) == VOIDmode)
 +			strcpy(mstr, ":V");
 +		else
@@ -2509,8 +2722,14 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		if (REG_P(XEXP(x,0))) {
 +			int hreg = REGNO(XEXP(x,0)), mod = GET_MODE(XEXP(x,0)),
 +				sb = SUBREG_BYTE(x);
-+			if (mod==QImode)
-+			sprintf(buf,"(SUBREG%s (REG:QI %d)/%d)",mstr,hreg, sb);
++			if (mod==SFmode)
++			sprintf(buf,"(SUBREG%s (REG:SF %d)/%d)",mstr,hreg, sb);
++			else if (mod==DFmode)
++			sprintf(buf,"(SUBREG%s (REG:DF %d)/%d)",mstr,hreg, sb);
++			else if (mod==DImode)
++			sprintf(buf,"(SUBREG%s (REG:DI %d)/%d)",mstr,hreg, sb);
++			else if (mod==SImode)
++			sprintf(buf,"(SUBREG%s (REG:SI %d)/%d)",mstr,hreg, sb);
 +			else if (mod==HImode)
 +			sprintf(buf,"(SUBREG%s (REG:HI %d)/%d)",mstr,hreg, sb);
 +			else if (mod==QImode)
@@ -2922,8 +3141,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +	ZIPDEBUGFLAG(dbg, false);
 +
 +	if (dbg) fprintf(stderr, "\nZIP::MOVDI\n");
-+	if (dbg) zip_debug_rtx_pfx("DST", dst);
-+	if (dbg) zip_debug_rtx_pfx("SRC", src);
++	if (dbg) zip_debug_rtx_pfx("  DST", dst);
++	if (dbg) zip_debug_rtx_pfx("  SRC", src);
 +
 +	// MOV !REG->!REG
 +	if ((!REG_P(dst))&&(!REG_P(src))&&(can_create_pseudo_p())) {
@@ -2944,6 +3163,26 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +		emit_insn(gen_movdi_raw(dst, src));
 +		return 1;
++	}
++
++	// MOV SUBREG->REG
++	if ((REG_P(dst))&&(SUBREG_P(src))) {
++		if (dbg) fprintf(stderr, "ZIP::MOVDI -- SUBREG->REG\n");
++
++		if (GET_MODE(src)==DImode) {
++			emit_insn(gen_movdi_raw(dst, src));
++			return 1;
++		}
++	}
++
++	// MOV REG->SUBREG
++	if ((SUBREG_P(dst))&&(REG_P(src))) {
++		if (dbg) fprintf(stderr, "ZIP::MOVDI -- REG->SUBREG\n");
++
++		if (GET_MODE(dst)==DImode) {
++			emit_insn(gen_movdi_raw(dst, src));
++			return 1;
++		}
 +	}
 +
 +	// MOV REG->MEM (a store instruction)
@@ -3445,7 +3684,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2017-04-19 11:38:00.203886955 -0400
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2018-06-05 18:57:29.386399718 -0400
 @@ -0,0 +1,548 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -3464,7 +3703,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2018, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -4139,7 +4378,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/config/zip/zip.h
 --- gcc-6.2.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2017-03-03 09:30:57.671304970 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2018-06-05 22:22:38.581639662 -0400
 @@ -0,0 +1,4114 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -4336,8 +4575,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * If this macro is not defined, the GCC driver provides a default that passes
 + * the string '-lgcc' to the linker.
 + */
-+#undef	LIBGCC_SPEC
-+#define	LIBGCC_SPEC	""
++// #undef	LIBGCC_SPEC
++// #define	LIBGCC_SPEC	""
 +
 +/* REAL_LIBGCC_SPEC ... By default, if ENABLE_SHARED_LIBGCC is defined, the
 + * LIBGCC_SPEC is not directly used by the driver program but is instead
@@ -4410,6 +4649,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + */
 +#define	TARGET_CPU_CPP_BUILTINS()				\
 +	{ builtin_define("__ZIPCPU__");				\
++	builtin_define("__BIG_ENDIAN__");			\
 +	builtin_define("__IEEE_BIG_ENDIAN");			\
 +	builtin_define("_LDBL_EQ_DBL");				\
 +	if (ZIP_FPU) builtin_define("__ZIPFPU__");		\
@@ -4462,7 +4702,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * achieved.  Therefore, we won't support these modes.  However, we can't just
 + * set this to zero, so let's come back to this.
 + */
-+// #warning "Wrong answer encoded to date"
 +// #undef	TARGET_FLOAT_EXCEPTIONS_ROUNDING_SUPPORTED_P
 +// #define	TARGET_FLOAT_EXCEPTIONS_ROUNDING_SUPPORTED_P(X)	0
 +
@@ -7180,7 +7419,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 +/* SIZE_ASM_OP ... A C string containing the appropriate assembler directive
 + * to specify the size of a symbol, without any arguments.  ON systems that
-+ * use ELF, the dfault is "\t.size\t"; on other systems, the default is not to
++ * use ELF, the default is "\t.size\t"; on other systems, the default is not to
 + * define this macro.
 + *
 + * Define this amcro only if it is correct to use the default definitions of
@@ -7236,7 +7475,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * (sans semicolon) to output to the stdio stream STREAM any text necessary for
 + * claiming a register REGNO for a global variable DECL with name NAME.
 + *
-+ * If you don't defin this macro, that is equivalent to dfining it to do
++ * If you don't defin this macro, that is equivalent to defining it to do
 + * nothing.
 + */
 +
@@ -8257,8 +8496,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2017-03-07 12:02:29.862582673 -0500
-@@ -0,0 +1,1968 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2018-06-07 12:51:05.802342817 -0400
+@@ -0,0 +1,1897 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -8274,7 +8513,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015-2017, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2018, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -8357,10 +8596,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +   (RTNV_REG		1)	; Subroutine return value register
 +   (AP_REG		10)	; Hopefully never used
 +   (GBL_REG		11)	; Hopefully never used, but just in case ...
-+   (FP_REG		12)
-+   (SP_REG		13)
-+   (CC_REG		14)
-+   (PC_REG		15)
++   (FP_REG		12)	; Frame pointer register
++   (SP_REG		13)	; Stack pointer register
++   (CC_REG		14)	; Condition codes register
++   (PC_REG		15)	; Program counter
 +  ])
 +;
 +;
@@ -8438,40 +8677,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +{
 +	return zip_pd_mvimm_operand(op);
 +})
-+
-+;
-+; zip_movdst_operand_p and zip_movsrc_operand_p are no longer necessary, and
-+; are being deprecated.
-+;
-+;(define_predicate "zip_movdst_operand_p"
-+;	(match_code "mem,reg,subreg")
-+;{
-+;	if (MEM_P(op)) // Check for valid store address
-+;		return zip_pd_opb_operand(XEXP(op,0));
-+;	else if ((SUBREG_P(op))&&(REG_P(XEXP(op,0))))
-+;		return 1;
-+;	else if (REG_P(op))
-+;		return register_operand(op, GET_MODE(op));
-+;	return 1;
-+;})
-+
-+;(define_predicate "zip_movsrc_operand_p"
-+;	(match_code "mem,reg,subreg,const_int,const,symbol_ref,label_ref,code_label")
-+;{
-+;	if (MEM_P(op))
-+;		return zip_pd_opb_operand(XEXP(op,0));
-+;	else if (GET_CODE(op)==PLUS)
-+;		return zip_pd_opb_operand(op);
-+;	else if ((SUBREG_P(op))&&(REG_P(XEXP(op,0)))) {
-+;		//; As far as predicates are concerned, subregs must be valid.
-+;		//; The details of them are settled within the constraints.
-+;		return 1;
-+;	} else if ((REG_P(op))||(SUBREG_P(op)))
-+;		return register_operand(op,SImode);
-+;	else if (CONST_INT_P(op))
-+;		return 1;
-+;	return 1;
-+;})
 +
 +;
 +;
@@ -8646,26 +8851,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	""
 +	"LDI	%1,%0"
 +	[(set_attr "ccresult" "unchanged")])
-+;
-+;
-+;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;; Load and store multiple values
-+;;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;
-+; So far, from the code I've seen from GCC's output,
-+; these instructions do not appear to be necessary.
-+;
-+;(define_insn "load_multiple"
-+;	for(a=0; a<%2; a++)
-+;		LW a(%1),%0+a
-+;(define_insn "store_multiple"
-+;	for(a=0; a<%2; a++)
-+;		SW %0+a,a(%1)
-+; pushsi -- Do not define, compiler will work around it nicely w/o our help
-+;
 +;
 +;
 +;
@@ -8860,10 +9045,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;;
 +;
 +;
-+; ASR
-+; LSL
-+; LSR
-+;
 +;
 +;
 +;
@@ -8896,18 +9077,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(clobber (reg:CC CC_REG))])]
 +	""
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+;
-+;
-+;
-+;
-+;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;; Conditional arithmetic instructions
-+;;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;
-+;
 +;
 +;
 +;
@@ -9093,20 +9262,16 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +		(if_then_else:SI (match_operand 1 "comparison_operator")
 +			(xor:SI (match_operand:SI 2 "register_operand" "0")
 +				(const_int -1))
-+			(match_dup 2)))]
++			(match_operand:SI 3 "register_operand" "0")))]
 +	""
 +	{
-+		extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
 +		//; fprintf(stderr, "NOTSICC\n");
 +		//; zip_debug_rtx_pfx("- DST: ", operands[0]);
 +		//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
 +		//; zip_debug_rtx_pfx("- NOT: ", operands[2]);
 +		//; zip_debug_rtx_pfx("- OLD: ", operands[3]);
 +
-+		if (!REG_P(operands[2]))
-+			operands[2] = force_reg(SImode, operands[2]);
-+		if (REGNO(operands[0]) != REGNO(operands[2]))
-+			emit_insn(gen_movsi(operands[0], operands[2]));
 +
 +		rtx_code	ccode = GET_CODE(operands[1]);
 +		rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
@@ -10158,6 +10323,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	"BREAK"
 +	[(set_attr "predicable" "yes") (set_attr "ccresult" "unchanged")])
 +;
++;
 +(define_expand "ctrapsi4"
 +	[(set (reg:CC CC_REG) (compare:CC
 +		(match_operand:SI 1 "register_operand" "r")
@@ -10167,6 +10333,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +			(match_operand 3 "const_int_operand" "O"))]
 +	""
 +	)
++;
++;
 +(define_insn "trapif"
 +	[(trap_if (match_operator 0 "ordered_comparison_operator"
 +			[(reg:CC CC_REG) (const_int 0)])
@@ -10227,11 +10395,2754 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;	cmove	... the conditional move, created from a
 +;	(set (match_op 0 "" "r") (if_then_else (condition) (a) (reg X))))
 +;	pattern
-diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-modes.def gcc-6.2.0-zip/gcc/config/zip/zip-modes.def
---- gcc-6.2.0/gcc/config/zip/zip-modes.def	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-modes.def	2017-01-10 12:46:54.791966242 -0500
-@@ -0,0 +1 @@
-+#define	BITS_PER_UNIT	8
+diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/gcc/config/zip/zip-ops.md
+--- gcc-6.2.0/gcc/config/zip/zip-ops.md	1969-12-31 19:00:00.000000000 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-ops.md	2018-03-22 18:33:11.175718614 -0400
+@@ -0,0 +1,2744 @@
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Filename:	zip-ops.md
++;;
++;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++;;
++;; Purpose:	This is a computer generated machine description of the
++;;		ZipCPU's operations.  It is computer generated simply for
++;;	two reasons.  First, I can't seem to find a way to generate this
++;;	information within GCC's current constructs.  Specifically, the
++;;	CPU's instructions normally set the condition codes, unless they
++;;	are conditional instructions when they don't.  Second, the ZipCPU is
++;;	actually quite regular.  Almost all of the instructions have the same
++;;	form.  This form turns into many, many RTL instructions.  Because the
++;;	CPU doesn't match any of the others within GCC, that means either
++;;	I have a *lot* of cut, copy, paste, and edit to do to create the file
++;;	and upon any and every edit, or I need to build a program to generate
++;;	the remaining .md constructs.  Hence, I chose the latter to minimize
++;;	the amount of work I needed to do.
++;;
++;;
++;; Creator:	Dan Gisselquist, Ph.D.
++;;		Gisselquist Technology, LLC
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;; Copyright (C) 2017, Gisselquist Technology, LLC
++;;
++;; This program is free software (firmware): you can redistribute it and/or
++;; modify it under the terms of  the GNU General Public License as published
++;; by the Free Software Foundation, either version 3 of the License, or (at
++;; your option) any later version.
++;;
++;; This program is distributed in the hope that it will be useful, but WITHOUT
++;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++;; for more details.
++;;
++;; License:	GPL, v3, as defined and found on www.gnu.org,
++;;		http://www.gnu.org/licenses/gpl.html
++;;
++;;
++;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
++;;
++;;
++;
++;
++;
++; ADD (genzipop_long)
++;
++;
++;
++(define_insn "addsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"ADD\t%2,%0	; addsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "addsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"ADD\t%1,%0	; addsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "addsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ADD.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; ADD (genzipop_long)
++;
++;
++;
++(define_insn "addsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"ADD\t%2,%0	; addsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "addsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"ADD\t%1,%0	; addsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "addsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "addsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(plus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ADD.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; SUB (genzipop_long)
++;
++;
++;
++(define_insn "subsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"SUB\t%2,%0	; subsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "subsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"SUB\t%1,%0	; subsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "subsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"SUB.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; SUB (genzipop_long)
++;
++;
++;
++(define_insn "subsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"SUB\t%2,%0	; subsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "subsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"SUB\t%1,%0	; subsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "subsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "subsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(minus:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"SUB.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; MPY (genzipop_long)
++;
++;
++;
++(define_insn "mulsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"MPY\t%2,%0	; mulsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "mulsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"MPY\t%1,%0	; mulsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "mulsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"MPY.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; MPY (genzipop_long)
++;
++;
++;
++(define_insn "mulsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"MPY\t%2,%0	; mulsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "mulsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"MPY\t%1,%0	; mulsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "mulsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "mulsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"MPY.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; DIVS (genzipop_long)
++;
++;
++;
++(define_insn "divsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_DIVIDE)"
++	"DIVS\t%2,%0	; divsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "divsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_DIVIDE)"
++	"DIVS\t%1,%0	; divsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "divsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; DIVS (genzipop_long)
++;
++;
++;
++(define_insn "divsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_DIVIDE)"
++	"DIVS\t%2,%0	; divsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "divsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_DIVIDE)"
++	"DIVS\t%1,%0	; divsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "divsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "divsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(div:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVS.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; DIVU (genzipop_long)
++;
++;
++;
++(define_insn "udivsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_DIVIDE)"
++	"DIVU\t%2,%0	; udivsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "udivsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_DIVIDE)"
++	"DIVU\t%1,%0	; udivsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "udivsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; DIVU (genzipop_long)
++;
++;
++;
++(define_insn "udivsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_DIVIDE)"
++	"DIVU\t%2,%0	; udivsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "udivsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_DIVIDE)"
++	"DIVU\t%1,%0	; udivsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "udivsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "udivsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(udiv:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	"(ZIP_DIVIDE)"	; Condition
++	"DIVU.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; AND (genzipop_long)
++;
++;
++;
++(define_insn "andsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"AND\t%2,%0	; andsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "andsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"AND\t%1,%0	; andsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "andsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"AND.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; AND (genzipop_long)
++;
++;
++;
++(define_insn "andsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"AND\t%2,%0	; andsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "andsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"AND\t%1,%0	; andsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "andsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "andsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(and:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"AND.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; OR (genzipop_long)
++;
++;
++;
++(define_insn "iorsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"OR\t%2,%0	; iorsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "iorsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"OR\t%1,%0	; iorsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "iorsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"OR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; OR (genzipop_long)
++;
++;
++;
++(define_insn "iorsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"OR\t%2,%0	; iorsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "iorsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"OR\t%1,%0	; iorsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "iorsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "iorsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ior:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"OR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; XOR (genzipop_long)
++;
++;
++;
++(define_insn "xorsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"XOR\t%2,%0	; xorsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "xorsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"XOR\t%1,%0	; xorsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "xorsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"XOR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; XOR (genzipop_long)
++;
++;
++;
++(define_insn "xorsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"XOR\t%2,%0	; xorsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "xorsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"XOR\t%1,%0	; xorsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "xorsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "xorsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(xor:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"XOR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; ASR (genzipop_long)
++;
++;
++;
++(define_insn "ashrsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"ASR\t%2,%0	; ashrsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashrsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"ASR\t%1,%0	; ashrsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashrsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"ASR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; ASR (genzipop_long)
++;
++;
++;
++(define_insn "ashrsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"ASR\t%2,%0	; ashrsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashrsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"ASR\t%1,%0	; ashrsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashrsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashrsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"ASR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; LSL (genzipop_long)
++;
++;
++;
++(define_insn "ashlsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"LSL\t%2,%0	; ashlsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashlsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"LSL\t%1,%0	; ashlsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashlsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSL.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; LSL (genzipop_long)
++;
++;
++;
++(define_insn "ashlsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"LSL\t%2,%0	; ashlsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashlsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"LSL\t%1,%0	; ashlsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "ashlsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "ashlsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(ashift:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSL.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; LSR (genzipop_long)
++;
++;
++;
++(define_insn "lshrsi3"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(clobber (reg:CC CC_REG))]
++	""
++	"LSR\t%2,%0	; lshrsi3"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "lshrsi3_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"LSR\t%1,%0	; lshrsi3_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "lshrsi3_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))))]
++	""	; Condition
++	"LSR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; LSR (genzipop_long)
++;
++;
++;
++(define_insn "lshrsi3_off"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_operand:SI 1 "register_operand" "0")
++			(plus:SI (match_operand:SI 2 "register_operand" "r")
++				(match_operand:SI 3 "const_int_operand" "N"))))
++	(clobber (reg:CC CC_REG))]
++	""
++	"LSR\t%2,%0	; lshrsi3_off"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "lshrsi3_off_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N"))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	""
++	"LSR\t%1,%0	; lshrsi3_off_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "lshrsi3_off_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_off_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_off_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_off_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_off_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "lshrsi3_off_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(lshiftrt:SI (match_dup 0)
++			(plus:SI (match_operand:SI 1 "register_operand" "r")
++				(match_operand:SI 2 "const_int_operand" "N")))))]
++	""	; Condition
++	"LSR.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; MPYSHI (genzipop_long)
++;
++;
++;
++(define_insn "smulsi_highpart"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
++			(sign_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
++			(const_int 32))))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_HAS_DI)"
++	"MPYSHI\t%2,%0	; smulsi_highpart"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "smulsi_highpart_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_HAS_DI)"
++	"MPYSHI\t%1,%0	; smulsi_highpart_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "smulsi_highpart_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "smulsi_highpart_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "smulsi_highpart_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "smulsi_highpart_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "smulsi_highpart_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "smulsi_highpart_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(sign_extend:DI (match_dup 0))
++			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYSHI.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++;
++; MPYUHI (genzipop_long)
++;
++;
++;
++(define_insn "umulsi_highpart"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
++			(zero_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
++			(const_int 32))))
++	(clobber (reg:CC CC_REG))]
++	"(ZIP_HAS_DI)"
++	"MPYUHI\t%2,%0	; umulsi_highpart"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "umulsi_highpart_raw"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32))))
++	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
++	"(ZIP_HAS_DI)"
++	"MPYUHI\t%1,%0	; umulsi_highpart_raw"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;
++;
++(define_insn "umulsi_highpart_eq"
++	[(cond_exec (eq (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.Z\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "umulsi_highpart_ne"
++	[(cond_exec (ne (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.NZ\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "umulsi_highpart_lt"
++	[(cond_exec (lt (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.LT\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "umulsi_highpart_ge"
++	[(cond_exec (ge (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.GE\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "umulsi_highpart_ltu"
++	[(cond_exec (ltu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.C\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "umulsi_highpart_geu"
++	[(cond_exec (geu (reg:CC CC_REG) (const_int 0))
++			(set (match_operand:SI 0 "register_operand" "=r")
++		(truncate:SI (ashiftrt:DI (mult:DI
++			(zero_extend:DI (match_dup 0))
++			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
++			(const_int 32)))))]
++	"(ZIP_HAS_DI)"	; Condition
++	"MPYUHI.NC\t%1,%0	; genzip, conditional operator"	; Template
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++;
++;
++; Conditional move instructions
++;
++;
++;
++;
++(define_insn "cmov_eq"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.Z	%1,%0	; cmov
++	LW.Z	%1,%0	; cmov
++	LDI.Z	%1,%0	; cmov
++	SW.Z	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cmov_ne"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.NZ	%1,%0	; cmov
++	LW.NZ	%1,%0	; cmov
++	LDI.NZ	%1,%0	; cmov
++	SW.NZ	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cmov_lt"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.LT	%1,%0	; cmov
++	LW.LT	%1,%0	; cmov
++	LDI.LT	%1,%0	; cmov
++	SW.LT	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cmov_ge"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.GE	%1,%0	; cmov
++	LW.GE	%1,%0	; cmov
++	LDI.GE	%1,%0	; cmov
++	SW.GE	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cmov_ltu"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.C	%1,%0	; cmov
++	LW.C	%1,%0	; cmov
++	LDI.C	%1,%0	; cmov
++	SW.C	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cmov_geu"
++	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(match_operand:SI 1 "general_operand" "r,Q,i,r")
++			(match_dup 0)))]
++	""
++	"@
++	MOV.NC	%1,%0	; cmov
++	LW.NC	%1,%0	; cmov
++	LDI.NC	%1,%0	; cmov
++	SW.NC	%1,%0	; cmov"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional add instructions
++;
++;
++;
++;
++(define_insn "cadd_eq"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.Z	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cadd_ne"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.NZ	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cadd_lt"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.LT	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cadd_ge"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.GE	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cadd_ltu"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.C	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cadd_geu"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(plus:SI (match_dup 0)
++				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"ADD.NC	%1,%0	; cadd"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional negate instructions
++;
++;
++;
++;
++(define_insn "cneg_eq"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.Z	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cneg_ne"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.NZ	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cneg_lt"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.LT	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cneg_ge"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.GE	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cneg_ltu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.C	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cneg_geu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(neg:SI (match_dup 0))
++			(match_dup 0)))]
++	""
++	"NEG.NC	%0	; cneg"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional not instructions
++;
++;
++;
++;
++(define_insn "cnot_eq"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.Z	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cnot_ne"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.NZ	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cnot_lt"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.LT	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cnot_ge"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.GE	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cnot_ltu"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.C	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cnot_geu"
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0)
++				(const_int -1))
++			(match_dup 0)))]
++	""
++	"NOT.NC	%0	; cnot"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional and instructions
++;
++;
++;
++;
++(define_insn "cand_eq"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.Z	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cand_ne"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.NZ	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cand_lt"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.LT	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cand_ge"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.GE	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cand_ltu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.C	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cand_geu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"AND.NC	%1,%0	; cand"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional ior instructions
++;
++;
++;
++;
++(define_insn "cior_eq"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.Z	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cior_ne"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.NZ	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cior_lt"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.LT	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cior_ge"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.GE	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cior_ltu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.C	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cior_geu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"OR.NC	%1,%0	; cior"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++; Conditional xor instructions
++;
++;
++;
++;
++(define_insn "cxor_eq"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (eq (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.Z	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cxor_ne"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ne (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.NZ	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cxor_lt"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (lt (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.LT	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cxor_ge"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ge (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.GE	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cxor_ltu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (ltu (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.C	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
++;
++;
++(define_insn "cxor_geu"
++	[(set (match_operand:SI 0 "register_operand" "+r")
++		(if_then_else:SI (geu (reg:CC CC_REG) (const_int 0))
++			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
++			(match_dup 0)))]
++	""
++	"XOR.NC	%1,%0	; cxor"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-6.2.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
 +++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-03-01 15:46:02.440221158 -0500
@@ -11537,7 +14448,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config.gcc gcc-6.2.0-zip/gcc/config.g
  	exit 1
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cse.c gcc-6.2.0-zip/gcc/cse.c
 --- gcc-6.2.0/gcc/cse.c	2016-02-04 04:56:13.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/cse.c	2017-02-06 21:46:10.525049918 -0500
++++ gcc-6.2.0-zip/gcc/cse.c	2018-06-05 21:17:32.963050314 -0400
 @@ -42,6 +42,16 @@
  #include "dbgcnt.h"
  #include "rtl-iter.h"
@@ -11839,7 +14750,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/loop-iv.c gcc-6.2.0-zip/gcc/loop-iv.c
  	  delta = simplify_gen_binary (MINUS, mode, tmp1, delta);
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
 --- gcc-6.2.0/gcc/optabs.c	2016-02-16 10:15:40.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/optabs.c	2017-03-01 15:46:15.660221429 -0500
++++ gcc-6.2.0-zip/gcc/optabs.c	2018-03-23 07:13:51.664427524 -0400
 @@ -43,6 +43,17 @@
  #include "optabs-tree.h"
  #include "libfuncs.h"
@@ -11865,7 +14776,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/optabs.c gcc-6.2.0-zip/gcc/optabs.c
 +#ifdef	DO_ZIP_DEBUGS
 +fprintf(stderr, "ICODE = %d\n", icode);
 +fprintf(stderr, "NOPS  = %d\n", nops);
-+for(int i=0; i<nops; i++) {
++for(unsigned i=0; i<nops; i++) {
 +	char	str[10];
 +	sprintf(str, "Op %d: ", i);
 +	zip_debug_rtx_pfx(str, ops[i].value);
@@ -12070,13 +14981,15 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/varasm.c gcc-6.2.0-zip/gcc/varasm.c
  	elt = GEN_INT (data[i]);
 diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config/zip/sfp-machine.h gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h
 --- gcc-6.2.0/libgcc/config/zip/sfp-machine.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h	2017-01-27 12:27:05.094921759 -0500
-@@ -0,0 +1,53 @@
++++ gcc-6.2.0-zip/libgcc/config/zip/sfp-machine.h	2018-03-23 07:16:33.779338866 -0400
+@@ -0,0 +1,55 @@
 +#ifndef	ZIP_SFP_MACHINE_H
 +#define	ZIP_SFP_MACHINE_H
 +
 +#define	__BIG_ENDIAN	4321
 +#define	__BYTE_ORDER	__BIG_ENDIAN
++
++#include "fp-bit.h"
 +
 +#define	_FP_W_TYPE_SIZE	32
 +#define	_FP_W_TYPE	unsigned int
@@ -12127,7 +15040,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config/zip/sfp-machine.h gcc-6.2.0
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config.host gcc-6.2.0-zip/libgcc/config.host
 --- gcc-6.2.0/libgcc/config.host	2016-05-17 02:15:52.000000000 -0400
-+++ gcc-6.2.0-zip/libgcc/config.host	2017-01-27 12:28:31.470410459 -0500
++++ gcc-6.2.0-zip/libgcc/config.host	2018-03-23 07:31:08.573591955 -0400
 @@ -197,6 +197,9 @@
  tic6x-*-*)
  	cpu_type=c6x
@@ -12143,7 +15056,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/libgcc/config.host gcc-6.2.0-zip/libgcc/c
  	extra_parts="crt0.o"
  	;;
 +zip*)
-+	tmake_file="$tmake_file t-softfp-sfdf t-softfp-excl t-softfp"
++	tmake_file="$tmake_file t-softfp-sfdf t-softfp t-fdpbit"
 +	# extra_parts="crt0.o"
 +	;;
  *)

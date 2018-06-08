@@ -92,10 +92,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	parameter [0:0]	OPT_LOCAL_BUS=1'b1;
 	parameter [0:0]	OPT_PIPE=1'b1;
 	parameter [0:0]	OPT_LOCK=1'b1;
-	parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0;
-	parameter [AW-1:0] 	BLKRAM_ADDR = 30'h4000000,
-				BLKRAM_MASK = 30'h4000000;
-	parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0;
+	parameter	F_LGDEPTH=LS+1;
 	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
 	localparam	CS = LGCACHELEN; // Number of bits in a cache address
 	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
@@ -161,11 +158,14 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	cache_miss_inow = (!last_tag_valid)
 					||(last_tag != i_addr[(AW+1):LS+2])
 					||(!c_v[i_cline]);
+
+	wire	raw_cachable_address;
+
+	iscachable #(.ADDRESS_WIDTH(AW))
+		chkaddress(i_addr[AW+1:2], raw_cachable_address);
+
 	assign	w_cachable = ((!OPT_LOCAL_BUS)||(i_addr[(DW-1):(DW-8)]!=8'hff))
-		&&((!i_lock)||(!OPT_LOCK))
-		&&(((SDRAM_ADDR  != 0)&&((i_addr[AW+1:2] & SDRAM_MASK) ==SDRAM_ADDR))
-		  ||((FLASH_ADDR != 0)&&((i_addr[AW+1:2] & FLASH_MASK) ==FLASH_ADDR))
-		  ||((BLKRAM_ADDR!= 0)&&((i_addr[AW+1:2] & BLKRAM_MASK)==BLKRAM_ADDR)));
+		&&((!i_lock)||(!OPT_LOCK))&&(raw_cachable_address);
 
 	reg	r_cachable, r_svalid, r_dvalid, r_rd, r_cache_miss,
 		r_rd_pending;
@@ -198,6 +198,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	r_dvalid = 1'b0;
 	initial	r_cache_miss = 1'b0;
 	initial	r_addr = 0;
+	initial	last_tag_valid = 0;
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
@@ -236,18 +237,23 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			r_itag <= c_vtags[r_cline];
 			r_rd_pending <= (r_rd_pending)&&(!r_svalid)
 					&&(!r_dvalid)
-					&&((r_cachable)||(!i_wb_ack));
+					&&((r_cachable)||(!i_wb_ack))
+					&&((!cyc)||(!i_wb_err));
 		end
 		r_rd <= (i_pipe_stb)&&(!i_op[0]);
 		// r_itag contains the tag we didn't have available to us on the
 		// last clock, r_ctag is a bit select from r_addr containing a
 		// one clock delayed address.
-		r_dvalid <= (!r_svalid)&&(r_itag == r_ctag)&&(r_iv)&&(r_cachable)&&(r_rd_pending);
+		r_dvalid <= (!r_svalid)&&(!r_dvalid)&&(r_itag == r_ctag)&&(r_iv)
+						&&(r_cachable)&&(r_rd_pending);
 		if ((r_itag == r_ctag)&&(r_iv)&&(r_cachable))
 		begin
 			last_tag_valid <= 1'b1;
 			last_tag <= r_ctag;
-		end
+		end else if ((state == `DC_READC)
+				&&(last_tag[CS-LS-1:0]==o_wb_addr[CS-1:LS])
+				&&((i_wb_ack)||(i_wb_err)))
+			last_tag_valid <= 1'b0;
 
 		// r_cache miss takes a clock cycle.  It is only ever true for
 		// something that should be cachable, but isn't in the cache.
@@ -455,7 +461,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			c_waddr <= ((i_wb_ack)?(c_waddr+1'b1):c_waddr);
 			c_wsel  <= 4'hf;
 
-			set_vflag <= 1'b1;
+			set_vflag <= !i_wb_err;
 			if ((i_wb_ack)&&(!end_of_line))
 				c_vtags[r_addr[(CS-1):LS]]
 						<= r_addr[(AW-1):LS];
@@ -645,10 +651,12 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	initial	o_busy = 0;
 	always @(posedge i_clk)
-	if (i_reset)
+	if ((i_reset)||((cyc)&&(i_wb_err)))
 		o_busy <= 1'b0;
 	else if (i_pipe_stb)
 		o_busy <= 1'b1;
+	else if ((state == `DC_READS)&&(i_wb_ack))
+		o_busy <= 1'b0;
 	else if (r_rd_pending)
 		o_busy <= 1'b1;
 	else if (cyc)
@@ -686,7 +694,14 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
 
 `ifdef	FORMAL
-// ifdef DCACHE
+`ifdef DCACHE
+`define	ASSUME	assume
+`define	ASSERT	assert
+`else
+`define	ASSUME	assert
+`define	ASSERT	assume
+`endif
+
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
@@ -701,27 +716,27 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	//
 	always @(*)
 	if(!f_past_valid)
-		assume(i_reset);
+		`ASSUME(i_reset);
 
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
 		// Insist on initial statements matching reset values
-		assert(r_rd == 1'b0);
-		assert(r_cachable == 1'b0);
-		assert(r_svalid == 1'b0);
-		assert(r_dvalid == 1'b0);
-		assert(r_cache_miss == 1'b0);
-		assert(r_addr == 0);
+		`ASSERT(r_rd == 1'b0);
+		`ASSERT(r_cachable == 1'b0);
+		`ASSERT(r_svalid == 1'b0);
+		`ASSERT(r_dvalid == 1'b0);
+		`ASSERT(r_cache_miss == 1'b0);
+		`ASSERT(r_addr == 0);
 		//
-		assert(c_wr == 0);
-		assert(c_v  == 0);
+		`ASSERT(c_wr == 0);
+		`ASSERT(c_v  == 0);
 		//
 		// assert(aux_head == 0);
 		// assert(aux_tail == 0);
 		//
-		assert(lock_gbl == 0);
-		assert(lock_lcl == 0);
+		`ASSERT(lock_gbl == 0);
+		`ASSERT(lock_lcl == 0);
 	end
 
 	////////////////////////////////////////////////
@@ -733,21 +748,21 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	//
 	always @(*)
 	if (o_pipe_stalled)
-		assume(!i_pipe_stb);
+		`ASSUME(!i_pipe_stb);
 
 	always @(*)
 	if (!f_past_valid)
-		assume(!i_pipe_stb);
+		`ASSUME(!i_pipe_stb);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
-		&&($past(i_pipe_stb))&&($past(o_busy)))
+		&&($past(i_pipe_stb))&&($past(o_pipe_stalled)))
 	begin
-		assume($stable(i_pipe_stb));
-		assume($stable(i_op[0]));
-		assume($stable(i_addr));
+		`ASSUME($stable(i_pipe_stb));
+		`ASSUME($stable(i_op[0]));
+		`ASSUME($stable(i_addr));
 		if (i_op[0])
-			assume($stable(i_data));
+			`ASSUME($stable(i_data));
 	end
 
 	////////////////////////////////////////////////
@@ -757,20 +772,27 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	////////////////////////////////////////////////
 	//
 	//
-	localparam	F_LGDEPTH=LS+1;
 	wire	f_cyc, f_stb;
 
 	assign	f_cyc = (o_wb_cyc_gbl)|(o_wb_cyc_lcl);
 	assign	f_stb = (o_wb_stb_gbl)|(o_wb_stb_lcl);
 	always @(*)
-		assert((!o_wb_cyc_gbl)||(!o_wb_cyc_lcl));
+		`ASSERT((!o_wb_cyc_gbl)||(!o_wb_cyc_lcl));
 
-	fwb_master #(
+`ifdef	DCACHE
+`define	FWB_MASTER	fwb_master
+`else
+`define	FWB_MASTER	fwb_counter
+`endif
+
+	`FWB_MASTER #(
 		.AW(AW), .DW(DW), .F_MAX_STALL(2),
 			.F_MAX_ACK_DELAY(3),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS((1<<LS)),
+`ifdef	DCACHE
 			.F_OPT_SOURCE(1'b1),
+`endif
 			.F_OPT_DISCONTINUOUS(0),
 			.F_OPT_CLK2FFLOGIC(0)
 		) fwb(i_clk, i_reset,
@@ -824,13 +846,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		begin
 
 			if (o_wb_sel[0])
-				assert(o_wb_data[7:0] == f_const_data[7:0]);
+				`ASSERT(o_wb_data[7:0] == f_const_data[7:0]);
 			if (o_wb_sel[1])
-				assert(o_wb_data[15:8] == f_const_data[15:8]);
+				`ASSERT(o_wb_data[15:8] == f_const_data[15:8]);
 			if (o_wb_sel[2])
-				assert(o_wb_data[23:16] == f_const_data[23:16]);
+				`ASSERT(o_wb_data[23:16] == f_const_data[23:16]);
 			if (o_wb_sel[3])
-				assert(o_wb_data[31:24] == f_const_data[31:24]);
+				`ASSERT(o_wb_data[31:24] == f_const_data[31:24]);
 
 		end else if ((!f_const_addr[AW])&&(c_v[f_const_tag_addr])
 			&&(f_ctag_here ==f_const_addr[AW-1:LS]))
@@ -838,35 +860,35 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			if ((c_wr)&&(c_waddr[CS-1:0] == f_const_addr[CS-1:0]))
 			begin
 				if (c_wsel[3])
-					assert(c_wdata[31:24]
+					`ASSERT(c_wdata[31:24]
 							== f_const_data[31:24]);
 				else
-					assert(f_cmem_here[31:24]
+					`ASSERT(f_cmem_here[31:24]
 							== f_const_data[31:24]);
 				if (c_wsel[2])
-					assert(c_wdata[23:16]
+					`ASSERT(c_wdata[23:16]
 							== f_const_data[23:16]);
 				else
-					assert(f_cmem_here[23:16] == f_const_data[23:16]);
+					`ASSERT(f_cmem_here[23:16] == f_const_data[23:16]);
 				if (c_wsel[1])
-					assert(c_wdata[15:8]
+					`ASSERT(c_wdata[15:8]
 							== f_const_data[15:8]);
 				else
-					assert(f_cmem_here[15:8] == f_const_data[15:8]);
+					`ASSERT(f_cmem_here[15:8] == f_const_data[15:8]);
 				if (c_wsel[0])
-					assert(c_wdata[7:0]
+					`ASSERT(c_wdata[7:0]
 							== f_const_data[7:0]);
 				else
-					assert(f_cmem_here[7:0] == f_const_data[7:0]);
+					`ASSERT(f_cmem_here[7:0] == f_const_data[7:0]);
 			end else
-				assert(f_cmem_here == f_const_data);
+				`ASSERT(f_cmem_here == f_const_data);
 		end
 	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(state == `DC_READC))
 	begin
-		assert(f_wb_tag == r_ctag);
+		`ASSERT(f_wb_tag == r_ctag);
 		if ((wb_start[AW-1:LS] == f_const_tag)
 			&&(!c_v[f_const_tag_addr])
 			&&(f_const_addr[AW] == r_wb_cyc_lcl)
@@ -876,20 +898,20 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			// constant address f_const_addr.  Make sure the data
 			// is correct.
 			if ((c_wr)&&(c_waddr[CS-1:0] == f_const_addr[CS-1:0]))
-				assert(c_wdata == f_const_data);
+				`ASSERT(c_wdata == f_const_data);
 			else
-				assert(f_cmem_here == f_const_data);
+				`ASSERT(f_cmem_here == f_const_data);
 		end
 
 		if (f_nacks > 0)
-			assert(!c_v[wb_start[CS-1:LS]]);
+			`ASSERT(!c_v[wb_start[CS-1:LS]]);
 	end
 
 	always @(posedge i_clk)
 	if ((state == `DC_READC)&&(f_nacks > 0))
 	begin
-		assert(c_vtags[wb_start[(CS-1):LS]] <= wb_start[(AW-1):LS]);
-		assert(c_vtags[wb_start[(CS-1):LS]] <= r_addr[AW-1:LS]);
+		`ASSERT(c_vtags[wb_start[(CS-1):LS]] <= wb_start[(AW-1):LS]);
+		`ASSERT(c_vtags[wb_start[(CS-1):LS]] <= r_addr[AW-1:LS]);
 	end
 
 	wire	[AW-1:0]	f_cache_waddr;
@@ -908,7 +930,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_past_valid)&&(state == `DC_READC))
 	begin
 		if ((c_wr)&&(c_waddr[LS-1:0] != 0)&&(f_this_cache_waddr))
-			assert(c_wdata == f_const_data);
+			`ASSERT(c_wdata == f_const_data);
 	end
 
 	always @(posedge i_clk)
@@ -947,51 +969,51 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	always @(*)
 	if ((state == `DC_READC)&&(!f_stb))
-		assert(f_nreqs == (1<<LS));
+		`ASSERT(f_nreqs == (1<<LS));
 
 	always @(*)
 	if ((state == `DC_READC)&&(f_stb))
-		assert(f_nreqs == { 1'b0, o_wb_addr[LS-1:0] });
+		`ASSERT(f_nreqs == { 1'b0, o_wb_addr[LS-1:0] });
 
 	always @(posedge i_clk)
 	if (state == `DC_READC)
 	begin
 		if (($past(i_wb_ack))&&(!$past(f_stb)))
-			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
+			`ASSERT(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
 		else if (f_nacks > 0)
 		begin
-			assert(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
-			assert(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]);
+			`ASSERT(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
+			`ASSERT(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]);
 		end else begin
-			assert(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]-1'b1);
-			assert(&c_waddr[LS-1:0]);
+			`ASSERT(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]-1'b1);
+			`ASSERT(&c_waddr[LS-1:0]);
 		end
 	end
 
 	always @(*)
-		assert(r_addr == f_pending_addr[AW-1:0]);
+		`ASSERT(r_addr == f_pending_addr[AW-1:0]);
 	always @(*)
 	if (f_pending_addr[AW])
 	begin
-		assert(state != `DC_READC);
-		assert((!o_wb_we)||(!o_wb_cyc_gbl));
+		`ASSERT(state != `DC_READC);
+		`ASSERT((!o_wb_we)||(!o_wb_cyc_gbl));
 	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(o_valid)&&($past(f_pending_addr) == f_const_addr))
 	begin
 		if (f_const_buserr)
-			assert(o_err);
+			`ASSERT(o_err);
 		else if (f_pending_rd)
 		begin
 			case($past(r_sel))
-			4'b1111: assert(o_data ==f_const_data);
-			4'b0011: assert(o_data =={ 16'h00, f_const_data[15:0]});
-			4'b1100: assert(o_data =={ 16'h00, f_const_data[31:16]});
-			4'b0001: assert(o_data =={ 24'h00,f_const_data[ 7: 0]});
-			4'b0010: assert(o_data =={ 24'h00,f_const_data[15: 8]});
-			4'b0100: assert(o_data =={ 24'h00,f_const_data[23:16]});
-			4'b1000: assert(o_data =={ 24'h00,f_const_data[31:24]});
+			4'b1111: `ASSERT(o_data ==f_const_data);
+			4'b0011: `ASSERT(o_data =={ 16'h00, f_const_data[15:0]});
+			4'b1100: `ASSERT(o_data =={ 16'h00, f_const_data[31:16]});
+			4'b0001: `ASSERT(o_data =={ 24'h00,f_const_data[ 7: 0]});
+			4'b0010: `ASSERT(o_data =={ 24'h00,f_const_data[15: 8]});
+			4'b0100: `ASSERT(o_data =={ 24'h00,f_const_data[23:16]});
+			4'b1000: `ASSERT(o_data =={ 24'h00,f_const_data[31:24]});
 			endcase
 		end
 	end
@@ -1028,10 +1050,10 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	//
 
 	always @(*)
-		assert((!lock_gbl)||(!lock_lcl));
+		`ASSERT((!lock_gbl)||(!lock_lcl));
 	always @(*)
 	if (!OPT_LOCK)
-		assert((!lock_gbl)&&(!lock_lcl));
+		`ASSERT((!lock_gbl)&&(!lock_lcl));
 
 	////////////////////////////////////////////////
 	//
@@ -1044,67 +1066,66 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(*)
 	if (state == `DC_IDLE)
 	begin
-		assert(!r_wb_cyc_gbl);
-		assert(!r_wb_cyc_lcl);
+		`ASSERT(!r_wb_cyc_gbl);
+		`ASSERT(!r_wb_cyc_lcl);
 	end
 
 	always @(posedge i_clk)
 	if (state == `DC_READC)
 	begin
-		assert( o_wb_cyc_gbl);
-		assert(!o_wb_cyc_lcl);
-		assert(!o_wb_we);
-		assert(r_rd_pending);
-		assert(r_cachable);
+		`ASSERT( o_wb_cyc_gbl);
+		`ASSERT(!o_wb_cyc_lcl);
+		`ASSERT(!o_wb_we);
+		`ASSERT(r_rd_pending);
+		`ASSERT(r_cachable);
 		if (($past(cyc))&&(!$past(o_wb_stb_gbl)))
-			assert(!o_wb_stb_gbl);
+			`ASSERT(!o_wb_stb_gbl);
 	end
 
 	always @(*)
 	if (state == `DC_READC)
-		assert(!o_wb_we);
+		`ASSERT(!o_wb_we);
 	else if (state == `DC_READS)
-		assert(!o_wb_we);
+		`ASSERT(!o_wb_we);
 	else if (state == `DC_WRITE)
-		assert(o_wb_we);
+		`ASSERT(o_wb_we);
 
 	always @(*)
 	if (state == `DC_IDLE)
-		assert(!cyc);
+		`ASSERT(!cyc);
 	else
-		assert(cyc);
+		`ASSERT(cyc);
 
 	always @(*)
 	if (state != `DC_IDLE)
-		assert(o_busy);
+		`ASSERT(o_busy);
 
 	always @(*)
-		assert(cyc == ((r_wb_cyc_gbl)||(r_wb_cyc_lcl)));
+		`ASSERT(cyc == ((r_wb_cyc_gbl)||(r_wb_cyc_lcl)));
 
 	always @(*)
 	if ((cyc)&&(o_wb_we))
-		assert(!r_rd_pending);
+		`ASSERT(!r_rd_pending);
 
 	always @(*)
 	if ((f_nreqs == f_nacks)&&(!f_stb))
-		assert(!cyc);
+		`ASSERT(!cyc);
+
+	wire	f_wb_cachable;
+	iscachable #(.ADDRESS_WIDTH(AW))
+		f_chkwb_addr(o_wb_addr, f_wb_cachable);
 
 	always @(posedge i_clk)
 	if (state == `DC_READC)
-		assert(((SDRAM_ADDR != 0)&&((o_wb_addr&SDRAM_MASK)==SDRAM_ADDR))
-		     ||((FLASH_ADDR != 0)&&((o_wb_addr&FLASH_MASK)==FLASH_ADDR))
-		     ||((BLKRAM_ADDR!= 0)&&((o_wb_addr&BLKRAM_MASK)==BLKRAM_ADDR)));
+		`ASSERT(f_wb_cachable);
 	else if (state == `DC_READS)
-		assert(((lock_gbl)||((OPT_LOCK)&&(i_lock)))
-		||(r_wb_cyc_lcl)
-		||(((SDRAM_ADDR == 0)||((o_wb_addr&SDRAM_MASK)!=SDRAM_ADDR))
-		     &&((FLASH_ADDR == 0)||((o_wb_addr&FLASH_MASK)!=FLASH_ADDR))
-		     &&((BLKRAM_ADDR== 0)||((o_wb_addr&BLKRAM_MASK)!=BLKRAM_ADDR))));
+		`ASSERT(((lock_gbl)||((OPT_LOCK)&&(i_lock)))
+		||(r_wb_cyc_lcl)||(!f_wb_cachable));
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(OPT_LOCK)&&($past(i_lock))
 			&&((!$past(o_valid)) || ($past(i_pipe_stb))))
-		assume($stable(i_lock));
+		`ASSUME($stable(i_lock));
 
 
 	////////////////////////////////////////////////
@@ -1116,50 +1137,50 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	//
 	always @(*)
 	if ((OPT_PIPE)&&(state == `DC_WRITE)&&(!i_wb_stall))
-		assert(!o_pipe_stalled);
+		`ASSERT(!o_pipe_stalled);
 
 	// always @(*)
 	// if ((OPT_PIPE)&&(state == `DC_READS)&&(!i_wb_stall))
-		// assert(!o_pipe_stalled);
+		// `ASSERT(!o_pipe_stalled);
 
 	always @(posedge i_clk)
 	if (state == `DC_WRITE)
-		assert(o_wb_we);
+		`ASSERT(o_wb_we);
 	else if ((state == `DC_READS)||(state == `DC_READC))
-		assert(!o_wb_we);
+		`ASSERT(!o_wb_we);
 
 	always @(*)
 	if (cyc)
-		assert(f_cyc);
+		`ASSERT(f_cyc);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(cyc))&&(!c_wr)&&(last_tag_valid)
 			&&(!r_rd_pending))
-		assert((c_v[last_tag[(CS-LS-1):0]])
+		`ASSERT((c_v[last_tag[(CS-LS-1):0]])
 			&&(c_vtags[last_tag[(CS-LS-1):0]] == last_tag));
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(last_tag == f_const_tag)&&(f_const_buserr)
 			&&(!f_const_addr[AW]))
-		assert(!last_tag_valid);
+		`ASSERT(!last_tag_valid);
 
 	always @(*)
 	if (!OPT_LOCAL_BUS)
 	begin
-		assert(r_wb_cyc_lcl == 1'b0);
-		assert(o_wb_stb_lcl == 1'b0);
-		assert(lock_lcl == 1'b0);
+		`ASSERT(r_wb_cyc_lcl == 1'b0);
+		`ASSERT(o_wb_stb_lcl == 1'b0);
+		`ASSERT(lock_lcl == 1'b0);
 	end
 
 	always @(*)
 	if (f_const_buserr)
 	begin
-		assert((!c_v[f_const_tag_addr])||(f_const_addr[AW])
+		`ASSERT((!c_v[f_const_tag_addr])||(f_const_addr[AW])
 			||(f_ctag_here != f_const_tag));
 
 		if ((state == `DC_READC)&&(wb_start[AW-1:LS] == f_const_tag))
 		begin
-			assert(f_nacks <= f_const_tag[LS-1:0]);
+			`ASSERT(f_nacks <= f_const_tag[LS-1:0]);
 			if (f_nacks == f_const_tag[LS-1:0])
 				assume(!i_wb_ack);
 		end
@@ -1168,40 +1189,40 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 	if ((state == `DC_READC)&&(!stb))
 	begin
-		assert(o_wb_addr[LS-1:0] == 0);
-		assert(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
+		`ASSERT(o_wb_addr[LS-1:0] == 0);
+		`ASSERT(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
 	end else if ((state == `DC_READC)&&(stb))
 	begin
-		assert(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
-		assert(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
+		`ASSERT(o_wb_addr[AW-1:CS] == r_addr[AW-1:CS]);
+		`ASSERT(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
 	end
 
 	always @(posedge i_clk)
 	if (state == `DC_READC)
 	begin
 		if (f_nacks < (1<<LS)-1)
-			assert(!end_of_line);
+			`ASSERT(!end_of_line);
 		else if (f_nacks == (1<<LS)-1)
-			assert(end_of_line);
+			`ASSERT(end_of_line);
 	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(r_rd)&&(!$past(i_reset)))
 	begin
-		assert((o_busy)||(r_svalid));
+		`ASSERT((o_busy)||(r_svalid));
 	end
 
 	always @(posedge i_clk)
 	if (!$past(o_busy))
-		assert(!r_dvalid);
+		`ASSERT(!r_dvalid);
 
 	always @(posedge i_clk)
 	if ((state == `DC_READC)&&(c_wr))
-		assert(c_wsel == 4'hf);
+		`ASSERT(c_wsel == 4'hf);
 
 	always @(*)
 	if (c_wr)
-		assert((c_wsel == 4'hf)
+		`ASSERT((c_wsel == 4'hf)
 			||(c_wsel == 4'hc)
 			||(c_wsel == 4'h3)
 			||(c_wsel == 4'h8)
@@ -1210,13 +1231,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			||(c_wsel == 4'h1));
 
 	always @(*)
-		f_pc = (o_wreg[3:1] == 3'h7);
+		f_pc = ((r_rd_pending)||(o_valid))&&(o_wreg[3:1] == 3'h7);
 
 	always @(*)
 	if (!OPT_PIPE)
-		assert(o_pipe_stalled == o_busy);
+		`ASSERT(o_pipe_stalled == o_busy);
 	else if (o_pipe_stalled)
-		assert(o_busy);
+		`ASSERT(o_busy);
 
 	////////////////////////////////////////////////
 	//
@@ -1229,6 +1250,19 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 		cover(o_valid);
 
+	generate if (OPT_PIPE)
+	begin : PIPE_COVER
+
+		always @(posedge i_clk)
+		if ((f_past_valid)&&($past(o_valid)))
+			cover(o_valid);
+
+		always @(posedge i_clk)
+		if ((f_past_valid)&&($past(i_pipe_stb)))
+			cover(i_pipe_stb);
+
+	end endgenerate
+
 	////////////////////////////////////////////////
 	//
 	// Carelesss assumption section
@@ -1240,9 +1274,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if((OPT_LOCK)&&(OPT_LOCAL_BUS))
 	begin
 		if ((i_lock)&&(o_wb_cyc_gbl)&&(i_pipe_stb))
-			assume(!&i_addr[(DW-1):(DW-8)]);
+			restrict(!&i_addr[(DW-1):(DW-8)]);
 		else if ((i_lock)&&(o_wb_cyc_lcl)&&(i_pipe_stb))
-			assume(&i_addr[(DW-1):(DW-8)]);
+			restrict(&i_addr[(DW-1):(DW-8)]);
 	end
 
 	always @(posedge i_clk)
@@ -1255,33 +1289,113 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(cyc))&&(!$past(i_wb_err)))
 	begin
 		if (($past(i_pipe_stb))&&(!$past(o_pipe_stalled)))
-			assert(cyc);
+			`ASSERT(cyc);
 		else if ($past(f_outstanding > 1))
-			assert(cyc);
+			`ASSERT(cyc);
 		else if (($past(f_outstanding == 1))
 				&&((!$past(i_wb_ack))
 					||(($past(f_stb))
 						&&(!$past(i_wb_stall)))))
-			assert(cyc);
+			`ASSERT(cyc);
 		else if (($past(f_outstanding == 0))
 				&&($past(f_stb)&&(!$past(i_wb_ack))))
-			assert(cyc);
+			`ASSERT(cyc);
 	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&(state != `DC_READC)&&(OPT_PIPE))
 	begin
 		if ($past(i_pipe_stb))
-			assert(npending == f_outstanding+1);
+			`ASSERT(npending == f_outstanding+1);
 		else
-			assert(npending == f_outstanding);
+			`ASSERT(npending == f_outstanding);
 	end
 
 	always @(posedge i_clk)
 	if ((OPT_PIPE)&&(state != `DC_READC)&&(state != `DC_IDLE))
-		assert(last_ack == (npending != 0));
+		`ASSERT(last_ack == (npending != 0));
 
 	always @(*)
-	assert(stb == f_stb);
+	`ASSERT(stb == f_stb);
+
+	always @(*)
+	if (o_err)
+		`ASSUME(!i_pipe_stb);
+
+	always @(*)
+	if (last_tag_valid)
+		`ASSERT(|c_v);
+
+	always @(posedge i_clk)
+	if ((cyc)&&(state == `DC_READC)&&($past(f_nacks > 0)))
+		`ASSERT(!c_v[o_wb_addr[CS-1:LS]]);
+
+	always @(*)
+	if (last_tag_valid)
+	begin
+		`ASSERT(c_v[last_tag[CS-LS-1:0]]);
+		`ASSERT(c_vtags[last_tag[CS-LS-1:0]]==last_tag);
+	end
+
+	always @(*)
+	if (last_tag_valid)
+	begin
+		`ASSERT((!cyc)||(o_wb_we)||(state == `DC_READS)
+					||(o_wb_addr[AW-1:LS] != last_tag));
+	end
+
+	reg	[F_LGDEPTH-1:0]	f_rdpending;
+
+	initial	f_rdpending = 0;
+	always @(posedge i_clk)
+	if ((i_reset)||(o_err))
+		f_rdpending <= 0;
+	else case({ (i_pipe_stb)&&(!i_op[0]), o_valid })
+	2'b01: f_rdpending <= f_rdpending - 1'b1;
+	2'b10: f_rdpending <= f_rdpending + 1'b1;
+	default: begin end
+	endcase
+
+	always @(posedge i_clk)
+	if (o_valid)
+		`ASSERT(f_rdpending == 1);
+
+	always @(posedge i_clk)
+	if (state == `DC_READC)
+		`ASSERT(f_rdpending == 1);
+
+	always @(*)
+		`ASSERT(f_rdpending <= 1);
+	always @(*)
+	if ((!o_busy)&&(!o_err)&&(!o_valid))
+		`ASSERT(f_rdpending == 0);
+	else if (o_valid)
+		`ASSERT(f_rdpending == 1);
+
+	wire	f_cachable_last_tag, f_cachable_r_addr;
+
+	iscachable #(.ADDRESS_WIDTH(AW))
+		fccheck_last_tag({last_tag, {(LS){1'b0}}}, f_cachable_last_tag);
+
+	iscachable #(.ADDRESS_WIDTH(AW))
+		fccheck_r_cachable(r_addr, f_cachable_r_addr);
+
+	always @(*)
+	if ((r_cachable)&&(r_rd_pending))
+	begin
+		`ASSERT(state != `DC_WRITE);
+		// `ASSERT(state != `DC_READS);
+		`ASSERT(f_cachable_r_addr);
+		if (cyc)
+			`ASSERT(o_wb_addr[AW-1:LS] == r_addr[AW-1:LS]);
+	end
+
+	always @(*)
+	if (last_tag_valid)
+	begin
+		`ASSERT(f_cachable_last_tag);
+		`ASSERT((state != `DC_READC)||(last_tag != o_wb_addr[AW-1:LS]));
+	end
+`endif
 `endif
 endmodule

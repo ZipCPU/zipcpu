@@ -265,8 +265,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			lock_gbl <= 1'b0;
 			lock_lcl <= 1'b0;
 		end else begin
-			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
+					&&(!lcl_stb);
+			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
+					&&(!gbl_stb);
 		end
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
@@ -386,13 +388,13 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// Rule: If the global CYC is ever true, the LCL one cannot be true
 	// on the next clock without an intervening idle of both
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_wb_cyc_gbl)))
-			`ASSERT(!o_wb_cyc_lcl);
+		if ((f_past_valid)&&($past(r_wb_cyc_gbl)))
+			`ASSERT(!r_wb_cyc_lcl);
 
 	// Same for if the LCL CYC is true
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_wb_cyc_lcl)))
-			`ASSERT(!o_wb_cyc_gbl);
+		if ((f_past_valid)&&($past(r_wb_cyc_lcl)))
+			`ASSERT(!r_wb_cyc_gbl);
 
 	// STB can never be true unless CYC is also true
 	always @(posedge i_clk)
@@ -412,17 +414,12 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// The LOCK function only allows up to two transactions (at most)
 	// before CYC must be dropped.
 	always @(posedge i_clk)
-		if (IMPLEMENT_LOCK)
-			`ASSERT((f_nreqs == 0)||(f_nreqs == 1)||(f_nreqs == 2));
-		else
-			`ASSERT((f_nreqs == 0)||(f_nreqs == 1));
-	always @(posedge i_clk)
 		if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
 		begin
 			if (IMPLEMENT_LOCK)
-				`ASSERT((f_nreqs == 0)||(f_nreqs == 1));
+				`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
 			else
-				`ASSERT(f_nreqs == 0);
+				`ASSERT(f_nreqs <= 1);
 		end
 
 	always @(posedge i_clk)

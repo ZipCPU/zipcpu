@@ -1,10 +1,12 @@
 [tasks]
-prove_first	first_half  full_proof
-prove_second	second_half full_proof
-nopipe_first	first_half  nopipe
-nopipe_second	second_half nopipe
-lowlogic_first	first_half  lowlogic nopipe
-lowlogic_second	second_half lowlogic nopipe
+dcache_first	first_half  full_proof      dcache
+dcache_second	first_half  full_proof      dcache
+prove_first	first_half  full_proof      no_dcache
+prove_second	second_half full_proof      no_dcache
+nopipe_first	first_half  nopipe          no_dcache
+nopipe_second	second_half nopipe          no_dcache
+lowlogic_first	first_half  lowlogic nopipe no_dcache
+lowlogic_second	second_half lowlogic nopipe no_dcache
 
 [options]
 mode prove
@@ -18,6 +20,12 @@ first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v
 second_half: read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
 
 chparam -set IMPLEMENT_FPU    0 zipcpu
+
+dcache:
+chparam -set OPT_LGDCACHE    10 zipcpu
+
+no_dcache:
+chparam -set OPT_LGDCACHE     0 zipcpu
 
 full_proof:
 chparam -set IMPLEMENT_MPY    1 zipcpu
@@ -40,6 +48,8 @@ chparam -set OPT_CIS 0 zipcpu
 read_verilog -D ZIPCPU -formal cpuops.v
 read_verilog -D ZIPCPU -formal memops.v
 read_verilog -D ZIPCPU -formal pipemem.v
+read_verilog -D ZIPCPU -formal dcache.v
+read_verilog -D ZIPCPU -formal iscachable.v
 read_verilog -D ZIPCPU -formal idecode.v
 read_verilog -D ZIPCPU -formal wbdblpriarb.v
 #
@@ -59,6 +69,8 @@ prep -top zipcpu
 ../../rtl/core/cpuops.v
 ../../rtl/core/memops.v
 ../../rtl/core/pipemem.v
+../../rtl/core/dcache.v
+../../rtl/core/iscachable.v
 ../../rtl/core/idecode.v
 ../../rtl/ex/wbdblpriarb.v
 #

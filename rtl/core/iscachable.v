@@ -1,18 +1,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipelf.h
+// Filename:	iscachable.v
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	
-//
+// Purpose:	A helper function to both dcache and its formal properties,
+//		used to determine when a particular address is cachable.  This
+//	module must be built of entirely combinatorial logic and nothing more.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
+// Copyright (C) 2018, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -24,11 +25,6 @@
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
 //
-// You should have received a copy of the GNU General Public License along
-// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
-// target there if the PDF file isn't present.)  If not, see
-// <http://www.gnu.org/licenses/> for a copy.
-//
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
 //
@@ -36,18 +32,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
-#ifndef	ZIPELF_H
-#define	ZIPELF_H
+`default_nettype	none
+//
+module	iscachable(i_addr, o_cachable);
+	parameter	ADDRESS_WIDTH=30;
+	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
+	parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0;
+	parameter [AW-1:0] 	BKRAM_ADDR = 30'h4000000,
+				BKRAM_MASK = 30'h4000000;
+	parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0;
 
-#include <stdint.h>
+	input	wire	[AW-1:0]	i_addr;
+	output	wire			o_cachable;
 
-class	ELFSECTION {
-public:
-	uint32_t	m_start, m_len, m_vaddr;
-	char		m_data[4];
-};
 
-bool	iself(const char *fname);
-void	elfread(const char *fname, uint32_t &entry, ELFSECTION **&sections);
+	always @(*)
+	begin
+		o_cachable = 1'b0;
+		if ((SDRAM_ADDR !=0)&&((i_addr & SDRAM_MASK)== SDRAM_ADDR))
+			o_cachable = 1'b1;
+		else if ((FLASH_ADDR !=0)&&((i_addr & FLASH_MASK)== FLASH_ADDR))
+			o_cachable = 1'b1;
+		else if ((BKRAM_ADDR !=0)&&((i_addr & BKRAM_MASK)== BKRAM_ADDR))
+			o_cachable = 1'b1;
+	end
 
-#endif
+endmodule

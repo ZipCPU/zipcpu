@@ -18,6 +18,7 @@ smtbmc yices
 
 [script]
 read_verilog -D DCACHE -formal fwb_master.v
+read_verilog -D DCACHE -formal iscachable.v
 read_verilog -D DCACHE -formal dcache.v
 piped:		chparam -set OPT_PIPE      1 dcache
 !piped:		chparam -set OPT_PIPE      0 dcache
@@ -29,5 +30,6 @@ prep -top dcache
 
 [files]
 ../../rtl/core/dcache.v
+../../rtl/core/iscachable.v
 ../../rtl/ex/fwb_master.v
 #

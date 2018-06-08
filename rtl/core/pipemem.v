@@ -149,9 +149,9 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	else if (((i_wb_err)&&(cyc))||((i_pipe_stb)&&(misaligned)))
 		fifo_full <= 0;
 	else if (i_pipe_stb)
-		fifo_full <= (fifo_fill < OPT_MAXDEPTH);
+		fifo_full <= (fifo_fill >= OPT_MAXDEPTH-1);
 	else
-		fifo_full <= (fifo_fill <= OPT_MAXDEPTH);
+		fifo_full <= (fifo_fill >= OPT_MAXDEPTH);
 
 	assign	nxt_rdaddr = rdaddr + 1'b1;
 
@@ -597,7 +597,29 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		if ((f_mem_used[k])&&(!o_wb_we)&&((!f_pc)||(k!=lastaddr)))
 			`ASSERT(fifo_oreg[k][7:5] != 3'h7);
 	end
-`endif // IDECODE
+
+	initial	assert(!fifo_full);
+
+	always @(posedge i_clk)
+		cover(cyc && !fifo_full);
+
+	always @(posedge i_clk)
+		cover((f_cyc)&&(f_stb)&&(!i_wb_stall)&&(!i_wb_ack)
+			&&(!o_pipe_stalled));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(f_stb))&&($past(f_cyc)))
+		cover((f_cyc)&&(i_wb_ack));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(f_stb))&&($past(f_cyc)))
+		cover($past(i_wb_ack)&&(i_wb_ack));
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(o_valid)))
+		cover(o_valid);
+
+`endif // PIPEMEM
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_past_valid))&&($past(f_cyc))&&($past(f_cyc,2)))
@@ -605,7 +627,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	always @(*)
 		`ASSERT((!f_cyc)||(!o_valid)||(o_wreg[3:1]!=3'h7));
-
 
 `endif // FORMAL
 endmodule

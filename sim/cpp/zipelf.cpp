@@ -215,6 +215,7 @@ assert(n != 0);
 
 		r[i]->m_start = phdr.p_paddr;
 		r[i]->m_len   = phdr.p_filesz;
+		r[i]->m_vaddr = phdr.p_vaddr;
 
 		current_offset += phdr.p_filesz + sizeof(ELFSECTION);
 

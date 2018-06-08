@@ -41,6 +41,7 @@
 //
 //
 #include <algorithm>
+#include <map>
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
@@ -56,80 +57,70 @@ bool	altcmp(const ALT &a, const ALT &b) {
 	return a.clks < b.clks;
 }
 
+typedef	struct { unsigned clks, hits, addr; } insn_stat;
+
+typedef	std::map<unsigned, insn_stat *> vcd_profile;
 
 void	dump_file(const char *fn) {
 	const	int	NZIP = 4096;
 	char	lna[NZIP], lnb[NZIP];
 	FILE	*pf;
-	unsigned	addr=0x0100000, mina = -1, maxa = 0,
-			*pfcnt = NULL, *pfclk = NULL;
+	unsigned	addr=0x0100000;
+	vcd_profile	vp;
 
 	pf = fopen("pfile.bin","rb");
 	if (pf) {
-		ALT	*pfalt;
-		unsigned	buf[2], total_clks = 0;
+		unsigned	buf[2];
 		while(2 == fread(buf, sizeof(unsigned), 2, pf)) {
-			if (mina > buf[0])
-				mina = buf[0];
-			if (maxa < buf[0])
-				maxa = buf[0];
+			addr = buf[0];
+			if (vp.count(addr)>0) {
+				vp[addr]->hits++;
+				vp[addr]->clks += buf[1];
+			} else {
+				insn_stat	*is;
+
+				is = new insn_stat;
+				is->hits = 1;
+				is->clks = buf[1];
+				is->addr = addr;
+				vp[addr] = is;
+			}
 		}
-
-		addr = mina;
-		pfcnt = new unsigned[(maxa+2-mina)];
-		pfclk = new unsigned[(maxa+2-mina)];
-		pfalt = new ALT[(maxa+2-mina)];
-		unsigned ncnt = maxa+2-mina;
-		for(int i=0; i<(int)ncnt; i++)
-			pfcnt[i] = pfclk[i] = 0;
-		for(int i=0; i<(int)ncnt; i++)
-			pfalt[i].addr = pfalt[i].clks = 0;
-
-		rewind(pf);
-		while(2 == fread(buf, sizeof(unsigned), 2, pf)) {
-			pfcnt[buf[0]-addr]++;
-			pfclk[buf[0]-addr] += buf[1];
-			pfalt[buf[0]-addr].clks += buf[1];
-			pfalt[buf[0]-addr].addr = buf[0];
-			total_clks += buf[1];
-
-			printf("%08x\n", buf[0]);
-		} fclose(pf);
-
-		printf("%08x (%8d) total clocks\n", total_clks, total_clks);
-
-		std::sort(&pfalt[0], &pfalt[ncnt], altcmp);
-
-		for(int i=0; i<(int)ncnt; i++)
-			printf("%08x: %8d\n", pfalt[i].addr, pfalt[i].clks);
 	}
 
 	printf("%s:\n", fn);
 	if (iself(fn)) {
 		ELFSECTION **secpp=NULL, *secp;
-		unsigned entry;
+		double		cpi;
+		unsigned	entry;
+
 		elfread(fn, entry, secpp);
 		for(int i=0; secpp[i]->m_len; i++) {
 			secp = secpp[i];
 			for(unsigned j=0; j<secp->m_len; j+=4) {
 				uint32_t	w, a;
 
-				a = secp->m_start+(j<<2);
-				w = buildword((const unsigned char *)&secp->m_data[(j<<2)]);
+				a = secp->m_vaddr+j;
+				w = buildword((const unsigned char *)&secp->m_data[j]);
 				zipi_to_double_string(a, w, lna, lnb);
 				// printf("%s\n", ln);
-				printf("%08x[%08x-%08x]: (0x%08x %c%c%c%c) ",
-					a, maxa, mina, w,
+				printf("%08x: (0x%08x %c%c%c%c) ", a, w,
 					isgraph((w>>24)&0x0ff)?((w>>24)&0x0ff) : '.',
 					isgraph((w>>16)&0x0ff)?((w>>16)&0x0ff) : '.',
 					isgraph((w>> 8)&0x0ff)?((w>> 8)&0x0ff) : '.',
 					isgraph((w    )&0x0ff)?((w    )&0x0ff) : '.'
 					);
-				if ((a>=mina)&&(a<maxa)&&(pfcnt))
-					printf("%8d %8d ", pfcnt[a-mina], pfclk[a-mina]);
+				if (vp.count(a)>0) {
+					insn_stat *is = vp[a];
+					cpi = is->clks / (double)is->hits;
+
+					printf("%8d %8d %4.1f ", is->hits, is->clks, cpi);
+				} else
+					printf("%23s", "");
+
 				printf("%s\n", lna);
 				if (lnb[0])
-					printf("-%24s%s\n", "", lnb);
+					printf("-%50s%s\n", "", lnb);
 			}
 		}
 	}

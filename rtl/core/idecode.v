@@ -75,7 +75,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	parameter		ADDRESS_WIDTH=24;
 	parameter	[0:0]	OPT_MPY = 1'b1;
 	parameter	[0:0]	OPT_EARLY_BRANCHING = 1'b1;
-	parameter	[0:0]	OPT_PIPELINED = 1'b0;
+	parameter	[0:0]	OPT_PIPELINED = 1'b1;
 	parameter	[0:0]	OPT_DIVIDE = (OPT_PIPELINED);
 	parameter	[0:0]	OPT_FPU    = 1'b0;
 	parameter	[0:0]	OPT_CIS    = 1'b1;
@@ -656,7 +656,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				&&((o_op[0])
 					||(w_dcdB[3:0] != o_dcdA[3:0]))
 				// Reads to CC or PC not allowed
-				&&((o_op[0])||(w_dcdR[3:1] != 3'h7))
+				// &&((o_op[0])||(w_dcdR[3:1] != 3'h7))
 				// Prior-reads to CC or PC not allowed
 				&&((o_op[0])||(o_dcdR[3:1] != 3'h7))
 				// Same condition, or no condition before
@@ -1602,8 +1602,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 				else if (($past(o_wR))
 						&&($past(o_dcdR[3:1]) == 3'h7))
 					`ASSERT(!o_pipe);
-				else if ((o_wR)&&(o_dcdR[3:1] == 3'h7))
-					`ASSERT(!o_pipe);
+				// else if ((o_wR)&&(o_dcdR[3:1] == 3'h7))
+				//	`ASSERT(!o_pipe);
 				else if (o_wR != $past(o_wR))
 					`ASSERT(!o_pipe);
 				else if ((o_wR)&&($past(o_dcdR) == o_dcdB))
@@ -1755,9 +1755,5 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end
 	end
 `endif
-
-//	always @(posedge i_clk)
-//	if ((OPT_EARLY_BRANCHING)&&(f_past_valid)&&($past(o_early_branch_stb)))
-//		assert(!o_valid);
 `endif
 endmodule

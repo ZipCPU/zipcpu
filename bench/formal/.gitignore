@@ -5,9 +5,10 @@
 zipcpu
 old
 zipcpu_abc
+zipcpu_dcache_first/
+zipcpu_dcache_second/
 zipcpu_prove_first
 zipcpu_prove_second
-zipcpu_pipeline
 zipcpu_nopipe_first
 zipcpu_nopipe_second
 zipcpu_lowlogic_first
@@ -16,3 +17,4 @@ dcache_full
 dcache_bare
 dcache_nolock_system
 dcache_nolock_nolocal
+dcache_piped

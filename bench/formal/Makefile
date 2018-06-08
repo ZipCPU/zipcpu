@@ -196,8 +196,9 @@ $(MEM).check: $(MEM).smt2
 $(PIPE) : $(PIPE).check
 $(PIPE).check: $(PIPE).smt2
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(PIPE).vcd $(PIPE).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(PIPE).vcd $(PIPE).smt2
+	$(SMTBMC)    $(BMCARGS)    -t  6 --dump-vcd $(PIPE).vcd $(PIPE).smt2
+	$(SMTBMC)    $(INDARGS)    -t  5 --dump-vcd $(PIPE).vcd $(PIPE).smt2
+	$(SMTBMC)    $(BMCARGS) -c -t 25 --dump-vcd $(PIPE).vcd $(PIPE).smt2
 	touch $@
 
 $(MMU) : $(MMU).check
@@ -289,7 +290,7 @@ $(CPU).check: $(RTL)/cpudefs.v
 $(CPU).check: f_idecode.v
 $(CPU).check: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v abs_mpy.v $(CPU).sby
 	@rm -f $@
-	sby -f $(CPU).sby prove_first prove_second
+	sby -f $(CPU).sby
 	touch $@
 
 .PHONY: clean
