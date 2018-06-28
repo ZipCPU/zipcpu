@@ -70,7 +70,7 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
-		assign	o_valid    = 1'b1;
+		assign	o_valid    = i_stb;
 		always @(*) o_hi = 1'b0; // Not needed
 
 `ifdef	VERILATOR
