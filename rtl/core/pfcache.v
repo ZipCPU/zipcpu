@@ -78,7 +78,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	parameter	LGCACHELEN = 12, ADDRESS_WIDTH=30,
 			LGLINES=6; // Log of the number of separate cache lines
 `endif
-	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam	CACHELEN=(1<<LGCACHELEN); //Wrd Size of our cache memory
 	localparam	CW=LGCACHELEN;	// Short hand for LGCACHELEN
 	localparam	PW=LGCACHELEN-LGLINES; // Size of a cache line
@@ -599,17 +598,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 `define	STEP_CLOCK
 `endif
 
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		// Assume a clock
-		reg	f_last_clk;
-		always @($global_clock)
-		begin
-			`STEP_CLOCK
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
-
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
 	reg	f_past_valid;
@@ -627,28 +615,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	//
 	/////////////////////////////////////////////////
-
-	//
-	// Nothing changes, but on the positive edge of a clock
-	//
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			// Control inputs from the CPU
-			`ASSUME($stable(i_reset));
-			`ASSUME($stable(i_new_pc));
-			`ASSUME($stable(i_clear_cache));
-			`ASSUME($stable(i_stall_n));
-			`ASSUME($stable(i_pc));
-			// Wishbone inputs
-			`ASSUME($stable(i_wb_ack));
-			`ASSUME($stable(i_wb_stall));
-			`ASSUME($stable(i_wb_err));
-			`ASSUME($stable(i_wb_data));
-		end
-	end endgenerate
 
 
 `ifdef	PFCACHE
@@ -719,7 +685,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	fwb_master #(.AW(AW), .DW(BUSW), .F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(2), .F_MAX_ACK_DELAY(3),
 			.F_MAX_REQUESTS((1<<PW)-1), .F_OPT_SOURCE(1),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
@@ -765,19 +730,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	/////////////////////////////////////////////////////
 
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_reset))
-				&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
-				&&($past(o_valid))&&(!$past(i_stall_n)))
-		begin
-			assert($stable(o_pc));
-			assert($stable(o_insn));
-			assert($stable(o_valid));
-			assert($stable(o_illegal));
-		end
-	end endgenerate
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc)))
@@ -899,10 +851,5 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 		cover((o_valid)&&(o_pc == { const_addr[AW-1:0], 2'b00 })
 			&&(o_illegal));
-
-	// always @(*)
-	// if (o_illegal)
-		// assert(o_valid);
 `endif	// FORMAL
-
 endmodule
