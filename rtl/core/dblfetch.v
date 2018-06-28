@@ -173,12 +173,11 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_insn <= i_wb_data;
 	end
 
-	initial	o_pc = 0;
 	always @(posedge i_clk)
-		if (i_new_pc)
-			o_pc <= i_pc;
-		else if ((o_valid)&&(i_stall_n))
-			o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
+	if (i_new_pc)
+		o_pc <= i_pc;
+	else if ((o_valid)&&(i_stall_n))
+		o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
 
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
