@@ -831,8 +831,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 	if (dcd_ce)
 	begin
-		pre_rewrite_flag_A <= (wr_reg_ce)&&(dcd_preA[4:0] == wr_reg_id);
-		pre_rewrite_flag_B <= (wr_reg_ce)&&(dcd_preB[4:0] == wr_reg_id);
+		pre_rewrite_flag_A <= (wr_reg_ce)&&(dcd_preA == wr_reg_id);
+		pre_rewrite_flag_B <= (wr_reg_ce)&&(dcd_preB == wr_reg_id);
 		pre_rewrite_value  <= wr_gpreg_vl;
 	end
 
@@ -841,16 +841,16 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		always @(posedge i_clk)
 		if (dcd_ce)
 		begin
-			pre_op_Av = regset[dcd_preA[3:0]];
-			pre_op_Bv = regset[dcd_preB[3:0]];
+			pre_op_Av <= regset[dcd_preA[3:0]];
+			pre_op_Bv <= regset[dcd_preB[3:0]];
 		end
 	end else begin
 
 		always @(posedge i_clk)
 		if (dcd_ce)
 		begin
-			pre_op_Av = regset[dcd_preA];
-			pre_op_Bv = regset[dcd_preB];
+			pre_op_Av <= regset[dcd_preA];
+			pre_op_Bv <= regset[dcd_preB];
 		end
 
 	end endgenerate
