@@ -1250,6 +1250,10 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 		cover(o_valid);
 
+	always @(posedge i_clk)
+	if (f_past_valid)
+		cover($past(r_svalid));
+
 	generate if (OPT_PIPE)
 	begin : PIPE_COVER
 

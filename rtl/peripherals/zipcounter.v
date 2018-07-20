@@ -53,12 +53,15 @@
 //
 `default_nettype	none
 //
-module	zipcounter(i_clk, i_reset, i_ce,
+module	zipcounter(i_clk, i_reset, i_event,
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 			o_wb_ack, o_wb_stall, o_wb_data,
 		o_int);
 	parameter	BW = 32;
-	input	wire			i_clk, i_reset, i_ce;
+	//
+	localparam	F_LGDEPTH = 2;
+	//
+	input	wire			i_clk, i_reset, i_event;
 	// Wishbone inputs
 	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
 	input	wire	[(BW-1):0]	i_wb_data;
@@ -76,7 +79,7 @@ module	zipcounter(i_clk, i_reset, i_ce,
 			{ o_int, o_wb_data } <= 0;
 		else if ((i_wb_stb)&&(i_wb_we))
 			{ o_int, o_wb_data } <= { 1'b0, i_wb_data };
-		else if (i_ce)
+		else if (i_event)
 			{ o_int, o_wb_data } <= o_wb_data+{{(BW-1){1'b0}},1'b1};
 		else
 			o_int <= 1'b0;
@@ -102,6 +105,10 @@ module	zipcounter(i_clk, i_reset, i_ce,
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
+	always @(*)
+	if (!f_past_valid)
+		assume(i_reset);
+
 	////////////////////////////////////////////////
 	//
 	//
@@ -110,25 +117,11 @@ module	zipcounter(i_clk, i_reset, i_ce,
 	//
 	////////////////////////////////////////////////
 	//
-	// Some basic WB assumtions
-
-	// We will not start out in a wishbone cycle
-	initial	assume(!i_wb_cyc);
-
-	// Following any reset the cycle line will be low
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
-		assume(!i_wb_cyc);
-
-	// Anytime the stb is high, the cycle line must also be high
-	always @(posedge i_clk)
-		assume((!i_wb_stb)||(i_wb_cyc));
-
 
 	////////////////////////////////////////////////
 	//
 	//
-	// Assumptions about our bus outputs
+	// Bus interface properties
 	//
 	//
 	////////////////////////////////////////////////
@@ -137,12 +130,26 @@ module	zipcounter(i_clk, i_reset, i_ce,
 	// We never stall the bus
 	always @(*)
 		assert(!o_wb_stall);
+
 	// We always ack every transaction on the following clock
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb)))
-		assert(o_wb_ack);
+		assert(o_wb_ack == ((f_past_valid)&&(!$past(i_reset))
+						&&($past(i_wb_stb))));
+
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+
+	fwb_slave #( .AW(1), .F_MAX_STALL(0),
+			.F_MAX_ACK_DELAY(1), .F_LGDEPTH(F_LGDEPTH)
+		) fwbi(i_clk, i_reset,
+		i_wb_cyc, i_wb_stb, i_wb_we, 1'b0, i_wb_data, 4'hf,
+			o_wb_ack, o_wb_stall, o_wb_data, 1'b0,
+		f_nreqs, f_nacks, f_outstanding);
+
+	always @(*)
+	if ((o_wb_ack)&&(i_wb_cyc))
+		assert(f_outstanding==1);
 	else
-		assert(!o_wb_ack);
+		assert(f_outstanding == 0);
 
 	////////////////////////////////////////////////
 	//
@@ -165,18 +172,18 @@ module	zipcounter(i_clk, i_reset, i_ce,
 		&&($past(i_wb_stb))&&($past(i_wb_we)))
 		assert((!o_int)&&(o_wb_data == $past(i_wb_data)));
 
-	// Normal logic of the routin
+	// Normal logic of the routine itself
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(i_wb_stb)))
 	begin
-		if (!$past(i_ce))
+		if (!$past(i_event))
 		begin
 			// If the CE line wasn't set on the last clock, then the
 			// counter must not change, and the interrupt line must
 			// be low.
 			assert(o_wb_data == $past(o_wb_data));
 			assert(!o_int);
-		end else // if ($past(i_ce))
+		end else // if ($past(i_event))
 		begin
 			// Otherwise, if the CE line was high on the last clock,
 			// then our counter should have incremented.
