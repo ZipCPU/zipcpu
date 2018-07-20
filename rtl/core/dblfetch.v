@@ -173,6 +173,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_insn <= i_wb_data;
 	end
 
+	initial o_pc[1:0] = 2'b00;
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_pc <= i_pc;
