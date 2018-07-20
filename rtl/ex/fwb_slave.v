@@ -88,6 +88,10 @@ module	fwb_slave(i_clk, i_reset,
 	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
 	//
 	//
+	// F_OPT_CLK2FFLOGIC needs to be set to true any time the clk2fflogic
+	// command is present in the yosys script.  If clk2fflogic isn't used,
+	// then setting this parameter to zero will eliminate some formal
+	// tests which would then be inappropriate.
 	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
@@ -121,7 +125,8 @@ module	fwb_slave(i_clk, i_reset,
 	//
 	// Let's just make sure our parameters are set up right
 	//
-	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
+	always @(*)
+		assert(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
 
 	//
 	// Wrap the request line in a bundle.  The top bit, named STB_BIT,
@@ -259,7 +264,7 @@ module	fwb_slave(i_clk, i_reset,
 
 	// ACK and ERR may never both be true at the same time
 	always @(*)
-		assume((!i_wb_ack)||(!i_wb_err));
+		assert((!i_wb_ack)||(!i_wb_err));
 
 	generate if (F_MAX_STALL > 0)
 	begin : MXSTALL
