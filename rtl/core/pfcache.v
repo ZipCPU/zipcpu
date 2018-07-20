@@ -104,8 +104,8 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	input	wire			i_wb_ack, i_wb_stall, i_wb_err;
 	input	wire	[(BUSW-1):0]	i_wb_data;
 	//
-	// o_illegal will be true if this instruction was the result of a bus error
-	// (This is also part of the CPU interface)
+	// o_illegal will be true if this instruction was the result of a
+	// bus error (This is also part of the CPU interface)
 	output	reg			o_illegal;
 	//
 `ifdef	NOT_YET_READY
@@ -131,11 +131,11 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	wire			r_v;
 	reg	[(BUSW-1):0]	cache	[0:((1<<CW)-1)];
-	reg	[(AW-CW-1):0]	tags	[0:((1<<(LGLINES))-1)];
-	reg	[((1<<(LGLINES))-1):0]	vmask;
+	reg	[(AW-CW-1):0]	cache_tags	[0:((1<<(LGLINES))-1)];
+	reg	[((1<<(LGLINES))-1):0]	valid_mask;
 
 	reg			r_v_from_pc, r_v_from_last, r_new_request;
-	reg			rvsrc, tagsrc;
+	reg			rvsrc;
 	wire			w_v_from_pc, w_v_from_last;
 	reg	[(AW+1):0]	lastpc;
 	reg	[(CW-1):0]	wraddr;
@@ -220,25 +220,12 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	/////////////////////////////////////////////////
 	//
 	//
-	// tagsrc is roughly equivalent to isrc above.
-//
-// CAN WE REPLACE TAGSRC WITH ISRC?  THE LOGIC LOOKS IDENTICAL, NOW THAT I
-// REMOVED i_clear_cache FROM THE LOGIC
-//
-	always @(posedge i_clk)
-		// It may be possible to recover a clock once the cache line
-		// has been filled, but our prior attempt to do so has lead
-		// to a race condition, so we keep this logic simple.
-		if (((r_v)&&(i_stall_n))||(i_new_pc))
-			tagsrc <= 1'b1;
-		else
-			tagsrc <= 1'b0;
 
 	//
 	// Read the tag value associated with this i_pc value
 	initial	tagvalipc = 0;
 	always @(posedge i_clk)
-		tagvalipc <= tags[i_pc[(CW+1):PW+2]];
+		tagvalipc <= cache_tags[i_pc[(CW+1):PW+2]];
 
 
 	//
@@ -247,19 +234,16 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// not, or perhaps from when we determined that i was not in the cache.
 	initial	tagvallst = 0;
 	always @(posedge i_clk)
-		tagvallst <= tags[lastpc[(CW+1):PW+2]];
+		tagvallst <= cache_tags[lastpc[(CW+1):PW+2]];
 
 	// Select from between these two values on the next clock
-	assign	tagval = (tagsrc)?tagvalipc : tagvallst;
+	assign	tagval = (isrc)?tagvalipc : tagvallst;
 
 	// i_pc will only increment when everything else isn't stalled, thus
 	// we can set it without worrying about that.   Doing this enables
 	// us to work in spite of stalls.  For example, if the next address
 	// isn't valid, but the decoder is stalled, get the next address
 	// anyway.
-//
-// WILL THIS LOGIC SIMPLIFY AS WELL?
-//
 	initial	lastpc = 0;
 	always @(posedge i_clk)
 		if (((r_v)&&(i_stall_n))||(i_new_pc))
@@ -277,11 +261,9 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	assign	w_v_from_pc = ((i_pc[(AW+1):PW+2] == lasttag)
 				&&(tagvalipc == i_pc[(AW+1):CW+2])
-				&&(vmask[i_pc[(CW+1):PW+2]]));
-	assign	w_v_from_last = (
-				//(lastpc[(AW-1):PW] == lasttag)&&
-				(tagval == lastpc[(AW+1):CW+2])
-				&&(vmask[lastpc[(CW+1):PW+2]]));
+				&&(valid_mask[i_pc[(CW+1):PW+2]]));
+	assign	w_v_from_last = ((tagval == lastpc[(AW+1):CW+2])
+				&&(valid_mask[lastpc[(CW+1):PW+2]]));
 
 	initial	delay = 2'h3;
 	always @(posedge i_clk)
@@ -318,6 +300,8 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	assign	w_invalidate_result = (i_reset)||(i_new_pc)||(i_clear_cache);
 
 	initial	r_new_request = 0;
+	initial	r_v_from_pc = 0;
+	initial	r_v_from_last = 0;
 	always @(posedge i_clk)
 	begin
 		r_new_request <= w_invalidate_result;
@@ -331,10 +315,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last))&&(!r_new_request);
 	assign	o_valid = (((rvsrc)?(r_v_from_pc):(r_v_from_last))
 				||((o_illegal)&&(!o_wb_cyc)))
-//
-// DO WE STILL NEED THIS?  If this is captured by the decoder, then we may
-// not need this as combinatorial logic
-			&&(!i_new_pc)&&(!i_reset)&&(!i_clear_cache);
+			&&(!i_new_pc);
 
 	/////////////////////////////////////////////////
 	//
@@ -344,15 +325,11 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	/////////////////////////////////////////////////
 	//
 	//
-//
-// THIS LOOKS LIKE IT REQUIRES AN EXTRA TWO CLOCKS DELAY.  SHOULDn'T WE BE
-// CHECKING FOR DELAY == 1, and push other parts of this check to the next
-// clock?
 	initial	needload = 1'b0;
 	always @(posedge i_clk)
 		needload <= ((!r_v)&&(delay==0)
 			// &&((tagvallst != lastpc[(AW+1):CW+2])
-			//	||(!vmask[lastpc[(CW+1):PW+2]]))
+			//	||(!valid_mask[lastpc[(CW+1):PW+2]]))
 			&&(!w_v_from_last)
 			// Prevent us from reloading an illegal address
 			// (i.e. one that produced a bus error) over and over
@@ -424,7 +401,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// acknowledgement, this cache line has the new tag value
 	always @(posedge i_clk)
 		if ((o_wb_cyc)&&(!last_addr)&&(i_wb_ack))
-			tags[o_wb_addr[(CW-1):PW]] <= o_wb_addr[(AW-1):CW];
+			cache_tags[o_wb_addr[(CW-1):PW]] <= o_wb_addr[(AW-1):CW];
 
 
 	// On each acknowledgment, increment the address we use to write into
@@ -468,32 +445,32 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 		cache[wraddr] <= i_wb_data;
 
 	// VMask ... is a section loaded?
-	// Note "svmask".  It's purpose is to delay the vmask setting by one
-	// clock, so that we can insure the right value of the cache is loaded
-	// before declaring that the cache line is valid.  Without this, the
-	// cache line would get read, and the instruction would read from the
-	// last cache line.
-	initial	vmask = 0;
+	// Note "svmask".  It's purpose is to delay the valid_mask setting by
+	// one clock, so that we can insure the right value of the cache is
+	// loaded before declaring that the cache line is valid.  Without
+	// this, the cache line would get read, and the instruction would
+	// read from the last cache line.
+	initial	valid_mask = 0;
 	initial	svmask = 1'b0;
 	always @(posedge i_clk)
 		if ((i_reset)||(i_clear_cache))
 		begin
-			vmask <= 0;
+			valid_mask <= 0;
 			svmask<= 1'b0;
 		end
 		else begin
 			svmask <= ((o_wb_cyc)&&(i_wb_ack)&&(last_ack));
 
 			if (svmask)
-				vmask[saddr] <= (!bus_abort);
+				valid_mask[saddr] <= (!bus_abort);
 			if ((!o_wb_cyc)&&(needload))
-				vmask[lastpc[(CW+1):PW+2]] <= 1'b0;
+				valid_mask[lastpc[(CW+1):PW+2]] <= 1'b0;
 `ifdef	NOT_YET_READY
 			//
 			// MMU code
 			//
 			if (mmu_inval)
-				vmask[mmu_mskadr] <= 1'b0;
+				valid_mask[mmu_mskadr] <= 1'b0;
 `endif
 		end
 	always @(posedge i_clk)
@@ -744,8 +721,8 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if (o_valid)
 	begin
-		assert(tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
-		assert(vmask[o_pc[(CW+1):PW+2]]);
+		assert(cache_tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
+		assert(valid_mask[o_pc[(CW+1):PW+2]]);
 		assert(o_insn == cache[o_pc[(CW+1):2]]);
 		assert(o_illegal == (illegal_cache == o_pc[(AW+1):PW+2]));
 	end
@@ -782,7 +759,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 			&&(!$past(i_new_pc))
 			&&(!$past(i_stall_n)))
 		begin
-			assert(tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
+			assert(cache_tags[o_pc[(CW+1):PW+2]] == o_pc[(AW+1):CW+2]);
 		end
 
 	always @(posedge i_clk)
@@ -818,16 +795,16 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	end
 
 	always @(*)
-	if ((vmask[const_addr[CW-1:PW]])
-			&&(tags[const_addr[(CW-1):PW]]==const_addr[AW-1:CW]))
+	if ((valid_mask[const_addr[CW-1:PW]])
+			&&(cache_tags[const_addr[(CW-1):PW]]==const_addr[AW-1:CW]))
 		assert(const_insn == cache[const_addr[CW-1:0]]);
 
 	always @(*)
 	if (!const_addr[AW])
 		assert((!illegal_valid)||(illegal_cache != const_addr[AW-1:PW]));
 	else
-		assert((tags[const_addr[CW-1:PW]]!=const_addr[AW-1:CW])
-			||(!vmask[const_addr[CW-1:PW]]));
+		assert((cache_tags[const_addr[CW-1:PW]]!=const_addr[AW-1:CW])
+			||(!valid_mask[const_addr[CW-1:PW]]));
 
 	always @(*)
 	if ((f_this_line)&&(o_wb_cyc))
