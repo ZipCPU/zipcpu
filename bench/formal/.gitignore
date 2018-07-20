@@ -19,4 +19,5 @@ dcache_full
 dcache_bare
 dcache_nolock_system
 dcache_nolock_nolocal
+dcache_nolocal/
 dcache_piped
