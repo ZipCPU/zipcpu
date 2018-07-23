@@ -2,7 +2,7 @@
 
 The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 - 32-bit.  All registers, addresses, and instructions are 32-bits in length.  While the byte-size itself was at one time 32-bits, the CPU now handles 8-bit bytes like all other CPUs
-- A RISC CPU.  The ZipCPU does not implement any microcode for executing instructions.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (sometime) floating point instructions.
+- A RISC CPU.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (eventually) floating point instructions.
 - A load/store architecture.  Only load and store instructions may access memory.
 - Wishbone compliant.  All memory and peripherals are accessed across a single wishbone bus.
 - A Von-Neumann architecture, meaning that both instructions and data share a common bus.
@@ -13,8 +13,8 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 ## Unique features and characteristics
 
 - Only 29 instructions are currently implemented.  Six additional instructions have been reserved for a floating point unit, but such a unit has yet to be implemented.
-- (Almost) all instructions can be executed conditionally.  Exceptions include load immediate, the debug break instruction, the bus lock and simulation instructions, and the no-operation instruction.
-- Simplfied wishbone bus.  While the ZipCPU conforms to the Wishbone B4 standard, some simplifications have been made.  All tgx lines have been removed, although the select lines have been kept.  All accesses are (or can be) pipelined.  Finally, the ZipCPU project (and its daughter projects/[peripherals](rtl/peripherals) assumes that the strobe line is zero whenever the cycle is zero.  This simplifies peripheral processing.
+- (Almost) all instructions can be executed conditionally.  Exceptions include load immediate, the debug break instruction, the bus lock and simulation instructions, and the no-operation instruction.  The assembler will quietly turn a conditional load immediate into a two-instruction equivalent.
+- Simplfied wishbone bus.  While the ZipCPU conforms to the Wishbone B4 standard, some simplifications have been made.  All tgx lines have been removed, although the select lines have been kept.  All accesses are (or can be) pipelined.  Finally, the ZipCPU project (and its daughter projects/[peripherals](rtl/peripherals)) assumes that the strobe line is zero whenever the cycle is zero.  This simplifies peripheral processing.
 - The CPU makes heavy use of pipelined wishbone processing wherever and whenever it can.  Hence, loading two vaues in a row may cost only one clock more than just loading the one value.
 - The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An [interrupt peripheral](rtl/peripherals/icontrol.v) handles the combining of multiple interrupts into a single interrupt line.
 
@@ -99,8 +99,8 @@ itself.
   [test bench](sim/verilator/zipmmu_tb.cpp) also exists
   to exercise it.
 
-- Likewise, a [data cache](../../tree/master/rtl/core/dcache.v) has been
-  written for the ZipCPU, but not yet integrated into it
+- A [data cache](../../tree/master/rtl/core/dcache.v) has been
+  written for the ZipCPU, but has yet to be fully optimized.
 
 - I would also like to integrate [SDCard
   support](https://github.com/ZipCPU/sdspi) into the
