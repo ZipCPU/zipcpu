@@ -40,11 +40,11 @@
 `default_nettype	none
 //
 //
-`include "cpudefs.v"
+// `include "cpudefs.v"
 //
 module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
-	parameter		IMPLEMENT_MPY = `OPT_MULTIPLY;
+	parameter		IMPLEMENT_MPY = 0; // `OPT_MULTIPLY;
 	parameter	[0:0]	OPT_SHIFTS = 1'b1;
 	input	wire	i_clk, i_reset, i_stb;
 	input	wire	[3:0]	i_op;
@@ -54,22 +54,36 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 	output	reg		o_valid;
 	output	wire		o_busy;
 
+	genvar	k;
+
 	// Shift register pre-logic
 	wire	[32:0]		w_lsr_result, w_asr_result, w_lsl_result;
 	generate if (OPT_SHIFTS)
 	begin
-		wire	signed	[32:0]	w_pre_asr_input, w_pre_asr_shifted;
-		assign	w_pre_asr_input = { i_a, 1'b0 };
-		assign	w_pre_asr_shifted = w_pre_asr_input >>> i_b[4:0];
-		assign	w_asr_result = (|i_b[31:5])? {(33){i_a[31]}}
+		wire	signed	[33:0]	w_pre_shift_input, w_pre_asr_shifted,
+					w_shift_result;
+		wire	[31:0]	brev_shift_pre;
+
+		for(k=0; k<32; k=k+1)
+			assign brev_shift_pre[k] = i_a[31-k];
+
+		assign	w_pre_shift_input = (i_op[0]) 
+				? { (i_op[1])&&(i_a[31]), i_a, 1'b0 }
+				: { 1'b0, brev_shift_pre, 1'b0 };
+		assign	w_pre_asr_shifted = w_pre_shift_input >>> i_b[4:0];
+		assign	w_shift_result = (|i_b[31:5])?{(34){w_pre_shift_input[31]}}
 				: w_pre_asr_shifted;// ASR
-		assign	w_lsr_result = ((|i_b[31:6])||(i_b[5]&&(i_b[4:0]!=0)))? 33'h00
-				:((i_b[5])?{32'h0,i_a[31]}
-				
-				: ( { i_a, 1'b0 } >> (i_b[4:0]) ));// LSR
-	assign	w_lsl_result = ((|i_b[31:6])||(i_b[5]&&(i_b[4:0]!=0)))? 33'h00
-				:((i_b[5])?{i_a[0], 32'h0}
-				: ({1'b0, i_a } << i_b[4:0]));	// LSL
+
+		assign	w_asr_result = w_shift_result[32:0];
+		assign	w_lsr_result = w_shift_result[32:0];
+
+		for(k=0; k<33; k=k+1)
+			assign	w_lsl_result[k] = w_shift_result[32-k];
+
+		// verilator lint_on  UNUSED
+		wire	unused_shift;
+		assign	unused_shift = w_shift_result[33];
+		// verilator lint_off UNUSED
 	end else begin
 		assign w_asr_result = { i_a[31], i_a };
 		assign w_lsl_result = { i_a, 1'b0 };
@@ -78,7 +92,6 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 
 	// Bit reversal pre-logic
 	wire	[31:0]	w_brev_result;
-	genvar	k;
 	generate
 	for(k=0; k<32; k=k+1)
 	begin : bit_reversal_cpuop
