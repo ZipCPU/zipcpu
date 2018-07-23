@@ -40,11 +40,11 @@
 `default_nettype	none
 //
 //
-// `include "cpudefs.v"
+`include "cpudefs.v"
 //
 module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 			o_busy);
-	parameter		IMPLEMENT_MPY = 0; // `OPT_MULTIPLY;
+	parameter		IMPLEMENT_MPY = `OPT_MULTIPLY;
 	parameter	[0:0]	OPT_SHIFTS = 1'b1;
 	input	wire	i_clk, i_reset, i_stb;
 	input	wire	[3:0]	i_op;
@@ -59,7 +59,7 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 	// Shift register pre-logic
 	wire	[32:0]		w_lsr_result, w_asr_result, w_lsl_result;
 	generate if (OPT_SHIFTS)
-	begin
+	begin : IMPLEMENT_SHIFTS
 		wire	signed	[33:0]	w_pre_shift_input, w_pre_asr_shifted,
 					w_shift_result;
 		wire	[31:0]	brev_shift_pre;
@@ -71,7 +71,8 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 				? { (i_op[1])&&(i_a[31]), i_a, 1'b0 }
 				: { 1'b0, brev_shift_pre, 1'b0 };
 		assign	w_pre_asr_shifted = w_pre_shift_input >>> i_b[4:0];
-		assign	w_shift_result = (|i_b[31:5])?{(34){w_pre_shift_input[31]}}
+		assign	w_shift_result = (|i_b[31:5])
+				? {(34){w_pre_shift_input[33]}}
 				: w_pre_asr_shifted;// ASR
 
 		assign	w_asr_result = w_shift_result[32:0];
@@ -230,6 +231,61 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_busy))&&(!o_busy))
 		`ASSERT($past(i_reset) || o_valid);
+
+	// Check the shift values
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_stb)))
+	begin
+		if (($past(|i_b[31:6]))||($past(i_b[5:0])>6'd32))
+		begin
+			assert(($past(i_op)!=4'h5)
+					||({o_c,c}=={(33){1'b0}}));
+			assert(($past(i_op)!=4'h6)
+					||({c,o_c}=={(33){1'b0}}));
+			assert(($past(i_op)!=4'h7)
+					||({o_c,c}=={(33){$past(i_a[31])}}));
+		end else if ($past(i_b[5:0]==6'd32))
+		begin
+			assert(($past(i_op)!=4'h5)
+				||(o_c=={(32){1'b0}}));
+			assert(($past(i_op)!=4'h6)
+				||(o_c=={(32){1'b0}}));
+			assert(($past(i_op)!=4'h7)
+				||(o_c=={(32){$past(i_a[31])}}));
+		end if ($past(i_b)==0)
+		begin
+			assert(($past(i_op)!=4'h5)
+				||({o_c,c}=={$past(i_a), 1'b0}));
+			assert(($past(i_op)!=4'h6)
+				||({c,o_c}=={1'b0, $past(i_a)}));
+			assert(($past(i_op)!=4'h7)
+				||({o_c,c}=={$past(i_a), 1'b0}));
+		end if ($past(i_b)==1)
+		begin
+			assert(($past(i_op)!=4'h5)
+				||({o_c,c}=={1'b0, $past(i_a)}));
+			assert(($past(i_op)!=4'h6)
+				||({c,o_c}=={$past(i_a),1'b0}));
+			assert(($past(i_op)!=4'h7)
+				||({o_c,c}=={$past(i_a[31]),$past(i_a)}));
+		end if ($past(i_b)==2)
+		begin
+			assert(($past(i_op)!=4'h5)
+				||({o_c,c}=={2'b0, $past(i_a[31:1])}));
+			assert(($past(i_op)!=4'h6)
+				||({c,o_c}=={$past(i_a[30:0]),2'b0}));
+			assert(($past(i_op)!=4'h7)
+				||({o_c,c}=={{(2){$past(i_a[31])}},$past(i_a[31:1])}));
+		end if ($past(i_b)==31)
+		begin
+			assert(($past(i_op)!=4'h5)
+				||({o_c,c}=={31'b0, $past(i_a[31:30])}));
+			assert(($past(i_op)!=4'h6)
+				||({c,o_c}=={$past(i_a[1:0]),31'b0}));
+			assert(($past(i_op)!=4'h7)
+				||({o_c,c}=={{(31){$past(i_a[31])}},$past(i_a[31:30])}));
+		end
+	end
 `endif
 endmodule
 //

@@ -868,6 +868,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		assign	w_op_Bv = regset[dcd_B];
 
 	end endgenerate
+
+	// verilator lint_off UNUSED
+	wire	[9:0]	unused_prereg_addrs;
+	assign	unused_prereg_addrs = { dcd_preA, dcd_preB };
+	// verilator lint_on  UNUSED
 `endif
 
 	assign	w_cpu_info = {

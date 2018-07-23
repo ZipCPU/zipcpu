@@ -163,7 +163,7 @@
 #define	pf_vmask	VVAR(_thecpu__DOT__pf__DOT__valid_mask)
 #define	pf_r_v		VVAR(_thecpu__DOT__pf__DOT__r_v)
 // #define	pf_illegal	VVAR(_thecpu__DOT__pf__DOT__pf_illegal)
-#define	pf_tagsrc	VVAR(_thecpu__DOT__pf__DOT__tagsrc)
+#define	pf_tagsrc	VVAR(_thecpu__DOT__pf__DOT__rvsrc)
 #define	pf_tagipc	VVAR(_thecpu__DOT__pf__DOT__tagvalipc)
 #define	pf_tagvallst	VVAR(_thecpu__DOT__pf__DOT__tagvallst)
 #define	pf_lastpc	VVAR(_thecpu__DOT__pf__DOT__lastpc)

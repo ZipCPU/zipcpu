@@ -1401,5 +1401,4 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		`ASSERT((state != `DC_READC)||(last_tag != o_wb_addr[AW-1:LS]));
 	end
 `endif
-`endif
 endmodule
