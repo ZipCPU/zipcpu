@@ -328,8 +328,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	needload = 1'b0;
 	always @(posedge i_clk)
 		needload <= ((!r_v)&&(delay==0)
-			// &&((tagvallst != lastpc[(AW+1):CW+2])
-			//	||(!valid_mask[lastpc[(CW+1):PW+2]]))
 			&&(!w_v_from_last)
 			// Prevent us from reloading an illegal address
 			// (i.e. one that produced a bus error) over and over
@@ -569,7 +567,6 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 //
 `ifdef	PFCACHE
 `define	ASSUME	assume
-`define	STEP_CLOCK	assume(i_clk != f_last_clk);
 `else
 `define	ASSUME	assert
 `define	STEP_CLOCK
