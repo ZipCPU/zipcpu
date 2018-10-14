@@ -812,16 +812,26 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(*)
 		assume((!i_wbm_cyc)||(!i_wbs_cyc_stb));
 
-	reg	[3:0]	fv_nreqs, fv_nacks, fv_outstanding,
+	localparam	F_LGDEPTH = 6;
+	reg	[F_LGDEPTH-1:0]	fv_nreqs, fv_nacks, fv_outstanding,
 			fp_nreqs, fp_nacks, fp_outstanding;
 
 	localparam	F_MAX_STALL = 3,
-			F_MAX_WAIT  = 2;
-	fwb_slave #(.F_MAX_STALL(F_MAX_STALL+(F_MAX_WAIT*5)+2),
+			F_MAX_WAIT  = 2,
+			F_MAX_REQ   = 9;
+
+	//
+	// The stall period needs to be long enough to allow all in-progress
+	// transactions to complete, as in the case of a page miss.  Hence,
+	// the max stall amount depends upon the max wait time for the
+	// physical half of the interaction.  It is artificially limited here
+	// in order to limit the amount of proof time required.
+	//
+	fwb_slave #(.F_MAX_STALL(F_MAX_STALL+(F_MAX_WAIT*F_MAX_REQ)+2),
 			.AW(DW-2),
 			.F_MAX_ACK_DELAY(F_MAX_STALL+F_MAX_WAIT+5),
-			.F_MAX_REQUESTS(5),
-			.F_LGDEPTH(4),
+			.F_MAX_REQUESTS(F_MAX_REQ),
+			.F_LGDEPTH(F_LGDEPTH),
 			.F_OPT_CLK2FFLOGIC(0),
 			.F_OPT_MINCLOCK_DELAY(0))
 		busslave(i_clk, i_reset,
@@ -834,7 +844,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	fwb_master #(.F_MAX_STALL(F_MAX_STALL),
 			.AW(ADDRESS_WIDTH),
 			.F_MAX_ACK_DELAY(F_MAX_WAIT),
-			.F_LGDEPTH(4),
+			.F_MAX_REQUESTS(F_MAX_REQ),
+			.F_LGDEPTH(F_LGDEPTH),
 			.F_OPT_CLK2FFLOGIC(0),
 			.F_OPT_MINCLOCK_DELAY(0))
 		busmaster(i_clk, i_reset,
@@ -846,25 +857,51 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(*)
 		assert((!o_cyc)||(fp_outstanding == bus_outstanding));
 
-
-	reg	[3:0]	f_expected;
 	always @(*)
-		if (!i_wbm_cyc)
-			f_expected <= 0;
-		else if (OPT_DELAY_RETURN)
+		assume(fv_nreqs < F_MAX_REQ);
+	always @(*)
+	if ((i_wbm_cyc)&&(o_cyc)&&(fv_outstanding == fp_outstanding))
+		assert(fv_nreqs == fp_nreqs);
+	always @(*)
+	if ((i_wbm_cyc)&&(o_cyc))
+	begin
+		assert(fp_nreqs <= fv_nreqs);
+		assert(fp_nacks >= fv_nacks);
+	end
+
+	reg	[F_LGDEPTH-1:0]	f_expected, f_ex_nreqs, f_ex_nacks;
+	always @(*)
+	if (!i_wbm_cyc)
+	begin
+		f_ex_nreqs <= 0;
+		f_ex_nacks <= 0;
+		f_expected <= 0;
+	end else if (OPT_DELAY_RETURN)
+	begin
+		if (r_pending)
 		begin
-			if (r_pending)
-				f_expected <= fp_outstanding + 1'b1
-							+ o_rtn_ack;
-			else
-				f_expected <= fp_outstanding + (o_stb)
-					+ (o_rtn_ack);
+			f_ex_nreqs <= fp_nreqs + 1'b1;
+			f_ex_nacks <= fp_nacks + o_rtn_ack;
+			f_expected <= fp_outstanding + 1'b1
+						+ o_rtn_ack;
 		end else begin
-			if (r_pending)
-				f_expected <= fp_outstanding + 1'b1;
-			else
-				f_expected <= fp_outstanding + (o_stb);
+			f_expected <= fp_outstanding + (o_stb)
+				+ (o_rtn_ack);
+			f_ex_nreqs <= fp_nreqs + o_stb;
+			f_ex_nacks <= fp_nacks + o_rtn_ack;
 		end
+	end else begin
+		if (r_pending)
+		begin
+			f_ex_nreqs <= fp_nreqs + 1'b1;
+			f_ex_nacks <= fp_nacks;
+			f_expected <= fp_outstanding + 1'b1;
+		end else begin
+			f_ex_nreqs <= fp_nreqs + o_stb;
+			f_ex_nacks <= fp_nacks;
+			f_expected <= fp_outstanding + (o_stb);
+		end
+	end
 
 	reg	f_kill_input;
 	initial	f_kill_input = 1'b0;
@@ -897,6 +934,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			assert(fv_is_one);
 			assert(fp_is_zero);
 		end else begin
+			assert(fv_nreqs == f_ex_nreqs);
+			assert(fv_nacks == f_ex_nacks);
 			assert(fv_outstanding >= fp_outstanding);
 			assert(fv_outstanding == f_expected);
 		end

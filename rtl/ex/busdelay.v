@@ -325,7 +325,7 @@ module	busdelay(i_clk, i_reset,
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY+1),
 			.F_MAX_ACK_DELAY(ACK_DELAY+1+2*STALL_DELAY),
-			.F_MAX_REQUESTS((1<<(F_LGDEPTH))-3),
+			.F_MAX_REQUESTS((1<<F_LGDEPTH)-2),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
@@ -339,7 +339,7 @@ module	busdelay(i_clk, i_reset,
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_STALL(STALL_DELAY),
 			.F_MAX_ACK_DELAY(ACK_DELAY),
-			.F_MAX_REQUESTS((1<<(F_LGDEPTH))-2),
+			.F_MAX_REQUESTS(0),
 			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
@@ -490,16 +490,19 @@ module	busdelay(i_clk, i_reset,
 		f_exp_nreqs<= f_dly_nreqs + f_pending_reqs;
 	always @(*)
 		f_exp_nacks<= f_dly_nacks - f_pending_acks;
+	always @(*)
+	if (i_wb_cyc)
+		assert(f_dly_outstanding <= f_wb_outstanding);
 
 	always @(posedge i_clk)
 		if ((!i_reset)&&(i_wb_cyc)&&(o_dly_cyc)&&(!i_dly_err))
 			assert(f_expected == f_wb_outstanding);
 
 	always @(posedge i_clk)
-		if ((i_wb_cyc)&&(o_dly_cyc)&&(!i_reset)&&(!i_dly_err))
-		begin
-			assert(f_exp_nreqs == f_wb_nreqs);
-			assert(f_exp_nacks == f_wb_nacks);
-		end
+	if ((i_wb_cyc)&&(o_dly_cyc)&&(!i_reset)&&(!i_dly_err))
+	begin
+		assert(f_exp_nreqs == f_wb_nreqs);
+		assert(f_exp_nacks == f_wb_nacks);
+	end
 `endif
 endmodule

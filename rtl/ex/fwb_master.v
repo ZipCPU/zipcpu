@@ -23,7 +23,13 @@
 //	slave inputs (the master outputs), and assertions are made about the
 //	slave outputs (the master inputs).
 //
-//
+//	In order to make it easier to compare the slave against the master,
+//	assumptions with respect to the slave have been marked with the
+//	`SLAVE_ASSUME macro.  Similarly, assertions the slave would make have
+//	been marked with `SLAVE_ASSERT.  This allows the master to redefine
+//	these two macros to be from his perspective, and therefore the
+//	diffs between the two files actually show true differences, rather
+//	than just these differences in perspective.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -129,10 +135,12 @@ module	fwb_master(i_clk, i_reset,
 	output	reg	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks;
 	output	wire	[(F_LGDEPTH-1):0]	f_outstanding;
 
+`define	SLAVE_ASSUME	assert
+`define	SLAVE_ASSERT	assume
 	//
 	// Let's just make sure our parameters are set up right
 	//
-	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
+	initial	assert(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
 
 	//
 	// Wrap the request line in a bundle.  The top bit, named STB_BIT,
@@ -151,8 +159,8 @@ module	fwb_master(i_clk, i_reset,
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 	always @(*)
-		if (!f_past_valid)
-			assert(i_reset);
+	if (!f_past_valid)
+		`SLAVE_ASSUME(i_reset);
 	//
 	//
 	// Assertions regarding the initial (and reset) state
@@ -162,40 +170,49 @@ module	fwb_master(i_clk, i_reset,
 	//
 	// Assume we start from a reset condition
 	initial assert(i_reset);
-	initial assert(!i_wb_cyc);
-	initial assert(!i_wb_stb);
+	initial `SLAVE_ASSUME(!i_wb_cyc);
+	initial `SLAVE_ASSUME(!i_wb_stb);
 	//
-	initial	assume(!i_wb_ack);
-	initial	assume(!i_wb_err);
+	initial	`SLAVE_ASSERT(!i_wb_ack);
+	initial	`SLAVE_ASSERT(!i_wb_err);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_reset)))
 	begin
-		assert(!i_wb_cyc);
-		assert(!i_wb_stb);
+		`SLAVE_ASSUME(!i_wb_cyc);
+		`SLAVE_ASSUME(!i_wb_stb);
 		//
-		assume(!i_wb_ack);
-		assume(!i_wb_err);
+		`SLAVE_ASSERT(!i_wb_ack);
+		`SLAVE_ASSERT(!i_wb_err);
 	end
 
 	// Things can only change on the positive edge of the clock
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin : CHECK_ASYNC
+`ifdef	VERIFIC
+	(* gclk *) wire gbl_clock;
+	global clocking @(posedge gbl_clock);
+	endclocking
+`endif
 
+	generate if (F_OPT_CLK2FFLOGIC)
+	begin : FORCE_POSEDGE_CLK
 		always @($global_clock)
 		if ((f_past_valid)&&(!$rose(i_clk)))
 		begin
 			assert($stable(i_reset));
-			assert($stable(i_wb_cyc));
-			assert($stable(f_request)); // The entire request should b stabl
+			`SLAVE_ASSUME($stable(i_wb_cyc));
+			`SLAVE_ASSUME($stable(f_request)); // The entire request should b stabl
 			//
-			assume($stable(i_wb_ack));
-			assume($stable(i_wb_stall));
-			assume($stable(i_wb_idata));
-			assume($stable(i_wb_err));
+			`SLAVE_ASSERT($stable(i_wb_ack));
+			`SLAVE_ASSERT($stable(i_wb_stall));
+			`SLAVE_ASSERT($stable(i_wb_idata));
+			`SLAVE_ASSERT($stable(i_wb_err));
 		end
 
 	end endgenerate
+
+	always @(*)
+	if (!f_past_valid)
+		`SLAVE_ASSUME(!i_wb_cyc);
 
 	//
 	//
@@ -207,12 +224,12 @@ module	fwb_master(i_clk, i_reset,
 	// the transaction
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_wb_err))&&($past(i_wb_cyc)))
-		assert(!i_wb_cyc);
+		`SLAVE_ASSUME(!i_wb_cyc);
 
 	// STB can only be true if CYC is also true
 	always @(*)
-		if (i_wb_stb)
-			assert(i_wb_cyc);
+	if (i_wb_stb)
+		`SLAVE_ASSUME(i_wb_cyc);
 
 	// If a request was both outstanding and stalled on the last clock,
 	// then nothing should change on this clock regarding it.
@@ -220,31 +237,31 @@ module	fwb_master(i_clk, i_reset,
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
 			&&($past(i_wb_stall))&&(i_wb_cyc))
 	begin
-		assert(i_wb_stb);
-		assert(i_wb_we   == $past(i_wb_we));
-		assert(i_wb_addr == $past(i_wb_addr));
-		assert(i_wb_sel  == $past(i_wb_sel));
+		`SLAVE_ASSUME(i_wb_stb);
+		`SLAVE_ASSUME(i_wb_we   == $past(i_wb_we));
+		`SLAVE_ASSUME(i_wb_addr == $past(i_wb_addr));
+		`SLAVE_ASSUME(i_wb_sel  == $past(i_wb_sel));
 		if (i_wb_we)
-			assert(i_wb_data == $past(i_wb_data));
+			`SLAVE_ASSUME(i_wb_data == $past(i_wb_data));
 	end
 
 	// Within any series of STB/requests, the direction of the request
 	// may not change.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_wb_stb))&&(i_wb_stb))
-			assert(i_wb_we == $past(i_wb_we));
+	if ((f_past_valid)&&($past(i_wb_stb))&&(i_wb_stb))
+		`SLAVE_ASSUME(i_wb_we == $past(i_wb_we));
 
 
 	// Within any given bus cycle, the direction may *only* change when
 	// there are no further outstanding requests.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_outstanding > 0))
-			assert(i_wb_we == $past(i_wb_we));
+	if ((f_past_valid)&&(f_outstanding > 0))
+		`SLAVE_ASSUME(i_wb_we == $past(i_wb_we));
 
 	// Write requests must also set one (or more) of i_wb_sel
 	always @(*)
-		if ((i_wb_stb)&&(i_wb_we))
-			assert(|i_wb_sel);
+	if ((i_wb_stb)&&(i_wb_we))
+		`SLAVE_ASSUME(|i_wb_sel);
 
 
 	//
@@ -258,15 +275,15 @@ module	fwb_master(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_wb_cyc))&&(!i_wb_cyc))
 	begin
-		assume(!i_wb_ack);
-		assume(!i_wb_err);
+		`SLAVE_ASSERT(!i_wb_ack);
+		`SLAVE_ASSERT(!i_wb_err);
 		// Stall may still be true--such as when we are not
 		// selected at some arbiter between us and the slave
 	end
 
 	// ACK and ERR may never both be true at the same time
 	always @(*)
-		assume((!i_wb_ack)||(!i_wb_err));
+		`SLAVE_ASSERT((!i_wb_ack)||(!i_wb_err));
 
 	generate if (F_MAX_STALL > 0)
 	begin : MXSTALL
@@ -279,13 +296,14 @@ module	fwb_master(i_clk, i_reset,
 
 		initial	f_stall_count = 0;
 		always @(posedge i_clk)
-			if ((!i_reset)&&(i_wb_stb)&&(i_wb_stall))
-				f_stall_count <= f_stall_count + 1'b1;
-			else
-				f_stall_count <= 0;
+		if ((!i_reset)&&(i_wb_stb)&&(i_wb_stall))
+			f_stall_count <= f_stall_count + 1'b1;
+		else
+			f_stall_count <= 0;
+
 		always @(*)
-			if (i_wb_cyc)
-				assume(f_stall_count < F_MAX_STALL);
+		if (i_wb_cyc)
+			`SLAVE_ASSERT(f_stall_count < F_MAX_STALL);
 	end endgenerate
 
 	generate if (F_MAX_ACK_DELAY > 0)
@@ -299,18 +317,18 @@ module	fwb_master(i_clk, i_reset,
 
 		initial	f_ackwait_count = 0;
 		always @(posedge i_clk)
-			if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
-					&&(!i_wb_ack)&&(!i_wb_err)
-					&&(f_outstanding > 0))
-				f_ackwait_count <= f_ackwait_count + 1'b1;
-			else
-				f_ackwait_count <= 0;
+		if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
+				&&(!i_wb_ack)&&(!i_wb_err)
+				&&(f_outstanding > 0))
+			f_ackwait_count <= f_ackwait_count + 1'b1;
+		else
+			f_ackwait_count <= 0;
 
 		always @(*)
 		if ((!i_reset)&&(i_wb_cyc)&&(!i_wb_stb)
 					&&(!i_wb_ack)&&(!i_wb_err)
 					&&(f_outstanding > 0))
-			assume(f_ackwait_count < F_MAX_ACK_DELAY);
+			`SLAVE_ASSERT(f_ackwait_count < F_MAX_ACK_DELAY);
 	end endgenerate
 
 	//
@@ -343,35 +361,35 @@ module	fwb_master(i_clk, i_reset,
 	assign	f_outstanding = (i_wb_cyc) ? (f_nreqs - f_nacks):0;
 
 	always @(*)
-		if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
-		begin
-			if (i_wb_stb)
-				assert(f_nreqs < F_MAX_REQUESTS);
-			else
-				assert(f_nreqs <= F_MAX_REQUESTS);
-			assume(f_nacks <= f_nreqs);
-			assert(f_outstanding < (1<<F_LGDEPTH)-1);
-		end else
-			assume(f_outstanding < (1<<F_LGDEPTH)-1);
+	if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
+	begin
+		if (i_wb_stb)
+			`SLAVE_ASSUME(f_nreqs < F_MAX_REQUESTS);
+		else
+			`SLAVE_ASSUME(f_nreqs <= F_MAX_REQUESTS);
+		`SLAVE_ASSERT(f_nacks <= f_nreqs);
+		assert(f_outstanding < (1<<F_LGDEPTH)-1);
+	end else
+		assume(f_outstanding < (1<<F_LGDEPTH)-1);
 
 	always @(*)
-		if ((i_wb_cyc)&&(f_outstanding == 0))
+	if ((i_wb_cyc)&&(f_outstanding == 0))
+	begin
+		// If nothing is outstanding, then there should be
+		// no acknowledgements ... however, an acknowledgement
+		// *can* come back on the same clock as the stb is
+		// going out.
+		if (F_OPT_MINCLOCK_DELAY)
 		begin
-			// If nothing is outstanding, then there should be
-			// no acknowledgements ... however, an acknowledgement
-			// *can* come back on the same clock as the stb is
-			// going out.
-			if (F_OPT_MINCLOCK_DELAY)
-			begin
-				assume(!i_wb_ack);
-				assume(!i_wb_err);
-			end else begin
-				assume((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
-				// The same is true of errors.  They may not be
-				// created before the request gets through
-				assume((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
-			end
+			`SLAVE_ASSERT(!i_wb_ack);
+			`SLAVE_ASSERT(!i_wb_err);
+		end else begin
+			`SLAVE_ASSERT((!i_wb_ack)||((i_wb_stb)&&(!i_wb_stall)));
+			// The same is true of errors.  They may not be
+			// created before the request gets through
+			`SLAVE_ASSERT((!i_wb_err)||((i_wb_stb)&&(!i_wb_stall)));
 		end
+	end
 
 	generate if (F_OPT_SOURCE)
 	begin : SRC
@@ -382,8 +400,8 @@ module	fwb_master(i_clk, i_reset,
 		// the CYC line may go high or low without actually affecting
 		// the STB line of the slave.
 		always @(posedge i_clk)
-			if ((f_past_valid)&&(!$past(i_wb_cyc))&&(i_wb_cyc))
-				assert(i_wb_stb);
+		if ((f_past_valid)&&(!$past(i_wb_cyc))&&(i_wb_cyc))
+			`SLAVE_ASSUME(i_wb_stb);
 	end endgenerate
 
 
@@ -393,8 +411,8 @@ module	fwb_master(i_clk, i_reset,
 		// any requests, then then our transaction is over and we
 		// should be dropping the CYC line.
 		always @(*)
-			if (f_outstanding == 0)
-				assert((i_wb_stb)||(!i_wb_cyc));
+		if (f_outstanding == 0)
+			`SLAVE_ASSUME((i_wb_stb)||(!i_wb_cyc));
 		// Not all masters will abide by this restriction.  Some
 		// masters may wish to implement read-modify-write bus
 		// interactions.  These masters need to keep CYC high between
@@ -435,8 +453,8 @@ module	fwb_master(i_clk, i_reset,
 		// necessary, and the spec doesn't disallow them.  Hence we
 		// make this check optional.
 		always @(posedge i_clk)
-			if ((f_past_valid)&&($past(i_wb_cyc))&&(!$past(i_wb_stb)))
-				assert(!i_wb_stb);
+		if ((f_past_valid)&&($past(i_wb_cyc))&&(!$past(i_wb_stb)))
+			`SLAVE_ASSUME(!i_wb_stb);
 	end endgenerate
 
 endmodule

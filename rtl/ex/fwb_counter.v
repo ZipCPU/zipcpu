@@ -68,7 +68,11 @@ module	fwb_counter(i_clk, i_reset,
 	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
 	//
 	//
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b1;
+	// F_OPT_CLK2FFLOGIC needs to be set to true any time the clk2fflogic
+	// command is present in the yosys script.  If clk2fflogic isn't used,
+	// then setting this parameter to zero will eliminate some formal
+	// tests which would then be inappropriate.
+	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
 	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
