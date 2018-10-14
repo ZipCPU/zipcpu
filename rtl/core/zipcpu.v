@@ -1158,12 +1158,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	generate if ((OPT_PIPELINED)||(EARLY_BRANCHING))
 	begin : SET_OP_PC
 
+		initial op_pc[0] = 1'b0;
 		always @(posedge i_clk)
 		if (op_ce)
 			op_pc <= (dcd_early_branch)?dcd_branch_pc:dcd_pc;
 
 	end else begin : SET_OP_PC
 
+		initial op_pc[0] = 1'b0;
 		always @(*)
 			op_pc = dcd_pc;
 
@@ -1382,7 +1384,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	generate if (IMPLEMENT_FPU != 0)
 	begin : FPU
 		//
-		// sfpu thefpu(i_clk, i_reset, fpu_ce,
+		// sfpu thefpu(i_clk, i_reset, fpu_ce, op_opn[2:0],
 		//	op_Av, op_Bv, fpu_busy, fpu_valid, fpu_err, fpu_result,
 		//	fpu_flags);
 		//
