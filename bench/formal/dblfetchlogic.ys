@@ -1,0 +1,2 @@
+read_verilog ../../rtl/core/dblfetch.v
+synth_ice40

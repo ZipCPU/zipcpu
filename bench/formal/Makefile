@@ -167,8 +167,8 @@ $(PFCACHE).check: $(PFCACHE).smt2
 $(WBDLY) : $(WBDLY).check
 $(WBDLY).check: $(WBDLY).smt2
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 16 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
-	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(BMCARGS) -t 24 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
+	$(SMTBMC)    $(INDARGS) -t 24 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
 	touch $@
 
 $(PRIARB) : $(PRIARB).check
@@ -204,8 +204,8 @@ $(PIPE).check: $(PIPE).smt2
 $(MMU) : $(MMU).check
 $(MMU).check: $(MMU).smt2
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 12 --dump-vcd $(MMU).vcd $(MMU).smt2
-	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC)    $(BMCARGS) -t 25 --dump-vcd $(MMU).vcd $(MMU).smt2
+	$(SMTBMC)    $(INDARGS) -t 25 --dump-vcd $(MMU).vcd $(MMU).smt2
 	touch $@
 
 $(TMR) : $(TMR).check

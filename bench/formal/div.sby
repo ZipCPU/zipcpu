@@ -1,0 +1,14 @@
+[options]
+mode prove
+
+[engines]
+smtbmc
+
+[script]
+read -define FORMAL
+read -define DIV
+read -sv div.v
+prep -top div
+
+[files]
+../../rtl/core/div.v
