@@ -1,6 +1,6 @@
 [tasks]
-proof
 cover
+proof
 
 [options]
 proof: mode prove
