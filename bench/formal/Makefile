@@ -59,8 +59,8 @@ PFCACHE:= pfcache
 WBDLY  := busdelay
 PRIARB := wbpriarbiter
 DBL    := wbdblpriarb
-MEM    := memops
 PIPE   := pipemem
+MEM    := memops
 MMU    := zipmmu
 TMR    := ziptimer
 CNT    := zipcounter
@@ -96,9 +96,6 @@ $(PRIARB).smt2: $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
 
 $(DBL).smt2: $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
 	yosys -ql $(DBL).yslog -s $(DBL).ys
-
-$(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys
-	yosys -ql $(MEM).yslog -s $(MEM).ys
 
 $(PIPE).smt2: $(RTL)/core/$(PIPE).v $(MASTER) $(PIPE).ys
 	yosys -ql $(PIPE).yslog -s $(PIPE).ys
@@ -187,11 +184,12 @@ $(DBL).check: $(DBL).smt2
 	touch $@
 
 $(MEM) : $(MEM).check
-$(MEM).check: $(MEM).smt2
+$(MEM).check: $(RTL)/core/memops.v
+$(MEM).check: $(RTL)/ex/fwb_master.v
 	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(MEM).vcd $(MEM).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(MEM).vcd $(MEM).smt2
+	sby -f $(MEM).sby
 	touch $@
+
 
 $(PIPE) : $(PIPE).check
 $(PIPE).check: $(PIPE).smt2

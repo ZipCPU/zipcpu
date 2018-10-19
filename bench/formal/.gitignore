@@ -23,3 +23,5 @@ dcache_nolocal
 dcache_piped
 dcache_cover
 div
+memops_proof
+memops_cover

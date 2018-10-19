@@ -100,9 +100,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	begin : GENERATE_ALIGNMENT_ERR
 		always @(*)
 		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned = 1'b1; // Words must be halfword aligned
-		4'b0110: misaligned = 1'b1; // Words must be word aligned
-		4'b10?1: misaligned = 1'b1; // Halfwords must be aligned
+		4'b01?1: misaligned = i_stb; // Words must be halfword aligned
+		4'b0110: misaligned = i_stb; // Words must be word aligned
+		4'b10?1: misaligned = i_stb; // Halfwords must be aligned
 		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
 		default: misaligned = 1'b0;
 		endcase
@@ -133,8 +133,8 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			end
 		end else begin // New memory operation
 			// Grab the wishbone
-			r_wb_cyc_lcl <= (lcl_stb)&&(!misaligned);
-			r_wb_cyc_gbl <= (gbl_stb)&&(!misaligned);
+			r_wb_cyc_lcl <= (lcl_stb);
+			r_wb_cyc_gbl <= (gbl_stb);
 		end
 	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
@@ -146,7 +146,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
 	else
 		// Grab wishbone on any new transaction to the gbl bus
-		o_wb_stb_gbl <= (gbl_stb)&&(!misaligned);
+		o_wb_stb_gbl <= (gbl_stb);
 
 	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
@@ -158,7 +158,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
 	else
 		// Grab wishbone on any new transaction to the lcl bus
-		o_wb_stb_lcl  <= (lcl_stb)&&(!misaligned);
+		o_wb_stb_lcl  <= (lcl_stb);
 
 	reg	[3:0]	r_op;
 	initial	o_wb_we   = 1'b0;
@@ -217,10 +217,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	always @(posedge i_clk)
 	if (i_reset)
 		o_err <= 1'b0;
-	else if (i_stb)
-		o_err <= misaligned;
-	else if ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
+	else if ((r_wb_cyc_gbl)||(r_wb_cyc_lcl))
 		o_err <= i_wb_err;
+	else if ((i_stb)&&(!o_busy))
+		o_err <= misaligned;
 	else
 		o_err <= 1'b0;
 
@@ -260,11 +260,18 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			lock_gbl <= 1'b0;
 			lock_lcl <= 1'b0;
 		end else if (((i_wb_err)&&((r_wb_cyc_gbl)||(r_wb_cyc_lcl)))
-				||((i_stb)&&(misaligned)))
+				||(misaligned))
 		begin
+			// Kill the lock if
+			//	there's a bus error, or
+			//	User requests a misaligned memory op
 			lock_gbl <= 1'b0;
 			lock_lcl <= 1'b0;
 		end else begin
+			// Kill the lock if
+			//	i_lock goes down
+			//	User starts on the global bus, then switches
+			//	  to local or vice versa
 			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
 					&&(!lcl_stb);
 			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
@@ -435,18 +442,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			`ASSUME($stable(i_data));
 			`ASSUME($stable(i_oreg));
 			`ASSUME($stable(i_lock));
-		end else if (($past(!i_stb))&&(!i_stb))
-		begin
-			// The CPU might actually allow these inputs to change.
-			// They shouldn't affect this module, so we
-			// restrict them to stable here--although they might
-			// not be in practice.
-			//
-			//restrict($stable(i_op));
-			//restrict($stable(i_addr));
-			//restrict($stable(i_data));
-			//restrict($stable(i_oreg));
-			//restrict($stable(i_lock));
 		end
 
 
@@ -479,7 +474,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	if ((f_past_valid)&&($past(i_stb))
 		&&(!$past(f_cyc))&&(!$past(i_reset)))
 	begin
-		`ASSUME(!i_stb);
 		if ($past(misaligned))
 		begin
 			`ASSERT(!f_cyc);
@@ -516,7 +510,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 				`ASSERT(!o_err);
 			else if (($past(f_cyc))&&($past(i_wb_err)))
 				`ASSERT(o_err);
-			else if (($past(i_stb))&&($past(misaligned)))
+			else if ($past(misaligned))
 				`ASSERT(o_err);
 		end
 
@@ -529,7 +523,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			else if(($past(f_cyc))&&($past(i_wb_ack))
 					&&(!$past(o_wb_we)))
 				`ASSERT(o_valid);
-			else if (($past(i_stb))&&($past(misaligned)))
+			else if ($past(misaligned))
 				`ASSERT((!o_valid)&&(o_err));
 			else
 				`ASSERT(!o_valid);
@@ -607,14 +601,14 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		`ASSUME($past(i_op[2:1] != 2'b00));
 	end
 
-	/* Not doing memory pipelining--no restrictions (below) needed
+	// This logic is fixed in the definitions of the lock(s) above
+	// i.e., the user cna be stupid and this will still work
+	/*
 	always @(posedge i_clk)
-		if ((i_stb)&&(f_cyc)&&(WITH_LOCAL_BUS))
+		if ((i_lock)&&(i_stb)&&(WITH_LOCAL_BUS))
 		begin
-			// `ASSUME((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
-			// `ASSUME((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
-			restrict((o_wb_cyc_gbl)||(i_addr[31:24] ==8'hff));
-			restrict((o_wb_cyc_lcl)||(i_addr[31:24]!==8'hff));
+			restrict((lock_gbl)||(i_addr[31:24] ==8'hff));
+			restrict((lock_lcl)||(i_addr[31:24]!==8'hff));
 		end
 	*/
 
@@ -623,8 +617,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			`ASSERT(o_wb_addr[29:22] == 8'hff);
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_reset))
-			&&($past(i_stb))&&($past(misaligned)))
+		if ((f_past_valid)&&(!$past(i_reset))&&($past(misaligned)))
 		begin
 			`ASSERT(!o_wb_cyc_gbl);
 			`ASSERT(!o_wb_cyc_lcl);
@@ -641,20 +634,91 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	always @(*)
 	if (o_busy)
 		`ASSUME(!i_stb);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+		&&(!$past(i_reset))&&(!$past(i_wb_err))
+		&&(!$past(misaligned))
+		&&(!$past(lcl_stb))
+		&&($past(i_lock))&&($past(lock_gbl)))
+		assert(lock_gbl);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+			&&(!$past(i_reset))&&(!$past(i_wb_err))
+			&&(!$past(misaligned))
+			&&(!$past(lcl_stb))
+			&&($past(o_wb_cyc_gbl))&&($past(i_lock))
+			&&($past(lock_gbl)))
+		assert(o_wb_cyc_gbl);
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+			&&(!$past(i_reset))&&(!$past(i_wb_err))
+			&&(!$past(misaligned))
+			&&(!$past(gbl_stb))
+			&&($past(o_wb_cyc_lcl))&&($past(i_lock))
+			&&($past(lock_lcl)))
+		assert(o_wb_cyc_lcl);
+
+	//
+	// Cover properties
+	//
+	always @(posedge i_clk)
+		cover(i_wb_ack);
+
+	// Cover a response on the same clock it is made
+	always @(posedge i_clk)
+		cover((o_wb_stb_gbl)&&(i_wb_ack));
+
+	// Cover a response a clock later
+	always @(posedge i_clk)
+		cover((o_wb_stb_gbl)&&(i_wb_ack));
+
+
+	generate if (WITH_LOCAL_BUS)
+	begin
+
+		// Same things on the local bus
+		always @(posedge i_clk)
+			cover((o_wb_cyc_lcl)&&(!o_wb_stb_lcl)&&(i_wb_ack));
+		always @(posedge i_clk)
+			cover((o_wb_stb_lcl)&&(i_wb_ack));
+
+	end endgenerate
+
+`ifdef	VERIFIC
+	assert property @(posedge i_cll)
+		disable iff (i_reset)||((o_wb_cyc_gbl)&&(i_wb_err))
+		(gbl_stb)&&(!o_busy)
+		|=> (o_busy)&&(o_wb_cyc_gbl)&&($stable(o_wb_we)) throughout
+			// Poss. stalled request
+			((o_wb_cyc_stb)&&(i_wb_stall) [*0:$]
+			// Request goes through
+		##1 or (((o_wb_cyc_gbl)&&(o_wb_cyc_stb)&&(!i_wb_stall))
+				// and is immediately acked
+				&&(i_wb_ack))
+		// or wait for the ack
+		  (o_wb_cyc_gbl)&&(o_wb_cyc_stb)&&(!i_wb_stall)&&(!i_wb_ack)
+		##1 (o_wb_cyc_gbl)&&(!o_wb_cyc_stb)&&(!i_wb_ack) [*0:$]
+		##1 (o_wb_cyc_gbl)&&(!o_wb_cyc_stb)&&(i_wb_ack))
+		// and return a value to the bus
+		##1 (o_valid)&&(o_result == $past(i_wb_data));
+`endif
 `endif
 endmodule
 //
 //
 // Usage (from yosys):
 //		(BFOR)	(!ZOI,ALIGN)	(ZOI,ALIGN)	(!ZOI,!ALIGN)
-//	Cells	 230		229		281		225
+//	Cells	 230		226		281		225
 //	  FDRE	 114		116		116		116
-//	  LUT2	  17		 20		 76		 19
-//	  LUT3	   9		 20		 17		 20
-//	  LUT4	  15		 14		 11		 14
-//	  LUT5	  18		 17		  7		 15
-//	  LUT6	  33		 39		 54		 38
-//	  MUX7	  16		  2		  		  2
+//	  LUT2	  17		 23		 76		 19
+//	  LUT3	   9		 23		 17		 20
+//	  LUT4	  15		  4		 11		 14
+//	  LUT5	  18		 18		  7		 15
+//	  LUT6	  33		 18		 54		 38
+//	  MUX7	  16		 12		  		  2
 //	  MUX8	   8		  1				  1
 //
 //
