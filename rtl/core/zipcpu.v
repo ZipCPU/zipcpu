@@ -1165,7 +1165,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	end else begin : SET_OP_PC
 
-		initial op_pc[0] = 1'b0;
 		always @(*)
 			op_pc = dcd_pc;
 
@@ -2293,6 +2292,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 	if (i_reset)
 		pf_pc <= { RESET_BUS_ADDRESS, 2'b00 };
+	else if ((dbg_clear_pipe)&&(wr_reg_ce)&&(wr_write_pc))
+		pf_pc <= { wr_spreg_vl[(AW+1):2], 2'b00 };
 	else if ((w_switch_to_interrupt)
 			||((!gie)&&((w_clear_icache)||(dbg_clear_pipe))))
 		pf_pc <= { ipc[(AW+1):2], 2'b00 };
