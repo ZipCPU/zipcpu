@@ -1,4 +1,0 @@
-read_verilog -D IDECODE -formal ../../rtl/core/idecode.v
-read_verilog -D IDECODE -formal f_idecode.v
-prep -top idecode -nordff
-write_smt2 -wires idecode.smt2

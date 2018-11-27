@@ -641,37 +641,74 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		wire	[13:0]	pipe_addr_diff;
 		assign		pipe_addr_diff = w_I[13:0] - r_I[13:0];
 
+		// Pipeline logic is too extreme for a single clock.
+		// Let's break it into two clocks, using r_insn_is_pipeable
+		// If this function is true, then the instruction associated
+		// with the current output *may* have a pipeable instruction
+		// following it.
+		// 
+		reg	r_insn_is_pipeable;
+		initial	r_insn_is_pipeable = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset)
+			r_insn_is_pipeable <= 1'b0;
+		else if ((i_ce)&&(!pf_valid)&&(!o_phase))
+			// Pipeline bubble, can't pipe through it
+			r_insn_is_pipeable <= 1'b0;
+		else if (i_ce)
+		begin	// This is a valid instruction
+			r_insn_is_pipeable <= (w_mem)&&(w_rB)
+				// PC (and CC) registers can change
+				// underneath us.  Therefore they cannot
+				// be used as a base register for piped
+				// memory ops
+				&&(w_dcdB[3:1] != 3'h7)
+				// Writes to PC or CC will destroy any
+				// possibility of pipeing--since they
+				// could create a jump
+				&&(w_dcdR[3:1] != 3'h7)
+				//
+				// Loads landing in the current address
+				// pointer register are not allowed,
+				// as they could then be used to violate
+				// our rule(s)
+				&&((w_cis_op[0])||(w_dcdB != w_dcdA));
+		end // else
+			// The pipeline is stalled
+		
+
 		initial	r_pipe = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
 			r_pipe <= 1'b0;
 		else if (i_ce)
-			r_pipe <= (r_valid)&&((pf_valid)||(o_phase))
+			r_pipe <= ((pf_valid)||(o_phase))
+				// The last operation must be capable of
+				// being followed by a pipeable memory op
+				&&(r_insn_is_pipeable)
 				// Both must be memory operations
-				&&(w_mem)&&(o_M)
+				&&(w_mem)
 				// Both must be writes, or both stores
 				&&(o_op[0] == w_cis_op[0])
 				// Both must be register ops
-				&&(w_rB)&&(o_rB)
+				&&(w_rB)
 				// Both must use the same register for B
 				&&(w_dcdB[3:0] == o_dcdB[3:0])
 				// CC or PC registers are not valid addresses
-				&&(o_dcdB[3:1] != 3'h7)
-				&&(w_dcdB[3:1] != 3'h7)
+				//   Captured above
 				// But ... the result can never be B
-				&&((o_op[0])
-					||(w_dcdB[3:0] != o_dcdA[3:0]))
+				//   Captured above
+				//
 				// Reads to CC or PC not allowed
 				// &&((o_op[0])||(w_dcdR[3:1] != 3'h7))
 				// Prior-reads to CC or PC not allowed
-				&&((o_op[0])||(o_dcdR[3:1] != 3'h7))
+				//   Captured above
 				// Same condition, or no condition before
 				&&((w_cond[2:0]==o_cond[2:0])
 					||(o_cond[2:0] == 3'h0))
 				// Same or incrementing immediate
 				&&(w_I[13]==r_I[13])
-				&&((w_I==r_I)
-					||(pipe_addr_diff <= 14'h4));
+				&&(pipe_addr_diff <= 14'h4);
 		assign o_pipe = r_pipe;
 	end else begin
 		assign o_pipe = 1'b0;
@@ -1544,7 +1581,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		end
 
 		always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_ce)))
+		if ((f_past_valid)&&($past(i_ce))&&($past(i_pf_valid)))
 			`ASSERT(o_pc[AW+1:2] == $past(i_pc[AW+1:2]) + 1'b1);
 		else if (f_past_valid)
 			`ASSERT(o_pc == $past(o_pc));
@@ -1635,7 +1672,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(*)
 		`ASSERT((OPT_OPIPE)||(!o_pipe));
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce)))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))
+			&&($past(i_pf_valid))&&($past(w_mpy)))
 		`ASSERT((OPT_MPY)||(o_illegal));
 
 	always @(*)

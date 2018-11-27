@@ -25,3 +25,10 @@ dcache_cover
 div
 memops_proof
 memops_cover
+idecode_nopipe_nodiv_nompy_nocis_nopipe/
+idecode_pipe_div_mpy_cis_nopipe/
+idecode_pipe_div_mpy_cis_opipe/
+idecode_pipe_div_mpy_nocis_nopipe/
+idecode_pipe_div_mpy_nocis_pipe/
+idecode_pipe_div_nompy_nocis_nopipe/
+idecode_pipe_nodiv_nompy_nocis_nopipe/
