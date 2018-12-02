@@ -43,7 +43,7 @@ module	iscachable(i_addr, o_cachable);
 	parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0;
 
 	input	wire	[AW-1:0]	i_addr;
-	output	wire			o_cachable;
+	output	reg			o_cachable;
 
 
 	always @(*)

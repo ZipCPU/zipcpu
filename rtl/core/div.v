@@ -191,8 +191,6 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	always @(posedge i_clk)
 	if (i_reset)
 		o_err <= 1'b0;
-//	else if (o_valid)
-//		o_err <= 1'b0;
 	else if ((r_busy)&&(zero_divisor))
 		o_err <= 1'b1;
 	else
