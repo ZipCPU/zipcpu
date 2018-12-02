@@ -1,28 +1,21 @@
 [tasks]
-dcache_first	first_half   full_proof      dcache
-dcache_second	first_half   full_proof      dcache
-prove_first	first_half   full_proof      no_dcache
-prove_second	second_half  full_proof      no_dcache
-nopipe_first	first_half   nopipe          no_dcache
-nopipe_second	second_half  nopipe          no_dcache
-lowlogic_first	first_half   lowlogic nopipe no_dcache
-lowlogic_second	second_half  lowlogic nopipe no_dcache
-icoboard_first	bkram_first  nopipe          no_dcache
-icoboard_second	bkram_second nopipe          no_dcache
+dcache		full_proof      dcache
+prove		full_proof      no_dcache
+nopipe		nopipe          no_dcache
+lowlogic	lowlogic	nopipe no_dcache
+icoboard	bkram		nopipe          no_dcache
 
 [options]
 mode prove
 depth 18
 
 [engines]
-smtbmc
+smtbmc boolector
 
 [script]
-first_half:  read_verilog -D ZIPCPU             -formal zipcpu.v
-second_half: read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
-
-icoboard_first:  read_verilog -D ZIPCPU -DNO_DISTRIBUTED_RAM             -formal zipcpu.v
-icoboard_second: read_verilog -D ZIPCPU -DNO_DISTRIBUTED_RAM -DPHASE_TWO -formal zipcpu.v
+bkram: read -define -DNO_DISTRIBUTED_RAM
+read -define -DZIPCPU
+read -formal zipcpu.v
 
 chparam -set IMPLEMENT_FPU    0 zipcpu
 

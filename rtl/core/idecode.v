@@ -71,7 +71,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		o_pipe,
 		o_sim, o_sim_immv
 `ifdef	FORMAL	
-		, f_hidden_state
+		, f_hidden_state, f_insn_word
 `endif
 		);
 	parameter		ADDRESS_WIDTH=24;
@@ -84,6 +84,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	parameter	[0:0]	OPT_LOCK   = (OPT_PIPELINED);
 	parameter	[0:0]	OPT_OPIPE  = (OPT_PIPELINED);
 	parameter	[0:0]	OPT_SIM    = 1'b0;
+	parameter	[0:0]	OPT_NO_USERMODE = 1'b0;
 	localparam		AW = ADDRESS_WIDTH;
 	//
 	input	wire		i_clk, i_reset, i_ce, i_stalled;
@@ -112,6 +113,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	output	reg	[22:0]	o_sim_immv	/* verilator public_flat */;
 `ifdef	FORMAL
 	output	wire	[31:0]	f_hidden_state;
+	output	wire	[31:0]	f_insn_word;
 `endif
 
 
@@ -235,12 +237,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	// moves in iword[18] but only for the supervisor, and the other
 	// four bits encoded in the instruction.
 	//
-	assign	w_dcdR = { ((!iword[`CISBIT])&&(w_mov)&&(!i_gie))?iword[`IMMSEL]:i_gie,
+	assign	w_dcdR = { ((!iword[`CISBIT])&&(!OPT_NO_USERMODE)&&(w_mov)&&(!i_gie))?iword[`IMMSEL]:i_gie,
 				iword[30:27] };
 
 	// dcdB - What register is used in the opB?
 	//
-	assign w_dcdB[4] = ((!iword[`CISBIT])&&(w_mov)&&(!i_gie))?iword[13]:i_gie;
+	assign w_dcdB[4] = ((!iword[`CISBIT])&&(w_mov)&&(!OPT_NO_USERMODE)&&(!i_gie))?iword[13]:i_gie;
 	assign w_dcdB[3:0]= (iword[`CISBIT])
 				? (((!iword[`CISIMMSEL])&&(iword[26:25]==2'b10))
 					? `CPU_SP_REG : iword[22:19])
@@ -764,6 +766,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 `endif
 
 	assign	f_hidden_state = iword;
+	always @(posedge i_clk)
+	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
+		f_insn_word = i_instruction;
 
 	////////////////////////////
 	//
@@ -1761,42 +1766,48 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		.OPT_OPIPE(OPT_OPIPE),
 		.OPT_SIM(OPT_SIM),
 		) formal_decoder(
-			(o_phase)? { 1'b1,15'h0, 1'b1, r_nxt_half[14:0] }
-				: i_instruction,
-			(i_instruction[31])&&(!o_phase), i_gie,
+			(o_phase)? { 1'b1,15'h0, 1'b1, f_insn_word[14:0] }
+				: f_insn_word,
+			(f_insn_word[31])&&(!o_phase), i_gie,
 		fc_illegal,
 		fc_dcdR, fc_dcdA,fc_dcdB, fc_I, fc_cond, fc_wF, fc_op,
 		fc_ALU, fc_M, fc_DV, fc_FP, fc_break, fc_lock,
 		fc_wR, fc_rA, fc_rB, fc_sim, fc_sim_immv);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_ce))&&(o_valid))
+	if ((o_valid)&&(fc_illegal))
+		assert(o_illegal);
+
+	always @(posedge i_clk)
+	if ((o_valid)&&(!o_illegal))
 	begin
-		if (!$past(i_reset))
-			`ASSERT(($past(fc_illegal)
-				||$past((i_illegal)&&(!o_phase))
-				||$past((o_illegal)&&(o_phase)))== o_illegal);
-		if (!o_illegal)
-		begin
-			`ASSERT($past(fc_dcdR)== o_dcdR);
-			`ASSERT($past(fc_dcdA)== o_dcdA);
-			`ASSERT($past(fc_dcdB)== o_dcdB);
-			`ASSERT($past(fc_I)   == o_I);
-			`ASSERT($past(fc_cond)== o_cond);
-			`ASSERT($past(fc_wF)  == o_wF);
-			`ASSERT($past(fc_op)  == o_op);
-			`ASSERT($past(fc_ALU) == o_ALU);
-			`ASSERT($past(fc_M)   == o_M);
-			`ASSERT($past(fc_DV)  == o_DV);
-			`ASSERT($past(fc_FP)  == o_FP);
-			`ASSERT($past(fc_break)== o_break);
-			`ASSERT($past(fc_lock) == o_lock);
-			`ASSERT($past(fc_wR)  == o_wR);
-			`ASSERT($past(fc_rA)  == o_rA);
-			`ASSERT($past(fc_rB)  == o_rB);
-			`ASSERT($past(fc_sim)  == o_sim);
-			`ASSERT($past(fc_sim_immv)  == o_sim_immv);
-		end
+			`ASSERT(fc_dcdR== o_dcdR);
+			`ASSERT(fc_dcdA== o_dcdA);
+			`ASSERT(fc_dcdB== o_dcdB);
+			`ASSERT(fc_I   == o_I);
+			`ASSERT(fc_cond== o_cond);
+			`ASSERT(fc_wF  == o_wF);
+			`ASSERT(fc_op  == o_op);
+			`ASSERT(fc_ALU == o_ALU);
+			`ASSERT(fc_M   == o_M);
+			`ASSERT(fc_DV  == o_DV);
+			`ASSERT(fc_FP  == o_FP);
+			`ASSERT(fc_break== o_break);
+			`ASSERT(fc_lock == o_lock);
+			`ASSERT(fc_wR  == o_wR);
+			`ASSERT(fc_rA  == o_rA);
+			`ASSERT(fc_rB  == o_rB);
+			`ASSERT(fc_sim  == o_sim);
+			`ASSERT(fc_sim_immv  == o_sim_immv);
+	end
+
+
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_ce))&&(o_valid)&&(!$past(i_reset)))
+	begin
+		`ASSERT(((fc_illegal)
+			||$past((i_illegal)&&(!o_phase))
+			||$past((o_illegal)&&( o_phase)))== o_illegal);
 	end
 `endif
 `endif

@@ -283,6 +283,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire			pf_new_pc;
 `ifdef	FORMAL
 	wire	[31:0]		f_dcd_hidden_state;
+	wire	[31:0]		f_dcd_insn_word;
+	wire	[31:0]		f_op_insn_word;
+	wire	[31:0]		f_alu_insn_word;
 `endif
 
 	assign	clear_pipeline = new_pc;
@@ -754,6 +757,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		.OPT_FPU(IMPLEMENT_FPU),
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_OPIPE(OPT_PIPELINED_BUS_ACCESS),
+		.OPT_NO_USERMODE(OPT_NO_USERMODE),
 `ifdef	VERILATOR
 		.OPT_SIM(1'b1),
 `else
@@ -779,7 +783,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			dcd_pipe,
 			dcd_sim, dcd_sim_immv
 `ifdef	FORMAL
-			, f_dcd_hidden_state
+			, f_dcd_hidden_state, f_dcd_insn_word
 `endif
 			);
 	assign	dcd_gie = pf_gie;
@@ -1764,13 +1768,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//	FPU operation.
 	generate if (OPT_NO_USERMODE)
 	begin
-		assign	wr_reg_id[3:0] = (alu_wR|div_valid|fpu_valid)
-				? alu_reg[3:0]:mem_wreg[3:0];
+		assign	wr_reg_id[3:0] = (mem_valid)
+					? mem_wreg[3:0] : alu_reg[3:0];
 
 		assign	wr_reg_id[4] = 1'b0;
 	end else begin
-		assign	wr_reg_id = (alu_wR|div_valid|fpu_valid)
-				? alu_reg : mem_wreg;
+		assign	wr_reg_id = (mem_valid) ? mem_wreg : alu_reg;
 	end endgenerate
 
 	// Are we writing to the CC register?
@@ -2443,7 +2446,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end else begin
 
 		always @(posedge i_clk)
-			r_halted <= (i_halt)&&(!alu_phase)&&((op_valid)||(i_reset));
+			r_halted <= (i_halt)&&(!alu_phase)
+				// To be halted, any long lasting instruction
+				// must be completed.
+				&&(!pf_cyc)&&(!mem_busy)&&(!alu_busy)
+					&&(!div_busy)&&(!fpu_busy);
 	end endgenerate
 `ifdef	NO_DISTRIBUTED_RAM
 	reg	r_dbg_stall;
@@ -2565,39 +2572,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//{{{
 `ifdef	FORMAL
 // PHASE_ONE is defined by default if nothing else is defined
-// `define	PHASE_TWO
-// `define	PHASE_THREE
-// `define	PHASE_FOUR
-// `define	PHASE_FIVE
+`define	PHASE_TWO
 //
 `define	PHASE_ONE_ASSERT	assert
 `define	PHASE_TWO_ASSERT	assert
-`define	PHASE_THR_ASSERT	assert
-`define	PHASE_FOR_ASSERT	assert
-`define	PHASE_FIV_ASSERT	assert
 //
 //
-//
-`ifdef	PHASE_TWO
-`undef	PHASE_ONE_ASSERT
-`define	PHASE_ONE_ASSERT	assume
-
-`ifdef	PHASE_THREE
-`undef	PHASE_TWO_ASSERT
-`define	PHASE_TWO_ASSERT	assume
-
-`ifdef	PHASE_FOUR
-`undef	PHASE_THR_ASSERT
-`define	PHASE_THR_ASSERT	assume
-
-`ifdef	PHASE_FIVE
-`undef	PHASE_FOR_ASSERT
-`define	PHASE_FOR_ASSERT	assume
-
-`endif // PHASE_FOUR
-`endif // PHASE_THREE
-`endif // PHASE_TWO
-`endif // PHASE_ONE
 
 	////////////////////////////////////////////////////////////////
 	//
@@ -3800,6 +3780,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	assign	f_pf_insn = (pf_valid)
 		&&(pf_instruction_pc[(AW+1):2] == f_const_addr[(AW+1):2]);
 
+/*
 	always @(*)
 	if (f_pf_insn)
 		restrict((pf_instruction == f_const_insn)
@@ -3814,15 +3795,17 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		restrict(f_const_phase == f_const_addr[1]);
 		restrict(f_const_addr[0] == 1'b0);
 	end
+*/
 
 
-	wire	fc_illegal, fc_wF, fc_ALU, fc_M, fc_DV, fc_FP, fc_break,
-			fc_lock, fc_wR, fc_rA, fc_rB, fc_sim;
-	wire	[6:0]	fc_Rid, fc_Aid, fc_Bid;
-	wire	[31:0]	fc_I;
-	wire	[3:0]	fc_cond;
-	wire	[3:0]	fc_op;
-	wire	[22:0]	fc_sim_immv;
+	wire	fc_dcd_illegal, fc_dcd_wF, fc_dcd_ALU, fc_dcd_M, fc_dcd_DV,
+			fc_dcd_FP, fc_dcd_break, fc_dcd_lock, fc_dcd_wR,
+			fc_dcd_rA, fc_dcd_rB, fc_dcd_sim;
+	wire	[6:0]	fc_dcd_Rid, fc_dcd_Aid, fc_dcd_Bid;
+	wire	[31:0]	fc_dcd_I;
+	wire	[3:0]	fc_dcd_cond;
+	wire	[3:0]	fc_dcd_op;
+	wire	[22:0]	fc_dcd_sim_immv;
 	wire		f_pre_dcd_insn, f_dcd_insn, f_op_insn; //f_alu_insn,f_wb_insn
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
@@ -3834,11 +3817,64 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		.OPT_OPIPE(OPT_PIPELINED_BUS_ACCESS),
 		.OPT_SIM(1'b0),
 		.OPT_CIS(OPT_CIS))
-		f_insn_decode(f_const_insn, f_const_phase, f_const_gie,
-			fc_illegal, fc_Rid, fc_Aid, fc_Bid, fc_I, fc_cond,
-			fc_wF, fc_op, fc_ALU, fc_M, fc_DV, fc_FP,
-			fc_break, fc_lock, fc_wR, fc_rA, fc_rB,
-			fc_sim, fc_sim_immv
+		f_insn_decode(f_dcd_insn_word, f_const_phase, f_const_gie,
+			fc_dcd_illegal, fc_dcd_Rid, fc_dcd_Aid, fc_dcd_Bid,
+			fc_dcd_I, fc_dcd_cond, fc_dcd_wF, fc_dcd_op,
+			fc_dcd_ALU, fc_dcd_M, fc_dcd_DV, fc_dcd_FP,
+			fc_dcd_break, fc_dcd_lock, fc_dcd_wR, fc_dcd_rA,
+			fc_dcd_rB, fc_dcd_sim, fc_dcd_sim_immv
+			);
+
+	wire	fc_op_dcd_illegal, fc_op_dcd_wF, fc_op_dcd_ALU, fc_op_dcd_M, fc_op_dcd_DV, fc_op_dcd_FP, fc_op_dcd_break,
+			fc_op_lock, fc_op_wR, fc_op_rA, fc_op_rB, fc_op_sim;
+	wire	[6:0]	fc_op_Rid, fc_op_Aid, fc_op_Bid;
+	wire	[31:0]	fc_op_I;
+	wire	[3:0]	fc_op_cond;
+	wire	[3:0]	fc_op_op;
+	wire	[22:0]	fc_op_sim_immv;
+	wire		f_pre_dcd_insn, f_dcd_insn, f_op_insn; //f_alu_insn,f_wb_insn
+
+	f_idecode #(.ADDRESS_WIDTH(AW),
+		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
+		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
+		.OPT_FPU(IMPLEMENT_FPU),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_OPIPE(OPT_PIPELINED_BUS_ACCESS),
+		.OPT_SIM(1'b0),
+		.OPT_CIS(OPT_CIS))
+		f_insn_decode(f_op_insn_word, f_const_phase, f_const_gie,
+			fc_op_illegal, fc_op_Rid, fc_op_Aid, fc_op_Bid,
+			fc_op_I, fc_op_cond, fc_op_wF, fc_op_op, fc_op_ALU,
+			fc_op_M, fc_op_DV, fc_op_FP, fc_op_break, fc_op_lock,
+			fc_op_wR, fc_op_rA, fc_op_rB, fc_op_sim, fc_op_sim_immv
+			);
+
+	wire	fc_alu_illegal, fc_alu_wF, fc_alu_ALU, fc_alu_M, fc_alu_DV,
+			fc_alu_FP, fc_alu_break, fc_alu_lock, fc_alu_wR,
+			fc_alu_rA, fc_alu_rB, fc_alu_sim;
+	wire	[6:0]	fc_alu_Rid, fc_alu_Aid, fc_alu_Bid;
+	wire	[31:0]	fc_alu_I;
+	wire	[3:0]	fc_alu_cond;
+	wire	[3:0]	fc_alu_op;
+	wire	[22:0]	fc_alu_sim_immv;
+	wire		f_pre_dcd_insn, f_dcd_insn, f_op_insn;
+
+	f_idecode #(.ADDRESS_WIDTH(AW),
+		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
+		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
+		.OPT_FPU(IMPLEMENT_FPU),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_OPIPE(OPT_PIPELINED_BUS_ACCESS),
+		.OPT_SIM(1'b0),
+		.OPT_CIS(OPT_CIS))
+		f_insn_decode(f_alu_insn_word, f_const_phase, f_const_gie,
+			fc_alu_illegal, fc_alu_Rid, fc_alu_Aid, fc_alu_Bid,
+			fc_alu_I, fc_alu_cond, fc_alu_wF, fc_alu_op, fc_alu_ALU,
+			fc_alu_M, fc_alu_DV, fc_alu_FP, fc_alu_break,
+			fc_alu_lock, fc_alu_wR, fc_alu_rA, fc_alu_rB,
+			fc_alu_sim, fc_alu_sim_immv
 			);
 
 	assign	f_next_addr = ((!f_const_insn[31])||(!f_const_phase))
@@ -4009,30 +4045,29 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`PHASE_TWO_ASSERT(dcd_illegal == f_const_illegal);
 
 	always @(*)
-	if ((f_dcd_insn)&&(!clear_pipeline))
+	if (!clear_pipeline)
 	begin
-		if ((fc_illegal)||(f_const_illegal))
+		if (fc_dcd_illegal)
 			`PHASE_TWO_ASSERT(dcd_illegal);
-		else begin
-			`PHASE_TWO_ASSERT(!dcd_illegal);
-			`PHASE_TWO_ASSERT(fc_Rid[6:0] == { dcd_Rcc, dcd_Rpc, dcd_R });
-			`PHASE_TWO_ASSERT(fc_Aid[6:0] == { dcd_Acc, dcd_Apc, dcd_A });
-			`PHASE_TWO_ASSERT(fc_Bid[6:0] == { dcd_Bcc, dcd_Bpc, dcd_B });
-			`PHASE_TWO_ASSERT(fc_cond == dcd_F);
-			`PHASE_TWO_ASSERT(fc_ALU == dcd_ALU);
-			`PHASE_TWO_ASSERT(fc_DV  == dcd_DIV);
-			`PHASE_TWO_ASSERT(fc_M   == dcd_M);
-			`PHASE_TWO_ASSERT(fc_op  == dcd_opn);
-			`PHASE_TWO_ASSERT(fc_wR  == dcd_wR);
-			`PHASE_TWO_ASSERT(fc_wF  == dcd_wF);
-			`PHASE_TWO_ASSERT(fc_rA  == dcd_rA);
-			`PHASE_TWO_ASSERT(fc_rB  == dcd_rB);
-			`PHASE_TWO_ASSERT(fc_I   == dcd_I);
-			`PHASE_TWO_ASSERT(fc_lock== dcd_lock);
+		else if (!dcd_illegal) begin
+			`PHASE_TWO_ASSERT(fc_dcd_Rid[6:0] == { dcd_Rcc, dcd_Rpc, dcd_R });
+			`PHASE_TWO_ASSERT(fc_dcd_Aid[6:0] == { dcd_Acc, dcd_Apc, dcd_A });
+			`PHASE_TWO_ASSERT(fc_dcd_Bid[6:0] == { dcd_Bcc, dcd_Bpc, dcd_B });
+			`PHASE_TWO_ASSERT(fc_dcd_cond == dcd_F);
+			`PHASE_TWO_ASSERT(fc_dcd_ALU == dcd_ALU);
+			`PHASE_TWO_ASSERT(fc_dcd_DV  == dcd_DIV);
+			`PHASE_TWO_ASSERT(fc_dcd_M   == dcd_M);
+			`PHASE_TWO_ASSERT(fc_dcd_op  == dcd_opn);
+			`PHASE_TWO_ASSERT(fc_dcd_wR  == dcd_wR);
+			`PHASE_TWO_ASSERT(fc_dcd_wF  == dcd_wF);
+			`PHASE_TWO_ASSERT(fc_dcd_rA  == dcd_rA);
+			`PHASE_TWO_ASSERT(fc_dcd_rB  == dcd_rB);
+			`PHASE_TWO_ASSERT(fc_dcd_I   == dcd_I);
+			`PHASE_TWO_ASSERT(fc_dcd_lock== dcd_lock);
 			`PHASE_TWO_ASSERT(dcd_zI == (dcd_I==0));
-			`PHASE_TWO_ASSERT(dcd_break == fc_break);
-			`PHASE_TWO_ASSERT((f_dcd_hidden_state[31])||(!dcd_phase));
-			`PHASE_TWO_ASSERT((f_dcd_hidden_state[31])||(dcd_pc[1:0]==2'b00));
+			`PHASE_TWO_ASSERT(fc_dcd_break== dcd_break);
+			`PHASE_TWO_ASSERT((f_dcd_insn_word[31])||(!dcd_phase));
+			`PHASE_TWO_ASSERT((f_insn_word[31])||(dcd_pc[1:0]==2'b00));
 		end
 	end
 
@@ -4137,43 +4172,43 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//   must be valid.
 	//
 	always @(posedge i_clk)
-	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal)&&(!clear_pipeline))
+	if ((!f_const_illegal)&&(!fc_op_illegal)&&(!clear_pipeline))
 	begin
 		if (((!wr_reg_ce)||(wr_reg_id!= { gie, `CPU_PC_REG }))
 			&&(!dbg_clear_pipe)&&(!clear_pipeline))
 		begin
-			if ((fc_rA)&&(fc_Aid[3:1] != 3'h7))
+			if ((fc_op_rA)&&(fc_op_Aid[3:1] != 3'h7))
 				`PHASE_TWO_ASSERT(f_Av == op_Av);
 			`PHASE_TWO_ASSERT(f_Bv == op_Bv);
 		end
 	end
 
 	always @(posedge i_clk)
-	if ((f_op_insn)&&(!f_const_illegal)&&(!fc_illegal)&&(!clear_pipeline))
+	if ((op_valid)&&(!f_op_insn_word)&&(!fc_illegal)&&(!clear_pipeline))
 	begin
-		`PHASE_TWO_ASSERT(op_valid);
-		`PHASE_TWO_ASSERT(fc_wR == op_wR);
-		`PHASE_TWO_ASSERT(fc_rA == op_rA);
-		`PHASE_TWO_ASSERT(fc_rB == op_rB);
-		`PHASE_TWO_ASSERT((!fc_rB)||(fc_Bid[4:0] == op_Bid));
-		`PHASE_TWO_ASSERT(fc_wF == op_wF);
-		`PHASE_TWO_ASSERT(fc_Rid[4:0] == op_R);
-		`PHASE_TWO_ASSERT(fc_DV  == op_valid_div);
-		`PHASE_TWO_ASSERT(fc_ALU == op_valid_alu);
+		// `PHASE_TWO_ASSERT(op_valid);
+		`PHASE_TWO_ASSERT(fc_op_wR == op_wR);
+		`PHASE_TWO_ASSERT(fc_op_rA == op_rA);
+		`PHASE_TWO_ASSERT(fc_op_rB == op_rB);
+		`PHASE_TWO_ASSERT((!fc_op_rB)||(fc_op_Bid[4:0] == op_Bid));
+		`PHASE_TWO_ASSERT(fc_op_wF == op_wF);
+		`PHASE_TWO_ASSERT(fc_op_Rid[4:0] == op_R);
+		`PHASE_TWO_ASSERT(fc_op_DV  == op_valid_div);
+		`PHASE_TWO_ASSERT(fc_op_ALU == op_valid_alu);
 		if ((!alu_illegal)&&(!ill_err_i)&&(!clear_pipeline))
 		begin
-			`PHASE_TWO_ASSERT(fc_M   == op_valid_mem);
-			`PHASE_TWO_ASSERT(fc_op  == op_opn);
+			`PHASE_TWO_ASSERT(fc_op_M   == op_valid_mem);
+			`PHASE_TWO_ASSERT(fc_op_op  == op_opn);
 		end
-		`PHASE_TWO_ASSERT(fc_break == op_break);
-		`PHASE_TWO_ASSERT(fc_lock == op_lock);
-		`PHASE_TWO_ASSERT(f_op_zI == (fc_I == 0));
-		`PHASE_TWO_ASSERT((!wr_reg_ce)||(wr_reg_id != fc_Bid)
-				||(!fc_rB)||(fc_I == 0));
+		`PHASE_TWO_ASSERT(fc_op_break == op_break);
+		`PHASE_TWO_ASSERT(fc_op_lock == op_lock);
+		`PHASE_TWO_ASSERT(f_op_zI == (fc_op_I == 0));
+		`PHASE_TWO_ASSERT((!wr_reg_ce)||(wr_reg_id != fc_op_Bid)
+				||(!fc_op_rB)||(fc_op_I == 0));
 		if (!OPT_PIPELINED_BUS_ACCESS)
-			`PHASE_TWO_ASSERT((!mem_rdbusy)||(mem_wreg != fc_Bid)
-				||(!fc_rB)||(fc_I == 0));
-	end else if ((f_op_insn)&&(!clear_pipeline))
+			`PHASE_TWO_ASSERT((!mem_rdbusy)||(mem_wreg != fc_op_Bid)
+				||(!fc_op_rB)||(fc_op_I == 0));
+	end else if ((op_valid)&&(!clear_pipeline)&&(fc_illegal))
 		`PHASE_TWO_ASSERT(op_illegal);
 
 
@@ -4268,10 +4303,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
-		&&(div_busy)&&(alu_pc == f_next_addr)&&(alu_gie == f_const_gie)
+		&&(div_busy)&&(alu_gie == f_const_gie)
 		&&(!clear_pipeline))
 	begin
-		`PHASE_TWO_ASSERT(fc_Rid == alu_reg);
+		`PHASE_TWO_ASSERT(fc_alu_Rid == alu_reg);
 	end
 
 	////////////////////////////////////////////////
@@ -4304,6 +4339,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 	//
 	//////////////////////////////////////////////
+/*
 	always @(posedge i_clk)
 	if ((alu_pc_valid)&&(alu_pc == f_next_addr)
 			&&(!f_alu_branch)
@@ -4327,6 +4363,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 //		assert((!wr_reg_ce)||(!f_past_valid)||($past(i_dbg_we)));
 //		assert(!wr_flags_ce);
 	end
+*/
 
 	initial	assert((!OPT_LOCK)||(OPT_PIPELINED));
 
@@ -4407,9 +4444,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Careless assumptions might be located here
 
 	always @(*)
-		assume(fc_Aid[3:0] != `CPU_CC_REG);
+		assume(fc_op_Aid[3:0] != `CPU_CC_REG);
 	always @(*)
-		assume(fc_Bid[3:0] != `CPU_CC_REG);
+		assume(fc_op_Bid[3:0] != `CPU_CC_REG);
 
 	always @(*)
 		assume(!i_halt);

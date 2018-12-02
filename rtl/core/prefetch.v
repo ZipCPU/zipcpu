@@ -168,8 +168,8 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	// The instruction returned is given by the data returned from the bus.
 	always @(posedge i_clk)
-		if ((o_wb_cyc)&&(i_wb_ack))
-			o_insn <= i_wb_data;
+	if ((o_wb_cyc)&&(i_wb_ack))
+		o_insn <= i_wb_data;
 
 	//
 	// Finally, the flags associated with the prefetch.  The rule is that
