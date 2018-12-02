@@ -179,8 +179,8 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 `endif
 
 		always @(posedge i_clk)
-			if (i_stb)
-				o_hi  <= i_op[1];
+		if (i_stb)
+			o_hi  <= i_op[1];
 		assign	o_busy  = mpypipe[0];
 		assign	o_result = (r_sgn[1])?r_smpy_result:r_umpy_result;
 		assign	o_valid = mpypipe[1];
@@ -294,6 +294,24 @@ module	mpyop(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, o_
 
 		assign	o_result = r_mpy_result;
 		// Fourth clock -- results are clocked into writeback
+	end else begin : MPYSLOW
+
+		// verilator lint_off UNUSED
+		wire		unused_aux;
+		wire	[65:0]	full_result;
+		// verilator lint_on  UNUSED
+
+		slowmpy #(.LGNA(6), .NA(33)) slowmpyi(i_clk, i_reset, i_stb,
+			{ (i_op[0])&(i_a[31]), i_a },
+			{ (i_op[0])&(i_b[31]), i_b }, 1'b0, o_busy,
+				o_valid, full_result, unused_aux);
+
+		assign	o_result = full_result[63:0];
+
+		always @(posedge i_clk)
+		if (i_stb)
+			o_hi  <= i_op[1];
+
 	end end end end
 	endgenerate // All possible multiply results have been determined
 
