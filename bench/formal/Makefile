@@ -118,9 +118,6 @@ $(WDG).smt2: $(RTL)/peripherals/$(WDG).v $(SLAVE) $(WDG).ys
 $(INT).smt2: $(RTL)/peripherals/$(INT).v $(SLAVE) $(INT).ys
 	yosys -ql $(INT).yslog -s $(INT).ys
 
-$(DCD).smt2: $(RTL)/core/$(DCD).v $(DCD).ys f_idecode.v
-	yosys -ql $(DCD).yslog -s $(DCD).ys
-
 $(DMA).smt2: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).ys
 	yosys -ql $(DMA).yslog -s $(DMA).ys
 
@@ -241,12 +238,30 @@ $(INT).check: $(INT).smt2
 	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(INT).vcd $(INT).smt2
 	touch $@
 
-$(DCD) : $(DCD).check
-$(DCD).check: $(DCD).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 10 --dump-vcd $(DCD).vcd $(DCD).smt2
-	$(SMTBMC)    $(INDARGS) -t  8 --dump-vcd $(DCD).vcd $(DCD).smt2
-	touch $@
+.PHONY: $(DCD)
+$(DCD): $(DCD)_pipe_div_mpy_cis_opipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_cis_nopipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_nocis_pipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_nocis_nopipe/PASS
+$(DCD): $(DCD)_pipe_div_nompy_nocis_nopipe/PASS
+$(DCD): $(DCD)_pipe_nodiv_nompy_nocis_nopipe/PASS
+$(DCD): $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS
+
+$(DCD)_pipe_div_mpy_cis_opipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_cis_opipe
+$(DCD)_pipe_div_mpy_cis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_cis_nopipe
+$(DCD)_pipe_div_mpy_nocis_pipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_nocis_pipe
+$(DCD)_pipe_div_mpy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_nocis_nopipe
+$(DCD)_pipe_div_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_nompy_nocis_nopipe
+$(DCD)_pipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_nodiv_nompy_nocis_nopipe
+$(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby nopipe_nodiv_nompy_nocis_nopipe
+
 
 $(DMA) : $(DMA).check
 $(DMA).check: $(DMA).smt2
@@ -307,10 +322,10 @@ clean:
 	rm -f $(JIF).smt2     $(JIF)*.vcd     $(JIF).yslog
 	rm -f $(WDG).smt2     $(WDG)*.vcd     $(WDG).yslog
 	rm -f $(INT).smt2     $(INT)*.vcd     $(INT).yslog
-	rm -f $(DCD).smt2     $(DCD)*.vcd     $(DCD).yslog
+	rm -rf $(DCD)_*/
 	rm -f $(DMA).smt2     $(DMA)*.vcd     $(DMA).yslog
 	rm -f $(ALU).smt2     $(ALU)*.vcd     $(ALU).yslog
 	rm -f $(DIV).smt2     $(DIV)*.vcd     $(DIV).yslog
 	rm -f $(DCACHE).smt2  $(DCACHE)*.vcd  $(DCACHE).yslog
-	rm -f $(CPU).smt2     $(CPU)*.vcd     $(CPU).yslog $(CPU)/
+	rm -f $(CPU)_*/
 	rm -f *.check
