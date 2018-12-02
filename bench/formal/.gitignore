@@ -5,6 +5,11 @@
 zipcpu
 old
 zipcpu_abc
+zipcpu_dcache
+zipcpu_prove
+zipcpu_nopipe
+zipcpu_lowlogic
+zipcpu_icoboard
 zipcpu_dcache_first/
 zipcpu_dcache_second/
 zipcpu_prove_first
