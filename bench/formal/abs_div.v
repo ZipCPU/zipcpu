@@ -109,7 +109,8 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	input	wire		i_wr, i_signed;
 	input	wire [(BW-1):0]	i_numerator, i_denominator;
 	// Output parameters
-	output	reg		o_busy, o_valid, o_err;
+	output	wire		o_busy;
+	output	reg		o_valid, o_err;
 	output	reg [(BW-1):0]	o_quotient;
 	output	wire	[3:0]	o_flags;
 

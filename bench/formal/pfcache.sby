@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 20
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DPFCACHE fwb_master.v
+read -formal -DPFCACHE pfcache.v
+prep -top pfcache
+
+[files]
+../../rtl/core/pfcache.v
+../../rtl/ex/fwb_master.v

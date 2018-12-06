@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DZIPCOUNTER zipcounter.v
+read -formal -DZIPCOUNTER fwb_slave.v
+prep -top zipcounter
+
+[files]
+../../rtl/peripherals/zipcounter.v
+../../rtl/ex/fwb_slave.v

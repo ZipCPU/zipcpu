@@ -15,8 +15,8 @@ depth 10
 smtbmc
 
 [script]
-read_verilog -D IDECODE -formal idecode.v
-read_verilog -D IDECODE -formal f_idecode.v
+read -formal -D IDECODE idecode.v
+read -formal -D IDECODE f_idecode.v
 
 nopipelind: chparam -set OPT_PIPELINED 0 idecode
 pipelind:   chparam -set OPT_PIPELINED 1 idecode

@@ -4,26 +4,33 @@ bare		nolocal lock
 nolock_nolocal	nolocal nolock
 nolock_system	system  nolock
 piped		system	lock
-cover full system lock
+cover           system lock
+cover_pipe      system lock cover piped
 
 [options]
 ~cover: mode prove
-cover: mode cover
+cover:  mode cover
 depth 40
+full:           depth 20
+bare:           depth 14
+nolock_nolocal: depth 14
+nolock_system:  depth 18
+# piped:        depth 40
+cover:          depth 24
 
 [engines]
-smtbmc yices
-# smtbmc boolector
+# smtbmc yices
+smtbmc boolector
 # abc pdr
 # aiger suprove
 # aiger avy
 
 [script]
-read_verilog -D DCACHE -formal fwb_master.v
-read_verilog -D DCACHE -formal iscachable.v
-read_verilog -D DCACHE -formal dcache.v
+read -formal -D DCACHE fwb_master.v
+read -formal -D DCACHE iscachable.v
+read -formal -D DCACHE dcache.v
 piped:		chparam -set OPT_PIPE      1 dcache
-!piped:		chparam -set OPT_PIPE      0 dcache
+~piped:		chparam -set OPT_PIPE      0 dcache
 lock:		chparam -set OPT_LOCK      1 dcache
 system: 	chparam -set OPT_LOCAL_BUS 1 dcache
 nolock:		chparam -set OPT_LOCK      0 dcache

@@ -1,13 +1,12 @@
 [options]
 mode prove
+depth 5
 
 [engines]
 smtbmc
 
 [script]
-read -define FORMAL
-read -define DIV
-read -sv div.v
+read -formal -DDIV div.v
 prep -top div
 
 [files]

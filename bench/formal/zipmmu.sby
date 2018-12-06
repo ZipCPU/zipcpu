@@ -1,0 +1,17 @@
+[options]
+mode prove
+depth 23
+
+[engines]
+smtbmc boolector
+
+[script]
+read -formal -D ZIPMMU zipmmu.v
+read -formal -D ZIPMMU fwb_slave.v
+read -formal -D ZIPMMU fwb_master.v
+prep -top zipmmu
+
+[files]
+../../rtl/peripherals/zipmmu.v
+../../rtl/ex/fwb_slave.v
+../../rtl/ex/fwb_master.v

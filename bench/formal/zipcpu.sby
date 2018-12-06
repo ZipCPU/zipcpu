@@ -1,19 +1,24 @@
 [tasks]
 dcache		full_proof      dcache
-prove		full_proof      no_dcache
+piped		full_proof      no_dcache
 nopipe		nopipe          no_dcache
-lowlogic	lowlogic	nopipe no_dcache
-icoboard	bkram		nopipe          no_dcache
+lowlogic	nopipe		no_dcache
+ice40		nopipe          no_dcache	nobkram
 
 [options]
 mode prove
 depth 18
+dcache:   depth  9
+piped:    depth 14
+nopipe:   depth 11
+lowlogic: depth 10
+ice40:    depth 11
 
 [engines]
 smtbmc boolector
 
 [script]
-bkram: read -define -DNO_DISTRIBUTED_RAM
+nobkram: read -define -DNO_DISTRIBUTED_RAM
 read -define -DZIPCPU
 read -formal zipcpu.v
 

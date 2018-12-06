@@ -55,7 +55,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 		o_illegal,
 		o_dcdR, o_dcdA, o_dcdB, o_I, o_cond, o_wF,
 		o_op, o_ALU, o_M, o_DV, o_FP, o_break, o_lock,
-		o_wR, o_rA, o_rB, o_sim, o_sim_immv
+		o_wR, o_rA, o_rB, o_prepipe, o_sim, o_sim_immv
 		);
 	parameter		ADDRESS_WIDTH=24;
 	parameter	[0:0]	OPT_MPY    = 1'b1;
@@ -79,6 +79,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	output	wire		o_ALU, o_M, o_DV, o_FP, o_break;
 	output	wire		o_lock;
 	output	wire		o_wR, o_rA, o_rB;
+	output	wire		o_prepipe;
 	output	wire		o_sim;
 	output	wire	[22:0]	o_sim_immv;
 
@@ -338,6 +339,20 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 			o_illegal <= 1'b1;
 	end
 
+	generate if (OPT_OPIPE)
+	begin
+		// o_prepipe is true if a pipelined memory instruction
+		// might follow this one
+		assign	o_prepipe =
+				((OPT_CIS)||(!i_instruction[`CISBIT]))
+				&&(o_M)&&(o_rB)
+				&&(o_dcdB[3:1] != 3'h7)
+				&&(o_dcdR[3:1] != 3'h7)
+				&&((!o_wR)||(o_dcdR != o_dcdB));
+	end else begin
+		assign	o_prepipe = 1'b0;
+	end endgenerate
+
 	assign	o_dcdR = { w_dcdR_cc, w_dcdR_pc, w_dcdR};
 	assign	o_dcdA = { w_dcdA_cc, w_dcdA_pc, w_dcdA};
 	assign	o_dcdB = { w_dcdB_cc, w_dcdB_pc, w_dcdB};
@@ -347,7 +362,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	assign	o_op   = ((w_ldi)||(w_noop))? 4'hd : w_cis_op[3:0];
 	assign	o_ALU  =  (w_ALU)||(w_ldi)||(w_cmptst)||(w_noop);
 	assign	o_M    = w_mem;
-	assign	o_DV   = w_div;
+	assign	o_DV   = (OPT_DIVIDE)&&(w_div);
 	assign	o_FP   = (OPT_FPU)&&(w_fpu);
 	assign	o_break= w_break;
 	assign	o_lock = (OPT_LOCK)&&(w_lock);

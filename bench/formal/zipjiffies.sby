@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DZIPJIFFIES zipjiffies.v
+read -formal -DZIPJIFFIES fwb_slave.v
+prep -top zipjiffies
+
+[files]
+../../rtl/peripherals/zipjiffies.v
+../../rtl/ex/fwb_slave.v

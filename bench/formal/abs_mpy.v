@@ -50,7 +50,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 	input	wire		i_clk, i_reset, i_stb;
 	input	wire	[1:0]	i_op; // 2'b00=MPY, 2'b10=MPYUHI, 2'b11=MPYSHI
 	input	wire	[31:0]	i_a, i_b;
-	output	wire		o_valid; // True if we'll be valid on the next clock;
+	output	reg		o_valid; // True if we'll be valid on the next clock;
 	output	wire		o_busy; // The multiply is busy if true
 	output	wire	[63:0]	o_result; // Where we dump the multiply result
 	output	reg		o_hi;	// Return the high half of the multiply
@@ -66,7 +66,8 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
-		assign	o_valid    = 1'b1;
+		always @(*)
+			o_valid    = 1'b1;
 		always @(*) o_hi = 1'b0; // Not needed
 
 	end else begin // Our single clock option (no extra clocks)
