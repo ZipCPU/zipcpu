@@ -101,7 +101,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	reg			r_wb_cyc_gbl, r_wb_cyc_lcl, fifo_full;
 	reg	[(FLN-1):0]		rdaddr, wraddr;
 	wire	[(FLN-1):0]		nxt_rdaddr, fifo_fill;
-	reg	[(4+5-1):0]	fifo_oreg [0:15];
+	reg	[(3+5-1):0]	fifo_oreg [0:15];
+	reg			fifo_gie;
 	initial	rdaddr = 0;
 	initial	wraddr = 0;
 
@@ -111,16 +112,20 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if (OPT_ALIGNMENT_ERR)
 	begin
 		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned = 1'b1;
-		4'b0110: misaligned = 1'b1;
-		4'b10?1: misaligned = 1'b1;
-		default: misaligned = 1'b0;
+		4'b01?1: misaligned = i_pipe_stb;
+		4'b0110: misaligned = i_pipe_stb;
+		4'b10?1: misaligned = i_pipe_stb;
+		default: misaligned = i_pipe_stb;
 		endcase
 	end else
 		misaligned = 1'b0;
 
 	always @(posedge i_clk)
-		fifo_oreg[wraddr] <= { i_oreg, i_op[2:1], i_addr[1:0] };
+		fifo_oreg[wraddr] <= { i_oreg[3:0], i_op[2:1], i_addr[1:0] };
+
+	always @(posedge i_clk)
+	if (i_pipe_stb)
+		fifo_gie <= i_oreg[4];
 
 	initial	wraddr = 0;
 	always @(posedge i_clk)
@@ -256,10 +261,10 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		o_err <= ((cyc)&&(i_wb_err))||((i_pipe_stb)&&(misaligned));
 	assign	o_busy = cyc;
 
-	wire	[8:0]	w_wreg;
+	wire	[7:0]	w_wreg;
 	assign	w_wreg = fifo_oreg[rdaddr];
 	always @(posedge i_clk)
-		o_wreg <= w_wreg[8:4];
+		o_wreg <= { fifo_gie, w_wreg[7:4] };
 	always @(posedge i_clk)
 		if ((OPT_ZERO_ON_IDLE)&&((!cyc)||((!i_wb_ack)&&(!i_wb_err))))
 			o_result <= 0;
@@ -434,16 +439,18 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		if (!IMPLEMENT_LOCK)
 			`ASSUME(!i_lock);
 
+`ifndef	VERILATOR
 	always @(*)
 		if ((WITH_LOCAL_BUS)&&(o_wb_cyc_gbl|o_wb_cyc_lcl)
 			&&(i_pipe_stb))
 		begin
 			if (o_wb_cyc_lcl)
 				// `ASSUME(i_addr[31:24] == 8'hff);
-				restrict(i_addr[31:24] == 8'hff);
+				assume(i_addr[31:24] == 8'hff);
 			else
-				restrict(i_addr[31:24] != 8'hff);
+				assume(i_addr[31:24] != 8'hff);
 		end
+`endif
 
 	always @(*)
 		if (!WITH_LOCAL_BUS)
@@ -518,17 +525,15 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(*)
 		`ASSERT((!lcl_stb)||(!gbl_stb));
 
-	wire	[(1<<FLN)-1:0]	f_gie_mem, f_mem_used, f_gie_or_zero, f_zero,
-				f_gie_xor_test;
+	reg	[(1<<FLN)-1:0]	f_mem_used;
+	wire	[(1<<FLN)-1:0]	f_zero;
 	//
 	// insist that we only ever accept memory requests for the same GIE
 	// (i.e. 4th bit of register)
 	//
-	wire	f_next_gie;
-	assign	f_next_gie    = fifo_oreg[rdaddr][8];
 	always @(*)
 	if ((i_pipe_stb)&&(wraddr != rdaddr))
-		`ASSUME(i_oreg[4] == f_next_gie);
+		`ASSUME(i_oreg[4] == fifo_gie);
 
 	initial	f_pc = 1'b0;
 	always @(posedge i_clk)
@@ -559,17 +564,13 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	end
 
 
-`ifdef	PIPEMEM
+`define	FIFOCHECK
+`ifdef	FIFOCHECK
 	wire	[3:0]	lastaddr = wraddr - 1'b1;
-
-	assign	f_gie_or_zero = (f_gie_mem & f_mem_used);
-	assign	f_gie_xor_test= (f_gie_or_zero)^((f_next_gie)?f_mem_used : 0);
 
 	integer	k;
 	always @(*)
 	begin
-		for(k=0; k<(1<<FLN); k=k+1)
-			f_gie_mem[k] = fifo_oreg[k][8];
 		f_mem_used = 0;
 		for(k = 0 ; k < (1<<FLN); k=k+1)
 		begin
@@ -586,10 +587,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		end
 	end
 
-
-	always @(*)
-	if (wraddr != rdaddr)
-		`ASSERT(f_gie_xor_test == 0);
 
 	always @(*)
 	begin
@@ -619,7 +616,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	if ((f_past_valid)&&($past(o_valid)))
 		cover(o_valid);
 
-`endif // PIPEMEM
+`endif // FIFOCHECK
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_past_valid))&&($past(f_cyc))&&($past(f_cyc,2)))
