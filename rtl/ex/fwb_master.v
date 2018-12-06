@@ -435,10 +435,10 @@ module	fwb_master(i_clk, i_reset,
 		begin
 			if (!i_wb_cyc)
 			begin
-				restrict(!i_wb_stall);
-				restrict($stable(i_wb_idata));
+				assume(!i_wb_stall);
+				assume($stable(i_wb_idata));
 			end else if ((!$past(i_wb_ack))&&(!i_wb_ack))
-				restrict($stable(i_wb_idata));
+				assume($stable(i_wb_idata));
 		end
 	end endgenerate
 
