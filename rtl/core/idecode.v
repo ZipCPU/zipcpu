@@ -71,7 +71,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		o_pipe,
 		o_sim, o_sim_immv
 `ifdef	FORMAL	
-		, f_hidden_state, f_insn_word
+		, f_insn_word, f_insn_gie
 `endif
 		);
 	parameter		ADDRESS_WIDTH=24;
@@ -112,8 +112,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	output	reg		o_sim		/* verilator public_flat */;
 	output	reg	[22:0]	o_sim_immv	/* verilator public_flat */;
 `ifdef	FORMAL
-	output	wire	[31:0]	f_hidden_state;
-	output	wire	[31:0]	f_insn_word;
+	output	reg	[31:0]	f_insn_word;
+	output	reg		f_insn_gie;
 `endif
 
 
@@ -635,7 +635,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	// Note that we're not using iword here ... there's a lot of logic
 	// taking place, and it's only valid if the new word is not compressed.
 	//
-	reg	r_valid;
+	reg	r_valid, r_insn_is_pipeable;
 	generate if (OPT_OPIPE)
 	begin : GEN_OPIPE
 		reg	r_pipe;
@@ -649,13 +649,16 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		// with the current output *may* have a pipeable instruction
 		// following it.
 		// 
-		reg	r_insn_is_pipeable;
 		initial	r_insn_is_pipeable = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
 			r_insn_is_pipeable <= 1'b0;
-		else if ((i_ce)&&(!pf_valid)&&(!o_phase))
+		else if ((i_ce)&&((!pf_valid)||(i_illegal))&&(!o_phase))
 			// Pipeline bubble, can't pipe through it
+			r_insn_is_pipeable <= 1'b0;
+		else if (o_ljmp)
+			r_insn_is_pipeable <= 1'b0;
+		else if ((i_ce)&&((!OPT_CIS)&&(i_instruction[`CISBIT])))
 			r_insn_is_pipeable <= 1'b0;
 		else if (i_ce)
 		begin	// This is a valid instruction
@@ -714,6 +717,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		assign o_pipe = r_pipe;
 	end else begin
 		assign o_pipe = 1'b0;
+		always @(*)
+			r_insn_is_pipeable = 1'b0;
 	end endgenerate
 
 	initial	r_valid = 1'b0;
@@ -764,11 +769,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 `define	ASSUME	assert
 `define	ASSERT	assume
 `endif
-
-	assign	f_hidden_state = iword;
 	always @(posedge i_clk)
 	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
 		f_insn_word = i_instruction;
+	always @(posedge i_clk)
+	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
+		f_insn_gie = i_gie;
 
 	////////////////////////////
 	//
@@ -803,7 +809,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(i_ce))
 		&&($past(f_past_valid))&&(!$past(i_reset,2))&&(!$past(i_ce,2)))
-		restrict(i_ce);
+		assume(i_ce);
 `endif
 
 	reg	f_new_insn, f_last_insn;
@@ -1729,8 +1735,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT((!o_valid)||(!o_ljmp)||(o_phase == o_pc[1]));
 
 	always @(posedge i_clk)
-	if (o_phase)
-		`ASSERT(o_phase == o_pc[1]);
+	if (!OPT_CIS)
+		`ASSERT(!o_phase);
+	else if (!f_insn_word[31])
+		`ASSERT(!o_phase);
+	else if (o_phase)
+		`ASSERT(o_pc[1]);
 
 	always @(*)
 	if ((o_early_branch)&&(!o_early_branch_stb))
@@ -1745,11 +1755,23 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	always @(*)
 	if ((o_valid)&&(o_phase))
+	begin
 		`ASSERT(!o_illegal);
-`ifdef	IDECODE
+		`ASSERT(o_pc[1]);
+		`ASSERT(f_insn_word[31]);
+	end
+
+	always @(*)
+		`ASSERT(o_branch_pc[1:0] == 2'b00);
+	always @(*)
+		`ASSERT(o_pc[0] == 1'b0);
+	
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_pf_valid))&&(i_pf_valid))
+		assume($stable(i_gie));
 
 	wire	fc_illegal, fc_wF, fc_ALU, fc_M, fc_DV, fc_FP, fc_break,
-		fc_lock, fc_wR, fc_rA, fc_rB, fc_sim;
+		fc_lock, fc_wR, fc_rA, fc_rB, fc_prepipe, fc_sim;
 	wire	[6:0]	fc_dcdR, fc_dcdA, fc_dcdB;
 	wire	[31:0]	fc_I;
 	wire	[3:0]	fc_cond;
@@ -1766,13 +1788,13 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		.OPT_OPIPE(OPT_OPIPE),
 		.OPT_SIM(OPT_SIM),
 		) formal_decoder(
-			(o_phase)? { 1'b1,15'h0, 1'b1, f_insn_word[14:0] }
-				: f_insn_word,
-			(f_insn_word[31])&&(!o_phase), i_gie,
+		//	((!f_insn_word[31])||(o_phase)) ? f_insn_word
+		//		: { 1'b1, f_insn_word[14:0], 16'h0 },
+			f_insn_word, o_phase, f_insn_gie,
 		fc_illegal,
 		fc_dcdR, fc_dcdA,fc_dcdB, fc_I, fc_cond, fc_wF, fc_op,
 		fc_ALU, fc_M, fc_DV, fc_FP, fc_break, fc_lock,
-		fc_wR, fc_rA, fc_rB, fc_sim, fc_sim_immv);
+		fc_wR, fc_rA, fc_rB, fc_prepipe, fc_sim, fc_sim_immv);
 
 	always @(posedge i_clk)
 	if ((o_valid)&&(fc_illegal))
@@ -1781,25 +1803,28 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(posedge i_clk)
 	if ((o_valid)&&(!o_illegal))
 	begin
-			`ASSERT(fc_dcdR== o_dcdR);
-			`ASSERT(fc_dcdA== o_dcdA);
-			`ASSERT(fc_dcdB== o_dcdB);
-			`ASSERT(fc_I   == o_I);
-			`ASSERT(fc_cond== o_cond);
-			`ASSERT(fc_wF  == o_wF);
-			`ASSERT(fc_op  == o_op);
-			`ASSERT(fc_ALU == o_ALU);
-			`ASSERT(fc_M   == o_M);
-			`ASSERT(fc_DV  == o_DV);
-			`ASSERT(fc_FP  == o_FP);
-			`ASSERT(fc_break== o_break);
-			`ASSERT(fc_lock == o_lock);
-			`ASSERT(fc_wR  == o_wR);
-			`ASSERT(fc_rA  == o_rA);
-			`ASSERT(fc_rB  == o_rB);
-			`ASSERT(fc_sim  == o_sim);
-			`ASSERT(fc_sim_immv  == o_sim_immv);
-	end
+		`ASSERT(fc_dcdR== o_dcdR);	//
+		`ASSERT(fc_dcdA== o_dcdA);	//
+		`ASSERT(fc_dcdB== o_dcdB);	//
+		`ASSERT(fc_I   == o_I);
+		`ASSERT(o_zI == (fc_I  == 0));
+		`ASSERT(fc_cond== o_cond);
+		`ASSERT(fc_wF  == o_wF);
+		`ASSERT(fc_op  == o_op);
+		`ASSERT(fc_ALU == o_ALU);
+		`ASSERT(fc_M   == o_M);
+		`ASSERT(fc_DV  == o_DV);
+		`ASSERT(fc_FP  == o_FP);
+		`ASSERT(fc_break== o_break);
+		`ASSERT(fc_lock == o_lock);
+		`ASSERT(fc_wR  == o_wR);
+		`ASSERT(fc_rA  == o_rA);
+		`ASSERT(fc_rB  == o_rB);
+		`ASSERT(fc_sim  == o_sim);
+		`ASSERT(fc_sim_immv  == o_sim_immv);
+		`ASSERT(fc_prepipe == r_insn_is_pipeable);
+	end else
+		`ASSERT(!r_insn_is_pipeable);
 
 
 	always @(posedge i_clk)
@@ -1809,6 +1834,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			||$past((i_illegal)&&(!o_phase))
 			||$past((o_illegal)&&( o_phase)))== o_illegal);
 	end
-`endif
-`endif
+
+	always @(posedge i_clk)
+	if ((!o_valid)||(o_illegal))
+		`ASSERT(!r_insn_is_pipeable);
+`endif // FORMAL
 endmodule
