@@ -11,11 +11,11 @@ cover_pipe      system lock cover piped
 ~cover: mode prove
 cover:  mode cover
 depth 16
-full:           depth 20
+full:           depth 14
 bare:           depth 14
 nolock_nolocal: depth 14
-nolock_system:  depth 18
-# piped:        depth 40
+nolock_system:  depth 14
+piped:          depth 16
 cover:          depth 24
 
 [engines]
