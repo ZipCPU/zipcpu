@@ -10,7 +10,7 @@ cover_pipe      system lock cover piped
 [options]
 ~cover: mode prove
 cover:  mode cover
-depth 40
+depth 16
 full:           depth 20
 bare:           depth 14
 nolock_nolocal: depth 14
