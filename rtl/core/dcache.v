@@ -914,7 +914,6 @@ always @(*)
 	if (OPT_PIPE)
 		o_pipe_stalled = (cyc)&&((!o_wb_we)||(i_wb_stall)||(!stb))
 				||(r_rd_pending)||(npending[DP]);
-				// ||(o_valid);
 	else
 		o_pipe_stalled = o_busy;
 
@@ -1769,29 +1768,29 @@ always @(*)
 	generate if (OPT_PIPE)
 	begin : PIPE_COVER
 
-		wire	f_cvr_cread = (i_pipe_stb)&&(!i_op[0])
+		wire	f_cvr_cread = (!i_reset)&&(i_pipe_stb)&&(!i_op[0])
 					&&(w_cachable);
 
-		wire	f_cvr_cwrite = (i_pipe_stb)&&(i_op[0])
+		wire	f_cvr_cwrite = (!i_reset)&&(i_pipe_stb)&&(i_op[0])
 				&&(!cache_miss_inow);
 
-		wire	f_cvr_writes = (i_pipe_stb)&&(!i_op[0])
+		wire	f_cvr_writes = (!i_reset)&&(i_pipe_stb)&&(i_op[0])
 					&&(!w_cachable);
-		wire	f_cvr_reads  = (i_pipe_stb)&&(!i_op[0])
+		wire	f_cvr_reads  = (!i_reset)&&(i_pipe_stb)&&(!i_op[0])
 					&&(!w_cachable);
+		wire	f_cvr_test  = (!i_reset)&&(cyc);
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_valid)))
 			cover(o_valid);		// !
 
 		always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_pipe_stb)))
+		if ((f_past_valid)&&(!$past(i_reset))&&($past(i_pipe_stb)))
 			cover(i_pipe_stb);
 
 		always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_valid))
-			&&($past(o_valid,2)))
-			cover(o_valid);		// !
+		if ((f_past_valid)&&($past(o_valid))&&($past(o_valid,2)))
+			cover(o_valid);
 
 		always @(posedge i_clk)
 			cover(($past(f_cvr_cread))&&(f_cvr_cread));
@@ -1802,14 +1801,21 @@ always @(*)
 		always @(posedge i_clk)
 			cover(($past(f_cvr_writes))&&(f_cvr_writes));
 
+		/*
+		* This cover statement will never pass.  Why not?  Because
+		* cache reads must be separated from non-cache reads.  Hence,
+		* we can only allow a single non-cache read at a time, otherwise
+		* we'd bypass the cache read logic.
+		*
 		always @(posedge i_clk)
 			cover(($past(f_cvr_reads))&&(f_cvr_reads));
+		*/
 
 		always @(posedge i_clk)
-			cover(($past(r_dvalid))&&(r_svalid));		// !
+			cover(($past(r_dvalid))&&(r_svalid));
 
 		always @(posedge i_clk)
-			cover(($past(r_svalid))&&(r_svalid));		// !
+			cover(($past(r_svalid))&&(r_svalid));
 
 	end endgenerate
 
