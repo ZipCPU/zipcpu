@@ -18,7 +18,7 @@ nolock_nolocal: depth 11
 nolock_system:  depth 11
 piped:          depth 16
 cover:          depth 24
-cover_pipe:     depth 50
+cover_pipe:     depth 45
 
 [engines]
 # smtbmc yices

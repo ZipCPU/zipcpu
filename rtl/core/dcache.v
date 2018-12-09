@@ -1768,17 +1768,30 @@ always @(*)
 	generate if (OPT_PIPE)
 	begin : PIPE_COVER
 
-		wire	f_cvr_cread = (!i_reset)&&(i_pipe_stb)&&(!i_op[0])
+		wire		recent_reset;
+		reg	[2:0]	recent_reset_sreg;
+		initial	recent_reset_sreg = -1;
+		always @(posedge i_clk)
+		if (i_reset)
+			recent_reset_sreg <= -1;
+		else
+			recent_reset_sreg <= { recent_reset_sreg[1:0], 1'b0 };
+
+		assign recent_reset = (i_reset)||(|recent_reset_sreg);
+
+		//
+		//
+		wire	f_cvr_cread = (!recent_reset)&&(i_pipe_stb)&&(!i_op[0])
 					&&(w_cachable);
 
-		wire	f_cvr_cwrite = (!i_reset)&&(i_pipe_stb)&&(i_op[0])
+		wire	f_cvr_cwrite = (!recent_reset)&&(i_pipe_stb)&&(i_op[0])
 				&&(!cache_miss_inow);
 
-		wire	f_cvr_writes = (!i_reset)&&(i_pipe_stb)&&(i_op[0])
+		wire	f_cvr_writes = (!recent_reset)&&(i_pipe_stb)&&(i_op[0])
 					&&(!w_cachable);
-		wire	f_cvr_reads  = (!i_reset)&&(i_pipe_stb)&&(!i_op[0])
+		wire	f_cvr_reads  = (!recent_reset)&&(i_pipe_stb)&&(!i_op[0])
 					&&(!w_cachable);
-		wire	f_cvr_test  = (!i_reset)&&(cyc);
+		wire	f_cvr_test  = (!recent_reset)&&(cyc);
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_valid)))
@@ -1811,11 +1824,64 @@ always @(*)
 			cover(($past(f_cvr_reads))&&(f_cvr_reads));
 		*/
 
+		//
+		// This is unrealistic, as it depends upon the Wishbone
+		// acknoledging the request on the same cycle
+		always @(posedge i_clk)
+			cover(($past(f_cvr_reads,2))&&(f_cvr_reads));
+
 		always @(posedge i_clk)
 			cover(($past(r_dvalid))&&(r_svalid));
 
+		//
+		// A minimum of one clock must separate two dvalid's.
+		// This option is rather difficult to cover, since it means
+		// we must first load two separate cache lines before
+		// this can even be tried.
+		always @(posedge i_clk)
+			cover(($past(r_dvalid,2))&&(r_dvalid));
+
+		//
+		// This is the optimal configuration we want:
+		//	i_pipe_stb
+		// 	##1 i_pipe_stb && r_svalid
+		//	##1 r_svalid && o_valid
+		//	##1 o_valid
+		// It proves that we can handle a 2 clock delay, but that
+		// we can also pipelin these cache accesses, so this
+		// 2-clock delay becomes a 1-clock delay between pipelined
+		// memory reads.
+		//
 		always @(posedge i_clk)
 			cover(($past(r_svalid))&&(r_svalid));
+
+		//
+		// While we'd never do this (it breaks the ZipCPU's pipeline
+		// rules), it's nice to know we could.
+		//	i_pipe_stb && (!i_op[0]) // a read
+		//	##1 i_pipe_stb && (i_op[0]) && r_svalid // a write
+		//	##1 o_valid
+		always @(posedge i_clk)
+			cover(($past(r_svalid))&&(f_cvr_writes));
+
+		/* Unreachable
+		*
+		always @(posedge i_clk)
+			cover(($past(f_cvr_writes))&&(o_valid));
+
+		always @(posedge i_clk)
+			cover(($past(f_cvr_writes,2))&&(o_valid));
+
+		always @(posedge i_clk)
+			cover(($past(f_cvr_writes,3))&&(o_valid));
+
+		always @(posedge i_clk)
+			cover(($past(r_dvalid,3))&&(r_dvalid));
+
+		*/
+
+		always @(posedge i_clk)
+			cover(($past(f_cvr_writes,4))&&(o_valid));
 
 	end endgenerate
 
