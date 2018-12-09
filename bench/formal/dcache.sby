@@ -1,22 +1,24 @@
 [tasks]
-full		system  lock
-bare		nolocal lock
-nolock_nolocal	nolocal nolock
-nolock_system	system  nolock
-piped		system	lock
-cover           system lock
-cover_pipe      system lock cover piped
+full		system  lock    dualread
+full_single	system  lock
+bare		nolocal lock    dualread
+nolock_nolocal	nolocal nolock  dualread
+nolock_system	system  nolock  dualread
+piped		system	lock    dualread
+cover           system lock     dualread
+cover_pipe      system lock     dualread cover piped
 
 [options]
 ~cover: mode prove
 cover:  mode cover
 depth 16
-full:           depth 14
-bare:           depth 14
-nolock_nolocal: depth 14
-nolock_system:  depth 14
-piped:          depth 16
+full:           depth 10
+bare:           depth 11
+nolock_nolocal: depth 11
+nolock_system:  depth 11
+piped:          depth 12
 cover:          depth 24
+cover_pipe:     depth 50
 
 [engines]
 # smtbmc yices
@@ -31,6 +33,8 @@ read -formal -D DCACHE iscachable.v
 read -formal -D DCACHE dcache.v
 piped:		chparam -set OPT_PIPE      1 dcache
 ~piped:		chparam -set OPT_PIPE      0 dcache
+dualread:	chparam -set OPT_DUAL_READ_PORT	1 dcache
+~dualread:	chparam -set OPT_DUAL_READ_PORT	0 dcache
 lock:		chparam -set OPT_LOCK      1 dcache
 system: 	chparam -set OPT_LOCAL_BUS 1 dcache
 nolock:		chparam -set OPT_LOCK      0 dcache

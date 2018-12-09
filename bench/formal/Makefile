@@ -207,27 +207,34 @@ $(ALU): $(ALU)/PASS
 $(ALU)/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
 	sby -f $(ALU).sby
 
-.PHONY: $(DCACHE)
-$(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_bare/PASS
-$(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
-$(DCACHE) : $(DCACHE)_piped/PASS $(DCACHE)_cover/PASS
-$(DCACHE)_full/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
-	sby -f $(DCACHE).sby full
+DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
 
-$(DCACHE)_bare/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+.PHONY: $(DCACHE)
+$(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
+$(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
+$(DCACHE) : $(DCACHE)_piped/PASS $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
+$(DCACHE)_full/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby full
+$(DCACHE)_full_single/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby full_single
+
+$(DCACHE)_bare/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby bare
 
-$(DCACHE)_nolock_nolocal/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+$(DCACHE)_nolock_nolocal/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby nolock_nolocal
 
-$(DCACHE)_nolock_system/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+$(DCACHE)_nolock_system/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby nolock_system
 
-$(DCACHE)_piped/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+$(DCACHE)_piped/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby piped
 
-$(DCACHE)_cover/PASS: $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+$(DCACHE)_cover/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby cover
+
+$(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby cover_pipe
 
 .PHONY: $(DIV)
 $(DIV) : $(DIV)/PASS
