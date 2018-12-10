@@ -8,7 +8,7 @@ ice40		nopipe          no_dcache	nobkram
 [options]
 mode prove
 depth 18
-dcache:   depth  9
+dcache:   depth 10
 piped:    depth 14
 nopipe:   depth 11
 lowlogic: depth 10
@@ -20,6 +20,23 @@ smtbmc boolector
 [script]
 nobkram: read -define -DNO_DISTRIBUTED_RAM
 read -define -DZIPCPU
+#
+read -formal -D ZIPCPU cpuops.v
+read -formal -D ZIPCPU memops.v
+read -formal -D ZIPCPU pipemem.v
+read -formal -D ZIPCPU dcache.v
+read -formal -D ZIPCPU iscachable.v
+read -formal -D ZIPCPU idecode.v
+read -formal -D ZIPCPU wbdblpriarb.v
+#
+read -formal -D ZIPCPU fwb_counter.v
+read -formal -D ZIPCPU fwb_master.v
+read -formal -D ZIPCPU fwb_slave.v
+read -formal -D ZIPCPU f_idecode.v
+read -formal -D ZIPCPU abs_prefetch.v
+read -formal -D ZIPCPU abs_div.v
+read -formal -D ZIPCPU abs_mpy.v
+#
 read -formal zipcpu.v
 
 chparam -set IMPLEMENT_FPU    0 zipcpu
@@ -47,23 +64,6 @@ chparam -set OPT_PIPELINED    0 zipcpu
 lowlogic:
 chparam -set OPT_CIS 0 zipcpu
 --
-
-read_verilog -D ZIPCPU -formal cpuops.v
-read_verilog -D ZIPCPU -formal memops.v
-read_verilog -D ZIPCPU -formal pipemem.v
-read_verilog -D ZIPCPU -formal dcache.v
-read_verilog -D ZIPCPU -formal iscachable.v
-read_verilog -D ZIPCPU -formal idecode.v
-read_verilog -D ZIPCPU -formal wbdblpriarb.v
-#
-read_verilog -D ZIPCPU -formal fwb_counter.v
-read_verilog -D ZIPCPU -formal fwb_master.v
-read_verilog -D ZIPCPU -formal fwb_slave.v
-read_verilog -D ZIPCPU -formal f_idecode.v
-read_verilog -D ZIPCPU -formal abs_prefetch.v
-read_verilog -D ZIPCPU -formal abs_div.v
-read_verilog -D ZIPCPU -formal abs_mpy.v
-#
 
 prep -top zipcpu
 

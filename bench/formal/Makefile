@@ -249,7 +249,7 @@ CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
 	f_idecode.v abs_div.v abs_prefetch.v abs_mpy.v $(MASTER) $(SLAVE)  \
 	$(CPU).sby
-$(CPU)_dcache/PASS: $(CPUDEPS)
+$(CPU)_dcache/PASS: $(CPUDEPS) $(RTL)/core/dcache.v $(RTL)/core/iscachable.v
 	sby -f $(CPU).sby dcache
 
 $(CPU)_piped/PASS: $(CPUDEPS)

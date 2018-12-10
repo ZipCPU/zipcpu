@@ -418,12 +418,18 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			f_pc_pending <= 1'b0;
 		else if (i_pipe_stb)
 			f_pc_pending <= (!i_op[0])&&(i_oreg[3:1] == 3'h7);
-		else if ((o_valid)&&(o_wreg[3:1] == 3'h7)&&(f_fill == 0))
+		else if (f_fill == 0)
 			f_pc_pending <= 1'b0;
+		//else if ((o_valid)&&(o_wreg[3:1] == 3'h7)&&(f_fill == 0))
+		//	f_pc_pending <= 1'b0;
 
 		always @(posedge i_clk)
 		if (f_pc_pending)
 			`ASSUME(!i_pipe_stb);
+
+		always @(posedge i_clk)
+		if (state == DC_WRITE)
+			`ASSERT(!f_pc_pending);
 
 		always @(*)
 			f_last_wraddr = wraddr - 1'b1;
@@ -1367,6 +1373,20 @@ always @(*)
 			&&(!f_const_addr[AW]))
 		`ASSERT(!last_tag_valid);
 
+	always @(*)
+	if (f_const_buserr)
+	begin
+		`ASSERT((!c_v[f_const_tag_addr])||(f_const_addr[AW])
+			||(f_ctag_here != f_const_tag));
+
+		if ((state == DC_READC)&&(wb_start[AW-1:LS] == f_const_tag))
+		begin
+			`ASSERT(f_nacks <= f_const_tag[LS-1:0]);
+			if (f_nacks == f_const_tag[LS-1:0])
+				assume(!i_wb_ack);
+		end
+	end
+
 `endif	// DCACHE
 
 	////////////////////////////////////////////////
@@ -1594,20 +1614,6 @@ always @(*)
 		`ASSERT(lock_lcl == 1'b0);
 	end
 
-	always @(*)
-	if (f_const_buserr)
-	begin
-		`ASSERT((!c_v[f_const_tag_addr])||(f_const_addr[AW])
-			||(f_ctag_here != f_const_tag));
-
-		if ((state == DC_READC)&&(wb_start[AW-1:LS] == f_const_tag))
-		begin
-			`ASSERT(f_nacks <= f_const_tag[LS-1:0]);
-			if (f_nacks == f_const_tag[LS-1:0])
-				assume(!i_wb_ack);
-		end
-	end
-
 	always @(posedge i_clk)
 	if ((state == DC_READC)&&(!stb))
 	begin
@@ -1619,6 +1625,9 @@ always @(*)
 		`ASSERT(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
 	end
 
+	wire	[CS-1:0]	f_expected_caddr;
+	assign	f_expected_caddr = { r_ctag[CS-LS-1:0], {(LS){1'b0}} }-1
+					+ f_nacks;
 	always @(posedge i_clk)
 	if (state == DC_READC)
 	begin
@@ -1628,6 +1637,16 @@ always @(*)
 			`ASSERT(!end_of_line);
 		else if (f_nacks == (1<<LS)-1)
 			`ASSERT(end_of_line);
+		`ASSERT(f_nacks <= (1<<LS));
+		`ASSERT(f_nreqs <= (1<<LS));
+		if (f_nreqs < (1<<LS))
+		begin
+			`ASSERT(o_wb_stb_gbl);
+			`ASSERT(o_wb_addr[(LS-1):0] == f_nreqs[LS-1:0]);
+		end else
+			`ASSERT(!f_stb);
+		`ASSERT((f_nreqs == 0)||(f_nacks <= f_nreqs));
+		`ASSERT(c_waddr == f_expected_caddr);
 	end
 
 	always @(posedge i_clk)

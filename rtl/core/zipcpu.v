@@ -185,6 +185,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `else
 	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
 `endif
+	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 	parameter	[0:0]	IMPLEMENT_LOCK=1;
 	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 `ifdef	OPT_DCACHE
@@ -192,6 +193,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `else
 	parameter		OPT_LGDCACHE = 0;
 `endif
+	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
 
 	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 	localparam	AW=ADDRESS_WIDTH;
@@ -1608,14 +1610,15 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	// Memory interface
 	//{{{
-	generate if (OPT_LGDCACHE > 0)
+	generate if (OPT_DCACHE)
 	begin : MEM_DCACHE
 
 		dcache #(.LGCACHELEN(OPT_LGDCACHE), .ADDRESS_WIDTH(AW),
-			.LGNLINES(6), .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
-			.OPT_PIPE(OPT_PIPELINED_BUS_ACCESS),
+			.LGNLINES(OPT_LGDCACHE-3), .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			.OPT_PIPE(OPT_MEMPIPE),
 			.OPT_LOCK(OPT_LOCK)
 `ifdef	FORMAL
+			, .OPT_FIFO_DEPTH(2),
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif
 			) docache(i_clk, i_reset,
@@ -3174,15 +3177,66 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 
 	always @(*)
-		`ASSERT((!wr_reg_ce)||(wr_reg_id != op_Bid)
-				||(!op_rB)||(f_op_zI)||(!op_valid)
-				||(dbg_clear_pipe));
+	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&(wr_reg_ce))
+		`ASSERT((wr_reg_id != op_Bid)||(dbg_clear_pipe)
+			||(wr_reg_id[4:0] == { gie, `CPU_PC_REG}));
+
 	always @(*)
 	if ((f_past_valid)&&(!f_op_zI)&&(mem_rdbusy)&&(op_valid)&&(op_rB))
-		`ASSERT((OPT_LGDCACHE==0)||(mem_wreg != op_Bid));
-	always @(*)
-	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&((mem_rdbusy)||(mem_valid)))
-		`ASSERT((OPT_LGDCACHE==0)||(mem_wreg != op_Bid));
+		`ASSERT((!OPT_DCACHE)||(OPT_MEMPIPE)
+			||(mem_wreg != op_Bid));
+
+	always @(posedge i_clk)
+	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&((mem_rdbusy)||(mem_valid))
+		&&(mem_wreg != {gie, `CPU_PC_REG}))
+	begin
+		if (!OPT_MEMPIPE)
+		begin
+			`ASSERT(fc_alu_Aid[4:0] == mem_wreg);
+			`ASSERT(mem_wreg        != op_Bid);
+		end else if (OPT_DCACHE)
+		begin
+			`ASSERT(fc_alu_Aid[4:0] != op_Bid);
+			// It takes two clocks for the DCACHE to announce
+			// the value it intends to write to via mem_wreg.
+			// At that point, we can make this assertion.  So,
+			// if the memory is busy reading a value
+			if ((!$past(mem_rdbusy))
+				// and we didn't request the read on the last
+				// clock,
+				&&($past(mem_ce)))
+			begin
+				// Then the memory should match our last read
+				// request.  There may be several reads
+				// stuffed within the device, so the
+				// fc_alu_Bid might not match the mem_wreg,
+				// but the rest should be good
+				//
+				// What we really want to say, isn't valid yet
+				// `ASSERT(mem_wreg        != op_Bid);
+			end else if (($past(mem_rdbusy))&&(!$past(mem_ce))
+				&&(!$past(mem_ce,2)))
+				`ASSERT(mem_wreg != op_Bid);
+		end else // if (!OPT_DCACHE)
+		begin
+			if ((mem_valid)
+				||($past(mem_rdbusy)))
+				`ASSERT(mem_wreg != op_Bid);
+		end
+	end
+
+	// always @(posedge i_clk)
+	// if (($fell(mem_rdbusy))&&(mem_valid))
+	// begin
+		// `ASSERT(mem_wreg == fc_alu_Aid[4:0]);
+	// end
+
+	always @(posedge i_clk)
+	if (mem_rdbusy)
+	begin
+		`ASSERT(fc_alu_M);
+		`ASSERT((!OPT_PIPELINED)||(fc_alu_wR));
+	end
 
 	always @(*)
 	if ((op_valid)&&(!clear_pipeline))
@@ -3310,7 +3364,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		if ((mem_busy)&&(!mem_rdbusy))
 			`ASSERT(op_opn[0] == 1'b1);
 		if (mem_rdbusy)
-			`ASSERT((OPT_LGDCACHE==0)||(mem_wreg != op_Bid));
+		begin
+			if (OPT_PIPELINED_BUS_ACCESS)
+			begin end
+			else if (OPT_LGDCACHE != 0)
+				`ASSERT(mem_wreg != op_Bid);
+		end
 	end
 
 	/*
@@ -3348,6 +3407,43 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				`ASSERT(op_Bid == $past(op_Bid));
 
 			`ASSERT((op_Bid[3:1] != 3'h7));
+		end
+
+		if ((mem_rdbusy)||(mem_valid))
+		begin
+		if (!OPT_MEMPIPE)
+		begin
+			`ASSERT(fc_alu_Aid[4:0] == mem_wreg);
+			`ASSERT(mem_wreg        != op_Bid);
+		end else if (OPT_DCACHE)
+		begin
+			`ASSERT(fc_alu_Aid[4:0] != op_Bid);
+			// It takes two clocks for the DCACHE to announce
+			// the value it intends to write to via mem_wreg.
+			// At that point, we can make this assertion.  So,
+			// if the memory is busy reading a value
+			if ((!$past(mem_rdbusy))
+				// and we didn't request the read on the last
+				// clock,
+				&&($past(mem_ce)))
+			begin
+				// Then the memory should match our last read
+				// request.  There may be several reads
+				// stuffed within the device, so the
+				// fc_alu_Bid might not match the mem_wreg,
+				// but the rest should be good
+				//
+				// What we really want to say, isn't valid yet
+				// `ASSERT(mem_wreg        != op_Bid);
+			end else if (($past(mem_rdbusy))&&(!$past(mem_ce))
+				&&(!$past(mem_ce,2)))
+				`ASSERT(mem_wreg != op_Bid);
+		end else // if (!OPT_DCACHE)
+		begin
+			if ((mem_valid)
+				||($past(mem_rdbusy)))
+				`ASSERT(mem_wreg != op_Bid);
+		end
 		end
 	end
 
@@ -3738,7 +3834,12 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	always @(posedge i_clk)
 	if (f_mem_pc)
-		`ASSERT(!fc_alu_prepipe);
+	begin
+		if ((!OPT_DCACHE)||(!OPT_MEMPIPE))
+			`ASSERT(!fc_alu_prepipe);
+		else if ((mem_rdbusy)&&(!$past(mem_ce))&&(!$past(mem_ce,2)))
+			`ASSERT(!fc_alu_prepipe);
+	end
 
 	always @(posedge i_clk)
 	if (mem_rdbusy)
@@ -3934,13 +4035,18 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			&&(alu_reg[4:0] != { gie, `CPU_PC_REG }))
 		`ASSERT(pending_sreg_write);
 
-	always @(*)
+	always @(posedge i_clk)
 	if ((OPT_PIPELINED)&&(mem_valid)&&(mem_wreg[3:1] == 3'h7)
 			&&(mem_wreg[4:0] != { gie, `CPU_PC_REG }))
-		`ASSERT(pending_sreg_write);
-	else if ((OPT_PIPELINED)&&(OPT_LGDCACHE>0)&&(mem_wreg[3:1] == 3'h7)
-			&&(mem_wreg[4:0] != { gie, `CPU_PC_REG })&&(mem_rdbusy))
-		`ASSERT(pending_sreg_write);
+		`ASSERT(pending_sreg_write);	// !
+	else if ((OPT_PIPELINED)&&(OPT_DCACHE)&&(mem_rdbusy)
+			&&($past(mem_rdbusy))
+			&&($past(mem_rdbusy,2)))
+		`ASSERT((mem_wreg[3:1] != 3'h7)
+			||(mem_wreg == { gie, `CPU_PC_REG})
+				||(pending_sreg_write));
+	//		&&(mem_wreg[4:0] != { gie, `CPU_PC_REG })&&(mem_rdbusy))
+	//	`ASSERT(pending_sreg_write);
 
 	always @(*)
 	if ((op_valid_alu)||(op_valid_div)||(op_valid_mem)||(op_valid_fpu))
