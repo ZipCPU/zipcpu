@@ -58,33 +58,33 @@
 all: rtl sw sim
 
 MAKE := make	# Was `which make`
-SUBMAKE := $(MAKE) --no-print-directory
+SUBMAKE := $(MAKE) --no-print-directory -C
 
 .PHONY: doc
 doc:
 	@echo "Building docs"; cd doc;
-	+@$(SUBMAKE) --directory=doc/
+	+@$(SUBMAKE) doc/
 
 .PHONY: rtl
 rtl:
 	@echo "Building rtl for Verilator";
-	+@$(SUBMAKE) --directory=rtl/
+	+@$(SUBMAKE) rtl/
 
 .PHONY: sw
 sw:
 	@echo "Building toolchain";
-	+@$(SUBMAKE) --directory=sw/
+	+@$(SUBMAKE) sw/
 
 .PHONY: sim
 sim:	cppsim vsim
 
 cppsim:
 	@echo "Building in C++ simulator";
-	+@$(SUBMAKE) --directory=sim/cpp
+	+@$(SUBMAKE) sim/cpp
 
 vsim: rtl
 	@echo "Building Verilator simulator";
-	+@$(SUBMAKE) --directory=sim/verilator
+	+@$(SUBMAKE) sim/verilator
 
 clean:
 	+@$(SUBMAKE) --directory=rtl
@@ -94,18 +94,15 @@ clean:
 	+@$(SUBMAKE) --directory=bench/asm
 	+@$(SUBMAKE) --directory=bench/cpp
 
-# .PHONY: bench
-# bench: rtl sw
-	# @echo "Building in bench/rtl"; $(SUBMAKE) --directory=bench/rtl
-	# @echo "Building in bench/cpp"; $(SUBMAKE) --directory=bench/cpp
-	# @echo "Building in bench/asm"; $(SUBMAKE) --directory=bench/asm
+.PHONY: bench
+bench: rtl sw
+	@echo "Building in bench/asm"; $(SUBMAKE) bench/asm
 
-# .PHONY: test
-# test: sw rtl
-	# @echo "Building zasm test"; cd sw/zasm; $(MAKE) test --no-print-directory
-	# @echo "Bench test"; cd bench/cpp; $(MAKE) test --no-print-directory
+.PHONY: test
+test: bench sim
+	@echo "Running simulation tests"; $(SUBMAKE) sim/verilator test
 
 # .PHONY: dhrystone
 # dhrystone: sw bench
 	# @echo "Building Asm Dhrystone"; $(SUBMAKE) zipdhry.z --no-print-directory
-	# @echo "Running Dhrystone"; cd bench/cpp; $(SUBMAKE) dhrystone --no-print-directory
+	# @echo "Running Dhrystone"; $(SUBMAKE) sim/verilator dhrystone
