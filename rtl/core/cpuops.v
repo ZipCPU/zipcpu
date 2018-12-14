@@ -80,6 +80,7 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 
 	end endgenerate
 
+	//
 	// Bit reversal pre-logic
 	wire	[31:0]	w_brev_result;
 	generate

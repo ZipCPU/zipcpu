@@ -1100,10 +1100,10 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 		initial	r_op_lock = 1'b0;
 		always @(posedge i_clk)
-			if (clear_pipeline)
-				r_op_lock <= 1'b0;
-			else if (op_ce)
-				r_op_lock <= (dcd_valid)&&(dcd_lock)
+		if (clear_pipeline)
+			r_op_lock <= 1'b0;
+		else if (op_ce)
+			r_op_lock <= (dcd_valid)&&(dcd_lock)
 					&&(!dcd_illegal);
 		assign	op_lock = r_op_lock;
 
