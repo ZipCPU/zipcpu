@@ -91,9 +91,11 @@ $(PFTWO)/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
 
 
 .PHONY: $(PFCACHE)
-$(PFCACHE): $(PFCACHE)/PASS
-$(PFCACHE)/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
-	sby -f $(PFCACHE).sby
+$(PFCACHE): $(PFCACHE)_prf/PASS $(PFCACHE)_cvr/PASS
+$(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+	sby -f $(PFCACHE).sby prf
+$(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+	sby -f $(PFCACHE).sby cvr
 
 .PHONY: $(WBDLY)
 $(WBDLY): $(WBDLY)/PASS

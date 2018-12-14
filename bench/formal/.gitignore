@@ -19,7 +19,8 @@ wbwatchdog
 busdelay
 cpuops
 dblfetch
-pfcache
+pfcache_prf
+pfcache_cvr
 prefetch
 wbdblpriarb
 wbpriarbiter

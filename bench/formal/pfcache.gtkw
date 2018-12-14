@@ -1,0 +1,136 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Mon Dec 10 22:22:31 2018
+[*]
+[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/pfcache_cvr/engine_0/trace9.vcd"
+[dumpfile_mtime] "Mon Dec 10 22:16:38 2018"
+[dumpfile_size] 17974
+[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/pfcache.gtkw"
+[timestart] 0
+[size] 1762 600
+[pos] -1 -1
+*-4.197481 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 254
+[sst_expanded] 1
+[sst_vpaned_height] 143
+@28
+pfcache.f_past_valid
+pfcache.i_reset
+pfcache.i_clear_cache
+pfcache.i_clk
+pfcache.i_new_pc
+@22
+pfcache.i_pc[31:0]
+@28
+pfcache.i_stall_n
+pfcache.o_valid
+pfcache.o_illegal
+@22
+pfcache.o_insn[31:0]
+pfcache.o_pc[31:0]
+@200
+-
+@28
+[color] 2
+pfcache.o_wb_cyc
+[color] 2
+pfcache.o_wb_stb
+[color] 2
+pfcache.o_wb_we
+@22
+[color] 2
+pfcache.o_wb_addr[29:0]
+[color] 2
+pfcache.o_wb_data[31:0]
+@28
+[color] 2
+pfcache.i_wb_stall
+[color] 2
+pfcache.i_wb_ack
+@22
+[color] 2
+pfcache.i_wb_data[31:0]
+@28
+[color] 2
+pfcache.i_wb_err
+@200
+-
+@22
+pfcache.f_const_addr[30:0]
+pfcache.f_const_insn[31:0]
+@28
+[color] 3
+pfcache.f_this_ack
+[color] 3
+pfcache.f_this_line
+[color] 3
+pfcache.f_this_tag
+@200
+-
+@28
+[color] 3
+pfcache.f_this_pc
+[color] 3
+pfcache.f_this_data
+[color] 3
+pfcache.f_this_insn
+@200
+-
+@22
+pfcache.f_nreqs[3:0]
+pfcache.f_nacks[3:0]
+pfcache.f_outstanding[3:0]
+@200
+-
+@28
+pfcache.illegal_valid
+@22
+pfcache.illegal_cache[26:0]
+@200
+-
+@28
+pfcache.delay[1:0]
+pfcache.bus_abort
+pfcache.f_next_pc_v
+@22
+pfcache.f_cpu_delay[4:0]
+pfcache.f_newpc_sreg[11:0]
+pfcache.f_next_pc[31:0]
+@28
+pfcache.isrc
+pfcache.last_ack
+pfcache.last_addr
+@22
+pfcache.lastpc[31:0]
+pfcache.lasttag[26:0]
+@28
+pfcache.needload
+@22
+pfcache.r_last_cache[31:0]
+pfcache.r_lastpc[31:0]
+@28
+pfcache.r_new_request
+@22
+pfcache.r_pc[31:0]
+pfcache.r_pc_cache[31:0]
+@28
+pfcache.r_v
+pfcache.r_v_from_last
+pfcache.r_v_from_pc
+pfcache.rvsrc
+pfcache.saddr[1:0]
+pfcache.svmask
+@22
+pfcache.tagval[24:0]
+pfcache.tagvalipc[24:0]
+pfcache.tagvallst[24:0]
+pfcache.valid_mask[3:0]
+@28
+pfcache.w_invalidate_result
+pfcache.w_v_from_last
+pfcache.w_v_from_pc
+@23
+pfcache.wraddr[4:0]
+[pattern_trace] 1
+[pattern_trace] 0
