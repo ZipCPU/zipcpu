@@ -105,7 +105,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	generate if (OPT_CIS)
 	begin : SET_IWORD
 
-		assign	iword = ((!i_instruction[31])||(i_phase))
+		assign	iword = ((!i_instruction[`CISBIT])||(i_phase))
 			? i_instruction
 			: { 1'b1, i_instruction[14:0], i_instruction[15:0] };
 
@@ -143,18 +143,18 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	begin : GEN_CIS_OP
 
 		always @(*)
-			if (!iword[`CISBIT])
-				w_cis_op = iword[26:22];
-			else case(iword[26:24])
-			3'h0: w_cis_op = 5'h00;
-			3'h1: w_cis_op = 5'h01;
-			3'h2: w_cis_op = 5'h02;
-			3'h3: w_cis_op = 5'h10;
-			3'h4: w_cis_op = 5'h12;
-			3'h5: w_cis_op = 5'h13;
-			3'h6: w_cis_op = 5'h18;
-			3'h7: w_cis_op = 5'h0d;
-			endcase
+		if (!iword[`CISBIT])
+			w_cis_op = iword[26:22];
+		else case(iword[26:24])
+		3'h0: w_cis_op = 5'h00;
+		3'h1: w_cis_op = 5'h01;
+		3'h2: w_cis_op = 5'h02;
+		3'h3: w_cis_op = 5'h10;
+		3'h4: w_cis_op = 5'h12;
+		3'h5: w_cis_op = 5'h13;
+		3'h6: w_cis_op = 5'h18;
+		3'h7: w_cis_op = 5'h0d;
+		endcase
 
 	end else begin : GEN_NOCIS_OP
 
