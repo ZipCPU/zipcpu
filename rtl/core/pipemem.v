@@ -172,79 +172,79 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	o_wb_stb_lcl = 0;
 	initial	o_wb_stb_gbl = 0;
 	always @(posedge i_clk)
-		if (i_reset)
+	if (i_reset)
+	begin
+		r_wb_cyc_gbl <= 1'b0;
+		r_wb_cyc_lcl <= 1'b0;
+		o_wb_stb_gbl <= 1'b0;
+		o_wb_stb_lcl <= 1'b0;
+		cyc <= 1'b0;
+	end else if (cyc)
+	begin
+		if (((!i_wb_stall)&&(!i_pipe_stb)&&(!misaligned))
+			||(i_wb_err))
+		begin
+			o_wb_stb_gbl <= 1'b0;
+			o_wb_stb_lcl <= 1'b0;
+		end
+
+		if (((i_wb_ack)&&(nxt_rdaddr == wraddr)
+				&&((!i_pipe_stb)||(misaligned)))
+			||(i_wb_err))
 		begin
 			r_wb_cyc_gbl <= 1'b0;
 			r_wb_cyc_lcl <= 1'b0;
 			o_wb_stb_gbl <= 1'b0;
 			o_wb_stb_lcl <= 1'b0;
 			cyc <= 1'b0;
-		end else if (cyc)
-		begin
-			if (((!i_wb_stall)&&(!i_pipe_stb)&&(!misaligned))
-				||(i_wb_err))
-			begin
-				o_wb_stb_gbl <= 1'b0;
-				o_wb_stb_lcl <= 1'b0;
-			end
-
-			if (((i_wb_ack)&&(nxt_rdaddr == wraddr)
-					&&((!i_pipe_stb)||(misaligned)))
-				||(i_wb_err))
-			begin
-				r_wb_cyc_gbl <= 1'b0;
-				r_wb_cyc_lcl <= 1'b0;
-				o_wb_stb_gbl <= 1'b0;
-				o_wb_stb_lcl <= 1'b0;
-				cyc <= 1'b0;
-			end
-		end else if (i_pipe_stb) // New memory operation
-		begin // Grab the wishbone
-			r_wb_cyc_lcl <= lcl_stb;
-			r_wb_cyc_gbl <= gbl_stb;
-			o_wb_stb_lcl <= lcl_stb;
-			o_wb_stb_gbl <= gbl_stb;
-			cyc <= (!misaligned);
 		end
+	end else if (i_pipe_stb) // New memory operation
+	begin // Grab the wishbone
+		r_wb_cyc_lcl <= lcl_stb;
+		r_wb_cyc_gbl <= gbl_stb;
+		o_wb_stb_lcl <= lcl_stb;
+		o_wb_stb_gbl <= gbl_stb;
+		cyc <= (!misaligned);
+	end
 
 	always @(posedge i_clk)
-		if ((!cyc)||(!i_wb_stall))
-		begin
-			if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
-				o_wb_addr <= 0;
-			else
-				o_wb_addr <= i_addr[(AW+1):2];
+	if ((!cyc)||(!i_wb_stall))
+	begin
+		if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
+			o_wb_addr <= 0;
+		else
+			o_wb_addr <= i_addr[(AW+1):2];
 
-			if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
-				o_wb_sel <= 4'b0000;
-			else casez({ i_op[2:1], i_addr[1:0] })
-				4'b100?: o_wb_sel <= 4'b1100;	// Op = 5
-				4'b101?: o_wb_sel <= 4'b0011;	// Op = 5
-				4'b1100: o_wb_sel <= 4'b1000;	// Op = 5
-				4'b1101: o_wb_sel <= 4'b0100;	// Op = 7
-				4'b1110: o_wb_sel <= 4'b0010;	// Op = 7
-				4'b1111: o_wb_sel <= 4'b0001;	// Op = 7
-				default: o_wb_sel <= 4'b1111;	// Op = 7
-			endcase
+		if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
+			o_wb_sel <= 4'b0000;
+		else casez({ i_op[2:1], i_addr[1:0] })
+			4'b100?: o_wb_sel <= 4'b1100;	// Op = 5
+			4'b101?: o_wb_sel <= 4'b0011;	// Op = 5
+			4'b1100: o_wb_sel <= 4'b1000;	// Op = 5
+			4'b1101: o_wb_sel <= 4'b0100;	// Op = 7
+			4'b1110: o_wb_sel <= 4'b0010;	// Op = 7
+			4'b1111: o_wb_sel <= 4'b0001;	// Op = 7
+			default: o_wb_sel <= 4'b1111;	// Op = 7
+		endcase
 
-			if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
-				o_wb_data <= 0;
-			else casez({ i_op[2:1], i_addr[1:0] })
-			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
-			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
-			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
-			4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
-			4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
-			4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
-			default: o_wb_data <= i_data;
-			endcase
-		end
+		if ((OPT_ZERO_ON_IDLE)&&(!i_pipe_stb))
+			o_wb_data <= 0;
+		else casez({ i_op[2:1], i_addr[1:0] })
+		4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
+		4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
+		4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
+		4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
+		4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
+		4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
+		default: o_wb_data <= i_data;
+	endcase
+	end
 
 	always @(posedge i_clk)
-		if ((i_pipe_stb)&&(!cyc))
-			o_wb_we   <= i_op[0];
-		else if ((OPT_ZERO_ON_IDLE)&&(!cyc))
-			o_wb_we   <= 1'b0;
+	if ((i_pipe_stb)&&(!cyc))
+		o_wb_we   <= i_op[0];
+	else if ((OPT_ZERO_ON_IDLE)&&(!cyc))
+		o_wb_we   <= 1'b0;
 
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
@@ -266,19 +266,19 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 		o_wreg <= { fifo_gie, w_wreg[7:4] };
 	always @(posedge i_clk)
-		if ((OPT_ZERO_ON_IDLE)&&((!cyc)||((!i_wb_ack)&&(!i_wb_err))))
-			o_result <= 0;
-		else begin
-			casez(w_wreg[3:0])
-			4'b1100: o_result <= { 24'h00, i_wb_data[31:24] };
-			4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
-			4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
-			4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
-			4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
-			4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
-			default: o_result <= i_wb_data[31:0];
-			endcase
-		end
+	if ((OPT_ZERO_ON_IDLE)&&((!cyc)||((!i_wb_ack)&&(!i_wb_err))))
+		o_result <= 0;
+	else begin
+		casez(w_wreg[3:0])
+		4'b1100: o_result <= { 24'h00, i_wb_data[31:24] };
+		4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
+		4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
+		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
+		4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
+		default: o_result <= i_wb_data[31:0];
+		endcase
+	end
 
 	assign	o_pipe_stalled = ((cyc)&&(fifo_full))||((cyc)
 			&&((i_wb_stall)||((!o_wb_stb_lcl)&&(!o_wb_stb_gbl))));
@@ -315,9 +315,9 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
+`define	ASSERT	assert
 `ifdef	PIPEMEM
 `define	ASSUME	assume
-`define	ASSERT	assert
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin
 		reg	f_last_clk;
@@ -331,7 +331,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	end endgenerate
 `else
 `define	ASSUME	assert
-`define	ASSERT	assume
 `endif
 
 	reg	f_past_valid;

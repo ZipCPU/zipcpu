@@ -45,8 +45,8 @@
 //
 module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 		o_done, o_p, o_aux);
-	parameter			LGNA = 4;
-	parameter	[LGNA:0]	NA = 12;
+	parameter			LGNA = 6;
+	parameter	[LGNA:0]	NA = 33;
 	parameter	[0:0]		OPT_SIGNED = 1'b1;
 	localparam	NB = NA;	// Must be = NA for OPT_SIGNED to work
 	//
@@ -56,7 +56,7 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 	input	wire	signed	[(NA-1):0]	i_a;
 	input	wire	signed	[(NB-1):0]	i_b;
 	input	wire				i_aux;
-	output	wire				o_busy, o_done;
+	output	reg				o_busy, o_done;
 	output	reg	signed	[(NA+NB-1):0]	o_p;
 	output	reg				o_aux;
 
@@ -133,12 +133,11 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 	end
 
 `ifdef	FORMAL
+`define	ASSERT	assert
 `ifdef	SLOWMPY
 `define	ASSUME	assume
-`define	ASSERT	assert
 `else
 `define	ASSUME	assert
-`define	ASSERT	assume
 `endif
 
 	reg	f_past_valid;

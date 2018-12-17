@@ -6,7 +6,7 @@
 //
 // Purpose:	A memory unit to support a CPU.
 //
-//	In the interests of code simplicity, this memory operator is 
+//	In the interests of code simplicity, this memory operator is
 //	susceptible to unknown results should a new command be sent to it
 //	before it completes the last one.  Unpredictable results might then
 //	occurr.
@@ -120,22 +120,22 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
 	always @(posedge i_clk)
-		if (i_reset)
+	if (i_reset)
+	begin
+		r_wb_cyc_gbl <= 1'b0;
+		r_wb_cyc_lcl <= 1'b0;
+	end else if ((r_wb_cyc_gbl)||(r_wb_cyc_lcl))
+	begin
+		if ((i_wb_ack)||(i_wb_err))
 		begin
 			r_wb_cyc_gbl <= 1'b0;
 			r_wb_cyc_lcl <= 1'b0;
-		end else if ((r_wb_cyc_gbl)||(r_wb_cyc_lcl))
-		begin
-			if ((i_wb_ack)||(i_wb_err))
-			begin
-				r_wb_cyc_gbl <= 1'b0;
-				r_wb_cyc_lcl <= 1'b0;
-			end
-		end else begin // New memory operation
-			// Grab the wishbone
-			r_wb_cyc_lcl <= (lcl_stb);
-			r_wb_cyc_gbl <= (gbl_stb);
 		end
+	end else begin // New memory operation
+		// Grab the wishbone
+		r_wb_cyc_lcl <= (lcl_stb);
+		r_wb_cyc_gbl <= (gbl_stb);
+	end
 	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -315,9 +315,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
+`define	ASSERT	assert
 `ifdef	MEMOPS
 `define	ASSUME	assume
-`define	ASSERT	assert
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin
 		reg	f_last_clk;
@@ -330,7 +330,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	end endgenerate
 `else
 `define	ASSUME	assert
-`define	ASSERT	assume
 `endif
 
 	reg	f_past_valid;

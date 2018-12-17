@@ -477,7 +477,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			req_data <= { i_oreg, i_op[2:1], i_addr[1:0] };
 
 		always @(*)
-			o_wreg <= req_data[(NAUX+4-1):4];
+			o_wreg = req_data[(NAUX+4-1):4];
 
 `ifdef	FORMAL
 		assign	f_pc = ((r_rd_pending)||(o_valid))&&(o_wreg[3:1] == 3'h7);
@@ -530,6 +530,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	c_wr = 0;
 	initial	wr_cstb = 0;
 	initial	state = DC_IDLE;
+	initial	set_vflag = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
