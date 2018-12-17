@@ -177,7 +177,8 @@ module	zipsystem(i_clk, i_reset,
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h1000_0000, ADDRESS_WIDTH=30,
-			LGICACHE=10;
+			LGICACHE=10,
+			LGDCACHE=0;	// Set to zero for no data cache
 	parameter [0:0]	START_HALTED=1;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
@@ -731,6 +732,7 @@ module	zipsystem(i_clk, i_reset,
 	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
+			.OPT_LGDCACHE(LGDCACHE),
 			.IMPLEMENT_MPY(IMPLEMENT_MPY),
 			.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
 			.IMPLEMENT_FPU(IMPLEMENT_FPU),
