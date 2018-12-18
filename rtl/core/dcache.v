@@ -140,6 +140,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	output	wire [(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	output	wire			f_pc;
 `endif
+	//
+	// output	reg	[31:0]		o_debug;
 
 
 	reg	cyc, stb, last_ack, end_of_line, last_line_stb;
@@ -152,6 +154,13 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	reg	[((1<<LGNLINES)-1):0] c_v;	// One bit per cache line, is it valid?
 	reg	[(AW-LS-1):0]	c_vtags	[0:((1<<LGNLINES)-1)];
 	reg	[(DW-1):0]	c_mem	[0:((1<<CS)-1)];
+	reg			set_vflag;
+	reg	[1:0]		state;
+	reg	[(CS-1):0]	wr_addr;
+	reg	[(DW-1):0]	cached_idata, cached_rdata;
+	reg	[DW-1:0]	pre_data;
+	reg			lock_gbl, lock_lcl;
+
 
 	// To simplify writing to the cache, and the job of the synthesizer to
 	// recognize that a cache write needs to take place, we'll take an extra
@@ -168,6 +177,12 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	wire	[(LGNLINES-1):0]	i_cline;
 	wire	[(CS-1):0]	i_caddr;
+
+`ifdef	FORMAL
+	reg	[F_LGDEPTH-1:0]	f_fill;
+	reg	[AW:0]		f_return_address;
+	reg	[AW:0]		f_pending_addr;
+`endif
 
 	assign	i_cline = i_addr[(CS+1):LS+2];
 	assign	i_caddr = i_addr[(CS+1):2];
@@ -195,16 +210,14 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	assign	r_caddr = r_addr[(CS-1):0];
 	assign	r_ctag  = r_addr[(AW-1):LS];
 
-/*
-	integer k;
-	initial begin
-		for(k=0; k<(1<<(LGNLINES)); k=k+1)
-			c_vtags[k] <= k;
-	end
-*/
 
 	reg	wr_cstb, r_iv, in_cache;
 	reg	[(AW-LS-1):0]	r_itag;
+	reg	[DW/8-1:0]	r_sel;
+	reg	[(NAUX+4-1):0]	req_data;
+	reg			gie;
+
+
 
 	//
 	// The one-clock delayed read values from the cache.
@@ -289,8 +302,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				&&((r_itag != r_ctag)||(!r_iv));
 	end
 
-	reg	[DW/8-1:0]	r_sel;
-
 	initial	r_sel = 4'hf;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -308,7 +319,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end
 
-
 	assign	o_wb_sel = (state == DC_READC) ? 4'hf : r_sel;
 
 	initial	o_wb_data = 0;
@@ -324,20 +334,11 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end
 
-	reg	[(NAUX+4-1):0]	req_data;
-	reg			gie;
-`ifdef	FORMAL
-	reg	[F_LGDEPTH-1:0]	f_fill;
-	reg	[AW:0]		f_return_address;
-	reg	[AW:0]		f_pending_addr;
-`endif
-
 	generate if (OPT_PIPE)
 	begin : OPT_PIPE_FIFO
 		reg	[NAUX+4-2:0]	fifo_data [0:((1<<OPT_FIFO_DEPTH)-1)];
 
 		reg	[DP:0]		wraddr, rdaddr;
-		reg	[NAUX+4-2:0]	r_req_data, r_last_data;
 
 		always @(posedge i_clk)
 		if (i_pipe_stb)
@@ -348,8 +349,15 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		if (i_pipe_stb)
 			gie <= i_oreg[NAUX-1];
 
+`ifdef	NO_BKRAM
+		reg	[NAUX+4-2:0]	r_req_data, r_last_data;
+		reg			single_write;
+
 		always @(posedge i_clk)
 			r_req_data <= fifo_data[rdaddr[DP-1:0]];
+
+		always @(posedge i_clk)
+			single_write <= (rdaddr == wraddr)&&(i_pipe_stb);
 
 		always @(posedge i_clk)
 		if (i_pipe_stb)
@@ -359,11 +367,21 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		always @(*)
 		begin
 			req_data[NAUX+4-1] = gie;
-			if ((r_svalid)||(state == DC_READS))
+			// if ((r_svalid)||(state == DC_READ))
+			if (single_write)
 				req_data[NAUX+4-2:0] = r_last_data;
 			else
 				req_data[NAUX+4-2:0] = r_req_data;
 		end
+
+		always @(*)
+			`ASSERT(req_data == fifo_data[rdaddr[DP-1:0]]);
+`else
+		always @(*)
+			req_data[NAUX+4-2:0] = fifo_data[rdaddr[DP-1:0]];
+		always @(*)
+			req_data[NAUX+4-1] = gie;
+`endif
 
 		initial	wraddr = 0;
 		always @(posedge i_clk)
@@ -432,15 +450,56 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			`ASSERT(!f_pc_pending);
 
 		always @(*)
-			f_last_wraddr = wraddr - 1'b1;
+		begin
+			f_last_wraddr = 0;
+			f_last_wraddr[DP:0] = wraddr - 1'b1;
+		end
 
 		always @(posedge i_clk)
 		if (r_rd_pending)
 			`ASSERT(f_pc_pending == (fifo_data[f_last_wraddr][7:5] == 3'h7));
 
+`define	INSPECT_FIFO
+		reg	[((1<<(DP+1))-1):0]	f_valid_fifo_entry;
+		genvar	k;
+		generate for(k=0; k<(1<<(DP+1)); k=k+1)
+		begin
+
+			always @(*)
+			begin
+			f_valid_fifo_entry[k] = 1'b0;
+			/*
+			if ((rdaddr[DP] != wraddr[DP])
+					&&(rdaddr[DP-1:0] == wraddr[DP-1:0]))
+				f_valid_fifo_entry[k] = 1'b1;
+			else */
+			if ((rdaddr < wraddr)&&(k < wraddr)
+					&&(k >= rdaddr))
+				f_valid_fifo_entry[k] = 1'b1;
+			else if ((rdaddr > wraddr)&&(k >= rdaddr))
+				f_valid_fifo_entry[k] = 1'b1;
+			else if ((rdaddr > wraddr)&&(k <  wraddr))
+				f_valid_fifo_entry[k] = 1'b1;
+			end
+
+`ifdef	INSPECT_FIFO
+			always @(*)
+			if (f_valid_fifo_entry[k])
+			begin
+				if (!f_pc_pending)
+					`ASSERT((o_wb_we)||(fifo_data[k][7:5] != 3'h7));
+				else if (k != f_last_wraddr)
+					`ASSERT(fifo_data[k][7:5] != 3'h7);
+			end
+`endif // INSPECT_FIFO
+
+		end endgenerate
+
+`ifndef	INSPECT_FIFO
 		always @(posedge i_clk)
-		if ((r_rd_pending)&&(rdaddr[DP-1:0] != f_last_wraddr))
+		if ((r_rd_pending)&&(rdaddr[DP:0] != f_last_wraddr[DP-1]))
 			assume(fifo_data[rdaddr][7:5] != 3'h7);
+`endif // INSPECT_FIFO
 
 		assign	f_pc = f_pc_pending;
 
@@ -465,11 +524,90 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				f_return_address[LS-1:0]
 				= (o_wb_addr[LS-1:0] - f_outstanding[LS-1:0]);
 		end
-`endif
+
+`define	TWIN_WRITE_TEST
+`ifdef	TWIN_WRITE_TEST
+		(* anyconst *)	reg	[DP:0]		f_twin_base;
+				reg	[DP:0]		f_twin_next;
+		(* anyconst *)	reg	[AW+NAUX+4-2-1:0]	f_twin_first,
+							f_twin_second;
+		// reg	[AW-1:0]	f_fifo_addr [0:((1<<OPT_FIFO_DEPTH)-1)];
+		// reg	[NAUX+4-2:0]	fifo_data [0:((1<<OPT_FIFO_DEPTH)-1)];
+
+		always @(*)	f_twin_next = f_twin_base+1;
+
+		reg	f_twin_none, f_twin_single, f_twin_double, f_twin_last;
+		reg	f_twin_valid_one, f_twin_valid_two;
+		always @(*)
+		begin
+			f_twin_valid_one = ((f_valid_fifo_entry[f_twin_base])
+				&&(f_twin_first == { f_fifo_addr[f_twin_base],
+						fifo_data[f_twin_base] }));
+			f_twin_valid_two = ((f_valid_fifo_entry[f_twin_next])
+				&&(f_twin_second == { f_fifo_addr[f_twin_next],
+						fifo_data[f_twin_next] }));
+		end
+
+		always @(*)
+		begin
+			f_twin_none   =(!f_twin_valid_one)&&(!f_twin_valid_two);
+			f_twin_single =( f_twin_valid_one)&&(!f_twin_valid_two);
+			f_twin_double =( f_twin_valid_one)&&( f_twin_valid_two);
+			f_twin_last   =(!f_twin_valid_one)&&( f_twin_valid_two);
+		end
+
+		always @(posedge i_clk)
+		if ((!f_past_valid)||($past(i_reset))||($past(cyc && i_wb_err)))
+			`ASSERT(f_twin_none);
+		else if ($past(f_twin_none))
+			`ASSERT(f_twin_none || f_twin_single || f_twin_last);
+		else if ($past(f_twin_single))
+			`ASSERT(f_twin_none || f_twin_single || f_twin_double || f_twin_last);
+		else if ($past(f_twin_double))
+			`ASSERT(f_twin_double || f_twin_last);
+		else if ($past(f_twin_last))
+			`ASSERT(f_twin_none || f_twin_single || f_twin_last);
+
+`endif // TWIN_WRITE_TEST
+
+		always @(*)
+			`ASSERT(req_data == { gie, fifo_data[rdaddr[DP-1:0]] });
+
+		always @(posedge i_clk)
+		if (r_svalid||r_dvalid || r_rd_pending)
+			`ASSERT(f_fill == 1);
+		else if (f_fill > 0)
+			`ASSERT(cyc);
+
+		always @(posedge i_clk)
+		if (state != 0)
+			`ASSERT(f_fill > 0);
+		else if (!r_svalid && !r_dvalid && !r_rd_pending)
+			`ASSERT(f_fill == 0);
+
+`endif // FORMAL
 
 		always @(posedge i_clk)
 			o_wreg <= req_data[(NAUX+4-1):4];
 
+		/*
+		reg	fifo_err;
+		always @(posedge i_clk)
+		begin
+			fifo_err <= 1'b0;
+			if ((!o_busy)&&(rdaddr != wraddr))
+				fifo_err <= 1'b1;
+			if ((!r_dvalid)&&(!r_svalid)&&(!r_rd_pending))
+				fifo_err <= (npending != (wraddr-rdaddr));
+		end
+
+		always @(*)
+		o_debug = { i_pipe_stb, state, cyc, stb,	//  5b
+				fifo_err, i_oreg[3:0], o_wreg, 		// 10b
+				rdaddr, wraddr, 		// 10b
+				i_wb_ack, i_wb_err, o_pipe_stalled, o_busy,//4b
+				r_svalid, r_dvalid, r_rd_pending };
+		*/
 	end else begin : NO_FIFO
 
 		always @(posedge i_clk)
@@ -497,7 +635,6 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 		//
 		//
-		//
 		always @(*)
 		begin
 			f_return_address[AW]      = o_wb_cyc_lcl;
@@ -511,14 +648,18 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				= (o_wb_addr[LS-1:0] - f_outstanding[LS-1:0]);
 
 `endif
+		/*
+		always @(*)
+		o_debug = { i_pipe_stb, state, cyc, stb,	//  5b
+				i_oreg, o_wreg, 		// 10b
+				10'hb,		 		// 10b
+				i_wb_ack, i_wb_err, o_pipe_stalled, o_busy,//4b
+				r_svalid, r_dvalid, r_rd_pending };
+		*/
 
 	end endgenerate
 		
 
-
-	reg			set_vflag;
-	reg	[1:0]		state;
-	reg	[(CS-1):0]	wr_addr;
 
 	initial	r_wb_cyc_gbl = 0;
 	initial	r_wb_cyc_lcl = 0;
@@ -832,8 +973,6 @@ always @(*)
 	// going to be our output will need to be determined with combinatorial
 	// logic on the output.
 	//
-	reg	[(DW-1):0]	cached_idata, cached_rdata;
-
 	generate if (OPT_DUAL_READ_PORT)
 	begin
 
@@ -858,7 +997,6 @@ always @(*)
 // 2. The cache, second clock, assuming the data was in the cache at all
 // 3. The cache, after filling the cache
 // 4. The wishbone state machine, upon reading the value desired.
-	reg	[DW-1:0]	pre_data;
 	always @(*)
 		if (r_svalid)
 			pre_data = cached_idata;
@@ -924,7 +1062,6 @@ always @(*)
 	else
 		o_pipe_stalled = o_busy;
 
-	reg	lock_gbl, lock_lcl;
 	initial	lock_gbl = 0;
 	initial	lock_lcl = 0;
 	always @(posedge i_clk)

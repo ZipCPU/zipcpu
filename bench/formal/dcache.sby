@@ -16,13 +16,13 @@ full:           depth 10
 bare:           depth 11
 nolock_nolocal: depth 11
 nolock_system:  depth 11
-piped:          depth 16
+piped:          depth 11
 cover:          depth 24
 cover_pipe:     depth 45
 
 [engines]
 # smtbmc yices
-smtbmc boolector
+smtbmc --nopresat boolector
 # abc pdr
 # aiger suprove
 # aiger avy

@@ -137,14 +137,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		// Accounting/CPU usage interface
 		o_op_stall, o_pf_stall, o_i_count
 `ifdef	DEBUG_SCOPE
-		, o_debug
+		, o_debug // , o_dcache_debug
 `endif
 		);
 	// Parameters
 	//{{{
 	parameter [31:0] RESET_ADDRESS=32'h0100000;
 	parameter	ADDRESS_WIDTH=30,
-			LGICACHE=8;
+			LGICACHE=12;
 `ifdef	OPT_MULTIPLY
 	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
 `else
@@ -231,6 +231,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 `ifdef	DEBUG_SCOPE
 	output	reg	[31:0]	o_debug;
+	// output	wire	[31:0]	o_dcache_debug;
 `endif
 	//}}}
 
@@ -1634,6 +1635,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `ifdef	FORMAL
 			, f_mem_nreqs, f_mem_nacks, f_mem_outstanding, f_mem_pc
 `endif
+				// , o_dcache_debug
 			);
 		///}}}
 	end else begin : NO_CACHE
