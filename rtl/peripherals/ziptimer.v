@@ -93,7 +93,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	assign	wb_write = ((i_wb_stb)&&(i_wb_we));
 
 	wire			auto_reload;
-	wire	[(VW-1):0]	reload_value;
+	wire	[(VW-1):0]	interval_count;
 
 	initial	r_running = 1'b0;
 	always @(posedge i_clk)
@@ -107,7 +107,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	generate
 	if (RELOADABLE != 0)
 	begin
-		reg	r_auto_reload;
+		reg			r_auto_reload;
 		reg	[(VW-1):0]	r_interval_count;
 
 		initial	r_auto_reload = 1'b0;
@@ -125,8 +125,8 @@ module	ziptimer(i_clk, i_reset, i_ce,
 		// than zero, set the auto-reload value
 		always @(posedge i_clk)
 		if (wb_write)
-			r_reload_value <= i_wb_data[(VW-1):0];
-		assign	reload_value = r_reload_value;
+			r_interval_count <= i_wb_data[(VW-1):0];
+		assign	interval_count = r_interval_count;
 	end else begin
 		assign	auto_reload = 1'b0;
 		assign	interval_count = 0;
@@ -145,7 +145,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 			if (!r_zero)
 				r_value <= r_value - 1'b1;
 			else if (auto_reload)
-				r_value <= reload_value;
+				r_value <= interval_count;
 		end
 
 	reg	r_zero  = 1'b1;
@@ -156,7 +156,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 			r_zero <= (i_wb_data[(VW-1):0] == 0);
 		else if ((r_running)&&(i_ce))
 		begin
-			if (r_value == {{(VW-1){1'b0}}, 1'b1 })
+			if (r_value == { {(VW-1){1'b0}}, 1'b1 })
 				r_zero <= 1'b1;
 			else if ((r_zero)&&(auto_reload))
 				r_zero <= 1'b0;
@@ -205,7 +205,6 @@ module	ziptimer(i_clk, i_reset, i_ce,
 		assert(r_value     == 0);
 		assert(r_running   == 0);
 		assert(auto_reload == 0);
-		// assert(reload_value== 0);
 		assert(r_zero      == 1'b1);
 	end
 
