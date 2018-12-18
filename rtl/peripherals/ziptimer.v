@@ -108,7 +108,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	if (RELOADABLE != 0)
 	begin
 		reg	r_auto_reload;
-		reg	[(VW-1):0]	r_reload_value;
+		reg	[(VW-1):0]	r_interval_count;
 
 		initial	r_auto_reload = 1'b0;
 
@@ -129,7 +129,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 		assign	reload_value = r_reload_value;
 	end else begin
 		assign	auto_reload = 1'b0;
-		assign	reload_value = 0;
+		assign	interval_count = 0;
 	end endgenerate
 
 
@@ -227,7 +227,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 
 	always @(*)
 		if (auto_reload)
-			assert(reload_value != 0);
+			assert(interval_count != 0);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(r_value)==0)
@@ -239,7 +239,7 @@ module	ziptimer(i_clk, i_reset, i_ce,
 			&&($past(r_value)==0)&&($past(auto_reload)))
 	begin
 		if ($past(i_ce))
-			assert(r_value == reload_value);
+			assert(r_value == interval_count);
 		else
 			assert(r_value == $past(r_value));
 	end

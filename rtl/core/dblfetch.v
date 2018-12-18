@@ -221,7 +221,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		cache_illegal <= 1'b0;
 	else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
 		cache_illegal <= 1'b1;
-
 //
 // Some of these properties can be done in yosys-smtbmc, *or* Verilator
 //
