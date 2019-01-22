@@ -269,6 +269,11 @@ module	busdelay(i_clk, i_reset,
 
 `ifdef	FORMAL
 
+`ifdef	VERIFIC
+	(* gclk *) wire gbl_clock;
+	global clocking @(posedge gbl_clock);
+`endif
+
 `ifdef	BUSDELAY
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin

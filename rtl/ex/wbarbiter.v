@@ -236,6 +236,10 @@ module	wbarbiter(i_clk, i_reset,
 `ifdef	FORMAL
 
 `ifdef	WBARBITER
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin
 		reg	f_last_clk;
@@ -254,7 +258,7 @@ module	wbarbiter(i_clk, i_reset,
 
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
-	always @($global_clock)
+	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
 	initial	`ASSUME(!i_a_cyc);
@@ -265,6 +269,10 @@ module	wbarbiter(i_clk, i_reset,
 
 	initial	`ASSUME(!i_ack);
 	initial	`ASSUME(!i_err);
+
+	always @(*)
+	if (!f_past_valid)
+		`ASSUME(i_reset);
 
 	always @(posedge i_clk)
 	begin

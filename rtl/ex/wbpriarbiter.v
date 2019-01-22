@@ -149,6 +149,10 @@ module	wbpriarbiter(i_clk,
 	end endgenerate
 
 `ifdef	FORMAL
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
 
 `ifdef	WBPRIARBITER
 	generate if (F_OPT_CLK2FFLOGIC)

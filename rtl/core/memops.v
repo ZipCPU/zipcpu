@@ -316,6 +316,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 `ifdef	FORMAL
 `define	ASSERT	assert
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
+
 `ifdef	MEMOPS
 `define	ASSUME	assume
 	generate if (F_OPT_CLK2FFLOGIC)

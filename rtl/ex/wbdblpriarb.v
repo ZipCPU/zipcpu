@@ -244,7 +244,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	end endgenerate
 
 `ifdef	FORMAL
-
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
 `ifdef	WBDBLPRIARB
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin

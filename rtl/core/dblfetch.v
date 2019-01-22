@@ -163,7 +163,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		else if (i_stall_n)
 			o_valid <= cache_valid;
 
-	initial	o_insn = {(32){1'b1}};
 	always @(posedge i_clk)
 	if ((!o_valid)||(i_stall_n))
 	begin
@@ -282,6 +281,10 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 `ifdef	DBLFETCH
 `define	ASSUME	assume
 
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
 	generate if (F_OPT_CLK2FFLOGIC)
 	begin
 		// Assume a clock

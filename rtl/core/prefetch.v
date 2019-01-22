@@ -232,6 +232,12 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	reg	[(AW-1):0]	f_last_pc;
 	reg			f_last_pc_valid;
 	reg	[(AW-1):0]	f_req_addr;
+
+`ifdef	VERIFIC
+	(* gclk *) wire	gbl_clock;
+	global clocking @(posedge gbl_clock) endclocking;
+`endif
+
 //
 //
 // Generic setup
