@@ -68,7 +68,6 @@ module	wbpriarbiter(i_clk,
 	// zeroing things on idle can make them stand out all the more when
 	// staring at wires and dumps and such.
 	parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0;
-	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	//
 	input	wire			i_clk;
 	// Bus A
@@ -149,22 +148,7 @@ module	wbpriarbiter(i_clk,
 	end endgenerate
 
 `ifdef	FORMAL
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-
 `ifdef	WBPRIARBITER
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	assume(!i_clk);
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
 `define	`ASSUME	assume
 `else
 `define	`ASSUME	assert

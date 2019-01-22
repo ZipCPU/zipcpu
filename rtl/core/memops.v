@@ -61,7 +61,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			WITH_LOCAL_BUS=1'b1,
 			OPT_ALIGNMENT_ERR=1'b1,
 			OPT_ZERO_ON_IDLE=1'b0;
-	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam	AW=ADDRESS_WIDTH;
 	input	wire		i_clk, i_reset;
 	input	wire		i_stb, i_lock;
@@ -316,23 +315,8 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 `ifdef	FORMAL
 `define	ASSERT	assert
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-
 `ifdef	MEMOPS
 `define	ASSUME	assume
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	f_last_clk = 0;
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
 `else
 `define	ASSUME	assert
 `endif
@@ -346,19 +330,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			`ASSUME(i_reset);
 	initial	`ASSUME(!i_stb);
 
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			assume($stable(i_reset));
-			assume($stable(i_stb));
-			assume($stable(i_addr));
-			assume($stable(i_op));
-			assume($stable(i_lock));
-		end
-	end endgenerate
-
 	wire	f_cyc, f_stb;
 	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
@@ -370,7 +341,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 `endif
 
 	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
 		f_wb(i_clk, i_reset,

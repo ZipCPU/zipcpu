@@ -105,11 +105,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	parameter	F_MAX_STALL = 0;
 	parameter	F_MAX_ACK_DELAY=0;
 	//
-	// F_OPT_CLK2FFLOGIC shouldn't be needed.  However, if this component
-	// is being used as a component of a multi-clock formal design, then
-	// it will be necessary.  Set this any-time the design is being built
-	// with the yosys clk2fflogic command used as part of the yosys script.
-	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_reset.
 	input	wire			i_clk, i_reset;
@@ -244,26 +239,11 @@ module	wbdblpriarb(i_clk, i_reset,
 	end endgenerate
 
 `ifdef	FORMAL
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-`ifdef	WBDBLPRIARB
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	assume(!i_clk);
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
-`define	ASSUME	assume
 `define	ASSERT	assert
+`ifdef	WBDBLPRIARB
+`define	ASSUME	assume
 `else
 `define	ASSUME	assert
-`define	ASSERT	assert
 `endif
 
 	reg	f_past_valid;
@@ -344,7 +324,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			.F_MAX_STALL(F_MAX_STALL),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm_a(i_clk, i_reset,
@@ -355,7 +335,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			.F_MAX_STALL(F_MAX_STALL),
 			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm_b(i_clk, i_reset,
@@ -372,7 +352,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba_a(i_clk, i_reset,
@@ -382,7 +362,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba_b(i_clk, i_reset,
@@ -392,7 +372,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb_a(i_clk, i_reset,
@@ -402,7 +382,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb_b(i_clk, i_reset,

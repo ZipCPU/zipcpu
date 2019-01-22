@@ -71,7 +71,6 @@ module	busdelay(i_clk, i_reset,
 		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
 			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
 	parameter		AW=32, DW=32;
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam		F_LGDEPTH=4;
 	parameter	 [0:0]	DELAY_STALL = 1;
 	input	wire			i_clk, i_reset;
@@ -269,22 +268,7 @@ module	busdelay(i_clk, i_reset,
 
 `ifdef	FORMAL
 
-`ifdef	VERIFIC
-	(* gclk *) wire gbl_clock;
-	global clocking @(posedge gbl_clock);
-`endif
-
 `ifdef	BUSDELAY
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	assume(!i_clk);
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
 `define	ASSUME	assume
 `else
 `define	ASSUME	assert
@@ -299,28 +283,6 @@ module	busdelay(i_clk, i_reset,
 		if (!f_past_valid)
 			`ASSUME(i_reset);
 
-	// Things can only change on the positive edge of the clock
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if ((f_past_valid)&&(!$rose(i_clk)))
-		begin
-			`ASSUME($stable(i_reset));
-			//
-			`ASSUME($stable(i_wb_cyc));
-			`ASSUME($stable(i_wb_stb));
-			`ASSUME($stable(i_wb_we));
-			`ASSUME($stable(i_wb_addr));
-			`ASSUME($stable(i_wb_data));
-			`ASSUME($stable(i_wb_sel));
-			//
-			`ASSUME($stable(i_dly_ack));
-			`ASSUME($stable(i_dly_stall));
-			`ASSUME($stable(i_dly_data));
-			`ASSUME($stable(i_dly_err));
-		end
-	end endgenerate
-
 	wire	[(F_LGDEPTH-1):0]	f_wb_nreqs,f_wb_nacks, f_wb_outstanding,
 				f_dly_nreqs, f_dly_nacks, f_dly_outstanding;
 
@@ -331,7 +293,7 @@ module	busdelay(i_clk, i_reset,
 			.F_MAX_STALL(STALL_DELAY+1),
 			.F_MAX_ACK_DELAY(ACK_DELAY+1+2*STALL_DELAY),
 			.F_MAX_REQUESTS((1<<F_LGDEPTH)-2),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbs(i_clk, i_reset,
@@ -345,7 +307,7 @@ module	busdelay(i_clk, i_reset,
 			.F_MAX_STALL(STALL_DELAY),
 			.F_MAX_ACK_DELAY(ACK_DELAY),
 			.F_MAX_REQUESTS(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm(i_clk, i_reset,

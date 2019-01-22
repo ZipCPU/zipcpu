@@ -55,7 +55,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
 		o_illegal);
 	parameter		ADDRESS_WIDTH=30, AUX_WIDTH = 1;
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC=1'b0;
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
 	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
 						i_stall_n;
@@ -280,22 +279,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 //
 `ifdef	DBLFETCH
 `define	ASSUME	assume
-
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		// Assume a clock
-		reg	f_last_clk;
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
-
 `else
 `define	ASSUME	assert
 `endif
@@ -311,29 +294,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(*)
 		if (!f_past_valid)
 			`ASSUME(i_reset);
-
-	//
-	// Nothing changes, but on the positive edge of a clock
-	//
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			// Control inputs from the CPU
-			`ASSUME($stable(i_reset));
-			`ASSUME($stable(i_new_pc));
-			`ASSUME($stable(i_clear_cache));
-			`ASSUME($stable(i_stall_n));
-			`ASSUME($stable(i_pc));
-			// Wishbone inputs
-			`ASSUME($stable(i_wb_ack));
-			`ASSUME($stable(i_wb_stall));
-			`ASSUME($stable(i_wb_err));
-			`ASSUME($stable(i_wb_data));
-		end
-	end endgenerate
-
 
 	//
 	// Assume that resets, new-pc commands, and clear-cache commands
@@ -370,7 +330,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
 				.F_MAX_STALL(2),
 				.F_MAX_REQUESTS(0), .F_OPT_SOURCE(1),
-				.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+				.F_OPT_CLK2FFLOGIC(1'b0),
 				.F_OPT_RMW_BUS_OPTION(1),
 				.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,

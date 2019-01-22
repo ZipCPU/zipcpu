@@ -60,7 +60,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			OPT_ZERO_ON_IDLE=1'b0,
 			// OPT_ALIGNMENT_ERR
 			OPT_ALIGNMENT_ERR=1'b0;
-	parameter [0:0]	F_OPT_CLK2FFLOGIC=1'b0;
 	localparam	AW=ADDRESS_WIDTH,
 			FLN=4;
 	parameter [(FLN-1):0]	OPT_MAXDEPTH=4'hd;
@@ -316,24 +315,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 `ifdef	FORMAL
 `define	ASSERT	assert
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-
 `ifdef	PIPEMEM
 `define	ASSUME	assume
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-
-		initial	f_last_clk = 0;
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
 `else
 `define	ASSUME	assert
 `endif
@@ -349,19 +332,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	`ASSUME( i_reset);
 	initial	`ASSUME(!i_pipe_stb);
 
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			`ASSUME($stable(i_reset));
-			`ASSUME($stable(i_pipe_stb));
-			`ASSUME($stable(i_addr));
-			`ASSUME($stable(i_lock));
-			`ASSUME($stable(i_op));
-		end
-	end endgenerate
-
 	wire	f_cyc, f_stb;
 	assign	f_cyc = cyc;
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
@@ -372,7 +342,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 `define	MASTER	fwb_counter
 `endif
 	`MASTER #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			// .F_MAX_REQUESTS(14), // Not quite true, can do more
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))

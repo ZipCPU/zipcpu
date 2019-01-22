@@ -62,7 +62,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	localparam		AW=ADDRESS_WIDTH,
 				DW=DATA_WIDTH;
 	input	wire			i_clk, i_reset;
@@ -233,11 +232,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	reg			f_last_pc_valid;
 	reg	[(AW-1):0]	f_req_addr;
 
-`ifdef	VERIFIC
-	(* gclk *) wire	gbl_clock;
-	global clocking @(posedge gbl_clock) endclocking;
-`endif
-
 //
 //
 // Generic setup
@@ -245,14 +239,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 //
 `ifdef	PREFETCH
 `define	ASSUME	assume
-	reg	f_last_clk;
-	initial	assume(f_last_clk == 1);
-	initial	assume(i_clk == 0);
-	always @($global_clock)
-	begin
-		assume(i_clk != f_last_clk);
-		f_last_clk <= !f_last_clk;
-	end
 `else
 `define	ASSUME	assert
 `endif
@@ -272,23 +258,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	//
 	/////////////////////////////////////////////////
-
-	//
-	// Nothing changes, but on the positive edge of a clock
-	//
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			// Control inputs from the CPU
-			`ASSUME($stable(i_reset));
-			`ASSUME($stable(i_new_pc));
-			`ASSUME($stable(i_clear_cache));
-			`ASSUME($stable(i_stalled_n));
-			`ASSUME($stable(i_pc));
-		end
-	end endgenerate
 
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_reset);
@@ -349,7 +318,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
+			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
