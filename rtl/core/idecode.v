@@ -1778,7 +1778,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		.OPT_CIS(OPT_CIS),
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_OPIPE(OPT_OPIPE),
-		.OPT_SIM(OPT_SIM),
+		.OPT_SIM(OPT_SIM)
 		) formal_decoder(
 			f_insn_word, o_phase, f_insn_gie,
 		fc_illegal,

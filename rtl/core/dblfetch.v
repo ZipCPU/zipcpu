@@ -80,6 +80,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	reg	[(DW-1):0]	cache_word;
 	reg			cache_valid;
+	reg	[1:0]		inflight;
+	reg			cache_illegal;
 
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
@@ -114,7 +116,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_wb_stb <= 1'b1;
 		end
 
-	reg	[1:0]	inflight;
 	initial	inflight = 2'b00;
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
@@ -212,7 +213,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if ((o_wb_cyc)&&(i_wb_ack))
 			cache_word <= i_wb_data;
 
-	reg	cache_illegal;
 	initial	cache_illegal = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache)||(i_new_pc))
@@ -292,8 +292,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	/////////////////////////////////////////////////
 
 	always @(*)
-		if (!f_past_valid)
-			`ASSUME(i_reset);
+	if (!f_past_valid)
+		`ASSUME(i_reset);
 
 	//
 	// Assume that resets, new-pc commands, and clear-cache commands
@@ -301,6 +301,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	// It may be that the CPU treats us differently.  We'll only restrict
 	// our solver to this here.
+/*
 	always @(posedge i_clk)
 	if (f_past_valid)
 	begin
@@ -309,6 +310,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if ($past(i_new_pc))
 			restrict(!i_new_pc);
 	end
+*/
 
 	//
 	// Assume we start from a reset condition
@@ -330,7 +332,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
 				.F_MAX_STALL(2),
 				.F_MAX_REQUESTS(0), .F_OPT_SOURCE(1),
-				.F_OPT_CLK2FFLOGIC(1'b0),
 				.F_OPT_RMW_BUS_OPTION(1),
 				.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
@@ -512,17 +513,9 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Any attempt to return to the CPU a value from this address,
 	// must return the value and the illegal flag.
 	//
-	wire	[AW-1:0]	f_const_addr;
-	wire	[DW-1:0]	f_const_insn;
-	wire			f_const_illegal;
-
-	//
-	// Here's the illegal flag, address in question, and the instruction
-	// at that address.
-	//
-	assign	f_const_addr    = $anyconst;
-	assign	f_const_insn    = $anyconst;
-	assign	f_const_illegal = $anyconst;
+	(* anyconst *) reg	[AW-1:0]	f_const_addr;
+	(* anyconst *) reg	[DW-1:0]	f_const_insn;
+	(* anyconst *) reg			f_const_illegal;
 
 	//
 	// While these wires may seem like overkill, and while they make the

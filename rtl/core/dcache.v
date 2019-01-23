@@ -99,11 +99,11 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	parameter [0:0]	OPT_LOCK=1'b1;
 	parameter [0:0]	OPT_DUAL_READ_PORT=1'b1;
 	parameter 	OPT_FIFO_DEPTH = 4;
-	parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
-					? LS : OPT_FIFO_DEPTH);
 	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
 	localparam	CS = LGCACHELEN; // Number of bits in a cache address
 	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
+	parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
+					? LS : OPT_FIFO_DEPTH);
 	localparam	LGAUX = 3; // log_2 of the maximum number of piped data
 	localparam	DW = 32; // Bus data width
 	localparam	DP = OPT_FIFO_DEPTH;
@@ -139,6 +139,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 `ifdef FORMAL
 	output	wire [(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	output	wire			f_pc;
+
+	reg	f_past_valid;
 `endif
 	//
 	// output	reg	[31:0]		o_debug;
@@ -461,8 +463,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 
 `define	INSPECT_FIFO
 		reg	[((1<<(DP+1))-1):0]	f_valid_fifo_entry;
+
 		genvar	k;
-		generate for(k=0; k<(1<<(DP+1)); k=k+1)
+		for(k=0; k<(1<<(DP+1)); k=k+1)
 		begin
 
 			always @(*)
@@ -483,17 +486,20 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 			end
 
 `ifdef	INSPECT_FIFO
+			wire	[NAUX+4-2:0]	fifo_data_k;
+
+			assign	fifo_data_k = fifo_data[k[DP-1:0]];
 			always @(*)
 			if (f_valid_fifo_entry[k])
 			begin
 				if (!f_pc_pending)
-					`ASSERT((o_wb_we)||(fifo_data[k][7:5] != 3'h7));
+					`ASSERT((o_wb_we)||(fifo_data_k[7:5] != 3'h7));
 				else if (k != f_last_wraddr)
-					`ASSERT(fifo_data[k][7:5] != 3'h7);
+					`ASSERT(fifo_data_k[7:5] != 3'h7);
 			end
 `endif // INSPECT_FIFO
 
-		end endgenerate
+		end
 
 `ifndef	INSPECT_FIFO
 		always @(posedge i_clk)
@@ -772,7 +778,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				state <= DC_READC;
 				o_wb_addr <= { r_ctag, {(LS){1'b0}} };
 
-				c_waddr <= { r_ctag[CS-LS-1:0], {(LS){1'b0}} }-1;
+				c_waddr <= { r_ctag[CS-LS-1:0], {(LS){1'b0}} }-1'b1;
 				cyc <= 1'b1;
 				stb <= 1'b1;
 				r_wb_cyc_gbl <= 1'b1;
@@ -1088,7 +1094,6 @@ always @(*)
 
 `ifdef	FORMAL
 
-	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
@@ -1213,8 +1218,7 @@ always @(*)
 `ifdef	DCACHE
 			.F_OPT_SOURCE(1'b1),
 `endif
-			.F_OPT_DISCONTINUOUS(0),
-			.F_OPT_CLK2FFLOGIC(0)
+			.F_OPT_DISCONTINUOUS(0)
 		) fwb(i_clk, i_reset,
 			cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 				i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
@@ -1228,17 +1232,15 @@ always @(*)
 	////////////////////////////////////////////////
 	//
 	//
-	wire	[AW:0]		f_const_addr;
+	(* anyconst *)	reg	[AW:0]		f_const_addr;
+	(* anyconst *)	reg			f_const_buserr;
 	wire	[AW-LS-1:0]	f_const_tag, f_ctag_here, f_wb_tag;
 	wire	[CS-LS-1:0]	f_const_tag_addr;
-	wire			f_const_buserr;
 	reg	[DW-1:0]	f_const_data;
 	wire	[DW-1:0]	f_cmem_here;
 	reg			f_pending_rd;
 	wire			f_cval_in_cache;
 
-	assign	f_const_addr   = $anyconst;
-	assign	f_const_buserr = $anyconst;
 	assign	f_const_tag    = f_const_addr[AW-1:LS];
 	assign	f_const_tag_addr = f_const_addr[CS-1:LS];
 	assign	f_cmem_here    = c_mem[f_const_addr[CS-1:0]];
@@ -1255,7 +1257,7 @@ always @(*)
 		if (f_const_addr[AW])
 			assume(&f_const_addr[(AW-1):(DW-8)]);
 		else
-			assume(!&f_const_addr[(AW-1):(DW-8)]);
+			assume(!(&f_const_addr[(AW-1):(DW-8)]));
 	end endgenerate
 
 	wire	[AW-1:0]	wb_start;
@@ -1477,7 +1479,7 @@ always @(*)
 			`ASSERT(o_err);
 		else if (f_pending_rd)
 		begin
-			case($past(req_data[3:0]))
+			casez($past(req_data[3:0]))
 			4'b0???: `ASSERT(o_data ==f_const_data);
 			4'b101?: `ASSERT(o_data =={16'h00,f_const_data[15: 0]});
 			4'b100?: `ASSERT(o_data =={16'h00,f_const_data[31:16]});
@@ -2056,7 +2058,7 @@ always @(*)
 	if((OPT_LOCK)&&(OPT_LOCAL_BUS))
 	begin
 		if ((i_lock)&&(o_wb_cyc_gbl)&&(i_pipe_stb))
-			assume(!&i_addr[(DW-1):(DW-8)]);
+			assume(!(&i_addr[(DW-1):(DW-8)]));
 		else if ((i_lock)&&(o_wb_cyc_lcl)&&(i_pipe_stb))
 			assume(&i_addr[(DW-1):(DW-8)]);
 	end

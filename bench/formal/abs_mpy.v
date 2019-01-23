@@ -67,22 +67,29 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
 		always @(*)
-			o_valid    = 1'b1;
+			o_valid    = i_stb;
 		always @(*) o_hi = 1'b0; // Not needed
 
 	end else begin // Our single clock option (no extra clocks)
 
-		wire	[2:0]	next_delay_to_valid;
+		(* anyseq *) reg	[2:0]	next_delay_to_valid;
+		(* anyseq *) reg	[63:0]	any_result;
 
-		assign	next_delay_to_valid = $anyseq;
-		assign	o_result = $anyseq;
+		assign	o_result = any_result;
 
 		reg	[2:0]	delay_to_valid;
 		reg		r_busy;
 
 		always @(*)
-			assume((MAXDELAY == 0)
-				||(next_delay_to_valid < MAXDELAY));
+		assume((MAXDELAY == 0)
+			||(next_delay_to_valid < MAXDELAY));
+
+		// always @(*)
+		// if (IMPLEMENT_MPY == 1)
+			// assume(next_delay_to_valid == 0);
+		always @(*)
+		if (IMPLEMENT_MPY>0)
+			assume(next_delay_to_valid == IMPLEMENT_MPY-1);
 
 		initial	delay_to_valid = 3'h0;
 		always @(posedge i_clk)
@@ -93,10 +100,6 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		else if (delay_to_valid > 0)
 			delay_to_valid <= delay_to_valid - 1'b1;
 
-		always @(*)
-			`ASSERT((MAXDELAY == 0)
-				||(delay_to_valid < MAXDELAY));
-
 		initial	r_busy = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
@@ -106,6 +109,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		else if (r_busy)
 			r_busy <= (delay_to_valid != 3'h1);
 
+		initial	o_valid = 0;
 		always @(posedge i_clk)
 		if (i_reset)
 			o_valid <= 1'b0;

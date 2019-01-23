@@ -1619,7 +1619,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			.OPT_PIPE(OPT_MEMPIPE),
 			.OPT_LOCK(OPT_LOCK)
 `ifdef	FORMAL
-			, .OPT_FIFO_DEPTH(2),
+			, .OPT_FIFO_DEPTH(2)
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif
 			) docache(i_clk, i_reset,
@@ -2587,6 +2587,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 //
 //
 
+	wire	[1+4+15+6+4+13+AW+1+32+4+23-1:0]	f_dcd_data;
+	wire		fc_op_prepipe;
+	wire	[6:0]	fc_alu_Aid;
+	wire		fc_alu_wR, fc_alu_M, fc_alu_prepipe;
+	reg		f_alu_phase;
 	////////////////////////////////////////////////////////////////
 	//
 	//
@@ -2993,7 +2998,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire	fc_op_illegal, fc_op_wF, fc_op_ALU, fc_op_M,
 			fc_op_DV, fc_op_FP, fc_op_break,
 			fc_op_lock, fc_op_wR, fc_op_rA, fc_op_rB,
-			fc_op_prepipe, fc_op_sim;
+			fc_op_sim;
 	wire	[6:0]	fc_op_Rid, fc_op_Aid, fc_op_Bid;
 	wire	[31:0]	fc_op_I;
 	wire	[3:0]	fc_op_cond;
@@ -3645,7 +3650,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Assertions about the prefetch
 	// Assertions about the decode stage
 	// dcd_ce, dcd_valid
-	wire	[1+4+15+6+4+13+AW+1+32+4+23-1:0]	f_dcd_data;
 	assign	f_dcd_data = {
 			dcd_phase,
 			dcd_opn, dcd_A, dcd_B, dcd_R,	// 4+15
@@ -3736,15 +3740,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		f_alu_branch <= 1'b0;
 
 
-	wire	fc_alu_illegal, fc_alu_wF, fc_alu_ALU, fc_alu_M, fc_alu_DV,
-			fc_alu_FP, fc_alu_break, fc_alu_lock, fc_alu_wR,
-			fc_alu_rA, fc_alu_rB, fc_alu_prepipe, fc_alu_sim;
-	wire	[6:0]	fc_alu_Rid, fc_alu_Aid, fc_alu_Bid;
+	wire	fc_alu_illegal, fc_alu_wF, fc_alu_ALU, fc_alu_DV,
+			fc_alu_FP, fc_alu_break, fc_alu_lock,
+			fc_alu_rA, fc_alu_rB, fc_alu_sim;
+	wire	[6:0]	fc_alu_Rid, fc_alu_Bid;
 	wire	[31:0]	fc_alu_I;
 	wire	[3:0]	fc_alu_cond;
 	wire	[3:0]	fc_alu_op;
 	wire	[22:0]	fc_alu_sim_immv;
-	reg		f_alu_phase;
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
@@ -4102,7 +4105,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//
 	//
 	//////////////////////////////////////////////
-	wire	w_switch_to_interrupt, w_release_from_interrupt;
 	always @(posedge i_clk)
 	if ((gie)&&(wr_reg_ce))
 	begin

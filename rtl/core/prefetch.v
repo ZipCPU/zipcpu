@@ -97,44 +97,44 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||((o_wb_cyc)&&((i_wb_ack)||(i_wb_err))))
+	if ((i_reset)||((o_wb_cyc)&&((i_wb_ack)||(i_wb_err))))
+	begin
+		// End any bus cycle on a reset, or a return ACK
+		// or error.
+		o_wb_cyc <= 1'b0;
+		o_wb_stb <= 1'b0;
+	end else if ((!o_wb_cyc)&&(
+			// Start if the last instruction output was
+			// accepted, *and* it wasn't a bus error
+			// response
+			((i_stalled_n)&&(!o_illegal))
+			// Start if the last bus result ended up
+			// invalid
+			||(invalid)
+			// Start on any request for a new address
+			||(i_new_pc)))
+	begin
+		// Initiate a bus transaction
+		o_wb_cyc <= 1'b1;
+		o_wb_stb <= 1'b1;
+	end else if (o_wb_cyc)
+	begin
+		// If our request has been accepted, then drop the
+		// strobe line
+		if (!i_wb_stall)
+			o_wb_stb <= 1'b0;
+
+		// Abort on new-pc
+		// ... clear_cache  is identical, save that it will
+		// immediately be followed by a new PC, so we don't
+		// need to worry about that other than to drop
+		// CYC and STB here.
+		if (i_new_pc)
 		begin
-			// End any bus cycle on a reset, or a return ACK
-			// or error.
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
-		end else if ((!o_wb_cyc)&&(
-				// Start if the last instruction output was
-				// accepted, *and* it wasn't a bus error
-				// response
-				((i_stalled_n)&&(!o_illegal))
-				// Start if the last bus result ended up
-				// invalid
-				||(invalid)
-				// Start on any request for a new address
-				||(i_new_pc)))
-		begin
-			// Initiate a bus transaction
-			o_wb_cyc <= 1'b1;
-			o_wb_stb <= 1'b1;
-		end else if (o_wb_cyc)
-		begin
-			// If our request has been accepted, then drop the
-			// strobe line
-			if (!i_wb_stall)
-				o_wb_stb <= 1'b0;
-
-			// Abort on new-pc
-			// ... clear_cache  is identical, save that it will
-			// immediately be followed by a new PC, so we don't
-			// need to worry about that other than to drop
-			// CYC and STB here.
-			if (i_new_pc)
-			begin
-				o_wb_cyc <= 1'b0;
-				o_wb_stb <= 1'b0;
-			end
 		end
+	end
 
 	//
 	// If during the current bus request, a command came in from the CPU
@@ -144,10 +144,10 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	initial	invalid = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||(!o_wb_cyc))
-			invalid <= 1'b0;
-		else if (i_new_pc)
-			invalid <= 1'b1;
+	if ((i_reset)||(!o_wb_cyc))
+		invalid <= 1'b0;
+	else if (i_new_pc)
+		invalid <= 1'b1;
 
 	// The wishbone request address, o_wb_addr
 	//
@@ -160,10 +160,10 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	initial	o_wb_addr= 0;
 	always @(posedge i_clk)
-		if (i_new_pc)
-			o_wb_addr  <= i_pc[AW+1:2];
-		else if ((o_valid)&&(i_stalled_n)&&(!o_illegal))
-			o_wb_addr  <= o_wb_addr + 1'b1;
+	if (i_new_pc)
+		o_wb_addr  <= i_pc[AW+1:2];
+	else if ((o_valid)&&(i_stalled_n)&&(!o_illegal))
+		o_wb_addr  <= o_wb_addr + 1'b1;
 
 	// The instruction returned is given by the data returned from the bus.
 	always @(posedge i_clk)
@@ -181,39 +181,39 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	initial o_valid   = 1'b0;
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||(i_new_pc)||(i_clear_cache))
-		begin
-			// On any reset, request for a new PC (i.e. a branch),
-			// or a request to clear our cache (i.e. the data
-			// in memory may have changed), we invalidate any
-			// output.
-			o_valid   <= 1'b0;
-			o_illegal <= 1'b0;
-		end else if ((o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
-		begin
-			// Otherwise, at the end of our bus cycle, the
-			// answer will be valid.  Well, not quite.  If the
-			// user requested something mid-cycle (i_new_pc)
-			// or (i_clear_cache), then we'll have to redo the
-			// bus request, so we aren't valid.
-			//
-			o_valid   <= 1'b1;
-			o_illegal <= ( i_wb_err);
-		end else if (i_stalled_n)
-		begin
-			// Once the CPU accepts any result we produce, clear
-			// the valid flag, lest we send two identical
-			// instructions to the CPU.
-			//
-			o_valid <= 1'b0;
-			//
-			// o_illegal doesn't change ... that way we don't
-			// access the bus again until a new address request
-			// is given to us, via i_new_pc, or we are asked
-			//  to check again via i_clear_cache
-			//
-			// o_illegal <= (!i_stalled_n);
-		end
+	if ((i_reset)||(i_new_pc)||(i_clear_cache))
+	begin
+		// On any reset, request for a new PC (i.e. a branch),
+		// or a request to clear our cache (i.e. the data
+		// in memory may have changed), we invalidate any
+		// output.
+		o_valid   <= 1'b0;
+		o_illegal <= 1'b0;
+	end else if ((o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
+	begin
+		// Otherwise, at the end of our bus cycle, the
+		// answer will be valid.  Well, not quite.  If the
+		// user requested something mid-cycle (i_new_pc)
+		// or (i_clear_cache), then we'll have to redo the
+		// bus request, so we aren't valid.
+		//
+		o_valid   <= 1'b1;
+		o_illegal <= ( i_wb_err);
+	end else if (i_stalled_n)
+	begin
+		// Once the CPU accepts any result we produce, clear
+		// the valid flag, lest we send two identical
+		// instructions to the CPU.
+		//
+		o_valid <= 1'b0;
+		//
+		// o_illegal doesn't change ... that way we don't
+		// access the bus again until a new address request
+		// is given to us, via i_new_pc, or we are asked
+		//  to check again via i_clear_cache
+		//
+		// o_illegal <= (!i_stalled_n);
+	end
 
 	// The o_pc output shares its value with the (last) wishbone address
 	assign	o_pc = { o_wb_addr, 2'b00 };
@@ -262,19 +262,19 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// Assume we start from a reset condition
 	initial	`ASSUME(i_reset);
 	always @(*)
-		if (!f_past_valid)
-			`ASSUME(i_reset);
+	if (!f_past_valid)
+		`ASSUME(i_reset);
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_reset)))
-			`ASSUME(i_new_pc);
+	if ((f_past_valid)&&($past(i_reset)))
+		`ASSUME(i_new_pc);
 
 	// There will also be a i_new_pc request following any request to clear
 	// the cache.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_clear_cache)))
-			`ASSUME(i_new_pc);
+	if ((f_past_valid)&&($past(i_clear_cache)))
+		`ASSUME(i_new_pc);
 
 	//
 	//
@@ -302,12 +302,12 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// Count the number of clocks it takes the CPU to respond to our
 	// instruction.
 	always @(posedge i_clk)
-		// If no instruction is ready, then keep our counter at zero
-		if ((i_reset)||(!o_valid)||(i_stalled_n))
-			f_cpu_delay <= 0;
-		else
-			// Otherwise, count the clocks the CPU takes to respond
-			f_cpu_delay <= f_cpu_delay + 1'b1;
+	// If no instruction is ready, then keep our counter at zero
+	if ((i_reset)||(!o_valid)||(i_stalled_n))
+		f_cpu_delay <= 0;
+	else
+		// Otherwise, count the clocks the CPU takes to respond
+		f_cpu_delay <= f_cpu_delay + 1'b1;
 
 `ifdef	PREFETCH
 	// Only *assume* that we are less than F_CPU_DELAY if we are not
@@ -318,7 +318,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
-			.F_OPT_CLK2FFLOGIC(1'b0),
 			.F_OPT_RMW_BUS_OPTION(0),
 			.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
@@ -337,30 +336,30 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// Assertions about our wishbone control outputs first
 	// Prefetches don't write
 	always @(posedge i_clk)
-		if (o_wb_stb)
-			assert(!o_wb_we);
+	if (o_wb_stb)
+		assert(!o_wb_we);
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(f_past_valid))
-				&&($past(i_clear_cache,2))
-				&&($past(o_wb_cyc,2)))
-			// Make sure any clear-cache transaction is aborted,
-			// *and* that no valid instructions get sent to the
-			// CPU
-			assert((!$past(o_wb_cyc))||(!o_wb_cyc));
+	if ((f_past_valid)&&($past(f_past_valid))
+			&&($past(i_clear_cache,2))
+			&&($past(o_wb_cyc,2)))
+		// Make sure any clear-cache transaction is aborted,
+		// *and* that no valid instructions get sent to the
+		// CPU
+		assert((!$past(o_wb_cyc))||(!o_wb_cyc));
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_valid))&&(o_valid))
-			assert(o_wb_addr == $past(o_wb_addr));
+	if ((f_past_valid)&&($past(o_valid))&&(o_valid))
+		assert(o_wb_addr == $past(o_wb_addr));
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(!i_reset))&&($past(invalid)))
-			assert(o_wb_cyc);
+	if ((f_past_valid)&&($past(!i_reset))&&($past(invalid)))
+		assert(o_wb_cyc);
 
 	// Any time the CPU accepts an instruction, assert that on the
 	// valid line will be low on the next clock
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(o_valid))&&($past(i_stalled_n)))
-			assert(!o_valid);
+	if ((f_past_valid)&&($past(o_valid))&&($past(i_stalled_n)))
+		assert(!o_valid);
 
 	// Since we only change our output on a response from the bus, we
 	// need to insist that the item has been read by the CPU before
@@ -370,33 +369,33 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// one is valid--lest the CPU never accept the old instruction and we
 	// have nothing to do with the data when the bus request returns.
 	always @(*)
-		if (o_wb_cyc)
-			assert(!o_valid);
+	if (o_wb_cyc)
+		assert(!o_valid);
 
 	// If we just got a valid instruction from the wishbone, assert that
 	// the instruction is listed as valid on the next instruction cycle
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_reset))
-			&&($past(o_wb_cyc))
-			&&($past(!i_clear_cache))
-			&&($past(i_wb_ack))&&(!$past(i_wb_err)))
-		begin
-			if (!invalid)
-				assert(o_valid);
-		end
+	if ((f_past_valid)&&(!$past(i_reset))
+		&&($past(o_wb_cyc))
+		&&($past(!i_clear_cache))
+		&&($past(i_wb_ack))&&(!$past(i_wb_err)))
+	begin
+		if (!invalid)
+			assert(o_valid);
+	end
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(i_clear_cache)))
-			assert(!o_valid);
+	if ((f_past_valid)&&($past(i_clear_cache)))
+		assert(!o_valid);
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(f_past_valid))
-				&&($past(i_clear_cache,2))
-				&&($past(o_wb_cyc,2)))
-			// Make sure any clear-cache transaction is aborted,
-			// *and* that no valid instructions get sent to the
-			// CPU
-			assert(!o_valid);
+	if ((f_past_valid)&&($past(f_past_valid))
+			&&($past(i_clear_cache,2))
+			&&($past(o_wb_cyc,2)))
+		// Make sure any clear-cache transaction is aborted,
+		// *and* that no valid instructions get sent to the
+		// CPU
+		assert(!o_valid);
 
 	//
 	// Assertions about our return responses
@@ -434,17 +433,17 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	initial	f_last_pc_valid = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||(i_clear_cache)||(i_new_pc)||(invalid))
-			f_last_pc_valid <= 1'b0;
-		else if (o_valid)
-			f_last_pc_valid <= (!o_illegal);
+	if ((i_reset)||(i_clear_cache)||(i_new_pc)||(invalid))
+		f_last_pc_valid <= 1'b0;
+	else if (o_valid)
+		f_last_pc_valid <= (!o_illegal);
 
 	// initial	f_last_pc = 0;
 	always @(posedge i_clk)
-		if (o_valid)
-			f_last_pc  <= o_pc[AW+1:2];
-		else if (f_last_pc_valid)
-			assert(o_pc[AW+1:2] == f_last_pc + 1'b1);
+	if (o_valid)
+		f_last_pc  <= o_pc[AW+1:2];
+	else if (f_last_pc_valid)
+		assert(o_pc[AW+1:2] == f_last_pc + 1'b1);
 
 	always @(*)
 		assert(o_pc[1:0] == 2'b00);
@@ -456,9 +455,9 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// The o_valid && !$past(o_valid) is necessary because f_last_pc_valid
 	// will be different by the second o_valid.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(o_valid)
-				&&(!$past(o_valid))&&(f_last_pc_valid))
-			assert(o_pc[AW+1:2] == (f_last_pc + 1'b1));
+	if ((f_past_valid)&&(o_valid)
+			&&(!$past(o_valid))&&(f_last_pc_valid))
+		assert(o_pc[AW+1:2] == (f_last_pc + 1'b1));
 
 	// Let's also keep track of the address the CPU wants us to return.
 	// Any time the CPU branches to a new_pc, we'll record that request.
@@ -470,32 +469,30 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		assume(i_pc[1:0] == 2'b00);
 	initial	f_req_addr = 0;
 	always @(posedge i_clk)
-		if (i_new_pc)
-			f_req_addr <= i_pc[AW+1:2];
-		else if ((!invalid)&&(o_wb_cyc)&&(i_wb_ack)&&(!i_wb_err))
-			f_req_addr <= f_req_addr + 1'b1;
+	if (i_new_pc)
+		f_req_addr <= i_pc[AW+1:2];
+	else if ((!invalid)&&(o_wb_cyc)&&(i_wb_ack)&&(!i_wb_err))
+		f_req_addr <= f_req_addr + 1'b1;
 
 	// Let's also keep the formal methods on track.  Any time we are
 	// requesting a value, it should either be from the req_addr, or if
 	// not a new value should've come in rendering this one invalid.
 	always @(posedge i_clk)
-		if (o_wb_cyc)
-			assert((invalid)||(f_req_addr == o_wb_addr));
-		// This isn't good enough for induction, so we'll need to
-		// constrain this further
-		else if ((!o_valid)&&(!i_new_pc)&&(!i_reset))
-			assert(f_req_addr == o_wb_addr);
+	if (o_wb_cyc)
+		assert((invalid)||(f_req_addr == o_wb_addr));
+	// This isn't good enough for induction, so we'll need to
+	// constrain this further
+	else if ((!o_valid)&&(!i_new_pc)&&(!i_reset))
+		assert(f_req_addr == o_wb_addr);
 
 	// In this version, invalid should only ever be high for one cycle.
 	// CYC should be high on the cycle following--if ever.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(invalid)))
-			assert(!invalid);
+	if ((f_past_valid)&&($past(invalid)))
+		assert(!invalid);
 
-	reg	[AW:0]		const_addr;
-	reg	[DW-1:0]	const_insn;
-	assign	const_addr = $anyconst;
-	assign	const_insn = $anyconst;
+	(* anyconst *) reg	[AW:0]		const_addr;
+	(* anyconst *) reg	[DW-1:0]	const_insn;
 
 	wire	f_this_addr, f_this_pc, f_this_req, f_this_data;
 	assign	f_this_addr = (o_wb_addr ==   const_addr[AW-1:0]);

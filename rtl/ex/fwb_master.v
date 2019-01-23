@@ -101,12 +101,6 @@ module	fwb_master(i_clk, i_reset,
 	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
 	//
 	//
-	// F_OPT_CLK2FFLOGIC needs to be set to true any time the clk2fflogic
-	// command is present in the yosys script.  If clk2fflogic isn't used,
-	// then setting this parameter to zero will eliminate some formal
-	// tests which would then be inappropriate.
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
-	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
 	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
 				? F_MAX_STALL : F_MAX_ACK_DELAY;
@@ -185,30 +179,6 @@ module	fwb_master(i_clk, i_reset,
 		`SLAVE_ASSERT(!i_wb_ack);
 		`SLAVE_ASSERT(!i_wb_err);
 	end
-
-	// Things can only change on the positive edge of the clock
-`ifdef	VERIFIC
-	(* gclk *) wire gbl_clock;
-	global clocking @(posedge gbl_clock);
-	endclocking
-`endif
-
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin : FORCE_POSEDGE_CLK
-		always @($global_clock)
-		if ((f_past_valid)&&(!$rose(i_clk)))
-		begin
-			assert($stable(i_reset));
-			`SLAVE_ASSUME($stable(i_wb_cyc));
-			`SLAVE_ASSUME($stable(f_request)); // The entire request should b stabl
-			//
-			`SLAVE_ASSERT($stable(i_wb_ack));
-			`SLAVE_ASSERT($stable(i_wb_stall));
-			`SLAVE_ASSERT($stable(i_wb_idata));
-			`SLAVE_ASSERT($stable(i_wb_err));
-		end
-
-	end endgenerate
 
 	always @(*)
 	if (!f_past_valid)

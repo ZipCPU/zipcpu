@@ -114,12 +114,14 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	output	reg [(BW-1):0]	o_quotient;
 	output	wire	[3:0]	o_flags;
 
-	assign o_err      = $anyseq;
-	assign o_quotient = $anyseq;
+	(* anyseq *)	reg			any_err;
+	(* anyseq *)	reg	[(BW-1):0]	any_quotient;
+	(* anyseq *)	reg	[5:0]		wait_time;
+
+	assign o_err      = any_err;
+	assign o_quotient = any_quotient;
 
 	reg	[5:0]	r_busy_counter;
-	wire	[5:0]	wait_time;
-	assign	wait_time = $anyseq;
 
 	always @(*)
 		assume(wait_time > 5'h1);
@@ -148,8 +150,7 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	else
 		o_valid <= (r_busy_counter == 1);
 
-	wire	[3:0]	any_flags;
-	assign	any_flags = $anyseq;
+	(* anyseq *)	reg	[3:0]	any_flags;
 
 	assign o_flags    = (o_valid) ? 
 			{ 1'b0, o_quotient[31], any_flags[1],

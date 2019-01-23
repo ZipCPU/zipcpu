@@ -318,7 +318,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 //
 //
 //
-	reg	[3:1]			tlb_flags	[0:(TBL_SIZE-1)];
+	reg	[3:0]			tlb_flags	[0:(TBL_SIZE-1)];
+	wire	[3:0]			s_tlb_flags;
 	reg	[(LGCTXT-1):0]		tlb_cdata	[0:(TBL_SIZE-1)];
 	reg	[(VAW-1):0]		tlb_vdata	[0:(TBL_SIZE-1)];
 	reg	[(PAW-1):0]		tlb_pdata	[0:(TBL_SIZE-1)];
@@ -389,7 +390,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			tlb_pdata[wr_tlb_addr]<=i_wbs_data[(AW+1):LGPGSZB];
 		// Set the context register for the page
 		if (wr_vtable)
-			tlb_flags[wr_tlb_addr] <= i_wbs_data[3:1];
+			tlb_flags[wr_tlb_addr] <= { i_wbs_data[3:1], 1'b0 };
 		if (wr_vtable)
 			tlb_cdata[wr_tlb_addr][(LGLCTX-1):0]
 				<= i_wbs_data[(LGLCTX+4-1):4];
@@ -549,6 +550,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	end
 
 `ifdef	FORMAL
+	reg	f_past_valid;
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(r_pending))&&(r_pending)&&($past(o_rtn_stall))&&(i_wbm_cyc)&&(!o_stb))
 		assert(s_pending);
@@ -589,15 +592,16 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 	// Third clock: Read from the address the virtual table offset,
 	// whether read-only, etc.
-	assign	ro_flag     = tlb_flags[s_tlb_addr][`ROFLAG];
-	assign	exe_flag    = tlb_flags[s_tlb_addr][`EXEFLG];
+	assign	s_tlb_flags = tlb_flags[s_tlb_addr];
+	assign	ro_flag     = s_tlb_flags[`ROFLAG];
+	assign	exe_flag    = s_tlb_flags[`EXEFLG];
+	assign	cachable    = s_tlb_flags[`CHFLAG];
 	assign	simple_miss = (s_pending)&&(s_tlb_miss);
 	assign	ro_miss     = (s_pending)&&(s_tlb_hit)&&(r_we)&&(ro_flag);
 	assign	exe_miss    = (s_pending)&&(s_tlb_hit)&&(r_exe)&&(!exe_flag);
 	assign	table_err   = (s_pending)&&(!s_tlb_miss)&&(!s_tlb_hit);
 	assign	vpage       = tlb_vdata[s_tlb_addr];
 	assign	ppage	    = tlb_pdata[s_tlb_addr];
-	assign	cachable    = tlb_flags[s_tlb_addr][`CHFLAG];
 
 	initial	pf_cachable = 1'b0;
 	always @(posedge i_clk)
@@ -784,13 +788,12 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	assign	unused = r_ppage;
 	generate if (4+LGCTXT < LGPGSZB)
 	begin
-		wire	unused_data;
+		wire	[LGPGSZB-(4+LGCTXT)-1:0]	unused_data;
 		assign	unused_data = i_wbs_data[LGPGSZB-1:4+LGCTXT];
 	end endgenerate
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
-	reg	f_past_valid;
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
@@ -832,7 +835,6 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			.F_MAX_ACK_DELAY(F_MAX_STALL+F_MAX_WAIT+5),
 			.F_MAX_REQUESTS(F_MAX_REQ),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(0),
 			.F_OPT_MINCLOCK_DELAY(0))
 		busslave(i_clk, i_reset,
 				i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_addr,
@@ -846,7 +848,6 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 			.F_MAX_ACK_DELAY(F_MAX_WAIT),
 			.F_MAX_REQUESTS(F_MAX_REQ),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(0),
 			.F_OPT_MINCLOCK_DELAY(0))
 		busmaster(i_clk, i_reset,
 				o_cyc, o_stb, o_we, o_addr,
@@ -1001,6 +1002,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	if ((f_past_valid)&&(!kernel_context)&&(r_pending)&&(!last_page_valid))
 		f_last_page <= s_tlb_addr;
 
+	wire	[3:0]	tlb_flag_last_page;
+	assign	tlb_flag_last_page = tlb_flags[f_last_page];
 	always @(*)
 	if (last_page_valid)
 	begin
@@ -1008,8 +1011,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		assert(last_tlb   == f_last_page);
 		assert(last_ppage == tlb_pdata[f_last_page]);
 		assert(last_vpage == tlb_vdata[f_last_page]);
-		assert(last_ro    == tlb_flags[f_last_page][`ROFLAG]);
-		assert(last_exe   == tlb_flags[f_last_page][`EXEFLG]);
+		assert(last_ro    == tlb_flag_last_page[`ROFLAG]);
+		assert(last_exe   == tlb_flag_last_page[`EXEFLG]);
 		assert(r_context_word[LGCTXT-1:1] == tlb_cdata[f_last_page][LGCTXT-1:1]);
 		if (!r_context_word[0])
 			assert(!tlb_cdata[f_last_page][0]);

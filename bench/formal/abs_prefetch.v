@@ -92,6 +92,10 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 
 	reg	[(AW-1):0]	r_pc;
+	reg			waiting_on_pc;
+	reg	[5:0]		wait_for_valid;
+
+
 
 	always @(posedge i_clk)
 	if (i_new_pc)
@@ -99,21 +103,20 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	else if ((o_valid)&&(i_stall_n))
 		r_pc <= r_pc + 1'b1;
 
-	assign	o_pc = { (o_valid) ? r_pc : $anyseq, 2'b00 };
+	(* anyconst *) 	reg	[(AW-1):0]	any_pc;
+	assign	o_pc = { (o_valid) ? r_pc : any_pc, 2'b00 };
 
 
+	(* anyseq *)	reg	any_illegal;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache)||(i_new_pc)||(waiting_on_pc))
 		o_illegal <= 1'b0;
 	else if ((!o_illegal)&&(wait_for_valid == 1'b1))
-		o_illegal <= $anyseq;
+		o_illegal <= any_illegal;
 
-	wire	[5:0]	wait_time;
-	assign	wait_time = $anyseq;
+	(* anyseq *)	reg	[5:0]	wait_time;
 	always @(*)
 		assume(wait_time > 0);
-
-	reg	waiting_on_pc;
 
 	initial	waiting_on_pc <= 1'b1;
 	always @(posedge i_clk)
@@ -121,8 +124,6 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		waiting_on_pc <= 1'b1;
 	else if (i_new_pc)
 		waiting_on_pc <= 1'b0;
-
-	reg	[5:0]	wait_for_valid;
 
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache))
@@ -132,8 +133,10 @@ module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	else if (wait_for_valid > 0)
 		wait_for_valid <= wait_for_valid - 1'b1;
 
+	(* anyseq *)	reg	[(BUSW-1):0]	any_insn;
+
 	assign	o_valid   = (!waiting_on_pc)&&(wait_for_valid == 0);
-	assign	o_insn    = $anyseq;
+	assign	o_insn    = any_insn;
 
 `ifdef	FORMAL
 `define	ASSUME	assume

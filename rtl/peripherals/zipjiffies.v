@@ -280,11 +280,9 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		assert(!int_set);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(new_set))&&($past(till_wb) < 0))
-		assert(o_int);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(new_set))&&($past(till_wb) < 0))
+	if ((!f_past_valid)||($past(i_reset)))
+		assert(!o_int);
+	else if (($past(new_set))&&($past(till_wb) < 0))
 		assert(o_int);
 
 	always @(posedge i_clk)

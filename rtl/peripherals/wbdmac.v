@@ -605,7 +605,6 @@ module wbdmac(i_clk, i_reset,
 	if ((!f_past_valid)||($past(i_reset)))
 		assert(dma_state == `DMA_IDLE);
 
-	parameter [0:0]	F_OPT_CLK2FFLOGIC = 1'b0;
 	parameter 	F_SLV_LGDEPTH = 3;
 	parameter 	F_MSTR_LGDEPTH = LGMEMLEN+1;
 
@@ -614,8 +613,7 @@ module wbdmac(i_clk, i_reset,
 
 	fwb_slave #(
 		.AW(2), .DW(32), .F_MAX_STALL(0), .F_MAX_ACK_DELAY(2),
-			.F_LGDEPTH(F_SLV_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC)
+			.F_LGDEPTH(F_SLV_LGDEPTH)
 		) control_port(i_clk, i_reset,
 		i_swb_cyc, i_swb_stb, i_swb_we, i_swb_addr, i_swb_data,4'b1111,
 			o_swb_ack, o_swb_stall, o_swb_data, 1'b0,
@@ -643,7 +641,6 @@ module wbdmac(i_clk, i_reset,
 
 	fwb_master #(.AW(AW), .DW(32), .F_MAX_STALL(4), .F_MAX_ACK_DELAY(8),
 			.F_LGDEPTH(F_MSTR_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1'b1),
 			.F_OPT_DISCONTINUOUS(1'b0),
 			.F_OPT_SOURCE(1'b1)

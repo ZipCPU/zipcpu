@@ -342,7 +342,6 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 `define	MASTER	fwb_counter
 `endif
 	`MASTER #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(1'b0),
 			// .F_MAX_REQUESTS(14), // Not quite true, can do more
 			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
 			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))

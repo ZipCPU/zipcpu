@@ -519,7 +519,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	output	reg	[31:0]	o_result;
 	*/
 
-	reg	[3:0]	r_op;
 	initial	o_wb_we = 1'b0;
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_stb)))
@@ -661,24 +660,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 	end endgenerate
 
-`ifdef	VERIFIC
-	assert property @(posedge i_cll)
-		disable iff (i_reset)||((o_wb_cyc_gbl)&&(i_wb_err))
-		(gbl_stb)&&(!o_busy)
-		|=> (o_busy)&&(o_wb_cyc_gbl)&&($stable(o_wb_we)) throughout
-			// Poss. stalled request
-			((o_wb_cyc_stb)&&(i_wb_stall) [*0:$]
-			// Request goes through
-		##1 or (((o_wb_cyc_gbl)&&(o_wb_cyc_stb)&&(!i_wb_stall))
-				// and is immediately acked
-				&&(i_wb_ack))
-		// or wait for the ack
-		  (o_wb_cyc_gbl)&&(o_wb_cyc_stb)&&(!i_wb_stall)&&(!i_wb_ack)
-		##1 (o_wb_cyc_gbl)&&(!o_wb_cyc_stb)&&(!i_wb_ack) [*0:$]
-		##1 (o_wb_cyc_gbl)&&(!o_wb_cyc_stb)&&(i_wb_ack))
-		// and return a value to the bus
-		##1 (o_valid)&&(o_result == $past(i_wb_data));
-`endif
 `endif
 endmodule
 //
