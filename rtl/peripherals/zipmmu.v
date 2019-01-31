@@ -340,7 +340,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	wire			kernel_context;
 	reg	[(LGCTXT-1):0]	r_context_word;
 	//
-	wire	[31:0]		w_control_data,w_vtable_reg,w_ptable_reg;
+	wire	[31:0]		w_control_data, w_ptable_reg;
+	reg	[31:0]		w_vtable_reg;
 	reg	[31:0]	status_word;
 	//
 	//
@@ -445,9 +446,14 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	/* v*rilator lint_on WIDTH */
 	assign	w_control_data[15: 0] = {{(16-LGCTXT){1'b0}}, r_context_word};
 	//
-	assign	w_vtable_reg[(DW-1):LGPGSZB] = tlb_vdata[wr_tlb_addr];
-	assign	w_vtable_reg[(LGLCTX+4-1):4] = { tlb_cdata[wr_tlb_addr][(LGLCTX-1):0] };
-	assign	w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr], tlb_accessed[wr_tlb_addr] };
+	always @(*)
+	begin
+		w_vtable_reg = 0;
+		w_vtable_reg[(DW-1):LGPGSZB] = tlb_vdata[wr_tlb_addr];
+		w_vtable_reg[(LGLCTX+4-1):4] = { tlb_cdata[wr_tlb_addr][(LGLCTX-1):0] };
+		w_vtable_reg[ 3:0]  = { tlb_flags[wr_tlb_addr][3:1],
+					tlb_accessed[wr_tlb_addr] };
+	end
 	//
 	assign	w_ptable_reg[(DW-1):LGPGSZB] = { {(DW-PAW-LGPGSZB){1'b0}},
 					tlb_pdata[wr_tlb_addr] };
@@ -791,6 +797,9 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 		wire	[LGPGSZB-(4+LGCTXT)-1:0]	unused_data;
 		assign	unused_data = i_wbs_data[LGPGSZB-1:4+LGCTXT];
 	end endgenerate
+
+	wire	unused_always;
+	assign	unused_always = s_tlb_flags[0];
 	// verilator lint_on  UNUSED
 
 `ifdef	FORMAL
