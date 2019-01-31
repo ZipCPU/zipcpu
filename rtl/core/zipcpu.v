@@ -74,7 +74,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //{{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -490,11 +490,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	begin : GEN_OP_STALL
 		reg	r_cc_invalid_for_dcd;
 		always @(posedge i_clk)
-			r_cc_invalid_for_dcd <= (wr_flags_ce)
-				||(wr_reg_ce)&&(wr_reg_id[3:0] == `CPU_CC_REG)
-				||(op_valid)&&((op_wF)||((op_wR)&&(op_R[3:0] == `CPU_CC_REG)))
-				||((alu_wF)||((alu_wR)&&(alu_reg[3:0] == `CPU_CC_REG)))
-				||(mem_busy)||(div_busy)||(fpu_busy);
+			r_cc_invalid_for_dcd <=
+				(set_cond)&&(op_valid)
+					&&((op_wF)||((op_wR)&&(op_R[4:0] == { op_gie, `CPU_CC_REG })))
+				||((r_cc_invalid_for_dcd)
+					&&((alu_busy)||(mem_rdbusy)||(div_busy)||(fpu_busy)));
 
 		assign	cc_invalid_for_dcd = r_cc_invalid_for_dcd;
 
@@ -637,7 +637,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//}}}
 
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
-			||(ibus_err_flag)||(idiv_err_flag)||(pending_interrupt)
+			||(ibus_err_flag)||(idiv_err_flag)
+			||(pending_interrupt)&&(!alu_phase)
 			||(alu_busy)||(div_busy)||(fpu_busy)||(op_break)
 			||((OPT_PIPELINED)&&(
 				((OPT_LOCK)&&(prelock_stall))
@@ -2618,6 +2619,134 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	//////////////////////////////////////////////
 	//
 	//
+	// The debugging interface
+	//
+	//
+	//////////////////////////////////////////////
+	//
+	//
+
+	// Reading from the debugging interface
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(i_halt))&&(!$past(i_dbg_we)))
+	begin
+`ifdef	NO_DISTRIBUTED_RAM
+		if ($past(i_dbg_reg[3:1],2) != 3'h7)
+			assert(o_dbg_reg
+				== regset[i_dbg_reg[$past(i_dbg_reg,2)]]);
+`else
+		if ($past(i_dbg_reg[3:1]) != 3'h7)
+			assert(o_dbg_reg == regset[i_dbg_reg[$past(i_dbg_reg)]]);
+`endif
+		if ($past(i_dbg_reg[4:0]) == 5'h0f)
+			assert(o_dbg_reg[AW+1:0] == { ipc[(AW+1):2], ihalt_phase, 1'b0});
+		if ($past(i_dbg_reg[4:0]) == 5'h1f)
+			assert(o_dbg_reg[AW+1:0] == { upc[(AW+1):2], uhalt_phase, 1'b0});
+		if ($past(i_dbg_reg[4:0]) == 5'h0e)
+		begin
+			assert(o_dbg_reg[14:6] == w_iflags[14:6]);
+			assert(o_dbg_reg[ 4:0] == w_iflags[ 4:0]);
+		end
+
+		if ($past(i_dbg_reg[4:0]) == 5'h1e)
+		begin
+			assert(o_dbg_reg[14:6] == w_uflags[14:6]);
+			assert(o_dbg_reg[ 4:0] == w_uflags[ 4:0]);
+		end
+
+		if ($past(i_dbg_reg[3:0]) == 4'he)
+		begin
+			assert(o_dbg_reg[15] == 1'b0);
+			assert(o_dbg_reg[31:23] == w_cpu_info);
+			assert(o_dbg_reg[`CPU_GIE_BIT] == gie);
+		end
+	end
+
+	reg	[2:0]	f_dbg_pc_seq, f_dbg_cc_seq, f_dbg_reg_seq;
+	initial	f_dbg_pc_seq = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_dbg_pc_seq <= 0;
+	else begin
+		f_dbg_pc_seq[0] <= r_halted && i_dbg_we
+				&& (i_dbg_reg == { gie, `CPU_PC_REG });
+		f_dbg_pc_seq[2:1] <= f_dbg_pc_seq[1:0];
+	end
+
+	always @(posedge i_clk)
+	begin
+		if (f_dbg_pc_seq[0])
+			assert(dbgv && alu_reg == { gie, `CPU_PC_REG });
+		if (f_dbg_pc_seq[1])
+		begin
+			assert(clear_pipeline);
+			assert(pf_request_address == $past(i_dbg_data,2));
+		end
+	end
+
+	initial	f_dbg_cc_seq = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_dbg_cc_seq <= 0;
+	else begin
+		f_dbg_cc_seq[0] <= r_halted && i_dbg_we
+				&& (i_dbg_reg == { gie, `CPU_CC_REG });
+		f_dbg_cc_seq[2:1] <= f_dbg_cc_seq[1:0];
+	end
+
+	always @(posedge i_clk)
+	begin
+		if (f_dbg_cc_seq[1])
+		begin
+			assert(wr_reg_ce);
+			assert(wr_reg_id == $past(i_dbg_reg,2));
+			assert(wr_spreg_vl == $past(i_dbg_data));
+		end
+	end
+
+	initial	f_dbg_reg_seq = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_dbg_reg_seq <= 0;
+	else begin
+		f_dbg_reg_seq[0] <= r_halted && i_dbg_we
+				&& (i_dbg_reg[3:1] != 3'h7 );
+		f_dbg_reg_seq[2:1] <= f_dbg_reg_seq[1:0];
+	end
+
+	always @(posedge i_clk)
+	begin
+		if (f_dbg_reg_seq[0])
+		begin
+			assert(dbgv && alu_reg == $past(i_dbg_reg));
+			assert($past(i_dbg_reg[3:1]) != 3'h7);
+			assert(dbg_val == $past(i_dbg_data));
+		end
+
+
+		if (f_dbg_reg_seq[1])
+		begin
+			assert(wr_reg_ce);
+			assert(wr_gpreg_vl == $past(i_dbg_data,2));
+			assert(wr_reg_id == $past(i_dbg_reg,2));
+		end
+	end
+
+/*
+`ifdef	NO_DISTRIBUTED_RAM
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(f_past_valid)))
+		assert(o_dbg_ack == $past(i_dbg_stb,2));
+`else // NO_DISTRIBUTED_RAM
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(f_past_valid)))
+		assert(o_dbg_ack == $past(i_dbg_stb));
+`endif
+*/
+
+	//////////////////////////////////////////////
+	//
+	//
 	// Problem limiting assumptions
 	//
 	//
@@ -2687,21 +2816,17 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(*)
 		assume(!i_dbg_we);
 
+	////////////////////////////////////////////////////////////////
+	//
+	//
+	// Reset checks
+	//
+	//
+	////////////////////////////////////////////////////////////////
+	//
+	//
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-////                                                                       ////
-////                                                                       ////
-////  Formal proof, phase one                                              ////
-////                                                                       ////
-////  This section of the proof is built around fairly simple properties.  ////
-////  It is focused upon making sure that the assertions of the component  ////
-////  properties hold.  The goal here is to avoid any significantly        ////
-////  complex properties--we'll catch those in the next section.           ////
-////                                                                       ////
-////                                                                       ////
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
+
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
@@ -2799,6 +2924,40 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	if ((op_ce)&&(!clear_pipeline))
 		`ASSERT((adf_ce_unconditional)||(mem_ce)||(!op_valid));
 
+	//
+	// Make sure the dcd stage is never permanently stalled
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(alu_wR))&&(!$past(alu_wF))
+		&&($past(f_past_valid,2))&&(!$past(alu_wR,2))&&(!$past(alu_wF))
+		&&(!op_valid)&&(master_ce)
+		&&(!clear_pipeline)&&(!i_reset)
+		&&(!div_busy)&&(!div_valid)
+		&&(!mem_busy)&&(!mem_valid)&&(!bus_err)
+		&&(!alu_busy)&&(!alu_pc_valid)&&(!alu_valid)
+		&&(!fpu_busy)&&(!fpu_valid)&&(!fpu_error)
+		&&(!op_break)&&(!o_break)
+		&&(!w_switch_to_interrupt)
+		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
+	begin
+		if (OPT_PIPELINED)
+			assert(dcd_ce);
+		if (!dcd_valid)
+			assert(dcd_ce);
+	end
+
+	//
+	// Make sure the ops stage is never permanently stalled
+	always @(*)
+	if ((op_valid)&&(master_ce)&&(!clear_pipeline)&&(!i_reset)
+		&&(!div_busy)&&(!div_valid)
+		&&(!mem_busy)&&(!mem_valid)&&(!bus_err)
+		&&(!alu_busy)&&(!alu_pc_valid)
+		&&(!fpu_busy)&&(!fpu_valid)&&(!fpu_error)
+		&&(!op_break)&&(!o_break)
+		&&(!w_switch_to_interrupt)
+		&&(!alu_illegal)
+		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
+		`ASSERT(adf_ce_unconditional | mem_ce);
 
 	////////////////////////////////////////////////
 	//
@@ -3114,6 +3273,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				3'h6:	`ASSERT(op_F == 8'h40);	// GE (!N)
 				3'h7:	`ASSERT(op_F == 8'h20);	// NC
 				endcase
+
+				if ((fc_op_wR)&&(fc_op_Rid[4:0] == { gie, `CPU_PC_REG}))
+					`ASSERT(!op_phase);
+				else
+					`ASSERT(f_op_phase == op_phase);
 			end // Bit order is { (flags_not_used), VNCZ mask, VNCZ value }
 			`ASSERT((!op_wR)||(fc_op_Rid[4:0] == op_R));
 			`ASSERT(((!op_wR)&&(!op_rA))||(fc_op_Aid[4:0] == op_Aid[4:0]));
@@ -3766,7 +3930,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			fc_alu_prepipe, fc_alu_sim, fc_alu_sim_immv
 			);
 
-
 	always @(posedge i_clk)
 	if (!wr_reg_ce)
 	begin
@@ -3795,7 +3958,8 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 					||(fc_alu_Rid[4:0] == alu_reg));
 				if (alu_busy)
 					`ASSERT(fc_alu_wF == alu_wF);
-				if (fc_alu_Rid[3:1] == 3'h7)
+				if ((fc_alu_Rid[3:1] == 3'h7)&&(alu_wR)
+					&&(fc_alu_Rid[4:0] != { gie, 4'hf }))
 					`ASSERT(pending_sreg_write);
 			end else if (mem_rdbusy)
 			begin
@@ -3809,6 +3973,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			//else
 			if ((alu_busy)&&(alu_wR))
 				`ASSERT(fc_alu_wR);
+
+			if (alu_busy || mem_rdbusy || div_busy)
+			begin
+				if ((fc_alu_wR)&&(fc_alu_Rid[4:0] == { gie, `CPU_PC_REG}))
+					`ASSERT(!alu_phase);
+				else
+					`ASSERT(f_alu_phase == alu_phase);
+			end
 		end
 
 	end else if (!dbgv) // && wr_reg_ce
@@ -3859,6 +4031,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			`ASSERT(fc_alu_wR);
 		end if (!OPT_PIPELINED_BUS_ACCESS)
 			`ASSERT(fc_alu_Rid[4:0] == mem_wreg);
+
+		if ((fc_alu_wR)&&(fc_alu_Rid[4:0] == { gie, `CPU_PC_REG}))
+			`ASSERT(!alu_phase);
+		else
+			`ASSERT(f_alu_phase == alu_phase);
 	end else if ((mem_busy)&&(fc_alu_M))
 	begin
 		// Ongoing store operation
@@ -3866,6 +4043,15 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		`ASSERT(fc_alu_M);
 		`ASSERT(!fc_alu_wR);
 	end
+
+	// always @(posedge i_clk)
+	// if ((OPT_PIPELINED)&&(cc_invalid_for_dvd))
+	// begin
+	//	assert((op_valid &&(fc_op_wF
+	//			||(fc_op_wR &&(fc_op_Aid[3:0]==`CPU_CC_REG))))
+	//		||fc_alu_wF
+	//		||((fc_alu_wR &&(fc_alu_Aid[3:0] == `CPU_CC_REG))));
+	// end
 
 
 	////////////////////////////////////////////////

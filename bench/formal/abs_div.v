@@ -74,7 +74,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -118,8 +118,10 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	(* anyseq *)	reg	[(BW-1):0]	any_quotient;
 	(* anyseq *)	reg	[5:0]		wait_time;
 
-	assign o_err      = any_err;
-	assign o_quotient = any_quotient;
+	always @(*)
+		o_err      = any_err;
+	always @(*)
+		o_quotient = any_quotient;
 
 	reg	[5:0]	r_busy_counter;
 

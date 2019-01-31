@@ -19,7 +19,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -775,10 +775,13 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 `endif
 	always @(posedge i_clk)
 	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
-		f_insn_word = i_instruction;
+		f_insn_word <= i_instruction;
 	always @(posedge i_clk)
 	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
 		f_insn_gie = i_gie;
+	always @(*)
+	if (o_phase)
+		assert(r_nxt_half == f_insn_word[14:0]);
 
 	////////////////////////////
 	//
