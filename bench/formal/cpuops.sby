@@ -1,0 +1,21 @@
+[options]
+mode prove
+depth 4
+
+[engines]
+smtbmc
+
+[script]
+read   -formal -D CPUOPS cpuops.v
+# read -formal -D CPUOPS mpyop.v
+read   -formal -D CPUOPS abs_mpy.v
+chparam -set IMPLYMENT_MPY 3 cpuops.v
+prep -top cpuops
+
+[files]
+../../rtl/core/cpuops.v
+../../rtl/core/mpyop.v
+../../rtl/cpudefs.v
+abs_mpy.v
+
+

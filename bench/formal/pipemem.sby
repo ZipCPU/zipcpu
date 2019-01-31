@@ -1,0 +1,31 @@
+[tasks]
+lcl_aligned_lock	local_bus alignment_err lock
+lcl_aligned_nolock	local_bus alignment_err nolock
+lcl_noaligned_lock	local_bus noalignment_err lock
+lcl_noaligned_nolock	local_bus noalignment_err nolock
+nolcl_aligned_lock	nolocal_bus alignment_err lock
+nolcl_aligned_nolock	nolocal_bus alignment_err nolock
+nolcl_noaligned_lock	nolocal_bus noalignment_err lock
+nolcl_noaligned_nolock	nolocal_bus noalignment_err nolock
+
+[options]
+mode prove
+depth 20
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DPIPEMEM fwb_master.v
+read -formal -DPIPEMEM pipemem.v
+local_bus:   chparam -set WITH_LOCAL_BUS 1 pipemem
+nolocal_bus: chparam -set WITH_LOCAL_BUS 0 pipemem
+alignment_err:   chparam -set OPT_ALIGNMENT_ERR 1 pipemem
+noalignment_err: chparam -set OPT_ALIGNMENT_ERR 0 pipemem
+lock:   chparam -set IMPLEMENT_LOCK 1 pipemem
+nolock: chparam -set IMPLEMENT_LOCK 0 pipemem
+prep -top pipemem
+
+[files]
+../../rtl/core/pipemem.v
+../../rtl/ex/fwb_master.v

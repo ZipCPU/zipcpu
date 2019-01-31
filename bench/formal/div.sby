@@ -1,0 +1,13 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DDIV div.v
+prep -top div
+
+[files]
+../../rtl/core/div.v

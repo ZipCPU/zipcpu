@@ -1,0 +1,17 @@
+[options]
+mode prove
+depth 12
+
+[engines]
+smtbmc
+
+[script]
+read -formal wbdmac.v
+read -formal fwb_master.v
+read -formal fwb_slave.v
+prep -top wbdmac
+
+[files]
+../../rtl/peripherals/wbdmac.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v

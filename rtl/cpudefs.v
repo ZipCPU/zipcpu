@@ -28,7 +28,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2017, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -58,21 +58,6 @@
 //
 // The first couple options control the Zip CPU instruction set, and how
 // it handles various instructions within the set:
-//
-//
-// OPT_ILLEGAL_INSTRUCTION is part of a new section of code that is supposed
-// to recognize illegal instructions and interrupt the CPU whenever one such
-// instruction is encountered.  The goal is to create a soft floating point
-// unit via this approach, that can then be replaced with a true floating point
-// unit.  As I'm not there yet, it just catches illegal instructions and
-// interrupts the CPU on any such instruction--when defined.  Otherwise,
-// illegal instructions are quietly ignored and their behaviour is ...
-// undefined. (Many get treated like NOOPs ...)
-//
-// I recommend setting this flag so highly, that I'm likely going to remove
-// the option to turn this off in future versions of this CPU.
-//
-`define	OPT_ILLEGAL_INSTRUCTION
 //
 //
 //
@@ -239,6 +224,15 @@
 //
 //
 //
+// OPT_DCACHE enables a CPU data cache for (hopefully) better performance
+// in terms of speed.  It requires telling the CPU which parts of memory
+// can be cachable in terms of three separate address regions: one for the
+// SDRAM, one for the flash, and another for the block RAM.
+//
+`define	OPT_DCACHE
+//
+//
+//
 // OPT_PIPELINED_BUS_ACCESS controls whether or not LOD/STO instructions
 // can take advantaged of pipelined bus instructions.  To be eligible, the
 // operations must be identical (cannot pipeline loads and stores, just loads
@@ -261,7 +255,7 @@
 `endif	// OPT_SINGLE_FETCH
 //
 //
-// [EXPERIMENTAL]
+// [EXPERIMENTAL--and not (yet) finished]
 // OPT_MMU determines whether or not an MMU will be included in the ZipSystem
 // containing the ZipCPU.  When set, the ZipCPU will route all memory accesses
 // through the MMU as an address translator, creating a form of Virtual memory.

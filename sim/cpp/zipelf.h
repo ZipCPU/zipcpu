@@ -43,7 +43,7 @@
 
 class	ELFSECTION {
 public:
-	uint32_t	m_start, m_len;
+	uint32_t	m_start, m_len, m_vaddr;
 	char		m_data[4];
 };
 

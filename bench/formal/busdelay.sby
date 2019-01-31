@@ -1,0 +1,17 @@
+[options]
+mode prove
+depth 25
+
+[engines]
+smtbmc
+
+[script]
+read -formal -D BUSDELAY busdelay.v
+read -formal -D BUSDELAY fwb_slave.v
+read -formal -D BUSDELAY fwb_master.v
+prep -top busdelay
+
+[files]
+../../rtl/ex/busdelay.v
+../../rtl/ex/fwb_slave.v
+../../rtl/ex/fwb_master.v

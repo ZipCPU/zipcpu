@@ -44,7 +44,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2018, Gisselquist Technology, LLC
+// Copyright (C) 2015,2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -105,11 +105,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	parameter	F_MAX_STALL = 0;
 	parameter	F_MAX_ACK_DELAY=0;
 	//
-	// F_OPT_CLK2FFLOGIC shouldn't be needed.  However, if this component
-	// is being used as a component of a multi-clock formal design, then
-	// it will be necessary.  Set this any-time the design is being built
-	// with the yosys clk2fflogic command used as part of the yosys script.
-	parameter	[0:0]		F_OPT_CLK2FFLOGIC = 1'b0;
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_reset.
 	input	wire			i_clk, i_reset;
@@ -131,6 +126,7 @@ module	wbdblpriarb(i_clk, i_reset,
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
 	input	wire			i_ack, i_stall, i_err;
+`ifdef	FORMAL
 	output	wire	[(F_LGDEPTH-1):0]
 			f_nreqs_a, f_nacks_a, f_outstanding_a,
 			f_nreqs_b, f_nacks_b, f_outstanding_b,
@@ -138,6 +134,7 @@ module	wbdblpriarb(i_clk, i_reset,
 			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b,
 			f_b_nreqs_a, f_b_nacks_a, f_b_outstanding_a,
 			f_b_nreqs_b, f_b_nacks_b, f_b_outstanding_b;
+`endif
 
 	// All of our logic is really captured in the 'r_a_owner' register.
 	// This register determines who owns the bus.  If no one is requesting
@@ -242,18 +239,8 @@ module	wbdblpriarb(i_clk, i_reset,
 	end endgenerate
 
 `ifdef	FORMAL
-
+`define	ASSERT	assert
 `ifdef	WBDBLPRIARB
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		reg	f_last_clk;
-		initial	assume(!i_clk);
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
 `define	ASSUME	assume
 `else
 `define	ASSUME	assert
@@ -309,10 +296,10 @@ module	wbdblpriarb(i_clk, i_reset,
 	always @(posedge i_clk)
 	begin
 		if (o_cyc_a)
-			assert((i_a_cyc_a)||(i_b_cyc_a));
+			`ASSERT((i_a_cyc_a)||(i_b_cyc_a));
 		if (o_cyc_b)
-			assert((i_a_cyc_b)||(i_b_cyc_b));
-		assert((!o_cyc_a)||(!o_cyc_b));
+			`ASSERT((i_a_cyc_b)||(i_b_cyc_b));
+		`ASSERT((!o_cyc_a)||(!o_cyc_b));
 	end
 
 	always @(posedge i_clk)
@@ -321,14 +308,14 @@ module	wbdblpriarb(i_clk, i_reset,
 		if ($past(f_cyc))
 		begin
 			if (($past(o_cyc_a))&&(o_cyc_a))
-				assert($past(r_a_owner) == r_a_owner);
+				`ASSERT($past(r_a_owner) == r_a_owner);
 			if (($past(o_cyc_b))&&(o_cyc_b))
-				assert($past(r_a_owner) == r_a_owner);
+				`ASSERT($past(r_a_owner) == r_a_owner);
 		end else begin
 			if (($past(i_a_stb_a))||($past(i_a_stb_b)))
-				assert(r_a_owner);
+				`ASSERT(r_a_owner);
 			if (($past(i_b_stb_a))||($past(i_b_stb_b)))
-				assert(!r_a_owner);
+				`ASSERT(!r_a_owner);
 		end
 	end
 
@@ -337,7 +324,6 @@ module	wbdblpriarb(i_clk, i_reset,
 			.F_MAX_STALL(F_MAX_STALL),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm_a(i_clk, i_reset,
@@ -348,7 +334,6 @@ module	wbdblpriarb(i_clk, i_reset,
 			.F_MAX_STALL(F_MAX_STALL),
 			.F_MAX_ACK_DELAY(F_MAX_ACK_DELAY),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbm_b(i_clk, i_reset,
@@ -365,7 +350,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba_a(i_clk, i_reset,
@@ -375,7 +359,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wba_b(i_clk, i_reset,
@@ -385,7 +368,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb_a(i_clk, i_reset,
@@ -395,7 +377,6 @@ module	wbdblpriarb(i_clk, i_reset,
 	`F_SLAVE  #(.AW(AW), .DW(DW), .F_MAX_STALL(0),
 			.F_LGDEPTH(F_LGDEPTH),
 			.F_MAX_ACK_DELAY(0),
-			.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 			.F_OPT_RMW_BUS_OPTION(1),
 			.F_OPT_DISCONTINUOUS(1))
 		f_wbb_b(i_clk, i_reset,
@@ -408,48 +389,48 @@ module	wbdblpriarb(i_clk, i_reset,
 	begin
 		if (r_a_owner)
 		begin
-			assert(f_b_nreqs_a == 0);
-			assert(f_b_nreqs_b == 0);
+			`ASSERT(f_b_nreqs_a == 0);
+			`ASSERT(f_b_nreqs_b == 0);
 			//
-			assert(f_b_nacks_a == 0);
-			assert(f_b_nacks_b == 0);
+			`ASSERT(f_b_nacks_a == 0);
+			`ASSERT(f_b_nacks_b == 0);
 			//
 			if (i_a_cyc_a)
 			begin
-				assert(f_a_outstanding_a == f_outstanding_a);
-				assert(f_a_outstanding_b == 0);
-				assert(f_outstanding_b == 0);
-				assert(f_a_nreqs_b == 0);
-				assert(f_a_nacks_b == 0);
+				`ASSERT(f_a_outstanding_a == f_outstanding_a);
+				`ASSERT(f_a_outstanding_b == 0);
+				`ASSERT(f_outstanding_b == 0);
+				`ASSERT(f_a_nreqs_b == 0);
+				`ASSERT(f_a_nacks_b == 0);
 			end else if (i_a_cyc_b)
 			begin
-				assert(f_a_outstanding_b == f_outstanding_b);
-				assert(f_a_outstanding_a == 0);
-				assert(f_outstanding_a == 0);
-				assert(f_a_nreqs_a == 0);
-				assert(f_a_nacks_a == 0);
+				`ASSERT(f_a_outstanding_b == f_outstanding_b);
+				`ASSERT(f_a_outstanding_a == 0);
+				`ASSERT(f_outstanding_a == 0);
+				`ASSERT(f_a_nreqs_a == 0);
+				`ASSERT(f_a_nacks_a == 0);
 			end
 		end else begin
-			assert(f_a_nreqs_a == 0);
-			assert(f_a_nreqs_b == 0);
+			`ASSERT(f_a_nreqs_a == 0);
+			`ASSERT(f_a_nreqs_b == 0);
 			//
-			assert(f_a_nacks_a == 0);
-			assert(f_a_nacks_b == 0);
+			`ASSERT(f_a_nacks_a == 0);
+			`ASSERT(f_a_nacks_b == 0);
 			//
 			if (i_b_cyc_a)
 			begin
-				assert(f_b_outstanding_a == f_outstanding_a);
-				assert(f_b_outstanding_b == 0);
-				assert(f_outstanding_b == 0);
-				assert(f_b_nreqs_b == 0);
-				assert(f_b_nacks_b == 0);
+				`ASSERT(f_b_outstanding_a == f_outstanding_a);
+				`ASSERT(f_b_outstanding_b == 0);
+				`ASSERT(f_outstanding_b == 0);
+				`ASSERT(f_b_nreqs_b == 0);
+				`ASSERT(f_b_nacks_b == 0);
 			end else if (i_b_cyc_b)
 			begin
-				assert(f_b_outstanding_b == f_outstanding_b);
-				assert(f_b_outstanding_a == 0);
-				assert(f_outstanding_a == 0);
-				assert(f_b_nreqs_a == 0);
-				assert(f_b_nacks_a == 0);
+				`ASSERT(f_b_outstanding_b == f_outstanding_b);
+				`ASSERT(f_b_outstanding_a == 0);
+				`ASSERT(f_outstanding_a == 0);
+				`ASSERT(f_b_nreqs_a == 0);
+				`ASSERT(f_b_nacks_a == 0);
 			end
 		end
 	end

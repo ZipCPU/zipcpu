@@ -1,0 +1,48 @@
+[tasks]
+full		system  lock    dualread
+full_single	system  lock
+bare		nolocal lock    dualread
+nolock_nolocal	nolocal nolock  dualread
+nolock_system	system  nolock  dualread
+piped		system	lock    dualread
+cover           system lock     dualread
+cover_pipe      system lock     dualread cover piped
+
+[options]
+~cover: mode prove
+cover:  mode cover
+depth 16
+full:           depth 10
+bare:           depth 11
+nolock_nolocal: depth 11
+nolock_system:  depth 11
+piped:          depth 11
+cover:          depth 24
+cover_pipe:     depth 45
+
+[engines]
+# smtbmc yices
+smtbmc --nopresat boolector
+# abc pdr
+# aiger suprove
+# aiger avy
+
+[script]
+read -formal -D DCACHE fwb_master.v
+read -formal -D DCACHE iscachable.v
+read -formal -D DCACHE dcache.v
+piped:		chparam -set OPT_PIPE      1 dcache
+~piped:		chparam -set OPT_PIPE      0 dcache
+dualread:	chparam -set OPT_DUAL_READ_PORT	1 dcache
+~dualread:	chparam -set OPT_DUAL_READ_PORT	0 dcache
+lock:		chparam -set OPT_LOCK      1 dcache
+system: 	chparam -set OPT_LOCAL_BUS 1 dcache
+nolock:		chparam -set OPT_LOCK      0 dcache
+nolocal:	chparam -set OPT_LOCAL_BUS 0 dcache
+prep -top dcache
+
+[files]
+../../rtl/core/dcache.v
+../../rtl/core/iscachable.v
+../../rtl/ex/fwb_master.v
+#

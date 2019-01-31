@@ -1,0 +1,70 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sat Aug 11 16:11:56 2018
+[*]
+[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/div.vcd"
+[dumpfile_mtime] "Sat Aug 11 15:44:52 2018"
+[dumpfile_size] 3746
+[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/sim/verilator/div_tb.gtkw"
+[timestart] 0
+[size] 1698 819
+[pos] -1 -1
+*-4.333802 30 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 220
+[sst_expanded] 1
+[sst_vpaned_height] 221
+@28
+smt_clock
+div.i_clk
+div.i_reset
+@200
+-
+@28
+[color] 2
+div.i_wr
+[color] 2
+div.i_signed
+@22
+[color] 2
+div.i_numerator[31:0]
+[color] 2
+div.i_denominator[31:0]
+@200
+-
+@28
+[color] 3
+div.o_busy
+[color] 3
+div.o_valid
+@22
+[color] 3
+div.o_flags[3:0]
+[color] 3
+div.o_quotient[31:0]
+@28
+[color] 3
+div.o_err
+@200
+-
+@22
+div.r_bit[4:0]
+@28
+div.pre_sign
+div.r_busy
+div.r_sign
+@29
+div.last_bit
+@22
+div.diff[32:0]
+div.r_dividend[62:0]
+div.r_divisor[31:0]
+@28
+div.r_c
+div.r_z
+div.w_n
+div.zero_divisor
+@22
+div.f_bits_set[32:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -63,7 +63,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -176,8 +176,9 @@ module	zipsystem(i_clk, i_reset,
 		, o_cpu_debug
 `endif
 		);
-	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=10;
+	parameter	RESET_ADDRESS=32'h1000_0000, ADDRESS_WIDTH=30,
+			LGICACHE=10,
+			LGDCACHE=12;	// Set to zero for no data cache
 	parameter [0:0]	START_HALTED=1;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
@@ -610,40 +611,42 @@ module	zipsystem(i_clk, i_reset,
 	assign	dmac_int = 1'b0;
 `endif
 
-	wire		ctri_sel, ctri_stall, ctri_ack;
+	wire		ctri_sel, ctri_stall;
+	reg		ctri_ack;
 	wire	[31:0]	ctri_data;
 	assign	ctri_sel = (sys_stb)&&(sel_apic);
+	initial	ctri_ack = 1'b0;
+	always @(posedge i_clk)
+		ctri_ack <= (ctri_sel)&&(!cpu_reset);
+	assign	ctri_stall = 1'b0;
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
 	//
 	// Counter Interrupt controller
 	//
-	generate
-	if (EXTERNAL_INTERRUPTS <= 9)
-	begin
+	generate if (EXTERNAL_INTERRUPTS <= 9)
+	begin : ALT_PIC
 		icontrol #(8)	ctri(i_clk, cpu_reset, (ctri_sel),
 					sys_data, ctri_data, alt_int_vector[7:0],
 					ctri_int);
-	end else begin
+	end else begin : ALT_PIC
 		icontrol #(8+(EXTERNAL_INTERRUPTS-9))
-				ctri(i_clk, cpu_reset, (ctri_sel), sys_data,
-					ctri_ack, ctri_stall, ctri_data,
+				ctri(i_clk, cpu_reset, (ctri_sel),
+					sys_data, ctri_data,
 					alt_int_vector[(EXTERNAL_INTERRUPTS-2):0],
 					ctri_int);
 	end endgenerate
 
 `else	//	INCLUDE_ACCOUNTING_COUNTERS
 
-	generate
-	if (EXTERNAL_INTERRUPTS <= 9)
-	begin
-		assign	ctri_ack   = ctri_sel;
+	generate if (EXTERNAL_INTERRUPTS <= 9)
+	begin : ALT_PIC
 		assign	ctri_stall = 1'b0;
 		assign	ctri_data  = 32'h0000;
 		assign	ctri_int   = 1'b0;
-	end else begin
+	end else begin : ALT_PIC
 		icontrol #(EXTERNAL_INTERRUPTS-9)
-				ctri(i_clk, cpu_reset, (ctri_sel), sys_data,
-					ctri_ack, ctri_stall, ctri_data,
+				ctri(i_clk, cpu_reset, (ctri_sel),
+					sys_data, ctri_data,
 				alt_int_vector[(EXTERNAL_INTERRUPTS-10):0],
 					ctri_int);
 	end endgenerate
@@ -656,9 +659,9 @@ module	zipsystem(i_clk, i_reset,
 	wire		tma_ack, tma_stall;
 	wire	[31:0]	tma_data;
 	ziptimer timer_a(i_clk, cpu_reset, !cmd_halt,
-			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00), sys_we,
-				sys_data,
-			tma_ack, tma_stall, tma_data, tma_int);
+		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00),
+			sys_we, sys_data,
+		tma_ack, tma_stall, tma_data, tma_int);
 
 	//
 	// Timer B
@@ -666,9 +669,9 @@ module	zipsystem(i_clk, i_reset,
 	wire		tmb_ack, tmb_stall;
 	wire	[31:0]	tmb_data;
 	ziptimer timer_b(i_clk, cpu_reset, !cmd_halt,
-			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01), sys_we,
-				sys_data,
-			tmb_ack, tmb_stall, tmb_data, tmb_int);
+		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01),
+			sys_we, sys_data,
+		tmb_ack, tmb_stall, tmb_data, tmb_int);
 
 	//
 	// Timer C
@@ -676,9 +679,9 @@ module	zipsystem(i_clk, i_reset,
 	wire		tmc_ack, tmc_stall;
 	wire	[31:0]	tmc_data;
 	ziptimer timer_c(i_clk, cpu_reset, !cmd_halt,
-			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0]==2'b10), sys_we,
-				sys_data,
-			tmc_ack, tmc_stall, tmc_data, tmc_int);
+		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0]==2'b10),
+			sys_we, sys_data,
+		tmc_ack, tmc_stall, tmc_data, tmc_int);
 
 	//
 	// JIFFIES
@@ -694,22 +697,26 @@ module	zipsystem(i_clk, i_reset,
 	// The programmable interrupt controller peripheral
 	//
 	wire		pic_interrupt;
-	generate
-	if (EXTERNAL_INTERRUPTS < 9)
-	begin
+	generate if (EXTERNAL_INTERRUPTS < 9)
+	begin : MAIN_PIC
 		icontrol #(6+EXTERNAL_INTERRUPTS)	pic(i_clk, cpu_reset,
 					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic), sys_data,
-					pic_ack, pic_stall, pic_data,
+						&&(sel_pic),
+					sys_data, pic_data,
 					main_int_vector[(6+EXTERNAL_INTERRUPTS-1):0], pic_interrupt);
-	end else begin
+	end else begin : MAIN_PIC
 		icontrol #(15)	pic(i_clk, cpu_reset,
 					(sys_cyc)&&(sys_stb)&&(sys_we)
-						&&(sel_pic), sys_data,
-					pic_ack, pic_stall, pic_data,
+						&&(sel_pic),
+					sys_data, pic_data,
 					main_int_vector[14:0], pic_interrupt);
 	end endgenerate
 
+	wire	pic_stall;
+	assign	pic_stall = 1'b0;
+	reg	pic_ack;
+	always @(posedge i_clk)
+		pic_ack <= (sys_stb)&&(sel_pic);
 
 	//
 	// The CPU itself
@@ -725,6 +732,7 @@ module	zipsystem(i_clk, i_reset,
 	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
+			.OPT_LGDCACHE(LGDCACHE),
 			.IMPLEMENT_MPY(IMPLEMENT_MPY),
 			.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
 			.IMPLEMENT_FPU(IMPLEMENT_FPU),
@@ -946,8 +954,12 @@ module	zipsystem(i_clk, i_reset,
 		endcase
 
 	always @(posedge i_clk)
+	if ((i_reset)||(!sys_cyc))
+		sys_ack <= 1'b0;
+	else
 		sys_ack <= (|{	mmu_ack, tmr_ack, wdt_ack, actr_ack,
-				dmac_ack, pic_ack, ctri_ack, wdbus_ack, mmus_ack });
+				dmac_ack, pic_ack, ctri_ack, wdbus_ack,
+				mmus_ack });
 		
 	assign	sys_stall = (tma_stall | tmb_stall | tmc_stall | jif_stall
 				| wdt_stall | ctri_stall | actr_stall 

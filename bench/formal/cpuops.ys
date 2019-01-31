@@ -1,4 +1,4 @@
-read_verilog -D CPUOPS -formal ../../rtl/core/cpuops.v
+read_verilog -I../../rtl -D CPUOPS -formal ../../rtl/core/cpuops.v
 # read_verilog -D CPUOPS -formal ../../rtl/core/mpyop.v
 read_verilog -D CPUOPS -formal abs_mpy.v
 prep -top cpuops -nordff

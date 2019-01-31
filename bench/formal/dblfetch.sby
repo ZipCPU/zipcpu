@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 8
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DDBLFETCH fwb_master.v
+read -formal -DDBLFETCH dblfetch.v
+prep -top dblfetch
+
+[files]
+../../rtl/core/dblfetch.v
+../../rtl/ex/fwb_master.v

@@ -1,0 +1,6 @@
+read_verilog ../../rtl/core/memops.v
+# read_verilog /home/dan/work/rnd/opencores/zbasic/trunk/rtl/cpu/memops.v
+# read_verilog ../../rtl/core/pipemem.v
+# read_verilog /home/dan/work/rnd/opencores/zbasic/trunk/rtl/cpu/pipemem.v
+synth_xilinx
+write_blif memops.blif

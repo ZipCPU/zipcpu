@@ -1,0 +1,170 @@
+[*]
+[*] GTKWave Analyzer v3.3.98 (w)1999-2018 BSI
+[*] Sat Dec  8 19:23:32 2018
+[*]
+[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dcache_piped/engine_0/trace.vcd"
+[dumpfile_mtime] "Sat Dec  8 19:20:42 2018"
+[dumpfile_size] 53195
+[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dcache.gtkw"
+[timestart] 0
+[size] 1918 1021
+[pos] -1 -1
+*-4.957688 50 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] dcache.
+[sst_width] 196
+[signals_width] 240
+[sst_expanded] 1
+[sst_vpaned_height] 378
+@28
+dcache.i_reset
+dcache.i_clk
+dcache.i_lock
+dcache.r_svalid
+dcache.r_dvalid
+dcache.i_pipe_stb
+dcache.o_pipe_stalled
+dcache.o_busy
+[color] 1
+dcache.state[1:0]
+dcache.i_op[2:0]
+@22
+dcache.i_oreg[4:0]
+dcache.i_addr[31:0]
+dcache.i_data[31:0]
+@200
+-
+@22
+dcache.o_wreg[4:0]
+dcache.o_data[31:0]
+@28
+dcache.o_err
+dcache.o_valid
+@200
+-
+@28
+[color] 3
+dcache.o_wb_cyc_gbl
+[color] 3
+dcache.o_wb_stb_gbl
+@200
+-
+@28
+[color] 3
+dcache.o_wb_cyc_lcl
+[color] 3
+dcache.o_wb_stb_lcl
+@200
+-
+@28
+[color] 3
+dcache.o_wb_we
+@22
+[color] 3
+dcache.o_wb_addr[29:0]
+[color] 3
+dcache.o_wb_data[31:0]
+[color] 3
+dcache.o_wb_sel[3:0]
+@200
+-
+@28
+[color] 2
+dcache.i_wb_stall
+[color] 2
+dcache.i_wb_ack
+@22
+[color] 2
+dcache.i_wb_data[31:0]
+@28
+[color] 2
+dcache.i_wb_err
+@200
+-
+@22
+[color] 3
+dcache.c_v[15:0]
+@28
+[color] 3
+dcache.c_wr
+@22
+[color] 3
+dcache.c_wdata[31:0]
+@28
+dcache.cache_miss_inow
+@22
+dcache.cached_idata[31:0]
+dcache.cached_rdata[31:0]
+dcache.f_cache_waddr[29:0]
+@200
+-
+@22
+dcache.f_const_tag[28:0]
+dcache.f_const_tag_addr[3:0]
+dcache.f_const_addr[30:0]
+@28
+dcache.f_const_buserr
+@200
+-
+@23
+dcache.f_ctag_here[28:0]
+@22
+dcache.f_cmem_here[31:0]
+@200
+-
+@28
+dcache.f_this_return
+@22
+[color] 3
+dcache.f_const_data[31:0]
+@28
+dcache.f_cyc
+dcache.f_cachable_r_addr
+dcache.f_wb_cachable
+dcache.f_cachable_last_tag
+dcache.f_past_valid
+dcache.f_stb
+dcache.f_this_cache_waddr
+dcache.f_wb_cachable
+dcache.in_cache
+@200
+-
+@28
+dcache.last_ack
+dcache.last_line_stb
+dcache.end_of_line
+@200
+-
+@22
+dcache.last_tag[28:0]
+@28
+dcache.last_tag_valid
+@22
+dcache.r_ctag[28:0]
+@200
+-
+@22
+dcache.f_cmem_here[31:0]
+dcache.f_const_data[31:0]
+@200
+-
+@28
+dcache.lock_gbl
+dcache.lock_lcl
+@22
+dcache.r_addr[29:0]
+@28
+dcache.r_cachable
+dcache.r_cache_miss
+dcache.r_iv
+dcache.r_rd
+[color] 1
+dcache.r_rd_pending
+dcache.r_wb_cyc_gbl
+dcache.r_wb_cyc_lcl
+dcache.stb
+dcache.w_cachable
+dcache.raw_cachable_address
+dcache.wr_cstb
+dcache.cyc
+[pattern_trace] 1
+[pattern_trace] 0

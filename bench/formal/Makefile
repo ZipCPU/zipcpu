@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2017-2018, Gisselquist Technology, LLC
+## Copyright (C) 2017-2019, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -41,7 +41,7 @@
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu # dcache
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcpu
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -59,8 +59,8 @@ PFCACHE:= pfcache
 WBDLY  := busdelay
 PRIARB := wbpriarbiter
 DBL    := wbdblpriarb
-MEM    := memops
 PIPE   := pipemem
+MEM    := memops
 MMU    := zipmmu
 TMR    := ziptimer
 CNT    := zipcounter
@@ -79,239 +79,203 @@ cpu: zipcpu
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
 
-$(PFONE).smt2: $(RTL)/core/$(PFONE).v $(MASTER) $(PFONE).ys
-	yosys -ql $(PFONE).yslog -s $(PFONE).ys
+.PHONY: $(PFONE)
+$(PFONE) : $(PFONE)/PASS
+$(PFONE)/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER)
+	sby -f $(PFONE).sby
 
-$(PFTWO).smt2: $(RTL)/core/$(PFTWO).v $(MASTER) $(PFTWO).ys
-	yosys -ql $(PFTWO).yslog -s $(PFTWO).ys
-
-$(PFCACHE).smt2: $(RTL)/core/$(PFCACHE).v $(MASTER) $(PFCACHE).ys
-	yosys -ql $(PFCACHE).yslog -s $(PFCACHE).ys
-
-$(WBDLY).smt2: $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE) $(WBDLY).ys
-	yosys -ql $(WBDLY).yslog -s $(WBDLY).ys
-
-$(PRIARB).smt2: $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE) $(PRIARB).ys
-	yosys -ql $(PRIARB).yslog -s $(PRIARB).ys
-
-$(DBL).smt2: $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
-	yosys -ql $(DBL).yslog -s $(DBL).ys
-
-$(MEM).smt2: $(RTL)/core/$(MEM).v $(MASTER) $(MEM).ys
-	yosys -ql $(MEM).yslog -s $(MEM).ys
-
-$(PIPE).smt2: $(RTL)/core/$(PIPE).v $(MASTER) $(PIPE).ys
-	yosys -ql $(PIPE).yslog -s $(PIPE).ys
-
-$(MMU).smt2: $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE) $(MMU).ys
-	yosys -ql $(MMU).yslog -s $(MMU).ys
-
-$(CNT).smt2: $(RTL)/peripherals/$(CNT).v $(SLAVE) $(CNT).ys
-	yosys -ql $(CNT).yslog -s $(CNT).ys
-
-$(TMR).smt2: $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
-	yosys -ql $(TMR).yslog -s $(TMR).ys
-
-$(JIF).smt2: $(RTL)/peripherals/$(JIF).v $(SLAVE) $(JIF).ys
-	yosys -ql $(JIF).yslog -s $(JIF).ys
-
-$(WDG).smt2: $(RTL)/peripherals/$(WDG).v $(SLAVE) $(WDG).ys
-	yosys -ql $(WDG).yslog -s $(WDG).ys
-
-$(INT).smt2: $(RTL)/peripherals/$(INT).v $(SLAVE) $(INT).ys
-	yosys -ql $(INT).yslog -s $(INT).ys
-
-$(DCD).smt2: $(RTL)/core/$(DCD).v $(DCD).ys f_idecode.v
-	yosys -ql $(DCD).yslog -s $(DCD).ys
-
-$(DMA).smt2: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).ys
-	yosys -ql $(DMA).yslog -s $(DMA).ys
-
-$(ALU).smt2: $(RTL)/core/$(ALU).v abs_mpy.v $(ALU).ys
-	yosys -ql $(ALU).yslog -s $(ALU).ys
-
-$(DIV).smt2: $(RTL)/core/$(DIV).v $(DIV).ys
-	yosys -ql $(DIV).yslog -s $(DIV).ys
-
-$(DCACHE).smt2: $(RTL)/core/$(DCACHE).v $(MASTER) $(DCACHE).ys
-	yosys -ql $(DCACHE).yslog -s $(DCACHE).ys
+.PHONY: $(PFTWO)
+$(PFTWO) : $(PFTWO)/PASS
+$(PFTWO)/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
+	sby -f $(PFTWO).sby
 
 
-#$(PFONE).smt2: $(RTL)/$(PFONE).v
-#	yosys -ql $(PFONE).yslog -s $(PFONE).ys
+.PHONY: $(PFCACHE)
+$(PFCACHE): $(PFCACHE)_prf/PASS $(PFCACHE)_cvr/PASS
+$(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+	sby -f $(PFCACHE).sby prf
+$(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+	sby -f $(PFCACHE).sby cvr
 
-$(PFONE) : $(PFONE).check
-$(PFONE).check: $(PFONE).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 9 --dump-vcd $(PFONE).vcd $(PFONE).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 8 --dump-vcd $(PFONE).vcd $(PFONE).smt2
-	touch $@
+.PHONY: $(WBDLY)
+$(WBDLY): $(WBDLY)/PASS
+$(WBDLY)/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby
+
+.PHONY: $(PRIARB)
+$(PRIARB): $(PRIARB)/PASS
+$(PRIARB)/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
+	sby -f $(PRIARB).sby
+
+.PHONY: $(DBL)
+$(DBL): $(DBL)/PASS
+$(DBL)/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
+	sby -f $(DBL).sby
+
+.PHONY: $(MEM)
+$(MEM): $(MEM)_cover/PASS $(MEM)_proof/PASS
+$(MEM)_proof/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER)
+	sby -f $(MEM).sby proof
+$(MEM)_cover/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER)
+	sby -f $(MEM).sby cover
+
+.PHONY: $(PIPE)
+$(PIPE): $(PIPE)_lcl_aligned_lock/PASS
+$(PIPE): $(PIPE)_lcl_aligned_nolock/PASS
+$(PIPE): $(PIPE)_lcl_noaligned_lock/PASS
+$(PIPE): $(PIPE)_lcl_noaligned_nolock/PASS
+$(PIPE): $(PIPE)_nolcl_aligned_lock/PASS
+$(PIPE): $(PIPE)_nolcl_aligned_nolock/PASS
+$(PIPE): $(PIPE)_nolcl_noaligned_lock/PASS
+$(PIPE): $(PIPE)_nolcl_noaligned_nolock/PASS
+$(PIPE)_lcl_aligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby lcl_aligned_lock
+$(PIPE)_lcl_aligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby lcl_aligned_nolock
+$(PIPE)_lcl_noaligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby lcl_noaligned_lock
+$(PIPE)_lcl_noaligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby lcl_noaligned_nolock
+$(PIPE)_nolcl_aligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby nolcl_aligned_lock
+$(PIPE)_nolcl_aligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby nolcl_aligned_nolock
+$(PIPE)_nolcl_noaligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby nolcl_noaligned_lock
+$(PIPE)_nolcl_noaligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+	sby -f $(PIPE).sby nolcl_noaligned_nolock
+
+.PHONY: $(MMU)
+$(MMU): $(MMU)/PASS
+$(MMU)/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
+	sby -f $(MMU).sby
+
+.PHONY: $(TMR)
+$(TMR): $(TMR)/PASS
+$(TMR)/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
+	sby -f $(TMR).sby
+
+.PHONY: $(CNT)
+$(CNT): $(CNT)/PASS
+$(CNT)/PASS: $(CNT).sby $(RTL)/peripherals/$(CNT).v $(SLAVE)
+	sby -f $(CNT).sby
+
+.PHONY: $(JIF)
+$(JIF): $(JIF)/PASS
+$(JIF)/PASS: $(JIF).sby $(RTL)/peripherals/$(JIF).v $(SLAVE)
+	sby -f $(JIF).sby
+
+.PHONY: $(WDG)
+$(WDG)/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
+	sby -f $(WDG).sby
+
+.PHONY: $(INT)
+$(INT): $(INT)/PASS
+$(INT)/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
+	sby -f $(INT).sby
+
+.PHONY: $(DCD)
+$(DCD): $(DCD)_pipe_div_mpy_cis_opipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_cis_nopipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_nocis_pipe/PASS
+$(DCD): $(DCD)_pipe_div_mpy_nocis_nopipe/PASS
+$(DCD): $(DCD)_pipe_div_nompy_nocis_nopipe/PASS
+$(DCD): $(DCD)_pipe_nodiv_nompy_nocis_nopipe/PASS
+$(DCD): $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS
+
+$(DCD)_pipe_div_mpy_cis_opipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_cis_opipe
+$(DCD)_pipe_div_mpy_cis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_cis_nopipe
+$(DCD)_pipe_div_mpy_nocis_pipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_nocis_pipe
+$(DCD)_pipe_div_mpy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_mpy_nocis_nopipe
+$(DCD)_pipe_div_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_div_nompy_nocis_nopipe
+$(DCD)_pipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby pipe_nodiv_nompy_nocis_nopipe
+$(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
+	sby -f $(DCD).sby nopipe_nodiv_nompy_nocis_nopipe
 
 
-$(PFTWO) : $(PFTWO).check
-$(PFTWO).check: $(PFTWO).smt2
-	@rm -f $@
-	$(SMTBMC) $(BMCARGS) -t 10 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
-	$(SMTBMC) $(INDARGS) -t  9 --dump-vcd $(PFTWO).vcd $(PFTWO).smt2
-	$(SMTBMC) -c $(BMCARGS) -t 40 --dump-vcd $(PFTWO)%.vcd $(PFTWO).smt2
-	touch $@
+.PHONY: $(DMA)
+$(DMA): $(DMA)/PASS
+$(DMA)/PASS: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).sby
+	sby -f $(DMA).sby
 
-$(PFCACHE) : $(PFCACHE).check
-$(PFCACHE).check: $(PFCACHE).smt2
-	@rm -f $@
-	$(SMTBMC) $(BMCARGS) -t 21 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
-	$(SMTBMC) $(INDARGS) -t 20 --dump-vcd $(PFCACHE).vcd $(PFCACHE).smt2
-	touch $@
+.PHONY: $(ALU)
+$(ALU): $(ALU)/PASS
+$(ALU)/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
+	sby -f $(ALU).sby
 
+DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
 
-$(WBDLY) : $(WBDLY).check
-$(WBDLY).check: $(WBDLY).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 16 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
-	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(WBDLY).vcd $(WBDLY).smt2
-	touch $@
+.PHONY: $(DCACHE)
+$(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
+$(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
+$(DCACHE) : $(DCACHE)_piped/PASS $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
+$(DCACHE)_full/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby full
+$(DCACHE)_full_single/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby full_single
 
-$(PRIARB) : $(PRIARB).check
-$(PRIARB).check: $(PRIARB).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
-	$(SMTBMC)    $(INDARGS) -t 16 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
-	$(SMTBMC) -g $(BMCARGS) -t 20 --dump-vcd $(PRIARB).vcd $(PRIARB).smt2
-	touch $@
+$(DCACHE)_bare/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby bare
 
-$(DBL) : $(DBL).check
-$(DBL).check: $(DBL).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(DBL).vcd $(DBL).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(DBL).vcd $(DBL).smt2
-	touch $@
+$(DCACHE)_nolock_nolocal/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby nolock_nolocal
 
-$(MEM) : $(MEM).check
-$(MEM).check: $(MEM).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(MEM).vcd $(MEM).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(MEM).vcd $(MEM).smt2
-	touch $@
+$(DCACHE)_nolock_system/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby nolock_system
 
-$(PIPE) : $(PIPE).check
-$(PIPE).check: $(PIPE).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(PIPE).vcd $(PIPE).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(PIPE).vcd $(PIPE).smt2
-	touch $@
+$(DCACHE)_piped/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby piped
 
-$(MMU) : $(MMU).check
-$(MMU).check: $(MMU).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 12 --dump-vcd $(MMU).vcd $(MMU).smt2
-	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(MMU).vcd $(MMU).smt2
-	touch $@
+$(DCACHE)_cover/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby cover
 
-$(TMR) : $(TMR).check
-$(TMR).check: $(TMR).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(TMR).vcd $(TMR).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(TMR).vcd $(TMR).smt2
-	touch $@
+$(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby cover_pipe
 
-$(CNT) : $(CNT).check
-$(CNT).check: $(CNT).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(CNT).vcd $(CNT).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(CNT).vcd $(CNT).smt2
-	touch $@
+.PHONY: $(DIV)
+$(DIV) : $(DIV)/PASS
+$(DIV)/PASS: $(DIV).sby $(RTL)/core/div.v
+	sby -f $(DIV).sby
 
-$(JIF) : $(JIF).check
-$(JIF).check: $(JIF).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(JIF).vcd $(JIF).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(JIF).vcd $(JIF).smt2
-	touch $@
+.PHONY: $(CPU)
+$(CPU): $(CPU)_dcache/PASS $(CPU)_piped/PASS
+$(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
+CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
+	$(RTL)/core/pipemem.v $(RTL)/core/memops.v	  \
+	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
+	f_idecode.v abs_div.v abs_prefetch.v abs_mpy.v $(MASTER) $(SLAVE)  \
+	$(CPU).sby
+$(CPU)_dcache/PASS: $(CPUDEPS) $(RTL)/core/dcache.v $(RTL)/core/iscachable.v
+	sby -f $(CPU).sby dcache
 
-$(WDG) : $(WDG).check
-$(WDG).check: $(WDG).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(WDG).vcd $(WDG).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(WDG).vcd $(WDG).smt2
-	touch $@
+$(CPU)_piped/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby piped
 
-$(INT) : $(INT).check
-$(INT).check: $(INT).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 5 --dump-vcd $(INT).vcd $(INT).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(INT).vcd $(INT).smt2
-	touch $@
+$(CPU)_nopipe/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby nopipe
 
-$(DCD) : $(DCD).check
-$(DCD).check: $(DCD).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 10 --dump-vcd $(DCD).vcd $(DCD).smt2
-	$(SMTBMC)    $(INDARGS) -t  8 --dump-vcd $(DCD).vcd $(DCD).smt2
-	touch $@
+$(CPU)_lowlogic/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby lowlogic
 
-$(DMA) : $(DMA).check
-$(DMA).check: $(DMA).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 11 --dump-vcd $(DMA).vcd $(DMA).smt2
-	$(SMTBMC)    $(INDARGS) -t 10 --dump-vcd $(DMA).vcd $(DMA).smt2
-	touch $@
-
-$(ALU) : $(ALU).check
-$(ALU).check: $(ALU).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 6 --dump-vcd $(ALU).vcd $(ALU).smt2
-	$(SMTBMC)    $(INDARGS) -t 5 --dump-vcd $(ALU).vcd $(ALU).smt2
-	touch $@
-
-$(DCACHE) : $(DCACHE).check
-$(DCACHE).check: $(DCACHE).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
-	$(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(DCACHE).vcd $(DCACHE).smt2
-	touch $@
-
-$(DIV) : $(DIV).check
-$(DIV).check: $(DIV).smt2
-	@rm -f $@
-	$(SMTBMC)    $(BMCARGS) -t 40 --dump-vcd $(DIV).vcd $(DIV).smt2
-	$(SMTBMC)    $(INDARGS) -t 38 --dump-vcd $(DIV).vcd $(DIV).smt2
-	touch $@
-
-$(CPU) : $(CPU).check
-$(CPU).check: $(RTL)/core/$(CPU).v
-$(CPU).check: $(RTL)/core/cpuops.v
-$(CPU).check: $(RTL)/core/idecode.v
-$(CPU).check: $(RTL)/core/pipemem.v
-$(CPU).check: $(RTL)/core/memops.v
-$(CPU).check: $(RTL)/ex/wbdblpriarb.v
-$(CPU).check: $(RTL)/ex/fwb_counter.v
-$(CPU).check: $(RTL)/cpudefs.v
-$(CPU).check: f_idecode.v
-$(CPU).check: $(MASTER) $(SLAVE) abs_div.v abs_prefetch.v abs_mpy.v $(CPU).sby
-	@rm -f $@
-	sby -f $(CPU).sby prove_first prove_second
-	touch $@
+$(CPU)_ice40/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby ice40
 
 .PHONY: clean
 clean:
-	rm -f $(PFONE).smt2   $(PFONE)*.vcd   $(PFONE).yslog
-	rm -f $(PFTWO).smt2   $(PFTWO)*.vcd   $(PFTWO).yslog
-	rm -f $(PFCACHE).smt2 $(PFCACHE)*.vcd $(PFCACHE).yslog
+	rm -rf $(PFONE)*/     $(PFTWO)*/      $(PFCACHE)*/
 	rm -f $(WBDLY).smt2   $(WBDLY)*.vcd   $(WBDLY).yslog
 	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
 	rm -f $(DBL).smt2     $(DBL)*.vcd     $(DBL).yslog
-	rm -f $(MEM).smt2     $(MEM)*.vcd     $(MEM).yslog
-	rm -f $(PIPE).smt2    $(PIPE)*.vcd    $(PIPE).yslog
-	rm -f $(MMU).smt2     $(MMU)*.vcd     $(MMU).yslog
-	rm -f $(TMR).smt2     $(TMR)*.vcd     $(TMR).yslog
-	rm -f $(CNT).smt2     $(CNT)*.vcd     $(CNT).yslog
-	rm -f $(JIF).smt2     $(JIF)*.vcd     $(JIF).yslog
-	rm -f $(WDG).smt2     $(WDG)*.vcd     $(WDG).yslog
-	rm -f $(INT).smt2     $(INT)*.vcd     $(INT).yslog
-	rm -f $(DCD).smt2     $(DCD)*.vcd     $(DCD).yslog
-	rm -f $(DMA).smt2     $(DMA)*.vcd     $(DMA).yslog
-	rm -f $(ALU).smt2     $(ALU)*.vcd     $(ALU).yslog
-	rm -f $(DIV).smt2     $(DIV)*.vcd     $(DIV).yslog
-	rm -f $(DCACHE).smt2  $(DCACHE)*.vcd  $(DCACHE).yslog
-	rm -f $(CPU).smt2     $(CPU)*.vcd     $(CPU).yslog $(CPU)/
+	rm -rf $(MEM)*/       $(PIPE)*/       $(MMU)*/
+	rm -rf $(TMR)*/       $(CNT)*/        $(JIF)*/
+	rm -rf $(WDG)*/       $(INT)*/        $(DCD)_*/
+	rm -rf $(DMA)*/       $(ALU)*/        $(DIV)*/
+	rm -rf $(DCACHE)_*/
+	rm -rf $(CPU)_*/
 	rm -f *.check

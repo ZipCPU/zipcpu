@@ -1,0 +1,40 @@
+[tasks]
+pipe_div_mpy_cis_opipe		pipelind   div   mpy   cis   pipemem
+pipe_div_mpy_cis_nopipe		pipelind   div   mpy   cis   nopipemem
+pipe_div_mpy_nocis_pipe		pipelind   div   mpy   nocis pipemem
+pipe_div_mpy_nocis_nopipe	pipelind   div   mpy   nocis nopipemem
+pipe_div_nompy_nocis_nopipe	pipelind   div   nompy nocis nopipemem
+pipe_nodiv_nompy_nocis_nopipe	pipelind   nodiv nompy nocis nopipemem
+nopipe_nodiv_nompy_nocis_nopipe	nopipelind nodiv nompy nocis nopipemem
+
+[options]
+mode prove
+depth 10
+
+[engines]
+smtbmc
+
+[script]
+read -formal -D IDECODE idecode.v
+read -formal -D IDECODE f_idecode.v
+
+nopipelind: chparam -set OPT_PIPELINED 0 idecode
+pipelind:   chparam -set OPT_PIPELINED 1 idecode
+
+nodiv: chparam -set OPT_DIVIDE 0 idecode
+div:   chparam -set OPT_DIVIDE 1 idecode
+
+nompy: chparam -set OPT_MPY 0 idecode
+mpy:   chparam -set OPT_MPY 1 idecode
+
+nocis: chparam -set OPT_CIS 0 idecode
+cis:   chparam -set OPT_CIS 1 idecode
+
+nopipemem: chparam -set OPT_OPIPE 0 idecode
+pipemem:   chparam -set OPT_OPIPE 1 idecode
+
+prep -top idecode
+
+[files]
+../../rtl/core/idecode.v
+f_idecode.v

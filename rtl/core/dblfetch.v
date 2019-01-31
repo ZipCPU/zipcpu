@@ -23,7 +23,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2017-2018, Gisselquist Technology, LLC
+// Copyright (C) 2017-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -55,7 +55,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
 		o_illegal);
 	parameter		ADDRESS_WIDTH=30, AUX_WIDTH = 1;
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC=1'b0;
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
 	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
 						i_stall_n;
@@ -81,6 +80,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	reg	[(DW-1):0]	cache_word;
 	reg			cache_valid;
+	reg	[1:0]		inflight;
+	reg			cache_illegal;
 
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
@@ -115,7 +116,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_wb_stb <= 1'b1;
 		end
 
-	reg	[1:0]	inflight;
 	initial	inflight = 2'b00;
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
@@ -136,9 +136,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	initial	invalid_bus_cycle = 1'b0;
 	always @(posedge i_clk)
-		if (i_reset)
-			invalid_bus_cycle <= 1'b0;
-		else if ((o_wb_cyc)&&(i_new_pc))
+		if ((o_wb_cyc)&&(i_new_pc))
 			invalid_bus_cycle <= 1'b1;
 		else if (!o_wb_cyc)
 			invalid_bus_cycle <= 1'b0;
@@ -165,7 +163,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		else if (i_stall_n)
 			o_valid <= cache_valid;
 
-	initial	o_insn = {(32){1'b1}};
 	always @(posedge i_clk)
 	if ((!o_valid)||(i_stall_n))
 	begin
@@ -175,12 +172,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_insn <= i_wb_data;
 	end
 
-	initial	o_pc = 0;
+	initial o_pc[1:0] = 2'b00;
 	always @(posedge i_clk)
-		if (i_new_pc)
-			o_pc <= i_pc;
-		else if ((o_valid)&&(i_stall_n))
-			o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
+	if (i_new_pc)
+		o_pc <= i_pc;
+	else if ((o_valid)&&(i_stall_n))
+		o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
 
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
@@ -216,14 +213,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if ((o_wb_cyc)&&(i_wb_ack))
 			cache_word <= i_wb_data;
 
-	reg	cache_illegal;
 	initial	cache_illegal = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache)||(i_new_pc))
 		cache_illegal <= 1'b0;
 	else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
 		cache_illegal <= 1'b1;
-
 //
 // Some of these properties can be done in yosys-smtbmc, *or* Verilator
 //
@@ -284,18 +279,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 //
 `ifdef	DBLFETCH
 `define	ASSUME	assume
-
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		// Assume a clock
-		reg	f_last_clk;
-		always @($global_clock)
-		begin
-			assume(i_clk != f_last_clk);
-			f_last_clk <= i_clk;
-		end
-	end endgenerate
-
 `else
 `define	ASSUME	assert
 `endif
@@ -309,31 +292,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	/////////////////////////////////////////////////
 
 	always @(*)
-		if (!f_past_valid)
-			`ASSUME(i_reset);
-
-	//
-	// Nothing changes, but on the positive edge of a clock
-	//
-	generate if (F_OPT_CLK2FFLOGIC)
-	begin
-		always @($global_clock)
-		if (!$rose(i_clk))
-		begin
-			// Control inputs from the CPU
-			`ASSUME($stable(i_reset));
-			`ASSUME($stable(i_new_pc));
-			`ASSUME($stable(i_clear_cache));
-			`ASSUME($stable(i_stall_n));
-			`ASSUME($stable(i_pc));
-			// Wishbone inputs
-			`ASSUME($stable(i_wb_ack));
-			`ASSUME($stable(i_wb_stall));
-			`ASSUME($stable(i_wb_err));
-			`ASSUME($stable(i_wb_data));
-		end
-	end endgenerate
-
+	if (!f_past_valid)
+		`ASSUME(i_reset);
 
 	//
 	// Assume that resets, new-pc commands, and clear-cache commands
@@ -341,6 +301,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	// It may be that the CPU treats us differently.  We'll only restrict
 	// our solver to this here.
+/*
 	always @(posedge i_clk)
 	if (f_past_valid)
 	begin
@@ -349,6 +310,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if ($past(i_new_pc))
 			restrict(!i_new_pc);
 	end
+*/
 
 	//
 	// Assume we start from a reset condition
@@ -370,7 +332,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
 				.F_MAX_STALL(2),
 				.F_MAX_REQUESTS(0), .F_OPT_SOURCE(1),
-				.F_OPT_CLK2FFLOGIC(F_OPT_CLK2FFLOGIC),
 				.F_OPT_RMW_BUS_OPTION(1),
 				.F_OPT_DISCONTINUOUS(0))
 		f_wbm(i_clk, i_reset,
@@ -429,21 +390,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	always @(*)
 		assume(i_pc[1:0] == 2'b00);
-
-	//
-	// Following a reset, all pipelines clear and the next stage is
-	// guaranteed to be ready.
-	//
-	initial	assume(i_stall_n);
-	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_past_reset))
-			assume(i_stall_n);
-
-	// The CPU will never suddenly become busy unless it has accepted a
-	// valid instruction.
-	always @(posedge i_clk)
-		if ((f_past_valid)&&(!f_past_o_valid)&&(f_past_stall_n))
-			assume(i_stall_n);
 `endif
 
 `ifdef	FORMAL
@@ -567,17 +513,9 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Any attempt to return to the CPU a value from this address,
 	// must return the value and the illegal flag.
 	//
-	wire	[AW-1:0]	f_const_addr;
-	wire	[DW-1:0]	f_const_insn;
-	wire			f_const_illegal;
-
-	//
-	// Here's the illegal flag, address in question, and the instruction
-	// at that address.
-	//
-	assign	f_const_addr    = $anyconst;
-	assign	f_const_insn    = $anyconst;
-	assign	f_const_illegal = $anyconst;
+	(* anyconst *) reg	[AW-1:0]	f_const_addr;
+	(* anyconst *) reg	[DW-1:0]	f_const_insn;
+	(* anyconst *) reg			f_const_illegal;
 
 	//
 	// While these wires may seem like overkill, and while they make the
@@ -762,12 +700,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 endmodule
 //
 // Usage:		(this)	(prior)	(old)  (S6)
-//    Cells		376	387	585	459
+//    Cells		374	387	585	459
 //	FDRE		135	108	203	171
 //	LUT1		  2	  3	  2
 //	LUT2		  9	  3	  4	  5
-//	LUT3		 99	 76	104	 71
-//	LUT4		  3	  0	  2	  2
+//	LUT3		 98	 76	104	 71
+//	LUT4		  2	  0	  2	  2
 //	LUT5		  3	 35	 35	  3
 //	LUT6		  6	  5	 10	 43
 //	MUXCY		 58	 62	 93	 62

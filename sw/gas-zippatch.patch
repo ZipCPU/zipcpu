@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/configure.ac binutils-2.27-z
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2018-03-19 20:13:38.103976302 -0400
-@@ -0,0 +1,3400 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2018-06-07 11:33:00.603899602 -0400
+@@ -0,0 +1,3405 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -2017,16 +2017,22 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +
 +	if (ZIPC_ALWAYS != insn->i_cnd) {
 +#ifdef	ZIP_DEBUG
-+		fprintf(stderr, "MACHINE, CONDITIONAL\n");
++		fprintf(stderr, "\tMACHINE, CONDITIONAL operation\n");
 +#endif
 +		if ((ZIPO_LDILO == insn->i_op)
 +				&&((av->m_known == MACH_VKNOWN)
-+					||(av->m_known == MACH_VUPPERKNOWN)))
++					||(av->m_known == MACH_VUPPERKNOWN))) {
 +			av->m_known = MACH_VUPPERKNOWN;
-+		else if ((ZIPO_LDI == insn->i_op)||(ZIPO_LDIn == insn->i_op))
-+			; // We'll catch this in a moment
-+		else
++		} else if ((ZIPO_LDI == insn->i_op)||(ZIPO_LDIn == insn->i_op)){
++			if (((av->m_known == MACH_VKNOWN)
++				||(av->m_known == MACH_VUPPERKNOWN))
++			    &&(((insn->i_imm ^ av->m_value)&& ~0x0ffff)==0)) {
++				av->m_known = MACH_VUPPERKNOWN;
++			} else
++				av->m_known = MACH_VUNKNOWN;
++		} else {
 +			av->m_known = MACH_VUNKNOWN;
++}
 +	} switch(insn->i_op) {
 +		case	ZIPO_SUB:
 +			av->m_known = (av->m_known==MACH_VKNOWN)
@@ -2290,8 +2296,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +		return 1;
 +	switch(c) {
 +		case 0: return 1;
-+		case OPTION_CIS:   zip_param_cis = 1; return 1; break;
-+		case OPTION_NOCIS: zip_param_cis = 0; return 1; break;
++		case OPTION_CIS:    zip_param_cis = 1; return 1; break;
++		case OPTION_NOCIS:  zip_param_cis = 0; return 1; break;
 +		case OPTION_ZIPM:   zip_param_use_machine = 1; return 1; break;
 +		case OPTION_NOZIPM: zip_param_use_machine = 0; return 1; break;
 +		// case OPTION_GOT : zip_param_got  = 1; return 1; break;
@@ -2921,7 +2927,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +
 +
 +#ifdef	ZIP_DEBUG
-+	fprintf(stderr, "**** Parsing %s\n", line);
++	fprintf(stderr, "\n**** Parsing %s\n", line);
 +#endif
 +
 +	insn->i_naux = 0;
@@ -3641,6 +3647,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +	// 1. Can't merge anything that's already merged
 +	if ((a|b) & 0x80000000)
 +		return 0;
++
 +	ZIP_OPCODE	opa, opb;
 +	ZIP_CONDITION	ac, bc;
 +	int	imma, immb;
@@ -3684,10 +3691,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +	immb = zip_non_cis_immediate(b);
 +
 +	if (!fits_within(8,imma)) {
-+		// fprintf(stderr, "As immediate is out of range\n");
 +		return 0;
 +	} if (!fits_within(8,immb)) {
-+		// fprintf(stderr, "Bs immediate is out of range\n");
 +		return 0;
 +	}
 +
@@ -7385,7 +7390,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27-original/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2017-03-06 14:00:55.404955681 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2018-06-07 10:35:06.439245343 -0400
 @@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7637,54 +7642,54 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2
 +	//	1111.1000.10xc.c0ii.iixx.xxxx.xxxx.xxxx
 +	// Mask, val, result, Ra, Rb, I, condition (no conditions for OP_UNDER_TEST)
 +	// BRA: 1.1111.011.0.sssssss
-+	{ "BRA", 0xff800000, 0xf9000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "BRA", 0xff800000, 0xf9000000, ZIP_OPUNUSED,     ZIP_OPUNUSED, ZIP_OPUNUSED,     ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	// CLR: 1.rrrr.110.00000000
-+	{ "CLR", 0x87ff0000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "CLR", 0x87ff0000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED,     ZIP_OPUNUSED,       ZIP_OPUNUSED },
 +	// RTN: 1.1111.111.0.0000.000, MOV R0,Pc
-+	{ "RTN", 0xffff0000, 0xff800000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED },
++	{ "RTN", 0xffff0000, 0xff800000, ZIP_OPUNUSED,     ZIP_OPUNUSED, ZIP_OPUNUSED,     ZIP_OPUNUSED,       ZIP_OPUNUSED },
 +	// JMP: 1.1111.111.0.rrrrsss
-+	{ "JMP", 0xff800000, 0xff000000, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "JMP", 0xff800000, 0xff000000, ZIP_REGFIELD(27),ZIP_OPUNUSED,  ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// LJSR: 1.000_0.011_.0.111_1.001 ?.1111.110.1.1111.000
 +	// { "LJSR",0xffffffff, 0x83797ef8, ZIP_REGFIELD(27),ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.000.0.sssssss
 +	// 1rrr.r000.0sss.ssss
-+	{ "SUB", 0x87800000, 0x80000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "SUB", 0x87800000, 0x80000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	// 1.rrrr.000.1.rrrrsss
 +	{ "SUB", 0x87800000, 0x80800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.001.0.sssssss
 +	// 1.rrrr.001.1.rrrrsss
-+	{ "AND", 0x87800000, 0x81000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "AND", 0x87800000, 0x81000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	{ "AND", 0x87800000, 0x81800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.010.0.sssssss
 +	// 1.rrrr.010.1.rrrrsss
-+	{ "ADD", 0x87800000, 0x82000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "ADD", 0x87800000, 0x82000000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	{ "ADD", 0x87800000, 0x82800000, ZIP_REGFIELD(27), ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.011.a.rrrrsss
-+	{ "CMP", 0x87800000, 0x83000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
-+	{ "CMP", 0x87800000, 0x83800000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "CMP", 0x87800000, 0x83000000, ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_OPUNUSED,     ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "CMP", 0x87800000, 0x83800000, ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.100.0.sssssss
 +	// 1.rrrr.100.1.rrrrsss
-+	{ "LW", 0x87800000, 0x84000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
-+	{ "LW", 0x87800000, 0x84800000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "LW", 0x87800000, 0x84000000,  ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_SP,            ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "LW", 0x87800000, 0x84800000,  ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_REGFIELD(19),  ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// 1.rrrr.101.ssssssss
-+	{ "SW", 0x87800000, 0x85000000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_SP, ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
++	{ "SW", 0x87800000, 0x85000000,  ZIP_OPUNUSED,     ZIP_REGFIELD(27), ZIP_SP,            ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 +	// 1.rrrr.110.0.sssssss
-+	{ "SW", 0x87800000, 0x85800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "SW", 0x87800000, 0x85800000,  ZIP_OPUNUSED,     ZIP_REGFIELD(27), ZIP_REGFIELD(19),  ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	// 1.rrrr.110.iiiiiiii
-+	{ "LDI", 0x87000000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
++	{ "LDI", 0x87000000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_OPUNUSED,      ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
 +	// 1.rrrr.111.1.sssssss
-+	{ "MOV", 0x87800000, 0x87800000, ZIP_OPUNUSED, ZIP_REGFIELD(27), ZIP_REGFIELD(19), ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
++	{ "MOV", 0x87800000, 0x87800000, ZIP_OPUNUSED,     ZIP_REGFIELD(27), ZIP_REGFIELD(19),  ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 +	//
 +	// 1.rrrr.111.1.rrrrsss
 +	// Illegal instruction !!
 +	{ "ILLV", 0x80000000, 0x80000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,16), ZIP_OPUNUSED },
 +	// Global illegal instruction
-+	{ "ILL", 0x00000000, 0x00000000, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,0), ZIP_OPUNUSED }
++	{ "ILL", 0x00000000, 0x00000000,  ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_OPUNUSED, ZIP_IMMFIELD(32,0),  ZIP_OPUNUSED }
 +};
 +
 +static const ZOPCODE	zip_opbottomlist_raw[] = {

@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DZIPTIMER ziptimer.v
+read -formal -DZIPTIMER fwb_slave.v
+prep -top ziptimer
+
+[files]
+../../rtl/peripherals/ziptimer.v
+../../rtl/ex/fwb_slave.v

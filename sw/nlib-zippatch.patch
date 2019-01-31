@@ -6174,7 +6174,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/new
  #undef _FVWRITE_IN_STREAMIO
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip/newlib/configure.host
 --- newlib-2.5.0/newlib/configure.host	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/configure.host	2017-01-25 10:26:38.562136630 -0500
++++ newlib-2.5.0-zip/newlib/configure.host	2018-03-22 19:19:26.894978411 -0400
 @@ -310,6 +310,9 @@
    z8k)
  	machine_dir=z8k
@@ -6185,20 +6185,19 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    spu)
  	stdio_dir=
  	libm_machine_dir=spu
-@@ -565,6 +568,12 @@
+@@ -565,6 +568,11 @@
    z8k-*-coff)
  	sys_dir=z8ksim
  	;;
 +  zip*)
 +#	sys_dir=zip	# But ... I don't have a directory in newlib/libc/sys
 +	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED "
-+	newlib_cflags="${newlib_cflags} -DNO_FLOATING_POINT"
 +#        have_crt0="yes"
 +	;;
  esac
  
  # Host specific flag settings -- usually for features that are not
-@@ -851,6 +860,9 @@
+@@ -851,6 +859,9 @@
    z8k-*-*)
  	syscall_dir=syscalls
  	;;

@@ -1,0 +1,18 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -D WBPRIARBITER wbpriarbiter.v
+read -formal -D WBPRIARBITER fwb_master.v
+read -formal -D WBPRIARBITER fwb_slave.v
+prep -top wbpriarbiter
+
+[files]
+../../rtl/ex/wbpriarbiter.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v
+

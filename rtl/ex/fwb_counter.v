@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2017-2018, Gisselquist Technology, LLC
+// Copyright (C) 2017-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -68,8 +68,6 @@ module	fwb_counter(i_clk, i_reset,
 	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
 	//
 	//
-	parameter	[0:0]	F_OPT_CLK2FFLOGIC = 1'b1;
-	//
 	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
 	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
 				? F_MAX_STALL : F_MAX_ACK_DELAY;
@@ -101,7 +99,8 @@ module	fwb_counter(i_clk, i_reset,
 	//
 	// Let's just make sure our parameters are set up right
 	//
-	assert property(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
+	always @(*)
+		assert(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
 
 	//
 	//

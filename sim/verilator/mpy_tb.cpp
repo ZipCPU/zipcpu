@@ -69,12 +69,12 @@ public:
 	// ~CPUOPS_TB(void) {}
 
 	//
-	// Calls TESTB<>::reset to reset the core.  Makes sure the i_ce line
+	// Calls TESTB<>::reset to reset the core.  Makes sure the i_stb line
 	// is low during this reset.
 	//
 	void	reset(void) {
 		// m_flash.debug(false);
-		m_core->i_ce = 0;
+		m_core->i_stb = 0;
 
 		TESTB<Vcpuops>::reset();
 	}
@@ -96,7 +96,7 @@ public:
 		sprintf(outstr, "Tick %4lld %s%s ",
 			(unsigned long long)m_tickcount,
 			(m_core->i_reset)?"R":" ", 
-			(m_core->i_ce)?"CE":"  ");
+			(m_core->i_stb)?"CE":"  ");
 		switch(m_core->i_op) {
 		case  0: strcat(outstr, "   SUB"); break;
 		case  1: strcat(outstr, "   AND"); break;
@@ -127,22 +127,24 @@ public:
 #if(OPT_MULTIPLY==1)
 #define	mpy_result	VVAR(_mpy_result)
 		sprintf(s, "1,MPY[][][%016lx]",
-			(unsigned)m_core->mpy_result);
+			(unsigned long)m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==2)
 		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
-#define	r_mpy_a_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input)
-#define	r_mpy_b_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input)
+#define	MPY2VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPY2CK__DOT_ ## A)
+#define	r_mpy_a_input	MPY2VAR(_r_mpy_a_input)
+#define	r_mpy_b_input	MPY2VAR(_r_mpy_b_input)
 #define	mpy_result	VVAR(_mpy_result)
 			m_core->r_mpy_a_input,
 			m_core->r_mpy_b_input,
 			m_core->mpy_result);
 		s = &outstr[strlen(outstr)];
 #elif(OPT_MULTIPLY==3)
-#define	r_mpy_a_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_a_input)
-#define	r_mpy_b_input	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_mpy_b_input)
-#define	r_smpy_result	VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__r_smpy_result)
-#define	mpypipe		VVAR(_genblk2__DOT__genblk2__DOT__genblk2__DOT__genblk1__DOT__mpypipe)
+#define	MPY3VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPN2__DOT__MPY3CK__DOT_ ## A)
+#define	r_mpy_a_input	MPY3VAR(_r_mpy_a_input)
+#define	r_mpy_b_input	MPY3VAR(_r_mpy_b_input)
+#define	r_smpy_result	MPY3VAR(_r_smpy_result)
+#define	mpypipe		MPY3VAR(_mpypipe)
 		sprintf(s, "3,MPY[%08x][%08x][%016llx], P[%d]",
 			m_core->r_mpy_a_input,
 			m_core->r_mpy_b_input,
@@ -152,8 +154,8 @@ public:
 #endif
 
 #if(OPT_MULTIPLY != 1)
-#define	this_is_a_multiply_op	VVAR(_this_is_a_multiply_op)
-		if (m_core->this_is_a_multiply_op)
+#define	this_is_a_multiply_op	((m_core->i_stb)&&(((m_core->i_op&0xe) == 5)||((m_core->i_op&0x0f)==0xc))) // VVAR(_this_is_a_multiply_op)
+		if (this_is_a_multiply_op)
 			strcat(s, " MPY-OP");
 #endif
 		puts(outstr);
@@ -192,7 +194,7 @@ public:
 	// we tick things once more.
 	//
 	void	clear_ops(void) {
-		m_core->i_ce    = 0;
+		m_core->i_stb    = 0;
 		m_core->i_op    = 0;
 
 		do {
@@ -218,7 +220,7 @@ public:
 
 		// Set the arguments to the CPUOPS core to get a multiple
 		// started
-		m_core->i_ce    = 1;
+		m_core->i_stb    = 1;
 		m_core->i_op    = op;
 		m_core->i_a     = a;
 		m_core->i_b     = b;
@@ -229,7 +231,7 @@ public:
 		tick();
 
 		// Clear the input arguments to the multiply
-		m_core->i_ce    = 0;
+		m_core->i_stb    = 0;
 		m_core->i_a     = 0;
 		m_core->i_b     = 0;
 
@@ -263,12 +265,14 @@ public:
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
 		const	int OP_MPY = 0x0c, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
+		const	bool	debug = false;
 		int64_t		ia, ib, sv;
 		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
 
 		clear_ops();
 
+		if (debug)
 		printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
 
 		ia = (long)a; ib = (long)b; sv = ia * ib;

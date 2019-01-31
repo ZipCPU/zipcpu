@@ -1,0 +1,206 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Wed May  9 22:36:52 2018
+[*]
+[dumpfile] "(null)"
+[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/zipcpu.gtkw"
+[timestart] 0
+[size] 1221 600
+[pos] -1 -1
+*-6.814017 90 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] zipcpu.
+[treeopen] zipcpu.instruction_decoder.
+[sst_width] 196
+[signals_width] 222
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@c00200
+-External Inputs
+@28
+[color] 2
+zipcpu.i_reset
+[color] 2
+zipcpu.i_clear_pf_cache
+[color] 2
+zipcpu.i_clk
+[color] 2
+zipcpu.i_halt
+@22
+[color] 2
+zipcpu.i_dbg_data[31:0]
+[color] 2
+zipcpu.i_dbg_reg[4:0]
+@28
+[color] 2
+zipcpu.i_dbg_we
+@22
+[color] 2
+zipcpu.ipc[31:0]
+@28
+[color] 2
+zipcpu.i_interrupt
+@1401200
+-External Inputs
+@c00200
+-CE
+@28
+zipcpu.dcd_ce
+zipcpu.op_ce
+zipcpu.master_ce
+zipcpu.adf_ce_unconditional
+zipcpu.alu_ce
+zipcpu.div_ce
+zipcpu.fpu_ce
+zipcpu.mem_ce
+@1401200
+-CE
+@c00200
+-Valid
+@28
+zipcpu.pf_valid
+zipcpu.dcd_valid
+zipcpu.w_op_valid
+zipcpu.op_valid
+zipcpu.op_valid_alu
+zipcpu.op_valid_div
+zipcpu.op_valid_fpu
+zipcpu.op_valid_mem
+zipcpu.div_valid
+zipcpu.alu_valid
+zipcpu.mem_valid
+zipcpu.mem_pc_valid
+zipcpu.alu_pc_valid
+@1401200
+-Valid
+@c00200
+-Stall
+@28
+zipcpu.pf_stalled
+zipcpu.dcd_A_stall
+zipcpu.dcd_B_stall
+zipcpu.dcd_F_stall
+zipcpu.dcd_stalled
+zipcpu.op_stall
+zipcpu.master_stall
+zipcpu.alu_stall
+zipcpu.mem_pipe_stalled
+zipcpu.mem_stalled
+zipcpu.alu_sreg_stall
+@1401200
+-Stall
+@c00200
+-Busy
+@28
+zipcpu.alu_busy
+zipcpu.mem_busy
+zipcpu.mem_rdbusy
+zipcpu.div_busy
+@1401200
+-Busy
+@c00200
+-f_instruction
+@28
+zipcpu.f_const_gie
+@22
+zipcpu.f_const_insn[31:0]
+zipcpu.f_const_addr[31:0]
+@28
+zipcpu.f_const_phase
+zipcpu.f_const_illegal
+@1401200
+-f_instruction
+@c00200
+-f_instruction_decoded
+@28
+zipcpu.fc_ALU
+zipcpu.fc_DV
+zipcpu.fc_FP
+zipcpu.fc_M
+zipcpu.fc_illegal
+@22
+zipcpu.fc_op[3:0]
+@28
+zipcpu.fc_wF
+zipcpu.fc_wR
+zipcpu.fc_rA
+@22
+zipcpu.fc_Aid[6:0]
+@28
+zipcpu.fc_rB
+@22
+zipcpu.fc_Bid[6:0]
+zipcpu.fc_I[31:0]
+zipcpu.fc_cond[3:0]
+@28
+zipcpu.fc_lock
+zipcpu.fc_break
+zipcpu.fc_sim
+@22
+zipcpu.fc_sim_immv[22:0]
+@1401200
+-f_instruction_decoded
+@c00200
+-f_insn_flags
+@28
+zipcpu.f_pf_insn
+zipcpu.f_pre_dcd_insn
+zipcpu.f_dcd_insn
+zipcpu.f_op_insn
+@1401200
+-f_insn_flags
+@c00200
+-Prefetch
+@28
+zipcpu.pf_new_pc
+zipcpu.pf_stalled
+zipcpu.pf_valid
+@22
+zipcpu.pf_pc[31:0]
+zipcpu.pf_instruction[31:0]
+@28
+zipcpu.pf_illegal
+@1401200
+-Prefetch
+@22
+zipcpu.op_opn[3:0]
+zipcpu.op_Aid[4:0]
+zipcpu.op_Bid[4:0]
+@28
+zipcpu.f_op_branch
+zipcpu.dcd_early_branch
+zipcpu.dcd_early_branch_stb
+@22
+zipcpu.dcd_opn[3:0]
+@28
+zipcpu.instruction_decoder.w_noop
+zipcpu.instruction_decoder.w_special
+zipcpu.instruction_decoder.w_cis_ljmp
+zipcpu.instruction_decoder.w_div
+@22
+zipcpu.instruction_decoder.w_cis_op[4:0]
+@28
+zipcpu.instruction_decoder.w_cmptst
+zipcpu.instruction_decoder.o_illegal
+@22
+zipcpu.instruction_decoder.w_dcdA[4:0]
+@28
+zipcpu.dcd_illegal
+zipcpu.op_illegal
+zipcpu.alu_illegal
+zipcpu.pending_sreg_write
+zipcpu.clear_pipeline
+zipcpu.op_wR
+zipcpu.set_cond
+zipcpu.alu_wR
+zipcpu.dcd_gie
+zipcpu.gie
+zipcpu.ill_err_i
+zipcpu.alu_illegal
+zipcpu.clear_pipeline
+zipcpu.new_pc
+zipcpu.pf_new_pc
+zipcpu.wr_reg_ce
+@22
+zipcpu.wr_reg_id[4:0]
+[pattern_trace] 1
+[pattern_trace] 0

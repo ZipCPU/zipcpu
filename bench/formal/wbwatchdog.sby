@@ -1,0 +1,16 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal wbwatchdog.v
+read -formal fwb_slave.v
+prep -top wbwatchdog
+
+
+[files]
+../../rtl/peripherals/wbwatchdog.v
+../../rtl/ex/fwb_slave.v

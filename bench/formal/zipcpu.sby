@@ -1,50 +1,69 @@
 [tasks]
-prove_first	first_half  full_proof
-prove_second	second_half full_proof
-nopipe_first	first_half  nopipe
-nopipe_second	second_half nopipe
-lowlogic_first	first_half  lowlogic nopipe
-lowlogic_second	second_half lowlogic nopipe
+dcache		full_proof      dcache
+piped		full_proof      no_dcache
+nopipe		nopipe          no_dcache
+lowlogic	nopipe		no_dcache
+ice40		nopipe          no_dcache	nobkram
 
 [options]
 mode prove
 depth 18
+dcache:   depth 16 # Was 10
+piped:    depth 16 # Was 14 for yosys only, trying 18 w/ Verific
+nopipe:   depth 16 # Was 11
+lowlogic: depth 16 # Was 10
+ice40:    depth 16 # Was 11
 
 [engines]
 smtbmc boolector
 
 [script]
+nobkram: read -define -DNO_DISTRIBUTED_RAM
+read -define -DZIPCPU
+#
+read -formal -D ZIPCPU cpuops.v
+read -formal -D ZIPCPU memops.v
+read -formal -D ZIPCPU pipemem.v
+read -formal -D ZIPCPU dcache.v
+read -formal -D ZIPCPU iscachable.v
+read -formal -D ZIPCPU idecode.v
+read -formal -D ZIPCPU wbdblpriarb.v
+#
+read -formal -D ZIPCPU fwb_counter.v
+read -formal -D ZIPCPU fwb_master.v
+read -formal -D ZIPCPU fwb_slave.v
+read -formal -D ZIPCPU f_idecode.v
+read -formal -D ZIPCPU abs_prefetch.v
+read -formal -D ZIPCPU abs_div.v
+read -formal -D ZIPCPU abs_mpy.v
+#
+read -formal zipcpu.v
+
+chparam -set IMPLEMENT_FPU    0 zipcpu
+
+dcache:
+chparam -set OPT_LGDCACHE    10 zipcpu
+
+no_dcache:
+chparam -set OPT_LGDCACHE     0 zipcpu
+
+full_proof:
+chparam -set IMPLEMENT_MPY    1 zipcpu
+chparam -set IMPLEMENT_DIVIDE 1 zipcpu
+chparam -set EARLY_BRANCHING  1 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    1 zipcpu
+
 nopipe:
-chparam -set IMPLEMENT_FPU 0 zipcpu
-chparam -set IMPLEMENT_MPY 0 -set IMPLEMENT_DIVIDE 0 zipcpu
-chparam -set EARLY_BRANCHING 0 -set OPT_CIS 1 -set OPT_PIPELINED 0 zipcpu
+chparam -set IMPLEMENT_MPY    0 zipcpu
+chparam -set IMPLEMENT_DIVIDE 0 zipcpu
+chparam -set EARLY_BRANCHING  0 zipcpu
+chparam -set OPT_CIS          1 zipcpu
+chparam -set OPT_PIPELINED    0 zipcpu
 
 lowlogic:
 chparam -set OPT_CIS 0 zipcpu
 --
-
-first_half:
-read_verilog -D ZIPCPU -formal zipcpu.v
---
-
-second_half:
-read_verilog -D ZIPCPU -DPHASE_TWO -formal zipcpu.v
---
-
-read_verilog -D ZIPCPU -formal cpuops.v
-read_verilog -D ZIPCPU -formal memops.v
-read_verilog -D ZIPCPU -formal pipemem.v
-read_verilog -D ZIPCPU -formal idecode.v
-read_verilog -D ZIPCPU -formal wbdblpriarb.v
-#
-read_verilog -D ZIPCPU -formal fwb_counter.v
-read_verilog -D ZIPCPU -formal fwb_master.v
-read_verilog -D ZIPCPU -formal fwb_slave.v
-read_verilog -D ZIPCPU -formal f_idecode.v
-read_verilog -D ZIPCPU -formal abs_prefetch.v
-read_verilog -D ZIPCPU -formal abs_div.v
-read_verilog -D ZIPCPU -formal abs_mpy.v
-#
 
 prep -top zipcpu
 
@@ -53,6 +72,8 @@ prep -top zipcpu
 ../../rtl/core/cpuops.v
 ../../rtl/core/memops.v
 ../../rtl/core/pipemem.v
+../../rtl/core/dcache.v
+../../rtl/core/iscachable.v
 ../../rtl/core/idecode.v
 ../../rtl/ex/wbdblpriarb.v
 #

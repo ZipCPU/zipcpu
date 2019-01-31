@@ -1,0 +1,221 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Mon Aug 27 21:59:16 2018
+[*]
+[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/zipmmu.vcd"
+[dumpfile_mtime] "Mon Aug 27 21:57:47 2018"
+[dumpfile_size] 29996
+[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/zipmmu.gtkw"
+[timestart] 0
+[size] 1431 1028
+[pos] -1 -1
+*-5.031004 30 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 190
+[sst_expanded] 1
+[sst_vpaned_height] 306
+@28
+zipmmu.i_reset
+zipmmu.i_clk
+zipmmu.i_gie
+zipmmu.i_wbm_exe
+@200
+-
+@28
+zipmmu.i_wbm_cyc
+zipmmu.i_wbm_stb
+zipmmu.i_wbm_we
+@22
+zipmmu.i_wbm_addr[29:0]
+zipmmu.i_wbm_data[31:0]
+zipmmu.i_wbm_sel[3:0]
+@28
+[color] 3
+zipmmu.o_rtn_stall
+[color] 3
+zipmmu.o_rtn_ack
+@22
+[color] 3
+zipmmu.o_rtn_data[31:0]
+@28
+[color] 3
+zipmmu.o_rtn_err
+[color] 3
+zipmmu.o_rtn_miss
+@200
+-
+@28
+zipmmu.i_wbs_cyc_stb
+zipmmu.i_wbs_we
+@22
+zipmmu.i_wbs_addr[3:0]
+zipmmu.i_wbs_data[31:0]
+@28
+zipmmu.o_wbs_ack
+@22
+zipmmu.o_wbs_data[31:0]
+@28
+zipmmu.o_wbs_stall
+@200
+-
+@28
+zipmmu.o_cyc
+zipmmu.o_stb
+zipmmu.o_we
+@22
+zipmmu.o_addr[27:0]
+zipmmu.o_data[31:0]
+zipmmu.o_sel[3:0]
+@28
+[color] 3
+zipmmu.i_ack
+[color] 3
+zipmmu.i_stall
+@22
+[color] 3
+zipmmu.i_data[31:0]
+@28
+[color] 3
+zipmmu.i_err
+@200
+-
+@22
+[color] 1
+zipmmu.fp_nacks[3:0]
+[color] 1
+zipmmu.fp_nreqs[3:0]
+[color] 1
+zipmmu.fp_outstanding[3:0]
+@200
+-
+@23
+[color] 1
+zipmmu.fv_nacks[3:0]
+[color] 1
+zipmmu.fv_nreqs[3:0]
+[color] 1
+zipmmu.fv_outstanding[3:0]
+@200
+-
+@28
+zipmmu.adr_control
+zipmmu.adr_ptable
+zipmmu.adr_vtable
+@22
+zipmmu.bus_outstanding[5:0]
+@28
+zipmmu.bus_pending
+zipmmu.cachable
+zipmmu.exe_flag
+zipmmu.exe_miss
+@22
+zipmmu.f_expected[3:0]
+@28
+zipmmu.f_kill_input
+zipmmu.f_last_page[1:0]
+zipmmu.f_past_gie
+zipmmu.f_past_valid
+zipmmu.f_past_wbm_cyc
+@22
+zipmmu.f_tlb_pipe[4:0]
+@28
+zipmmu.fp_is_zero
+zipmmu.fv_is_one
+zipmmu.kernel_context
+zipmmu.last_exe
+zipmmu.last_page_valid
+@22
+zipmmu.last_ppage[9:0]
+@28
+zipmmu.last_ro
+zipmmu.last_tlb[1:0]
+@22
+zipmmu.last_vpage[11:0]
+@28
+zipmmu.miss_pending
+zipmmu.pending_page_valid
+zipmmu.pf_stb
+zipmmu.pf_cachable
+zipmmu.pf_return_cachable
+@22
+zipmmu.pf_return_p[9:0]
+@28
+zipmmu.pf_return_stb
+@22
+zipmmu.pf_return_v[11:0]
+@28
+zipmmu.pf_return_we
+@22
+zipmmu.ppage[9:0]
+@200
+-
+@22
+zipmmu.r_addr[29:0]
+@28
+zipmmu.r_context_word[1:0]
+@22
+zipmmu.r_data[31:0]
+@28
+zipmmu.r_exe
+zipmmu.r_pending
+@22
+zipmmu.r_ppage[9:0]
+zipmmu.r_sel[3:0]
+zipmmu.r_tlb_match[3:0]
+@28
+zipmmu.r_valid
+@22
+zipmmu.r_vpage[11:0]
+@28
+zipmmu.r_we
+zipmmu.ro_flag
+zipmmu.ro_miss
+zipmmu.rtn_err
+@200
+-
+@28
+zipmmu.s_pending
+zipmmu.s_tlb_addr[1:0]
+zipmmu.s_tlb_hit
+zipmmu.s_tlb_miss
+zipmmu.simple_miss
+@22
+zipmmu.status_word[31:0]
+@28
+zipmmu.table_err
+zipmmu.this_page_valid
+@22
+zipmmu.tlb_accessed[3:0]
+@28
+zipmmu.tlb_cdata<0>[1:0]
+zipmmu.tlb_cdata<1>[1:0]
+zipmmu.tlb_cdata<2>[1:0]
+zipmmu.tlb_cdata<3>[1:0]
+zipmmu.tlb_flags<0>[2:0]
+zipmmu.tlb_flags<1>[2:0]
+zipmmu.tlb_flags<2>[2:0]
+@22
+zipmmu.tlb_pdata<0>[9:0]
+zipmmu.tlb_pdata<1>[9:0]
+zipmmu.tlb_pdata<2>[9:0]
+zipmmu.tlb_valid[3:0]
+zipmmu.tlb_vdata<0>[11:0]
+zipmmu.tlb_vdata<1>[11:0]
+zipmmu.tlb_vdata<2>[11:0]
+zipmmu.tlb_vdata<3>[11:0]
+zipmmu.unused[9:0]
+@28
+zipmmu.unused_data
+@22
+zipmmu.vpage[11:0]
+zipmmu.w_control_data[31:0]
+zipmmu.w_ptable_reg[29:0]
+zipmmu.w_vtable_reg[31:0]
+@28
+zipmmu.wr_control
+zipmmu.wr_ptable
+zipmmu.wr_tlb_addr[1:0]
+zipmmu.wr_vtable
+zipmmu.z_context
+[pattern_trace] 1
+[pattern_trace] 0

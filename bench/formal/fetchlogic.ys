@@ -1,0 +1,12 @@
+# read_verilog ../../rtl/core/prefetch.v
+read_verilog ../../rtl/core/dblfetch.v
+# read_verilog ../../rtl/core/pfcache.v
+# proc
+# read_verilog old/prefetch.v
+# read_verilog /home/dan/work/rnd/opencores/zbasic/trunk/rtl/cpu/prefetch.v
+# read_verilog old/dblfetch.v
+# read_verilog /home/dan/work/rnd/opencores/s6soc/trunk/rtl/cpu/dblfetch.v
+# opt -share_all
+synth_xilinx
+# synth_ice40
+# write_blif prefetch.blif

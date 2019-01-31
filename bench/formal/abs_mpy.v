@@ -16,7 +16,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
+// Copyright (C) 2015-2019, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -50,11 +50,12 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 	input	wire		i_clk, i_reset, i_stb;
 	input	wire	[1:0]	i_op; // 2'b00=MPY, 2'b10=MPYUHI, 2'b11=MPYSHI
 	input	wire	[31:0]	i_a, i_b;
-	output	wire		o_valid; // True if we'll be valid on the next clock;
+	output	reg		o_valid; // True if we'll be valid on the next clock;
 	output	wire		o_busy; // The multiply is busy if true
 	output	wire	[63:0]	o_result; // Where we dump the multiply result
 	output	reg		o_hi;	// Return the high half of the multiply
 
+`define	ASSERT	assert
 // i_stb instead of this_is_a_multiply_op
 // o_result
 // o_busy
@@ -65,23 +66,30 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
-		assign	o_valid    = 1'b1;
+		always @(*)
+			o_valid    = i_stb;
 		always @(*) o_hi = 1'b0; // Not needed
 
-	end else //
-	begin
+	end else begin // Our single clock option (no extra clocks)
 
-		wire	[2:0]	next_delay_to_valid;
+		(* anyseq *) reg	[2:0]	next_delay_to_valid;
+		(* anyseq *) reg	[63:0]	any_result;
 
-		assign	next_delay_to_valid = $anyseq;
-		assign	o_result = $anyseq;
+		assign	o_result = any_result;
 
 		reg	[2:0]	delay_to_valid;
 		reg		r_busy;
 
 		always @(*)
-			assume((MAXDELAY == 0)
-				||(next_delay_to_valid < MAXDELAY));
+		assume((MAXDELAY == 0)
+			||(next_delay_to_valid < MAXDELAY));
+
+		// always @(*)
+		// if (IMPLEMENT_MPY == 1)
+			// assume(next_delay_to_valid == 0);
+		always @(*)
+		if (IMPLEMENT_MPY>0)
+			assume(next_delay_to_valid == IMPLEMENT_MPY-1);
 
 		initial	delay_to_valid = 3'h0;
 		always @(posedge i_clk)
@@ -92,10 +100,6 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		else if (delay_to_valid > 0)
 			delay_to_valid <= delay_to_valid - 1'b1;
 
-		always @(*)
-			assert((MAXDELAY == 0)
-				||(delay_to_valid < MAXDELAY));
-
 		initial	r_busy = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
@@ -105,6 +109,7 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 		else if (r_busy)
 			r_busy <= (delay_to_valid != 3'h1);
 
+		initial	o_valid = 0;
 		always @(posedge i_clk)
 		if (i_reset)
 			o_valid <= 1'b0;

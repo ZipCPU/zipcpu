@@ -1,0 +1,15 @@
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal -DICONTROL icontrol.v
+read -formal -DICONTROL fwb_slave.v
+prep -top icontrol
+
+[files]
+../../rtl/peripherals/icontrol.v
+../../rtl/ex/fwb_slave.v

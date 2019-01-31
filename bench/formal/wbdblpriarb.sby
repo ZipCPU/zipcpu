@@ -1,0 +1,17 @@
+[options]
+mode prove
+depth 4
+
+[engines]
+smtbmc
+
+[script]
+read -formal -D WBDBLPRIARB wbdblpriarb.v
+read -formal -D WBDBLPRIARB fwb_master.v
+read -formal -D WBDBLPRIARB fwb_slave.v
+prep -top wbdblpriarb
+
+[files]
+../../rtl/ex/wbdblpriarb.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v
