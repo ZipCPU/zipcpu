@@ -164,7 +164,7 @@ module	fwb_slave(i_clk, i_reset,
 	initial	`SLAVE_ASSERT(!i_wb_err);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
+	if ((!f_past_valid)||($past(i_reset)))
 	begin
 		`SLAVE_ASSUME(!i_wb_cyc);
 		`SLAVE_ASSUME(!i_wb_stb);
@@ -222,9 +222,9 @@ module	fwb_slave(i_clk, i_reset,
 		`SLAVE_ASSUME(i_wb_we == $past(i_wb_we));
 
 	// Write requests must also set one (or more) of i_wb_sel
-	always @(*)
-	if ((i_wb_stb)&&(i_wb_we))
-		`SLAVE_ASSUME(|i_wb_sel);
+	// always @(*)
+	// if ((i_wb_stb)&&(i_wb_we))
+	//	`SLAVE_ASSUME(|i_wb_sel);
 
 
 	//
@@ -242,6 +242,23 @@ module	fwb_slave(i_clk, i_reset,
 		`SLAVE_ASSERT(!i_wb_err);
 		// Stall may still be true--such as when we are not
 		// selected at some arbiter between us and the slave
+	end
+
+	//
+	// Any time the CYC line drops, it is possible that there may be a
+	// remaining (registered) ACK or ERR that hasn't yet been returned.
+	// Restrict such out of band returns so that they are *only* returned
+	// if there is an outstanding operation.
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_cyc))&&(!i_wb_cyc))
+	begin
+		if (($past(f_outstanding == 0))
+			&&((!$past(i_wb_stb && !i_wb_stall))
+				||($past(i_wb_ack|i_wb_err))))
+		begin
+			`SLAVE_ASSERT(!i_wb_ack);
+			`SLAVE_ASSERT(!i_wb_err);
+		end
 	end
 
 	// ACK and ERR may never both be true at the same time
