@@ -1034,23 +1034,25 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	initial	op_valid_div = 1'b0;
 	initial	op_valid_fpu = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||(clear_pipeline))
+	if ((i_reset)||(clear_pipeline))
+	begin
+		op_valid     <= 1'b0;
+		op_valid_alu <= 1'b0;
+		op_valid_mem <= 1'b0;
+		op_valid_div <= 1'b0;
+		op_valid_fpu <= 1'b0;
+	end else if (op_ce)
+	begin
+		// Do we have a valid instruction?
+		//   The decoder may vote to stall one of its
+		//   instructions based upon something we currently
+		//   have in our queue.  This instruction must then
+		//   move forward, and get a stall cycle inserted.
+		//   Hence, the test on dcd_stalled here.  If we must
+		//   wait until our operands are valid, then we aren't
+		//   valid yet until then.
+		if (OPT_PIPELINED || !op_valid)
 		begin
-			op_valid     <= 1'b0;
-			op_valid_alu <= 1'b0;
-			op_valid_mem <= 1'b0;
-			op_valid_div <= 1'b0;
-			op_valid_fpu <= 1'b0;
-		end else if (op_ce)
-		begin
-			// Do we have a valid instruction?
-			//   The decoder may vote to stall one of its
-			//   instructions based upon something we currently
-			//   have in our queue.  This instruction must then
-			//   move forward, and get a stall cycle inserted.
-			//   Hence, the test on dcd_stalled here.  If we must
-			//   wait until our operands are valid, then we aren't
-			//   valid yet until then.
 			op_valid     <= (w_op_valid)||(dcd_early_branch);
 			op_valid_alu <= (w_op_valid)&&((dcd_ALU)||(dcd_illegal));
 			op_valid_mem <= (dcd_M)&&(!dcd_illegal)
@@ -1065,6 +1067,14 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			op_valid_div <= 1'b0;
 			op_valid_fpu <= 1'b0;
 		end
+	end else if ((adf_ce_unconditional)||(mem_ce))
+	begin
+		op_valid     <= 1'b0;
+		op_valid_alu <= 1'b0;
+		op_valid_mem <= 1'b0;
+		op_valid_div <= 1'b0;
+		op_valid_fpu <= 1'b0;
+	end
 
 	// Here's part of our debug interface.  When we recognize a break
 	// instruction, we set the op_break flag.  That'll prevent this
@@ -2958,6 +2968,30 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		&&(!alu_illegal)
 		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
 		`ASSERT(adf_ce_unconditional | mem_ce);
+
+	//
+	// Make sure that, following an op_ce && op_valid, op_valid is only
+	// true if dcd_valid was as well
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(op_ce && op_valid && !dcd_valid)))
+	begin
+		if ($past(dcd_early_branch))
+			`ASSERT(!dcd_early_branch);
+		else
+			`ASSERT(!op_valid);
+	end
+
+	//
+	// Same for the next step
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(op_valid && (mem_ce ||adf_ce_unconditional)))
+			&&(!$past(dcd_valid)))
+	begin
+		if ($past(dcd_early_branch))
+			`ASSERT(!dcd_early_branch);
+		else
+			`ASSERT(!op_valid);
+	end
 
 	////////////////////////////////////////////////
 	//
