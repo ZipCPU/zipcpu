@@ -45,6 +45,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <string>
+#include <string.h>
 
 #include "zipelf.h"
 #include "zopcodes.h"
@@ -60,6 +62,83 @@ bool	altcmp(const ALT &a, const ALT &b) {
 typedef	struct { unsigned clks, hits, addr; } insn_stat;
 
 typedef	std::map<unsigned, insn_stat *> vcd_profile;
+
+typedef	std::map<unsigned, std::string>	symbol_table;
+typedef	std::pair<unsigned, std::string> SYMKEYVALUE;
+
+symbol_table	stable;
+
+
+bool	isvalue(const char *v) {
+	const char *ptr = v;
+
+	while(isspace(*ptr))
+		ptr++;
+
+	if ((*ptr == '+')||(*ptr == '-'))
+		ptr++;
+	if (*ptr == '+')
+		ptr++;
+	if (*ptr == '0') {
+		ptr++;
+		if (tolower(*ptr) == 'x')
+			ptr++;
+	}
+
+	return (isdigit(*ptr));
+}
+
+const char *get_symbol(const int a) {
+	symbol_table::iterator	stptr;
+	const char	*r = NULL;
+
+	stptr = stable.find(a);
+	if (stptr != stable.end())
+		r = (*stptr).second.c_str();
+
+	return r;
+}
+
+void	print_symbol(const int a) {
+	const char	*str;
+
+	str = get_symbol(a);
+	if (str)
+		printf("%s:\n", str);
+}
+
+void	gen_symtable(const char *map_fname) {
+	FILE	*fmp = fopen(map_fname, "r");
+	char	line[512];
+
+	if (NULL == fmp) {
+		fprintf(stderr, "ERR: Could not open linker MAP file, %s\n", map_fname);
+		exit(EXIT_FAILURE);
+	}
+
+	while(fgets(line, sizeof(line), fmp)) {
+		const char	DELIMITERS[] = " \t\n";
+		char	*astr, *nstr, *xstr;
+		unsigned	addr;
+
+		astr = strtok(line, DELIMITERS);
+		if (!astr)
+			continue;
+		nstr = strtok(NULL, DELIMITERS);
+		if (!nstr)
+			continue;
+		xstr = strtok(NULL, DELIMITERS);
+		if (xstr)
+			continue;
+		if (!isvalue(astr))
+			continue;
+
+		addr = strtoul(astr, NULL, 0);
+		printf("Found address: %08x: %s\n", addr, nstr);
+		stable.insert(SYMKEYVALUE((unsigned)strtoul(astr, NULL, 0),
+			std::string(nstr)));
+	}
+}
 
 void	dump_file(const char *fn) {
 	const	int	NZIP = 4096;
@@ -104,6 +183,7 @@ void	dump_file(const char *fn) {
 				w = buildword((const unsigned char *)&secp->m_data[j]);
 				zipi_to_double_string(a, w, lna, lnb);
 				// printf("%s\n", ln);
+				print_symbol(a);
 				printf("%08x: (0x%08x %c%c%c%c) ", a, w,
 					isgraph((w>>24)&0x0ff)?((w>>24)&0x0ff) : '.',
 					isgraph((w>>16)&0x0ff)?((w>>16)&0x0ff) : '.',
@@ -127,9 +207,30 @@ void	dump_file(const char *fn) {
 }
 
 int main(int argc, char **argv) {
-	if (argc <= 1)
-		printf("USAGE: pdump <dump-file> | less\n");
-	for(int argn=1; argn<argc; argn++) {
+	int	argn;
+
+	if (argc <= 1) {
+		fprintf(stderr, "USAGE: pdump [-m <mapfile>] <dump-file>* | less\n");
+		exit(EXIT_FAILURE);
+	}
+
+	argn = 1;
+	while(strcmp(argv[argn], "-m")==0) {
+		if (argn+1 >= argc) {
+			fprintf(stderr, "ERR: -m argument with no following file!\n");
+			exit(EXIT_FAILURE);
+		}
+
+		gen_symtable(argv[argn+1]);
+		argn+=2;
+	}
+
+	if (argn >= argc) {
+		fprintf(stderr, "USAGE: pdump [-m <mapfile>] <dump-file>* | less\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for(; argn<argc; argn++) {
 		if(access(argv[argn], R_OK)==0)
 			dump_file(argv[argn]);
 	}
