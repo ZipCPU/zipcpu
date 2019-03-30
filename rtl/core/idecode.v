@@ -310,10 +310,29 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	// w_dcd[   13] -- 2 LUTs
 	// w_dcd[17:14] -- (5+i0+i1) = 3 LUTs, 1 delay
 	// w_dcd[22:18] : 5 LUTs, 1 delay (assuming high bit is o/w determined)
-	reg	[22:0]	r_I;
-	wire	[22:0]	w_I, w_fullI;
+	reg	[22:0]	r_I, w_fullI;
+	wire	[22:0]	w_I;
 	wire		w_Iz;
 
+	reg	[1:0]	w_immsrc;
+	always @(*)
+	if (w_ldi)
+		w_immsrc = 0;
+	else if (w_mov)
+		w_immsrc = 1;
+	else if (!iword[`IMMSEL])
+		w_immsrc = 2;
+	else // if (!iword[`IMMSEL])
+		w_immsrc = 3;
+
+	always @(*)
+	case(w_immsrc)
+	2'b00: w_fullI = { iword[22:0] }; // LDI
+	2'b01: w_fullI = { {(23-13){iword[12]}}, iword[12:0] }; // MOV
+	2'b10: w_fullI = { {(23-18){iword[17]}}, iword[17:0] }; // Immediate
+	2'b11: w_fullI = { {(23-14){iword[13]}}, iword[13:0] }; // Reg + Imm
+	endcase
+	/*
 	assign	w_fullI = (w_ldi) ? { iword[22:0] } // LDI
 			// MOVE immediates have one less bit
 			:((w_mov) ?{ {(23-13){iword[12]}}, iword[12:0] }
@@ -321,6 +340,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			:((!iword[`IMMSEL]) ? { {(23-18){iword[17]}}, iword[17:0] }
 			: { {(23-14){iword[13]}}, iword[13:0] }
 			));
+	*/
 
 	generate if (OPT_CIS)
 	begin : GEN_CIS_IMMEDIATE
@@ -387,14 +407,19 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
-	if (i_ce)
+	if (i_reset)
+		o_illegal <= 1'b0;
+	else if (i_ce && o_phase)
 	begin
-		if (OPT_PIPELINED)
-			o_illegal <= ((i_illegal)
-					&&((!o_phase)||(!o_valid)))
-				||((o_illegal)&&(o_phase)&&(o_valid));
-		else
-			o_illegal <= (i_illegal)&&(!o_phase);
+		o_illegal <= o_illegal;
+		//  Cannot happen in compressed word ...
+		// 1. multiply op-codes
+		// 2. divide opcodes
+		// 3. FPU opcodes
+		// 4. special opcodes
+	end else if (i_ce && i_pf_valid) begin
+		o_illegal <= 1'b0;
+
 		if ((!OPT_CIS)&&(i_instruction[`CISBIT]))
 			o_illegal <= 1'b1;
 		if ((!OPT_MPY)&&(w_mpy))
@@ -414,7 +439,10 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		// always cause an illegal instruction error
 			o_illegal <= 1'b1;
 
-		// There are two (missing) special instructions
+		// There are two (missing) special instructions, after
+		// BREAK, LOCK, SIM, and NOOP.  These are special if their
+		// (unused-result) register is either the PC or CC register.
+		//
 		// These should cause an illegal instruction error
 		if ((w_dcdR[3:1]==3'h7)&&(w_cis_op[4:1]==4'b1101))
 			o_illegal <= 1'b1;
@@ -422,6 +450,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		// If the lock function isn't implemented, this should
 		// also cause an illegal instruction error
 		if ((!OPT_LOCK)&&(w_lock))
+			o_illegal <= 1'b1;
+
+		if (i_illegal)
 			o_illegal <= 1'b1;
 	end
 
@@ -731,12 +762,12 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	begin : GEN_DCD_VALID
 
 		always @(posedge i_clk)
-			if (i_reset)
-				r_valid <= 1'b0;
-			else if (i_ce)
-				r_valid <= ((pf_valid)||(o_phase))&&(!o_ljmp);
-			else if (!i_stalled)
-				r_valid <= 1'b0;
+		if (i_reset)
+			r_valid <= 1'b0;
+		else if (i_ce)
+			r_valid <= ((pf_valid)||(o_phase))&&(!o_ljmp);
+		else if (!i_stalled)
+			r_valid <= 1'b0;
 
 	end else begin : GEN_DCD_VALID
 
@@ -1614,7 +1645,8 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	end endgenerate
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))&&($past(w_fpu)))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce && pf_valid))
+		&&($past(w_fpu)))
 	begin
 		if (OPT_FPU)
 			`ASSERT(o_FP);
@@ -1622,7 +1654,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 			`ASSERT(o_illegal);
 	end
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce))&&($past(w_lock)))
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce && pf_valid))&&($past(w_lock)))
 	begin
 		if (OPT_LOCK)
 			`ASSERT(o_lock);
@@ -1757,6 +1789,10 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT(f_insn_word[31]);
 	end
 
+	always @(posedge i_clk)
+	if ($rose(o_illegal))
+		`ASSERT(o_valid || $past(o_early_branch || o_ljmp));
+
 	always @(*)
 		`ASSERT(o_branch_pc[1:0] == 2'b00);
 	always @(*)
@@ -1796,9 +1832,16 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	always @(posedge i_clk)
 	if ((o_valid)&&(!o_illegal))
 	begin
-		`ASSERT(fc_dcdR== o_dcdR);	//
-		`ASSERT(fc_dcdA== o_dcdA);	//
-		`ASSERT(fc_dcdB== o_dcdB);	//
+		if (i_reset)
+		begin
+			`ASSERT(fc_dcdR[3:0]== o_dcdR[3:0]);	//
+			`ASSERT(fc_dcdA[3:0]== o_dcdA[3:0]);	//
+			`ASSERT(fc_dcdB[3:0]== o_dcdB[3:0]);	//
+		end else begin
+			`ASSERT(fc_dcdR== o_dcdR);	//
+			`ASSERT(fc_dcdA== o_dcdA);	//
+			`ASSERT(fc_dcdB== o_dcdB);	//
+		end
 		`ASSERT(fc_I   == o_I);
 		`ASSERT(o_zI == (fc_I  == 0));
 		`ASSERT(fc_cond== o_cond);
@@ -1817,14 +1860,15 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT(fc_sim_immv  == o_sim_immv);
 		`ASSERT(fc_prepipe == r_insn_is_pipeable);
 	end else
-		`ASSERT(!r_insn_is_pipeable);
+		`ASSERT((i_reset)||(!r_insn_is_pipeable));
 
 	always @(*)
 	if (o_phase)
 		`ASSERT(r_nxt_half[14:0] == f_insn_word[14:0]);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_ce))&&(o_valid)&&(!$past(i_reset)))
+	if ((f_past_valid)&&(!$past(i_reset))&&(!i_reset)
+		&&($past(i_ce))&&(o_valid))
 	begin
 		`ASSERT(((fc_illegal)
 			||$past((i_illegal)&&(!o_phase))

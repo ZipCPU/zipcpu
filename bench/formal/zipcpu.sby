@@ -8,11 +8,11 @@ ice40		nopipe          no_dcache	nobkram
 [options]
 mode prove
 depth 18
-dcache:   depth 16 # Was 10
-piped:    depth 16 # Was 14 for yosys only, trying 18 w/ Verific
-nopipe:   depth 16 # Was 11
-lowlogic: depth 16 # Was 10
-ice40:    depth 16 # Was 11
+dcache:   depth 10
+piped:    depth 14
+nopipe:   depth 11
+lowlogic: depth  8
+ice40:    depth 11
 
 [engines]
 smtbmc boolector
