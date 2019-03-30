@@ -166,6 +166,7 @@ $(JIF)/PASS: $(JIF).sby $(RTL)/peripherals/$(JIF).v $(SLAVE)
 	sby -f $(JIF).sby
 
 .PHONY: $(WDG)
+$(WDG): $(WDG)/PASS
 $(WDG)/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
 	sby -f $(WDG).sby
 

@@ -623,6 +623,9 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		always @(*)
 			o_wreg = req_data[(NAUX+4-1):4];
 
+		always @(*)
+			gie = i_oreg[NAUX-1];
+
 `ifdef	FORMAL
 		assign	f_pc = ((r_rd_pending)||(o_valid))&&(o_wreg[3:1] == 3'h7);
 
@@ -663,8 +666,11 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				r_svalid, r_dvalid, r_rd_pending };
 		*/
 
+		// verilator lint_off UNUSED
+		wire	unused_no_fifo;
+		assign	unused_no_fifo = gie;
+		// verilator lint_on  UNUSED
 	end endgenerate
-		
 
 
 	initial	r_wb_cyc_gbl = 0;

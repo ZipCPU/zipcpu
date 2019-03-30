@@ -1705,8 +1705,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/configure.ac binutils-2.27-z
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2018-06-07 11:33:00.603899602 -0400
-@@ -0,0 +1,3405 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2019-02-14 20:54:05.341671631 -0500
+@@ -0,0 +1,3403 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	tc-zip.c
@@ -4112,7 +4112,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&((rg=zip_findnearreg_machine(pzipm, immv))!= ZIP_RNONE)
 +			&&(fits_within(13,pzipm->r[rg].m_value - immv))) {
-+fprintf(stderr, "NEW CODE: LDI -> MOV #2\n");
 +				// Replace LDI with a MOV instruction
 +				insn->i_op = ZIPO_MOV;
 +				insn->i_breg = rg;
@@ -4126,7 +4125,6 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&((rg=zip_findnearreg_machine(pzipm, zip_brev(immv)))!= ZIP_RNONE)
 +			&&(fits_within(14,zip_brev(pzipm->r[rg].m_value - immv)))) {
-+fprintf(stderr, "NEW CODE: LDI[%08x] -> BREV #3\n", immv);
 +				// Replace LDI with a MOV instruction
 +				insn->i_op = ZIPO_BREV;
 +				insn->i_breg = rg;
