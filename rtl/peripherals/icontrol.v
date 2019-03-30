@@ -81,14 +81,14 @@
 module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 		o_wb_ack, o_wb_stall, o_wb_data,
 		i_brd_ints, o_interrupt);
-	parameter	IUSED = 15, BW=32;
+	parameter	IUSED = 12, DW=32;
 	input	wire			i_clk, i_reset;
 	input	wire			i_wb_stb, i_wb_we;
-	input	wire	[BW-1:0]	i_wb_data;
+	input	wire	[DW-1:0]	i_wb_data;
 	output	wire			o_wb_ack, o_wb_stall;
-	output	reg	[BW-1:0]	o_wb_data;
+	output	reg	[DW-1:0]	o_wb_data;
 	input	wire	[(IUSED-1):0]	i_brd_ints;
-	output	wire			o_interrupt;
+	output	reg			o_interrupt;
 
 	reg	[(IUSED-1):0]	r_int_state;
 	reg	[(IUSED-1):0]	r_int_enable;
@@ -96,23 +96,23 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	reg			r_gie;
 	wire			w_any;
 
-	wire			wb_write;
-	assign	wb_write = (i_wb_stb)&&(i_wb_we);
-
-	assign	nxt_int_state = (r_int_state|i_brd_ints);
+	wire			wb_write, enable_ints, disable_ints;
+	assign	wb_write     = (i_wb_stb)&&(i_wb_we);
+	assign	enable_ints  = (wb_write)&&( i_wb_data[15]);
+	assign	disable_ints = (wb_write)&&(!i_wb_data[15]);
 
 	//
-	// First step: figure out which interrupts have triggered.
-	// An interrupt "triggers" when the incoming interrupt wire is high,
-	// and stays triggered until cleared by the bus.
+	// First step: figure out which interrupts have triggered.  An
+	// interrupt "triggers" when the incoming interrupt wire is high, and
+	// stays triggered until cleared by the bus.
 	initial	r_int_state = 0;
 	always @(posedge i_clk)
-		if (i_reset)
-			r_int_state  <= 0;
-		else if (wb_write)
-			r_int_state <= i_brd_ints | (r_int_state & (~i_wb_data[(IUSED-1):0]));
-		else
-			r_int_state <= nxt_int_state;
+	if (i_reset)
+		r_int_state  <= 0;
+	else if (wb_write)
+		r_int_state <= i_brd_ints | (r_int_state & (~i_wb_data[(IUSED-1):0]));
+	else
+		r_int_state <= (r_int_state | i_brd_ints);
 
 	//
 	// Second step: determine which interrupts are enabled.
@@ -120,21 +120,23 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	// the global interrupt line.
 	initial	r_int_enable = 0;
 	always @(posedge i_clk)
-		if (i_reset)
-			r_int_enable <= 0;
-		else if ((wb_write)&&(i_wb_data[BW-1]))
-			r_int_enable <= r_int_enable | i_wb_data[(16+IUSED-1):16];
-		else if ((wb_write)&&(!i_wb_data[BW-1]))
-			r_int_enable <= r_int_enable & (~ i_wb_data[(16+IUSED-1):16]);
+	if (i_reset)
+		r_int_enable <= 0;
+	else if (enable_ints)
+		r_int_enable <= r_int_enable | i_wb_data[(16+IUSED-1):16];
+	else if (disable_ints)
+		r_int_enable <= r_int_enable & (~ i_wb_data[(16+IUSED-1):16]);
 
 	//
 	// Third step: The global interrupt enable bit.
 	initial	r_gie = 1'b0;
 	always @(posedge i_clk)
-		if (i_reset)
-			r_gie <= 1'b0;
-		else if (wb_write)
-			r_gie <= i_wb_data[BW-1];
+	if (i_reset)
+		r_gie <= 1'b0;
+	else if (enable_ints && i_wb_data[DW-1])
+		r_gie <= 1'b1;
+	else if (disable_ints && i_wb_data[DW-1])
+		r_gie <= 1'b0;
 
 	//
 	// Have "any" enabled interrupts triggered?
@@ -151,25 +153,32 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	//
 	// Create the output data.  Place this into the next clock, to keep
 	// it synchronous with w_any.
-	generate
-	if (IUSED < 15)
+	initial	o_wb_data = 0;
+	always @(posedge i_clk)
+	if (i_reset)
 	begin
-		always @(posedge i_clk)
-			o_wb_data <= {
-				r_gie, { {(15-IUSED){1'b0}}, r_int_enable }, 
-				w_any, { {(15-IUSED){1'b0}}, r_int_state  } };
+		o_wb_data <= 0;
 	end else begin
-		always @(posedge i_clk)
-			o_wb_data <= { r_gie, r_int_enable, w_any, r_int_state };
-	end endgenerate
+		o_wb_data <= 0;
+		o_wb_data[31] <= r_gie;
+		o_wb_data[15] <= w_any;
+
+		o_wb_data[16 +: IUSED] <= r_int_enable;
+		o_wb_data[ 0 +: IUSED] <= r_int_state;
+	end
 
 	// Make verilator happy
-	// verilator lint_off UNUSED
-	wire	[30:0]	unused;
-	assign	unused = i_wb_data[30:0];
-	// verilator lint_on  UNUSED
+	generate if (IUSED < 15)
+	begin
+		// verilator lint_off UNUSED
+		wire	[2*(15-IUSED)-1:0]	unused;
+		assign	unused = { i_wb_data[32-2:(16+IUSED)],
+				i_wb_data[16-2:(16+IUSED)] };
+		// verilator lint_on  UNUSED
 
-	assign	o_wb_ack   = i_wb_stb;
+	end endgenerate
+
+	assign	o_wb_ack = i_wb_stb;
 	assign	o_wb_stall = 1'b0;
 
 
@@ -195,13 +204,13 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
-	//
+	////////////////////////////////////////
 	//
 	// Reset handling
 	//
+	////////////////////////////////////////
 	//
-
-
+	//
 	initial	`ASSUME(i_reset);
 	always @(*)
 	if (!f_past_valid)
@@ -210,72 +219,125 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
+		assert(r_int_state  == 0);
+		assert(r_int_enable == 0);
 		assert(w_any == 0);
 		assert(o_interrupt == 0);
 		assert(r_gie == 0);
-		assert(r_int_enable == 0);
+		assert(o_wb_data == 0);
 	end
 
-	////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Formal contract
 	//
-	////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	// Rule #1: An interrupt should be able to set the r_int_state bits
+	//
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset)))
+		assert((r_int_state & $past(i_brd_ints))==$past(i_brd_ints));
+
+	// Rule #2: An interrupt should be generated if received and enabled
 	//
 	// Make sure any enabled interrupt generates an outgoing interrupt
 	// ... assuming the master interrupt enable is true and the
 	// individual interrupt enable is true as well.
 	always @(posedge i_clk)
 	if (((f_past_valid)&&(!$past(i_reset)))
-			&&($past(r_int_state) & $past(r_int_enable))
+			&&(|$past(r_int_state & r_int_enable))
 			&&($past(r_gie)) )
+	begin
 		assert(o_interrupt);
+	end
 
+	// Rule #3: If the global interrupt enable bit is off, then no
+	//	interrupts shall be asserted
 	//
-	// If the master enable is off, then no interrupt should be asserted.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(r_gie)))
 		assert(!o_interrupt);
 
-
-	// An incoming interrupt line that is hgih should affect the interrupt
-	// state line for that interrupt line on the next clock
+	// Rule #4: If no active interrupts are enabled, then no outgoing
+	// 	interrupt shall be asserted either
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset)))
-		assert((r_int_state & $past(i_brd_ints))==$past(i_brd_ints));
+	if ((f_past_valid)&&(0 == |$past(r_int_state & r_int_enable)))
+		assert(!o_interrupt);
 
+	// Bus rules
+	//
+	// Rule #5: It should be possible to disable one (or all) interrupts
+	always @(posedge i_clk)
+	if ((f_past_valid)&&($past(disable_ints)))
+		assert(($past({i_wb_data[31],i_wb_data[16 +: IUSED]})
+			& { r_gie, r_int_enable }) == 0);
 
+	// Rule #6: It should be possible to enable one (or all) interrupts
+	always @(posedge i_clk)
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(enable_ints)))
+		assert(($past({i_wb_data[31],i_wb_data[16 +: IUSED]})
+			& { r_gie, r_int_enable })
+			== $past({i_wb_data[31],i_wb_data[16 +: IUSED]}));
+
+	// Rule #7: It shoule be possible to acknowledge an interrupt, and so
+	//	deactivate it
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(wb_write)))
-	begin
-		// Following a write, interrupts may have been cleared.
-		assert(r_int_state == (($past(i_brd_ints))
-			|(($past(r_int_state))&(~$past(i_wb_data[IUSED-1:0])))));
-		// The global interrupt enable may also be adjusted by a write
-		assert(r_gie == $past(i_wb_data[BW-1]));
-	end else if ((f_past_valid)&&(!$past(i_reset)))
-	begin
+		assert(r_int_state == $past(i_brd_ints
+				| (r_int_state & ~i_wb_data[IUSED-1:0])));
 
-		// Apart from a write, the interrupt state should only ever
-		// accumulate interrupts
-		assert(r_int_state == ($past(r_int_state)|$past(i_brd_ints)));
+	// Rule #8: The interrupt enables should be stable without a write
+	always @(posedge i_clk)
+	if ((f_past_valid) && (!$past(i_reset)) && (!$past(wb_write)))
+		assert($stable({r_gie, r_int_enable}));
 
-		// ... and the global interrupt state should remain unchanged
-		assert(r_gie == $past(r_gie));
-	end
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus properties
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	wire	[1:0]	f_nreqs, f_nacks, f_outstanding;
+	reg		past_stb;
+	(* anyseq *) wire		i_wb_cyc;
 
-	////////////////////////////////////////
+	always @(*)
+	if (i_wb_stb)
+		assume(i_wb_cyc);
+
+	always @(posedge i_clk)
+	if (!f_past_valid || $past(i_reset))
+		assume(!i_wb_cyc);
+
+
+	fwb_slave #(.DW(DW), .AW(1), .F_MAX_STALL(0), .F_MAX_ACK_DELAY(1),
+		.F_LGDEPTH(2), .F_MAX_REQUESTS(1), .F_OPT_MINCLOCK_DELAY(0))
+		fwb(i_clk, i_reset,
+			i_wb_cyc, i_wb_stb, i_wb_we,
+			1'b0, i_wb_data, 4'hf,
+			o_wb_ack, o_wb_stall, o_wb_data, 1'b0,
+			f_nreqs, f_nacks, f_outstanding);
+
+	always @(*)
+		assert(f_outstanding == 0);
+
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Other consistency logic
 	//
-	////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Without a write or a reset, past interrupts should remain
 	// enabled.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(w_any))
 			&&(!$past(wb_write))&&(!$past(i_reset)))
+	begin
+		assert(($past(r_int_state)& ~r_int_state)==0);
 		assert(w_any);
+	end
 
 	// The outgoing interrupt should never be high unless w_any
 	// is also high
