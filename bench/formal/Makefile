@@ -171,9 +171,11 @@ $(WDG)/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
 	sby -f $(WDG).sby
 
 .PHONY: $(INT)
-$(INT): $(INT)/PASS
-$(INT)/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
-	sby -f $(INT).sby
+$(INT): $(INT)_cvr/PASS $(INT)_prf/PASS
+$(INT)_prf/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
+	sby -f $(INT).sby prf
+$(INT)_cvr/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
+	sby -f $(INT).sby cvr
 
 .PHONY: $(DCD)
 $(DCD): $(DCD)_pipe_div_mpy_cis_opipe/PASS
@@ -275,7 +277,7 @@ clean:
 	rm -f $(DBL).smt2     $(DBL)*.vcd     $(DBL).yslog
 	rm -rf $(MEM)*/       $(PIPE)*/       $(MMU)*/
 	rm -rf $(TMR)*/       $(CNT)*/        $(JIF)*/
-	rm -rf $(WDG)*/       $(INT)*/        $(DCD)_*/
+	rm -rf $(WDG)*/       $(INT)_*/       $(DCD)_*/
 	rm -rf $(DMA)*/       $(ALU)*/        $(DIV)*/
 	rm -rf $(DCACHE)_*/
 	rm -rf $(CPU)_*/

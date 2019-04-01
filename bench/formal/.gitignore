@@ -14,7 +14,8 @@ wbdmac
 zipcounter
 ziptimer
 zipjiffies
-icontrol
+icontrol_prf
+icontrol_cvr
 wbwatchdog
 busdelay
 cpuops

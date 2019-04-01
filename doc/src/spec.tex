@@ -1791,20 +1791,21 @@ The ZipSystem interrupt controller module supports up to 15 interrupts, all
 controlled from one register.  Further, it has been designed so that individual
 interrupts can be enabled or disabled individually without having any knowledge
 of the rest of the controller setting.  To enable an interrupt, write to the
-register with the high order global enable bit set and the respective interrupt
+register with bit 15 set and the respective interrupt
 enable bit set.  No other bits will be affected.  To disable an interrupt,
-write to the register with the high order global enable bit cleared and the
+write to the register bit 15 clear and the
 respective interrupt enable bit set.  To clear an interrupt, write a `1' to
-that interrupt's status pin.  A zero written to the register has the sole
-effect of disabling the master interrupt enable bit.
+that interrupt's status bit.  The interrupt enable pin for the global interrupt
+enable is set and cleared likewise.
 
 As an example, suppose you wished to enable interrupt \#4.  You would then
-write to the register a {\tt 0x80100010} to enable interrupt \#4 and to clear
-any past active state.  When you later wish to disable this interrupt, you would
-write a {\tt 0x00100010} to the register.  This both disables the
-interrupt and clears the active indicator.  This also has the side effect of
-disabling all interrupts, so a second write of {\tt 0x80000000} may be necessary
-to re-enable any other interrupts.
+write to the register a {\tt 0x80108010} to enable interrupt \#4, interrupts
+in general, and to clear any past active state.  When you later wish to disable
+this interrupt, you would write a {\tt 0x00100010} to the register.  This both
+disables the interrupt and clears the active indicator.  This does not
+disable interrupts in general, however.  To do that you'd also need to set
+bit 31.  Similarly a subsequent write of {\tt 0x80000000} will disable all
+interrupts as well.
 
 The ZipSystem hosts two interrupt controllers: a primary and a secondary.  The
 primary interrupt controller is the one that interrupts the CPU.  It has
@@ -1819,6 +1820,10 @@ peripheral, and because memory writes take place concurrently with any following
 instructions, any attempt to clear interrupts on one instruction followed by
 an immediate Return to Userspace ({\tt RTU}) instruction, may not have the
 effect of having interrupts cleared before the {\tt RTU} instruction executes.
+This is only relevant if the two instructions take place in immediate
+succession.  As an alternative, reading from the interrupt controller after
+writing to it will place enough time between these two events for the
+{\tt RTU} command to successfully complete.
 
 \subsubsection{Counter}
 
@@ -2459,10 +2464,10 @@ ZipCounter.
 Here, in Tbl.~\ref{tbl:shi-timer},
 \begin{table}\begin{center}
 \begin{tabbing}
-{\tt \#define EINT(A) (0x80000000|(A<<16))} \= {\em // Enable interrupt A}\\
+{\tt \#define EINT(A) (0x80008000|(A<<16))} \= {\em // Enable interrupt A}\\
 {\tt \#define DINT(A) (A<<16)} \>{\em // Just disable the interrupts in A}\\
-{\tt \#define DISABLEALL 0x7fff0000} \>{\em // Disable all interrupts}\\
-{\tt \#define CLEARPIC 0x7fff7fff} \>{\em // Clears and disables all interrupts}\\
+{\tt \#define DISABLEALL 0xffff0000} \>{\em // Disable all interrupts}\\
+{\tt \#define CLEARPIC 0xffff7fff} \>{\em // Clears and disables all interrupts}\\
 {\tt \#define SYSINT\_TMA 0x10} \>{\em // The Timer--A interrupt mask}\\
 \\
 {\tt void timer\_delay(int nclocks) \{} \\
@@ -2529,7 +2534,6 @@ To set this up, upon reboot the supervisor task:
 	\> \> {\em // interrupt controller (PIC) which interrupts are enabled and which are active.}\\
 	\> \>	{\tt int	picv = zip->pic;}\\
 	\> \>	{\em // Turn off all active interrupts}\\
-	\> \>	{\em // Globally disable interrupt generation in the process}\\
 	\> \>	{\tt int	active = (picv >> 16) \& picv \& 0x07fff;}\\
 	\> \>	{\tt zip->pic = (active<<16);}\\
 	\> \>	{\em // We build a mask of interrupts to re-enable in picv.}\\
@@ -2537,17 +2541,8 @@ To set this up, upon reboot the supervisor task:
 	\> \>	{\tt for(int i=0,msk=1; i<15; i++, msk<<=1) \{}\\
 	\> \>\hbox to 0.25in{}\={\tt if ((active \& msk)\&\&(isr\_table[i])) \{}\\
 	\> \>\>\hbox to 0.25in{}\={\em // Here we call our interrupt service routine.}\\
-	\> \>\>\hbox to 0.25in{}\= {\tt tmp = (isr\_table[i])(); }\\
-	\> \>\>\>	{\em // The tricky part is that, because of how the PIC is built, the ISR cannot}\\
-	\>\>\>\>	{\em // re-enable its own interrupts without re-enabling all interrupts.  Hence, we}\\
-	\>\>\>\>	{\em // look at the return value from the ISR to know if an interrupt needs to be }\\
-	\> \>\>\>	{\em // re-enabled. }\\
-	\> \>\>\>	{\tt if (tmp)} \\
-	\> \>\>\>	\hbox to 0.25in{}\={\tt picv |= msk; }\\
-	\> \>\>		{\tt \} }\\
+	\> \>\>\hbox to 0.25in{}\= {\tt (isr\_table[i])(); }\\
 	\> \>	{\tt \} }\\
-	\> \>	{\em // Re-activate, but do not clear, all (requested) interrupts }\\
-	\> \>	{\tt zip->pic = picv | 0x80000000; }\\
 	\>{\tt \} }\\
 {\tt \}}\\
 \end{tabbing}
@@ -2571,19 +2566,10 @@ may trip without being enabled, they just will not generate an interrupt to the
 CPU.)  Our first step is to query the register to find out our interrupt
 state, and then to disable any interrupts that have tripped.  To do
 that, we write a one to the enable half of the register while also clearing
-the top bit (master interrupt enable).  This has the consequence of disabling
-any and all further interrupts, not just the ones that have tripped.  Hence,
-upon completion, we re--enable the master interrupt bit again.   Finally,
-we keep track of which interrupts have tripped.
+bit fifteen--creating a disable interrupt command.
 
 Using the bit mask of interrupts that have tripped, we walk through all fifteen
-possible interrupts.  If there is an ISR installed, we simply call it here.  The
-ISR, however, cannot re--enable its interrupt without re-enabling the master
-interrupt bit.  Thus, to keep things simple, when the ISR is finished it returns
-a boolean into R0 to indicate whether or not the interrupt needs to be
-re-enabled.  Put together, this tells the kernel which interrupts to re--enable.
-As a final instruction, interrupts are re--enabled before returning continuing
-the while loop.
+possible interrupts.  If there is an ISR installed, we simply call it here.
 
 There you have it: the ZipCPU, with its non-traditional interrupt architecture,
 can still process interrupts in a very traditional fashion. 
@@ -3179,24 +3165,29 @@ Tbl.~\ref{tbl:picbits},
 31 & R/W & Master Interrupt Enable\\\hline
 30\ldots 16 & R/W & Interrupt Enable lines\\\hline
 15 & R & Current Master Interrupt State\\\hline
+15 & W & Set to `1' to enable any interrupt lines whose respective bits are
+         set in bits 16-30, `0' to clear them\\\hline
 15\ldots 0 & R/W & Input Interrupt states, write `1' to clear\\\hline
 \end{bitlist}
 \caption{Interrupt Controller Register Bits}\label{tbl:picbits}
 \end{center}\end{table}
-that the ZipCPU Interrupt controller has four different types of bits.
+that the ZipCPU Interrupt controller has five different types of bits.
 The high order bit, or bit--31, is the master interrupt enable bit.  When this
 bit is set, then any time an interrupt occurs the CPU will be interrupted and
-will switch to supervisor mode, etc.  
+will switch to supervisor mode, etc.  The CPU also has a global interrupt
+enable bit as well, and without the CPU's global enable bit being set, no
+interrupts will be seen regardless of how this bit is set.
 
-Bits 30~\ldots 16 are interrupt enable bits.  Should the interrupt line ever be
-high while enabled, an interrupt will be generated.  Further, interrupts are
+Bits 30~\ldots 16 are interrupt enable bits.  Should the respective interrupt
+line ever be high while its enable line is also high and while the master
+enable line is high, an interrupt will be generated.  Further, interrupts are
 level triggered.  Hence, if the interrupt is cleared while the line feeding
 the controller remains high, then the interrupt will re--trip.  To set one of
-these interrupt enable bits, one needs to write the master interrupt enable
-while writing a `1' to this the bit.  To clear, one need only write a `0' to
-the master interrupt enable, while leaving this line high.  
+these interrupt enable bits, one needs to write to the controller while
+both writing a `1' to this bit and a `1' to bit 15.  To clear, one need only
+write a `1' to this enable bit, while leaving bit 15 low.  
 
-Bits 15\ldots 0 are the current state of the interrupt vector.  Interrupt lines
+Bits 14\ldots 0 are the current state of the interrupt vector.  Interrupt lines
 trip whenever they are high, and remain tripped until the input is lowered and
 the interrupt is acknowledged.  Thus, if the interrupt line is high when the
 controller receives a clear request, then the interrupt will not clear.
@@ -3206,27 +3197,26 @@ As an example, consider the following scenario where the ZipCPU supports four
 interrupts, 3\ldots0.
 \begin{enumerate}
 \item The Supervisor will first, while in the interrupts disabled mode,
-	write a {\tt 32'h800f000f} to the controller.  The supervisor may then
+	write a {\tt 32'h800f800f} to the controller.  This will enable the
+	master interrupt line, as well as interrupts 0-3 while also clearing any
+	past status from interrupts 0-3.  The supervisor may then
 	switch to the user state with interrupts enabled.
-\item When an interrupt occurs, the supervisor will switch to the interrupt
-	state.  It will then cycle through the interrupt bits to learn which
+\item When an interrupt occurs, the CPU will switch to the interrupt
+	state.  It may then cycle through the interrupt bits to learn which
 	interrupt handler to call.
 \item If the interrupt handler expects more interrupts, it will clear its
-	current interrupt when it is done handling the interrupt in question.
-	To do this, it will write a `1' to the low order interrupt mask,
-	such as writing a {\tt 32'h0000\_0001}.
+	current interrupt line when it is done handling the interrupt in
+	question.  To do this, it will write a `1' to the low order interrupt
+	mask, such as writing a {\tt 32'h0000\_0001}.
 \item If the interrupt handler does not expect any more interrupts, it will
 	instead clear the interrupt from the controller by writing a 
 	{\tt 32'h0001\_0001} to the controller.
-\item Once all interrupts have been handled, the supervisor will write a
-	{\tt 32'h8000\_0000} to the interrupt register to re-enable interrupt
-	generation.
 \item The supervisor should also check the user trap bit, and possible soft
 	interrupt bits here, but this action has nothing to do with the
-	interrupt control register.
-\item The supervisor will then leave interrupt mode, possibly adjusting
-	whichever task is running, by executing a return from interrupt
-	command.
+	interrupt control register itself.
+\item The CPU may then leave interrupt mode, possibly adjusting
+	whichever task is running, by executing a return to userspace
+	instruction.
 \end{enumerate}
 
 \subsection{Timer Register}\label{sec:reg-timer}

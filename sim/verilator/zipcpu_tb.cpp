@@ -301,7 +301,7 @@
 #define	dbg_we		VVAR(_dbg_we)
 #define	dbg_idata	VVAR(_dbg_idata)
 #define	cpu_stall	VVAR(_cpu_stall)
-#define	cpu_interrupt	VVAR(_MAIN_PIC__DOT__pic__DOT__r_interrupt)
+#define	cpu_interrupt	VVAR(_pic_interrupt)
 #define	cpu_idata	VVAR(_cpu_idata)
 #define	tick_counter	m_core->VVAR(_jiffies__DOT__r_counter)
 #define	dbg_addr	VVAR(_dbg_addr)
@@ -931,7 +931,11 @@ public:
 		ln++;
 #endif
 
+#ifdef	OPT_PIPELINED
+#define	pformem_owner	VVAR(_thecpu__DOT__PRIORITY_DATA__DOT__pformem__DOT__r_a_owner)
+#else
 #define	pformem_owner	VVAR(_thecpu__DOT__pformem__DOT__r_a_owner)
+#endif
 		mvprintw(ln, 0, "SYSBS%c: %3s %3s %s @0x%08x[0x%08x] -> %s %s %08x %s",
 			(m_core->pformem_owner)?'M':'P',
 			(m_core->o_wb_cyc)?"CYC":"   ",

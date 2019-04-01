@@ -1,0 +1,73 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sat Mar 30 19:34:36 2019
+[*]
+[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/icontrol_cvr/engine_0/trace0.vcd"
+[dumpfile_mtime] "Sat Mar 30 18:59:05 2019"
+[dumpfile_size] 2614
+[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/icontrol.gtkw"
+[timestart] 0
+[size] 1809 1016
+[pos] -810 -417
+*-2.795382 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 210
+[sst_expanded] 1
+[sst_vpaned_height] 289
+@28
+icontrol.f_past_valid
+icontrol.i_reset
+icontrol.i_clk
+@200
+-
+@28
+[color] 3
+icontrol.i_wb_cyc
+[color] 3
+icontrol.i_wb_stb
+[color] 3
+icontrol.i_wb_we
+@22
+[color] 3
+icontrol.i_wb_data[31:0]
+@28
+[color] 2
+icontrol.o_wb_ack
+@22
+[color] 2
+icontrol.o_wb_data[31:0]
+@28
+[color] 2
+icontrol.o_wb_stall
+@200
+-
+@22
+[color] 3
+icontrol.i_brd_ints[11:0]
+@28
+[color] 3
+icontrol.w_any
+[color] 2
+icontrol.o_interrupt
+@22
+icontrol.r_int_enable[11:0]
+icontrol.r_int_state[11:0]
+@28
+icontrol.r_mie
+@200
+-
+@29
+[color] 1
+icontrol.wb_write
+[color] 1
+icontrol.disable_ints
+[color] 1
+icontrol.enable_ints
+@200
+-
+@28
+icontrol.f_nacks[1:0]
+icontrol.f_nreqs[1:0]
+icontrol.f_outstanding[1:0]
+[pattern_trace] 1
+[pattern_trace] 0
