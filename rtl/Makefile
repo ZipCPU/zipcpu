@@ -70,8 +70,11 @@ VERILATOR := verilator
 else
 VERILATOR := $(VERILATOR_ROOT)/bin/verilator
 endif
-# VFLAGS := -Wall -MMD -D__WORDSIZE=64 --trace -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
-VFLAGS := -Wall -MMD --trace -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
+#
+# Define VCOVERAGE to get coverage analysis of our test cases
+# VCOVERAGE := --coverage
+VCOVERAGE :=
+VFLAGS := -Wall -MMD --trace $(COVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
 
 
 VERILATE=$(VERILATOR) $(VFLAGS)
@@ -156,6 +159,8 @@ clean:
 # can
 DEPS := $(wildcard $(VOBJ)/*.d)
 
+ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(DEPS),)
 include $(DEPS)
+endif
 endif
