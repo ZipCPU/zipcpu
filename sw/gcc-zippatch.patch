@@ -162,7 +162,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/configure.ac gcc-6.2.0-zip/configure.ac
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/cfgexpand.c gcc-6.2.0-zip/gcc/cfgexpand.c
 --- gcc-6.2.0/gcc/cfgexpand.c	2016-04-27 08:23:50.000000000 -0400
-+++ gcc-6.2.0-zip/gcc/cfgexpand.c	2018-06-05 21:18:19.438798488 -0400
++++ gcc-6.2.0-zip/gcc/cfgexpand.c	2019-08-13 22:57:52.600850709 -0400
 @@ -74,6 +74,16 @@
  #include "tree-chkp.h"
  #include "rtl-chkp.h"
@@ -509,7 +509,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops gcc-6.2.0-zip/gc
 \ No newline at end of file
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2017-03-07 12:03:59.062584503 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2019-08-13 23:26:21.208289617 -0400
 @@ -0,0 +1,444 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -543,7 +543,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2019, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -600,7 +600,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +";;\n"
 +";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
 +";;\n"
-+";; Copyright (C) 2017, Gisselquist Technology, LLC\n"
++";; Copyright (C) 2017-2019, Gisselquist Technology, LLC\n"
 +";;\n"
 +";; This program is free software (firmware): you can redistribute it and/or\n"
 +";; modify it under the terms of  the GNU General Public License as published\n"
@@ -957,8 +957,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2018-06-05 21:17:24.151098201 -0400
-@@ -0,0 +1,2711 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2019-08-13 23:24:42.257014965 -0400
+@@ -0,0 +1,2730 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -972,7 +972,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2019, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -1037,6 +1037,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +#include "emit-rtl.h"
 +#include "ifcvt.h"
 +#include "genrtl.h"
++#include "stor-layout.h"
 +
 +// #include "tmp_p.h"
 +#include "target.h"
@@ -1054,7 +1055,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +static void zip_function_arg_advance(cumulative_args_t ca, enum machine_mode mode,
 +		const_tree type, bool named);
-+static rtx zip_function_arg(cumulative_args_t ca, enum machine_mode mode, const_tree type, bool named);
++static rtx zip_function_value(const_tree ret_type ATTRIBUTE_UNUSED,
++			const_tree fn ATTRIBUTE_UNUSED, bool outgoing ATTRIBUTE_UNUSED);
++static rtx zip_function_arg(cumulative_args_t ca, enum machine_mode mode,
++			const_tree type, bool named);
 +
 +static	void	zip_asm_trampoline_template(FILE *);
 +static	void	zip_trampoline_init(rtx, tree, rtx);
@@ -1999,6 +2003,21 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		return NULL_RTX;
 +	return
 +		gen_rtx_REG(mode, (*cum)+1);
++}
++
++static rtx
++zip_function_value(const_tree ret_type ATTRIBUTE_UNUSED,
++	const_tree fn ATTRIBUTE_UNUSED, bool outgoing ATTRIBUTE_UNUSED) {
++	machine_mode mode = TYPE_MODE(ret_type);
++	int	unsgn;
++
++	PROMOTE_MODE(mode, unsgn, ret_type);
++	return gen_rtx_REG(mode, zip_R1);
++}
++
++bool
++zip_function_value_regno_p(unsigned regno) {
++	return (regno == zip_R1);
 +}
 +
 +/* DECL is the declaration of the function being targeted by the call, and EXP
@@ -3684,7 +3703,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2018-06-05 18:57:29.386399718 -0400
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2019-08-13 23:25:40.944584828 -0400
 @@ -0,0 +1,548 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -3703,7 +3722,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015-2018, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2019, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -4236,7 +4255,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip/gcc/config/zip/zip-float.md
 --- gcc-6.2.0/gcc/config/zip/zip-float.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-float.md	2017-01-10 14:01:42.029341062 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-float.md	2019-08-13 23:25:51.336508644 -0400
 @@ -0,0 +1,138 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -4253,7 +4272,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015,2017, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2019, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -4378,8 +4397,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-float.md gcc-6.2.0-zip
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/config/zip/zip.h
 --- gcc-6.2.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2018-06-05 22:22:38.581639662 -0400
-@@ -0,0 +1,4114 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.h	2019-08-13 23:25:17.228758670 -0400
+@@ -0,0 +1,4216 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -4393,7 +4412,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2019, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -4778,7 +4797,22 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +		}						\
 +	} while(0)
 +
-+// TARGET_PROMOTE_FUNCTION_MODE
++/* TARGET_PROMOTE_FUNCTION_MODE ... Like PROMOTE_MODE, but it is applied to
++ * outgoing function arguments or function return values.  The target hook
++ * should return the new mode and possibly change *punsignedp if the promotion
++ * should change signedness.  This function is called only for scalar or
++ * pointer types.
++ *
++ * for_return allows to distinguish the promotion of arguments and return
++ * values.  If it is 1, a return value is being promoted and
++ * TARGET_FUNTION_VALUE must perform the same promotions done here.  If it is 2,
++ * the ...
++ *
++ * The default is to not promote arguments and return values.  You can also
++ * define the hook to default_promote_function_mode_aways_promote if you would
++ * like to apply the same rules given by PROMOTE_MODE.
++ *
++ */
 +#define	TARGET_PROMOTE_FUNCTION_MODE	default_promote_function_mode_always_promote
 +
 +/* PARM_BOUNDARY ... Normal alignment required for function parameters on the
@@ -6561,11 +6595,86 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 +/* 17.09.08 How scalar function values are returned */
 +
-+/* TARGET_FUNCTION_VALUE
++/* TARGET_FUNCTION_VALUE ... Define this to return an RTX representing the
++ * place where a function returns or receives a value of date type ret_type,
++ * a tree node representing a data type, fn_decl_or_type is a tree node
++ * representing FUNCTION_DECL or FUNCTION_TYPE of a function being called.  If
++ * outgoing is false, the hook should compute the register in which the caller
++ * will see the return value.  Otherwise, the hook should return an RTX
++ * representing the place where a function returns a value.
++ *
++ * On many machines, only TYPE_MODE(ret_type) is relevant.  (Actually, on most
++ * machines, scalar values are returned in the same place regardless of mode.)
++ * The value of the expression is usually a reg RTX for the hard register where
++ * the return value is stored.  The value can also be a parallel RTX, if the
++ * return value is in multiple places.  See TARGET_FUNTION_ARG for an explanation of the parallel form.  Note that the callee will populate every location
++ * specified in the parallel, but if the first element of the parallel contains
++ * the whole return value, callers will use that element as the canonical
++ * location and ignore the others.  The m68k port uses this type of parallel to
++ * return pointers in both %a0 (the canonical location) and %d0.
++ *
++ * If TARGET_PROMOTE_FUNCTION_RETURN returns true, you must apply the same
++ * promotion rules specified in PROMOTE_MODE if valtype is a scalar type.
++ *
++ * If the precise function being called is known, func is a tree node
++ * (FUNCTION_DECL) for it; otherwise, func is a null pointer.  This makes it
++ * possible to use a different value-returning convention for specific functions
++ * when all their calls are knon.
++ *
++ * Some target machines have "register windows" ...
++ *
++ * TARGET_FUNTION_VALUE is not used for return values with aggregate data types,
++ * because these are returned another way.  See TARGET_STRUCT_VALUE_RTX and
++ * related macros below.
++ */
++#define	TARGET_FUNCTION_VALUE	zip_function_value
++
++/* FUNCTION_VALUE(V,F) ... deprecated
 + */
 +
 +/* LIBCALL_VALUE
 + */
++
++/* TARGET_LIBCALL_VALUE
++ */
++
++/* LIBCALL_VALUE
++ */
++
++/* FUNCTION_VALUE_REGNO_P(REGNO) ... A C expression that is nonzero if regno
++ * is the number of a hard register in which the values of called function may
++ * come back.
++ *
++ * A register whose use for returning values is limited to serving as the
++ * second of a pair (for a value of type double, say) need not be recognized
++ * by this target hook.  So for most machines, this definition suffices:
++ *
++ * #define FUNCTION_VALUE_REGNO_P(N) ((N) == 0)
++ *
++ * If the machine has register windows, so that the caller and the called
++ * function use different registers for the returned value, this macro should
++ * recognize only the caller's register numbers.
++ *
++ * This macro has been deprecated.  Use TARGET_FUNTION_VALUE_REGNO_P for a
++ * new target instead.
++ *
++ *
++ */
++
++/* TARGET_FUNCTION_VALUE_REGNO_P(int regno) ... A target hook that returns true
++ * if regno is the number of a hard register in which the values of the called
++ * function may come back.
++ *
++ * A register whose use for returning values is limited to serving as the
++ * second of a pair (for a value of type double, say) need not be recognized
++ * by this target hook.
++ *
++ * If the machine has register windows ...
++ *
++ * If this hook is not defined, then FUNCTION_VALUE_REGNO_P will be used.
++ */
++#undef	TARGET_FUNCTION_VALUE_REGNO_P
++#define	TARGET_FUNCTION_VALUE_REGNO_P	zip_function_value_regno_p
 +
 +
 +/* 17.09.09 How large values are returned */
@@ -7387,17 +7496,29 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 + * contain a tab, a pseudo op, and then another tab.
 + */
 +
-+#undef	TARGET_ASM_ALIGNED_HI_OP
-+#undef	TARGET_ASM_ALIGNED_SI_OP
-+// #undef	TARGET_ASM_ALIGNED_DI_OP
-+#define	TARGET_ASM_ALIGNED_HI_OP	".short"
 +// The assembler is set up to call a 4-byte integer a long.  This definition of
 +// a long isn't consistent with the compilers definition.  For this reason,
 +// the ZipCPU backend for the GNU Assembler defines a long as a 64-bit number,
 +// and an int as a 32-bit number.
-+#define	TARGET_ASM_ALIGNED_SI_OP	".int"
-+// #define	TARGET_ASM_ALIGNED_DI_OP	".long"	
 +
++/*
++ * These should be the same for other processor, so the default options should
++ * work quite nicely for us.
++ *
++#undef	TARGET_ASM_ALIGNED_HI_OP
++#undef	TARGET_ASM_ALIGNED_SI_OP
++#undef	TARGET_ASM_ALIGNED_DI_OP
++#define	TARGET_ASM_ALIGNED_HI_OP	"\t.short\t"
++#define	TARGET_ASM_ALIGNED_SI_OP	"\t.int\t"
++#define	TARGET_ASM_ALIGNED_DI_OP	"\t.quad\t"
++
++#undef	TARGET_ASM_UNALIGNED_HI_OP
++#undef	TARGET_ASM_UNALIGNED_SI_OP
++#undef	TARGET_ASM_UNALIGNED_DI_OP
++#define	TARGET_ASM_UNALIGNED_HI_OP	TARGET_ASM_ALIGNED_HI_OP
++#define	TARGET_ASM_UNALIGNED_SI_OP	TARGET_ASM_ALIGNED_SI_OP
++#define	TARGET_ASM_UNALIGNED_DI_OP	TARGET_ASM_ALIGNED_DI_OP
++*/
 +
 +/* 17.20.4 Output and Generation of Labels */
 +
@@ -8496,7 +8617,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2018-06-07 12:51:05.802342817 -0400
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2019-08-13 23:24:51.452947577 -0400
 @@ -0,0 +1,1897 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -8513,7 +8634,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015-2018, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2019, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -13145,7 +13266,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-6.2.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2017-03-01 15:46:02.440221158 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-peephole.md	2019-08-13 23:26:33.096202438 -0400
 @@ -0,0 +1,768 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -13163,7 +13284,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015,2017, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2019, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -13917,8 +14038,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-peephole.md gcc-6.2.0-
 +;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip/gcc/config/zip/zip-protos.h
 --- gcc-6.2.0/gcc/config/zip/zip-protos.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-protos.h	2017-02-17 16:45:53.264117439 -0500
-@@ -0,0 +1,82 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-protos.h	2019-08-13 23:26:42.520133324 -0400
+@@ -0,0 +1,83 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-protos.h
@@ -13932,7 +14053,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2019, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -13989,6 +14110,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip
 +extern	int	zip_pd_mvimm_operand(rtx op);
 +extern	int	zip_ct_const_address_operand(rtx op);
 +extern	int	zip_pd_const_address_operand(rtx op);
++extern	bool	zip_function_value_regno_p(unsigned regno);
 +extern	const char *zip_movsicc(rtx, rtx, rtx, rtx);
 +extern	const char *zip_addqics(rtx, rtx, rtx, rtx);
 +extern	const char *zip_cbranchdi(rtx, rtx, rtx, rtx);
@@ -14003,7 +14125,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-protos.h gcc-6.2.0-zip
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-6.2.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2017-02-22 18:03:26.740198685 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-sync.md	2019-08-13 23:26:52.216062209 -0400
 @@ -0,0 +1,415 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -14020,7 +14142,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-sync.md gcc-6.2.0-zip/
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
-+;; Copyright (C) 2015,2017, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2019, Gisselquist Technology, LLC
 +;;
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -14498,12 +14620,13 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/df-scan.c gcc-6.2.0-zip/gcc/df-scan.c
  static HARD_REG_SET elim_reg_set;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/emit-rtl.c gcc-6.2.0-zip/gcc/emit-rtl.c
 --- gcc-6.2.0/gcc/emit-rtl.c	2016-02-16 18:12:19.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/emit-rtl.c	2016-12-31 16:43:35.065677060 -0500
-@@ -59,6 +59,15 @@
++++ gcc-6.2.0-zip/gcc/emit-rtl.c	2019-08-13 22:57:06.605187480 -0400
+@@ -59,6 +59,16 @@
  #include "stor-layout.h"
  #include "opts.h"
  
 +
++// #define	DO_ZIP_DEBUGS
 +#ifdef	DO_ZIP_DEBUGS
 +#include <stdio.h>
 +#define	ZIP_DEBUG_LINE(STR,RTX) do{fprintf(stderr,"%s;%d/%s\n",__FILE__,__LINE__,STR); zip_debug_rtx(RTX);} while(0)
