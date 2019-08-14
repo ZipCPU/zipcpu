@@ -54,7 +54,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data,
 		o_illegal);
-	parameter		ADDRESS_WIDTH=30, AUX_WIDTH = 1;
+	parameter		ADDRESS_WIDTH=30;
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
 	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
 						i_stall_n;
