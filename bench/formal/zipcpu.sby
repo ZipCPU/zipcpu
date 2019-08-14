@@ -1,9 +1,10 @@
 [tasks]
-dcache		full_proof      dcache
-piped		full_proof      no_dcache
-nopipe		nopipe          no_dcache
+dcache		full_proof      dcache    mpy div cis pipelined earlybranching
+piped		full_proof      no_dcache mpy div cis pipelined earlybranching
+# unpipedearly	nopipe          no_dcache mpy div cis           earlybranching
+nopipe		nopipe          no_dcache         cis
 lowlogic	nopipe		no_dcache
-ice40		nopipe          no_dcache	nobkram
+ice40		nopipe          no_dcache mpy div cis nobkram
 
 [options]
 mode prove
@@ -38,32 +39,17 @@ read -formal -D ZIPCPU abs_div.v
 read -formal -D ZIPCPU abs_mpy.v
 #
 read -formal zipcpu.v
-
-chparam -set IMPLEMENT_FPU    0 zipcpu
-
-dcache:
-chparam -set OPT_LGDCACHE    10 zipcpu
-
-no_dcache:
-chparam -set OPT_LGDCACHE     0 zipcpu
-
-full_proof:
-chparam -set IMPLEMENT_MPY    1 zipcpu
-chparam -set IMPLEMENT_DIVIDE 1 zipcpu
-chparam -set EARLY_BRANCHING  1 zipcpu
-chparam -set OPT_CIS          1 zipcpu
-chparam -set OPT_PIPELINED    1 zipcpu
-
-nopipe:
-chparam -set IMPLEMENT_MPY    0 zipcpu
-chparam -set IMPLEMENT_DIVIDE 0 zipcpu
-chparam -set EARLY_BRANCHING  0 zipcpu
-chparam -set OPT_CIS          1 zipcpu
-chparam -set OPT_PIPELINED    0 zipcpu
-
-lowlogic:
-chparam -set OPT_CIS 0 zipcpu
---
+--pycode-begin--
+cmd = "hierarchy -top zipcpu"
+cmd += " -chparam IMPLEMENT_FPU 0"
+cmd += " -chparam OPT_LGDCACHE  %d"    % (10 if "dcache"         in tags else 0)
+cmd += " -chparam IMPLEMENT_MPY %d"    % ( 1 if "mpy"            in tags else 0)
+cmd += " -chparam IMPLEMENT_DIVIDE %d" % ( 1 if "div"            in tags else 0)
+cmd += " -chparam OPT_CIS          %d" % ( 1 if "cis"            in tags else 0)
+cmd += " -chparam OPT_PIPELINED    %d" % ( 1 if "pipelined"      in tags else 0)
+cmd += " -chparam EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags else 0)
+output(cmd)
+--pycode-end--
 
 prep -top zipcpu
 

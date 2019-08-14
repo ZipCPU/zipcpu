@@ -31,14 +31,15 @@ smtbmc --nopresat boolector
 read -formal -D DCACHE fwb_master.v
 read -formal -D DCACHE iscachable.v
 read -formal -D DCACHE dcache.v
-piped:		chparam -set OPT_PIPE      1 dcache
-~piped:		chparam -set OPT_PIPE      0 dcache
-dualread:	chparam -set OPT_DUAL_READ_PORT	1 dcache
-~dualread:	chparam -set OPT_DUAL_READ_PORT	0 dcache
-lock:		chparam -set OPT_LOCK      1 dcache
-system: 	chparam -set OPT_LOCAL_BUS 1 dcache
-nolock:		chparam -set OPT_LOCK      0 dcache
-nolocal:	chparam -set OPT_LOCAL_BUS 0 dcache
+--pycode-begin--
+cmd = "hierarchy -top dcache"
+cmd += " -chparam OPT_PIPE           %d" % (1 if "piped"    in tags else 0)
+cmd += " -chparam OPT_DUAL_READ_PORT %d" % (1 if "dualread" in tags else 0)
+cmd += " -chparam OPT_LOCK           %d" % (1 if "lock"     in tags else 0)
+cmd += " -chparam OPT_LOCAL_BUS      %d" % (1 if "system"   in tags else 0)
+output(cmd)
+--pycode-end--
+
 prep -top dcache
 
 [files]

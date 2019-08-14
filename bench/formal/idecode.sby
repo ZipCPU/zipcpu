@@ -17,21 +17,15 @@ smtbmc
 [script]
 read -formal -D IDECODE idecode.v
 read -formal -D IDECODE f_idecode.v
-
-nopipelind: chparam -set OPT_PIPELINED 0 idecode
-pipelind:   chparam -set OPT_PIPELINED 1 idecode
-
-nodiv: chparam -set OPT_DIVIDE 0 idecode
-div:   chparam -set OPT_DIVIDE 1 idecode
-
-nompy: chparam -set OPT_MPY 0 idecode
-mpy:   chparam -set OPT_MPY 1 idecode
-
-nocis: chparam -set OPT_CIS 0 idecode
-cis:   chparam -set OPT_CIS 1 idecode
-
-nopipemem: chparam -set OPT_OPIPE 0 idecode
-pipemem:   chparam -set OPT_OPIPE 1 idecode
+--pycode-begin--
+cmd = "hierarchy -top idecode"
+cmd += " -chparam OPT_PIPELINED %d" % (1 if "pipelind" in tags else 0)
+cmd += " -chparam OPT_DIVIDE    %d" % (1 if "div"      in tags else 0)
+cmd += " -chparam OPT_MPY       %d" % (1 if "mpy"      in tags else 0)
+cmd += " -chparam OPT_CIS       %d" % (1 if "cis"      in tags else 0)
+cmd += " -chparam OPT_OPIPE     %d" % (1 if "pipemem"  in tags else 0)
+output(cmd)
+--pycode-end--
 
 prep -top idecode
 

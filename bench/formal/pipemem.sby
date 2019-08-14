@@ -18,12 +18,13 @@ smtbmc
 [script]
 read -formal -DPIPEMEM fwb_master.v
 read -formal -DPIPEMEM pipemem.v
-local_bus:   chparam -set WITH_LOCAL_BUS 1 pipemem
-nolocal_bus: chparam -set WITH_LOCAL_BUS 0 pipemem
-alignment_err:   chparam -set OPT_ALIGNMENT_ERR 1 pipemem
-noalignment_err: chparam -set OPT_ALIGNMENT_ERR 0 pipemem
-lock:   chparam -set IMPLEMENT_LOCK 1 pipemem
-nolock: chparam -set IMPLEMENT_LOCK 0 pipemem
+--pycode-begin--
+cmd = "hierarchy -top pipemem"
+cmd += " -chparam WITH_LOCAL_BUS    %d" % (1 if "local_bus"     in tags else 0)
+cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "alignment_err" in tags else 0)
+cmd += " -chparam IMPLEMENT_LOCK    %d" % (1 if "lock"          in tags else 0)
+output(cmd)
+--pycode-end--
 prep -top pipemem
 
 [files]

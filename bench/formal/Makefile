@@ -249,6 +249,7 @@ $(DIV)/PASS: $(DIV).sby $(RTL)/core/div.v
 .PHONY: $(CPU)
 $(CPU): $(CPU)_dcache/PASS $(CPU)_piped/PASS
 $(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
+# $(CPU): $(CPU)_unpipedearly/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 	$(RTL)/core/pipemem.v $(RTL)/core/memops.v	  \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
@@ -259,6 +260,9 @@ $(CPU)_dcache/PASS: $(CPUDEPS) $(RTL)/core/dcache.v $(RTL)/core/iscachable.v
 
 $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped
+
+$(CPU)_unpipedearly/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby unpipedearly
 
 $(CPU)_nopipe/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby nopipe
