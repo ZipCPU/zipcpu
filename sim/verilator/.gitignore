@@ -1,3 +1,4 @@
+zipsys_coverage/
 div_tb
 mpy_tb
 *debug.txt
@@ -7,3 +8,5 @@ zippy_tb
 pfcache_tb
 zipmmu_tb
 pfile.bin
+*.info
+vlt_coverage.dat

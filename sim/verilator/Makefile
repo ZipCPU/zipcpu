@@ -122,6 +122,12 @@
 all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
 
 CXX	:= g++
+#
+# Add the -DVM_COVERAGE flag as shown below if you are running coverage
+# tests with Verilator.  You'll also need to adjust VLSRCS and the Makefile
+# in the rtl directory
+# CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64 -DVM_COVERAGE=1
+#
 CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
@@ -147,7 +153,11 @@ SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
-VLOBJS := $(OBJDIR)/verilated.o $(OBJDIR)/verilated_vcd_c.o
+#
+# Use the verilated_cov.cpp source when you want to run Verilator coverage
+# (The CPU is covered better by the formal proofs ...)
+# VLSRCS	:= verilated.cpp verilated_vcd_c.cpp verilated_cov.cpp
+VLOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(VLSRCS)))
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
 RAWSYSLIB := $(RTLOBJD)/Vzipsystem__ALL.a
 RAWBONLIB := $(RTLOBJD)/Vzipbones__ALL.a

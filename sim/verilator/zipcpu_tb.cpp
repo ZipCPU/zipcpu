@@ -53,6 +53,9 @@
 
 #include "verilated.h"
 #include "verilated_vcd_c.h"
+#ifdef	VM_COVERAGE
+#include "verilated_cov.h"
+#endif
 
 #ifdef	ZIPBONES
 #include "Vzipbones.h"
@@ -104,10 +107,19 @@
 #ifdef	NEW_VERILATOR
 #ifdef	ZIPBONES
 #define	VVAR(A)	zipbones__DOT_ ## A
-#else
-#define	VVAR(A)	zipsystem__DOT_ ## A
+ #ifdef	VM_COVERAGE
+  #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
+ #else
+  #define	VVAR(A)	zipbones__DOT_ ## A
+ #endif // VM_COVERAGE
+#else // Not ZIPBONES, but still under NEW_VERILATOR
+ #ifdef	VM_COVERAGE
+  #define	VVAR(A)	zipsystem__DOT____Vtogcov_ ## A
+ #else
+  #define	VVAR(A)	zipsystem__DOT_ ## A
+ #endif // VM_COVERAGE
 #endif
-#else
+#else // OLD_VERILATOR used the v__DOT_ prefix
 #define	VVAR(A)	v__DOT_ ## A
 #endif
 
@@ -2690,6 +2702,10 @@ int	main(int argc, char **argv) {
 		printf("TEST FAILED!\n");
 	} else
 		printf("User quit\n");
+
+#ifdef	VM_COVERAGE
+	VerilatedCov::write("vlt_coverage.dat");
+#endif
 	delete tb;
 	exit(rcode);
 }
