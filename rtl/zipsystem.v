@@ -534,19 +534,22 @@ module	zipsystem(i_clk, i_reset,
 
 	// A little bit of pre-cleanup (actr = accounting counters)
 	wire		actr_ack, actr_stall;
-	wire	[31:0]	actr_data;
-	assign	actr_ack = ((mtc_ack | moc_ack | mpc_ack | mic_ack)
-				|(utc_ack | uoc_ack | upc_ack | uic_ack));
-	assign	actr_stall = ((mtc_stall | moc_stall | mpc_stall | mic_stall)
-				|(utc_stall | uoc_stall | upc_stall|uic_stall));
-	assign	actr_data = ((mtc_ack) ? mtc_data
-				: ((moc_ack) ? moc_data
-				: ((mpc_ack) ? mpc_data
-				: ((mic_ack) ? mic_data
-				: ((utc_ack) ? utc_data
-				: ((uoc_ack) ? uoc_data
-				: ((upc_ack) ? upc_data
-				: uic_data)))))));
+	reg	[31:0]	actr_data;
+	assign	actr_ack = sel_counter;
+	assign	actr_stall = 1'b0;
+	always @(*)
+	begin
+		case(sys_addr[2:0])
+		3'h0: actr_data = mtc_data;
+		3'h1: actr_data = moc_data;
+		3'h2: actr_data = mpc_data;
+		3'h3: actr_data = mic_data;
+		3'h4: actr_data = utc_data;
+		3'h5: actr_data = uoc_data;
+		3'h6: actr_data = upc_data;
+		3'h7: actr_data = uic_data;
+		endcase
+	end
 `else //	INCLUDE_ACCOUNTING_COUNTERS
 	reg		actr_ack;
 	wire		actr_stall;
@@ -920,45 +923,70 @@ module	zipsystem(i_clk, i_reset,
 	assign	ext_err   = (i_wb_err)||(wdbus_int);
 `endif
 
-	wire		tmr_ack;
-	assign	tmr_ack = (tma_ack|tmb_ack|tmc_ack|jif_ack);
-	wire	[31:0]	tmr_data;
-	assign	tmr_data = (tma_ack)?tma_data
-				:(tmb_ack ? tmb_data
-				:(tmc_ack ? tmc_data
-				:jif_data));
-	always @(posedge i_clk)
-		casez({	mmus_ack,  tmr_ack, wdt_ack,  actr_ack,
-			dmac_ack, pic_ack, ctri_ack, wdbus_ack })
-		8'b1???????: sys_idata <=  mmus_data;
-		8'b01??????: sys_idata <=  tmr_data;
-		8'b001?????: sys_idata <=  wdt_data;
-		8'b0001????: sys_idata <=  actr_data;
-		8'b00001???: sys_idata <=  dmac_data;
-		8'b000001??: sys_idata <=  pic_data;
-		8'b0000001?: sys_idata <=  ctri_data;
-		8'b00000001: sys_idata <=  wdbus_data;
-		default:     sys_idata <=  mmus_data;
+	reg	[31:0]	tmr_data;
+	always @(*)
+	begin
+		case(sys_addr[1:0])
+		2'b00: tmr_data = tma_data;
+		2'b01: tmr_data = tmb_data;
+		2'b10: tmr_data = tmc_data;
+		2'b11: tmr_data = jif_data;
 		endcase
 
-	always @(posedge i_clk)
-	if ((i_reset)||(!sys_cyc))
-		sys_ack <= 1'b0;
-	else
-		sys_ack <= (|{	mmu_ack, tmr_ack, wdt_ack, actr_ack,
-				dmac_ack, pic_ack, ctri_ack, wdbus_ack,
-				mmus_ack });
-		
-	assign	sys_stall = (tma_stall | tmb_stall | tmc_stall | jif_stall
-				| wdt_stall | ctri_stall | actr_stall 
-				| pic_stall | dmac_stall | mmus_stall); // Always 1'b0!
+		// tmr_ack == sys_stb && sel_timer
+	end
 
+	reg	[2:0]	w_ack_idx, ack_idx;
+	always @(*)
+	begin
+		w_ack_idx = 0;
+		if (sel_mmus)         w_ack_idx = w_ack_idx | 3'h0;
+		if (sel_watchdog)     w_ack_idx = w_ack_idx | 3'h1;
+		if (sel_bus_watchdog) w_ack_idx = w_ack_idx | 3'h2;
+		if (sel_apic)         w_ack_idx = w_ack_idx | 3'h3;
+		if (sel_timer)        w_ack_idx = w_ack_idx | 3'h4;
+		if (sel_counter)      w_ack_idx = w_ack_idx | 3'h5;
+		if (sel_dmac)         w_ack_idx = w_ack_idx | 3'h6;
+		if (sel_pic)          w_ack_idx = w_ack_idx | 3'h7;
+	end
+
+	always @(posedge i_clk)
+	if (sys_stb)
+		ack_idx <= w_ack_idx;
+
+	always @(posedge i_clk)
+	begin
+		case(ack_idx)
+		3'h0: { sys_ack, sys_idata } <= { mmus_ack, mmus_data };
+		3'h1: { sys_ack, sys_idata } <= { sys_stb,  wdt_data  };
+		3'h2: { sys_ack, sys_idata } <= { sys_stb,  wdbus_data };
+		3'h3: { sys_ack, sys_idata } <= { sys_stb,  ctri_data };// A-PIC
+		3'h4: { sys_ack, sys_idata } <= { sys_stb,  tmr_data };
+		3'h5: { sys_ack, sys_idata } <= { sys_stb,  actr_data };//countr
+		3'h6: { sys_ack, sys_idata } <= { dmac_ack, dmac_data };
+		3'h7: { sys_ack, sys_idata } <= { sys_stb,  pic_data };
+		endcase
+
+		if (i_reset || !sys_cyc)
+			sys_ack <= 1'b0;
+	end
+
+	assign	sys_stall = 1'b0;
 	assign	o_ext_int = (cmd_halt) && (!cpu_stall);
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
-	wire	[5:0]	unused;
-	assign unused = { no_dbg_err, dbg_sel, sel_mmus };
+	wire		unused;
+	assign unused = |{ 1'b0, pic_ack, pic_stall,
+		tma_ack, tma_stall, tmb_ack, tmb_stall, tmc_ack, tmc_stall,
+		jif_ack, jif_stall, no_dbg_err, dbg_sel,
+		sel_mmus, ctri_ack, ctri_stall, mmus_stall, dmac_stall,
+		wdt_ack, wdt_stall, actr_ack, actr_stall,
+		wdbus_ack,
+		moc_ack, mtc_ack, mic_ack, mpc_ack,
+		uoc_ack, utc_ack, uic_ack, upc_ack,
+		moc_stall, mtc_stall, mic_stall, mpc_stall,
+		uoc_stall, utc_stall, uic_stall, upc_stall };
 `ifndef	INCLUDE_ACCOUNTING_COUNTERS
 	wire	[11:0]	unused_ctrs;
 	assign	unused_ctrs = {
