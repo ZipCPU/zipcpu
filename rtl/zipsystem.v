@@ -954,17 +954,25 @@ module	zipsystem(i_clk, i_reset,
 	if (sys_stb)
 		ack_idx <= w_ack_idx;
 
+	reg	last_sys_stb;
+	initial	last_sys_stb = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		last_sys_stb <= 0;
+	else
+		last_sys_stb <= sys_stb;
+
 	always @(posedge i_clk)
 	begin
 		case(ack_idx)
 		3'h0: { sys_ack, sys_idata } <= { mmus_ack, mmus_data };
-		3'h1: { sys_ack, sys_idata } <= { sys_stb,  wdt_data  };
-		3'h2: { sys_ack, sys_idata } <= { sys_stb,  wdbus_data };
-		3'h3: { sys_ack, sys_idata } <= { sys_stb,  ctri_data };// A-PIC
-		3'h4: { sys_ack, sys_idata } <= { sys_stb,  tmr_data };
-		3'h5: { sys_ack, sys_idata } <= { sys_stb,  actr_data };//countr
+		3'h1: { sys_ack, sys_idata } <= { last_sys_stb,  wdt_data  };
+		3'h2: { sys_ack, sys_idata } <= { last_sys_stb,  wdbus_data };
+		3'h3: { sys_ack, sys_idata } <= { last_sys_stb,  ctri_data };// A-PIC
+		3'h4: { sys_ack, sys_idata } <= { last_sys_stb,  tmr_data };
+		3'h5: { sys_ack, sys_idata } <= { last_sys_stb,  actr_data };//countr
 		3'h6: { sys_ack, sys_idata } <= { dmac_ack, dmac_data };
-		3'h7: { sys_ack, sys_idata } <= { sys_stb,  pic_data };
+		3'h7: { sys_ack, sys_idata } <= { last_sys_stb,  pic_data };
 		endcase
 
 		if (i_reset || !sys_cyc)
