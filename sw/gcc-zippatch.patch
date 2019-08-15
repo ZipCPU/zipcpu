@@ -3703,7 +3703,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2019-08-13 23:25:40.944584828 -0400
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2019-08-14 22:16:34.119560913 -0400
 @@ -0,0 +1,548 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -8617,8 +8617,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.h gcc-6.2.0-zip/gcc/co
 +
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/config/zip/zip.md
 --- gcc-6.2.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2019-08-13 23:24:51.452947577 -0400
-@@ -0,0 +1,1897 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.md	2019-08-14 22:32:31.672252439 -0400
+@@ -0,0 +1,1907 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -9334,8 +9334,18 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +	rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
 +	rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
 +
-+	zip_canonicalize_comparison((int *)&ccode, &cmpop0, &cmpop1, true);
-+	emit_insn(gen_cmpsi(cmpop0, cmpop1));
++	if ((DImode == GET_MODE(cmpop0)) && (DImode == GET_MODE(cmpop1))) {
++		if ((REG_P(cmpop0) && REG_P(cmpop1)
++				&& (ccode == EQ || ccode == NE
++					|| ccode == LTU || ccode == LT
++					|| ccode == GEU || ccode == GE)))
++			emit_insn(gen_cmpdi(cmpop0, cmpop1));
++		else
++			FAIL;
++	} else {
++		zip_canonicalize_comparison((int *)&ccode, &cmpop0, &cmpop1, true);
++		emit_insn(gen_cmpsi(cmpop0, cmpop1));
++	}
 +
 +	operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
 +			gen_rtx_REG(CCmode, 14), const0_rtx);
