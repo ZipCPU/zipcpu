@@ -233,17 +233,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	last_tag_valid = 0;
 	initial	r_rd_pending = 0;
 	always @(posedge i_clk)
-	if (i_reset)
 	begin
-		r_rd <= 1'b0;
-		r_cachable <= 1'b0;
-		r_svalid <= 1'b0;
-		r_dvalid <= 1'b0;
-		r_cache_miss <= 1'b0;
-		r_addr <= 0;
-		r_rd_pending <= 0;
-		last_tag_valid <= 0;
-	end else begin
 		// The single clock path
 		// The valid for the single clock path
 		//	Only ... we need to wait if we are currently writing
@@ -302,6 +292,18 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				// Two clock path -- misses as well
 				&&(r_rd)&&(!r_svalid)
 				&&((r_itag != r_ctag)||(!r_iv));
+
+		if (i_reset)
+		begin
+			// r_rd <= 1'b0;
+			r_cachable <= 1'b0;
+			r_svalid <= 1'b0;
+			r_dvalid <= 1'b0;
+			r_cache_miss <= 1'b0;
+			// r_addr <= 0;
+			r_rd_pending <= 0;
+			last_tag_valid <= 0;
+		end
 	end
 
 	initial	r_sel = 4'hf;
@@ -327,7 +329,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	always @(posedge i_clk)
 	if (i_reset)
 		o_wb_data <= 0;
-	else if ((!o_busy)||((stb)&&(!i_wb_stall)))
+	else if (!o_busy || !i_wb_stall)
 	begin
 		casez(i_op[2:1])
 		2'b0?: o_wb_data <= i_data;
@@ -906,6 +908,39 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 		end
 	end
 
+	/*
+	reg	[1:0]	awbsrc;
+
+	always @(*)
+	begin
+		awbsrc = 0;
+
+		case(state)
+		DC_IDLE: begin
+			if ((i_pipe_stb)&&(i_op[0]))
+				awbsrc = 2'b00;
+			else if (r_cache_miss)
+				awbsrc = 2'b01;
+			else
+				awbsrc = 2'b00;
+			end
+		DC_READS: awbsrc = 2'b00;
+		DC_WRITE: awbsrc = 2'b00;
+		DC_READC: awbsrc = 2'b10;
+		default: awbsrc = 2'b11;
+		endcase
+	end
+
+	always @(posedge i_clk)
+	if (!stb || !i_wb_stall)
+	case(awbsrc)
+	2'b00: o_wb_addr <= i_addr[(AW+1):2];
+	2'b01: o_wb_addr <= { r_ctag, {(LS){1'b0}} };
+	2'b1?: o_wb_addr[(LS-1):0] <= o_wb_addr[(LS-1):0]+1'b1;
+	endcase
+	*/
+
+
 	//
 	// npending is the number of outstanding (non-cached) read or write
 	// requests
@@ -1119,12 +1154,12 @@ always @(*)
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
 		// Insist on initial statements matching reset values
-		`ASSERT(r_rd == 1'b0);
+		// `ASSERT(r_rd == 1'b0);
 		`ASSERT(r_cachable == 1'b0);
 		`ASSERT(r_svalid == 1'b0);
 		`ASSERT(r_dvalid == 1'b0);
 		`ASSERT(r_cache_miss == 1'b0);
-		`ASSERT(r_addr == 0);
+		// `ASSERT(r_addr == 0);
 		//
 		`ASSERT(c_wr == 0);
 		`ASSERT(c_v  == 0);
