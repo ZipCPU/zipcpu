@@ -1,0 +1,85 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Tue Oct  8 13:56:41 2019
+[*]
+[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dblfetch/engine_0/trace.vcd"
+[dumpfile_mtime] "Tue Oct  8 13:53:41 2019"
+[dumpfile_size] 9071
+[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dblfetch.gtkw"
+[timestart] 0
+[size] 1920 1054
+[pos] 1919 -1
+*-4.386335 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 230
+[sst_expanded] 1
+[sst_vpaned_height] 315
+@28
+dblfetch.i_reset
+dblfetch.i_clk
+@200
+-
+@28
+dblfetch.i_new_pc
+dblfetch.i_clear_cache
+@22
+dblfetch.i_pc[31:0]
+@200
+-
+@28
+dblfetch.o_wb_cyc
+dblfetch.o_wb_stb
+dblfetch.o_wb_we
+@22
+dblfetch.o_wb_addr[29:0]
+dblfetch.o_wb_data[31:0]
+@28
+dblfetch.i_wb_stall
+dblfetch.i_wb_ack
+@22
+dblfetch.i_wb_data[31:0]
+@28
+dblfetch.i_wb_err
+@200
+-
+@28
+dblfetch.o_valid
+dblfetch.i_stall_n
+@22
+dblfetch.o_pc[31:0]
+dblfetch.o_insn[31:0]
+@29
+dblfetch.o_illegal
+@200
+-
+@28
+dblfetch.cache_illegal
+dblfetch.cache_valid
+@22
+dblfetch.cache_word[31:0]
+dblfetch.f_const_addr[29:0]
+@28
+dblfetch.f_const_illegal
+@22
+dblfetch.f_const_insn[31:0]
+dblfetch.f_cpu_delay[4:0]
+@28
+dblfetch.f_nacks[1:0]
+dblfetch.f_nreqs[1:0]
+dblfetch.f_outstanding[1:0]
+dblfetch.f_past_clear_cache
+dblfetch.f_past_o_valid
+dblfetch.f_past_reset
+dblfetch.f_past_stall_n
+dblfetch.f_past_valid
+dblfetch.f_this_insn
+dblfetch.f_this_pc
+dblfetch.f_this_return
+dblfetch.inflight[1:0]
+dblfetch.invalid_bus_cycle
+dblfetch.last_stb
+@22
+dblfetch.next_pc_address[29:0]
+dblfetch.this_return_address[29:0]
+[pattern_trace] 1
+[pattern_trace] 0

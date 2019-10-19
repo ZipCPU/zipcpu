@@ -19,7 +19,7 @@ icontrol_cvr
 wbwatchdog
 busdelay
 cpuops
-dblfetch
+dblfetch_*/
 pfcache_prf
 pfcache_cvr
 prefetch

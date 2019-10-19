@@ -85,9 +85,11 @@ $(PFONE)/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER)
 	sby -f $(PFONE).sby
 
 .PHONY: $(PFTWO)
-$(PFTWO) : $(PFTWO)/PASS
-$(PFTWO)/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
-	sby -f $(PFTWO).sby
+$(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
+$(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
+	sby -f $(PFTWO).sby prf
+$(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
+	sby -f $(PFTWO).sby cvr
 
 
 .PHONY: $(PFCACHE)
