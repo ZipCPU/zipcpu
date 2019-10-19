@@ -106,7 +106,7 @@
 // If space is tight, you might not wish to have your performance and
 // accounting counters, so let's make those optional here
 //	Without this flag, Slice LUT count is 3315 (ZipSystem),2432 (ZipCPU)
-//	When including counters, 
+//	When including counters,
 //		Slice LUTs	ZipSystem	ZipCPU
 //	With Counters		3315		2432
 //	Without Counters	2796		2046
@@ -114,7 +114,7 @@
 //
 // Now, where am I placing all of my peripherals?
 `define	PERIPHBASE	32'hc0000000
-`define	INTCTRL		8'h0	// 
+`define	INTCTRL		8'h0	//
 `define	WATCHDOG	8'h1	// Interrupt generates reset signal
 `define	BUSWATCHDOG	8'h2	// Sets IVEC[0]
 `define	CTRINT		8'h3	// Sets IVEC[5]
@@ -198,6 +198,7 @@ module	zipsystem(i_clk, i_reset,
 			IMPLEMENT_FPU=0,
 `endif
 			IMPLEMENT_LOCK=1;
+	parameter	RESET_DURATION = 0;
 	localparam	// Derived parameters
 			PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 			PAW=ADDRESS_WIDTH,
@@ -312,7 +313,7 @@ module	zipsystem(i_clk, i_reset,
 	assign	no_dbg_err  = 1'b0;
 `endif
 
-	// 
+	//
 	//
 	//
 	wire	sys_cyc, sys_stb, sys_we;
@@ -342,7 +343,7 @@ module	zipsystem(i_clk, i_reset,
 	// write to set the local address.  This interface allows access to
 	// the Zip System on a debug basis only, and not to the rest of the
 	// wishbone bus.  Further, to access these registers, the control
-	// register must first be accessed to both stop the CPU and to 
+	// register must first be accessed to both stop the CPU and to
 	// set the following address in question.  Hence all accesses require
 	// two accesses: write the address to the control register (and halt
 	// the CPU if not halted), then read/write the data from the data
@@ -712,7 +713,7 @@ module	zipsystem(i_clk, i_reset,
 	//
 	// The CPU itself
 	//
-	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb, 
+	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb,
 			cpu_we, cpu_dbg_we;
 	wire	[31:0]	cpu_data, cpu_idata;
 	wire	[3:0]	cpu_sel, mmu_sel;
@@ -877,8 +878,8 @@ module	zipsystem(i_clk, i_reset,
 
 	// Now for the external wishbone bus
 	//	Need to arbitrate between the flash cache and the CPU
-	// The way this works, though, the CPU will stall once the flash 
-	// cache gets access to the bus--the CPU will be stuck until the 
+	// The way this works, though, the CPU will stall once the flash
+	// cache gets access to the bus--the CPU will be stuck until the
 	// flash cache is finished with the bus.
 	wire		ext_cyc, ext_stb, ext_we, ext_err;
 	wire	[(PAW-1):0]	ext_addr;
