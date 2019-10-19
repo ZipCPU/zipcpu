@@ -356,8 +356,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Assume that any reset is either accompanied by a new address,
 	// or a new address immediately follows it.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_past_reset))
-			assume(i_new_pc);
+	if ((f_past_valid)&&(f_past_reset))
+		assume(i_new_pc);
 
 	always @(posedge i_clk)
 	if (f_past_clear_cache)
@@ -375,14 +375,14 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_past_reset))
-			assume(i_new_pc);
+	if ((f_past_valid)&&(f_past_reset))
+		assume(i_new_pc);
 
 	// There will also be a i_new_pc request following any request to clear
 	// the cache.
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(f_past_clear_cache))
-			assume(i_new_pc);
+	if ((f_past_valid)&&(f_past_clear_cache))
+		assume(i_new_pc);
 
 	always @(posedge i_clk)
 	if (f_past_clear_cache)
@@ -407,12 +407,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	// Now, let's look at the delay the CPU takes to accept an instruction.
 	always @(posedge i_clk)
-		// If no instruction is ready, then keep our counter at zero
-		if ((!o_valid)||(i_stall_n))
-			f_cpu_delay <= 0;
-		else
-			// Otherwise, count the clocks the CPU takes to respond
-			f_cpu_delay <= f_cpu_delay + 1'b1;
+	// If no instruction is ready, then keep our counter at zero
+	if ((!o_valid)||(i_stall_n))
+		f_cpu_delay <= 0;
+	else
+		// Otherwise, count the clocks the CPU takes to respond
+		f_cpu_delay <= f_cpu_delay + 1'b1;
 
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
@@ -667,6 +667,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(*)
 	if (invalid_bus_cycle)
 		assert(!o_wb_cyc);
+
 	always @(*)
 	if (cache_valid)
 		assert(o_valid);
@@ -678,10 +679,29 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	//
 	/////////////////////////////////////////////////////
+	reg	f_cvr_aborted, f_cvr_fourth_ack;
 
 	always @(posedge i_clk)
 	cover((f_past_valid)&&($past(f_nacks)==3)
 		&&($past(i_wb_ack))&&($past(o_wb_cyc)));
+
+	initial	f_cvr_aborted = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_cvr_aborted = 0;
+	else if (!o_wb_cyc && (f_nreqs != f_nacks))
+		f_cvr_aborted <= 1;
+
+	initial	f_cvr_fourth_ack = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_cvr_fourth_ack <= 0;
+	else if ((f_nacks == 3)&&(o_wb_cyc && i_wb_ack))
+		f_cvr_fourth_ack <= 1;
+
+	always @(posedge i_clk)
+		cover(!o_wb_cyc && (f_nreqs == f_nacks)
+			&& !f_cvr_aborted && f_cvr_fourth_ack);
 
 
 	/////////////////////////////////////////////////////
