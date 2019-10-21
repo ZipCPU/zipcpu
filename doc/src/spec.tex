@@ -122,6 +122,7 @@ with this program.  If not, see \hbox{$<$http://www.gnu.org/licenses/$>$} for
 a copy.
 \end{license}
 \begin{revisionhistory}
+2.01 & 10/19/2019 & Gisselquist & Fixed CIS OpCode Table\\\hline
 2.0 & 1/18/2017 & Gisselquist & Switched from 32--bit to 8--bit bytes.\\\hline
 1.1 & 11/28/2016 & Gisselquist & Moved the ZipSystem address to {\tt 0xff000000} base.\\\hline
 1.0 & 11/4/2016 & Gisselquist & Major rewrite,
@@ -1092,11 +1093,11 @@ COp & & Instruction \\\hline\hline
 3'h00 & {\tt SUB} & Subtract   \\\hline
 3'h01 & {\tt AND} & Bitwise And   \\\hline
 3'h02 & {\tt ADD} & Add two numbers   \\\hline
-3'h03 & {\tt CMP}  & Bitwise Or  \\\hline
-3'h04 & {\tt LW} & Bitwise Exclusive Or   \\\hline
-3'h05 & {\tt SW} & Logical Shift Right  \\\hline
-3'h06 & {\tt LDI} & Logical Shift Left   \\\hline
-3'h07 & {\tt MOV} & Arithmetic Shift Right \\\hline
+3'h03 & {\tt CMP}  & Compare \\\hline
+3'h04 & {\tt LW} & Load 32-bit word\\\hline
+3'h05 & {\tt SW} & Store 32-bit word\\\hline
+3'h06 & {\tt LDI} & Load immediate\\\hline
+3'h07 & {\tt MOV} & Move\\\hline
 \end{tabular}
 \caption{CIS OpCodes}\label{tbl:iset-cisops}
 \end{center}\end{table}

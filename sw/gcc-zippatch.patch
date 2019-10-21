@@ -301,212 +301,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +#define	TARGET_OPTION_OPTIMIZATION_TABLE	zip_option_optimization_table
 +
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
-diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops gcc-6.2.0-zip/gcc/config/zip/genzipops
---- gcc-6.2.0/gcc/config/zip/genzipops	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/genzipops	2018-03-22 18:33:09.823726748 -0400
-@@ -0,0 +1,201 @@
-+ELF          >     @     @       €N          @ 8 	 @         @       @ @     @ @     ø      ø                   8      8@     8@                                          @       @     ô9      ô9                    >      >`     >`     ˜      À                    (>      (>`     (>`     Ğ      Ğ                   T      T@     T@     D       D              Påtd   Ä6      Ä6@     Ä6@     œ       œ              Qåtd                                                  Råtd   >      >`     >`     ğ      ğ             /lib64/ld-linux-x86-64.so.2          GNU                        GNU Á•F3m›ö+•Z\Lè=à–ö<                         9ò‹                            4                                            B                      ;                      #                      t                      m                      ^                      †                       f                                            W                                                                  P                      I     À@`             libc.so.6 exit sprintf fopen puts __stack_chk_fail unlink strlen fclose stderr fwrite rename fprintf access strcmp __libc_start_main __gmon_start__ GLIBC_2.4 GLIBC_2.2.5                                   ii   •      ui	   Ÿ       ø?`        	           À@`                   @`                    @`                   (@`                   0@`                   8@`                   @@`                   H@`                   P@`                   X@`        
-+           `@`                   h@`                   p@`                   x@`                   €@`                   HƒìH‹9  H…Àtè  HƒÄÃ              ÿ59  ÿ%9  @ ÿ%9  h    éàÿÿÿÿ%ú8  h   éĞÿÿÿÿ%ò8  h   éÀÿÿÿÿ%ê8  h   é°ÿÿÿÿ%â8  h   é ÿÿÿÿ%Ú8  h   éÿÿÿÿ%Ò8  h   é€ÿÿÿÿ%Ê8  h   épÿÿÿÿ%Â8  h   é`ÿÿÿÿ%º8  h	   éPÿÿÿÿ%²8  h
-+   é@ÿÿÿÿ%ª8  h   é0ÿÿÿÿ%¢8  h   é ÿÿÿÿ%š8  h   éÿÿÿÿ%8  f        1íI‰Ñ^H‰âHƒäğPTIÇÀğ@ HÇÁ€@ HÇÇ>@ è7ÿÿÿôfD  ¸¯@` UH-¨@` HƒøH‰åv¸    H…Àt]¿¨@` ÿàf„     ]Ã@ f.„     ¾¨@` UHî¨@` HÁşH‰åH‰ğHÁè?HÆHÑşt¸    H…Àt]¿¨@` ÿà ]ÃfD  €=8   uUH‰åènÿÿÿ]Æş7  óÃ@ ¿ >` Hƒ? uë“ ¸    H…ÀtñUH‰åÿĞ]ézÿÿÿUH‰åHƒìH‰}øH‹EøH‰Áº¸  ¾   ¿@ èÃşÿÿÉÃUH‰åHƒìH‰}øH‰uğH‹UğH‹Eø¾Á @ H‰Ç¸    è6şÿÿÉÃUH‰åHƒì0H‰}øH‰uğH‰UèH‰MàL‰EØL‰MĞH‹}èH‹uĞH‹MĞH‹UğH‹EøHƒìÿuÿuØÿuàI‰ùI‰ğ¾Ğ @ H‰Ç¸    èÚıÿÿHƒÄ ÉÃUH‰åHìĞ   H‰½hÿÿÿH‰µ`ÿÿÿH‰•XÿÿÿH‰PÿÿÿL‰…HÿÿÿL‰@ÿÿÿH‹EH‰…8ÿÿÿdH‹%(   H‰Eø1ÀH‹•8ÿÿÿH…pÿÿÿ¾³!@ H‰Ç¸    è¤ıÿÿH‹•8ÿÿÿH‹…hÿÿÿ¾È!@ H‰Ç¸    èDıÿÿH‹½8ÿÿÿH‹µPÿÿÿH‹XÿÿÿH‹•`ÿÿÿH‹…hÿÿÿHƒìÿµ`ÿÿÿI‰ùI‰ğ¾ğ!@ H‰Ç¸    èÿüÿÿHƒÄH‹½8ÿÿÿH‹µPÿÿÿH‹@ÿÿÿH‹•`ÿÿÿH‹…hÿÿÿHƒìÿµ`ÿÿÿI‰ùI‰ğ¾€"@ H‰Ç¸    è¶üÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìh?#@ A¹<#@ I‰øH‰ÇèBşÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhD#@ A¹A#@ I‰øH‰ÇèşÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhJ#@ A¹G#@ I‰øH‰ÇèÀıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhP#@ A¹M#@ I‰øH‰ÇèıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìhW#@ A¹S#@ I‰øH‰Çè>ıÿÿHƒÄH‹½8ÿÿÿH‹PÿÿÿH‹•@ÿÿÿH‹µ`ÿÿÿH‹…hÿÿÿHƒìh]#@ A¹Y#@ I‰øH‰ÇèıüÿÿHƒÄH‹EødH3%(   tèçúÿÿÉÃUH‰åHì€  H‰½¨ùÿÿH‰µ ùÿÿH‰•˜ùÿÿH‰ùÿÿL‰…ˆùÿÿdH‹%(   H‰Eø1ÀH‹•˜ùÿÿH…ğùÿÿ¾`#@ H‰Ç¸    èøúÿÿH‹•˜ùÿÿH…ğûÿÿ¾ $@ H‰Ç¸    èØúÿÿH‹•˜ùÿÿH…ğıÿÿ¾8$@ H‰Ç¸    è¸úÿÿL…ğıÿÿH½ğûÿÿH‹ùÿÿH•ğùÿÿH‹µ ùÿÿH‹…¨ùÿÿHƒìÿµˆùÿÿM‰ÁI‰øH‰ÇècüÿÿHƒÄH‹•˜ùÿÿH…ğùÿÿ¾¸$@ H‰Ç¸    èRúÿÿH‹•˜ùÿÿH…ğûÿÿ¾ˆ%@ H‰Ç¸    è2úÿÿH‹•˜ùÿÿH…ğıÿÿ¾Ø%@ H‰Ç¸    èúÿÿH‹• ùÿÿH…°ùÿÿ¾Š&@ H‰Ç¸    èòùÿÿL…ğıÿÿH½ğûÿÿH‹ùÿÿH•ğùÿÿHµ°ùÿÿH‹…¨ùÿÿHƒìÿµˆùÿÿM‰ÁI‰øH‰ÇèûÿÿHƒÄH‹EødH3%(   tè'ùÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøHƒìÿuàÿuàÿuàI‰ùI‰ğ¾˜&@ H‰Ç¸    èùÿÿHƒÄ ÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾(@ H‰Ç¸    è¹øÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾`)@ H‰Ç¸    èrøÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾ˆ*@ H‰Ç¸    è+øÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾˜+@ H‰Ç¸    èä÷ÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾à,@ H‰Ç¸    è÷ÿÿÉÃUH‰åHƒì H‰}øH‰uğH‰UèH‰MàH‹}àH‹uèH‹MèH‹UğH‹EøI‰ùI‰ğ¾(.@ H‰Ç¸    èV÷ÿÿÉÃUH‰å¿p/@ èåöÿÿ]ÃUH‰åAUATSHƒì(‰}ÌH‰uÀH‹?0  ¾²/@ H‰Çè:÷ÿÿH‰EØH‹/0  H‰EĞƒ}Ì~!H‹EÀHƒÀH‹ ¶ <-uè›ÿÿÿ¿   è4÷ÿÿƒ}Ì´   H‹EÀHƒÀH‹ H‰Çè‡öÿÿH‰ÃH‹İ/  H‰ÇèuöÿÿH9Ãr~H‹É/  H‹EÀHƒÀL‹ H‹EÀHƒÀH‹ H‰ÇèKöÿÿI‰ÅH‹¡/  H‰Çè9öÿÿI)ÅL‰èLàH‰ŞH‰ÇèUöÿÿ…Àu/H‹EÀHƒÀH‹ ¾    H‰ÇèYöÿÿ…ÀuH‹EÀHƒÀH‹ H‰ÇèÂõÿÿH‹EÀH‹@H‰EĞH‹EØH‰Çè÷ÿÿH‹EØA¸´/@ ¹¸/@ º¹/@ ¾Á/@ H‰ÇèäúÿÿH‹EØA¸È/@ ¹¸/@ ºÌ/@ ¾Õ/@ H‰ÇèÃúÿÿH‹EØA¸Ü/@ ¹¸/@ ºà/@ ¾è/@ H‰Çè¢úÿÿH‹EØA¸ï/@ ¹ô/@ º0@ ¾0@ H‰ÇèúÿÿH‹EØA¸0@ ¹ô/@ º0@ ¾0@ H‰Çè`úÿÿH‹EØA¸$0@ ¹¸/@ º(0@ ¾/0@ H‰Çè?úÿÿH‹EØA¸60@ ¹¸/@ º90@ ¾@0@ H‰ÇèúÿÿH‹EØA¸G0@ ¹¸/@ ºK0@ ¾R0@ H‰ÇèıùÿÿH‹EØA¸Y0@ ¹¸/@ º]0@ ¾i0@ H‰ÇèÜùÿÿH‹EØA¸q0@ ¹¸/@ ºu0@ ¾0@ H‰Çè»ùÿÿH‹EØA¸‡0@ ¹¸/@ º‹0@ ¾—0@ H‰ÇèšùÿÿH‹EØHƒìh3@ A¹ 0@ A¸x1@ ¹
-+2@ º2@ ¾3@ H‰Çè¬öÿÿHƒÄH‹EØHƒìh5@ A¹ 3@ A¸ø3@ ¹
-+2@ º4@ ¾5@ H‰ÇèxöÿÿHƒÄH‹EØ¾–5@ H‰ÇèÖõÿÿH‹EØ¹?#@ º<#@ ¾´5@ H‰ÇèÆúÿÿH‹EØ¹D#@ ºA#@ ¾´5@ H‰Çè«úÿÿH‹EØ¹J#@ ºG#@ ¾´5@ H‰ÇèúÿÿH‹EØ¹P#@ ºM#@ ¾´5@ H‰ÇèuúÿÿH‹EØ¹W#@ ºS#@ ¾´5@ H‰ÇèZúÿÿH‹EØ¹]#@ ºY#@ ¾´5@ H‰Çè?úÿÿH‹EØ¾¹5@ H‰Çè#õÿÿH‹EØ¹?#@ º<#@ ¾Ö5@ H‰ÇèkúÿÿH‹EØ¹D#@ ºA#@ ¾Ö5@ H‰ÇèPúÿÿH‹EØ¹J#@ ºG#@ ¾Ö5@ H‰Çè5úÿÿH‹EØ¹P#@ ºM#@ ¾Ö5@ H‰ÇèúÿÿH‹EØ¹W#@ ºS#@ ¾Ö5@ H‰ÇèÿùÿÿH‹EØ¹]#@ ºY#@ ¾Ö5@ H‰ÇèäùÿÿH‹EØ¾à5@ H‰ÇèpôÿÿH‹EØ¹?#@ º<#@ ¾ 6@ H‰ÇèFúÿÿH‹EØ¹D#@ ºA#@ ¾ 6@ H‰Çè+úÿÿH‹EØ¹J#@ ºG#@ ¾ 6@ H‰ÇèúÿÿH‹EØ¹P#@ ºM#@ ¾ 6@ H‰ÇèõùÿÿH‹EØ¹W#@ ºS#@ ¾ 6@ H‰ÇèÚùÿÿH‹EØ¹]#@ ºY#@ ¾ 6@ H‰Çè¿ùÿÿH‹EØ¾6@ H‰Çè½óÿÿH‹EØ¹?#@ º<#@ ¾"6@ H‰ÇèLùÿÿH‹EØ¹D#@ ºA#@ ¾"6@ H‰Çè1ùÿÿH‹EØ¹J#@ ºG#@ ¾"6@ H‰ÇèùÿÿH‹EØ¹P#@ ºM#@ ¾"6@ H‰ÇèûøÿÿH‹EØ¹W#@ ºS#@ ¾"6@ H‰ÇèàøÿÿH‹EØ¹]#@ ºY#@ ¾"6@ H‰ÇèÅøÿÿH‹EØ¾'6@ H‰Çè
-+óÿÿH‹EØ¹?#@ º<#@ ¾D6@ H‰Çè'ùÿÿH‹EØ¹D#@ ºA#@ ¾D6@ H‰ÇèùÿÿH‹EØ¹J#@ ºG#@ ¾D6@ H‰ÇèñøÿÿH‹EØ¹P#@ ºM#@ ¾D6@ H‰ÇèÖøÿÿH‹EØ¹W#@ ºS#@ ¾D6@ H‰Çè»øÿÿH‹EØ¹]#@ ºY#@ ¾D6@ H‰Çè øÿÿH‹EØ¾I6@ H‰ÇèWòÿÿH‹EØ¹?#@ º<#@ ¾f6@ H‰Çè»øÿÿH‹EØ¹D#@ ºA#@ ¾f6@ H‰Çè øÿÿH‹EØ¹J#@ ºG#@ ¾f6@ H‰Çè…øÿÿH‹EØ¹P#@ ºM#@ ¾f6@ H‰ÇèjøÿÿH‹EØ¹W#@ ºS#@ ¾f6@ H‰ÇèOøÿÿH‹EØ¹]#@ ºY#@ ¾f6@ H‰Çè4øÿÿH‹EØ¾k6@ H‰Çè¤ñÿÿH‹EØ¹?#@ º<#@ ¾ˆ6@ H‰ÇèOøÿÿH‹EØ¹D#@ ºA#@ ¾ˆ6@ H‰Çè4øÿÿH‹EØ¹J#@ ºG#@ ¾ˆ6@ H‰ÇèøÿÿH‹EØ¹P#@ ºM#@ ¾ˆ6@ H‰Çèş÷ÿÿH‹EØ¹W#@ ºS#@ ¾ˆ6@ H‰Çèã÷ÿÿH‹EØ¹]#@ ºY#@ ¾ˆ6@ H‰ÇèÈ÷ÿÿH‹EØH‰ÇèïÿÿH‹g(  H‹UĞH‰ÖH‰Çèpïÿÿ…Àt.H‹M(  H‹n(  H‹UĞ¾6@ H‰Ç¸    èïÿÿ¿   è^ïÿÿ¿    èTïÿÿ@ AWAVA‰ÿAUATL%~%  UH-~%  SI‰öI‰ÕL)åHƒìHÁıè'îÿÿH…ít 1Û„     L‰êL‰öD‰ÿAÿÜHƒÃH9ëuêHƒÄ[]A\A]A^A_Ãf.„     óÃ  HƒìHƒÄÃ         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;; Filename:	zip-ops.md
-+;;
-+;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-+;;
-+;; Purpose:	This is a computer generated machine description of the
-+;;		ZipCPU's operations.  It is computer generated simply for
-+;;	two reasons.  First, I can't seem to find a way to generate this
-+;;	information within GCC's current constructs.  Specifically, the
-+;;	CPU's instructions normally set the condition codes, unless they
-+;;	are conditional instructions when they don't.  Second, the ZipCPU is
-+;;	actually quite regular.  Almost all of the instructions have the same
-+;;	form.  This form turns into many, many RTL instructions.  Because the
-+;;	CPU doesn't match any of the others within GCC, that means either
-+;;	I have a *lot* of cut, copy, paste, and edit to do to create the file
-+;;	and upon any and every edit, or I need to build a program to generate
-+;;	the remaining .md constructs.  Hence, I chose the latter to minimize
-+;;	the amount of work I needed to do.
-+;;
-+;;
-+;; Creator:	Dan Gisselquist, Ph.D.
-+;;		Gisselquist Technology, LLC
-+;;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;; Copyright (C) 2017, Gisselquist Technology, LLC
-+;;
-+;; This program is free software (firmware): you can redistribute it and/or
-+;; modify it under the terms of  the GNU General Public License as published
-+;; by the Free Software Foundation, either version 3 of the License, or (at
-+;; your option) any later version.
-+;;
-+;; This program is distributed in the hope that it will be useful, but WITHOUT
-+;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
-+;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+;; for more details.
-+;;
-+;; License:	GPL, v3, as defined and found on www.gnu.org,
-+;;		http://www.gnu.org/licenses/gpl.html
-+;;
-+;;
-+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-+;;
-+;;
-+ ;
-+;
-+; %s
-+;
-+;
-+  (define_insn "%s_%s"
-+	[(cond_exec (%s (reg:CC CC_REG) (const_int 0))
-+			%s)]
-+	"%s"	; Condition
-+	"%s.%s\t%%1,%%0	; genzip, conditional operator"	; Template
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+;
-+;
-+ %s (genzipop_long)   ;
-+;
-+;
-+; %s (genzipop_long)
-+;
-+;
-+;
-+       (define_insn "%s"
-+	[%s
-+	(clobber (reg:CC CC_REG))]
-+	"%s"
-+	"%s\t%%2,%%0	; %s"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
-+;
-+;
-+  (define_insn "%s_raw"
-+	[%s
-+	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
-+	"%s"
-+	"%s\t%%1,%%0	; %s_raw"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
-+;
-+;
-+ eq Z ne NZ lt LT ge GE ltu C geu NC (set (match_operand:SI 0 "register_operand" "=r")
-+		(%s (match_operand:SI 1 "register_operand" "0")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))   (set (match_dup 0) (%s (match_dup 0) (match_dup 2)))    (set (match_operand:SI 0 "register_operand" "=r")
-+		(%s (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))) (set (match_operand:SI 0 "register_operand" "=r")
-+		(%s (match_operand:SI 1 "register_operand" "0")
-+			(plus:SI (match_operand:SI 2 "register_operand" "r")
-+				(match_operand:SI 3 "const_int_operand" "N")))) (set (match_dup 0) (%s (match_dup 0)
-+			(plus:SI (match_dup 2) (match_dup 3)))) (set (match_operand:SI 0 "register_operand" "=r")
-+		(%s (match_dup 0)
-+			(plus:SI (match_operand:SI 1 "register_operand" "r")
-+				(match_operand:SI 2 "const_int_operand" "N")))) %s_off        ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "=r,r,r,Q")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(match_operand:SI 1 "general_operand" "r,Q,i,r")
-+			(match_dup 0)))]
-+	""
-+	"@
-+	MOV.%s	%%1,%%0	; cmov
-+	LW.%s	%%1,%%0	; cmov
-+	LDI.%s	%%1,%%0	; cmov
-+	SW.%s	%%1,%%0	; cmov"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+ ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(plus:SI (match_dup 0)
-+				(match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
-+			(match_dup 0)))]
-+	""
-+	"ADD.%s	%%1,%%0	; cadd"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+     ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(xor:SI (match_dup 0)
-+				(const_int -1))
-+			(match_dup 0)))]
-+	""
-+	"NOT.%s	%%0	; cnot"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+        ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "+r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(neg:SI (match_dup 0))
-+			(match_dup 0)))]
-+	""
-+	"NEG.%s	%%0	; cneg"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+   ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "+r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(and:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
-+			(match_dup 0)))]
-+	""
-+	"AND.%s	%%1,%%0	; cand"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+  ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "+r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(ior:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
-+			(match_dup 0)))]
-+	""
-+	"OR.%s	%%1,%%0	; cior"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+   ;
-+;
-+(define_insn "%s_%s"
-+	[(set (match_operand:SI 0 "register_operand" "+r")
-+		(if_then_else:SI (%s (reg:CC CC_REG) (const_int 0))
-+			(xor:SI (match_dup 0) (match_operand:SI 1 "zip_opb_single_operand_p" "rO"))
-+			(match_dup 0)))]
-+	""
-+	"XOR.%s	%%1,%%0	; cxor"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
-+  USAGE: genzipops <new-zip-ops.md filename> .zip-ops.md zip-ops.md w ADD  plus:SI addsi3 SUB minus:SI subsi3 MPY mult:SI mulsi3 DIVS (ZIP_DIVIDE) div:SI divsi3 DIVU udiv:SI udivsi3 AND and:SI andsi3 OR ior:SI iorsi3 XOR xor:SI xorsi3 ASR ashiftrt:SI ashrsi3 LSL ashift:SI ashlsi3 LSR lshiftrt:SI lshrsi3  (set (match_operand:SI 0 "register_operand" "=r")
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(sign_extend:DI (match_dup 0))
-+			(sign_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
-+			(const_int 32))))        (set (match_dup 0)
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(sign_extend:DI (match_dup 1))
-+			(sign_extend:DI (match_dup 2)))
-+			(const_int 32)))) (ZIP_HAS_DI)  (set (match_operand:SI 0 "register_operand" "=r")
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(sign_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+			(sign_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
-+			(const_int 32)))) smulsi_highpart MPYSHI   (set (match_operand:SI 0 "register_operand" "=r")
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(zero_extend:DI (match_dup 0))
-+			(zero_extend:DI (match_operand:SI 1 "zip_opb_operand_p" "rO")))
-+			(const_int 32))))        (set (match_dup 0)
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(zero_extend:DI (match_dup 1))
-+			(zero_extend:DI (match_dup 2)))
-+			(const_int 32))))       (set (match_operand:SI 0 "register_operand" "=r")
-+		(truncate:SI (ashiftrt:DI (mult:DI
-+			(zero_extend:DI (match_operand:SI 1 "register_operand" "0"))
-+			(zero_extend:DI (match_operand:SI 2 "zip_opb_operand_p" "rO")))
-+			(const_int 32)))) umulsi_highpart MPYUHI Conditional move instructions cmov Conditional add instructions cadd      Conditional negate instructions cneg Conditional not instructions cnot Conditional and instructions cand Conditional ior instructions cior Conditional xor instructions cxor    ERR: Could not create %s, leaving results in %s
-+    ;˜      <Ğÿÿä   <Ñÿÿ´   2Òÿÿ  \Òÿÿ,  ‰ÒÿÿL  éÒÿÿl  §ÕÿÿŒ  g×ÿÿ¬  ¿×ÿÿÌ  Øÿÿì  MØÿÿ  ”Øÿÿ,  ÛØÿÿL  "Ùÿÿl  iÙÿÿŒ  zÙÿÿ¬  ¼áÿÿÌ  ,âÿÿ         zR x      €Ğÿÿ*                  zR x  $      PÏÿÿğ    FJw€ ?;*3$"       D   Ñÿÿ*    A†Ce      d   (Ñÿÿ-    A†Ch      „   5Ñÿÿ`    A†C[     ¤   uÑÿÿ¾   A†C¹    Ä   ÔÿÿÀ   A†C»    ä   ³ÕÿÿX    A†CS       ëÕÿÿG    A†CB     $  ÖÿÿG    A†CB     D  9ÖÿÿG    A†CB     d  `ÖÿÿG    A†CB     „  ‡ÖÿÿG    A†CB     ¤  ®ÖÿÿG    A†CB     Ä  ÕÖÿÿ    A†CL      ä  ÆÖÿÿ>   A†CIŒƒD     èŞÿÿe    BBE B(ŒH0†H8ƒM@r8A0A(B BBB    L  ßÿÿ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           Ğ@     °@                                  Ø@            ô@            >`                          >`                   õşÿo    ˜@            X@            À@     
-+       «                                            @`            P                           ˆ@            X@            0       	              şÿÿo    (@     ÿÿÿo           ğÿÿo    @                                                                                                             (>`                     @     &@     6@     F@     V@     f@     v@     †@     –@     ¦@     ¶@     Æ@     Ö@     æ@                     ›/@     §/@     GCC: (Ubuntu 5.4.0-6ubuntu1~16.04.9) 5.4.0 20160609                                   8@                   T@                   t@                   ˜@                   À@                   X@                   @                   (@                  	 X@                  
-+ ˆ@                   Ø@                    @                   ğ@                    @                   ô@                    @                   Ä6@                   `7@                   >`                   >`                    >`                   (>`                   ø?`                    @`                   ˆ@`                   À@`                                       ñÿ                      >`                  0@                  p@             .     °@             D     È@`            S     >`             z     Ğ@             †     >`             ¥    ñÿ                    ñÿ                ±     ğ9@             ¿      >`                  ñÿ                Ë      >`             Ü     (>`             å      >`             ø      Ä6@                  @`             !    ğ@            1    Ÿ@     G       9                     M                      -     ˆ@`             i    +@     X       q                     ƒ     @`            Œ    k@     À      •    M	@     `       £    ˜@`            «    ¨@`             ²                     +    ô@             Æ                     Ú                     ö    ­	@     ¾          Ê@     G                            +    ˆ@`             8                     L    X@     G       T                     i                      x   @`             …     @            ”    €@     e       ×     Ğ@`             ¤     	@     -       1     @     *       °    æ@     G       ¸    ƒ@     G       À    ¨@`             Ì    >@     >      Ñ    -@            ×                     ë                     ş                                           &    ö@     *       ,                     A                     S                     g   ¨@`             s                          @     G           Ø@             •    À@`             crtstuff.c __JCR_LIST__ deregister_tm_clones __do_global_dtors_aux completed.7594 __do_global_dtors_aux_fini_array_entry frame_dummy __frame_dummy_init_array_entry genzipops.c __FRAME_END__ __JCR_END__ __init_array_end _DYNAMIC __init_array_start __GNU_EH_FRAME_HDR _GLOBAL_OFFSET_TABLE_ __libc_csu_fini gencior unlink@@GLIBC_2.2.5 _ITM_deregisterTMCloneTable gencmov puts@@GLIBC_2.2.5 TAILPATH genzipop genzip_condop TMPPATH _edata fclose@@GLIBC_2.2.5 strlen@@GLIBC_2.2.5 __stack_chk_fail@@GLIBC_2.4 genzipop_long gencnot __libc_start_main@@GLIBC_2.2.5 __data_start strcmp@@GLIBC_2.2.5 gencand fprintf@@GLIBC_2.2.5 __gmon_start__ __dso_handle _IO_stdin_used __libc_csu_init gen_heading gencxor gencadd __bss_start main usage access@@GLIBC_2.2.5 fopen@@GLIBC_2.2.5 _Jv_RegisterClasses rename@@GLIBC_2.2.5 legal sprintf@@GLIBC_2.2.5 exit@@GLIBC_2.2.5 fwrite@@GLIBC_2.2.5 __TMC_END__ _ITM_registerTMCloneTable gencneg stderr@@GLIBC_2.2.5  .symtab .strtab .shstrtab .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt .init .plt.got .text .fini .rodata .eh_frame_hdr .eh_frame .init_array .fini_array .jcr .dynamic .got.plt .data .bss .comment                                                                                 8@     8                                    #             T@     T                                     1             t@     t      $                              D   öÿÿo       ˜@     ˜      $                             N             À@     À      ˜                          V             X@     X      «                              ^   ÿÿÿo       @           "                            k   şÿÿo       (@     (      0                            z             X@     X      0                            „      B       ˆ@     ˆ      P                                       Ø@     Ø                                    ‰              @            ğ                             ”             ğ@     ğ                                                  @            ò                             £             ô@     ô      	                              ©              @            Á                             ±             Ä6@     Ä6      œ                              ¿             `7@     `7      ”                             É             >`     >                                    Õ             >`     >                                    á              >`      >                                    æ             (>`     (>      Ğ                           ˜             ø?`     ø?                                   ï              @`      @      ˆ                             ø             ˆ@`     ˆ@                                     ş             À@`     ¨@                                          0               ¨@      4                                                   qM                                                         à@      è         /                 	                      ÈI      ©                             
-\ No newline at end of file
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
 +++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2019-08-13 23:26:21.208289617 -0400
@@ -957,8 +751,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +}
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/config/zip/zip.c
 --- gcc-6.2.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2019-08-13 23:24:42.257014965 -0400
-@@ -0,0 +1,2730 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip.c	2019-10-21 11:26:31.431763029 -0400
+@@ -0,0 +1,2733 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -2009,7 +1803,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +zip_function_value(const_tree ret_type ATTRIBUTE_UNUSED,
 +	const_tree fn ATTRIBUTE_UNUSED, bool outgoing ATTRIBUTE_UNUSED) {
 +	machine_mode mode = TYPE_MODE(ret_type);
-+	int	unsgn;
++	ATTRIBUTE_UNUSED	int	unsgn = 0;
 +
 +	PROMOTE_MODE(mode, unsgn, ret_type);
 +	return gen_rtx_REG(mode, zip_R1);
@@ -2026,7 +1820,6 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +bool	zip_function_ok_for_sibcall(ATTRIBUTE_UNUSED tree decl, tree exp) {
 +	// calls.c already checks whether or not the parameter stack space
 +	// is identical, so ... let's hope this all works and find out.
-+
 +	//
 +	// Actually, this will fail:  If the sibling uses R5 to pass registers
 +	// in and we don't, then there will be no way to restore R5.  This is
@@ -2048,6 +1841,10 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +
 +	INIT_CUMULATIVE_ARGS(cum_v, NULL, NULL, 0,0);
 +	cum = pack_cumulative_args(&cum_v);
++
++	if (call_expr_nargs(exp) > 4)
++		return false;
++
 +	for (i=0; i<call_expr_nargs(exp); i++) {
 +
 +		parameter = CALL_EXPR_ARG(exp, i);
@@ -2088,8 +1885,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.c gcc-6.2.0-zip/gcc/co
 +		//	can be followed by func2(R1,.., up to R4)
 +		//	
 +		if (REG_P(parm_rtx)&&(REGNO(parm_rtx))
-+				&&(REGNO(parm_rtx)<sizeof(zip_call_used_register))
-+				&&(!zip_call_used_register[REGNO(parm_rtx)]))
++				&&((REGNO(parm_rtx)>=sizeof(zip_call_used_register))
++				||(!zip_call_used_register[REGNO(parm_rtx)])))
 +			return false;
 +	}
 +
@@ -3703,8 +3500,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2019-08-14 22:16:34.119560913 -0400
-@@ -0,0 +1,548 @@
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2019-10-21 09:53:24.757205752 -0400
+@@ -0,0 +1,562 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-di.md
@@ -4002,12 +3799,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +			//;  H0 += Rx  ( = 2*LOPART( HI * LO ) + HIPART( LO *LO)
 +			//;
 +			return "; muldi3_raw/A (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
-+				"\tMOV\t%L0,%3\n"
-+				"\tMPY\t%L0,%H0\n"
-+				"\tLSL\t1,%H0\n"
-+				"\tMPYUHI\t%L0,%3\n"
-+				"\tMPY\t%L0,%L0\n"
-+				"\tADD\t%3,%H0";
++				"\tMOV\t%L0,%3\t; %3 is a scratch register\n"
++				"\tMPY\t%L0,%H0\t; In (Ax+B)^2, calc A*B\n"
++				"\tLSL\t1,%H0\t; Multiply OI in FOIL by two\n"
++				"\tMPYUHI\t%L0,%3\t; L of FOIL upper\n"
++				"\tMPY\t%L0,%L0\t; L of FOIL lower\n"
++				"\tADD\t%3,%H0\t; Add upper L to OI for Hresult";
 +		} else if ((regno[0] != regno[1])&&(regno[1] == regno[2])) {
 +			//; RA = RB * RB
 +			//;
@@ -4031,34 +3828,48 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +			//;
 +			return "; muldi3_raw/B (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
 +			"\tMOV\t%L1,%L0\n"
-+			"\tMPY\t%L1,%L0\n"
++			"\tMPY\t%L1,%L0\t; %L0 = %L1^2\n"
 +			"\tMOV\t%H1,%H0\n"
-+			"\tMPY\t%H1,%H0\n"
-+			"\tLSL\t1,%H0\n"
-+			"\tMPY\t%L1,%L1\n"
-+			"\tADD\t%L2,%H0";
++			"\tMPY\t%L1,%H0\t; %H0 = %L1 * %H1\n"
++			"\tLSL\t1,%H0\t; %H0 = (%L1 * %H1)*2\n"
++			"\tMPYUHI\t%L1,%L1\n"
++			"\tADD\t%L1,%H0";
 +		} else if ((regno[0] == regno[1])&&(regno[1] != regno[2])) {
 +			//; RA = RA * RB, with scratch Rx
 +			//;
-+			//; (H0:L0) = (H0:L0) * (H1:L1)
-+			//; (H0:L0) = (H0*2^32 + L0) * (H1 * 2^32 + L1)
-+			//; (H0:L0) = (H0*H1*2^64 + (H0*L1+L0*H1)*2^32 + L0 *L1)
-+			//;	= (H0*L1+L0*H1):(L0*L1)
-+			//;     Rx  = L0
-+			//;    :L0  = LOPART(L1 * R0)
-+			//;  H0     = LOPART(H0 * L1)
-+			//;  H0    += H1 = LOPART(Rx * H1)
-+			//;  H0    += HIPART(L1 * Rx)
++			//; (H0:L0) = (H0:L0) * (H2:L2)
++			//; (H0:L0) = (H0*2^32 + L0) * (H2 * 2^32 + L2)
++			//; (H0:L0) = (H0*H2*2^64 + (H0*L2+L0*H2)*2^32 + L0 *L2)
++			//;	= (H0*L2+L0*H2):(L0*L2)
 +			//;
-+			return "; muldi3_raw/C (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
-+			"\tMOV\t%L0,%3\n"
-+			"\tMPY\t%L1,%L0\n"
-+			"\tMOV\t%L1,%H0\n"
-+			"\tMPY\t%H1,%H0\n"
-+			"\tMPY\t%3,%H1\n"
++			return "; muldi3_raw/C0 (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
++			"\tMPY\t%L0,%H2\n"
++			"\tMPY\t%L2,%H0\n"
++			"\tADD\t%H2,%H0\n"
++			//
++			"\tMOV\t%L0,%H2\n"
++			"\tMPY\t%L2,%L0\n"
++			//
++			"\tMPYUHI %L2,%H2\n"
++			"\tADD\t%H2,%H0\n";
++		} else if ((regno[0] == regno[2])&&(regno[1] != regno[2])) {
++			//; RA = RA * RB, with scratch Rx
++			//;
++			//; (H0:L0) = (H0:L0) * (H2:L2)
++			//; (H0:L0) = (H0*2^32 + L0) * (H2 * 2^32 + L2)
++			//; (H0:L0) = (H0*H2*2^64 + (H0*L2+L0*H2)*2^32 + L0 *L2)
++			//;	= (H0*L2+L0*H2):(L0*L2)
++			//;
++			return "; muldi3_raw/C1 (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
++			"\tMPY\t%L0,%H1\n"
++			"\tMPY\t%L1,%H0\n"
 +			"\tADD\t%H1,%H0\n"
-+			"\tMPY\t%3,%L1\n"
-+			"\tADD\t%L1,%H0";
++			//
++			"\tMOV\t%L0,%H1\n"
++			"\tMPY\t%L1,%L0\n"
++			//
++			"\tMPYUHI %L1,%H1\n"
++			"\tADD\t%H1,%H0\n";
 +		} else {
 +			//; RA = RB * RC
 +			//;
@@ -4080,12 +3891,12 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +			//;  H0    += H1
 +			//;
 +		     return "; muldi3_raw/D (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
-+			"\tMPY	%L2,%H1	; H1 = H1 * L2\n"
-+			"\tMPY	%L1,%H2	; H2 = L1 * L2\n"
-+			"\tMOV	%L2,%L0	; H0:L0 = L1 * L2\n"
++			"\tMPY	%L2,%H1	; %H1 = %H1 * %L2\n"
++			"\tMPY	%L1,%H2	; %H2 = %L1 * %H2\n"
++			"\tMOV	%L2,%L0	; %H0:%L0 = %L1 * %L2\n"
 +			"\tMOV	%L2,%H0\n"
 +			"\tMPY	%L1,%L0\n"
-+			"\tMPYUHI	%L1,%H0\n"
++			"\tMPYUHI %L1,%H0\n"
 +			"\tADD	%H2,%H0	; H0 += (H2 = L1 * H2)\n"
 +			"\tADD	%H1,%H0	; H0 += (H1 = H1 * L2)";
 +		}
