@@ -278,9 +278,7 @@ $(CPU)_ice40/PASS: $(CPUDEPS)
 .PHONY: clean
 clean:
 	rm -rf $(PFONE)*/     $(PFTWO)*/      $(PFCACHE)*/
-	rm -f $(WBDLY).smt2   $(WBDLY)*.vcd   $(WBDLY).yslog
-	rm -f $(PRIARB).smt2  $(PRIARB)*.vcd  $(PRIARB).yslog
-	rm -f $(DBL).smt2     $(DBL)*.vcd     $(DBL).yslog
+	rm -rf $(WBDLY)*/     $(PRIARB)*/     $(DBL)*/
 	rm -rf $(MEM)*/       $(PIPE)*/       $(MMU)*/
 	rm -rf $(TMR)*/       $(CNT)*/        $(JIF)*/
 	rm -rf $(WDG)*/       $(INT)_*/       $(DCD)_*/
