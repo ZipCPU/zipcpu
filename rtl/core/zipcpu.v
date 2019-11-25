@@ -1024,7 +1024,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(posedge i_clk)
-	if (bvsrc[2]) case(bvsrc[1:0])
+	if (bvsrc[2]) casez(bvsrc[1:0])
 	2'b00: r_op_Bv <= w_pcB_v + { dcd_I[29:0], 2'b00 };
 	2'b01: r_op_Bv <= w_op_BnI + dcd_I;
 	2'b1?: r_op_Bv <= wr_gpreg_vl;
@@ -1533,7 +1533,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		if ((OPT_PIPELINED && (mem_ce || adf_ce_unconditional))
 			||(!OPT_PIPELINED && op_valid))
 		begin
-			wr_index = 0;
+			wr_index <= 0;
 			/*
 			if (op_valid_mem)
 				wr_index <= 3'b001;
@@ -1545,9 +1545,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 				wr_index <= 3'b100;
 			*/
 
-			wr_index[0] = (op_valid_mem | op_valid_div);
-			wr_index[1] = (op_valid_alu | op_valid_div);
-			wr_index[2] = (op_valid_fpu);
+			wr_index[0] <= (op_valid_mem | op_valid_div);
+			wr_index[1] <= (op_valid_alu | op_valid_div);
+			wr_index[2] <= (op_valid_fpu);
 		end
 
 		if (i_dbg_we && r_halted)
@@ -1596,9 +1596,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 		reg	[(AW+1):0]	r_alu_pc;
 		initial	r_alu_pc = 0;
 		always @(posedge i_clk)
-		// if (i_reset)
-		//	r_alu_pc <= 0;
-		// else
 		if ((adf_ce_unconditional)
 				||((master_ce)&&(op_valid_mem)
 					&&(!clear_pipeline)&&(!mem_stalled)))
@@ -1709,7 +1706,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			, .OPT_FIFO_DEPTH(2)
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif
-			) docache(i_clk, i_reset,
+			) docache(i_clk, i_reset, w_clear_icache,
 		///{{{
 				(mem_ce)&&(set_cond), bus_lock,
 				(op_opn[2:0]), op_Bv, op_Av, op_R,
@@ -2587,7 +2584,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 
 	initial	new_pc = 1'b1;
 	always @(posedge i_clk)
-		// new_pc = (pfpcset) && (pfpcsrc != 3'b101);
 	if ((i_reset)||(w_clear_icache)||(dbg_clear_pipe))
 		new_pc <= 1'b1;
 	else if (w_switch_to_interrupt)
@@ -2800,7 +2796,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(posedge i_clk)
-	case(dbgsrc)
+	casez(dbgsrc)
 	3'b000: o_debug <= debug_flags;
 	3'b001: o_debug <= { debug_trigger, 1'b0, wr_reg_id[3:0],
 							wr_gpreg_vl[25:0]};
@@ -2863,9 +2859,11 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
+`ifndef	VERIFIC
 	initial	assume(i_reset);
 	initial	assume(!i_wb_ack);
 	initial	assume(!i_wb_err);
+`endif
 	always @(posedge i_clk)
 	if (!f_past_valid)
 	begin
