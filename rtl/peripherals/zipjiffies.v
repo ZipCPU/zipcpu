@@ -87,6 +87,13 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	// Interrupt line
 	output	reg			o_int;
 
+	reg	[(BW-1):0]		r_counter;
+	//
+	reg				int_set,  new_set;
+	reg		[(BW-1):0]	int_when, new_when;
+	wire	signed	[(BW-1):0]	till_when;
+	reg	signed	[(BW-1):0]	till_wb;
+
 	//
 	// Our counter logic: The counter is always counting up--it cannot
 	// be stopped or altered.  It's really quite simple.  Okay, not quite.
@@ -95,36 +102,34 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	// debugger, the timer's all slow down so that everything can be stepped
 	// together, one clock at a time.
 	//
-	reg	[(BW-1):0]	r_counter;
+
 	initial	r_counter = 0;
 	always @(posedge i_clk)
-		if (i_reset)
-			r_counter <= 0;
-		else if (i_ce)
-			r_counter <= r_counter+1;
+	if (i_reset)
+		r_counter <= 0;
+	else if (i_ce)
+		r_counter <= r_counter+1;
 
 	//
 	// Writes to the counter set an interrupt--but only if they are in the
 	// future as determined by the signed result of an unsigned subtract.
 	//
-	reg				int_set,  new_set;
-	reg		[(BW-1):0]	int_when, new_when;
-	wire	signed	[(BW-1):0]	till_when, till_wb;
 	assign	till_when = int_when-r_counter;
-	assign	till_wb   = new_when-r_counter;
+	// assign	till_wb   = new_when-r_counter;
 
 	initial	new_set = 1'b0;
 	always @(posedge i_clk)
-	if (i_reset)
 	begin
-		new_set  <= 1'b0;
-		new_when <= 0;
-	end else begin
 		// Delay WB commands (writes) by a clock to simplify our logic
-		new_set <= ((i_wb_stb)&&(i_wb_we));
+		new_set <= (i_wb_stb && i_wb_we);
 		// new_when is a don't care when new_set = 0, so don't worry
 		// about setting it at all times.
 		new_when<= i_wb_data;
+
+		till_wb <= (i_wb_data - r_counter - (i_ce ? 1:0));
+
+		if (i_reset)
+			new_set <= 1'b0;
 	end
 
 	initial	o_int   = 1'b0;
