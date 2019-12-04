@@ -1,0 +1,89 @@
+[options]
+size 800
+weight_pq_s 500
+weight_pq_ms 500
+weight_cover 500
+pick_cover_prcnt 90
+tags COVERED UNCOVERED PROBE GAP NOC
+
+[script]
+read -sv zipcpu.v
+read -sv dblfetch.v
+read -sv dcache.v
+read -sv div.v
+read -sv idecode.v
+read -sv iscachable.v
+read -sv memops.v
+read -sv mpyop.v
+read -sv pfcache.v
+read -sv pipefetch.v
+read -sv pipemem.v
+read -sv prefetch.v
+read -sv slowmpy.v
+read -sv wbdblpriarb.v
+read -sv cpuops.v
+prep -top zipcpu
+
+[files]
+zipcpu.v
+dblfetch.v
+dcache.v
+div.v
+idecode.v
+iscachable.v
+memops.v
+mpyop.v
+pfcache.v
+pipefetch.v
+pipemem.v
+prefetch.v
+slowmpy.v
+cpudefs.v
+wbdblpriarb.v
+fwb_master.v
+
+[logic]
+if result("sim_verilator") == "FAIL":
+    tag("COVERED")
+    if rng(100) < 20:
+        tag("PROBE")
+        t1 = result("eq_bmc") == "FAIL"
+        t2 = result("eq_sim3 600") == "FAIL"
+        if not t1 and not t2:
+            tag("GAP")
+    return
+
+if result("eq_sim3 60") == "FAIL":
+    tag("UNCOVERED")
+    return
+
+if result("eq_bmc") == "FAIL":
+    tag("UNCOVERED")
+    return
+
+if result("eq_sim3 600") == "FAIL":
+    tag("UNCOVERED")
+    return
+
+tag("NOC")
+
+[report]
+if tags("!NOC"):
+    print("Coverage: %.2f%%" % (100.0*tags("COVERED")/tags("!NOC")))
+if tags():
+    print("Noc percentage: %.2f%%" % (100.0*tags("NOC")/tags()))
+if tags("PROBE"):
+    print("Gap percentage: %.2f%%" % (100.0*tags("GAP")/tags("PROBE")))
+
+[test sim_verilator]
+maxbatchsize 10
+expect PASS FAIL
+run bash $PRJDIR/sim_verilator.sh
+
+[test eq_bmc]
+expect TIMEOUT PASS FAIL
+run bash $PRJDIR/eq_bmc.sh
+
+[test eq_sim3]
+expect TIMEOUT FAIL
+run bash $PRJDIR/eq_sim3.sh

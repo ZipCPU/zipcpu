@@ -1,0 +1,27 @@
+[options]
+mode bmc
+depth 50
+expect timeout,fail
+timeout 600
+aigsmt none
+
+[engines]
+smtbmc boolector
+
+[script]
+--pycode-begin--
+output("verilog_defines -Dmutidx=%s" % task)
+--pycode-end--
+read_verilog -sv miter.sv
+# read_verilog -formal fwb_master.v
+read_ilang mutated.il
+chtype -map $mul $add
+prep -top miter
+fmcombine miter refi uut
+flatten
+opt -fast
+
+[files]
+../../miter.sv
+mutated.il
+../../fwb_master.v
