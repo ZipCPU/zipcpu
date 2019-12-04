@@ -40,7 +40,6 @@ prefetch.v
 slowmpy.v
 cpudefs.v
 wbdblpriarb.v
-fwb_master.v
 
 [logic]
 if result("sim_verilator") == "FAIL":

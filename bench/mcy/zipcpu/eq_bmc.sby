@@ -13,7 +13,6 @@ smtbmc boolector
 output("verilog_defines -Dmutidx=%s" % task)
 --pycode-end--
 read_verilog -sv miter.sv
-# read_verilog -formal fwb_master.v
 read_ilang mutated.il
 chtype -map $mul $add
 prep -top miter
@@ -24,4 +23,3 @@ opt -fast
 [files]
 ../../miter.sv
 mutated.il
-../../fwb_master.v

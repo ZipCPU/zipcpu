@@ -85,6 +85,9 @@ clean:
 	rm -f twoc.cpp     twoc.h
 	rm -f zipelf.cpp   zipelf.h
 	rm -f zopcodes.cpp zopcodes.h
+	#
+	# Remove our test script
+	rm -f simtest
 
 .PHONY: copy
 copy: cpudefs.v $(VSRC) $(CSRC) wbdblpriarb.v
@@ -111,6 +114,8 @@ pfcache.v: $(CORE)/pfcache.v
 	cp $(CORE)/pfcache.v .
 pipefetch.v: $(CORE)/pipefetch.v
 	cp $(CORE)/pipefetch.v .
+pipemem.v: $(CORE)/pipemem.v
+	cp $(CORE)/pipemem.v .
 prefetch.v: $(CORE)/prefetch.v
 	cp $(CORE)/prefetch.v .
 slowmpy.v: $(CORE)/slowmpy.v
@@ -165,7 +170,7 @@ simtest: $(ASM)/simtest
 database/mutations.txt: config.mcy
 	mcy init
 
-init: database/mutations.txt
+init: database/mutations.txt cpudefs.h simtest copy
 
 run: simtest $(VSRC) $(CSRC) database/mutations.txt
 	mcy run # -j <ncpus>
@@ -180,12 +185,12 @@ status:
 # You may want to run a test-run before starting, since it can be disappointing
 # to get hours into the process only to find a bug and then need to start
 # over
-test:
+test: init
 	@echo; echo; echo "Testing the Verilator simulation" ; echo
-	mcy task -v -k 0 sim_verilator
+	mcy task -v -k sim_verilator 2
 	@echo; echo; echo "Testing the BMC pass" ; echo
-	mcy task -v -k 0 eq_bmc
+	mcy task -v -k eq_bmc 2
 	@echo; echo; echo "Testing the simulation pass" ; echo
-	mcy task -v -k 0 eq_sim3 30
+	mcy task -v -k eq_sim3 30 2
 	@echo; echo; echo
 	@echo "All tests passed, feel free to run: make run"

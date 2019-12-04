@@ -19,6 +19,7 @@ pfcache.v
 pipefetch.v
 pipemem.v
 prefetch.v
+simtest
 slowmpy.v
 testb.h
 twoc.cpp
