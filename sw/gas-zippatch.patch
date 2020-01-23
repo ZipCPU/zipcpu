@@ -119,7 +119,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/configure.ac binutils-2.
    case "$COREFILE" in
 diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/cpu-zip.c binutils-2.27-zip/bfd/cpu-zip.c
 --- binutils-2.27-original/bfd/cpu-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/cpu-zip.c	2017-01-04 14:26:27.000000000 -0500
++++ binutils-2.27-zip/bfd/cpu-zip.c	2020-01-23 15:52:38.249763934 -0500
 @@ -0,0 +1,65 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -136,7 +136,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/cpu-zip.c binutils-2.27-
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -235,7 +235,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/doc/reloc.texi binutils-
  
 diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
 --- binutils-2.27-original/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/elf32-zip.c	2017-01-24 13:54:25.214097101 -0500
++++ binutils-2.27-zip/bfd/elf32-zip.c	2020-01-23 15:52:43.653724505 -0500
 @@ -0,0 +1,1134 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -252,7 +252,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -1705,7 +1705,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/configure.ac binutils-2.27-z
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2019-02-14 20:54:05.341671631 -0500
++++ binutils-2.27-zip/gas/config/tc-zip.c	2020-01-23 15:51:06.066436971 -0500
 @@ -0,0 +1,3403 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -1728,7 +1728,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2018, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -4111,12 +4111,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +			&&((!insn->i_rp)||(sym_known))
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&((rg=zip_findnearreg_machine(pzipm, immv))!= ZIP_RNONE)
-+			&&(fits_within(13,pzipm->r[rg].m_value - immv))) {
++			&&(fits_within(13,immv-pzipm->r[rg].m_value))) {
 +				// Replace LDI with a MOV instruction
 +				insn->i_op = ZIPO_MOV;
 +				insn->i_breg = rg;
 +				insn->i_naux = 0;
-+				insn->i_imm  = pzipm->r[rg].m_value - immv;
++				insn->i_imm  = immv-pzipm->r[rg].m_value;
 +				zip_assemble_insn_words(fragP, seg, insn,
 +					relax_state, stretch, pzipm);
 +				return;
@@ -4125,7 +4125,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +			&&(pzipm->r[insn->i_areg].m_known)
 +			&&((rg=zip_findnearreg_machine(pzipm, zip_brev(immv)))!= ZIP_RNONE)
 +			&&(fits_within(14,zip_brev(pzipm->r[rg].m_value - immv)))) {
-+				// Replace LDI with a MOV instruction
++				// Replace LDI with a BREV instruction
 +				insn->i_op = ZIPO_BREV;
 +				insn->i_breg = rg;
 +				insn->i_naux = 0;
@@ -5112,7 +5112,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +}
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
 --- binutils-2.27-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.h	2017-03-03 09:35:34.527310651 -0500
++++ binutils-2.27-zip/gas/config/tc-zip.h	2020-01-23 15:51:21.558323806 -0500
 @@ -0,0 +1,191 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5127,7 +5127,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -6516,7 +6516,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/common.h binutil
  /* Values for e_version.  */
 diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2.27-zip/include/elf/zip.h
 --- binutils-2.27-original/include/elf/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/include/elf/zip.h	2017-01-18 18:19:33.764898333 -0500
++++ binutils-2.27-zip/include/elf/zip.h	2020-01-23 15:50:24.902737780 -0500
 @@ -0,0 +1,58 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6531,7 +6531,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -6590,7 +6590,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/configure.tgt binutils-2.
  *-tandem-none)		targ_emul=st2000
 diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/emulparams/elf32zip.sh binutils-2.27-zip/ld/emulparams/elf32zip.sh
 --- binutils-2.27-original/ld/emulparams/elf32zip.sh	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/ld/emulparams/elf32zip.sh	2017-01-05 08:22:45.000000000 -0500
++++ binutils-2.27-zip/ld/emulparams/elf32zip.sh	2020-01-23 15:50:44.126597278 -0500
 @@ -0,0 +1,50 @@
 +################################################################################
 +#
@@ -6614,7 +6614,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/emulparams/elf32zip.sh bi
 +#
 +################################################################################
 +#
-+# Copyright (C) 2016, Gisselquist Technology, LLC
++# Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +#
 +# This program is free software (firmware): you can redistribute it and/or
 +# modify it under the terms of  the GNU General Public License as published
@@ -6808,7 +6808,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/Makefile.in binutils
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27-original/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2018-03-22 17:57:34.688834861 -0400
++++ binutils-2.27-zip/opcodes/zip-dis.c	2020-01-23 15:51:51.878102394 -0500
 @@ -0,0 +1,527 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6823,7 +6823,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2017, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -7339,7 +7339,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2.27-zip/opcodes/zip-dis.h
 --- binutils-2.27-original/opcodes/zip-dis.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.h	2016-12-31 18:10:03.512012534 -0500
++++ binutils-2.27-zip/opcodes/zip-dis.h	2020-01-23 15:51:56.118071438 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7354,7 +7354,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -7388,7 +7388,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27-original/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2018-06-07 10:35:06.439245343 -0400
++++ binutils-2.27-zip/opcodes/zip-opc.c	2020-01-23 15:51:59.734045040 -0500
 @@ -0,0 +1,362 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7403,10 +7403,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2017, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -7754,7 +7754,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2
 +
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2.27-zip/opcodes/zip-opc.h
 --- binutils-2.27-original/opcodes/zip-opc.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.h	2017-02-10 17:48:01.761470841 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.h	2020-01-23 15:52:03.714015985 -0500
 @@ -0,0 +1,77 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -7769,7 +7769,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016, Gisselquist Technology, LLC
++// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published

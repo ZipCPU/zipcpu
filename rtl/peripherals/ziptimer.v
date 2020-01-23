@@ -45,7 +45,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -73,7 +73,7 @@
 //
 module	ziptimer(i_clk, i_reset, i_ce,
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
-			o_wb_ack, o_wb_stall, o_wb_data,
+			o_wb_stall, o_wb_ack, o_wb_data,
 		o_int);
 	parameter	BW = 32, VW = (BW-1), RELOADABLE=1;
 	input	wire		i_clk, i_reset, i_ce;
@@ -81,8 +81,8 @@ module	ziptimer(i_clk, i_reset, i_ce,
 	input	wire		i_wb_cyc, i_wb_stb, i_wb_we;
 	input	wire [(BW-1):0]	i_wb_data;
 	// Wishbone outputs
-	output	reg			o_wb_ack;
 	output	wire			o_wb_stall;
+	output	reg			o_wb_ack;
 	output	wire	[(BW-1):0]	o_wb_data;
 	// Interrupt line
 	output	reg		o_int;

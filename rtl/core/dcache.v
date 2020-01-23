@@ -48,7 +48,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2016-2019, Gisselquist Technology, LLC
+// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -80,12 +80,12 @@
 `endif
 `endif
 
-module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
+module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 		i_op, i_addr, i_data, i_oreg,
 			o_busy, o_pipe_stalled, o_valid, o_err, o_wreg,o_data,
 		o_wb_cyc_gbl, o_wb_cyc_lcl, o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
+		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
 `ifdef	FORMAL
 		, f_nreqs, f_nacks, f_outstanding, f_pc
 `endif
@@ -113,7 +113,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	localparam [1:0]	DC_READS = 2'b10; // Read a single value(!cachd)
 	localparam [1:0]	DC_READC = 2'b11; // Read a whole cache line
 	//
-	input	wire		i_clk, i_reset;
+	input	wire		i_clk, i_reset, i_clear;
 	// Interface from the CPU
 	input	wire		i_pipe_stb, i_lock;
 	input	wire [2:0]		i_op;
@@ -134,7 +134,7 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 	output	reg [(DW-1):0]	o_wb_data;
 	output	wire [(DW/8-1):0] o_wb_sel;
 	// Wishbone bus slave response inputs
-	input	wire			i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[(DW-1):0]	i_wb_data;
 `ifdef FORMAL
 	output	wire [(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
@@ -293,6 +293,8 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				&&(r_rd)&&(!r_svalid)
 				&&((r_itag != r_ctag)||(!r_iv));
 
+		if (i_clear)
+			last_tag_valid <= 0;
 		if (i_reset)
 		begin
 			// r_rd <= 1'b0;
@@ -906,40 +908,10 @@ module	dcache(i_clk, i_reset, i_pipe_stb, i_lock,
 				o_wb_stb_lcl <= 1'b0;
 			end
 		end
+
+		if (i_clear)
+			c_v <= 0;
 	end
-
-	/*
-	reg	[1:0]	awbsrc;
-
-	always @(*)
-	begin
-		awbsrc = 0;
-
-		case(state)
-		DC_IDLE: begin
-			if ((i_pipe_stb)&&(i_op[0]))
-				awbsrc = 2'b00;
-			else if (r_cache_miss)
-				awbsrc = 2'b01;
-			else
-				awbsrc = 2'b00;
-			end
-		DC_READS: awbsrc = 2'b00;
-		DC_WRITE: awbsrc = 2'b00;
-		DC_READC: awbsrc = 2'b10;
-		default: awbsrc = 2'b11;
-		endcase
-	end
-
-	always @(posedge i_clk)
-	if (!stb || !i_wb_stall)
-	case(awbsrc)
-	2'b00: o_wb_addr <= i_addr[(AW+1):2];
-	2'b01: o_wb_addr <= { r_ctag, {(LS){1'b0}} };
-	2'b1?: o_wb_addr[(LS-1):0] <= o_wb_addr[(LS-1):0]+1'b1;
-	endcase
-	*/
-
 
 	//
 	// npending is the number of outstanding (non-cached) read or write
@@ -1139,11 +1111,11 @@ always @(*)
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Reset properties
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	always @(*)
@@ -1171,13 +1143,24 @@ always @(*)
 		`ASSERT(lock_lcl == 0);
 	end
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
+
+	// The CPU is not allowed to write to the CC register while a
+	// memory operation is pending, lest any resulting bus error
+	// get returned to the wrong mode--i.e. user bus error halting
+	// the supervisor.  What this means, though, is that the CPU
+	// will *never* attempt to clear the data cache while the cache
+	// is busy.
+	always @(*)
+	if (o_busy || i_pipe_stb) // f_outstanding)
+		`ASSUME(!i_clear);
+
 	always @(*)
 	if (o_pipe_stalled)
 		`ASSUME(!i_pipe_stb);
@@ -1201,11 +1184,11 @@ always @(*)
 	if (o_err)
 		`ASSUME(!i_pipe_stb);
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Wishbone properties
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	wire	f_cyc, f_stb;
@@ -1266,11 +1249,11 @@ always @(*)
 		f_nreqs, f_nacks, f_outstanding);
 
 `ifdef	DCACHE	// Arbitrary access is specific to local dcache implementation
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Arbitrary address properties
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	(* anyconst *)	reg	[AW:0]		f_const_addr;
@@ -1570,25 +1553,24 @@ always @(*)
 
 `endif	// DCACHE
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Checking the lock
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
 	always @(*)
 		`ASSERT((!lock_gbl)||(!lock_lcl));
 	always @(*)
 	if (!OPT_LOCK)
 		`ASSERT((!lock_gbl)&&(!lock_lcl));
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// State based properties
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	reg	[F_LGDEPTH-1:0]	f_rdpending;
@@ -1759,11 +1741,11 @@ always @(*)
 		`ASSUME($stable(i_lock));
 
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Ad-hoc properties
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	always @(*)
@@ -1950,11 +1932,11 @@ always @(*)
 	end
 
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover statements
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -1995,7 +1977,7 @@ always @(*)
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_valid)))
-			cover(o_valid);		// !
+			cover(o_valid);
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&(!$past(i_reset))&&($past(i_pipe_stb)))
@@ -2085,11 +2067,11 @@ always @(*)
 
 	end endgenerate
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Carelesss assumption section
 	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 

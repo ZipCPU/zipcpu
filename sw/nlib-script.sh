@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ##
-## Copyright (C) 2016, Gisselquist Technology, LLC
+## Copyright (C) 2016-2020, Gisselquist Technology, LLC
 ##
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published

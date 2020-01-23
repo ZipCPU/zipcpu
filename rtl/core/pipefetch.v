@@ -30,7 +30,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017,2019 Gisselquist Technology, LLC
+// Copyright (C) 2015-2020 Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -59,7 +59,7 @@
 module	pipefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 			o_i, o_pc, o_v,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data, i_wb_request,
+			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data, i_wb_request,
 			o_illegal);
 	parameter	RESET_ADDRESS=32'h0010_0000,
 			LGCACHELEN = 6, ADDRESS_WIDTH=24,
@@ -76,7 +76,7 @@ module	pipefetch(i_clk, i_rst, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[(BUSW-1):0]	o_wb_data;
 	//
-	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[(BUSW-1):0]	i_wb_data;
 	//
 	// Is the (data) memory unit also requesting access to the bus?

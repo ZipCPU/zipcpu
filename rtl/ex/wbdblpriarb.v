@@ -44,7 +44,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2018-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015,2018-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -72,12 +72,12 @@
 //
 module	wbdblpriarb(i_clk, i_reset,
 	// Bus A
-	i_a_cyc_a,i_a_cyc_b,i_a_stb_a,i_a_stb_b,i_a_we,i_a_adr, i_a_dat, i_a_sel, o_a_ack, o_a_stall, o_a_err,
+	i_a_cyc_a,i_a_cyc_b,i_a_stb_a,i_a_stb_b,i_a_we,i_a_adr, i_a_dat, i_a_sel, o_a_stall, o_a_ack, o_a_err,
 	// Bus B
-	i_b_cyc_a,i_b_cyc_b,i_b_stb_a,i_b_stb_b,i_b_we,i_b_adr, i_b_dat, i_b_sel, o_b_ack, o_b_stall, o_b_err,
+	i_b_cyc_a,i_b_cyc_b,i_b_stb_a,i_b_stb_b,i_b_we,i_b_adr, i_b_dat, i_b_sel, o_b_stall, o_b_ack, o_b_err,
 	// Both buses
 	o_cyc_a, o_cyc_b, o_stb_a, o_stb_b, o_we, o_adr, o_dat, o_sel,
-		i_ack, i_stall, i_err
+		i_stall, i_ack, i_err
 `ifdef	FORMAL
 			, f_nreqs_a, f_nacks_a, f_outstanding_a,
 			f_nreqs_b, f_nacks_b, f_outstanding_b,
@@ -113,19 +113,19 @@ module	wbdblpriarb(i_clk, i_reset,
 	input	wire	[(AW-1):0]	i_a_adr;
 	input	wire	[(DW-1):0]	i_a_dat;
 	input	wire	[(DW/8-1):0]	i_a_sel;
-	output	wire			o_a_ack, o_a_stall, o_a_err;
+	output	wire			o_a_stall, o_a_ack, o_a_err;
 	// Bus B
 	input	wire			i_b_cyc_a, i_b_cyc_b, i_b_stb_a, i_b_stb_b, i_b_we;
 	input	wire	[(AW-1):0]	i_b_adr;
 	input	wire	[(DW-1):0]	i_b_dat;
 	input	wire	[(DW/8-1):0]	i_b_sel;
-	output	wire			o_b_ack, o_b_stall, o_b_err;
+	output	wire			o_b_stall, o_b_ack, o_b_err;
 	//
 	output	wire			o_cyc_a,o_cyc_b, o_stb_a, o_stb_b, o_we;
 	output	wire	[(AW-1):0]	o_adr;
 	output	wire	[(DW-1):0]	o_dat;
 	output	wire	[(DW/8-1):0]	o_sel;
-	input	wire			i_ack, i_stall, i_err;
+	input	wire			i_stall, i_ack, i_err;
 `ifdef	FORMAL
 	output	wire	[(F_LGDEPTH-1):0]
 			f_nreqs_a, f_nacks_a, f_outstanding_a,

@@ -90,7 +90,7 @@ clean:
 	rm -f simtest
 
 .PHONY: copy
-copy: cpudefs.v $(VSRC) $(CSRC) wbdblpriarb.v
+copy: cpudefs.v $(VSRC) $(CSRC) wbdblpriarb.v simtest
 
 #
 # Copy the Verilog sources we need from the ZipCPU core directories here

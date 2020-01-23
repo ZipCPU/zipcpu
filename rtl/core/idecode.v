@@ -19,7 +19,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -226,7 +226,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	assign	w_break = (w_special)&&(w_op[4:0]==5'h1c);
 	assign	w_lock  = (w_special)&&(w_op[4:0]==5'h1d);
 	assign	w_sim   = (w_special)&&(w_op[4:0]==5'h1e);
-	assign	w_noop  = (w_special)&&(w_op[4:0]==5'h1f);
+	assign	w_noop  = (w_special)&&(w_op[4:1]==4'hf); // Must include w_sim
 
 
 	// w_dcdR (4 LUTs)
@@ -1394,24 +1394,24 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	begin
 		`ASSERT(w_special);
 		if (w_cis_op == 5'h1c)
-		begin
+		begin // Break instruction
 			`ASSERT(w_break);
 			`ASSERT(!w_lock);
 			`ASSERT(!w_sim);
 			`ASSERT(!w_noop);
 		end else if (w_cis_op == 5'h1d)
-		begin
+		begin // Lock instruction
 			`ASSERT(!w_break);
 			`ASSERT( w_lock);
 			`ASSERT(!w_sim);
 			`ASSERT(!w_noop);
 		end else if (w_cis_op == 5'h1e)
-		begin
+		begin // Sim instruction
 			`ASSERT(!w_break);
 			`ASSERT(!w_lock);
 			`ASSERT( w_sim);
-			`ASSERT(!w_noop);
-		end else begin
+			`ASSERT( w_noop);
+		end else begin // NOOP instruction
 			`ASSERT(!w_break);
 			`ASSERT(!w_lock);
 			`ASSERT(!w_sim);

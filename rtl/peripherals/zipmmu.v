@@ -186,7 +186,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2016-2019, Gisselquist Technology, LLC
+// Copyright (C) 2016-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -218,7 +218,7 @@
 `define	AXFLAG	0	// Accessed flag
 //
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
-				i_wbs_data, o_wbs_ack, o_wbs_stall, o_wbs_data,
+				i_wbs_data, o_wbs_stall, o_wbs_ack, o_wbs_data,
 		i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_exe,
 			i_wbm_addr, i_wbm_data, i_wbm_sel, i_gie,
 		o_cyc, o_stb, o_we, o_addr, o_data, o_sel,
@@ -277,8 +277,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	input	wire		i_wbs_we;
 	input	wire	[(LGTBL+1):0]	i_wbs_addr;
 	input	wire	[(DW-1):0]	i_wbs_data;
-	output	reg			o_wbs_ack;
 	output	wire			o_wbs_stall;
+	output	reg			o_wbs_ack;
 	output	reg	[(DW-1):0]	o_wbs_data;
 	//
 	input	wire		i_wbm_cyc, i_wbm_stb;
@@ -794,8 +794,8 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	assign	unused = r_ppage;
 	generate if (4+LGCTXT < LGPGSZB)
 	begin
-		wire	[LGPGSZB-(4+LGCTXT)-1:0]	unused_data;
-		assign	unused_data = i_wbs_data[LGPGSZB-1:4+LGCTXT];
+		wire	unused_data;
+		assign	unused_data = { 1'b0, i_wbs_data[LGPGSZB-1:4+LGCTXT] };
 	end endgenerate
 
 	wire	unused_always;

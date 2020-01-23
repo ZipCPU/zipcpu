@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -46,23 +46,35 @@
 `define	HALT_BIT	10
 `define	CLEAR_CACHE_BIT	11
 //
+`ifdef	OPT_TRADITIONAL_PFCACHE
+`define	LGICACHE_DEFAULT	8
+`else
+`define	LGICACHE_DEFAULT	0
+`endif
+//
+`ifdef	OPT_DCACHE
+`define	LGDCACHE_DEFAULT	10
+`else
+`define	LGDCACHE_DEFAULT	0
+`endif
 module	zipbones(i_clk, i_reset,
 		// Wishbone master interface from the CPU
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+			i_wb_stall, i_wb_ack, i_wb_data, i_wb_err,
 		// Incoming interrupts
 		i_ext_int,
 		// Our one outgoing interrupt
 		o_ext_int,
 		// Wishbone slave interface for debugging purposes
 		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
-			o_dbg_ack, o_dbg_stall, o_dbg_data
+			o_dbg_stall, o_dbg_ack, o_dbg_data
 `ifdef	DEBUG_SCOPE
 		, o_cpu_debug
 `endif
 		);
 	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=8;
+			LGICACHE=`LGICACHE_DEFAULT,
+			LGDCACHE=`LGDCACHE_DEFAULT;
 	parameter [0:0]	START_HALTED=0;
 	parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
@@ -100,7 +112,7 @@ module	zipbones(i_clk, i_reset,
 	output	wire	[(PAW-1):0]	o_wb_addr;
 	output	wire	[31:0]	o_wb_data;
 	output	wire	[3:0]	o_wb_sel;
-	input	wire		i_wb_ack, i_wb_stall;
+	input	wire		i_wb_stall, i_wb_ack;
 	input	wire	[31:0]	i_wb_data;
 	input	wire		i_wb_err;
 	// Incoming interrupts
@@ -211,6 +223,7 @@ module	zipbones(i_clk, i_reset,
 	zipcpu	#(.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
+			.OPT_LGDCACHE(LGDCACHE),
 			.WITH_LOCAL_BUS(0))
 		thecpu(i_clk, cpu_reset, i_ext_int,
 			cpu_halt, cmd_clear_pf_cache, cmd_addr[4:0], cpu_dbg_we,
@@ -219,7 +232,7 @@ module	zipbones(i_clk, i_reset,
 			o_wb_cyc, o_wb_stb,
 				cpu_lcl_cyc, cpu_lcl_stb,
 				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-				i_wb_ack, i_wb_stall, i_wb_data,
+				i_wb_stall, i_wb_ack, i_wb_data,
 				(i_wb_err)||(cpu_lcl_cyc),
 			cpu_op_stall, cpu_pf_stall, cpu_i_count
 `ifdef	DEBUG_SCOPE

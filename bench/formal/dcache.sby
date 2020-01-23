@@ -12,11 +12,12 @@ cover_pipe      system lock     dualread cover piped
 ~cover: mode prove
 cover:  mode cover
 depth 16
-full:           depth 10
-bare:           depth 11
-nolock_nolocal: depth 11
-nolock_system:  depth 11
-piped:          depth 11
+full:           depth  9
+full_single:    depth  9
+bare:           depth  9
+nolock_nolocal: depth  9
+nolock_system:  depth  9
+piped:          depth  9
 cover:          depth 24
 cover_pipe:     depth 45
 

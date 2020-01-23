@@ -30,7 +30,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -60,7 +60,7 @@
 module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			o_insn, o_pc, o_valid, o_illegal,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_ack, i_wb_stall, i_wb_err, i_wb_data);
+			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
 	localparam		AW=ADDRESS_WIDTH,
 				DW=DATA_WIDTH;
@@ -79,7 +79,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	output	reg	[(AW-1):0]	o_wb_addr;
 	output	wire	[(DW-1):0]	o_wb_data;
 	// And return inputs
-	input	wire			i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[(DW-1):0]	i_wb_data;
 
 	// Declare local variables

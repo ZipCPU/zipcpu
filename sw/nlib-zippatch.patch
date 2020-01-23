@@ -203,8 +203,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
 --- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2017-03-01 15:51:53.300228357 -0500
-@@ -0,0 +1,190 @@
++++ newlib-2.5.0-zip/libgloss/zip/board.h	2020-01-23 16:48:05.857847906 -0500
+@@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
@@ -220,7 +220,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -244,161 +244,190 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +//
-+#ifndef	ZIPBASIC_H
-+#define	ZIPBASIC_H
++#ifndef	BOARD_H
++#define	BOARD_H
 +
 +#include <stdint.h>
 +
-+// We have the full ZIP System installed
-+#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
++#define	_HAVE_ZIPSYS
++#define	PIC	_zip->z_pic
++
++#ifdef	INCLUDE_ZIPCPU
++#ifdef INCLUDE_DMA_CONTROLLER
 +#define	_HAVE_ZIPSYS_DMA
-+#include "zipsys.h"
-+
-+typedef	struct	{
-+	unsigned	i_version;
-+	unsigned	i_pwrcount;
-+	unsigned	i_buserr;
-+	unsigned	i_date;
-+} BASICIO;
-+
-+#define	UART_PARITY_NONE	0
-+#define	UART_HWFLOW_OFF		0x40000000
-+#define	UART_PARITY_ODD		0x04000000
-+#define	UART_PARITY_EVEN	0x05000000
-+#define	UART_PARITY_SPACE	0x06000000
-+#define	UART_PARITY_MARK	0x07000000
-+#define	UART_STOP_ONEBIT	0
-+#define	UART_STOP_TWOBITS	0x08000000
-+#define	UART_DATA_8BITS		0
-+#define	UART_DATA_7BITS		0x10000000
-+#define	UART_DATA_6BITS		0x20000000
-+#define	UART_DATA_5BITS		0x30000000
-+#define	UART_RX_BREAK		0x0800
-+#define	UART_RX_FRAMEERR	0x0400
-+#define	UART_RX_PARITYERR	0x0200
-+#define	UART_RX_NOTREADY	0x0100
-+#define	UART_RX_ERR		(-256)
-+#define	UART_TX_BUSY		0x0100
-+#define	UART_TX_BREAK		0x0200
-+
-+typedef	struct	WBUART_S {
-+	unsigned	u_setup;
-+	unsigned	u_fifo;
-+	unsigned	u_rx, u_tx;
-+} WBUART;
++#endif	// INCLUDE_DMA_CONTROLLER
++#ifdef INCLUDE_ACCOUNTING_COUNTERS
++#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
++#endif	// INCLUDE_ACCOUNTING_COUNTERS
++#endif // INCLUDE_ZIPCPU
 +
 +
-+#define	WBSCOPE_NO_RESET	0x80000000
-+#define	WBSCOPE_TRIGGER	(WBSCOPE_NO_RESET|0x08000000)
-+#define	WBSCOPE_MANUAL	WBSCOPE_TRIGGER
-+#define	WBSCOPE_DISABLE	0x04000000	// Disable the scope trigger
-+typedef	struct	WBSCOPE_S {
-+	unsigned	s_ctrl, s_data;
-+} WBSCOPE;
++#define	SDSPI_SETAUX	0x0000ff
++#define	SDSPI_READAUX	0x0000bf
++#define	SDSPI_CMD		0x000040
++#define	SDSPI_ACMD		(0x040+55) // CMD55
++#define	SDSPI_FIFO_OP	0x000800	// Read only
++#define	SDSPI_WRITEOP	0x000c00	// Write to the FIFO
++#define	SDSPI_ALTFIFO	0x001000
++#define	SDSPI_BUSY		0x004000
++#define	SDSPI_ERROR		0x008000
++#define	SDSPI_CLEARERR	0x008000
++// #define	SDSPI_CRCERR	0x010000
++// #define	SDSPI_ERRTOK	0x020000
++#define	SDSPI_REMOVED	0x040000
++#define	SDSPI_PRESENTN	0x080000
++#define	SDSPI_RESET		0x100000	// Read only
++#define	SDSPI_WATCHDOG	0x200000	// Read only
++#define	SDSPI_GO_IDLE	((SDSPI_REMOVED|SDSPI_CLEARERR|SDSPI_CMD)+0)
++#define	SDSPI_READ_SECTOR	((SDSPI_CMD|SDSPI_CLEARERR|SDSPI_FIFO_OP)+17)
++#define	SDSPI_WRITE_SECTOR	((SDSPI_CMD|SDSPI_CLEARERR|SDSPI_WRITEOP)+24)
 +
-+typedef	struct	{
++typedef	struct SDSPI_S {
++	unsigned	sd_ctrl, sd_data, sd_fifo[2];
++} SDSPI;
++
++
++
++
++#define BUSPIC(X) (1<<X)
++
++
++//
++// GPIO input wires
++//
++#define	GPIO_SD_DETECTED	0x000010000
++#define	GPIO_SYSCLK_LOCKED	0x000020000
++//
++// GPIO output wires
++//
++#define	GPIO_SET(WIRE)	(((WIRE)<<16)|(WIRE))
++#define	GPIO_CLR(WIRE)	 ((WIRE)<<16)
++//
++#define	GPIO_SD_RESET		0x000000001
++//
++#define	GPIO_SD_RESET_SET	GPIO_SET(GPIO_SD_RESET)
++#define	GPIO_SD_RESET_CLR	GPIO_CLR(GPIO_SD_RESET)
++
++
++typedef	struct	RTCLIGHT_S	{
 +	unsigned	r_clock, r_stopwatch, r_timer, r_alarm;
 +} RTCLIGHT;
 +
++typedef struct  CONSOLE_S {
++	unsigned	u_setup;
++	unsigned	u_fifo;
++	unsigned	u_rx, u_tx;
++} CONSOLE;
 +
-+#define	SD_SETAUX	0x0ff
-+#define	SD_READAUX	0x0bf
-+#define	SD_CMD		0x040
-+#define	SD_FIFO_OP	0x0800	// Read only
-+#define	SD_WRITEOP	0x0c00	// Write to the FIFO
-+#define	SD_ALTFIFO	0x1000
-+#define	SD_BUSY		0x4000
-+#define	SD_ERROR	0x8000
-+#define	SD_CLEARERR	0x8000
-+#define	SD_READ_SECTOR	((SD_CMD|SD_CLEARERR|SD_FIFO_OP)+17)
-+#define	SD_WRITE_SECTOR	((SD_CMD|SD_CLEARERR|SD_WRITEOP)+24)
-+
-+typedef	struct	{
-+	unsigned	sd_ctrl, sd_data, sd_fifo[2];
-+} SDCARD;
-+
-+typedef	struct	{
-+	unsigned	f_ereg, f_config, f_status, f_id;
-+} FLASHCONTROL;
++#define	_uart_txbusy	((_uart->u_fifo & 0x10000)==0)
 +
 +
-+typedef	struct {
-+	BASICIO		b_io;
-+	char		_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
-+	WBSCOPE		b_s[2];
-+	WBUART		b_uart;
-+	RTCLIGHT	b_rtc;
-+	FLASHCONTROL	b_flash;
-+	SDCARD		b_sd;
-+} ZIPBASICBOARD;
++#define	ALTPIC(A)	(1<<(A))
 +
-+#define	PERIPHERAL_ADDR	((ZIPBASICBOARD *)0x100)
 +
-+static	volatile ZIPBASICBOARD	*const _sys =(PERIPHERAL_ADDR);
++#define	SYSPIC(A)	(1<<(A))
 +
-+#define	_ZIP_HAS_WBUART
-+static	volatile WBUART		*const _uart   = &(PERIPHERAL_ADDR)->b_uart;
-+#define	_ZIP_HAS_WBUARTX
-+#define	_uarttx		_uart->u_tx
-+#define	_ZIP_HAS_WBUARTRX
-+#define	_uartrx		_uart->u_rx
-+#define	_ZIP_HAS_UARTSETUP
-+#define	_uartsetup	_uart->u_setup
 +
-+#define	_ZIP_HAS_RTC
-+static	volatile RTCLIGHT	*const _rtcdev = &(PERIPHERAL_ADDR)->b_rtc;
-+#define	_ZIP_HAS_RTCDATE
-+static	volatile uint32_t	*const _rtcdate = &((PERIPHERAL_ADDR)->b_io.i_date);
-+
-+#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = &((PERIPHERAL_ADDR)->b_sd);
-+
-+#define	SYSTIMER	zip->z_tma
-+#define	SYSPIC		zip->z_pic
-+#define	ALTPIC		zip->z_zpic
-+#define	COUNTER		zip->z_m.ac_ck
-+
-+#define	BKRAM	(void *)0
-+#define	FLASH	(void *)0x01000000
-+#define	SDRAM	(void *)0x10000000
-+#define	CLOCKFREQHZ	100000000	// 100 MHz
-+#define	CLOCKFREQ_HZ	CLOCKFREQHZ
++#ifdef	SDSPI_ACCESS
++#define	_BOARD_HAS_SDSPI
++static volatile SDSPI *const _sdcard = ((SDSPI *)0x04000000);
++#endif	// SDSPI_ACCESS
++#define	_BOARD_HAS_VERSION
++static volatile unsigned *const _version = ((unsigned *)0x0a00001c);
++#ifdef	SIGCPU_ACCESS
++#define	_BOARD_HAS_SIGCPU
++static volatile SIGCPU *const _sigcpu = ((SIGCPU *)0x0c000000);
++#endif	// SIGCPU_ACCESS
++#ifdef	SPIO_ACCESS
++#define	_BOARD_HAS_SPIO
++static volatile unsigned *const _spio = ((unsigned *)0x0a000018);
++#endif	// SPIO_ACCESS
++#ifdef	BUSPIC_ACCESS
++#define	_BOARD_HAS_BUSPIC
++static volatile unsigned *const _buspic = ((unsigned *)0x0a00000c);
++#endif	// BUSPIC_ACCESS
++#ifdef	FLASH_ACCESS
++#define	_BOARD_HAS_FLASH
++extern int _flash[1];
++#endif	// FLASH_ACCESS
++#define	_BOARD_HAS_BUILDTIME
++static volatile unsigned *const _buildtime = ((unsigned *)0x0a000004);
++#ifdef	GPIO_ACCESS
++#define	_BOARD_HAS_GPIO
++static volatile unsigned *const _gpio = ((unsigned *)0x0a000010);
++#endif	// GPIO_ACCESS
++#ifdef	FLASHCFG_ACCESS
++#define	_BOARD_HAS_FLASHCFG
++static volatile unsigned * const _flashcfg = ((unsigned *)(0x02000000));
++#endif	// FLASHCFG_ACCESS
++#ifdef	SDRAM_ACCESS
++#define	_BOARD_HAS_SDRAM
++extern char	_streamram[0x20000000];
++#endif	// SDRAM_ACCESS
++#ifdef	RTC_ACCESS
++#define	_BOARD_HAS_RTC
++static volatile RTCLIGHT *const _rtc = ((RTCLIGHT *)0x08000000);
++#endif	// RTC_ACCESS
++#ifdef	BKRAM_ACCESS
++#define	_BOARD_HAS_BKRAM
++extern char	_bkram[0x00040000];
++#endif	// BKRAM_ACCESS
++#ifdef	PWRCOUNT_ACCESS
++static volatile unsigned *const _pwrcount = ((unsigned *)0x0a000014);
++#endif	// PWRCOUNT_ACCESS
++#define	_BOARD_HAS_BUSERR
++static volatile unsigned *const _buserr = ((unsigned *)0x0a000008);
++#ifdef	CFG_ACCESS
++#define	_BOARD_HAS_ICAPTETWO
++static volatile unsigned *const _icape = ((unsigned *)0x0e000000);
++#endif	// CFG_ACCESS
++#ifdef	BEAMFORMER_ACCESS
++#define	_BOARD_HAS_BEAMFORMER
++static volatile unsigned *const _beamer = ((unsigned *)0x0a000000);
++#endif	// BEAMFORMER_ACCESS
++#ifdef	BUSCONSOLE_ACCESS
++#define	_BOARD_HAS_BUSCONSOLE
++static volatile CONSOLE *const _uart = ((CONSOLE *)0x06000000);
++#endif	// BUSCONSOLE_ACCESS
++#ifdef	BKROM_ACCESS
++#define	_BOARD_HAS_BKROM
++extern char	_bkrom[0x00010000];
++#endif	// BKROM_ACCESS
 +//
-+#define	MEMLEN		0
-+#define	FLASHLEN	0x01000000
-+#define	SDRAMLEN	0x10000000
-+
-+// Finally, let's assign some of our interrupts:
++// Interrupt assignments (3 PICs)
 +//
-+// We're allowed nine interrupts to the master interrupt controller in the
-+// ZipSys
-+#define	SYSINT_PPS	SYSINT(6)
-+#define	SYSINT_UARTRX	SYSINT(7)
-+#define	SYSINT_UARTTX	SYSINT(8)
-+#define	SYSINT_UARTRXF	SYSINT(9)
-+#define	SYSINT_UARTTXF	SYSINT(10)
-+#define	SYSINT_SDCARD	SYSINT(11)
-+#define	SYSINT_FLASH	SYSINT(12)
-+#define	SYSINT_SCOPE	SYSINT(13)
-+#define	SYSINT_RTC	SYSINT(14)
-+
-+// DMA Interrupt parameters
-+#define	DMA_ONPPS	DMA_ONINT(6)
-+#define	DMA_ONUARTRX	DMA_ONINT(7)
-+#define	DMA_ONUARTTX	DMA_ONINT(8)
-+#define	DMA_ONUARTRXF	DMA_ONINT(9)
-+#define	DMA_ONUARTTXF	DMA_ONINT(10)
-+#define	DMA_ONSDCARD	DMA_ONINT(11)
-+#define	DMA_ONFLASH	DMA_ONINT(12)
-+#define	DMA_ONSCOPE	DMA_ONINT(13)
-+#define	DMA_ONRTC	DMA_ONINT(14)
-+
-+#endif
-+
++// PIC: buspic
++#define	BUSPIC_SDCARD	BUSPIC(0)
++#define	BUSPIC_SPIO	BUSPIC(1)
++// PIC: altpic
++#define	ALTPIC_UIC	ALTPIC(0)
++#define	ALTPIC_UOC	ALTPIC(1)
++#define	ALTPIC_UPC	ALTPIC(2)
++#define	ALTPIC_UTC	ALTPIC(3)
++#define	ALTPIC_MIC	ALTPIC(4)
++#define	ALTPIC_MOC	ALTPIC(5)
++#define	ALTPIC_MPC	ALTPIC(6)
++#define	ALTPIC_MTC	ALTPIC(7)
++#define	ALTPIC_GPIO	ALTPIC(8)
++#define	ALTPIC_RTC	ALTPIC(9)
++#define	ALTPIC_UARTTX	ALTPIC(10)
++#define	ALTPIC_UARTRX	ALTPIC(11)
++// PIC: syspic
++#define	SYSPIC_DMAC	SYSPIC(0)
++#define	SYSPIC_JIFFIES	SYSPIC(1)
++#define	SYSPIC_TMC	SYSPIC(2)
++#define	SYSPIC_TMB	SYSPIC(3)
++#define	SYSPIC_TMA	SYSPIC(4)
++#define	SYSPIC_ALT	SYSPIC(5)
++#define	SYSPIC_BUS	SYSPIC(6)
++#define	SYSPIC_SDCARD	SYSPIC(7)
++#define	SYSPIC_UARTTXF	SYSPIC(8)
++#define	SYSPIC_UARTRXF	SYSPIC(9)
++#endif	// BOARD_H
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2017-03-01 15:51:53.300228357 -0500
-@@ -0,0 +1,190 @@
++++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2020-01-23 16:48:05.857847906 -0500
+@@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
@@ -414,7 +443,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -438,161 +467,190 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +//
-+#ifndef	ZIPBASIC_H
-+#define	ZIPBASIC_H
++#ifndef	BOARD_H
++#define	BOARD_H
 +
 +#include <stdint.h>
 +
-+// We have the full ZIP System installed
-+#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
++#define	_HAVE_ZIPSYS
++#define	PIC	_zip->z_pic
++
++#ifdef	INCLUDE_ZIPCPU
++#ifdef INCLUDE_DMA_CONTROLLER
 +#define	_HAVE_ZIPSYS_DMA
-+#include "zipsys.h"
-+
-+typedef	struct	{
-+	unsigned	i_version;
-+	unsigned	i_pwrcount;
-+	unsigned	i_buserr;
-+	unsigned	i_date;
-+} BASICIO;
-+
-+#define	UART_PARITY_NONE	0
-+#define	UART_HWFLOW_OFF		0x40000000
-+#define	UART_PARITY_ODD		0x04000000
-+#define	UART_PARITY_EVEN	0x05000000
-+#define	UART_PARITY_SPACE	0x06000000
-+#define	UART_PARITY_MARK	0x07000000
-+#define	UART_STOP_ONEBIT	0
-+#define	UART_STOP_TWOBITS	0x08000000
-+#define	UART_DATA_8BITS		0
-+#define	UART_DATA_7BITS		0x10000000
-+#define	UART_DATA_6BITS		0x20000000
-+#define	UART_DATA_5BITS		0x30000000
-+#define	UART_RX_BREAK		0x0800
-+#define	UART_RX_FRAMEERR	0x0400
-+#define	UART_RX_PARITYERR	0x0200
-+#define	UART_RX_NOTREADY	0x0100
-+#define	UART_RX_ERR		(-256)
-+#define	UART_TX_BUSY		0x0100
-+#define	UART_TX_BREAK		0x0200
-+
-+typedef	struct	WBUART_S {
-+	unsigned	u_setup;
-+	unsigned	u_fifo;
-+	unsigned	u_rx, u_tx;
-+} WBUART;
++#endif	// INCLUDE_DMA_CONTROLLER
++#ifdef INCLUDE_ACCOUNTING_COUNTERS
++#define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
++#endif	// INCLUDE_ACCOUNTING_COUNTERS
++#endif // INCLUDE_ZIPCPU
 +
 +
-+#define	WBSCOPE_NO_RESET	0x80000000
-+#define	WBSCOPE_TRIGGER	(WBSCOPE_NO_RESET|0x08000000)
-+#define	WBSCOPE_MANUAL	WBSCOPE_TRIGGER
-+#define	WBSCOPE_DISABLE	0x04000000	// Disable the scope trigger
-+typedef	struct	WBSCOPE_S {
-+	unsigned	s_ctrl, s_data;
-+} WBSCOPE;
++#define	SDSPI_SETAUX	0x0000ff
++#define	SDSPI_READAUX	0x0000bf
++#define	SDSPI_CMD		0x000040
++#define	SDSPI_ACMD		(0x040+55) // CMD55
++#define	SDSPI_FIFO_OP	0x000800	// Read only
++#define	SDSPI_WRITEOP	0x000c00	// Write to the FIFO
++#define	SDSPI_ALTFIFO	0x001000
++#define	SDSPI_BUSY		0x004000
++#define	SDSPI_ERROR		0x008000
++#define	SDSPI_CLEARERR	0x008000
++// #define	SDSPI_CRCERR	0x010000
++// #define	SDSPI_ERRTOK	0x020000
++#define	SDSPI_REMOVED	0x040000
++#define	SDSPI_PRESENTN	0x080000
++#define	SDSPI_RESET		0x100000	// Read only
++#define	SDSPI_WATCHDOG	0x200000	// Read only
++#define	SDSPI_GO_IDLE	((SDSPI_REMOVED|SDSPI_CLEARERR|SDSPI_CMD)+0)
++#define	SDSPI_READ_SECTOR	((SDSPI_CMD|SDSPI_CLEARERR|SDSPI_FIFO_OP)+17)
++#define	SDSPI_WRITE_SECTOR	((SDSPI_CMD|SDSPI_CLEARERR|SDSPI_WRITEOP)+24)
 +
-+typedef	struct	{
++typedef	struct SDSPI_S {
++	unsigned	sd_ctrl, sd_data, sd_fifo[2];
++} SDSPI;
++
++
++
++
++#define BUSPIC(X) (1<<X)
++
++
++//
++// GPIO input wires
++//
++#define	GPIO_SD_DETECTED	0x000010000
++#define	GPIO_SYSCLK_LOCKED	0x000020000
++//
++// GPIO output wires
++//
++#define	GPIO_SET(WIRE)	(((WIRE)<<16)|(WIRE))
++#define	GPIO_CLR(WIRE)	 ((WIRE)<<16)
++//
++#define	GPIO_SD_RESET		0x000000001
++//
++#define	GPIO_SD_RESET_SET	GPIO_SET(GPIO_SD_RESET)
++#define	GPIO_SD_RESET_CLR	GPIO_CLR(GPIO_SD_RESET)
++
++
++typedef	struct	RTCLIGHT_S	{
 +	unsigned	r_clock, r_stopwatch, r_timer, r_alarm;
 +} RTCLIGHT;
 +
++typedef struct  CONSOLE_S {
++	unsigned	u_setup;
++	unsigned	u_fifo;
++	unsigned	u_rx, u_tx;
++} CONSOLE;
 +
-+#define	SD_SETAUX	0x0ff
-+#define	SD_READAUX	0x0bf
-+#define	SD_CMD		0x040
-+#define	SD_FIFO_OP	0x0800	// Read only
-+#define	SD_WRITEOP	0x0c00	// Write to the FIFO
-+#define	SD_ALTFIFO	0x1000
-+#define	SD_BUSY		0x4000
-+#define	SD_ERROR	0x8000
-+#define	SD_CLEARERR	0x8000
-+#define	SD_READ_SECTOR	((SD_CMD|SD_CLEARERR|SD_FIFO_OP)+17)
-+#define	SD_WRITE_SECTOR	((SD_CMD|SD_CLEARERR|SD_WRITEOP)+24)
-+
-+typedef	struct	{
-+	unsigned	sd_ctrl, sd_data, sd_fifo[2];
-+} SDCARD;
-+
-+typedef	struct	{
-+	unsigned	f_ereg, f_config, f_status, f_id;
-+} FLASHCONTROL;
++#define	_uart_txbusy	((_uart->u_fifo & 0x10000)==0)
 +
 +
-+typedef	struct {
-+	BASICIO		b_io;
-+	char		_SKIP_TO_SCOPES[(0x040-sizeof(BASICIO))];
-+	WBSCOPE		b_s[2];
-+	WBUART		b_uart;
-+	RTCLIGHT	b_rtc;
-+	FLASHCONTROL	b_flash;
-+	SDCARD		b_sd;
-+} ZIPBASICBOARD;
++#define	ALTPIC(A)	(1<<(A))
 +
-+#define	PERIPHERAL_ADDR	((ZIPBASICBOARD *)0x100)
 +
-+static	volatile ZIPBASICBOARD	*const _sys =(PERIPHERAL_ADDR);
++#define	SYSPIC(A)	(1<<(A))
 +
-+#define	_ZIP_HAS_WBUART
-+static	volatile WBUART		*const _uart   = &(PERIPHERAL_ADDR)->b_uart;
-+#define	_ZIP_HAS_WBUARTX
-+#define	_uarttx		_uart->u_tx
-+#define	_ZIP_HAS_WBUARTRX
-+#define	_uartrx		_uart->u_rx
-+#define	_ZIP_HAS_UARTSETUP
-+#define	_uartsetup	_uart->u_setup
 +
-+#define	_ZIP_HAS_RTC
-+static	volatile RTCLIGHT	*const _rtcdev = &(PERIPHERAL_ADDR)->b_rtc;
-+#define	_ZIP_HAS_RTCDATE
-+static	volatile uint32_t	*const _rtcdate = &((PERIPHERAL_ADDR)->b_io.i_date);
-+
-+#define	_ZIP_HAS_SDCARD
-+static	volatile SDCARD		*const _sdcard = &((PERIPHERAL_ADDR)->b_sd);
-+
-+#define	SYSTIMER	zip->z_tma
-+#define	SYSPIC		zip->z_pic
-+#define	ALTPIC		zip->z_zpic
-+#define	COUNTER		zip->z_m.ac_ck
-+
-+#define	BKRAM	(void *)0
-+#define	FLASH	(void *)0x01000000
-+#define	SDRAM	(void *)0x10000000
-+#define	CLOCKFREQHZ	100000000	// 100 MHz
-+#define	CLOCKFREQ_HZ	CLOCKFREQHZ
++#ifdef	SDSPI_ACCESS
++#define	_BOARD_HAS_SDSPI
++static volatile SDSPI *const _sdcard = ((SDSPI *)0x04000000);
++#endif	// SDSPI_ACCESS
++#define	_BOARD_HAS_VERSION
++static volatile unsigned *const _version = ((unsigned *)0x0a00001c);
++#ifdef	SIGCPU_ACCESS
++#define	_BOARD_HAS_SIGCPU
++static volatile SIGCPU *const _sigcpu = ((SIGCPU *)0x0c000000);
++#endif	// SIGCPU_ACCESS
++#ifdef	SPIO_ACCESS
++#define	_BOARD_HAS_SPIO
++static volatile unsigned *const _spio = ((unsigned *)0x0a000018);
++#endif	// SPIO_ACCESS
++#ifdef	BUSPIC_ACCESS
++#define	_BOARD_HAS_BUSPIC
++static volatile unsigned *const _buspic = ((unsigned *)0x0a00000c);
++#endif	// BUSPIC_ACCESS
++#ifdef	FLASH_ACCESS
++#define	_BOARD_HAS_FLASH
++extern int _flash[1];
++#endif	// FLASH_ACCESS
++#define	_BOARD_HAS_BUILDTIME
++static volatile unsigned *const _buildtime = ((unsigned *)0x0a000004);
++#ifdef	GPIO_ACCESS
++#define	_BOARD_HAS_GPIO
++static volatile unsigned *const _gpio = ((unsigned *)0x0a000010);
++#endif	// GPIO_ACCESS
++#ifdef	FLASHCFG_ACCESS
++#define	_BOARD_HAS_FLASHCFG
++static volatile unsigned * const _flashcfg = ((unsigned *)(0x02000000));
++#endif	// FLASHCFG_ACCESS
++#ifdef	SDRAM_ACCESS
++#define	_BOARD_HAS_SDRAM
++extern char	_streamram[0x20000000];
++#endif	// SDRAM_ACCESS
++#ifdef	RTC_ACCESS
++#define	_BOARD_HAS_RTC
++static volatile RTCLIGHT *const _rtc = ((RTCLIGHT *)0x08000000);
++#endif	// RTC_ACCESS
++#ifdef	BKRAM_ACCESS
++#define	_BOARD_HAS_BKRAM
++extern char	_bkram[0x00040000];
++#endif	// BKRAM_ACCESS
++#ifdef	PWRCOUNT_ACCESS
++static volatile unsigned *const _pwrcount = ((unsigned *)0x0a000014);
++#endif	// PWRCOUNT_ACCESS
++#define	_BOARD_HAS_BUSERR
++static volatile unsigned *const _buserr = ((unsigned *)0x0a000008);
++#ifdef	CFG_ACCESS
++#define	_BOARD_HAS_ICAPTETWO
++static volatile unsigned *const _icape = ((unsigned *)0x0e000000);
++#endif	// CFG_ACCESS
++#ifdef	BEAMFORMER_ACCESS
++#define	_BOARD_HAS_BEAMFORMER
++static volatile unsigned *const _beamer = ((unsigned *)0x0a000000);
++#endif	// BEAMFORMER_ACCESS
++#ifdef	BUSCONSOLE_ACCESS
++#define	_BOARD_HAS_BUSCONSOLE
++static volatile CONSOLE *const _uart = ((CONSOLE *)0x06000000);
++#endif	// BUSCONSOLE_ACCESS
++#ifdef	BKROM_ACCESS
++#define	_BOARD_HAS_BKROM
++extern char	_bkrom[0x00010000];
++#endif	// BKROM_ACCESS
 +//
-+#define	MEMLEN		0
-+#define	FLASHLEN	0x01000000
-+#define	SDRAMLEN	0x10000000
-+
-+// Finally, let's assign some of our interrupts:
++// Interrupt assignments (3 PICs)
 +//
-+// We're allowed nine interrupts to the master interrupt controller in the
-+// ZipSys
-+#define	SYSINT_PPS	SYSINT(6)
-+#define	SYSINT_UARTRX	SYSINT(7)
-+#define	SYSINT_UARTTX	SYSINT(8)
-+#define	SYSINT_UARTRXF	SYSINT(9)
-+#define	SYSINT_UARTTXF	SYSINT(10)
-+#define	SYSINT_SDCARD	SYSINT(11)
-+#define	SYSINT_FLASH	SYSINT(12)
-+#define	SYSINT_SCOPE	SYSINT(13)
-+#define	SYSINT_RTC	SYSINT(14)
-+
-+// DMA Interrupt parameters
-+#define	DMA_ONPPS	DMA_ONINT(6)
-+#define	DMA_ONUARTRX	DMA_ONINT(7)
-+#define	DMA_ONUARTTX	DMA_ONINT(8)
-+#define	DMA_ONUARTRXF	DMA_ONINT(9)
-+#define	DMA_ONUARTTXF	DMA_ONINT(10)
-+#define	DMA_ONSDCARD	DMA_ONINT(11)
-+#define	DMA_ONFLASH	DMA_ONINT(12)
-+#define	DMA_ONSCOPE	DMA_ONINT(13)
-+#define	DMA_ONRTC	DMA_ONINT(14)
-+
-+#endif
-+
++// PIC: buspic
++#define	BUSPIC_SDCARD	BUSPIC(0)
++#define	BUSPIC_SPIO	BUSPIC(1)
++// PIC: altpic
++#define	ALTPIC_UIC	ALTPIC(0)
++#define	ALTPIC_UOC	ALTPIC(1)
++#define	ALTPIC_UPC	ALTPIC(2)
++#define	ALTPIC_UTC	ALTPIC(3)
++#define	ALTPIC_MIC	ALTPIC(4)
++#define	ALTPIC_MOC	ALTPIC(5)
++#define	ALTPIC_MPC	ALTPIC(6)
++#define	ALTPIC_MTC	ALTPIC(7)
++#define	ALTPIC_GPIO	ALTPIC(8)
++#define	ALTPIC_RTC	ALTPIC(9)
++#define	ALTPIC_UARTTX	ALTPIC(10)
++#define	ALTPIC_UARTRX	ALTPIC(11)
++// PIC: syspic
++#define	SYSPIC_DMAC	SYSPIC(0)
++#define	SYSPIC_JIFFIES	SYSPIC(1)
++#define	SYSPIC_TMC	SYSPIC(2)
++#define	SYSPIC_TMB	SYSPIC(3)
++#define	SYSPIC_TMA	SYSPIC(4)
++#define	SYSPIC_ALT	SYSPIC(5)
++#define	SYSPIC_BUS	SYSPIC(6)
++#define	SYSPIC_SDCARD	SYSPIC(7)
++#define	SYSPIC_UARTTXF	SYSPIC(8)
++#define	SYSPIC_UARTRXF	SYSPIC(9)
++#endif	// BOARD_H
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0-zip/libgloss/zip/bootloader.h
 --- newlib-2.5.0/libgloss/zip/bootloader.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/bootloader.h	2017-01-13 09:54:17.642333099 -0500
-@@ -0,0 +1,46 @@
++++ newlib-2.5.0-zip/libgloss/zip/bootloader.h	2020-01-23 16:12:26.345174449 -0500
+@@ -0,0 +1,52 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	bootloader.h
@@ -607,7 +665,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -618,6 +676,11 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
++//
++// You should have received a copy of the GNU General Public License along
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
++// target there if the PDF file isn't present.)  If not, see
++// <http://www.gnu.org/licenses/> for a copy.
 +//
 +// License:	GPL, v3, as defined and found on www.gnu.org,
 +//		http://www.gnu.org/licenses/gpl.html
@@ -630,12 +693,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0
 +#define	BOOTLOADER_H
 +
 +extern	int	_top_of_heap[1], _top_of_stack[1];
++extern	int	_boot_address[1];
 +
-+extern	int	_sdram[1], _flash[1], _blkram[1];
++extern	int	_ram[1], _rom[1], _kram[1];
 +
 +extern	int	_boot_address[1],
-+		_kernel_image_start[1], _kernel_image_end[1],
-+		_sdram_image_start[1], _sdram_image_end[1],
++		_kram_start[1], _kram_end[1],
++		_ram_image_start[1], _ram_image_end[1],
 +		_bss_image_end[1];
 +
 +#endif
@@ -4741,8 +4805,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
 --- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2017-02-21 16:48:24.891606509 -0500
-@@ -0,0 +1,288 @@
++++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2020-01-23 16:14:39.972214354 -0500
+@@ -0,0 +1,349 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
@@ -4774,31 +4838,41 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +//		by the linker as the lowest memory address in a space that can
 +//		be used by a malloc/free restore capability.
 +//
-+//	_flash:
-+//		The address of the beginning of physical FLASH device.  This is
-+//		not the first usable address on that device, as that is often
-+//		reserved for the first two FPGA configurations.
++//	_rom:
++//		The address of the beginning of a physical ROM device--often
++//		a SPI flash device.  This is not the necessariliy the first
++//		usable address on that device, as that is often reserved for
++//		the first two FPGA configurations.
 +//
-+//	_blkram:
-+//		The first address of the block RAM memory within the FPGA.
++//		If no ROM device is present, set _rom=0 and the bootloader
++//		will quietly and silently return.
 +//
-+//	_sdram:
-+//		The address of the beginning of physical SDRAM.
++//	_kram:
++//		The first address of a fast RAM device (if present).  I'm
++//		calling this device "Kernel-RAM", because (if present) it is
++//		a great place to put kernel code.
 +//
-+//	_kernel_image_start:
-+//		The address of that location within FLASH where the sections
++//		if _kram == 0, no memory will be mapped to kernel RAM.
++//
++//	_ram:
++//		The main RAM device of the system.  This is often the address
++//		of the beginning of physical SDRAM, if SDRAM is present.
++//
++//	_kram_start:
++//		The address of that location within _rom where the sections
 +//		needing to be moved begin at.
 +//
-+//	_kernel_image_end:
-+//		The last address within block RAM that needs to be filled in.
++//	_kram_end:
++//		The last address within the _kram device that needs to be
++//		filled in.
 +//
-+//	_sdram_image_start:
++//	_ram_image_start:
 +//		This address is more confusing.  This is equal to one past the
 +//		last used block RAM address, or the last used flash address if
 +//		no block RAM is used.  It is used for determining whether or not
 +//		block RAM was used at all.
 +//
-+//	_sdram_image_end:
++//	_ram_image_end:
 +//		This is one past the last address in SDRAM that needs to be
 +//		set with valid data.
 +//
@@ -4826,10 +4900,10 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -4861,8 +4935,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +// however: 1) It obscures for any readers of this code what is actually
 +// happening, and 2) it makes the code dependent upon yet another piece of the
 +// hardware design working.  For these reasons, we allow you to turn it off.
-+#ifdef _HAS_ZIPSYS_DMA
++#ifdef _HAVE_ZIPSYS_DMA
 +#define	USE_DMA
++#include "zipsys.h"
 +#endif
 +
 +//
@@ -4946,68 +5021,114 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +//		zero.  This is sometimes called the BSS segment.
 +//
 +#ifndef	SKIP_BOOTLOADER
++#define	NOTNULL(A)	(4 != (unsigned)&A[1])
 +void	_bootloader(void) {
-+	int *sdend = _sdram_image_end, *bsend = _bss_image_end;
-+	if (sdend < _sdram)
-+		sdend = _sdram;	// R7
-+	if (bsend < sdend)
-+		bsend = sdend;	// R6
++	// NSTR("BOOTLOADER");
++	int *ramend = _ram_image_end, *bsend = _bss_image_end;
++
++	if (!NOTNULL(_rom)) {
++#ifdef	USE_DMA
++		// NSTR("No-ROM");
++		//
++		// Clear the DMA from anything it might've been doing prior
++		// to the CPU reset that brought us here.
++		//
++		_zip->z_dma.d_ctrl= DMACLEAR;
++		if (bsend != ramend) {
++			volatile int	zero = 0;
++
++			// NSTR("BSS");
++			_zip->z_pic = SYSINT_DMAC;
++			_zip->z_dma.d_len = bsend - ramend;
++			_zip->z_dma.d_rd  = (unsigned *)&zero;
++			_zip->z_dma.d_wr  = ramend;
++			_zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC;
++
++			while((_zip->z_pic & SYSINT_DMAC)==0)
++				;
++		} CLEAR_CACHE;
++#else
++		int	*wrp = _ram_image_end;
++		while(wrp < _bss_image_end)
++			*wrp++ = 0;
++#endif
++		// NSTR("No ROM -- EARLY RETURN");
++
++		return;
++	}
 +
 +#ifdef	USE_DMA
-+	zip->z_dma.d_ctrl= DMACLEAR;
-+	zip->z_dma.d_rd = _kernel_image_start;
-+	if (_kernel_image_end != _blkram) {
-+		zip->z_dma.d_len = _kernel_image_end - _blkram;
-+		zip->z_dma.d_wr  = _blkram;
-+		zip->z_dma.d_ctrl= DMACCOPY;
++	NSTR("DMA");
++	_zip->z_dma.d_ctrl= DMACLEAR;
++	if (NOTNULL(_kram)) {
++		_zip->z_dma.d_rd  = _kram_start; // Flash memory ptr
++		_zip->z_dma.d_wr  = _kram;
++		if (_kram_start != _kram_end) {
++			NSTR("KRAM");
++			_zip->z_pic = SYSINT_DMAC;
++			_zip->z_dma.d_len = _kram_end - _kram;
++			_zip->z_dma.d_wr  = _kram;
++			_zip->z_dma.d_ctrl= DMACCOPY;
 +
-+		zip->z_pic = SYSINT_DMAC;
-+		while((zip->z_pic & SYSINT_DMAC)==0)
-+			;
++			while((_zip->z_pic & SYSINT_DMAC)==0)
++				;
++		}
++
++		// Writing to kram, need to switch to RAM
++		_zip->z_dma.d_wr  = _ram;
++		_zip->z_dma.d_len = ramend - _ram;
++	} else {
++NSTR("No-KRAM");
++		// Continue writing to the RAM device from where we left off
++		_zip->z_dma.d_len = ramend - _ram;
++		_zip->z_dma.d_rd = _ram_image_start; // ROM (flash) memory
++		_zip->z_dma.d_wr = _ram;
 +	}
 +
-+	// zip->z_dma.d_rd // Keeps the same value
-+	zip->z_dma.d_wr  = _sdram;
-+	if (sdend != _sdram) {
-+		zip->z_dma.d_len = sdend - _sdram;
-+		zip->z_dma.d_ctrl= DMACCOPY;
++	if (_zip->z_dma.d_len>0) {
++		NSTR("RAM");
++		_zip->z_pic = SYSINT_DMAC;
++		_zip->z_dma.d_ctrl= DMACCOPY;
 +
-+		zip->z_pic = SYSINT_DMAC;
-+		while((zip->z_pic & SYSINT_DMAC)==0)
++		while((_zip->z_pic & SYSINT_DMAC)==0)
 +			;
-+	}
++	} else
++		NSTR("NO-RAM");
 +
-+	if (bsend != sdend) {
++	if (bsend != ramend) {
 +		volatile int	zero = 0;
 +
-+		zip->z_dma.d_len = bsend - sdend;
-+		zip->z_dma.d_rd  = (unsigned *)&zero;
-+		// zip->z_dma.wr // Keeps the same value
-+		zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC;
++		// NSTR("BSS");
++		_zip->z_pic = SYSINT_DMAC;
++		_zip->z_dma.d_len = bsend - ramend;
++		_zip->z_dma.d_rd  = (unsigned *)&zero;
++		// _zip->z_dma.wr // Keeps the same value
++		_zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC;
 +
-+		zip->z_pic = SYSINT_DMAC;
-+		while((zip->z_pic & SYSINT_DMAC)==0)
++		while((_zip->z_pic & SYSINT_DMAC)==0)
 +			;
 +	}
-+#else
-+	int	*rdp = _kernel_image_start, *wrp = _blkram;
 +
-+	if (BKRAM == NULL)
-+		wrp = _sdram;
++	CLEAR_CACHE;
++#else
++	int	*rdp = _kram_start, *wrp = (_kram) ? _kram : _ram;
++	// NSTR("Not using DMA");
 +
 +	//
 +	// Load any part of the image into block RAM, but *only* if there's a
 +	// block RAM section in the image.  Based upon our LD script, the
 +	// block RAM should be filled from _blkram to _kernel_image_end.
-+	// It starts at _kernel_image_start --- our last valid address within
++	// It starts at _kram_start --- our last valid address within
 +	// the flash address region.
 +	//
-+	if (_kernel_image_end != _kernel_image_start) {
-+		while(wrp < _kernel_image_end)
++	if (_kram_end != _kram_start) {
++		// NSTR("KRAM");
++		while(wrp < _kram_end)
 +			*wrp++ = *rdp++;
-+		if (_kernel_image_end <= _sdram)
-+			wrp = _sdram;
 +	}
++
++	if (NOTNULL(_ram))
++		wrp  = _ram;
 +
 +	//
 +	// Now, we move on to the SDRAM image.  We'll here load into SDRAM
@@ -5015,7 +5136,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// As with the last pointer, this one is also created for us by the
 +	// linker.
 +	// 
-+	for(int i=0; i< sdend - _sdram; i++)
++	// while(wrp < sdend)	// Could also be done this way ...
++	// NSTR("RAM");
++	for(int i=0; i< ramend - _ram; i++)
 +		*wrp++ = *rdp++;
 +
 +	//
@@ -5024,10 +5147,12 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +	// initialization is expected within it.  We start writing where
 +	// the valid SDRAM context, i.e. the non-zero contents, end.
 +	//
-+	for(int i=0; i<bsend - sdend; i++)
++	// NSTR("BSS");
++	for(int i=0; i<bsend - ramend; i++)
 +		*wrp++ = 0;
 +
 +#endif
++	// NSTR("Bootloader complete");
 +}
 +#endif
 +
@@ -5153,8 +5278,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
 --- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2017-03-01 15:49:08.024224966 -0500
-@@ -0,0 +1,374 @@
++++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2020-01-23 16:17:08.043153235 -0500
+@@ -0,0 +1,382 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
@@ -5169,7 +5294,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -5200,21 +5325,29 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +#include "bootloader.h"
 +#include "zipcpu.h"
 +
++#ifdef	_BOARD_HAS_BUSCONSOLE
++#define	_ZIP_HAS_WBUART
++#define	_ZIP_HAS_UARTTX
++#define	_ZIP_HAS_UARTRX
++#define	UARTRX	_uart->u_rx
++#define	UARTTX	_uart->u_tx
++#endif
++
 +void
 +_outbyte(char v) {
 +#ifdef	_ZIP_HAS_WBUART
 +	if (v == '\n') {
 +		// Depend upon the WBUART, not the PIC
-+		while(_uart->u_fifo & 0x010000)
++		while((_uart->u_fifo & 0x010000)==0)
 +			;
-+		_uarttx = (unsigned)'\r';
++		UARTTX = (unsigned)'\r';
 +	}
 +
 +	// Depend upon the WBUART, not the PIC
-+	while(_uart->u_fifo & 0x010000)
++	while((_uart->u_fifo & 0x010000)==0)
 +		;
 +	uint8_t c = v;
-+	_uarttx = (unsigned)c;
++	UARTTX = (unsigned)c;
 +#else
 +#ifdef	_ZIP_HAS_UARTTX
 +	// Depend upon the WBUART, not the PIC
@@ -5228,7 +5361,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 +int
 +_inbyte(void) {
-+#ifdef	_ZIP_HAS_WBUARTRX
++#ifdef	UARTRX
 +	const	int	echo = 1, cr_into_nl = 1;
 +	static	int	last_was_cr = 0;
 +	int	rv;
@@ -5239,7 +5372,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +	// 3. \r\n's should quietly be turned into \n's
 +	// 4. \n's should be passed as is
 +	// Insist on at least one character
-+	rv = _uartrx;
++	rv = UARTRX;
 +	if (rv & 0x0100)
 +		rv = -1;
 +	else if ((cr_into_nl)&&(rv == '\r')) {
@@ -5316,13 +5449,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +		uint32_t	now, date;
 +		unsigned	s, m, h, tod;
 +
-+		now = _rtcdev->r_clock;
++		now = _rtc->r_clock;
 +
 +#ifdef	_ZIP_HAS_RTDATE
 +		unsigned	d, y, c, yy, days_since_epoch;
 +		int		ly;
 +
-+		date= *_rtdate;
++		date= *_rtcdate;
 +
 +		d = ( date     &0x0f)+((date>> 4)&0x0f)*10;
 +		m = ((date>> 8)&0x0f)+((date>>12)&0x0f)*10;
@@ -5441,7 +5574,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +int
 +_read_r(struct _reent *reent, int file, void *ptr, size_t len)
 +{
-+#ifdef	_ZIP_HAS_WBUARTRX
++#ifdef	UARTRX
 +	if (STDIN_FILENO == file)
 +	{
 +		int	nr = 0, rv;
@@ -5531,13 +5664,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/libgloss/zip/udiv.c
 --- newlib-2.5.0/libgloss/zip/udiv.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/udiv.c	2017-02-21 13:26:22.491163000 -0500
-@@ -0,0 +1,229 @@
++++ newlib-2.5.0-zip/libgloss/zip/udiv.c	2020-01-23 16:19:22.566189481 -0500
+@@ -0,0 +1,227 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	udiv.c
 +//
-+// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	This is a temporary file--a crutch if you will--until a similar
 +//		capability is merged into GCC.  Right now, GCC has no way of
@@ -5549,7 +5682,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -5562,7 +5695,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -5622,7 +5755,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +	"\tADD.Z 1,R1\n"
 +	"\tRETN\n");
 +#else
-+int	__attribute__((noinline))
++int
 +cltz(unsigned long v) {
 +	uint32_t	hv;
 +	int		cnt = 0;
@@ -5656,10 +5789,8 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +}
 +#endif
 +
-+#ifdef	__ZIPCPU__
-+__attribute((noinline))
-+#endif
-+unsigned long __udivdi3(unsigned long a, unsigned long b) {
++unsigned long
++__udivdi3(unsigned long a, unsigned long b) {
 +	unsigned long	r;
 +
 +	if (a < b)
@@ -5764,13 +5895,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +}
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/libgloss/zip/umod.c
 --- newlib-2.5.0/libgloss/zip/umod.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/umod.c	2017-02-21 13:26:22.491163000 -0500
++++ newlib-2.5.0-zip/libgloss/zip/umod.c	2020-01-23 16:19:36.590089025 -0500
 @@ -0,0 +1,62 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	umod.c
 +//
-+// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	This is a temporary file--a crutch if you will--until a similar
 +//		capability is merged into GCC.  Right now, GCC has no way of
@@ -5788,7 +5919,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/l
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -5801,7 +5932,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/l
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -5830,7 +5961,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip/libgloss/zip/zipcpu.c
 --- newlib-2.5.0/libgloss/zip/zipcpu.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipcpu.c	2017-01-13 09:55:24.934372729 -0500
++++ newlib-2.5.0-zip/libgloss/zip/zipcpu.c	2020-01-23 16:02:47.081352607 -0500
 @@ -0,0 +1,79 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5848,7 +5979,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -5913,13 +6044,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip
 +
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip/libgloss/zip/zipcpu.h
 --- newlib-2.5.0/libgloss/zip/zipcpu.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipcpu.h	2017-01-13 09:55:24.934372729 -0500
-@@ -0,0 +1,85 @@
++++ newlib-2.5.0-zip/libgloss/zip/zipcpu.h	2020-01-23 16:19:54.373961640 -0500
+@@ -0,0 +1,89 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zipsys.h
 +//
-+// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Declare the capabilities and memory structure of the ZipSystem
 +//		for programs that must interact with it.
@@ -5929,7 +6060,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -5942,7 +6073,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -5974,11 +6105,15 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +#define	CC_FAULT	(CC_ILL|CC_BUSERR|CC_DIVERR|CC_FPUERR)
 +#define	CC_EXCEPTION	(CC_BREAK|CC_FAULT|CC_MMUERR)
 +
++#define	CLEAR_CACHE	asm("OR 16384,CC")
++
 +// extern void	zip_break(void);
 +#define	zip_break()		asm("BREAK\n")
 +// #define	BREAK(ID)	asm("BREAK " ##ID "\n")
 +#define	GETUREG(A,ID)	asm("MOV " ID ",%0" : "=r"(A))
 +#define	SETUREG(A,ID)	asm("MOV %0," ID : : "r"(A))
++#define	NSTR(A)		asm("NSTR \"" A "\\n\"")
++#define	NVAL(V)		do { unsigned tmp = (unsigned)(V); asm volatile("NDUMP %0":"=r"(tmp):"0"(tmp)); } while(0)
 +extern void	zip_rtu(void);
 +extern void	zip_halt(void);
 +extern void	zip_idle(void);
@@ -6002,13 +6137,13 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +#endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip/libgloss/zip/zipsys.h
 --- newlib-2.5.0/libgloss/zip/zipsys.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipsys.h	2017-02-10 17:53:46.439360330 -0500
++++ newlib-2.5.0-zip/libgloss/zip/zipsys.h	2020-01-23 16:20:04.665887921 -0500
 @@ -0,0 +1,135 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zipsys.h
 +//
-+// Project:	OpenArty, an entirely open SoC based upon the Arty platform
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Declare the capabilities and memory structure of the ZipSystem
 +//		for programs that must interact with it.
@@ -6018,7 +6153,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2015-2016, Gisselquist Technology, LLC
++// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -6031,7 +6166,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +//
@@ -6106,21 +6241,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +#define	ALTINT_MTC	ALTINT(7)
 +#endif
 +
-+#define	INT_ENABLE	0x80000000
++#define	INT_ENABLE	0x80008000
 +#define	EINT(A)	(INT_ENABLE|((A)<<16))
 +#define	DINT(A)	((A)<<16)
 +#define	CLEARPIC	0x7fff7fff
 +#define	DALLPIC		0x7fff0000	// Disable all PIC interrupt sources
 +#define	INTNOW		0x08000
 +
-+static	volatile ZIPSYS *const zip = (ZIPSYS *)(ZIPSYS_ADDR);
++static	volatile ZIPSYS *const _zip = (ZIPSYS *)(ZIPSYS_ADDR);
 +
 +static inline void	DISABLE_INTS(void) {
-+	zip->z_pic = 0;
++	_zip->z_pic = 0x80000000;
 +}
 +
 +static inline void	ENABLE_INTS(void) {
-+	zip->z_pic = 0x80000000;
++	_zip->z_pic = INT_ENABLE;
 +}
 +
 +typedef	struct	{
@@ -11043,7 +11178,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/configure.in n
 +AC_OUTPUT
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h newlib-2.5.0-zip/newlib/libc/machine/zip/ieeefp.h
 --- newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/ieeefp.h	2017-01-13 09:39:02.419391050 -0500
++++ newlib-2.5.0-zip/newlib/libc/machine/zip/ieeefp.h	2020-01-23 16:07:26.331337305 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -11060,7 +11195,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h newli
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -11569,7 +11704,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.h newli
 +#endif
 diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S
 --- newlib-2.5.0/newlib/libc/machine/zip/setjmp.S	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S	2017-02-06 17:40:50.561372408 -0500
++++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S	2020-01-23 16:07:31.563299567 -0500
 @@ -0,0 +1,68 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -11585,7 +11720,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newli
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2017, Gisselquist Technology, LLC
++// Copyright (C) 2017-2020, Gisselquist Technology, LLC
 +//
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published

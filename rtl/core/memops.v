@@ -19,7 +19,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -51,7 +51,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_ack, i_wb_stall, i_wb_err, i_wb_data
+		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
 `ifdef	FORMAL
 		, f_nreqs, f_nacks, f_outstanding
 `endif
@@ -85,7 +85,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	output	reg	[31:0]	o_wb_data;
 	output	reg	[3:0]	o_wb_sel;
 	// Wishbone inputs
-	input	wire		i_wb_ack, i_wb_stall, i_wb_err;
+	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
 // Formal
 	parameter	F_LGDEPTH = 2;

@@ -52,7 +52,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015,2017-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -78,14 +78,16 @@
 //
 `default_nettype	none
 //
-module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
-		o_wb_ack, o_wb_stall, o_wb_data,
+module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
+			i_wb_sel,
+		o_wb_stall, o_wb_ack, o_wb_data,
 		i_brd_ints, o_interrupt);
 	parameter	IUSED = 12, DW=32;
 	input	wire			i_clk, i_reset;
-	input	wire			i_wb_stb, i_wb_we;
+	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
 	input	wire	[DW-1:0]	i_wb_data;
-	output	wire			o_wb_ack, o_wb_stall;
+	input	wire	[DW/8-1:0]	i_wb_sel;
+	output	wire			o_wb_stall, o_wb_ack;
 	output	reg	[DW-1:0]	o_wb_data;
 	input	wire	[(IUSED-1):0]	i_brd_ints;
 	output	reg			o_interrupt;
@@ -168,8 +170,8 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	generate if (IUSED < 15)
 	begin
 		// verilator lint_off UNUSED
-		wire	[2*(15-IUSED)-1:0]	unused;
-		assign	unused = { i_wb_data[32-2:(16+IUSED)],
+		wire	unused;
+		assign	unused = &{ 1'b0, i_wb_data[32-2:(16+IUSED)],
 				i_wb_data[16-2:IUSED] };
 		// verilator lint_on  UNUSED
 
@@ -178,6 +180,10 @@ module	icontrol(i_clk, i_reset, i_wb_stb, i_wb_we, i_wb_data,
 	assign	o_wb_ack = i_wb_stb;
 	assign	o_wb_stall = 1'b0;
 
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, i_wb_cyc, i_wb_sel };
+	// verilator lint_on  UNUSED
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

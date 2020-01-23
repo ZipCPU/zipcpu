@@ -86,7 +86,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -120,9 +120,9 @@
 
 module wbdmac(i_clk, i_reset,
 		i_swb_cyc, i_swb_stb, i_swb_we, i_swb_addr, i_swb_data,
-			o_swb_ack, o_swb_stall, o_swb_data,
+			o_swb_stall, o_swb_ack, o_swb_data,
 		o_mwb_cyc, o_mwb_stb, o_mwb_we, o_mwb_addr, o_mwb_data,
-			i_mwb_ack, i_mwb_stall, i_mwb_data, i_mwb_err,
+			i_mwb_stall, i_mwb_ack, i_mwb_data, i_mwb_err,
 		i_dev_ints,
 		o_interrupt);
 	parameter	ADDRESS_WIDTH=30, LGMEMLEN = 10, DW=32;
@@ -142,7 +142,7 @@ module wbdmac(i_clk, i_reset,
 	output	reg [(AW-1):0]	o_mwb_addr;
 	output	reg [(DW-1):0]	o_mwb_data;
 	// Master/DMA wishbone responses from the bus
-	input	wire		i_mwb_ack, i_mwb_stall;
+	input	wire		i_mwb_stall, i_mwb_ack;
 	input	wire [(DW-1):0]	i_mwb_data;
 	input	wire		i_mwb_err;
 	// The interrupt device interrupt lines

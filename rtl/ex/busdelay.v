@@ -37,7 +37,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Copyright (C) 2015-2019, Gisselquist Technology, LLC
+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
 //
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -66,10 +66,10 @@
 module	busdelay(i_clk, i_reset,
 		// The input bus
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
-			o_wb_ack, o_wb_stall, o_wb_data, o_wb_err,
+			o_wb_stall, o_wb_ack, o_wb_data, o_wb_err,
 		// The delayed bus
 		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
-			i_dly_ack, i_dly_stall, i_dly_data, i_dly_err);
+			i_dly_stall, i_dly_ack, i_dly_data, i_dly_err);
 	parameter		AW=32, DW=32;
 	localparam		F_LGDEPTH=4;
 	parameter	 [0:0]	DELAY_STALL = 1;
@@ -79,8 +79,8 @@ module	busdelay(i_clk, i_reset,
 	input	wire	[(AW-1):0]	i_wb_addr;
 	input	wire	[(DW-1):0]	i_wb_data;
 	input	wire	[(DW/8-1):0]	i_wb_sel;
-	output	reg			o_wb_ack;
 	output	wire			o_wb_stall;
+	output	reg			o_wb_ack;
 	output	reg	[(DW-1):0]	o_wb_data;
 	output	reg			o_wb_err;
 	// Delayed bus
@@ -88,8 +88,8 @@ module	busdelay(i_clk, i_reset,
 	output	reg	[(AW-1):0]	o_dly_addr;
 	output	reg	[(DW-1):0]	o_dly_data;
 	output	reg	[(DW/8-1):0]	o_dly_sel;
-	input	wire			i_dly_ack;
 	input	wire			i_dly_stall;
+	input	wire			i_dly_ack;
 	input	wire	[(DW-1):0]	i_dly_data;
 	input	wire			i_dly_err;
 
