@@ -2879,7 +2879,6 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	// Formal methods
 	//{{{
 `ifdef	FORMAL
-// PHASE_ONE is defined by default if nothing else is defined
 //
 `ifdef	ZIPCPU
 `define	ASSUME	assume

@@ -127,7 +127,7 @@ module	div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	// The Divide logic begins with r_busy.  We use r_busy to determine
 	// whether or not the divide is in progress, vs being complete.
 	// Here, we clear r_busy on any reset and set it on i_wr (the request
-	// do to a divide).  The divide ends when we are on the last bit,
+	// to do a divide).  The divide ends when we are on the last bit,
 	// or equivalently when we discover we are dividing by zero.
 	initial	r_busy = 1'b0;
 	always @(posedge i_clk)
