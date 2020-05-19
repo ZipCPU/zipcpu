@@ -303,8 +303,8 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/common/config/zip/zip-common.c gcc-6.
 +struct gcc_targetm_common	targetm_common = TARGETM_COMMON_INITIALIZER;
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/gcc/config/zip/genzipops.c
 --- gcc-6.2.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2020-01-23 15:57:34.851608542 -0500
-@@ -0,0 +1,444 @@
++++ gcc-6.2.0-zip/gcc/config/zip/genzipops.c	2020-03-04 23:00:12.689848023 -0500
+@@ -0,0 +1,474 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	genzipops.c
@@ -465,6 +465,36 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "geu", "NC");
 +}
 +
++void	genzipop_long_offset(FILE *fp, const char *md_opname, const char *uncond_rtx, const char *insn_cond, const char *split_rtx, const char *dup_rtx, const char *zip_op) {
++	char	heading[128];
++	sprintf(heading, "%s (genzipop_long_offset)", zip_op);
++	fprintf(fp, ";\n;\n;\n; %s (genzipop_long_offset)\n;\n;\n;\n", zip_op);
++
++	fprintf(fp, "(define_insn \"%s\"\n"
++"\t[%s\n"
++"\t(clobber (reg:CC CC_REG))]\n"
++"\t\"%s\"\n"
++"\t\"%s\\t%%3+%%2,%%0\t; %s\"\n"
++"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"set\")])\n;\n;\n",
++		md_opname, uncond_rtx, insn_cond, zip_op, md_opname);
++
++
++	fprintf(fp, "(define_insn \"%s_raw\"\n"
++"\t[%s\n"
++"\t(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]\n"
++"\t\"%s\"\n"
++"\t\"%s\\t%%2+%%1,%%0\t; %s_raw\"\n"
++"\t[(set_attr \"predicable\" \"no\") (set_attr \"ccresult\" \"set\")])\n;\n;\n",
++	md_opname, dup_rtx, insn_cond, zip_op, md_opname);
++
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "eq", "Z");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ne", "NZ");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "lt", "LT");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ge", "GE");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "ltu", "C");
++	genzip_condop(fp, md_opname, dup_rtx, insn_cond, zip_op, "geu", "NC");
++}
++
 +void	genzipop(FILE *fp, const char *md_opname, const char *rtx_name, const char *insn_cond, const char *zip_op) {
 +	char	rtxstr[512], splitstr[512], dupstr[512], altname[64];
 +
@@ -499,7 +529,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/genzipops.c gcc-6.2.0-zip/
 +
 +	sprintf(altname, "%s_off", md_opname);
 +
-+	genzipop_long(fp, altname, rtxstr, insn_cond, splitstr, dupstr, zip_op);
++	genzipop_long_offset(fp, altname, rtxstr, insn_cond, splitstr, dupstr, zip_op);
 +}
 +
 +void	gencmov(FILE *fp, const char *md_opname, const char *md_cond, const char *zip_cond) {
@@ -3500,7 +3530,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zipdbg.h gcc-6.2.0-zip/gcc
 +#endif
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gcc/config/zip/zip-di.md
 --- gcc-6.2.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2020-01-23 15:56:44.155975105 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-di.md	2020-03-04 22:59:45.345995181 -0500
 @@ -0,0 +1,562 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -3609,7 +3639,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +	(clobber (reg:CC CC_REG))
 +	]
 +	"(ZIP_HAS_DI)"
-+	"ADD	%L2,%L0\n\tADD.C\t1,%H0\n\tADD\t%H2,%H0"
++	"ADD	%L2,%L0\t; ADD:DI\n\tADD.C\t1,%H0\n\tADD\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -3624,7 +3654,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +	(clobber (reg:CC CC_REG))
 +	]
 +	"(ZIP_HAS_DI)"
-+	"SUB	%L2,%L0\n\tSUB.C\t1,%H0\n\tSUB\t%H2,%H0"
++	"SUB	%L2,%L0\t; SUB:DI\n\tSUB.C\t1,%H0\n\tSUB\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +;
 +;
@@ -3697,7 +3727,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +	(clobber (reg:CC CC_REG))
 +	]
 +	"(ZIP_HAS_DI)"
-+	"CLR	%2	; ABSDI
++	"CLR	%2	; ABS:DI
 +	TEST	%H0
 +	LDILO.LT	1,%2
 +	XOR.LT	-1,%L0
@@ -3978,7 +4008,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-di.md gcc-6.2.0-zip/gc
 +		(match_operand:SI 0 "register_operand" "r")
 +		(match_operand:SI 1 "register_operand" "r")))]
 +	""
-+	"CMP\t%H1,%H0
++	"CMP\t%H1,%H0\t; CMP:DI (reg)
 +	CMP.Z\t%L1,%L0"
 +	[(set_attr "ccresult" "set")])
 +;
@@ -10339,7 +10369,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip.md gcc-6.2.0-zip/gcc/c
 +;	pattern
 diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/gcc/config/zip/zip-ops.md
 --- gcc-6.2.0/gcc/config/zip/zip-ops.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-6.2.0-zip/gcc/config/zip/zip-ops.md	2020-01-23 15:57:07.115809080 -0500
++++ gcc-6.2.0-zip/gcc/config/zip/zip-ops.md	2020-03-04 23:02:06.361236650 -0500
 @@ -0,0 +1,2744 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -10476,7 +10506,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; ADD (genzipop_long)
++; ADD (genzipop_long_offset)
 +;
 +;
 +;
@@ -10487,7 +10517,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"ADD\t%2,%0	; addsi3_off"
++	"ADD\t%3+%2,%0	; addsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -10498,7 +10528,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"ADD\t%1,%0	; addsi3_off_raw"
++	"ADD\t%2+%1,%0	; addsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -10658,7 +10688,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; SUB (genzipop_long)
++; SUB (genzipop_long_offset)
 +;
 +;
 +;
@@ -10669,7 +10699,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"SUB\t%2,%0	; subsi3_off"
++	"SUB\t%3+%2,%0	; subsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -10680,7 +10710,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"SUB\t%1,%0	; subsi3_off_raw"
++	"SUB\t%2+%1,%0	; subsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -10840,7 +10870,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; MPY (genzipop_long)
++; MPY (genzipop_long_offset)
 +;
 +;
 +;
@@ -10851,7 +10881,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"MPY\t%2,%0	; mulsi3_off"
++	"MPY\t%3+%2,%0	; mulsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -10862,7 +10892,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"MPY\t%1,%0	; mulsi3_off_raw"
++	"MPY\t%2+%1,%0	; mulsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11022,7 +11052,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; DIVS (genzipop_long)
++; DIVS (genzipop_long_offset)
 +;
 +;
 +;
@@ -11033,7 +11063,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_DIVIDE)"
-+	"DIVS\t%2,%0	; divsi3_off"
++	"DIVS\t%3+%2,%0	; divsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11044,7 +11074,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	"(ZIP_DIVIDE)"
-+	"DIVS\t%1,%0	; divsi3_off_raw"
++	"DIVS\t%2+%1,%0	; divsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11204,7 +11234,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; DIVU (genzipop_long)
++; DIVU (genzipop_long_offset)
 +;
 +;
 +;
@@ -11215,7 +11245,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_DIVIDE)"
-+	"DIVU\t%2,%0	; udivsi3_off"
++	"DIVU\t%3+%2,%0	; udivsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11226,7 +11256,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	"(ZIP_DIVIDE)"
-+	"DIVU\t%1,%0	; udivsi3_off_raw"
++	"DIVU\t%2+%1,%0	; udivsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11386,7 +11416,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; AND (genzipop_long)
++; AND (genzipop_long_offset)
 +;
 +;
 +;
@@ -11397,7 +11427,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"AND\t%2,%0	; andsi3_off"
++	"AND\t%3+%2,%0	; andsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11408,7 +11438,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"AND\t%1,%0	; andsi3_off_raw"
++	"AND\t%2+%1,%0	; andsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11568,7 +11598,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; OR (genzipop_long)
++; OR (genzipop_long_offset)
 +;
 +;
 +;
@@ -11579,7 +11609,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"OR\t%2,%0	; iorsi3_off"
++	"OR\t%3+%2,%0	; iorsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11590,7 +11620,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"OR\t%1,%0	; iorsi3_off_raw"
++	"OR\t%2+%1,%0	; iorsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11750,7 +11780,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; XOR (genzipop_long)
++; XOR (genzipop_long_offset)
 +;
 +;
 +;
@@ -11761,7 +11791,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"XOR\t%2,%0	; xorsi3_off"
++	"XOR\t%3+%2,%0	; xorsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11772,7 +11802,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"XOR\t%1,%0	; xorsi3_off_raw"
++	"XOR\t%2+%1,%0	; xorsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11932,7 +11962,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; ASR (genzipop_long)
++; ASR (genzipop_long_offset)
 +;
 +;
 +;
@@ -11943,7 +11973,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"ASR\t%2,%0	; ashrsi3_off"
++	"ASR\t%3+%2,%0	; ashrsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -11954,7 +11984,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"ASR\t%1,%0	; ashrsi3_off_raw"
++	"ASR\t%2+%1,%0	; ashrsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -12114,7 +12144,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; LSL (genzipop_long)
++; LSL (genzipop_long_offset)
 +;
 +;
 +;
@@ -12125,7 +12155,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"LSL\t%2,%0	; ashlsi3_off"
++	"LSL\t%3+%2,%0	; ashlsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -12136,7 +12166,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"LSL\t%1,%0	; ashlsi3_off_raw"
++	"LSL\t%2+%1,%0	; ashlsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -12296,7 +12326,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +;
 +;
 +;
-+; LSR (genzipop_long)
++; LSR (genzipop_long_offset)
 +;
 +;
 +;
@@ -12307,7 +12337,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 3 "const_int_operand" "N"))))
 +	(clobber (reg:CC CC_REG))]
 +	""
-+	"LSR\t%2,%0	; lshrsi3_off"
++	"LSR\t%3+%2,%0	; lshrsi3_off"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
@@ -12318,7 +12348,7 @@ diff -Naur '--exclude=*.swp' gcc-6.2.0/gcc/config/zip/zip-ops.md gcc-6.2.0-zip/g
 +				(match_operand:SI 2 "const_int_operand" "N"))))
 +	(set (reg:CC CC_REG) (compare:CC (match_dup 0) (const_int 0)))]
 +	""
-+	"LSR\t%1,%0	; lshrsi3_off_raw"
++	"LSR\t%2+%1,%0	; lshrsi3_off_raw"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
 +;
 +;
