@@ -13,10 +13,12 @@ cvr: depth 8
 smtbmc
 
 [script]
-read -formal -DDBLFETCH fwb_master.v
-read -formal -DDBLFETCH dblfetch.v
+read -formal fwb_master.v
+read -formal ffetch.v
+read -formal dblfetch.v
 prep -top dblfetch
 
 [files]
+ffetch.v
 ../../rtl/core/dblfetch.v
 ../../rtl/ex/fwb_master.v

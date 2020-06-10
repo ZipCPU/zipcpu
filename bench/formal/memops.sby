@@ -1,10 +1,11 @@
 [tasks]
-cover
-proof
+cvr
+prf
 
 [options]
-proof: mode prove
-cover: mode cover
+prf: mode prove
+prf: depth 3
+cvr: mode cover
 
 [engines]
 smtbmc
@@ -12,9 +13,11 @@ smtbmc
 [script]
 read -define MEMOPS
 read -formal memops.v
+read -formal fmem.v
 read -formal fwb_master.v
 prep -top memops
 
 [files]
 ../../rtl/core/memops.v
 ../../rtl/ex/fwb_master.v
+fmem.v

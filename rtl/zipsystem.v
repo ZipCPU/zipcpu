@@ -491,13 +491,17 @@ module	zipsystem(i_clk, i_reset,
 	reg	[(PAW-1):0] 	r_wdbus_data;
 	wire	[31:0]	 	wdbus_data;
 	wire	reset_wdbus_timer, wdbus_int;
+
 	assign	reset_wdbus_timer = (!o_wb_cyc)||(o_wb_stb)||(i_wb_ack);
+
 	wbwatchdog #(14) watchbus(i_clk,(cpu_reset)||(reset_wdbus_timer),
 			14'h2000, wdbus_int);
+
 	initial	r_wdbus_data = 0;
 	always @(posedge i_clk)
-		if ((wdbus_int)||(cpu_err))
-			r_wdbus_data <= o_wb_addr;
+	if ((wdbus_int)||(cpu_err))
+		r_wdbus_data <= o_wb_addr;
+
 	assign	wdbus_data = { {(32-PAW){1'b0}}, r_wdbus_data };
 	initial	wdbus_ack = 1'b0;
 	always @(posedge i_clk)

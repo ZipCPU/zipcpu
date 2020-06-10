@@ -40,6 +40,7 @@
 ##
 ##
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div
+TESTS += axilfetch axilops # aximem axifetch (cached versions)
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcpu
 .PHONY: $(TESTS)
@@ -54,6 +55,7 @@ BMCARGS := --presat $(SOLVER)
 INDARGS := $(SOLVER) -i
 
 PFONE  := prefetch
+AXILPF := axilfetch
 PFTWO  := dblfetch
 PFCACHE:= pfcache
 WBDLY  := busdelay
@@ -61,6 +63,7 @@ PRIARB := wbpriarbiter
 DBL    := wbdblpriarb
 PIPE   := pipemem
 MEM    := memops
+AXILMEM:= axilops
 MMU    := zipmmu
 TMR    := ziptimer
 CNT    := zipcounter
@@ -78,11 +81,46 @@ cpu: zipcpu
 
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
+FMEM   := fmem.v
+IFETCH := ffetch.v
 
 .PHONY: $(PFONE)
-$(PFONE) : $(PFONE)/PASS
-$(PFONE)/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER)
-	sby -f $(PFONE).sby
+$(PFONE) : $(PFONE)_prf/PASS
+$(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER)
+	sby -f $(PFONE).sby prf
+
+.PHONY: $(AXILPF)
+$(AXILPF) : $(AXILPF)_prf/PASS      $(AXILPF)_cvr/PASS
+$(AXILPF) : $(AXILPF)_prfdbl/PASS   $(AXILPF)_cvrdbl/PASS
+$(AXILPF) : $(AXILPF)_prff/PASS     $(AXILPF)_cvrf/PASS
+$(AXILPF) : $(AXILPF)_prf64/PASS    $(AXILPF)_cvr64/PASS
+$(AXILPF) : $(AXILPF)_prfdbl64/PASS $(AXILPF)_cvrdbl64/PASS
+$(AXILPF) : $(AXILPF)_prff64/PASS   $(AXILPF)_cvrf64/PASS
+AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(MASTER) $(IFETCH)
+$(AXILPF)_prf/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prf
+$(AXILPF)_cvr/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvr
+$(AXILPF)_prfdbl/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prfdbl
+$(AXILPF)_cvrdbl/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvrdbl
+$(AXILPF)_prff/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prff
+$(AXILPF)_cvrf/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvrf
+$(AXILPF)_prf64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prf64
+$(AXILPF)_cvr64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvr64
+$(AXILPF)_prfdbl64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prfdbl64
+$(AXILPF)_cvrdbl64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvrdbl64
+$(AXILPF)_prff64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby prff64
+$(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
+	sby -f $(AXILPF).sby cvrf64
 
 .PHONY: $(PFTWO)
 $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
@@ -100,26 +138,43 @@ $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
 	sby -f $(PFCACHE).sby cvr
 
 .PHONY: $(WBDLY)
-$(WBDLY): $(WBDLY)/PASS
-$(WBDLY)/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby
+$(WBDLY): $(WBDLY)_prf/PASS
+$(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby prf
 
 .PHONY: $(PRIARB)
-$(PRIARB): $(PRIARB)/PASS
-$(PRIARB)/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
-	sby -f $(PRIARB).sby
+$(PRIARB): $(PRIARB)_prf/PASS
+$(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
+	sby -f $(PRIARB).sby prf
 
 .PHONY: $(DBL)
-$(DBL): $(DBL)/PASS
-$(DBL)/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
-	sby -f $(DBL).sby
+$(DBL): $(DBL)_prf/PASS
+$(DBL)_prf/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
+	sby -f $(DBL).sby prf
 
 .PHONY: $(MEM)
-$(MEM): $(MEM)_cover/PASS $(MEM)_proof/PASS
-$(MEM)_proof/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER)
-	sby -f $(MEM).sby proof
-$(MEM)_cover/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER)
-	sby -f $(MEM).sby cover
+$(MEM): $(MEM)_cvr/PASS $(MEM)_prf/PASS
+$(MEM)_prf/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf
+$(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby cvr
+
+.PHONY: $(AXILMEM)
+$(AXILMEM): $(AXILMEM)_cvr/PASS   $(AXILMEM)_prf/PASS   $(AXILMEM)_prfu/PASS
+$(AXILMEM): $(AXILMEM)_cvr64/PASS $(AXILMEM)_prf64/PASS $(AXILMEM)_prfu64/PASS
+AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(MASTER) $(FMEM)
+$(AXILMEM)_prf/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prf
+$(AXILMEM)_prfu/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prfu
+$(AXILMEM)_cvr/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby cvr
+$(AXILMEM)_prf64/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prf64
+$(AXILMEM)_prfu64/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prfu64
+$(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby cvr64
 
 .PHONY: $(PIPE)
 $(PIPE): $(PIPE)_lcl_aligned_lock/PASS
@@ -148,29 +203,29 @@ $(PIPE)_nolcl_noaligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
 	sby -f $(PIPE).sby nolcl_noaligned_nolock
 
 .PHONY: $(MMU)
-$(MMU): $(MMU)/PASS
-$(MMU)/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
-	sby -f $(MMU).sby
+$(MMU): $(MMU)_prf/PASS
+$(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
+	sby -f $(MMU).sby prf
 
 .PHONY: $(TMR)
-$(TMR): $(TMR)/PASS
-$(TMR)/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
-	sby -f $(TMR).sby
+$(TMR): $(TMR)_prf/PASS
+$(TMR)_prf/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
+	sby -f $(TMR).sby prf
 
 .PHONY: $(CNT)
-$(CNT): $(CNT)/PASS
-$(CNT)/PASS: $(CNT).sby $(RTL)/peripherals/$(CNT).v $(SLAVE)
-	sby -f $(CNT).sby
+$(CNT): $(CNT)_prf/PASS
+$(CNT)_prf/PASS: $(CNT).sby $(RTL)/peripherals/$(CNT).v $(SLAVE)
+	sby -f $(CNT).sby prf
 
 .PHONY: $(JIF)
-$(JIF): $(JIF)/PASS
-$(JIF)/PASS: $(JIF).sby $(RTL)/peripherals/$(JIF).v $(SLAVE)
-	sby -f $(JIF).sby
+$(JIF): $(JIF)_prf/PASS
+$(JIF)_prf/PASS: $(JIF).sby $(RTL)/peripherals/$(JIF).v $(SLAVE)
+	sby -f $(JIF).sby prf
 
 .PHONY: $(WDG)
-$(WDG): $(WDG)/PASS
-$(WDG)/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
-	sby -f $(WDG).sby
+$(WDG): $(WDG)_prf/PASS
+$(WDG)_prf/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
+	sby -f $(WDG).sby prf
 
 .PHONY: $(INT)
 $(INT): $(INT)_cvr/PASS $(INT)_prf/PASS
@@ -205,14 +260,14 @@ $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_i
 
 
 .PHONY: $(DMA)
-$(DMA): $(DMA)/PASS
-$(DMA)/PASS: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).sby
-	sby -f $(DMA).sby
+$(DMA): $(DMA)_prf/PASS
+$(DMA)_prf/PASS: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).sby
+	sby -f $(DMA).sby prf
 
 .PHONY: $(ALU)
-$(ALU): $(ALU)/PASS
-$(ALU)/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
-	sby -f $(ALU).sby
+$(ALU): $(ALU)_prf/PASS
+$(ALU)_prf/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
+	sby -f $(ALU).sby prf
 
 DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
 
@@ -244,9 +299,9 @@ $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby cover_pipe
 
 .PHONY: $(DIV)
-$(DIV) : $(DIV)/PASS
-$(DIV)/PASS: $(DIV).sby $(RTL)/core/div.v
-	sby -f $(DIV).sby
+$(DIV) : $(DIV)_prf/PASS
+$(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
+	sby -f $(DIV).sby prf
 
 .PHONY: $(CPU)
 $(CPU): $(CPU)_dcache/PASS $(CPU)_piped/PASS
@@ -277,12 +332,13 @@ $(CPU)_ice40/PASS: $(CPUDEPS)
 
 .PHONY: clean
 clean:
-	rm -rf $(PFONE)*/     $(PFTWO)*/      $(PFCACHE)*/
+	rm -rf $(PFONE)_*/    $(PFTWO)_*/     $(PFCACHE)_*/
 	rm -rf $(WBDLY)*/     $(PRIARB)*/     $(DBL)*/
-	rm -rf $(MEM)*/       $(PIPE)*/       $(MMU)*/
+	rm -rf $(MEM)_*/      $(PIPE)*/       $(MMU)*/
 	rm -rf $(TMR)*/       $(CNT)*/        $(JIF)*/
 	rm -rf $(WDG)*/       $(INT)_*/       $(DCD)_*/
-	rm -rf $(DMA)*/       $(ALU)*/        $(DIV)*/
+	rm -rf $(DMA)_*/      $(ALU)*/        $(DIV)*/
 	rm -rf $(DCACHE)_*/
 	rm -rf $(CPU)_*/
+	rm -rf $(AXILPF)_*/   $(AXILMEM)_*/
 	rm -f *.check

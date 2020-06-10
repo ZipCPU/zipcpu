@@ -64,13 +64,14 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
 	localparam		AW=ADDRESS_WIDTH,
 				DW=DATA_WIDTH;
+	parameter	[0:0]	OPT_ALIGNED = 1'b0;
 	input	wire			i_clk, i_reset;
 	// CPU interaction wires
 	input	wire			i_new_pc, i_clear_cache, i_stalled_n;
 	// We ignore i_pc unless i_new_pc is true as well
 	input	wire	[(AW+1):0]	i_pc;
 	output	reg	[(DW-1):0]	o_insn;	// Instruction read from WB
-	output	wire	[(AW+1):0]	o_pc;	// Address of that instruction
+	output	reg	[(AW+1):0]	o_pc;	// Address of that instruction
 	output	reg			o_valid; // If the output is valid
 	output	reg			o_illegal; // Result is from a bus err
 	// Wishbone outputs
@@ -216,7 +217,30 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	end
 
 	// The o_pc output shares its value with the (last) wishbone address
-	assign	o_pc = { o_wb_addr, 2'b00 };
+	generate if (OPT_ALIGNED)
+	begin : ALIGNED_PF_PC
+
+		always @(*)
+			o_pc = { o_wb_addr, 2'b00 };
+
+	end else begin : GENERATE_PF_PC
+
+		initial	o_pc = 0;
+		always @(posedge i_clk)
+		if (i_new_pc)
+			o_pc <= i_pc;
+		else if (o_valid && !o_illegal && i_stalled_n)
+		begin
+			o_pc <= o_pc + 4;
+			o_pc[1:0] <= 2'b00;
+		end
+
+	end endgenerate
+
+`ifdef	FORMAL
+	always @(*)
+		assert(o_pc[AW+1:2] == o_wb_addr);
+`endif
 
 	// Make verilator happy
 	// verilator lint_off UNUSED
@@ -232,49 +256,56 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	reg			f_last_pc_valid;
 	reg	[(AW-1):0]	f_req_addr;
 
-//
-//
-// Generic setup
-//
-//
-`ifdef	PREFETCH
-`define	ASSUME	assume
-`else
-`define	ASSUME	assert
-`endif
-
-	// Assume a clock
-
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
 
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus interface properties
+	//
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// Assumptions about our inputs
-	//
-	//
-	/////////////////////////////////////////////////
+	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
+			.F_OPT_RMW_BUS_OPTION(0),
+			.F_OPT_DISCONTINUOUS(0))
+		f_wbm(i_clk, i_reset,
+			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
+			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+			f_nreqs, f_nacks, f_outstanding);
 
-	// Assume we start from a reset condition
-	initial	`ASSUME(i_reset);
+	/////////////////////////////////////////////////
+	//
+	// CPU interface properties
+	//
+	/////////////////////////////////////////////////
+	//
+	//
+	wire			f_const_illegal;
+	wire	[AW+1:0]	f_const_addr;
+	wire	[DW-1:0]	f_const_insn;
+	wire	[AW+1:0]	f_address;
+
+	ffetch #(.ADDRESS_WIDTH(AW), .OPT_ALIGNED(OPT_ALIGNED))
+	cpu(
+		.i_clk(i_clk), .i_reset(i_reset),
+		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
+		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_stalled_n),
+		.pf_pc(o_pc), .pf_insn(o_insn), .pf_illegal(o_illegal),
+		.fc_pc(f_const_addr), .fc_illegal(f_const_illegal),
+		.fc_insn(f_const_insn), .f_address(f_address));
+
 	always @(*)
-	if (!f_past_valid)
-		`ASSUME(i_reset);
-	// Some things to know from the CPU ... there will always be a
-	// i_new_pc request following any reset
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
-		`ASSUME(i_new_pc);
+	if (!i_reset && !i_new_pc && !i_clear_cache && !o_illegal)
+		assert(f_address == o_pc);
 
-	// There will also be a i_new_pc request following any request to clear
-	// the cache.
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_clear_cache)))
-		`ASSUME(i_new_pc);
+	always @(*)
+	if (o_illegal)
+		assert(!o_wb_cyc);
 
 	//
 	//
@@ -315,16 +346,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
-
-	fwb_master #(.AW(AW), .DW(DW),.F_LGDEPTH(F_LGDEPTH),
-			.F_MAX_REQUESTS(1), .F_OPT_SOURCE(1),
-			.F_OPT_RMW_BUS_OPTION(0),
-			.F_OPT_DISCONTINUOUS(0))
-		f_wbm(i_clk, i_reset,
-			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
-			f_nreqs, f_nacks, f_outstanding);
-
 	/////////////////////////////////////////////////
 	//
 	//
@@ -335,9 +356,9 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	//
 	// Assertions about our wishbone control outputs first
 	// Prefetches don't write
-	always @(posedge i_clk)
-	if (o_wb_stb)
+	always @(*)
 		assert(!o_wb_we);
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_past_valid))
 			&&($past(i_clear_cache,2))
@@ -406,13 +427,13 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			&&($past(o_valid))&&(!$past(i_stalled_n)))
 		assert(o_valid == $past(o_valid));
 
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_valid))&&(o_valid))
-	begin
-		assert($stable(o_pc));
-		assert($stable(o_insn));
-		assert($stable(o_illegal));
-	end
+//	always @(posedge i_clk)
+//	if ((f_past_valid)&&($past(o_valid))&&(o_valid))
+//	begin
+//		assert($stable(o_pc));
+//		assert($stable(o_insn));
+//		assert($stable(o_illegal));
+//	end
 
 	//
 	// The o_illegal line is the one we use to remind us not to go
@@ -438,35 +459,6 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	else if (o_valid)
 		f_last_pc_valid <= (!o_illegal);
 
-	// initial	f_last_pc = 0;
-	always @(posedge i_clk)
-	if (o_valid)
-		f_last_pc  <= o_pc[AW+1:2];
-	else if (f_last_pc_valid)
-		assert(o_pc[AW+1:2] == f_last_pc + 1'b1);
-
-	always @(*)
-		assert(o_pc[1:0] == 2'b00);
-
-	// If we are producing a new result, and no new-pc or clear cache
-	// has come through (i.e. f_last_pc_valid is true), then the resulting
-	// PC should be one more than the last time.
-	//
-	// The o_valid && !$past(o_valid) is necessary because f_last_pc_valid
-	// will be different by the second o_valid.
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(o_valid)
-			&&(!$past(o_valid))&&(f_last_pc_valid))
-		assert(o_pc[AW+1:2] == (f_last_pc + 1'b1));
-
-	// Let's also keep track of the address the CPU wants us to return.
-	// Any time the CPU branches to a new_pc, we'll record that request.
-	// Likewise, any time an instruction is returned from the bus,
-	// we'll increment this address so as to automatically walk through
-	// memory.
-	//
-	always @(*)
-		assume(i_pc[1:0] == 2'b00);
 	initial	f_req_addr = 0;
 	always @(posedge i_clk)
 	if (i_new_pc)
@@ -480,6 +472,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 	if (o_wb_cyc)
 		assert((invalid)||(f_req_addr == o_wb_addr));
+
 	// This isn't good enough for induction, so we'll need to
 	// constrain this further
 	else if ((!o_valid)&&(!i_new_pc)&&(!i_reset))
@@ -491,14 +484,11 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	if ((f_past_valid)&&($past(invalid)))
 		assert(!invalid);
 
-	(* anyconst *) reg	[AW:0]		const_addr;
-	(* anyconst *) reg	[DW-1:0]	const_insn;
-
 	wire	f_this_addr, f_this_pc, f_this_req, f_this_data;
-	assign	f_this_addr = (o_wb_addr ==   const_addr[AW-1:0]);
-	assign	f_this_pc   = (o_pc      == { const_addr[AW-1:0], 2'b00 });
-	assign	f_this_req  = (i_pc      == { const_addr[AW-1:0], 2'b00 });
-	assign	f_this_data = (i_wb_data ==   const_insn);
+	assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
+	assign	f_this_pc   = (o_pc[AW+1:2]== f_const_addr[AW+1:2]);
+	assign	f_this_req  = (i_pc[AW+2:2]== f_const_addr[AW+1:2]);
+	assign	f_this_data = (i_wb_data ==   f_const_insn);
 
 	reg	f_addr_pending;
 	initial	f_addr_pending = 1'b0;
@@ -516,7 +506,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(*)
 	if ((o_wb_stb)&&(f_this_addr)&&(!i_wb_stall))
 	begin
-		if (!const_addr[AW])
+		if (!f_const_illegal)
 			assume(!i_wb_err);
 		else
 			assume(!i_wb_ack);
@@ -524,20 +514,13 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			assume(f_this_data);
 	end else if ((o_wb_cyc)&&(f_addr_pending))
 	begin
-		if (!const_addr[AW])
+		if (!f_const_illegal)
 			assume(!i_wb_err);
 		else
 			assume(!i_wb_ack);
 		if (i_wb_ack)
 			assume(f_this_data);
 	end
-
-	always @(*)
-	if ((o_valid)&&(f_this_pc)&&(!o_illegal))
-		assert(o_insn == const_insn);
-	always @(*)
-	if ((o_valid)&&(f_this_pc))
-		assert(o_illegal == const_addr[AW]);
 
 	reg	f_insn_pending;
 

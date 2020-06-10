@@ -196,8 +196,8 @@ module	ziptimer(i_clk, i_reset, i_ce,
 		f_past_valid <= 1'b1;
 	initial	assume(i_reset);
 	always @(*)
-		if (!f_past_valid)
-			assume(i_reset);
+	if (!f_past_valid)
+		assume(i_reset);
 
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))

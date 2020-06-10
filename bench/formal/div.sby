@@ -1,5 +1,8 @@
+[tasks]
+prf
+
 [options]
-mode prove
+prf: mode prove
 depth 5
 
 [engines]

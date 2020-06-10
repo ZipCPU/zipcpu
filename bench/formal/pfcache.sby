@@ -12,10 +12,12 @@ cvr: depth 60
 smtbmc
 
 [script]
-read -formal -DPFCACHE fwb_master.v
+read -formal fwb_master.v
+read -formal ffetch.v
 read -formal -DPFCACHE pfcache.v
 prep -top pfcache
 
 [files]
+ffetch.v
 ../../rtl/core/pfcache.v
 ../../rtl/ex/fwb_master.v

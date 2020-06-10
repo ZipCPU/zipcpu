@@ -76,7 +76,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 32'h0000;
 
-	reg	last_stb, invalid_bus_cycle;
+	reg			last_stb, invalid_bus_cycle;
 
 	reg	[(DW-1):0]	cache_word;
 	reg			cache_valid;
@@ -86,35 +86,35 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
 	always @(posedge i_clk)
-		if ((i_reset)||((o_wb_cyc)&&(i_wb_err)))
+	if ((i_reset)||((o_wb_cyc)&&(i_wb_err)))
+	begin
+		o_wb_cyc <= 1'b0;
+		o_wb_stb <= 1'b0;
+	end else if (o_wb_cyc)
+	begin
+		if ((!o_wb_stb)||(!i_wb_stall))
+			o_wb_stb <= (!last_stb);
+
+		// Relase the bus on the second ack
+		if (((i_wb_ack)&&(!o_wb_stb)&&(inflight<=1))
+			||((!o_wb_stb)&&(inflight == 0))
+			// Or any new transaction request
+			||((i_new_pc)||(i_clear_cache)))
 		begin
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
-		end else if (o_wb_cyc)
-		begin
-			if ((!o_wb_stb)||(!i_wb_stall))
-				o_wb_stb <= (!last_stb);
-
-			// Relase the bus on the second ack
-			if (((i_wb_ack)&&(!o_wb_stb)&&(inflight<=1))
-				||((!o_wb_stb)&&(inflight == 0))
-				// Or any new transaction request
-				||((i_new_pc)||(i_clear_cache)))
-			begin
-				o_wb_cyc <= 1'b0;
-				o_wb_stb <= 1'b0;
-			end
-
-		end else if ((i_new_pc)||(invalid_bus_cycle)
-			||((o_valid)&&(i_stall_n)&&(!o_illegal)))
-		begin
-			// Initiate a bus cycle if ... the last bus cycle was
-			// aborted (bus error or new_pc), we've been given a
-			// new PC to go get, or we just exhausted our one
-			// instruction cache
-			o_wb_cyc <= 1'b1;
-			o_wb_stb <= 1'b1;
 		end
+
+	end else if ((i_new_pc)||(invalid_bus_cycle)
+		||((o_valid)&&(i_stall_n)&&(!o_illegal)))
+	begin
+		// Initiate a bus cycle if ... the last bus cycle was
+		// aborted (bus error or new_pc), we've been given a
+		// new PC to go get, or we just exhausted our one
+		// instruction cache
+		o_wb_cyc <= 1'b1;
+		o_wb_stb <= 1'b1;
+	end
 
 	initial	inflight = 2'b00;
 	always @(posedge i_clk)
@@ -172,12 +172,14 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			o_insn <= i_wb_data;
 	end
 
-	initial o_pc[1:0] = 2'b00;
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_pc <= i_pc;
 	else if ((o_valid)&&(i_stall_n))
+	begin
 		o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
+		o_pc[1:0] <= 2'b00;
+	end
 
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
@@ -197,6 +199,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Now for the output/cached word
 	//
 	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	initial	cache_valid = 1'b0;
 	always @(posedge i_clk)
@@ -219,33 +223,18 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		cache_illegal <= 1'b0;
 	else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
 		cache_illegal <= 1'b1;
-//
-// Some of these properties can be done in yosys-smtbmc, *or* Verilator
-//
-// Ver1lator is different from yosys, however, in that Verilator doesn't support
-// the $past() directive.  Further, any `assume`'s turn into `assert()`s
-// within Verilator.  We can use this to help prove that the properties
-// of interest truly hold, and that any contracts we create or assumptions we
-// make truly hold in practice (i.e. in simulation).
-//
-`ifdef	FORMAL
-`define	VERILATOR_FORMAL
-`else
-`ifdef	VERILATOR
-//
-// Define VERILATOR_FORMAL here to have Verilator check your formal properties
-// during simulation.  assert() and assume() statements will both have the
-// same effect within VERILATOR of causing your simulation to suddenly end.
-//
-// I have this property commented because it only works on the newest versions
-// of Verilator (3.9 something and later), and I tend to still use Verilator
-// 3.874.
-//
-// `define	VERILATOR_FORMAL
-`endif
-`endif
 
-`ifdef	VERILATOR_FORMAL
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal property section
+//
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+`ifdef	FORMAL
+
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
  	reg	f_past_valid;
@@ -257,6 +246,19 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// in a VERILATOR environment
 	reg	f_past_reset, f_past_clear_cache, f_past_o_valid,
 		f_past_stall_n;
+	reg	[AW+1:0]	f_next_addr, f_dbl_next;
+	localparam	F_LGDEPTH=2;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	wire		[AW+1:0]	f_const_addr;
+	wire		[DW-1:0]	f_const_insn;
+	wire				f_const_illegal;
+	wire	f_this_addr, f_this_pc, f_this_req, f_this_data,
+		f_this_insn, f_this_return,
+		f_cache_pc, f_cache_insn;
+	wire	[AW-1:0]	this_return_address,
+				next_pc_address;
+	wire	[AW+1:0]	f_address;
+
 
 	initial	f_past_reset = 1'b1;
 	initial	f_past_clear_cache = 1'b0;
@@ -270,37 +272,21 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		f_past_stall_n     <= i_stall_n;
 	end
 
-	reg	[AW+1:0]	f_next_addr, f_dbl_next;
 	always @(*)
+	begin
 		f_next_addr = o_pc + 4;
-	always @(*)
+		f_next_addr[1:0] = 0;
 		f_dbl_next = f_next_addr + 4;
-`endif
-
-`ifdef	FORMAL
-//
-//
-// Generic setup
-//
-//
-`ifdef	DBLFETCH
-`define	ASSUME	assume
-`else
-`define	ASSUME	assert
-`endif
+	end
 
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Assumptions about our inputs
 	//
-	//
 	////////////////////////////////////////////////////////////////////////
 	//
-
-	always @(*)
-	if (!f_past_valid)
-		`ASSUME(i_reset);
+	//
+	//
 
 	//
 	// Assume that resets, new-pc commands, and clear-cache commands
@@ -308,31 +294,14 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	// It may be that the CPU treats us differently.  We'll only restrict
 	// our solver to this here.
-/*
-	always @(posedge i_clk)
-	if (f_past_valid)
-	begin
-		if (f_past_reset)
-			restrict(!i_reset);
-		if ($past(i_new_pc))
-			restrict(!i_new_pc);
-	end
-*/
-
-	//
-	// Assume we start from a reset condition
-	initial	`ASSUME(i_reset);
 
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Wishbone bus properties
 	//
-	//
 	////////////////////////////////////////////////////////////////////////
-
-	localparam	F_LGDEPTH=2;
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	//
+	//
 
 	//
 	// Add a bunch of wishbone-based asserts
@@ -346,60 +315,24 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 			f_nreqs, f_nacks, f_outstanding);
 
-`endif
-
-//
-// Now, apply the following to Verilator *or* yosys-smtbmc
-//
-`ifdef	VERILATOR_FORMAL
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Assumptions about our interaction with the CPU
 	//
-	//
 	////////////////////////////////////////////////////////////////////////
-
-	// Assume that any reset is either accompanied by a new address,
-	// or a new address immediately follows it.
-//	always @(posedge i_clk)
-//	if ((f_past_valid)&&(f_past_reset))
-//		`ASSUME(i_new_pc);
-
-	always @(posedge i_clk)
-	if (f_past_clear_cache)
-		`ASSUME(!i_clear_cache);
-
 	//
 	//
-	// The bottom two bits of the PC address register are always zero.
-	// They are there to make examining traces easier, but I expect
-	// the synthesis tool to remove them.
-	//
-	always @(*)
-		`ASSUME(i_pc[1:0] == 2'b00);
 
-	// Some things to know from the CPU ... there will always be a
-	// i_new_pc request following any reset
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(f_past_reset)&&!i_reset)
-		`ASSUME(i_new_pc);
+	ffetch #(.ADDRESS_WIDTH(AW))
+	cpu(
+		.i_clk(i_clk), .i_reset(i_reset),
+		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
+		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_stall_n),
+		.pf_pc(o_pc), .pf_insn(o_insn), .pf_illegal(o_illegal),
+		.fc_illegal(f_const_illegal), .fc_insn(f_const_insn),
+		.fc_pc(f_const_addr), .f_address(f_address));
+		
 
-	// There will also be a i_new_pc request following any request to clear
-	// the cache.
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(f_past_clear_cache))
-		`ASSUME(i_new_pc);
-
-	always @(posedge i_clk)
-	if (f_past_clear_cache)
-		`ASSUME(!i_clear_cache);
-
-	always @(*)
-		`ASSUME(i_pc[1:0] == 2'b00);
-`endif
-
-`ifdef	FORMAL
 	//
 	// Let's make some assumptions about how long it takes our phantom
 	// (i.e. assumed) CPU to respond.
@@ -408,7 +341,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// errors, yet still short enough that the formal method doesn't
 	// take forever to solve.
 	//
-`ifdef	DBLFETCH
 	localparam	F_CPU_DELAY = 4;
 	reg	[4:0]	f_cpu_delay;
 
@@ -423,17 +355,14 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
-`endif
-
-
 
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Assertions about our outputs
 	//
 	//
 	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_stb))&&(!$past(i_wb_stall))
@@ -441,20 +370,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		assert(o_wb_addr <= $past(o_wb_addr)+1'b1);
 
 	//
-	// Assertions about our return responses to the CPU
+	// The cache doesn't change if we are stalled
 	//
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))
-			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
-			&&($past(o_valid))&&(!$past(i_stall_n)))
-	begin
-		assert($stable(o_pc));
-		assert($stable(o_insn));
-		assert($stable(o_valid));
-		assert($stable(o_illegal));
-	end
-
-	// The same is true of the cache as well.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
@@ -473,14 +390,12 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_new_pc))
 			&&($past(o_valid))&&($past(i_stall_n)))
-		assert(o_pc == $past(f_next_addr));
+		assert(o_pc == f_address);
 
+	always @(posedge i_clk)
+	if (!i_reset && !i_new_pc)
+		assert(o_pc == f_address);
 
-	//
-	// As with i_pc[1:0], the bottom two bits of the address are unused.
-	// Let's assert here that they remain zero.
-	always @(*)
-		assert(o_pc[1:0] == 2'b00);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
@@ -521,9 +436,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Any attempt to return to the CPU a value from this address,
 	// must return the value and the illegal flag.
 	//
-	(* anyconst *) reg	[AW-1:0]	f_const_addr;
-	(* anyconst *) reg	[DW-1:0]	f_const_insn;
-	(* anyconst *) reg			f_const_illegal;
 
 	//
 	// While these wires may seem like overkill, and while they make the
@@ -531,22 +443,16 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// it easier to follow the complex logic on a scope.  They don't
 	// affect anything synthesized.
 	//
-	wire	f_this_addr, f_this_pc, f_this_req, f_this_data,
-		f_this_insn, f_this_return,
-		f_cache_pc, f_cache_insn;
-	wire	[AW-1:0]	this_return_address,
-				next_pc_address;
-
-	assign	f_this_addr = (o_wb_addr ==   f_const_addr);
-	assign	f_this_pc   = (o_pc      == { f_const_addr, 2'b00 });
-	assign	f_this_req  = (i_pc      == { f_const_addr, 2'b00 });
+	assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
+	assign	f_this_pc   = (o_pc[AW+1:2]== f_const_addr[AW+1:2]);
+	assign	f_this_req  = (i_pc[AW+1:2]== f_const_addr[AW+1:2]);
 	assign	f_this_data = (i_wb_data ==   f_const_insn);
 	assign	f_this_insn = (o_insn    ==   f_const_insn);
 
-	assign	f_this_return = (o_wb_addr - f_outstanding == f_const_addr);
+	assign	f_this_return = (o_wb_addr - f_outstanding == f_const_addr[AW+1:2]);
 
-	assign	f_cache_pc   = (next_pc_address ==   f_const_addr)&&cache_valid;
-	assign	f_cache_insn = (cache_word      ==   f_const_insn)&&cache_valid;
+	assign	f_cache_pc   = (next_pc_address== f_const_addr[AW+1:2])&&cache_valid;
+	assign	f_cache_insn = (cache_word     == f_const_insn)&&cache_valid;
 
 
 	//
@@ -732,15 +638,11 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	////////////////////////////////////////////////////////////////////////
 	//
-	//
 	// Temporary simplifications
 	//
-	//
 	////////////////////////////////////////////////////////////////////////
-
-//	always @(*)
-//		assume((!i_wb_err)&&(!f_const_illegal));
-
+	//
+	//
 
 `endif	// FORMAL
 endmodule

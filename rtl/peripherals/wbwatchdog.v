@@ -60,18 +60,18 @@ module	wbwatchdog(i_clk, i_reset, i_timeout, o_int);
 	reg	[(BW-1):0]	r_value;
 	initial	r_value = {(BW){1'b1}};
 	always @(posedge i_clk)
-		if (i_reset)
-			r_value <= i_timeout[(BW-1):0];
-		else if (!o_int)
-			r_value <= r_value + {(BW){1'b1}}; // r_value - 1;
+	if (i_reset)
+		r_value <= i_timeout[(BW-1):0];
+	else if (!o_int)
+		r_value <= r_value + {(BW){1'b1}}; // r_value - 1;
 
 	// Set the interrupt on our last tick.
 	initial	o_int   = 1'b0;
 	always @(posedge i_clk)
-		if (i_reset)
-			o_int <= 1'b0;
-		else if (!o_int)
-			o_int <= (r_value == { {(BW-1){1'b0}}, 1'b1 });
+	if (i_reset)
+		o_int <= 1'b0;
+	else if (!o_int)
+		o_int <= (r_value == { {(BW-1){1'b0}}, 1'b1 });
 
 `ifdef	FORMAL
 	reg	f_past_valid;
@@ -89,6 +89,7 @@ module	wbwatchdog(i_clk, i_reset, i_timeout, o_int);
 	///////////////////////////////////////////////
 	always @(*)
 		assume(i_timeout > 1);
+
 	always @(posedge i_clk)
 	if (f_past_valid)
 		assume(i_timeout == $past(i_timeout));

@@ -1,9 +1,14 @@
 [tasks]
 prf
+cvr
 
 [options]
 prf: mode prove
-depth 8
+prf: depth 8
+prf: depth 48
+
+cvr: mode cover
+cvr: depth 8
 
 [engines]
 smtbmc
@@ -11,10 +16,10 @@ smtbmc
 [script]
 read -formal fwb_master.v
 read -formal ffetch.v
-read -formal -DPREFETCH prefetch.v
-prep -top prefetch
+read -formal pipefetch.v
+prep -top pipefetch
 
 [files]
 ffetch.v
-../../rtl/core/prefetch.v
+../../rtl/core/pipefetch.v
 ../../rtl/ex/fwb_master.v

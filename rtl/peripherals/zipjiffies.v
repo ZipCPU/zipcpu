@@ -89,10 +89,9 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 
 	reg	[(BW-1):0]		r_counter;
 	//
-	reg				int_set,  new_set;
+	reg				int_set,  new_set, int_now;
 	reg		[(BW-1):0]	int_when, new_when;
-	wire	signed	[(BW-1):0]	till_when;
-	reg	signed	[(BW-1):0]	till_wb;
+	reg	signed	[(BW-1):0]	till_wb,  till_when;
 
 	//
 	// Our counter logic: The counter is always counting up--it cannot
@@ -110,11 +109,20 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	else if (i_ce)
 		r_counter <= r_counter+1;
 
+	initial	int_now = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		int_now <= 0;
+	else if (i_ce)
+		int_now <= ((r_counter + 1) == (int_when));
+	else
+		int_now <= 1'b0;
+
 	//
 	// Writes to the counter set an interrupt--but only if they are in the
 	// future as determined by the signed result of an unsigned subtract.
 	//
-	assign	till_when = int_when-r_counter;
+	// assign	till_when = int_when-r_counter;
 	// assign	till_wb   = new_when-r_counter;
 
 	initial	new_set = 1'b0;
@@ -127,6 +135,8 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		new_when<= i_wb_data;
 
 		till_wb <= (i_wb_data - r_counter - (i_ce ? 1:0));
+
+		till_when <= (int_when - i_wb_data);
 
 		if (i_reset)
 			new_set <= 1'b0;
@@ -149,12 +159,12 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 
 		if ((new_set)&&(till_wb > 0))
 			int_set <= 1'b1;
-		else if ((i_ce)&&(r_counter == int_when))
+		else if (int_now)
 			int_set <= 1'b0;
 	end
 
 	always @(posedge i_clk)
-	if ((new_set)&&(till_wb > 0)&&((till_wb<till_when)||(!int_set)))
+	if ((new_set)&&(till_wb > 0)&&((till_when[BW-1])||(!int_set)))
 		int_when <= new_when;
 
 	//
@@ -182,41 +192,30 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
-	////////////////////////////////////////////////
-	//
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
 	//
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
-	// Some basic WB assumtions
-
-	// We will not start out in a wishbone cycle
-	initial	assume(!i_wb_cyc);
-
-	// Following any reset the cycle line will be low
-	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
-		assume(!i_wb_cyc);
+	// One basic WB assumtion
 
 	// Anytime the stb is high, the cycle line must also be high
 	always @(posedge i_clk)
 		assume((!i_wb_stb)||(i_wb_cyc));
 
-
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
+	// Assertions about our bus outputs
 	//
-	// Assumptions about our bus outputs
-	//
-	//
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 
 	// We never stall the bus
 	always @(*)
 		assert(!o_wb_stall);
+
 	// We always ack every transaction on the following clock
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb)))
@@ -225,13 +224,12 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		assert(!o_wb_ack);
 
 
-	////////////////////////////////////////////////
-	//
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our internal state and our outputs
 	//
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_reset)))
@@ -277,7 +275,7 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		&&($past(r_counter)==$past(int_when)))
 	begin
 		assert((o_int)||(!$past(int_set)));
-		assert((!int_set)||($past(new_set)));
+		// assert((!int_set)||($past(new_set)));	// !!!!!
 	end
 
 	always @(posedge i_clk)

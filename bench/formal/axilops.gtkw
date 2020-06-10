@@ -1,0 +1,127 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Tue May 19 21:13:00 2020
+[*]
+[dumpfile] "(null)"
+[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/axilops.gtkw"
+[timestart] 0
+[size] 1920 1029
+[pos] -1 -1
+*-4.909014 102 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 246
+[sst_expanded] 1
+[sst_vpaned_height] 306
+@28
+axilops.S_AXI_ACLK
+axilops.S_AXI_ARESETN
+@200
+-
+@28
+axilops.i_stb
+@22
+axilops.i_addr[29:0]
+axilops.i_data[31:0]
+@28
+axilops.i_op[2:0]
+@22
+axilops.i_oreg[4:0]
+@200
+-
+@28
+axilops.o_busy
+axilops.o_valid
+axilops.o_err
+axilops.o_rdbusy
+@22
+axilops.o_result[31:0]
+axilops.o_wreg[4:0]
+@200
+-
+@800200
+-Writes
+@28
+[color] 2
+axilops.M_AXI_AWVALID
+[color] 3
+axilops.M_AXI_AWREADY
+@22
+[color] 2
+axilops.M_AXI_AWADDR[29:0]
+@28
+[color] 2
+axilops.M_AXI_AWPROT[2:0]
+@200
+-
+@28
+[color] 2
+axilops.M_AXI_WVALID
+[color] 3
+axilops.M_AXI_WREADY
+@22
+[color] 2
+axilops.M_AXI_WDATA[31:0]
+axilops.M_AXI_WSTRB[3:0]
+@200
+-
+@28
+[color] 3
+axilops.M_AXI_BVALID
+[color] 2
+axilops.M_AXI_BREADY
+[color] 3
+axilops.M_AXI_BRESP[1:0]
+@200
+-
+@28
+axilops.faxil_awr_outstanding[1:0]
+axilops.faxil_wr_outstanding[1:0]
+@1000200
+-Writes
+@800200
+-Reads
+@28
+[color] 2
+axilops.M_AXI_ARVALID
+[color] 3
+axilops.M_AXI_ARREADY
+@22
+[color] 2
+axilops.M_AXI_ARADDR[29:0]
+@28
+[color] 2
+axilops.M_AXI_ARPROT[2:0]
+@200
+-
+@28
+[color] 3
+axilops.M_AXI_RVALID
+[color] 2
+axilops.M_AXI_RREADY
+@22
+[color] 3
+axilops.M_AXI_RDATA[31:0]
+@28
+[color] 3
+axilops.M_AXI_RRESP[1:0]
+@200
+-
+@28
+axilops.faxil_rd_outstanding[1:0]
+@1000200
+-Reads
+@200
+-
+-
+@28
+axilops.w_misaligned
+@29
+axilops.misaligned_request
+@28
+axilops.misaligned_aw_request
+axilops.misaligned_read
+axilops.misaligned_response_pending
+@200
+-
+[pattern_trace] 1
+[pattern_trace] 0

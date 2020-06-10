@@ -10,13 +10,14 @@ nolcl_noaligned_nolock	nolocal_bus noalignment_err nolock
 
 [options]
 mode prove
-depth 20
+depth 4
 
 [engines]
 smtbmc
 
 [script]
 read -formal -DPIPEMEM fwb_master.v
+read -formal -DPIPEMEM fmem.v
 read -formal -DPIPEMEM pipemem.v
 --pycode-begin--
 cmd = "hierarchy -top pipemem"
@@ -28,5 +29,6 @@ output(cmd)
 prep -top pipemem
 
 [files]
+fmem.v
 ../../rtl/core/pipemem.v
 ../../rtl/ex/fwb_master.v
