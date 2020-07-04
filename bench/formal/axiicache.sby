@@ -1,0 +1,40 @@
+[tasks]
+prf
+cvr
+
+[options]
+prf: mode prove
+prf: depth  10
+cvr: mode cover
+cvr: depth 28
+
+[engines]
+smtbmc
+smtbmc boolector
+
+[script]
+read -formal faxi_valaddr.v
+read -formal faxi_wstrb.v
+read -formal faxi_addr.v
+read -formal faxi_master.v
+read -formal ffetch.v
+read -formal axiicache.v
+--pycode-begin--
+cmd = "hierarchy -top axiicache"
+cmd += " -chparam LGCACHESZ 8"
+cmd += " -chparam LGLINESZ  1"
+if ("bus64" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd += " -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axiicache
+
+[files]
+ffetch.v
+../../rtl/core/axiicache.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+faxi_addr.v

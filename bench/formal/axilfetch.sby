@@ -17,7 +17,7 @@ prf: mode prove
 prf: depth 5
 opt_fifo: depth 6
 cvr: mode cover
-cvr: depth 20
+cvr: depth 30
 
 [engines]
 prf: smtbmc

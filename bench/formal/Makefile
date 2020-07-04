@@ -86,7 +86,7 @@ IFETCH := ffetch.v
 
 .PHONY: $(PFONE)
 $(PFONE) : $(PFONE)_prf/PASS
-$(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER)
+$(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf
 
 .PHONY: $(AXILPF)
@@ -124,17 +124,17 @@ $(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
 
 .PHONY: $(PFTWO)
 $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
-$(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
+$(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf
-$(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER)
+$(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby cvr
 
 
 .PHONY: $(PFCACHE)
 $(PFCACHE): $(PFCACHE)_prf/PASS $(PFCACHE)_cvr/PASS
-$(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+$(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby prf
-$(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER)
+$(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby cvr
 
 .PHONY: $(WBDLY)

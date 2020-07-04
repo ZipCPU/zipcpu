@@ -159,9 +159,9 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 		`CPU_ASSUME(pf_illegal);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset || cpu_new_pc || cpu_clear_cache)))
-		`CPU_ASSUME(1 || !pf_valid);
-	else if ((f_past_valid)&&(!$past(pf_illegal))&&(pf_illegal))
+	if (!f_past_valid || $past(i_reset || cpu_clear_cache))
+		`CPU_ASSUME(!pf_valid);
+	else if ((f_past_valid)&&(!$past(pf_illegal && !cpu_new_pc))&&(pf_illegal))
 		// pf_illegal can only rise if pf_valid is true
 		`CPU_ASSUME(pf_valid);
 

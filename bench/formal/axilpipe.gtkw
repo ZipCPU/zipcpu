@@ -1,0 +1,143 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Mon Jun 15 11:40:49 2020
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1705 845
+[pos] -1 -1
+*-5.760617 50 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] axilpipe.
+[sst_width] 270
+[signals_width] 300
+[sst_expanded] 1
+[sst_vpaned_height] 229
+@28
+axilpipe.S_AXI_ACLK
+axilpipe.S_AXI_ARESETN
+axilpipe.i_cpu_reset
+@200
+-
+@800200
+-CPU
+@28
+[color] 3
+axilpipe.i_stb
+[color] 2
+axilpipe.o_pipe_stalled
+[color] 3
+axilpipe.i_op[2:0]
+@22
+[color] 3
+axilpipe.i_oreg[4:0]
+[color] 3
+axilpipe.i_addr[31:0]
+[color] 3
+axilpipe.i_data[31:0]
+@200
+-
+@28
+[color] 2
+axilpipe.o_busy
+[color] 2
+axilpipe.o_rdbusy
+[color] 2
+axilpipe.o_valid
+@22
+[color] 2
+axilpipe.o_wreg[4:0]
+[color] 2
+axilpipe.o_result[31:0]
+@28
+[color] 2
+axilpipe.o_err
+@1000200
+-CPU
+@28
+axilpipe.bus_abort
+axilpipe.read_abort
+@29
+axilpipe.write_abort
+@28
+axilpipe.w_misaligned
+axilpipe.misaligned_aw_request
+axilpipe.misaligned_request
+axilpipe.misaligned_response_pending
+@c00200
+-AXI Write
+@28
+[color] 2
+axilpipe.M_AXI_AWVALID
+[color] 3
+axilpipe.M_AXI_AWREADY
+@22
+[color] 2
+axilpipe.M_AXI_AWADDR[29:0]
+@200
+-
+@28
+[color] 2
+axilpipe.M_AXI_WVALID
+[color] 3
+axilpipe.M_AXI_WREADY
+@22
+[color] 2
+axilpipe.M_AXI_WDATA[31:0]
+[color] 2
+axilpipe.M_AXI_WSTRB[3:0]
+@200
+-
+@28
+[color] 3
+axilpipe.M_AXI_BVALID
+@c00028
+[color] 3
+axilpipe.M_AXI_BRESP[1:0]
+@28
+[color] 3
+(0)axilpipe.M_AXI_BRESP[1:0]
+[color] 3
+(1)axilpipe.M_AXI_BRESP[1:0]
+@1401200
+-group_end
+-AXI Write
+@22
+axilpipe.rdaddr[4:0]
+axilpipe.wraddr[4:0]
+@800200
+-AXI Read
+@28
+[color] 2
+axilpipe.M_AXI_ARVALID
+[color] 3
+axilpipe.M_AXI_ARREADY
+@22
+[color] 2
+axilpipe.M_AXI_ARADDR[29:0]
+@200
+-
+@28
+[color] 3
+axilpipe.M_AXI_RVALID
+@22
+[color] 3
+axilpipe.M_AXI_RDATA[31:0]
+@28
+[color] 3
+axilpipe.M_AXI_RRESP[1:0]
+@1000200
+-AXI Read
+@28
+axilpipe.none_outstanding
+@22
+axilpipe.beats_outstanding[4:0]
+@200
+-
+@28
+axilpipe.f_done
+axilpipe.r_flushing
+axilpipe.flush_request
+@22
+axilpipe.flushcount[4:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -129,10 +129,6 @@ module	axilfetch #(
 			// + (((M_AXI_ARVALID && !M_AXI_ARREADY) ? 1:0)
 						>= (1<<LGDEPTH)-1);
 	end
-`ifdef	FORMAL
-	always @(*)
-		assert(full_bus == (outstanding >= (1<<LGDEPTH)-1));
-`endif
 
 	initial	fill = 0;
 	always @(posedge S_AXI_ACLK)
@@ -178,35 +174,21 @@ module	axilfetch #(
 			flush_request <= 0;
 	end
 
-`ifdef	FORMAL
-	always @(*)
-		assert(flushing == (flushcount > 0));
-
-	always @(*)
-		assert(flushcount <= outstanding + (flush_request ? 1:0));
-	always @(*)
-	if (flush_request)
-		assert(pending_new_pc || i_new_pc);
-
-	always @(*)
-	if (!M_AXI_ARVALID || !flushing)
-		assert(!flush_request);
-`endif
-
 	initial	M_AXI_ARVALID = 1'b0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		M_AXI_ARVALID <= 1'b0;
 	else if (!M_AXI_ARVALID || M_AXI_ARREADY)
 	begin
-		M_AXI_ARVALID <= !o_valid && !o_illegal;
+		M_AXI_ARVALID <= 1;
 		if (i_new_pc || pending_new_pc)
 			M_AXI_ARVALID <= 1'b1;
 
 		//
 		// Throttle the number of requests we make
 		if (fill + (M_AXI_ARVALID ? 1:0)
-				+ ((o_valid && !i_ready) ? 1:0) >= FETCH_LIMIT)
+				+ ((o_valid &&(!i_ready || out_fill > 1)) ? 1:0)
+				>= FETCH_LIMIT)
 			M_AXI_ARVALID <= 1'b0;
 		if (i_cpu_reset || i_clear_cache || full_bus)
 			M_AXI_ARVALID <= 1'b0;
@@ -276,8 +258,9 @@ module	axilfetch #(
 	begin : NOCACHE
 		// No cache
 
-		assign	fifo_rd    = fifo_wr;
-		assign	fifo_empty = fifo_wr; //(out_fill <= (i_aready ? 1:0));
+		// assign	fifo_rd    = fifo_wr;
+		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
+		assign	fifo_empty = !fifo_wr; //(out_fill <= (i_aready ? 1:0));
 		assign	fifo_data  = { M_AXI_RRESP[1], M_AXI_RDATA };
 
 		assign	ign_fifo_fill = 1'b0;
@@ -334,7 +317,8 @@ module	axilfetch #(
 	if (fifo_reset)
 		o_valid <= 1'b0;
 	else if (!o_valid || i_ready)
-		o_valid <= (fifo_rd && !fifo_empty) || out_fill > 1;
+		o_valid <= (fifo_rd && !fifo_empty)
+			|| out_fill > (o_valid ? 1:0);
 
 	initial	out_fill = 0;
 	always @(posedge S_AXI_ARESETN)
@@ -459,6 +443,7 @@ module	axilfetch #(
 	faxil_master #(.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
 			.F_OPT_READ_ONLY(1'b1),
+			.F_OPT_COVER_BURST(5),
 			.F_OPT_ASSUME_RESET(1'b1),
 			.F_LGDEPTH(F_LGDEPTH)
 	) faxil(.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
@@ -480,6 +465,23 @@ module	axilfetch #(
 		//
 		.f_axi_rd_outstanding(faxil_outstanding));
 
+
+	always @(*)
+		assert(full_bus == (outstanding >= (1<<LGDEPTH)-1));
+
+	always @(*)
+		assert(flushing == (flushcount > 0));
+
+	always @(*)
+		assert(flushcount <= outstanding + (flush_request ? 1:0));
+	always @(*)
+	if (flush_request)
+		assert(pending_new_pc || i_new_pc);
+
+	always @(*)
+	if (!M_AXI_ARVALID || !flushing)
+		assert(!flush_request);
+
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Subword return
@@ -487,172 +489,88 @@ module	axilfetch #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	reg	[W:0]	f_word_count;
+	reg	[W:0]			f_word_count;
 	reg	[AW-1:0]		f_return_addr;
 	reg	[AW-1:0]		f_out_addr, f_subout_addr;
+	reg	[C_AXI_ADDR_WIDTH-1:0]	f_req_addr, f_ret_addr;
+	reg	[W:0]			f_req_offset, f_ret_offset;
+
+
+	always @(*)
+	begin
+		f_req_offset = f_word_count;
+		if (flushing)
+			f_req_offset = f_req_offset - flushcount;
+		if (M_AXI_ARVALID && f_req_offset > 0)
+			f_req_offset = f_req_offset - 1;
+
+		f_req_addr = f_out_addr + (f_req_offset << AXILLSB);
+		if (f_req_offset == 0)
+			f_req_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
+
+		///////////////
+
+		f_ret_offset = o_valid ? 1:0;
+		f_ret_offset = f_ret_offset + ign_fifo_fill;
+
+		f_ret_addr = f_out_addr + (f_ret_offset << AXILLSB);
+		if (f_ret_offset == 0)
+			f_ret_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
+	end
+
+	always @(*)
+		assert(f_req_offset <= f_word_count);
+
+	always @(*)
+		assert(f_req_offset == fill + (o_valid ? 1:0));
+
+	always @(*)
+		assert(f_ret_offset <= f_req_offset);
+
+	always @(*)
+	if (!i_cpu_reset && !i_new_pc && !i_clear_cache
+			&& !pending_new_pc && M_AXI_ARADDR != o_pc)
+		assert(M_AXI_ARADDR[AXILLSB-1:0] == 0);
+
+	always @(*)
+	if (!flushing)
+		assert(f_word_count <= FETCH_LIMIT);
+	else
+		assert(f_word_count - flushcount <= FETCH_LIMIT);
+
+	always @(*)
+	if (!i_cpu_reset && !i_new_pc && !i_clear_cache && !flush_request)
+	begin
+		if (!o_illegal)
+			assert(f_req_addr[AXILLSB-1:0] == M_AXI_ARADDR[AXILLSB-1:0]);
+		assert(f_req_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
+			== M_AXI_ARADDR[C_AXI_ADDR_WIDTH-1:AXILLSB]);
+	end
+
+	always @(*)
+	if (S_AXI_ARESETN && !i_cpu_reset && !i_new_pc && !i_clear_cache
+			&& !flushing && !o_illegal)
+		assert(f_ret_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
+			== f_return_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]);
+
+	always @(*)
+	begin
+		f_word_count = faxil_outstanding;
+		if (M_AXI_ARVALID)
+			f_word_count = f_word_count + 1;
+		f_word_count = f_word_count + ign_fifo_fill;
+		if (o_valid)
+			f_word_count = f_word_count + 1;
+	end
+
 
 	generate if (FETCH_LIMIT <= 1)
 	begin : F_NO_CACHE
 
-		always @(*)
-		begin
-			f_word_count = 0;
-			if (M_AXI_ARVALID)
-				f_word_count = f_word_count + 1;
-			f_word_count = f_word_count + faxil_outstanding;
-			f_word_count = f_word_count - flushcount;
-			if (o_valid)
-				f_word_count = f_word_count + 1;
-		end
 	end else if (FETCH_LIMIT == 2)
 	begin : F_DBLFETCH
 
-		always @(*)
-		begin
-			f_word_count = faxil_outstanding;
-			if (M_AXI_ARVALID)
-				f_word_count = f_word_count + 1;
-			if (DBLFETCH.cache_valid)
-				f_word_count = f_word_count + 1;
-			if (o_valid)
-				f_word_count = f_word_count + 1;
-		end
-
-		reg	[C_AXI_ADDR_WIDTH-1:0]	f_req_addr, f_ret_addr;
-		reg	[W:0]			f_req_offset, f_ret_offset;
-
-		always @(*)
-		begin
-			f_req_offset = f_word_count;
-			if (flushing)
-				f_req_offset = f_req_offset - flushcount;
-			if (M_AXI_ARVALID && f_req_offset > 0)
-				f_req_offset = f_req_offset - 1;
-
-			f_req_addr = f_out_addr + (f_req_offset << AXILLSB);
-			if (f_req_offset == 0)
-				f_req_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
-
-			///////////////
-
-			f_ret_offset = o_valid ? 1:0;
-			if (DBLFETCH.cache_valid)
-				f_ret_offset = f_ret_offset + 1;
-
-			f_ret_addr = f_out_addr + (f_ret_offset << AXILLSB);
-			if (f_ret_offset == 0)
-				f_ret_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
-		end
-
-		always @(*)
-			assert(f_req_offset <= f_word_count);
-
-		always @(*)
-			assert(f_req_offset == fill + (o_valid ? 1:0));
-
-		always @(*)
-			assert(f_ret_offset <= f_req_offset);
-
-		always @(*)
-		if (!i_cpu_reset && !i_new_pc && !i_clear_cache
-				&& !pending_new_pc && M_AXI_ARADDR != o_pc)
-			assert(M_AXI_ARADDR[AXILLSB-1:0] == 0);
-
-		always @(*)
-		if (!i_cpu_reset && !i_new_pc && !i_clear_cache
-				// && (!flushing || flushcount < f_word_count))
-				&& !flush_request)
-		begin
-			if (!o_illegal)
-				assert(f_req_addr[AXILLSB-1:0] == M_AXI_ARADDR[AXILLSB-1:0]);
-			assert(f_req_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-				== M_AXI_ARADDR[C_AXI_ADDR_WIDTH-1:AXILLSB]);
-		end
-
-		always @(*)
-		if (!flushing)
-			assert(f_word_count <= 2);
-		else
-			assert(f_word_count - flushcount <= 2);
-
-		always @(*)
-		if (S_AXI_ARESETN && !i_cpu_reset && !i_new_pc && !i_clear_cache
-				&& !flushing && !o_illegal)
-			assert(f_ret_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-				== f_return_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]);
-
 	end else begin : F_FIFO_CACHE
-		reg	[C_AXI_ADDR_WIDTH-1:0]	f_req_addr, f_ret_addr;
-		reg	[W:0]			f_req_offset, f_ret_offset;
-
-		always @(*)
-		begin
-			f_word_count = faxil_outstanding;
-			if (M_AXI_ARVALID)
-				f_word_count = f_word_count + 1;
-			f_word_count = f_word_count + ign_fifo_fill;
-			if (o_valid)
-				f_word_count = f_word_count + 1;
-		end
-
-		always @(*)
-		begin
-			f_req_offset = f_word_count;
-			if (flushing)
-				f_req_offset = f_req_offset - flushcount;
-			if (M_AXI_ARVALID && f_req_offset > 0)
-				f_req_offset = f_req_offset - 1;
-
-			f_req_addr = f_out_addr + (f_req_offset << AXILLSB);
-			if (f_req_offset == 0)
-				f_req_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
-
-			///////////////
-
-			f_ret_offset = o_valid ? 1:0;
-			f_ret_offset = f_ret_offset + ign_fifo_fill;
-
-			f_ret_addr = f_out_addr + (f_ret_offset << AXILLSB);
-			if (f_ret_offset == 0)
-				f_ret_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
-		end
-
-		always @(*)
-			assert(f_req_offset <= f_word_count);
-
-		always @(*)
-			assert(f_req_offset == fill + (o_valid ? 1:0));
-
-		always @(*)
-			assert(f_ret_offset <= f_req_offset);
-
-		always @(*)
-		if (!i_cpu_reset && !i_new_pc && !i_clear_cache
-				&& !pending_new_pc && M_AXI_ARADDR != o_pc)
-			assert(M_AXI_ARADDR[AXILLSB-1:0] == 0);
-
-		always @(*)
-		if (!i_cpu_reset && !i_new_pc && !i_clear_cache
-				// && (!flushing || flushcount < f_word_count))
-				&& !flush_request)
-		begin
-			if (!o_illegal)
-				assert(f_req_addr[AXILLSB-1:0] == M_AXI_ARADDR[AXILLSB-1:0]);
-			assert(f_req_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-				== M_AXI_ARADDR[C_AXI_ADDR_WIDTH-1:AXILLSB]);
-		end
-
-		always @(*)
-		if (!flushing)
-			assert(f_word_count <= FETCH_LIMIT);
-		else
-			assert(f_word_count - flushcount <= FETCH_LIMIT);
-
-		always @(*)
-		if (S_AXI_ARESETN && !i_cpu_reset && !i_new_pc && !i_clear_cache
-				&& !flushing && !o_illegal)
-			assert(f_ret_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-				== f_return_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]);
 
 	end endgenerate
 
@@ -872,6 +790,8 @@ module	axilfetch #(
 		reg				f_cache_illegal;
 		reg				f_cache_check, f_cache_valid;
 		reg	[LGFIFO:0]		f_cache_distance;
+		reg				f_cache_assume;
+
 
 		always @(*)
 			{ f_cache_illegal, f_cache_data }
@@ -932,8 +852,6 @@ module	axilfetch #(
 			assert(f_cache_illegal == fc_illegal);
 		end
 
-		reg	f_cache_assume;
-
 		always @(*)
 		begin
 			f_cache_assume = 0;
@@ -992,7 +910,35 @@ module	axilfetch #(
 		assert(f_out_addr[C_AXI_ADDR_WIDTH-1:AXILLSB] == pending_pc[C_AXI_ADDR_WIDTH-1:AXILLSB]);
 		assert(o_pc == pending_pc);
 	end
-
 `endif
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Cover properties
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	reg	[3:0]	cvr_returns;
+	(* anyconst *) reg	cvr_always_ready;
+
+	always @(*)
+	if (cvr_always_ready)
+		assume(M_AXI_ARREADY);
+
+	initial	cvr_returns = 0;
+	always @(posedge S_AXI_ACLK)
+	if (i_cpu_reset || i_new_pc || i_clear_cache || o_illegal)
+		cvr_returns <= 0;
+	else if (o_valid && i_ready && !cvr_returns[3])
+		cvr_returns <= cvr_returns + 1;
+
+	always @(*)
+	begin
+		cover(cvr_returns == 4'b0100);
+		cover(cvr_returns == 4'b0101);
+		cover(cvr_returns == 4'b0110 && cvr_always_ready);
+	end
+
 `endif
 endmodule

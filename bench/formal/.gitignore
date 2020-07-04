@@ -1,7 +1,9 @@
 old
+axiicache_*/
 axilfetch_*/
 axilops_*/
 axilperiphs_*/
+axilpipe_*/
 busdelay_*/
 cpuops_*/
 dcache_*/

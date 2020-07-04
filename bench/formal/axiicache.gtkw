@@ -1,0 +1,99 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Wed Jun 10 20:21:04 2020
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1699 903
+[pos] -1 -1
+*-4.696020 40 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 198
+[sst_expanded] 1
+[sst_vpaned_height] 261
+@28
+axiicache.S_AXI_ACLK
+axiicache.S_AXI_ARESETN
+@200
+-
+@800200
+-CPU Interface
+@28
+[color] 3
+axiicache.i_cpu_reset
+[color] 3
+axiicache.i_clear_cache
+[color] 3
+axiicache.i_new_pc
+@22
+[color] 3
+axiicache.i_pc[31:0]
+@28
+[color] 3
+axiicache.i_ready
+axiicache.o_valid
+@22
+axiicache.o_pc[31:0]
+axiicache.o_insn[31:0]
+@28
+axiicache.o_illegal
+@1000200
+-CPU Interface
+@800200
+-AXI Read Interface
+@28
+[color] 2
+axiicache.M_AXI_ARVALID
+[color] 3
+axiicache.M_AXI_ARREADY
+[color] 2
+axiicache.M_AXI_ARID
+@22
+[color] 2
+axiicache.M_AXI_ARADDR[31:0]
+[color] 2
+axiicache.M_AXI_ARLEN[7:0]
+@28
+[color] 2
+axiicache.M_AXI_ARBURST[1:0]
+@22
+[color] 2
+axiicache.M_AXI_ARCACHE[3:0]
+@28
+[color] 2
+axiicache.M_AXI_ARLOCK
+[color] 2
+axiicache.M_AXI_ARPROT[2:0]
+@22
+[color] 2
+axiicache.M_AXI_ARQOS[3:0]
+@28
+[color] 2
+axiicache.M_AXI_ARSIZE[2:0]
+@200
+-
+@28
+[color] 3
+axiicache.M_AXI_RVALID
+[color] 2
+axiicache.M_AXI_RREADY
+[color] 3
+axiicache.M_AXI_RID
+@22
+[color] 3
+axiicache.M_AXI_RDATA[31:0]
+@28
+[color] 3
+axiicache.M_AXI_RLAST
+[color] 3
+axiicache.M_AXI_RRESP[1:0]
+@22
+axiicache.faxi_awr_nbursts[9:0]
+@1000200
+-AXI Read Interface
+@28
+axiicache.void_access
+axiicache.bus_abort
+axiicache.request_pending
+[pattern_trace] 1
+[pattern_trace] 0
