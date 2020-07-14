@@ -78,7 +78,7 @@ module	axiicache #(
 		parameter	C_AXI_DATA_WIDTH = 32,
 		//
 		// SWAP_ENDIANNESS
-		parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
+		parameter [0:0]	SWAP_ENDIANNESS = 1'b0,
 		//
 		parameter	INSN_WIDTH = 32,
 		parameter [C_AXI_ID_WIDTH-1:0]	AXI_ID = 0,
@@ -334,7 +334,7 @@ module	axiicache #(
 	//
 	//
 	always @(posedge S_AXI_ACLK)
-	if (!o_valid || i_ready)
+	if (i_new_pc || (!o_valid || i_ready))
 	begin
 		cache_line <= cache[(i_new_pc || o_valid)
 				? i_pc[CWB-1:ADDRLSB] : o_pc[CWB-1:ADDRLSB]];
@@ -498,7 +498,7 @@ module	axiicache #(
 		.fc_insn(f_const_insn), .f_address(f_address));
 
 	always @(*)
-	if (!i_cpu_reset && !i_new_pc)
+	if (!i_cpu_reset && !i_new_pc && !i_clear_cache)
 		assert(o_pc == f_address);
 
 	//

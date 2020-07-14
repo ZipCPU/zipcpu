@@ -88,6 +88,7 @@ SLAVE  := $(RTL)/ex/fwb_slave.v
 FMEM   := fmem.v
 IFETCH := ffetch.v
 AXIL   := faxil_master.v faxil_slave.v
+AXI    := faxi_master.v faxi_slave.v faxi_valaddr.v faxi_wstrb.v faxi_addr.v
 
 .PHONY: fmem ffetch
 ffetch: prefetch dblfetch pfcache axilfetch axiicache
@@ -148,9 +149,9 @@ $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 
 .PHONY: $(AXIICC)
 $(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_cvr/PASS
-$(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXIL) $(IFETCH)
+$(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby prf
-$(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXIL) $(IFETCH)
+$(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby cvr
 
 .PHONY: $(WBDLY)
