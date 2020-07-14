@@ -39,10 +39,10 @@
 ################################################################################
 ##
 ##
-TESTS := prefetch dblfetch pfcache memops pipemem idecode div
+TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
 TESTS += axilfetch axilops # aximem axifetch (cached versions)
-TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog zipmmu icontrol wbdmac
-TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcpu
+TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
+TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -55,7 +55,6 @@ BMCARGS := --presat $(SOLVER)
 INDARGS := $(SOLVER) -i
 
 PFONE  := prefetch
-AXILPF := axilfetch
 PFTWO  := dblfetch
 PFCACHE:= pfcache
 WBDLY  := busdelay
@@ -63,8 +62,6 @@ PRIARB := wbpriarbiter
 DBL    := wbdblpriarb
 PIPE   := pipemem
 MEM    := memops
-AXILMEM:= axilops
-MMU    := zipmmu
 TMR    := ziptimer
 CNT    := zipcounter
 JIF    := zipjiffies
@@ -74,15 +71,27 @@ DCD    := idecode
 DMA    := wbdmac
 ALU    := cpuops
 DIV    := div
-CPU    := zipcpu
+CPU    := zipcore
 DCACHE := dcache
+
+AXILPF := axilfetch
+AXIICC := axiicache
+AXILMEM:= axilops
+
+MMU    := zipmmu
+
 .PHONY: cpu
-cpu: zipcpu
+cpu: zipcore
 
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
 FMEM   := fmem.v
 IFETCH := ffetch.v
+AXIL   := faxil_master.v faxil_slave.v
+
+.PHONY: fmem ffetch
+ffetch: prefetch dblfetch pfcache axilfetch axiicache
+fmem:   memops pipemem dcache axilops
 
 .PHONY: $(PFONE)
 $(PFONE) : $(PFONE)_prf/PASS
@@ -96,7 +105,7 @@ $(AXILPF) : $(AXILPF)_prff/PASS     $(AXILPF)_cvrf/PASS
 $(AXILPF) : $(AXILPF)_prf64/PASS    $(AXILPF)_cvr64/PASS
 $(AXILPF) : $(AXILPF)_prfdbl64/PASS $(AXILPF)_cvrdbl64/PASS
 $(AXILPF) : $(AXILPF)_prff64/PASS   $(AXILPF)_cvrf64/PASS
-AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(MASTER) $(IFETCH)
+AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(AXIL) $(IFETCH)
 $(AXILPF)_prf/PASS: $(AXILPFDEPS)
 	sby -f $(AXILPF).sby prf
 $(AXILPF)_cvr/PASS: $(AXILPFDEPS)
@@ -137,6 +146,13 @@ $(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby cvr
 
+.PHONY: $(AXIICC)
+$(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_cvr/PASS
+$(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXIL) $(IFETCH)
+	sby -f $(AXIICC).sby prf
+$(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXIL) $(IFETCH)
+	sby -f $(AXIICC).sby cvr
+
 .PHONY: $(WBDLY)
 $(WBDLY): $(WBDLY)_prf/PASS
 $(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
@@ -162,7 +178,7 @@ $(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 .PHONY: $(AXILMEM)
 $(AXILMEM): $(AXILMEM)_cvr/PASS   $(AXILMEM)_prf/PASS   $(AXILMEM)_prfu/PASS
 $(AXILMEM): $(AXILMEM)_cvr64/PASS $(AXILMEM)_prf64/PASS $(AXILMEM)_prfu64/PASS
-AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(MASTER) $(FMEM)
+AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(AXIL) $(FMEM)
 $(AXILMEM)_prf/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby prf
 $(AXILMEM)_prfu/PASS: $(AXILMEMDEPS)
@@ -185,21 +201,22 @@ $(PIPE): $(PIPE)_nolcl_aligned_lock/PASS
 $(PIPE): $(PIPE)_nolcl_aligned_nolock/PASS
 $(PIPE): $(PIPE)_nolcl_noaligned_lock/PASS
 $(PIPE): $(PIPE)_nolcl_noaligned_nolock/PASS
-$(PIPE)_lcl_aligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+PIPEDEPS := $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER) $(FMEM)
+$(PIPE)_lcl_aligned_lock/PASS:       $(PIPEDEPS)
 	sby -f $(PIPE).sby lcl_aligned_lock
-$(PIPE)_lcl_aligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_lcl_aligned_nolock/PASS:     $(PIPEDEPS)
 	sby -f $(PIPE).sby lcl_aligned_nolock
-$(PIPE)_lcl_noaligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_lcl_noaligned_lock/PASS:     $(PIPEDEPS)
 	sby -f $(PIPE).sby lcl_noaligned_lock
-$(PIPE)_lcl_noaligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_lcl_noaligned_nolock/PASS:   $(PIPEDEPS)
 	sby -f $(PIPE).sby lcl_noaligned_nolock
-$(PIPE)_nolcl_aligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_nolcl_aligned_lock/PASS:     $(PIPEDEPS)
 	sby -f $(PIPE).sby nolcl_aligned_lock
-$(PIPE)_nolcl_aligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_nolcl_aligned_nolock/PASS:   $(PIPEDEPS)
 	sby -f $(PIPE).sby nolcl_aligned_nolock
-$(PIPE)_nolcl_noaligned_lock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
 	sby -f $(PIPE).sby nolcl_noaligned_lock
-$(PIPE)_nolcl_noaligned_nolock/PASS: $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER)
+$(PIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 	sby -f $(PIPE).sby nolcl_noaligned_nolock
 
 .PHONY: $(MMU)
@@ -269,7 +286,7 @@ $(ALU): $(ALU)_prf/PASS
 $(ALU)_prf/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
 	sby -f $(ALU).sby prf
 
-DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(RTL)/core/iscachable.v
+DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core/iscachable.v
 
 .PHONY: $(DCACHE)
 $(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
@@ -304,22 +321,15 @@ $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
 	sby -f $(DIV).sby prf
 
 .PHONY: $(CPU)
-$(CPU): $(CPU)_dcache/PASS $(CPU)_piped/PASS
+$(CPU): $(CPU)_piped/PASS
 $(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
-# $(CPU): $(CPU)_unpipedearly/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
-	$(RTL)/core/pipemem.v $(RTL)/core/memops.v	  \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
-	f_idecode.v abs_div.v abs_prefetch.v abs_mpy.v $(MASTER) $(SLAVE)  \
-	$(CPU).sby
-$(CPU)_dcache/PASS: $(CPUDEPS) $(RTL)/core/dcache.v $(RTL)/core/iscachable.v
-	sby -f $(CPU).sby dcache
+	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE)  \
+	$(CPU).sby $(FMEM) $(IFETCH)
 
 $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped
-
-$(CPU)_unpipedearly/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby unpipedearly
 
 $(CPU)_nopipe/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby nopipe
@@ -340,5 +350,5 @@ clean:
 	rm -rf $(DMA)_*/      $(ALU)*/        $(DIV)*/
 	rm -rf $(DCACHE)_*/
 	rm -rf $(CPU)_*/
-	rm -rf $(AXILPF)_*/   $(AXILMEM)_*/
+	rm -rf $(AXILPF)_*/   $(AXILMEM)_*/   $(AXIICC)_*/
 	rm -f *.check

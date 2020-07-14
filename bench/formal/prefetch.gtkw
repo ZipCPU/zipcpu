@@ -1,0 +1,48 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Mon Jul 13 18:59:11 2020
+[*]
+[timestart] 0
+[size] 1396 600
+[pos] -397 -1
+*-3.909014 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 150
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@28
+prefetch.i_clk
+prefetch.i_reset
+@200
+-
+@28
+prefetch.i_new_pc
+prefetch.i_clear_cache
+@22
+prefetch.i_pc[31:0]
+@28
+prefetch.i_stalled_n
+prefetch.o_valid
+prefetch.o_illegal
+@22
+prefetch.o_insn[31:0]
+prefetch.o_pc[31:0]
+@200
+-
+@28
+prefetch.o_wb_cyc
+prefetch.o_wb_stb
+prefetch.o_wb_we
+@22
+prefetch.o_wb_addr[29:0]
+prefetch.o_wb_data[31:0]
+@29
+prefetch.i_wb_stall
+@28
+prefetch.i_wb_ack
+@22
+prefetch.i_wb_data[31:0]
+@28
+prefetch.i_wb_err
+[pattern_trace] 1
+[pattern_trace] 0

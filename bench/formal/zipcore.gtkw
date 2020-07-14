@@ -1,0 +1,158 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Mon Jul 13 21:45:42 2020
+[*]
+[timestart] 0
+[size] 1221 600
+[pos] 493 -429
+*-5.814017 90 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] zipcore.
+[treeopen] zipcore.instruction_decoder.
+[sst_width] 196
+[signals_width] 222
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@800200
+-External Inputs
+@28
+[color] 2
+zipcore.i_reset
+[color] 2
+zipcore.i_clear_pf_cache
+[color] 2
+zipcore.i_clk
+[color] 2
+zipcore.i_halt
+@22
+[color] 2
+zipcore.i_dbg_data[31:0]
+[color] 2
+zipcore.i_dbg_reg[4:0]
+@28
+[color] 2
+zipcore.i_dbg_we
+@22
+[color] 2
+zipcore.ipc[31:0]
+@28
+[color] 2
+zipcore.i_interrupt
+@1000200
+-External Inputs
+@c00200
+-CE
+@28
+zipcore.dcd_ce
+zipcore.op_ce
+zipcore.master_ce
+zipcore.adf_ce_unconditional
+zipcore.alu_ce
+zipcore.div_ce
+zipcore.fpu_ce
+zipcore.mem_ce
+zipcore.o_mem_ce
+@1401200
+-CE
+@c00200
+-Valid
+@28
+zipcore.i_pf_valid
+zipcore.dcd_valid
+zipcore.w_op_valid
+zipcore.op_valid
+zipcore.op_valid_alu
+zipcore.op_valid_div
+zipcore.op_valid_fpu
+zipcore.op_valid_mem
+zipcore.div_valid
+zipcore.alu_valid
+zipcore.i_mem_valid
+zipcore.mem_pc_valid
+zipcore.alu_pc_valid
+@1401200
+-Valid
+@c00200
+-Stall
+@28
+zipcore.dcd_A_stall
+zipcore.dcd_B_stall
+zipcore.dcd_F_stall
+zipcore.dcd_stalled
+zipcore.op_stall
+zipcore.master_stall
+zipcore.alu_stall
+zipcore.mem_stalled
+zipcore.i_mem_pipe_stalled
+@1401200
+-Stall
+@800200
+-Busy
+@28
+zipcore.alu_busy
+zipcore.div_busy
+zipcore.i_mem_busy
+zipcore.i_mem_rdbusy
+@22
+zipcore.f_mem_outstanding[3:0]
+@1000200
+-Busy
+@c00200
+-f_instruction
+@1401200
+-f_instruction
+@c00200
+-f_instruction_decoded
+@1401200
+-f_instruction_decoded
+@c00200
+-f_insn_flags
+@1401200
+-f_insn_flags
+@c00200
+-Prefetch
+@22
+zipcore.pf_pc[31:0]
+@1401200
+-Prefetch
+@22
+zipcore.op_opn[3:0]
+zipcore.op_Aid[4:0]
+zipcore.op_Bid[4:0]
+@28
+zipcore.f_op_branch
+zipcore.dcd_early_branch
+zipcore.dcd_early_branch_stb
+@22
+zipcore.dcd_opn[3:0]
+@28
+zipcore.instruction_decoder.w_noop
+zipcore.instruction_decoder.w_special
+zipcore.instruction_decoder.w_cis_ljmp
+zipcore.instruction_decoder.w_div
+@22
+zipcore.instruction_decoder.w_cis_op[4:0]
+@28
+zipcore.instruction_decoder.w_cmptst
+zipcore.instruction_decoder.o_illegal
+@22
+zipcore.instruction_decoder.w_dcdA[4:0]
+@28
+zipcore.dcd_illegal
+zipcore.op_illegal
+zipcore.alu_illegal
+zipcore.pending_sreg_write
+zipcore.clear_pipeline
+zipcore.op_wR
+zipcore.set_cond
+zipcore.alu_wR
+zipcore.dcd_gie
+zipcore.gie
+zipcore.ill_err_i
+zipcore.alu_illegal
+zipcore.clear_pipeline
+zipcore.new_pc
+zipcore.wr_reg_ce
+@22
+zipcore.wr_reg_id[4:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -75,7 +75,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		// CPU interface to the memory unit
 		o_clear_dcache, o_mem_ce, o_bus_lock,
 			o_mem_op, o_mem_data, o_mem_addr, o_mem_reg,
-			i_mem_busy, i_mem_pipe_stalled,
+			i_mem_busy, i_mem_rdbusy, i_mem_pipe_stalled,
 				i_mem_valid, i_bus_err, i_mem_wreg,i_mem_result,
 		// Accounting/CPU usage interface
 		o_op_stall, o_pf_stall, o_i_count
@@ -143,6 +143,11 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
 	parameter	F_LGDEPTH=8;
 
+`ifdef	FORMAL
+	wire	[F_LGDEPTH-1:0]	f_mem_outstanding;
+	wire			f_mem_gie, f_mem_pc, f_read_cycle;
+`endif
+
 	//}}}
 	// I/O declarations
 	//{{{
@@ -173,7 +178,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	output	wire [31:0]	o_mem_data;
 	output	wire [31:0]	o_mem_addr;
 	output	wire [4:0]	o_mem_reg;
-	input	wire 		i_mem_busy, i_mem_pipe_stalled, i_mem_valid;
+	input	wire 		i_mem_busy, i_mem_rdbusy,
+				i_mem_pipe_stalled, i_mem_valid;
 	input	wire		i_bus_err;
 	input	wire [4:0]	i_mem_wreg;
 	input	wire [31:0]	i_mem_result;
@@ -350,7 +356,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 
 	wire			mem_ce, mem_stalled;
-	wire			mem_rdbusy;
 
 	wire		div_ce, div_error, div_busy, div_valid;
 	wire	[31:0]	div_result;
@@ -433,7 +438,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				(set_cond)&&(op_valid)
 					&&((op_wF)||((op_wR)&&(op_R[4:0] == { op_gie, `CPU_CC_REG })))
 				||((r_cc_invalid_for_dcd)
-					&&((alu_busy)||(mem_rdbusy)||(div_busy)||(fpu_busy)));
+					&&((alu_busy)||(i_mem_rdbusy)||(div_busy)||(fpu_busy)));
 
 		assign	cc_invalid_for_dcd = r_cc_invalid_for_dcd;
 
@@ -448,7 +453,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				&&(op_R[3:1] == 3'h7)
 				&&(op_R[4:0] != { gie, 4'hf }))
 			r_pending_sreg_write <= 1'b1;
-		else if ((!mem_rdbusy)&&(!alu_busy))
+		else if ((!i_mem_rdbusy)&&(!alu_busy))
 			r_pending_sreg_write <= 1'b0;
 
 		assign	pending_sreg_write = r_pending_sreg_write;
@@ -513,7 +518,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//	the ALU.
 	generate if (OPT_PIPELINED)
 	begin : GEN_ALU_STALL
-		assign	alu_stall = (((master_stall)||(mem_rdbusy))&&(op_valid_alu)) //Case 1&2
+		assign	alu_stall = (((master_stall)||(i_mem_rdbusy))&&(op_valid_alu)) //Case 1&2
 			||(wr_reg_ce)&&(wr_write_cc);
 		// assign // alu_ce = (master_ce)&&(op_valid_alu)&&(!alu_stall)
 		//	&&(!clear_pipeline)&&(!op_illegal)
@@ -570,7 +575,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 					&&((wr_write_pc)||(wr_write_cc)))));
 	end else begin
 
-		assign	mem_stalled = (master_stall);
+		assign	mem_stalled = master_stall || i_mem_busy;
 
 	end endgenerate
 	//}}}
@@ -590,7 +595,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if (OPT_PIPELINED)
 		adf_ce_unconditional =
-			(!master_stall)&&(!op_valid_mem)&&(!mem_rdbusy)
+			(!master_stall)&&(!op_valid_mem)&&(!i_mem_rdbusy)
 			&&((!i_mem_busy)||(!op_wR)||(op_R[4:1] != { gie, 3'h7}));
 	else
 		adf_ce_unconditional = (!master_stall)&&(op_valid)&&(!op_valid_mem);
@@ -608,17 +613,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	o_pf_request_address = ((dcd_early_branch_stb)&&(!clear_pipeline))
 				? dcd_branch_pc:pf_pc;
 	assign	pf_gie = gie;
-`ifdef	FORMAL
-	abs_prefetch	#(ADDRESS_WIDTH)
-	//{{{
-			pf(i_clk, (i_reset), pf_new_pc, o_clear_icache,
-				o_pf_ready,
-				pf_request_address,
-				i_pf_instruction, i_pf_instruction_pc,
-					i_pf_valid, i_pf_illegal);
-	//}}}
-`else
-`endif	// FORMAL
 	//}}}
 
 	//
@@ -1198,7 +1192,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	begin
 
 		assign	dcd_A_stall = (dcd_rA) // &&(dcd_valid) is checked for elsewhere
-				&&((op_valid)||(mem_rdbusy)
+				&&((op_valid)||(i_mem_rdbusy)
 					||(div_busy)||(fpu_busy))
 				&&(((op_wF)||(cc_invalid_for_dcd))&&(dcd_Acc))
 			||((dcd_rA)&&(dcd_Acc)&&(cc_invalid_for_dcd));
@@ -1228,7 +1222,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				// is running, then it must have been valid.
 				// We'll use the last values from that stage
 				// (op_wR, op_wF, op_R) in our logic below.
-				&&((op_valid)||(mem_rdbusy)
+				&&((op_valid)||(i_mem_rdbusy)
 					||(div_busy)||(fpu_busy)||(alu_busy))
 				&&(
 				// Okay, what happens if the result register
@@ -1250,7 +1244,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				//
 				((!dcd_zI)&&(
 					((op_R == dcd_B)&&(op_wR))
-					||((mem_rdbusy)&&(!dcd_pipe))
+					||((i_mem_rdbusy)&&(!dcd_pipe))
 					||(((alu_busy)||(div_busy))&&(alu_reg == dcd_B))
 					||((wr_reg_ce)&&(wr_reg_id[3:1] == 3'h7))
 					))
@@ -1597,8 +1591,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	o_mem_data = op_Bv;
 	assign	o_mem_addr = op_Av;
 	assign	o_mem_reg  = op_R;
-
-	assign	mem_rdbusy = (i_mem_busy); //&&((!OPT_PIPELINED)||(!mem_we));
 
 	//}}}
 	//}}}
@@ -2831,7 +2823,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(!alu_busy);
 		//
 		`ASSERT(!i_mem_valid);
-		`ASSERT(!i_mem_busy);
+		`ASSERT(!i_mem_rdbusy);
 		`ASSERT(!i_bus_err);
 		//
 		`ASSERT(!div_valid);
@@ -2863,8 +2855,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		if (div_valid)		`ASSERT(f_past_valid);
 		if (fpu_valid)		`ASSERT(f_past_valid);
 		if (w_op_valid)		`ASSERT(f_past_valid);
-		if (i_mem_busy)		`ASSERT(f_past_valid);
-		if (mem_rdbusy)		`ASSERT(f_past_valid);
+		// if (i_mem_busy)	`ASSERT(f_past_valid);
+		if (i_mem_rdbusy)	`ASSERT(f_past_valid);
 		if (div_busy)		`ASSERT(f_past_valid);
 		if (fpu_busy)		`ASSERT(f_past_valid);
 	end
@@ -2891,7 +2883,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	begin
 		`ASSERT(!alu_busy);
 		`ASSERT(!div_busy);
-		`ASSERT(!i_mem_busy);
+		`ASSERT(!i_mem_rdbusy);
 		`ASSERT(!fpu_busy);
 		//
 		`ASSERT(!alu_valid);
@@ -2972,6 +2964,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	////////////////////////////////////////////////
 	always @(*)
+	if (i_pf_valid)
 		`ASSERT(i_pf_instruction_pc[1:0]==2'b00);
 
 	always @(*)
@@ -2998,10 +2991,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if ((i_pf_valid)&&(!clear_pipeline))
 		`ASSERT(pf_gie == gie);
 
-	ffetch #(.ADDRESS_WIDTH(ADDRESS_WIDTH), .OPT_CONTRACT(1'b0))
+	ffetch #(.ADDRESS_WIDTH(ADDRESS_WIDTH), .OPT_CONTRACT(1'b0),
+		.OPT_ALIGNED(1'b1))
 	chkifetch(
 		.i_clk(i_clk), .i_reset(i_reset),
-		.cpu_new_pc(o_pf_new_pc), .cpu_clear_cache(o_clear_icache),
+		.cpu_new_pc(o_pf_new_pc),
+		.cpu_clear_cache(o_clear_icache),
 		.cpu_pc(o_pf_request_address), .pf_valid(i_pf_valid),
 		.cpu_ready(o_pf_ready), .pf_pc(i_pf_instruction_pc),
 		.pf_insn(i_pf_instruction), .pf_illegal(i_pf_illegal));
@@ -3087,8 +3082,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(*)
-	if ((op_valid_mem)&&(op_pipe)&&(i_mem_busy)&&(!mem_rdbusy))
-		`ASSERT(op_opn[0] == 1'b1);
+	if (op_valid_mem && op_pipe && i_mem_busy)
+		`ASSERT(f_read_cycle == !op_opn[0]);
 
 	always @(*)
 	if ((dcd_valid)&&(!dcd_M))
@@ -3315,7 +3310,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			end
 		end
 		if (!OPT_PIPELINED_BUS_ACCESS)
-			`ASSERT((!mem_rdbusy)||(i_mem_wreg != fc_op_Bid)
+			`ASSERT((!i_mem_rdbusy)||(i_mem_wreg != fc_op_Bid)
 				||(!fc_op_rB)||(fc_op_I == 0));
 	end else if ((op_valid)&&(!clear_pipeline)&&(fc_op_illegal))
 	begin
@@ -3356,24 +3351,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if (op_ce)
 		`ASSERT((dcd_valid)||(dcd_illegal)||(dcd_early_branch));
 
-
-
-
-
-
-
 	always @(*)
-	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&(wr_reg_ce))
-		`ASSERT((wr_reg_id != op_Bid)||(dbg_clear_pipe)
-			||(wr_reg_id[4:0] == { gie, `CPU_PC_REG}));
-
-	always @(*)
-	if ((f_past_valid)&&(!f_op_zI)&&(mem_rdbusy)&&(op_valid)&&(op_rB))
+	if ((f_past_valid)&&(!f_op_zI)&&(i_mem_rdbusy)&&(op_valid)&&(op_rB))
 		`ASSERT((!OPT_DCACHE)||(OPT_MEMPIPE)
 			||(i_mem_wreg != op_Bid));
 
 	always @(posedge i_clk)
-	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&((mem_rdbusy)||(i_mem_valid))
+	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&((i_mem_rdbusy)||(i_mem_valid))
 		&&(i_mem_wreg != {gie, `CPU_PC_REG}))
 	begin
 		if (!OPT_MEMPIPE)
@@ -3387,7 +3371,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			// the value it intends to write to via i_mem_wreg.
 			// At that point, we can make this assertion.  So,
 			// if the memory is busy reading a value
-			if ((!$past(mem_rdbusy))
+			if ((!$past(i_mem_rdbusy))
 				// and we didn't request the read on the last
 				// clock,
 				&&($past(mem_ce)))
@@ -3400,19 +3384,18 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				//
 				// What we really want to say, isn't valid yet
 				// `ASSERT(i_mem_wreg        != op_Bid);
-			end else if (($past(mem_rdbusy))&&(!$past(mem_ce))
+			end else if (($past(i_mem_rdbusy))&&(!$past(mem_ce))
 				&&(!$past(mem_ce,2)))
-				`ASSERT(i_mem_wreg != op_Bid);
+				assume(i_mem_wreg != op_Bid);
 		end else // if (!OPT_DCACHE)
 		begin
-			if ((i_mem_valid)
-				||($past(mem_rdbusy)))
-				`ASSERT(i_mem_wreg != op_Bid);
+			if ((i_mem_valid)||($past(i_mem_rdbusy)))
+				assume(i_mem_wreg != op_Bid);
 		end
 	end
 
 	always @(posedge i_clk)
-	if (mem_rdbusy)
+	if (i_mem_rdbusy)
 	begin
 		`ASSERT(fc_alu_M);
 		`ASSERT((!OPT_PIPELINED)||(fc_alu_wR));
@@ -3527,10 +3510,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	(* anyseq *)	reg	bus_reset;
 	wire	[AW-1:0]	f_next_mem, f_op_mem_addr;
-	assign	f_next_mem    = mem_addr + 1'b1;
+	assign	f_next_mem    = o_mem_addr + 1'b1;
 	assign	f_op_mem_addr = op_Bv[AW+1:2];
 
-	fmem #(.IMPLEMENT_LOCK(OPT_LOCK))
+	fmem #(.IMPLEMENT_LOCK(OPT_LOCK),
+		.OPT_MAXDEPTH((OPT_PIPELINED && OPT_PIPELINED_BUS_ACCESS)
+					? 14:1))
 	chkmemops(
 		.i_clk(i_clk), .i_bus_reset(bus_reset), .i_cpu_reset(i_reset),
 		//
@@ -3538,12 +3523,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		.i_pipe_stalled(i_mem_pipe_stalled),
 		.i_clear_cache(o_clear_dcache),
 		.i_lock(o_bus_lock),
-		.i_clear_cache(o_clear_dcache),
 		.i_op(o_mem_op), .i_data(o_mem_data), .i_addr(o_mem_addr),
-		.i_oreg(o_mem_reg), .i_busy(i_mem_busy),
+		.i_oreg(o_mem_reg), .i_busy(i_mem_busy),.i_rdbusy(i_mem_rdbusy),
 		.i_valid(i_mem_valid), .i_err(i_bus_err), .i_wreg(i_mem_wreg),
 		.i_result(i_mem_result),
-		.f_outstanding(f_mem_outstanding));
+		.f_outstanding(f_mem_outstanding),
+		.f_pc(f_mem_pc), .f_gie(f_mem_gie),
+		.f_read_cycle(f_read_cycle));
 	//
 
 
@@ -3556,37 +3542,26 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if ((op_valid_mem)&&(op_pipe))
 	begin
-		if (mem_rdbusy)
+		if (i_mem_rdbusy)
 			`ASSERT(op_opn[0] == 1'b0);
-		if ((i_mem_busy)&&(!mem_rdbusy))
-			`ASSERT(op_opn[0] == 1'b1);
-		if (mem_rdbusy)
+
+		// if ((i_mem_busy)&&(!i_mem_rdbusy && !i_mem_valid))
+		//	`ASSERT(!o_mem_ce || op_opn[0] == 1'b1);
+
+		if (i_mem_rdbusy)
 		begin
 			if (OPT_PIPELINED_BUS_ACCESS)
 			begin end
 			else if (OPT_LGDCACHE != 0)
-				`ASSERT(i_mem_wreg != op_Bid);
+				`ASSERT(!i_mem_valid || i_mem_wreg != op_Bid);
 		end
 	end
-
-	/*
-	always @(*)
-	if ((dcd_valid)&&(dcd_pipe))
-	begin
-		if ((op_valid_mem)&&(f_op_zI))
-			`ASSERT(dcd_I <= 4);
-		if (f_op_zI)
-			`ASSERT(dcd_I <= 4);
-		// if ((!op_valid)&&(mem_rdbusy))
-		//	`ASSERT(i_mem_wreg != dcd_B);
-	end
-	*/
 
 	always @(posedge i_clk)
 	if ((op_valid_mem)&&(op_pipe))
 	begin
 		if ((i_mem_busy)&&(OPT_LGDCACHE == 0))
-			`ASSERT((f_op_mem_addr == mem_addr)
+			`ASSERT((f_op_mem_addr == o_mem_addr)
 				||(f_op_mem_addr == f_next_mem));
 		if (i_mem_valid)
 			`ASSERT(op_Bid != i_mem_wreg);
@@ -3597,8 +3572,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		if (f_past_valid)
 		begin
 			if ((i_mem_busy)&&(OPT_LGDCACHE==0))
-			`ASSERT((op_Bv[(AW+1):2]==mem_addr[(AW-1):0])
-				||(op_Bv[(AW+1):2]==mem_addr[(AW-1):0]+1'b1));
+			`ASSERT((op_Bv[(AW+1):2]==o_mem_addr[(AW-1):0])
+				||(op_Bv[(AW+1):2]==o_mem_addr[(AW-1):0]+1'b1));
 
 			if ($past(mem_ce))
 				`ASSERT(op_Bid == $past(op_Bid));
@@ -3606,7 +3581,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			`ASSERT((op_Bid[3:1] != 3'h7));
 		end
 
-		if ((mem_rdbusy)||(i_mem_valid))
+		if ((i_mem_rdbusy)||(i_mem_valid))
 		begin
 		if (!OPT_MEMPIPE)
 		begin
@@ -3619,7 +3594,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			// the value it intends to write to via mem_wreg.
 			// At that point, we can make this assertion.  So,
 			// if the memory is busy reading a value
-			if ((!$past(mem_rdbusy))
+			if ((!$past(i_mem_rdbusy))
 				// and we didn't request the read on the last
 				// clock,
 				&&($past(mem_ce)))
@@ -3632,13 +3607,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				//
 				// What we really want to say, isn't valid yet
 				// `ASSERT(i_mem_wreg        != op_Bid);
-			end else if (($past(mem_rdbusy))&&(!$past(mem_ce))
+			end else if (($past(i_mem_rdbusy))&&(!$past(mem_ce))
 				&&(!$past(mem_ce,2)))
-				`ASSERT(i_mem_wreg != op_Bid);
+				assume(!i_mem_valid || i_mem_wreg != op_Bid);
 		end else // if (!OPT_DCACHE)
 		begin
 			if ((i_mem_valid)
-				||($past(mem_rdbusy)))
+				||($past(i_mem_rdbusy)))
 				`ASSERT(i_mem_wreg != op_Bid);
 		end
 		end
@@ -3672,14 +3647,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	always @(*)
 	if ((!clear_pipeline)&&((i_mem_valid)||(div_valid)||(div_busy)
-					||(mem_rdbusy)||(alu_valid)))
+					||(i_mem_rdbusy)||(alu_valid)))
 		`ASSERT(alu_gie == gie);
 	always @(*)
 	if ((!OPT_CIS)&&(alu_pc_valid))
 		`ASSERT(alu_pc[1:0] == 2'b0);
 	always @(*)
 	if (!OPT_LOCK)
-		`ASSERT((!bus_lock)&&(!prelock_stall));
+		`ASSERT((!o_bus_lock)&&(!prelock_stall));
 	always @(*)
 	if (!IMPLEMENT_DIVIDE)
 		`ASSERT((!dcd_DIV)&&(!op_valid_div)&&(!div_busy)&&(!div_valid)&&(!div_ce));
@@ -3700,10 +3675,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if (alu_busy)
 	begin
-		`ASSERT(!mem_rdbusy);
+		`ASSERT(!i_mem_rdbusy);
 		`ASSERT(!div_busy);
 		`ASSERT(!fpu_busy);
-	end else if (mem_rdbusy)
+	end else if (i_mem_rdbusy)
 	begin
 		`ASSERT(!div_busy);
 		`ASSERT(!fpu_busy);
@@ -3963,13 +3938,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		begin
 			`ASSERT((!div_valid)&&(!div_busy));
 			`ASSERT((!fpu_valid)&&(!fpu_busy));
-			`ASSERT(!mem_rdbusy);
+			`ASSERT(!i_mem_rdbusy);
 			`ASSERT(!alu_busy);
 		end else begin
 			if (!fc_alu_DV)
 				`ASSERT((!div_valid)&&(!div_busy)&&(!div_error));
 			if (!fc_alu_M)
-				`ASSERT(!mem_rdbusy);
+				`ASSERT(!i_mem_rdbusy);
 			if (!fc_alu_ALU)
 				`ASSERT(!alu_busy);
 			if (!fc_alu_FP)
@@ -3979,7 +3954,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 					||(fc_alu_op[3:0] == 4'hc));
 			if ((alu_busy)||(div_busy)||(fpu_busy))
 			begin
-				`ASSERT(!mem_rdbusy);
+				`ASSERT(!i_mem_rdbusy);
 				`ASSERT((clear_pipeline)
 					||(fc_alu_Rid[4:0] == alu_reg));
 				if (alu_busy)
@@ -3987,11 +3962,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				if ((fc_alu_Rid[3:1] == 3'h7)&&(alu_wR)
 					&&(fc_alu_Rid[4:0] != { gie, 4'hf }))
 					`ASSERT(pending_sreg_write);
-			end else if (mem_rdbusy)
+			end else if (i_mem_rdbusy)
 			begin
-				if ($past(mem_rdbusy))
-				`ASSERT(fc_alu_Rid[4] == i_mem_wreg[4]);
-				//
+				if ($past(i_mem_rdbusy))
+					`ASSERT(fc_alu_Rid[4] == f_mem_gie);
 			end
 
 			//if ((div_busy)||(fpu_busy))
@@ -4000,7 +3974,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			if ((alu_busy)&&(alu_wR))
 				`ASSERT(fc_alu_wR);
 
-			if (alu_busy || mem_rdbusy || div_busy)
+			if (alu_busy || i_mem_rdbusy || div_busy)
 			begin
 				if ((fc_alu_wR)&&(fc_alu_Rid[4:0] == { gie, `CPU_PC_REG}))
 					`ASSERT(!alu_phase);
@@ -4017,8 +3991,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(fc_alu_FP || (!fpu_valid)&&(!fpu_error));
 		`ASSERT((!alu_busy)&&(!div_busy)&&(!fpu_busy));
 
-		if ((!OPT_PIPELINED_BUS_ACCESS)||((!i_mem_valid)&&(!mem_rdbusy)))
-			`ASSERT(fc_alu_Rid[4:0] == wr_reg_id);
+		if ((!OPT_PIPELINED_BUS_ACCESS)||((!i_mem_valid)&&(!i_mem_rdbusy)))
+			assume(fc_alu_Rid[4:0] == wr_reg_id);
 		if ((!alu_illegal)&&(fc_alu_cond[3])&&(fc_alu_wR)&&(fc_alu_ALU))
 			`ASSERT(alu_wR);
 		if (!i_mem_valid)
@@ -4037,12 +4011,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	begin
 		if ((!OPT_DCACHE)||(!OPT_MEMPIPE))
 			`ASSERT(!fc_alu_prepipe);
-		else if ((mem_rdbusy)&&(!$past(mem_ce))&&(!$past(mem_ce,2)))
+		else if ((i_mem_rdbusy)&&(!$past(mem_ce))&&(!$past(mem_ce,2)))
 			`ASSERT(!fc_alu_prepipe);
 	end
 
 	always @(posedge i_clk)
-	if (mem_rdbusy)
+	if (i_mem_rdbusy)
 	begin
 		// In pipelined mode, this is an ongoing load operation
 		// Otherwise, mem_rdbusy == i_mem_busy and we have no idea
@@ -4053,13 +4027,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		begin
 			`ASSERT(fc_alu_wR);
 		end if (!OPT_PIPELINED_BUS_ACCESS)
-			`ASSERT(fc_alu_Rid[4:0] == i_mem_wreg);
+			assume(fc_alu_Rid[4:0] == i_mem_wreg);
 
 		if ((fc_alu_wR)&&(fc_alu_Rid[4:0] == { gie, `CPU_PC_REG}))
 			`ASSERT(!alu_phase);
 		else
 			`ASSERT(f_alu_phase == alu_phase);
-	end else if ((i_mem_busy)&&(fc_alu_M))
+	end else if ((i_mem_busy)&&(fc_alu_M)
+		&&(f_mem_outstanding > ((i_mem_valid || i_bus_err) ? 1:0))
+		&&(!i_bus_err))
 	begin
 		// Ongoing store operation
 		`ASSERT(!fc_alu_illegal);
@@ -4106,7 +4082,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(*)
-	if (mem_rdbusy || i_mem_valid)
+	if (i_mem_rdbusy || i_mem_valid)
 	begin
 		assert(wr_index == 3'h1);
 		if (i_mem_valid)
@@ -4178,12 +4154,18 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(mem_rdbusy))
-			&&(!$past(i_mem_valid)||($past(i_mem_wreg[3:1] != 3'h7))))
-		`ASSERT(i_mem_wreg[4] == alu_gie);
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_mem_rdbusy))
+			&&(!$past(i_mem_valid)
+					||($past(i_mem_wreg[3:1] != 3'h7))))
+		`ASSERT(!i_mem_valid || i_mem_wreg[4] == alu_gie);
+
 	always @(posedge i_clk)
 	if (i_mem_valid)
 		`ASSERT(i_mem_wreg[4] == alu_gie);
+
+	always @(posedge i_clk)
+	if (i_mem_rdbusy)
+		`ASSERT(alu_gie == f_mem_gie);
 
 
 
@@ -4208,7 +4190,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(!mem_ce);
 		`ASSERT(!div_ce);
 		`ASSERT(!fpu_ce);
-		`ASSERT(!mem_rdbusy);
+		`ASSERT(!i_mem_rdbusy);
 		// The following two shouldn't be true, but will be true
 		// following a bus error
 		if (!i_bus_err)
@@ -4232,11 +4214,11 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&(!i_reset)
 			&&(!$past(clear_pipeline))&&(!clear_pipeline)
-			&&(($past(div_busy))||($past(mem_rdbusy))))
+			&&(($past(div_busy))||($past(i_mem_rdbusy))))
 		`ASSERT($stable(alu_gie));
 
 	always @(posedge i_clk)
-	if (mem_rdbusy)
+	if (i_mem_rdbusy && f_mem_outstanding > 0)
 		`ASSERT(!new_pc);
 
 	always @(posedge i_clk)
@@ -4264,15 +4246,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 	if ((OPT_PIPELINED)&&(i_mem_valid)&&(i_mem_wreg[3:1] == 3'h7)
 			&&(i_mem_wreg[4:0] != { gie, `CPU_PC_REG }))
-		`ASSERT(pending_sreg_write);	// !
-	else if ((OPT_PIPELINED)&&(OPT_DCACHE)&&(mem_rdbusy)
-			&&($past(mem_rdbusy))
-			&&($past(mem_rdbusy,2)))
-		`ASSERT((i_mem_wreg[3:1] != 3'h7)
+		assume(pending_sreg_write);	// !
+	else if ((OPT_PIPELINED)&&(OPT_DCACHE)
+			&& i_mem_valid
+			&&($past(i_mem_rdbusy))
+			&&($past(i_mem_rdbusy,2)))
+		assume((i_mem_wreg[3:1] != 3'h7)
 			||(i_mem_wreg == { gie, `CPU_PC_REG})
 				||(pending_sreg_write));
-	//		&&(i_mem_wreg[4:0] != { gie, `CPU_PC_REG })&&(mem_rdbusy))
-	//	`ASSERT(pending_sreg_write);
 
 	always @(*)
 	if ((op_valid_alu)||(op_valid_div)||(op_valid_mem)||(op_valid_fpu))
@@ -4284,7 +4265,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		if (op_valid)
 		begin
 			`ASSERT(!dcd_valid);
-			`ASSERT(!i_mem_busy);
+			`ASSERT(!i_mem_busy || f_mem_outstanding == 0);
 			`ASSERT(!alu_busy);
 			`ASSERT(!div_busy);
 			`ASSERT((!wr_reg_ce)||(dbgv));
@@ -4330,11 +4311,11 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if ((gie)&&(wr_reg_ce))
 	begin
 		// Cover the switch to interrupt
-		cover((i_interrupt)&&(!alu_phase)&&(!bus_lock));
+		cover((i_interrupt)&&(!alu_phase)&&(!o_bus_lock));
 
 		// Cover a "step" instruction
 		cover(((alu_pc_valid)||(mem_pc_valid))
-				&&(step)&&(!alu_phase)&&(!bus_lock));
+				&&(step)&&(!alu_phase)&&(!o_bus_lock));
 
 		// Cover a break instruction
 		cover((master_ce)&&(break_pending)&&(!break_en));
@@ -4376,6 +4357,25 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	always @(*)
 		assume(!i_halt);
+
+//	always @(*)
+//	if (!OPT_PIPELINED || !OPT_PIPELINED_BUS_ACCESS)
+//		assume(i_mem_pipe_stalled == i_mem_busy);
+
+	always @(*)
+	if ((op_valid)&&(op_rB)&&(!f_op_zI)&&(wr_reg_ce))
+		assume((wr_reg_id != op_Bid)||(dbg_clear_pipe)
+			||(wr_reg_id[4:0] == { gie, `CPU_PC_REG}));
+
+	always @(*)
+	if (op_valid_mem && op_pipe && i_mem_rdbusy
+			&& !OPT_PIPELINED_BUS_ACCESS && OPT_LGDCACHE != 0)
+		assume(!i_mem_valid || i_mem_wreg != op_Bid);
+
+	always @(*)
+	if ((op_valid_mem)&&(op_pipe) && i_mem_valid)
+		assume(op_Bid != i_mem_wreg);
+
 
 `endif	// FORMAL
 	//}}}

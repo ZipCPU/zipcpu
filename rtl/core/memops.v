@@ -48,7 +48,7 @@
 //
 module	memops(i_clk, i_reset, i_stb, i_lock,
 		i_op, i_addr, i_data, i_oreg,
-			o_busy, o_valid, o_err, o_wreg, o_result,
+			o_busy, o_rdbusy, o_valid, o_err, o_wreg, o_result,
 		o_wb_cyc_gbl, o_wb_cyc_lcl,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
@@ -73,6 +73,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	input	wire	[4:0]	i_oreg;
 	// CPU outputs
 	output	wire		o_busy;
+	output	reg		o_rdbusy;
 	output	reg		o_valid;
 	output	reg		o_err;
 	output	reg	[4:0]	o_wreg;
@@ -95,8 +96,15 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 `endif
 
-	reg	misaligned;
 
+	reg		misaligned;
+	reg		r_wb_cyc_gbl, r_wb_cyc_lcl;
+	reg	[3:0]	r_op;
+	reg		lock_gbl, lock_lcl;
+	wire		gbl_stb, lcl_stb;
+
+	// misaligned
+	// {{{
 	generate if (OPT_ALIGNMENT_ERR)
 	begin : GENERATE_ALIGNMENT_ERR
 		always @(*)
@@ -110,14 +118,15 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	end else
 		always @(*)	misaligned = 1'b0;
 	endgenerate
+	// }}}
 
-	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
-	wire	gbl_stb, lcl_stb;
 	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff)
 				&&(!misaligned);
 	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff))
 				&&(!misaligned);
 
+	// r_wb_cyc_gbl, r_wb_cyc_lcl
+	// {{{
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
 	always @(posedge i_clk)
@@ -137,6 +146,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		r_wb_cyc_lcl <= (lcl_stb);
 		r_wb_cyc_gbl <= (gbl_stb);
 	end
+	// }}}
+
+	// o_wb_stb_gbl
+	// {{{
 	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -147,7 +160,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_stb_gbl <= 1'b1;
 	else if (o_wb_cyc_gbl)
 		o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
+	//  }}}
 
+	// o_wb_stb_lcl
+	// {{{
 	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -158,8 +174,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_stb_lcl <= 1'b1;
 	else if (o_wb_cyc_lcl)
 		o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
+	// }}}
 
-	reg	[3:0]	r_op;
+	// o_wb_we, o_wb_data, o_wb_sel
+	// {{{
 	initial	o_wb_we   = 1'b0;
 	initial	o_wb_data = 0;
 	initial	o_wb_sel  = 0;
@@ -221,7 +239,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_wb_data <= 32'h0;
 		o_wb_sel  <= 4'h0;
 	end
+	// }}}
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -229,6 +250,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	else
 		o_valid <= (((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
 				&&(i_wb_ack)&&(!o_wb_we));
+	// }}}
+
+	// o_err
+	// {{{
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -239,13 +264,28 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_err <= misaligned;
 	else
 		o_err <= 1'b0;
+	// }}}
 
 	assign	o_busy = (r_wb_cyc_gbl)||(r_wb_cyc_lcl);
+
+	// o_rdbusy
+	// {{{
+	initial	o_rdbusy = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset|| ((o_wb_cyc_gbl || o_wb_cyc_lcl)&&(i_wb_err || i_wb_ack)))
+		o_rdbusy <= 1'b0;
+	else if (i_stb && !i_op[0] && !misaligned)
+		o_rdbusy <= 1'b1;
+	else if (o_valid)
+		o_rdbusy <= 1'b0;
+	// }}}
 
 	always @(posedge i_clk)
 	if (i_stb)
 		o_wreg    <= i_oreg;
 
+	// o_result
+	// {{{
 	always @(posedge i_clk)
 	if ((OPT_ZERO_ON_IDLE)&&(!i_wb_ack))
 		o_result <= 32'h0;
@@ -269,13 +309,14 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		default: o_result <= i_wb_data;
 		endcase
 	end
+	// }}}
 
-	reg	lock_gbl, lock_lcl;
-
+	// lock_gbl and lock_lcl
+	// {{{
 	generate
 	if (IMPLEMENT_LOCK != 0)
 	begin
-
+		// {{{
 		initial	lock_gbl = 1'b0;
 		initial	lock_lcl = 1'b0;
 
@@ -305,8 +346,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
-	end else begin
-
+		// }}}
+	end else begin : NO_LOCK
+		// {{{
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 
@@ -318,8 +360,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		wire	[2:0]	lock_unused;
 		assign	lock_unused = { i_lock, lock_gbl, lock_lcl };
 		// verilator lint_on  UNUSED
-
+		// }}}
 	end endgenerate
+	// }}}
 
 `ifdef	VERILATOR
 	always @(posedge i_clk)
@@ -447,6 +490,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	//
 	reg				f_done;
 	wire	[(F_LGDEPTH-1):0]	cpu_outstanding;
+	wire				f_pc, f_rdbusy, f_gie, f_read_cycle;
+
+	assign	f_rdbusy = f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we;
 
 	initial	f_done = 1'b0;
 	always @(posedge i_clk)
@@ -466,10 +512,13 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		.i_lock(i_lock),
 		.i_op(i_op), .i_addr(i_addr), .i_data(i_data), .i_oreg(i_oreg),
 		.i_busy(o_busy),
-		.i_rdbusy(f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we),
+		.i_rdbusy(f_rdbusy),
 		.i_valid(o_valid), .i_done(f_done), .i_err(o_err),
 		.i_wreg(o_wreg), .i_result(o_result),
-		.f_outstanding(cpu_outstanding)
+		.f_outstanding(cpu_outstanding),
+		.f_pc(f_pc),
+		.f_gie(f_gie),
+		.f_read_cycle(f_read_cycle)
 	);
 
 	always @(*)
@@ -479,6 +528,24 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 	always @(*)
 		assert(cpu_outstanding <= 1);
+
+	always @(*)
+	if (f_pc)
+		assert(o_wreg[3:1] == 3'h7);
+	else if (f_rdbusy)
+		assert(o_wreg[3:1] != 3'h7);
+
+	always @(*)
+	if (o_busy)
+		assert(o_wreg[4] == f_gie);
+
+	always @(*)
+	if (!o_err)
+		assert(f_rdbusy == o_rdbusy);
+
+	always @(*)
+	if (o_busy)
+		assert(o_wb_we == !f_read_cycle);
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -506,9 +573,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		end
 	end
 
-	always @(posedge i_clk)
-	if (o_busy)
-		`ASSUME(!i_stb);
+//	always @(posedge i_clk)
+//	if (o_busy)
+//		`ASSUME(!i_stb);
 
 	always @(*)
 	if (o_err || o_valid)
@@ -625,9 +692,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		`ASSERT(o_err);
 	end
 
-	always @(posedge i_clk)
-	if ((!f_past_valid)||($past(i_reset)))
-		`ASSUME(!i_stb);
+//	always @(posedge i_clk)
+//	if ((!f_past_valid)||($past(i_reset)))
+//		`ASSUME(!i_stb);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(IMPLEMENT_LOCK)

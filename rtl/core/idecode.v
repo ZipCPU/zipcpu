@@ -828,7 +828,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSUME(i_ce == !i_stalled);
 
 	always @(posedge i_clk)
-	if ((!f_past_valid)||($past(i_reset)))
+	if (!f_past_valid || $past(i_reset))
 	begin
 		`ASSERT(!o_valid);
 		// `ASSERT(!o_illegal);
@@ -836,7 +836,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSERT(!o_ljmp);
 		`ASSERT(!o_pipe);
 
-		`ASSUME(!i_pf_valid);
+		// `ASSUME(!i_pf_valid);
 	end
 
 	always @(posedge i_clk)
@@ -871,7 +871,7 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 	begin
 		if (($past(pf_valid))&&(pf_valid))
 		begin
-			`ASSUME(i_instruction == $past(i_instruction));
+			`ASSUME(i_illegal || i_instruction == $past(i_instruction));
 			`ASSUME(i_gie == $past(i_gie));
 			`ASSUME(i_pc  == $past(i_pc));
 			`ASSUME(i_illegal == $past(i_illegal));
@@ -883,7 +883,9 @@ module	idecode(i_clk, i_reset, i_ce, i_stalled,
 		`ASSUME(!pf_valid);
 
 	always @(*)
+	if (i_pf_valid)
 		`ASSUME(i_pc[1:0] == 2'b00);
+
 	always @(*)
 	if ((o_valid)&&(!o_early_branch))
 		`ASSERT((o_illegal)||(o_pc[1] == o_phase));

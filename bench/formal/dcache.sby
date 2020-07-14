@@ -7,6 +7,7 @@ nolock_system	system  nolock  dualread
 piped		system	lock    dualread
 cover           system lock     dualread
 cover_pipe      system lock     dualread cover piped
+piped_lp	system	lock    dualread opt_lowpower
 
 [options]
 ~cover: mode prove
@@ -23,14 +24,15 @@ cover_pipe:     depth 45
 
 [engines]
 # smtbmc yices
-smtbmc --nopresat boolector
+smtbmc boolector
 # abc pdr
 # aiger suprove
 # aiger avy
 
 [script]
-read -formal -D DCACHE fwb_master.v
-read -formal -D DCACHE iscachable.v
+read -formal           fwb_master.v
+read -formal           iscachable.v
+read -formal           fmem.v
 read -formal -D DCACHE dcache.v
 --pycode-begin--
 cmd = "hierarchy -top dcache"
@@ -38,6 +40,7 @@ cmd += " -chparam OPT_PIPE           %d" % (1 if "piped"    in tags else 0)
 cmd += " -chparam OPT_DUAL_READ_PORT %d" % (1 if "dualread" in tags else 0)
 cmd += " -chparam OPT_LOCK           %d" % (1 if "lock"     in tags else 0)
 cmd += " -chparam OPT_LOCAL_BUS      %d" % (1 if "system"   in tags else 0)
+cmd += " -chparam OPT_LOWPOWER       %d" % (1 if "opt_lowpower" in tags else 0)
 output(cmd)
 --pycode-end--
 
@@ -47,4 +50,5 @@ prep -top dcache
 ../../rtl/core/dcache.v
 ../../rtl/core/iscachable.v
 ../../rtl/ex/fwb_master.v
+fmem.v
 #

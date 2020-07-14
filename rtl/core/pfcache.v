@@ -141,7 +141,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	reg	[(AW-CW-1):0]	cache_tags	[0:((1<<(LGLINES))-1)];
 	reg	[((1<<(LGLINES))-1):0]	valid_mask;
 
-	reg			r_v_from_pc, r_v_from_last, r_new_request;
+	reg			r_v_from_pc, r_v_from_last;
 	reg			rvsrc;
 	wire			w_v_from_pc, w_v_from_last;
 	reg	[(AW+1):0]	lastpc;
@@ -315,12 +315,10 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	assign	w_invalidate_result = (i_reset)||(i_clear_cache);
 
-	initial	r_new_request = 0;
 	initial	r_v_from_pc = 0;
 	initial	r_v_from_last = 0;
 	always @(posedge i_clk)
 	begin
-		r_new_request <= w_invalidate_result;
 		r_v_from_pc   <= (w_v_from_pc)&&(!w_invalidate_result)
 					&&(!o_illegal);
 		r_v_from_last <= (w_v_from_last)&&(!w_invalidate_result);
@@ -329,7 +327,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Now use rvsrc to determine which of the two valid flags we'll be
 	// using: r_v_from_pc (the i_pc address), or r_v_from_last (the lastpc
 	// address)
-	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last))&&(!r_new_request);
+	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last));
 	always @(*)
 	begin
 		if (rvsrc)
@@ -353,7 +351,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	//
 	initial	needload = 1'b0;
 	always @(posedge i_clk)
-	if ((i_clear_cache)||(o_wb_cyc))
+	if (i_clear_cache || o_wb_cyc)
 		needload <= 1'b0;
 	else if ((w_advance)&&(!o_illegal))
 		needload <= 1'b0;
@@ -394,7 +392,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
 		bus_abort <= 1'b0;
-	else if ((i_clear_cache)||(i_new_pc))
+	else if (i_clear_cache || i_new_pc)
 		bus_abort <= 1'b1;
 
 	//
@@ -405,7 +403,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	initial	o_wb_cyc  = 1'b0;
 	initial	o_wb_stb  = 1'b0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache))
+	if (i_reset || i_clear_cache)
 	begin
 		o_wb_cyc <= 1'b0;
 		o_wb_stb <= 1'b0;
@@ -419,7 +417,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 		if (((i_wb_ack)&&(last_ack))||(i_wb_err))
 			o_wb_cyc <= 1'b0;
 
-	end else if ((needload)&&(!i_new_pc))
+	end else if (needload && !i_new_pc)
 	begin
 		o_wb_cyc  <= 1'b1;
 		o_wb_stb  <= 1'b1;
@@ -428,7 +426,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// If we are reading from this cache line, then once we get the first
 	// acknowledgement, this cache line has the new tag value
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_ack))
+	if (o_wb_cyc && i_wb_ack)
 		cache_tags[o_wb_addr[(CW-1):LS]] <= o_wb_addr[(AW-1):CW];
 
 
@@ -437,7 +435,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// RAM.
 	initial	wraddr    = 0;
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_ack)&&(!last_ack))
+	if (o_wb_cyc && i_wb_ack && !last_ack)
 		wraddr <= wraddr + 1'b1;
 	else if (!o_wb_cyc)
 		wraddr <= { lastpc[(CW+1):LS+2], {(LS){1'b0}} };
@@ -583,7 +581,7 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache)||(i_new_pc))
+	if (i_reset || i_clear_cache || i_new_pc)
 		o_illegal <= 1'b0;
 	// else if ((o_illegal)||((o_valid)&&(i_stall_n)))
 	//	o_illegal <= 1'b0;
@@ -636,10 +634,12 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 
 	ffetch #(.ADDRESS_WIDTH(AW), .OPT_CONTRACT(1'b1))
 	fcpu(.i_clk(i_clk), .i_reset(i_reset),
-		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
+		.cpu_new_pc(i_new_pc),
+		.cpu_clear_cache(i_clear_cache),
 		.cpu_pc(i_pc), .cpu_ready(i_stall_n), .pf_valid(o_valid),
 		.pf_insn(o_insn), .pf_pc(o_pc), .pf_illegal(o_illegal),
-		.fc_pc(f_const_addr), .fc_illegal(f_const_illegal), .fc_insn(f_const_insn), .f_address(f_address));
+		.fc_pc(f_const_addr), .fc_illegal(f_const_illegal),
+		.fc_insn(f_const_insn), .f_address(f_address));
 
 
 	//
@@ -778,18 +778,22 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	begin
 		if (!o_illegal)
 		begin
+			assert(valid_mask[o_pc[(CW+1):LS+2]]);
 			assert(cache_tags[o_pc[(CW+1):LS+2]] == o_pc[(AW+1):CW+2]);
-			assert(valid_mask[o_pc[(CW+1):LS+2]] || (o_illegal));
 			assert(o_insn == cache[o_pc[(CW+1):2]]);
 			assert((!illegal_valid)
-				||((illegal_cache != o_pc[(AW+1):LS+2])));
+				||(illegal_cache != o_pc[(AW+1):LS+2]));
 		end
 
 		if ($rose(o_illegal))
-		assert(o_illegal == ($past(illegal_valid)
+			assert(o_illegal == ($past(illegal_valid)
 				&&($past(illegal_cache)== o_pc[(AW+1):LS+2])));
 	end else if (!i_reset && !i_new_pc && !i_clear_cache)
 		assert(o_pc == f_address);
+
+	always @(*)
+	if (!i_reset && !i_new_pc && !i_clear_cache)
+		assert(o_illegal || o_pc == f_address);
 
 	always @(*)
 	begin
@@ -798,7 +802,9 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	end
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&& !o_illegal && !i_new_pc)
+	if ((f_past_valid)&& !$past(i_reset || i_clear_cache)
+					&& !o_illegal && !i_new_pc
+			&& !i_clear_cache)
 	begin
 		if (isrc)
 			assert(lastpc == r_pc);
@@ -832,17 +838,19 @@ module	pfcache(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Once an instruction becomes valid, it should never become invalid
 	// unless there's been a request for a new instruction.
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(!i_reset && !i_clear_cache && !i_new_pc))
-		&&($past(o_valid && !i_stall_n))
-		&&(!i_new_pc))
+	if (!f_past_valid || $past(i_reset || i_clear_cache))
 	begin
-		if ((!$past(o_illegal))&&(!$past(o_wb_cyc && i_wb_err)))
+		assert(!o_valid);
+		assert(!o_illegal);
+	end else if ($past(o_valid && !i_stall_n && !i_new_pc))
+	begin
+		if (!$past(o_illegal))
 		begin
 			assert(o_valid);
-			assert($stable(o_illegal));
+			assert(!o_illegal);
 			assert($stable(o_insn));
 		end else
-			assert((o_illegal)||(!o_valid));
+			assert(o_illegal);
 	end
 
 `ifdef	PFCACHE

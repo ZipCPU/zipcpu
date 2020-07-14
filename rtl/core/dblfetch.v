@@ -221,8 +221,13 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache)||(i_new_pc))
 		cache_illegal <= 1'b0;
-	else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
-		cache_illegal <= 1'b1;
+	// Older logic ...
+	// else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
+	//	cache_illegal <= 1'b1;
+	else if ((o_valid  && (!i_stall_n || cache_valid))
+				&&(o_wb_cyc)&&(i_wb_ack || i_wb_err))
+		cache_illegal <= i_wb_err;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +398,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		assert(o_pc == f_address);
 
 	always @(posedge i_clk)
-	if (!i_reset && !i_new_pc)
+	if (!i_reset && !i_clear_cache && !i_new_pc)
 		assert(o_pc == f_address);
 
 
@@ -491,7 +496,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// cache must also match the contract as well.
 	//
 	always @(*)
-	if ((f_next_addr[AW+1:2] == f_const_addr)&&(cache_valid))
+	if ((f_next_addr[AW+1:2] == f_const_addr[AW+1:2])&&(cache_valid))
 	begin
 		if (!cache_illegal)
 			assert(cache_word == f_const_insn);

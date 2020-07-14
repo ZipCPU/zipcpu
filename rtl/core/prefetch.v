@@ -98,7 +98,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
 	always @(posedge i_clk)
-	if ((i_reset)||((o_wb_cyc)&&((i_wb_ack)||(i_wb_err))))
+	if ((i_reset || i_clear_cache)||((o_wb_cyc)&&((i_wb_ack)||(i_wb_err))))
 	begin
 		// End any bus cycle on a reset, or a return ACK
 		// or error.
@@ -373,7 +373,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		assert(o_wb_addr == $past(o_wb_addr));
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(!i_reset))&&($past(invalid)))
+	if ((f_past_valid)&&($past(!i_reset && !i_clear_cache))&&($past(invalid)))
 		assert(o_wb_cyc);
 
 	// Any time the CPU accepts an instruction, assert that on the
@@ -475,7 +475,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 
 	// This isn't good enough for induction, so we'll need to
 	// constrain this further
-	else if ((!o_valid)&&(!i_new_pc)&&(!i_reset))
+	else if ((!o_valid)&&(!i_new_pc)&&(!i_reset && !i_clear_cache))
 		assert(f_req_addr == o_wb_addr);
 
 	// In this version, invalid should only ever be high for one cycle.

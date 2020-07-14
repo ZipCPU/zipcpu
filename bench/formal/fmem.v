@@ -56,15 +56,21 @@ module	fmem #(
 		input	wire	[31:0]		i_addr,
 		input	wire	[31:0]		i_data,
 		input	wire	[4:0]		i_oreg,
-		input	reg			i_busy,
-		input	reg			i_rdbusy,
-		input	reg			i_valid,
-		input	reg			i_done,
-		input	reg			i_err,
-		input	reg	[4:0]		i_wreg,
-		input	reg	[31:0]		i_result,
+		// input	wire	[4:0]		i_areg,
+		input	wire			i_busy,
+		input	wire			i_rdbusy,
+		input	wire			i_valid,
+		input	wire			i_done,
+		input	wire			i_err,
+		input	wire	[4:0]		i_wreg,
+		input	wire	[31:0]		i_result,
 		//
-		output	reg [F_LGDEPTH-1:0]	f_outstanding
+		output	reg [F_LGDEPTH-1:0]	f_outstanding,
+		output	reg			f_pc,
+		output	reg			f_gie,
+		output	reg			f_read_cycle
+		// , output	reg			f_endpipe,
+		// output	reg	[4:0]		f_addr_reg,
 	);
 
 `ifdef	ZIPCPU
@@ -107,7 +113,11 @@ module	fmem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	always @(*)
-	if (!i_busy)
+	if (!f_past_valid || !i_busy)
+		`CPU_ASSUME(!i_rdbusy);
+
+	always @(posedge i_clk)
+	if (!f_past_valid || $past(i_bus_reset || i_cpu_reset))
 		`CPU_ASSUME(!i_rdbusy);
 
 	always @(*)
@@ -125,7 +135,24 @@ module	fmem #(
 	endcase
 
 	always @(*)
+	if (f_outstanding == 0)
+		`CPU_ASSUME(!i_done && !i_err);
+
+	always @(*)
 		assert(f_outstanding <= OPT_MAXDEPTH);
+
+	always @(*)
+	if (!i_err && f_outstanding > ((i_done || i_err) ? 1:0))
+		`CPU_ASSUME(i_busy);
+
+	// The CPU is not allowed to write to the CC register while a memory
+	// read operation is ongoing, lest any resulting bus error get returned
+	// to the wrong mode--i.e. user bus error halting the supervisor.  What
+	// this means, though, is that the CPU will *never* attempt to clear
+	// any cache while the cache is busy.
+	always @(*)
+	if (!i_cpu_reset && f_outstanding > 0 && i_rdbusy)
+		`CPU_ASSERT(!i_clear_cache);
 
 	always @(posedge i_clk)
 	if (!f_past_valid || $past(i_cpu_reset))
@@ -171,31 +198,63 @@ module	fmem #(
 	always @(*)
 	if (!i_done)
 		`CPU_ASSUME(!i_valid);
-
-//	always @(*)
-//	if (i_done)
-//		`CPU_ASSUME(!i_busy);
+	else if (i_rdbusy)
+		`CPU_ASSUME(i_valid);
 
 	always @(posedge i_clk)
 	if (f_past_valid && !$past(i_rdbusy))
 		`CPU_ASSUME(!i_valid);
-		
+	else if (f_past_valid && !i_err && $past(i_rdbusy)
+			&& (f_outstanding > (i_valid ? 1:0)))
+		`CPU_ASSUME(i_rdbusy);
+
+	reg	past_stb, past_rd, past_busy;
+
+	initial	past_stb = 1'b0;
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_stb && !i_cpu_reset && !i_err))
+		past_stb <= i_stb && !i_cpu_reset && !i_err;
+
+	initial	past_rd = 1'b0;
+	always @(posedge i_clk)
+	if (i_cpu_reset || i_err)
+		past_rd <= 1'b0;
+	else if (i_stb && !i_op[0])
+		past_rd <= 1'b1;
+	else
+		past_rd <= i_rdbusy && (f_outstanding > (i_valid ? 1:0));
+
+	// Can only become busy on a CPU reset or a bus request
+	initial	past_busy = 1'b1;
+	always @(posedge i_clk)
+	if (i_cpu_reset || i_stb)
+		past_busy <= 1'b1;
+	else if (!i_busy)
+		past_busy <= 1'b0;
+
+	always @(*)
+	if (!past_busy)
+		`CPU_ASSUME(!i_busy);
+
+	always @(*)
+		`CPU_ASSUME(!i_rdbusy || !i_err);
+
+	always @(*)
+	if (past_stb)
 	begin
 		`CPU_ASSUME(i_busy || i_valid || i_err);
 
 		if (i_busy)
-			`CPU_ASSUME(i_rdbusy == $past(!i_op[0]));
-	end
-		
+			`CPU_ASSUME(i_err || i_rdbusy == past_rd);
+	end else if (!past_rd || !i_busy)
+		`CPU_ASSUME(!i_rdbusy);
+
 	always @(posedge i_clk)
 	if (f_past_valid && !$past(i_cpu_reset))
 	begin
 		//
 		// Will never happen, 'cause i_stb can't be true when i_busy
 		//
-		if ($past(i_stb && i_busy) && i_stb)
+		if ($past(i_stb && i_pipe_stalled) && i_stb)
 		begin
 			`CPU_ASSERT($stable(i_op));
 			`CPU_ASSERT($stable(i_addr));
@@ -215,16 +274,25 @@ module	fmem #(
 	// CPU needs it in order to make certain that it doesn't accidentally
 	// issue instructions.  It's part of the CPU pipeline logic.
 	always @(*)
+	if (!i_cpu_reset && i_busy && f_outstanding > 0)
+		`CPU_ASSERT(!i_clear_cache);
+
+	always @(*)
 	if (i_pipe_stalled)
 		`CPU_ASSERT(!i_stb);
 
 	always @(*)
-	if (i_stb && i_busy)
-		`CPU_ASSERT(i_rdbusy == !i_op[0]);
+	if (!i_busy)
+		`CPU_ASSUME(!i_pipe_stalled);
 
-	always @(posedge i_clk)
-	if (f_past_valid && $past(i_busy && !i_pipe_stalled && !i_stb))
-		`CPU_ASSERT(!i_stb || i_lock);
+	// Reads must always complete before writes, and vice versa
+	always @(*)
+	if (i_stb && i_busy)
+		`CPU_ASSERT(f_read_cycle == !i_op[0]);
+
+	// always @(posedge i_clk)
+	// if (f_past_valid && $past(i_busy && !i_pipe_stalled && !i_stb))
+	//	`CPU_ASSERT(!i_stb || i_lock);
 
 	//
 	// This is also required of the CPU pipeline logic.  Following any
@@ -248,8 +316,135 @@ module	fmem #(
 
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Cover properties
+	// f_pc properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
+	//
+	initial	f_pc = 0;
+	always @(posedge i_clk)
+	if (i_cpu_reset || i_err)
+		f_pc <= 0;
+	else if (i_stb && !i_op[0] && i_oreg[3:1] == 3'h7)
+		f_pc <= 1'b1;
+	else if (i_valid && i_wreg[3:1] == 3'h7)
+		f_pc <= 1'b0;
+
+	//
+	// Once the CPU issues a request to read into one of the special
+	// registers (either CC, or PC), it will not issue another read request
+	// until this request has completed.
+	always @(*)
+	if (f_pc)
+		`CPU_ASSERT(!i_stb);
+
+	always @(*)
+	if (f_pc)
+	begin
+		`CPU_ASSUME(f_read_cycle);
+		if (f_outstanding > 1 && !i_err)
+			`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
+		else if (f_outstanding == 1 && i_valid)
+			`CPU_ASSUME(i_wreg[3:1] == 3'h7);
+		`CPU_ASSUME(f_outstanding > 0);
+	end else if (i_valid)
+		`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// f_gie properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	always @(posedge i_clk)
+	if (i_stb)
+		f_gie <= i_oreg[4];
+
+	always @(*)
+	if (i_stb && i_busy)
+		`CPU_ASSERT(f_gie == i_oreg[4]);
+
+	always @(*)
+	if (i_valid)
+		`CPU_ASSUME(f_gie == i_wreg[4]);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// f_read_cycle properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	initial	f_read_cycle = 1'b0;
+	always @(posedge i_clk)
+	if (i_cpu_reset || i_clear_cache)
+		f_read_cycle <= 1'b0;
+	else if (i_stb)
+		f_read_cycle <= !i_op[0];
+	else if (!i_busy)
+		f_read_cycle <= 1'b0;
+
+	always @(*)
+	if (!f_read_cycle)
+	begin
+		`CPU_ASSERT(!i_rdbusy);
+		`CPU_ASSERT(!i_valid);
+	end else if (i_done)
+	begin
+		`CPU_ASSUME(i_valid || i_err);
+		if (!i_err)
+		`CPU_ASSUME((f_outstanding <= (i_valid ? 1:0)) || i_rdbusy);
+	end
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Address register checking
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Here's the (to be written) rule: During a string of operations,
+	// there is one address register.
+/*
+	always @(posedge i_clk)
+	if (i_reset)
+		f_endpipe <= 1'b1;
+	else if (i_stb)
+		f_endpipe <= i_op[0] || (i_oreg == i_areg);
+
+	always @(posedge i_clk)
+	if (i_stb)
+		f_addr_reg <= i_areg;
+
+	//
+	// Mid cycle, the CPU can't add a new register to the end
+	always @(*)
+	if (f_read_cycle && (i_valid || f_outstanding > 0) && i_stb && !i_op[0])
+	begin
+		`CPU_ASSERT(!f_endpipe);
+		`CPU_ASSERT(i_oreg != f_addr_reg);
+	end
+
+
+	//
+	// Only the last item can write to the address register, and that only
+	// if f_endpipe is true.
+	always @(*)
+	if (f_read_cycle && !i_err && i_valid)
+	begin
+		// If we aren't ever writing to the address register
+		// ... or if we are, the address register must be the last
+		// register to be returned, then don't allow a write response
+		// to the address register
+		if (!f_endpipe || f_outstanding > (i_valid ? 1:0))
+			`CPU_ASSUME(!i_valid || i_wreg != f_addr_reg);
+	end
+*/
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Cover properties
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -275,4 +470,5 @@ module	fmem #(
 
 	always @(*)
 		cover(cvr_returns > 2);
+	// }}}
 endmodule

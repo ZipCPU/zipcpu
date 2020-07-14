@@ -7,7 +7,6 @@ ice40		nopipe    mpy div cis nobkram
 [options]
 mode prove
 depth 18
-dcache:   depth 10
 piped:    depth 14
 nopipe:   depth 11
 lowlogic: depth  8
@@ -32,7 +31,7 @@ read -formal -D ZIPCPU abs_mpy.v
 #
 read -formal zipcore.v
 --pycode-begin--
-cmd = "hierarchy -top zipcpu"
+cmd = "hierarchy -top zipcore"
 cmd += " -chparam IMPLEMENT_FPU 0"
 cmd += " -chparam IMPLEMENT_MPY %d"    % ( 1 if "mpy"            in tags else 0)
 cmd += " -chparam IMPLEMENT_DIVIDE %d" % ( 1 if "div"            in tags else 0)
@@ -42,14 +41,11 @@ cmd += " -chparam EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags else 0)
 output(cmd)
 --pycode-end--
 
-prep -top zipcpu
+prep -top zipcore
 
 [files]
-../../rtl/core/zipcpu.v
+../../rtl/core/zipcore.v
 ../../rtl/core/cpuops.v
-../../rtl/core/memops.v
-../../rtl/core/pipemem.v
-../../rtl/core/dcache.v
 ../../rtl/core/iscachable.v
 ../../rtl/core/idecode.v
 ../../rtl/ex/wbdblpriarb.v
@@ -60,7 +56,8 @@ prep -top zipcpu
 #
 ../../rtl/cpudefs.v
 f_idecode.v
-abs_prefetch.v
+ffetch.v
+fmem.v
 abs_div.v
 abs_mpy.v
 #

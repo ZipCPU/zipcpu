@@ -77,6 +77,9 @@ module	axiicache #(
 		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 32,
 		//
+		// SWAP_ENDIANNESS
+		parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
+		//
 		parameter	INSN_WIDTH = 32,
 		parameter [C_AXI_ID_WIDTH-1:0]	AXI_ID = 0,
 		localparam	ADDRLSB = $clog2(C_AXI_DATA_WIDTH/8),
@@ -126,7 +129,7 @@ module	axiicache #(
 		output	reg		o_valid,
 		output	reg		o_illegal,
 		// }}}
-		output	wire [AW-1:0]	illegal_addr,
+		output	wire [AW-1:0]		illegal_addr,
 		output	wire [AW-LSB-1:0]	bus_tag,
 		output	wire [AW-LSB-1:0]	o_tag,
 		output	wire [AW-LSB-1:0]	i_tag,
@@ -279,9 +282,36 @@ module	axiicache #(
 	else if (M_AXI_RVALID && M_AXI_RREADY)
 		write_posn <= write_posn + 1;
 
-	always @(posedge S_AXI_ACLK)
-	if (M_AXI_RVALID && M_AXI_RREADY)
-		cache[{ axi_araddr[CWB-1:LSB], write_posn }] <= M_AXI_RDATA;
+	generate if (SWAP_ENDIANNESS)
+	begin : BIG_TO_LITTLE_ENDIAN
+		// 
+		// The ZipCPU is originally a big endian machine.  Bytes on the
+		// AXI bus are by nature little endian.  The following little
+		// snippet rearranges bytes so that they have the proper bus
+		// order.  Whether or not this is required, however, is ...
+		// another issue entirely.
+		reg	[C_AXI_DATA_WIDTH-1:0]	swapped_data;
+		genvar	gw, gb;	// Word count, byte count
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
+		for(gb=0; gb<4; gb=gb+1)
+		always @(*)
+			swapped_data[gw*32+(3-gb)*8 +: 8]
+					= M_AXI_RDATA[gw*32+gb*8 +: 8];
+
+		always @(posedge S_AXI_ACLK)
+		if (M_AXI_RVALID && M_AXI_RREADY)
+			cache[{ axi_araddr[CWB-1:LSB], write_posn }]
+							<= swapped_data;
+
+	end else begin : KEEP_ENDIANNESS
+
+		always @(posedge S_AXI_ACLK)
+		if (M_AXI_RVALID && M_AXI_RREADY)
+			cache[{ axi_araddr[CWB-1:LSB], write_posn }]
+							<= M_AXI_RDATA;
+
+	end endgenerate
 
 	always @(posedge S_AXI_ACLK)
 	if (request_pending)
@@ -744,12 +774,27 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 	if (M_AXI_RVALID && axi_araddr[AW-1:LSB] == f_const_addr[AW-1:LSB])
 		assume(f_const_illegal == M_AXI_RRESP[1]);
 
-	always @(*)
-	if (M_AXI_RVALID && {axi_araddr[AW-1:LSB], write_posn} == f_const_addr[AW-1:ADDRLSB])
-	begin
-		if (!M_AXI_RRESP[1])
-			assume(M_AXI_RDATA == fc_line);
-	end
+	generate if (SWAP_ENDIANNESS)
+	begin : ASSUME_BIG_TO_LITTLE_ENDIAN
+
+		always @(*)
+		if (M_AXI_RVALID && {axi_araddr[AW-1:LSB], write_posn} == f_const_addr[AW-1:ADDRLSB])
+		begin
+			if (!M_AXI_RRESP[1])
+				assume(BIG_TO_LITTLE_ENDIAN.swapped_data
+								== fc_line);
+		end
+
+	end else begin : ASSUME_BUS_ENDIAN
+
+		always @(*)
+		if (M_AXI_RVALID && {axi_araddr[AW-1:LSB], write_posn} == f_const_addr[AW-1:ADDRLSB])
+		begin
+			if (!M_AXI_RRESP[1])
+				assume(M_AXI_RDATA == fc_line);
+		end
+
+	end endgenerate
 
 	//
 	// 2. Assert that if the known address is in the cache, the data must be

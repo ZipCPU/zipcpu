@@ -138,22 +138,83 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset or clear cache request
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset || cpu_clear_cache)))
+	if (!f_past_valid || $past(i_reset))
 	begin
-		`CPU_ASSERT(cpu_new_pc);
-		`CPU_ASSERT(!pf_valid);
-		`CPU_ASSERT(!pf_illegal);
-	end else if (f_past_valid && !$past(cpu_new_pc)
-		&& $past(pf_valid && !cpu_ready))
+		`CPU_ASSUME(!pf_valid);
+		`CPU_ASSUME(!pf_illegal);
+	end
+
+	reg		need_new_pc, past_stalled, past_illegal, past_new_pc,
+			past_valid;
+	reg	[31:0]	past_insn;
+	reg [AW+1:0]	last_pc, next_pc, prior_pc;
+
+	always @(posedge i_clk)
+		past_new_pc <= cpu_new_pc;
+
+	always @(posedge i_clk)
+		last_pc <= cpu_pc;
+
+	always @(*)
+	begin
+		next_pc  <= last_pc + 4;
+		next_pc[1:0] <= 2'b00;
+		prior_pc <= last_pc - 4;
+	end
+
+	initial	need_new_pc = 1'b1;
+	always @(posedge i_clk)
+		need_new_pc <= (i_reset || cpu_clear_cache);
+
+	initial	past_stalled = 1'b1;
+	always @(posedge i_clk)
+		past_stalled <= pf_valid && !cpu_ready && !cpu_new_pc;
+
+	initial	past_illegal = 1'b0;
+	always @(posedge i_clk)
+		past_illegal <= pf_illegal;
+
+	always @(posedge i_clk)
+		past_insn <= pf_insn;
+
+	always @(posedge i_clk)
+		past_valid <= pf_valid;
+
+	always @(*)
+	if (need_new_pc)
+	begin
+		`CPU_ASSERT(i_reset || cpu_clear_cache || cpu_new_pc);
+		`CPU_ASSUME(!pf_valid);
+		`CPU_ASSUME(!pf_illegal);
+	end else if (past_stalled)
+	begin
+		`CPU_ASSUME(past_illegal == pf_illegal);
+		`CPU_ASSUME(pf_illegal || (past_insn    == pf_insn));
+		if (!cpu_new_pc)
+			`CPU_ASSERT(cpu_pc[AW+1:2]== f_next_address[AW+1:2]);
+	end else if (!cpu_new_pc && !i_reset && !cpu_clear_cache)
+	begin
+		`CPU_ASSERT(cpu_pc[AW+1:2]== f_next_address[AW+1:2]);
+	end
+
+	always @(posedge i_clk)
+	if (!f_past_valid || $past(i_reset || cpu_clear_cache))
+	begin
+		assert(need_new_pc);
+		`CPU_ASSERT(cpu_new_pc || i_reset || cpu_clear_cache);
+		`CPU_ASSUME(!pf_valid);
+		`CPU_ASSUME(!pf_illegal);
+	end else if (!$past(cpu_new_pc) && $past(pf_valid && !cpu_ready))
 	begin
 		//
 		// Once an instruction has been presented, it must hold valid
 		// until accepted
+		assert(!need_new_pc);
 		`CPU_ASSUME(pf_valid);
 		`CPU_ASSUME($stable(pf_pc));
-		`CPU_ASSUME($stable(pf_insn));
+		`CPU_ASSUME(pf_illegal || $stable(pf_insn));
 		`CPU_ASSUME($stable(pf_illegal));
-	end else if (f_past_valid && $past(pf_illegal && !cpu_new_pc))
+	end else if ($past(pf_illegal && !cpu_new_pc))
 		// Once illegal is raised, it stays raised until a new PC,
 		// reset, or cache clear
 		`CPU_ASSUME(pf_illegal);
@@ -181,15 +242,15 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 
 	// The CPU is always ready following either a reset or a clear cache
 	// signal
-	always @(posedge i_clk)
-	if (f_past_valid && $past(i_reset || cpu_clear_cache || cpu_new_pc))
-		`CPU_ASSERT(cpu_ready);
+	// always @(posedge i_clk)
+	// if (f_past_valid && !$past(i_reset) && $past(cpu_clear_cache || cpu_new_pc))
+	//	`CPU_ASSERT(cpu_ready);
 
 	// If the CPU was ready in the past and hasn't accepted a new
 	// instruction, then it must still be ready
-	always @(posedge i_clk)
-	if (f_past_valid && $past(cpu_ready || !pf_valid))
-		`CPU_ASSERT(cpu_ready);
+	// always @(posedge i_clk)
+	// if (f_past_valid && !$past(i_reset) && $past(cpu_ready || !pf_valid))
+		// `CPU_ASSERT(cpu_ready);
 
 	////////////////////////////////////////////////////////////////////////
 	//

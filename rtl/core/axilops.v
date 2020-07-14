@@ -42,6 +42,8 @@ module	axilops #(
 		parameter	ADDRESS_WIDTH=30,
 		parameter	C_AXI_ADDR_WIDTH = ADDRESS_WIDTH,
 		parameter	C_AXI_DATA_WIDTH = 32,
+		parameter [0:0]	SWAP_ENDIANNESS = 1'b0,
+		parameter [0:0]	SWAP_WSTRB = 1'b1,
 		localparam	AW = C_AXI_ADDR_WIDTH,
 		localparam	DW = C_AXI_DATA_WIDTH,
 		//
@@ -111,6 +113,18 @@ module	axilops #(
 	reg	[3:0]			r_op;
 	reg	[C_AXI_DATA_WIDTH-1:0]	next_wdata;
 	reg [C_AXI_DATA_WIDTH/8-1:0]	next_wstrb;
+	reg	[31:0]			last_result;
+	reg	[31:0]			endian_swapped_wdata;
+	// reg	[31:0]			endian_swapped_result;
+	reg [2*C_AXI_DATA_WIDTH/8-1:0]	shifted_wstrb_word,
+					shifted_wstrb_halfword,
+					shifted_wstrb_byte;
+	reg [2*C_AXI_DATA_WIDTH/8-1:0]	swapped_wstrb_word,
+					swapped_wstrb_halfword,
+					swapped_wstrb_byte;
+	reg	[C_AXI_DATA_WIDTH-1:0]	axi_wdata;
+	reg [C_AXI_DATA_WIDTH/8-1:0]	axi_wstrb;
+
 
 
 	initial	M_AXI_AWVALID = 1'b0;
@@ -187,6 +201,10 @@ module	axilops #(
 
 		if (OPT_ZERO_ON_IDLE && !i_stb)
 			M_AXI_AWADDR <= 0;
+
+		if (SWAP_WSTRB)
+			M_AXI_AWADDR[1:0] <= 2'b00;
+
 	end else if ((M_AXI_AWVALID && M_AXI_AWREADY)
 			||(M_AXI_ARVALID && M_AXI_ARREADY))
 	begin
@@ -208,15 +226,59 @@ module	axilops #(
 		M_AXI_ARPROT = 3'b000;
 	end
 
-	initial	M_AXI_WDATA = 0;
-	initial	M_AXI_WSTRB = 0;
+	always @(*)
+		shifted_wstrb_word = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+						4'b1111} << i_addr[AXILLSB-1:0];
+
+	always @(*)
+		shifted_wstrb_halfword = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+						4'b0011} << i_addr[AXILLSB-1:0];
+
+	always @(*)
+		shifted_wstrb_byte = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+						4'b0001} << i_addr[AXILLSB-1:0];
+
+
+	generate if (SWAP_WSTRB)
+	begin : SWAPPING_WSTRB
+		genvar	gw, gb;
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
+		for(gb=0; gb<32/8; gb=gb+1)
+		always @(*)
+		begin
+			swapped_wstrb_word[gw*4+gb]
+					= shifted_wstrb_word[gw*4+(3-gb)];
+			swapped_wstrb_halfword[gw*4+gb]
+					= shifted_wstrb_halfword[gw*4+(3-gb)];
+			swapped_wstrb_byte[gw*4+gb]
+					= shifted_wstrb_byte[gw*4+(3-gb)];
+		end
+
+	end else begin : KEEP_WSTRB
+
+		always @(*)
+			swapped_wstrb_word = shifted_wstrb_word;
+
+		always @(*)
+			swapped_wstrb_halfword = shifted_wstrb_halfword;
+
+		always @(*)
+			swapped_wstrb_byte = shifted_wstrb_byte;
+
+	end endgenerate
+
+
+
+	initial	axi_wdata = 0;
+	initial	axi_wstrb = 0;
 	initial	next_wdata  = 0;
 	initial	next_wstrb  = 0;
 	always @(posedge i_clk)
 	if (OPT_ZERO_ON_IDLE && !S_AXI_ARESETN)
 	begin
-		M_AXI_WDATA <= 0;
-		M_AXI_WSTRB <= 0;
+		axi_wdata <= 0;
+		axi_wstrb <= 0;
 
 		next_wdata  <= 0;
 		next_wstrb  <= 0;
@@ -224,17 +286,32 @@ module	axilops #(
 		r_op <= 0;
 	end else if (i_stb)
 	begin
-		if (OPT_ZERO_ON_IDLE)
+		if (OPT_ZERO_ON_IDLE && SWAP_WSTRB)
 		begin
 
 			casez(i_op[2:1])
-			2'b10: { next_wdata, M_AXI_WDATA }
+			2'b10: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
+				    i_data[15:0] } << (8*(3-i_addr[AXILLSB-1:0]));
+			2'b11: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
+				    i_data[7:0] } << (8*(3-i_addr[AXILLSB-1:0]));
+			default: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
+				    i_data } << (8*(3-i_addr[AXILLSB-1:0]));
+			endcase
+
+		end else if (OPT_ZERO_ON_IDLE && !SWAP_WSTRB)
+		begin
+
+			casez(i_op[2:1])
+			2'b10: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
 				    i_data[15:0] } << (8*i_addr[AXILLSB-1:0]);
-			2'b11: { next_wdata, M_AXI_WDATA }
+			2'b11: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
 				    i_data[7:0] } << (8*i_addr[AXILLSB-1:0]);
-			default: { next_wdata, M_AXI_WDATA }
+			default: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
 				    i_data } << (8*i_addr[AXILLSB-1:0]);
 			endcase
@@ -242,53 +319,71 @@ module	axilops #(
 		end else begin
 
 			casez(i_op[2:1])
-			2'b10: { next_wdata, M_AXI_WDATA }
+			2'b10: { next_wdata, axi_wdata }
 				<= { (2*C_AXI_DATA_WIDTH/16){ i_data[15:0] } };
-			2'b11: { next_wdata, M_AXI_WDATA }
+			2'b11: { next_wdata, axi_wdata }
 				<= { (2*C_AXI_DATA_WIDTH/8){  i_data[7:0] } };
-			default: { next_wdata, M_AXI_WDATA }
+			default: { next_wdata, axi_wdata }
 				<= { (2*C_AXI_DATA_WIDTH/32){ i_data } };
 			endcase
 		end
 
 		casez(i_op[2:1])
-		2'b0?: { next_wstrb, M_AXI_WSTRB }
-			<= { {(C_AXI_DATA_WIDTH/4-4){1'b0}}, 4'b1111} << i_addr[AXILLSB-1:0];
-		2'b10: { next_wstrb, M_AXI_WSTRB }
-			<= { {(C_AXI_DATA_WIDTH/4-4){1'b0}}, 4'b0011} << i_addr[AXILLSB-1:0];
-		2'b11: { next_wstrb, M_AXI_WSTRB }
-			<= { {(C_AXI_DATA_WIDTH/4-4){1'b0}}, 4'b0001} << i_addr[AXILLSB-1:0];
+		2'b0?: { next_wstrb, axi_wstrb } <= swapped_wstrb_word;
+		2'b10: { next_wstrb, axi_wstrb } <= swapped_wstrb_halfword;
+		2'b11: { next_wstrb, axi_wstrb } <= swapped_wstrb_byte;
 		endcase
+
 		r_op <= { i_op[2:1] , i_addr[AXILLSB-1:0] };
 
 		// On a read set everything to zero but only if OPT_ZERO_ON_IDLE
 		// is set
 		if (OPT_ZERO_ON_IDLE && !i_op[0])
-			{ next_wstrb, next_wdata, M_AXI_WSTRB, M_AXI_WDATA } <= 0;
+			{ next_wstrb, next_wdata, axi_wstrb, axi_wdata } <= 0;
 
 		if (OPT_ALIGNMENT_ERR)
 			{ next_wstrb, next_wdata } <= 0;
 		if (OPT_ZERO_ON_IDLE)
 		begin
 			if (OPT_ALIGNMENT_ERR && w_misaligned)
-				{ M_AXI_WDATA, M_AXI_WSTRB } <= 0;
+				{ axi_wdata, axi_wstrb } <= 0;
 			if (o_err || i_cpu_reset)
 				{ next_wdata, next_wstrb,
-				M_AXI_WDATA, M_AXI_WSTRB } <= 0;
+				axi_wdata, axi_wstrb } <= 0;
 		end
 
 	end else if ((M_AXI_WVALID && M_AXI_WREADY)
 			|| (M_AXI_ARVALID && M_AXI_ARREADY))
 	begin
-		M_AXI_WDATA <= OPT_ALIGNMENT_ERR ? 0 : next_wdata;
-		M_AXI_WSTRB <= OPT_ALIGNMENT_ERR ? 0 : next_wstrb;
+		axi_wdata <= OPT_ALIGNMENT_ERR ? 0 : next_wdata;
+		axi_wstrb <= OPT_ALIGNMENT_ERR ? 0 : next_wstrb;
 		if (OPT_ZERO_ON_IDLE)
 			{ next_wdata, next_wstrb } <= 0;
 	end else if ((OPT_ZERO_ON_IDLE)&&(M_AXI_WREADY))
 	begin
-		M_AXI_WDATA <= 0;
-		M_AXI_WSTRB <= 0;
+		axi_wdata <= 0;
+		axi_wstrb <= 0;
 	end
+
+	generate if (SWAP_ENDIANNESS)
+	begin : SWAP_WRITE_DATA_STRB
+
+		genvar	gw, gb;
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
+		for(gb=0; gb<32/8; gb=gb+1)
+		always @(*)
+		begin
+			M_AXI_WDATA[32*gw + 8*gb +: 8] = axi_wdata[32*gw+8*(3-gb) +: 8];
+			M_AXI_WSTRB[4*gw + gb] = axi_wstrb[4*gw+(3-gb)];
+		end
+
+	end else begin : KEEP_WRITE_DATA_STRB
+
+		always @(*)
+			{ M_AXI_WSTRB, M_AXI_WDATA } = { axi_wstrb, axi_wdata };
+
+	end endgenerate
 
 	always @(*)
 	casez(i_op[2:1])
@@ -393,8 +488,6 @@ module	axilops #(
 	if (i_stb)
 		o_wreg    <= i_oreg;
 
-	reg	[31:0]	last_result;
-
 	always @(posedge i_clk)
 	if ((OPT_ZERO_ON_IDLE)&&(!M_AXI_RREADY || !S_AXI_ARESETN))
 		{ last_result, o_result } <= 0;
@@ -441,6 +534,7 @@ module	axilops #(
 
 	wire	[F_LGDEPTH-1:0]	faxil_rd_outstanding, faxil_wr_outstanding,
 				faxil_awr_outstanding;
+	wire			f_pc, f_gie, f_read_cycle;
 
 	reg	f_past_valid;
 	initial	f_past_valid = 0;
@@ -718,7 +812,10 @@ module	axilops #(
 		.i_data(i_data), .i_oreg(i_oreg), .i_busy(o_busy),
 		.i_rdbusy(o_rdbusy), .i_valid(o_valid), .i_done(f_done),
 		.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
-		.f_outstanding(cpu_outstanding));
+		.f_outstanding(cpu_outstanding),
+		.f_pc(f_pc),
+		.f_gie(f_gie),
+		.f_read_cycle(f_read_cycle));
 
 	always @(*)
 	if (r_flushing)
@@ -727,6 +824,22 @@ module	axilops #(
 		`ASSERT(cpu_outstanding == (o_busy ? 1:0)
 			+ ((f_done || o_err) ? 1 : 0));
 	end
+
+	always @(*)
+	if (f_pc)
+		assert(o_wreg[3:1] == 3'h7);
+	else if (o_rdbusy)
+		assert(o_wreg[3:1] != 3'h7);
+
+	always @(*)
+	if (o_busy)
+		assert(o_wreg[4] == f_gie);
+
+	always @(*)
+	if (M_AXI_RREADY)
+		assert(f_read_cycle || r_flushing);
+	else if (M_AXI_BREADY)
+		assert(!f_read_cycle);
 
 	// ????   Not written yet
 	//

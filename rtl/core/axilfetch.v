@@ -44,6 +44,7 @@ module	axilfetch #(
 	parameter	C_AXI_DATA_WIDTH = 64,
 	parameter	DATA_WIDTH=32,
 	parameter	FETCH_LIMIT=16,
+	parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
 	localparam	AW=C_AXI_ADDR_WIDTH,
 	localparam	DW=DATA_WIDTH,
 	localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8),
@@ -94,6 +95,8 @@ module	axilfetch #(
 	reg	[W-1:0]			fill;
 	reg [FILLBITS:0]	out_fill;
 	reg	[C_AXI_DATA_WIDTH-1:0]	out_data;
+	reg	[C_AXI_DATA_WIDTH-1:0]	endian_swapped_rdata;
+
 
 	assign	fifo_reset = i_cpu_reset || i_clear_cache || i_new_pc;
 	assign	fifo_wr = M_AXI_RVALID && !flushing;
@@ -254,6 +257,23 @@ module	axilfetch #(
 
 	end endgenerate
 
+	generate if (SWAP_ENDIANNESS)
+	begin : SWAPPED_ENDIANNESS
+		genvar	gw, gb;	// Word count, byte count
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1) // For each bus word
+		for(gb=0; gb<4; gb=gb+1) // For each bus byte
+		always @(*)
+			endian_swapped_rdata[gw*32+(3-gb)*8 +: 8]
+				= M_AXI_RDATA[gw*32+gb*8 +: 8];
+
+	end else begin : NO_ENDIAN_SWAP
+
+		always @(*)
+			endian_swapped_rdata = M_AXI_RDATA;
+
+	end endgenerate
+
 	generate if (FETCH_LIMIT <= 1)
 	begin : NOCACHE
 		// No cache
@@ -261,7 +281,7 @@ module	axilfetch #(
 		// assign	fifo_rd    = fifo_wr;
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
 		assign	fifo_empty = !fifo_wr; //(out_fill <= (i_aready ? 1:0));
-		assign	fifo_data  = { M_AXI_RRESP[1], M_AXI_RDATA };
+		assign	fifo_data  = { M_AXI_RRESP[1], endian_swapped_rdata };
 
 		assign	ign_fifo_fill = 1'b0;
 		assign	ign_fifo_full = 1'b0;
@@ -279,7 +299,7 @@ module	axilfetch #(
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
 		assign	fifo_empty =(!M_AXI_RVALID && !cache_valid) || flushing;
 		assign	fifo_data = cache_valid ? cache_data
-					: ({ M_AXI_RRESP[1], M_AXI_RDATA });
+					: ({ M_AXI_RRESP[1], endian_swapped_rdata });
 
 
 		assign	ign_fifo_fill = cache_valid ? 1 : 0;
@@ -296,7 +316,7 @@ module	axilfetch #(
 
 		always @(posedge S_AXI_ACLK)
 		if (M_AXI_RVALID)
-			cache_data <= { M_AXI_RRESP[1], M_AXI_RDATA };
+			cache_data <= { M_AXI_RRESP[1], endian_swapped_rdata };
 
 	end else begin : FIFO_FETCH
 		// FIFO cache
@@ -306,7 +326,7 @@ module	axilfetch #(
 		sfifo #(.BW(1+C_AXI_DATA_WIDTH), .LGFLEN(LGFIFO))
 		fcache(.i_clk(S_AXI_ACLK), .i_reset(fifo_reset),
 			.i_wr(fifo_wr),
-			.i_data({M_AXI_RRESP[1], M_AXI_RDATA }),
+			.i_data({M_AXI_RRESP[1], endian_swapped_rdata }),
 			.o_full(ign_fifo_full), .o_fill(ign_fifo_fill),
 			.i_rd(fifo_rd),.o_data(fifo_data),.o_empty(fifo_empty));
 
@@ -474,8 +494,9 @@ module	axilfetch #(
 
 	always @(*)
 		assert(flushcount <= outstanding + (flush_request ? 1:0));
-	always @(*)
-	if (flush_request)
+
+	always @(posedge S_AXI_ACLK)
+	if (flush_request && !i_clear_cache && !i_cpu_reset)
 		assert(pending_new_pc || i_new_pc);
 
 	always @(*)
@@ -640,6 +661,27 @@ module	axilfetch #(
 	//
 	// Assertions about our return responses
 	//
+	// While the below assertions (currently) appear to just copy the logic
+	// above, they still have a purpose--they'll help us guarantee that the
+	// logic above will never change without also requiring a change here.
+	//
+	generate if (SWAP_ENDIANNESS)
+	begin : CHECK_SWAPPED_ENDIANNESS
+		genvar	gw, gb;	// Word count, byte count
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1) // For each bus word
+		for(gb=0; gb<4; gb=gb+1) // For each bus byte
+		always @(*)
+			assert(endian_swapped_rdata[gw*32+(3-gb)*8 +: 8]
+				== M_AXI_RDATA[gw*32+gb*8 +: 8]);
+
+	end else begin : CHECK_NO_ENDIAN_SWAP
+
+		always @(*)
+			assert(endian_swapped_rdata == M_AXI_RDATA);
+
+	end endgenerate
+
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -674,7 +716,7 @@ module	axilfetch #(
 	begin
 		assert(f_out_addr[AW-1:AXILLSB] == o_pc[AW-1:AXILLSB]);
 		assert(f_subout_addr[AW-1:2] == o_pc[AW-1:2]);
-	end else if (!i_cpu_reset && !pending_new_pc && !i_new_pc && !o_illegal)
+	end else if (!i_cpu_reset && !i_clear_cache && !pending_new_pc && !i_new_pc && !o_illegal)
 	begin
 		assert(f_out_addr[AW-1:AXILLSB] == o_pc[AW-1:AXILLSB]);
 		// assert(f_subout_addr[AW-1:2] == o_pc[AW-1:2]);
@@ -696,7 +738,7 @@ module	axilfetch #(
 	generate if (DATA_WIDTH == C_AXI_DATA_WIDTH)
 	begin : F_BUSWORD
 
-		assign	f_bus_word = M_AXI_RDATA;
+		assign	f_bus_word = endian_swapped_rdata;
 
 	end else begin : BUSWORD_SHIFT
 
@@ -705,7 +747,7 @@ module	axilfetch #(
 		always @(*)
 			shift = fc_pc[AXILLSB-1:2];
 
-		assign	f_bus_word = M_AXI_RDATA >> (shift * DATA_WIDTH);
+		assign	f_bus_word = endian_swapped_rdata >> (shift * DATA_WIDTH);
 
 	end endgenerate
 
@@ -905,7 +947,7 @@ module	axilfetch #(
 		assert(!o_illegal);
 
 	always @(*)
-	if (flush_request && !i_new_pc)
+	if (flush_request && !i_cpu_reset && !i_new_pc && !i_clear_cache)
 	begin
 		assert(f_out_addr[C_AXI_ADDR_WIDTH-1:AXILLSB] == pending_pc[C_AXI_ADDR_WIDTH-1:AXILLSB]);
 		assert(o_pc == pending_pc);
