@@ -5,6 +5,7 @@
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	An I-Cache, for when the CPU has an AXI interface.
+//
 // Goal:	To return each instruction within a single clock tick.  Jumps
 //		should only stall if they switch cache lines.
 //
@@ -89,9 +90,7 @@ module	axiicache #(
 		localparam	DW=C_AXI_DATA_WIDTH
 		// }}}
 	) (
-		// Bus interface
 		// {{{
-
 		input	wire	S_AXI_ACLK,
 		input	wire	S_AXI_ARESETN,
 		//
@@ -134,7 +133,11 @@ module	axiicache #(
 		output	wire [AW-LSB-1:0]	o_tag,
 		output	wire [AW-LSB-1:0]	i_tag,
 		output	wire [AW-LSB-1:0]	lastpc_tag
+		// }}}
 	);
+
+	// Register/local parameter declarations
+	// {{{
 	localparam CACHELEN=(1<<LGCACHESZ), //Byte Size of our cache memory
 			CACHELENW = CACHELEN/(C_AXI_DATA_WIDTH/8); // Word sz
 	localparam	CWB=LGCACHESZ, // Short hand for LGCACHESZ
@@ -156,7 +159,18 @@ module	axiicache #(
 	reg	[LS-1:0]	write_posn;
 	reg			axi_arvalid;
 	reg	[AW-1:0]	axi_araddr, last_pc;
-
+	reg			start_read;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Check whether or not the instruction requested from the CPU is
+	// in the cache or not
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	// void_access
+	// {{{
 	initial	void_access = 1;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset || i_clear_cache)
@@ -167,37 +181,66 @@ module	axiicache #(
 		void_access <= 1;
 	else
 		void_access <= 0;
+	// }}}
 
+	// from_pc
+	// {{{
+	// Whether our next address comes from the just-give program counter
+	// from the CPU, or from our own internal measure.  Why?  Because the
+	// CPU will move on to the next address on the next cycle, regardless
+	// of whether or not we meet this one, therefore we need to latch it
+	// for later.
 	initial	from_pc = 1;
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc || i_clear_cache || (o_valid && i_ready))
 		from_pc <= 1;
 	else
 		from_pc <= 0;
+	// }}}
 
 	//
 	// From the PC
-	//
+	// pc_valid
+	// {{{
+	// True if the cache is valid at the address in the program counter
 	always @(posedge S_AXI_ACLK)
 		pc_valid <= cache_valid[i_pc[CWB-1:LSB]];
+	// }}}
 
+	// pc_tag
+	// {{{
+	// Evaluates to the cache tag, at the program counter address for the
+	// incoming/requested program counter
 	always @(posedge S_AXI_ACLK)
 		pc_tag <= { cache_tags[i_pc[CWB-1:LSB]], i_pc[CWB-1:LSB] };
+	// }}}
 
 	//
 	// Repeat for the last program counter--since the current counter
-	// will be given only once
+	// will be given only once.  The last_* values will be used any time
+	// we have to stall a request before it can be served
 	//
+	// last_pc
+	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc || (o_valid && i_ready && !o_illegal))
 		last_pc <= i_pc;
+	// }}}
 
+	// last_valid
+	// {{{
 	always @(posedge S_AXI_ACLK)
 		last_valid <= cache_valid[last_pc[CWB-1:LSB]];
+	// }}}
 
+	// last_tag
+	// {{{
 	always @(posedge S_AXI_ACLK)
 		last_tag <={cache_tags[last_pc[CWB-1:LSB]], last_pc[CWB-1:LSB]};
+	// }}}
 
+	// valid_line --- are we serving a valid request line?
+	// {{{
 	always @(*)
 	begin
 		if (from_pc)
@@ -209,11 +252,21 @@ module	axiicache #(
 		if (void_access)
 			valid_line = 0;
 	end
+	// }}}
 
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	// Issue a transaction
+	// Request data from the AXI bus to fill a cache miss
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	reg	start_read;
+	//
+
+	// start_read
+	// {{{
+	// Issue a bus transaction -- the cache line requested couldn't be
+	// found in the bus anywhere, so we need to go look for it
 	always @(*)
 	begin
 		start_read = !valid_line && !o_valid;
@@ -226,15 +279,20 @@ module	axiicache #(
 		if (request_pending || i_cpu_reset || !S_AXI_ARESETN)
 			start_read = 0;
 	end
+	// }}}
 
-
+	// axi_arvalid
+	// {{{
 	initial	axi_arvalid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		axi_arvalid <= 0;
 	else if (!M_AXI_ARVALID || M_AXI_ARREADY)
 		axi_arvalid <= start_read;
+	// }}}
 
+	// request_pending, bus_abort
+	// {{{
 	initial	request_pending = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
@@ -260,30 +318,41 @@ module	axiicache #(
 		request_pending <= start_read;
 		bus_abort <= 0;
 	end
+	// }}}
 
+	// axi_araddr
+	// {{{
 	always @(posedge S_AXI_ACLK)
 	if ((!M_AXI_ARVALID || M_AXI_ARREADY) && !request_pending)
 	begin
 		axi_araddr <= last_pc;
 		axi_araddr[LSB-1:0] <= 0;
 	end
+	// }}}
 
-
+	// }}}
 	/////////////////////////////////////////////////
 	//
 	// Fill the cache with the new data
-	//
+	// {{{
 	/////////////////////////////////////////////////
 	//
 	//
+
+	// write_posn -- the sub-address w/in the cache to write to
+	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (!request_pending)
 		write_posn <= 0;
 	else if (M_AXI_RVALID && M_AXI_RREADY)
 		write_posn <= write_posn + 1;
+	// }}}
 
+	// cache -- Actually do the write to cache memory
+	// {{{
 	generate if (SWAP_ENDIANNESS)
 	begin : BIG_TO_LITTLE_ENDIAN
+		// {{{
 		// 
 		// The ZipCPU is originally a big endian machine.  Bytes on the
 		// AXI bus are by nature little endian.  The following little
@@ -303,20 +372,26 @@ module	axiicache #(
 		if (M_AXI_RVALID && M_AXI_RREADY)
 			cache[{ axi_araddr[CWB-1:LSB], write_posn }]
 							<= swapped_data;
-
+		// }}}
 	end else begin : KEEP_ENDIANNESS
-
+		// {{{
 		always @(posedge S_AXI_ACLK)
 		if (M_AXI_RVALID && M_AXI_RREADY)
 			cache[{ axi_araddr[CWB-1:LSB], write_posn }]
 							<= M_AXI_RDATA;
-
+		// }}}
 	end endgenerate
+	// }}}
 
+	// cache_tags, set/control/write-to the cache tags array
+	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (request_pending)
 		cache_tags[axi_araddr[CWB-1:LSB]] <= axi_araddr[AW-1:CWB];
+	// }}}
 
+	// cache_valid--keep track of which cache entry has valid data w/in it
+	// {{{
 	initial	cache_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_cpu_reset || i_clear_cache)
@@ -325,21 +400,32 @@ module	axiicache #(
 		cache_valid[axi_araddr[CWB-1:LSB]]
 			<= (M_AXI_RVALID && M_AXI_RREADY && M_AXI_RLAST
 				&& !M_AXI_RRESP[1] && !bus_abort);
+	// }}}
 
+	// }}}
 	/////////////////////////////////////////////////
 	//
 	// Read the instruction from the cache
-	//
+	// {{{
 	/////////////////////////////////////////////////
 	//
 	//
+
+	// cache_line -- the line number of the address requested
+	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc || (!o_valid || i_ready))
 	begin
 		cache_line <= cache[(i_new_pc || o_valid)
 				? i_pc[CWB-1:ADDRLSB] : o_pc[CWB-1:ADDRLSB]];
 	end
+	// }}}
 
+	// o_insn
+	// {{{
+	// Generate the outgoing instruction from the given cache_line
+	// This involves shifting large cache words down to the desired/correct
+	// word of interest
 	generate if (C_AXI_DATA_WIDTH == INSN_WIDTH)
 	begin : NO_LINE_SHIFT
 
@@ -356,7 +442,14 @@ module	axiicache #(
 			o_insn = shifted[DW-1:0];
 		end
 	end endgenerate
+	// }}}
 
+	// o_pc
+	// {{{
+	// Signal the CPU with the actual address of the value we are returning
+	// The ffetch properties will insure this value is correct.  This CPU
+	// then uses it for knowing the program counter of the instruction
+	// contained within each stage of the pipeline
 	initial	o_pc = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc)
@@ -366,13 +459,19 @@ module	axiicache #(
 		o_pc[AW-1:2] <= o_pc[AW-1:2]+1;
 		o_pc[1:0]    <= 0;
 	end
+	// }}}
 
+	// o_valid
+	// {{{
+	// Are we returning a valid instruction to the CPU on this cycle?
 	initial	o_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_cpu_reset || i_clear_cache)
 		o_valid <= 0;
 	else if (o_valid && (i_ready || i_new_pc))
 	begin
+		// Grab the next instruction--always ready on the same cycle
+		// if we stay within the same cache line
 		o_valid <= (i_pc[AW-1:LSB] == o_pc[AW-1:LSB]);
 		if (o_illegal)
 			o_valid <= 0;
@@ -380,20 +479,32 @@ module	axiicache #(
 			o_valid <= 0;
 	end else if (!o_valid && !i_new_pc)
 	begin
+		// We're stuck waiting for the cache line to become valid.
+		// Don't forget to check for the illegal flag.
 		o_valid <= valid_line;
 		if (illegal_valid && o_pc[AW-1:LSB] == illegal_tag)
 			o_valid <= 1;
 	end
+	// }}}
 
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Handle bus errors here.  If a bus read request
-	// returns an error, then we'll mark the entire
-	// line as having a (valid) illegal value.
-	//
+	// Handle bus errors here.
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
+	// If a bus read request returns an error, then we'll mark the entire
+	// line as having a (valid) illegal value.  Once the o_illegal value
+	// is set, it will remain set until either the CPU branches, or the
+	// cache is cleared.
 	//
+
+	// illegal_tag, illegal_valid
+	// {{{
+	// Here's the rule: if illegal_valid is true, then we know that address
+	// at that illegal_tag value will produce a bus error, and we can serve
+	// a bus error request response on any read request.
 	initial	illegal_tag = 0;
 	initial	illegal_valid = 0;
 	always @(posedge S_AXI_ACLK)
@@ -406,7 +517,10 @@ module	axiicache #(
 		illegal_tag <= axi_araddr[AW-1:LSB];
 		illegal_valid <= 1'b1;
 	end
+	// }}}
 
+	// o_illegal
+	// {{{
 	initial o_illegal = 1'b0;
 	always @(posedge S_AXI_ACLK)
 	if (i_cpu_reset || i_clear_cache || i_new_pc)
@@ -415,10 +529,12 @@ module	axiicache #(
 		o_illegal <= 1'b0;
 	else if (illegal_valid && o_pc[AW-1:LSB] == illegal_tag)
 		o_illegal <= 1'b1;
-
+	// }}}
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	//
+	// Fixed/constant bus values, map registers to AXI wires/ etc.
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -443,19 +559,21 @@ module	axiicache #(
 	assign	M_AXI_ARPROT = 3'b100;
 	assign	M_AXI_ARQOS  = 4'h0;
 	assign	M_AXI_RREADY = 1'b1;
+	// }}}
 
-
+	// Make Verilator happy
+	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RID, M_AXI_RRESP[0] };
 	// Verilator lint_on  UNUSED
-
+	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Formal property section
-//
+// {{{
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +599,7 @@ module	axiicache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -489,6 +607,9 @@ module	axiicache #(
 	wire			f_const_illegal;
 	wire [INSN_WIDTH-1:0]	f_const_insn;
 
+	//
+	// Assume/assert the properties of the PF <-> CPU interface
+	//
 	ffetch #(.ADDRESS_WIDTH(AW-LGINSN))
 	fcpu(.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
 		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
@@ -524,19 +645,11 @@ module	axiicache #(
 
 	always @(posedge S_AXI_ACLK)
 		assume(f_cpu_delay < F_CPU_DELAY);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//
-	////////////////////////////////////////////////////////////////////////
-	//
-	//
-
-	////////////////////////////////////////////////////////////////////////
-	//
-	// Formal bus properties
-	//
+	// Formal AXI bus properties
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -721,15 +834,17 @@ module	axiicache #(
 		assert(next_addr == i_pc);
 
 
-assign	illegal_addr = { illegal_tag, {(LSB){1'b0}} };
-assign	bus_tag = axi_araddr[AW-1:LSB];
-assign	o_tag   = o_pc[AW-1:LSB];
-assign	i_tag   = i_pc[AW-1:LSB];
-assign	lastpc_tag= last_pc[AW-1:LSB];
+	assign	illegal_addr = { illegal_tag, {(LSB){1'b0}} };
+	assign	bus_tag = axi_araddr[AW-1:LSB];
+	assign	o_tag   = o_pc[AW-1:LSB];
+	assign	i_tag   = i_pc[AW-1:LSB];
+	assign	lastpc_tag= last_pc[AW-1:LSB];
+
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our return responses to the CPU
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -742,16 +857,19 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 		assert(!illegal_valid);
 		assert(void_access);
 	end
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Contract checking
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	(* anyconst *)	reg	[DW-1:0]	fc_line;
 
+	//
+	// 1. Assume a known response to a known address
+	// {{{
 	generate if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 	begin
 		always @(*)
@@ -767,9 +885,6 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 
 	end endgenerate
 
-	//
-	// 1. Assume a known response to a known address
-	//
 	always @(*)
 	if (M_AXI_RVALID && axi_araddr[AW-1:LSB] == f_const_addr[AW-1:LSB])
 		assume(f_const_illegal == M_AXI_RRESP[1]);
@@ -795,11 +910,12 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 		end
 
 	end endgenerate
+	// }}}
 
 	//
 	// 2. Assert that if the known address is in the cache, the data must be
 	//	the correct data
-	//
+	// {{{
 	always @(*)
 	if (cache_valid[f_const_addr[CWB-1:LSB]]
 			&& cache_tags[f_const_addr[CWB-1:LSB]]
@@ -809,28 +925,32 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 	always @(*)
 	if (f_const_illegal)
 		assert(!cache_valid[f_const_addr[CWB-1:LSB]]
-			|| cache_tags[f_const_addr[CWB-1:LSB]] != f_const_addr[AW-1:CWB]);
+			|| cache_tags[f_const_addr[CWB-1:LSB]]
+						!= f_const_addr[AW-1:CWB]);
 	else
 		assert(!illegal_valid || illegal_tag != f_const_addr[AW-1:LSB]);
 
 	//
 	// Anything else in a line with one illegal element must also be illegal
 	always @(*)
-	if (o_valid && o_pc[AW-1:LSB] == f_const_addr[AW-1:LSB] && f_const_illegal)
+	if (o_valid && o_pc[AW-1:LSB] == f_const_addr[AW-1:LSB]
+			&& f_const_illegal)
 		assert(o_illegal);
+	// }}}
 
 	//
 	// 3. If our chosen address is ever returned, assert that it contains
 	//	the correct data and illegal flag within it
-	//
+	// {{{
 
 	// Captured inside ffetch above
 
-
+	// }}}
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -880,10 +1000,11 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 		cover(cvr_valids == 4'b0110);	// Takes about 20 minutes
 	end
 
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Illegal checking
-	//
+	// Illegal instruction checks
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -913,14 +1034,19 @@ assign	lastpc_tag= last_pc[AW-1:LSB];
 	always @(*)
 	if (f_never_illegal)
 		assert(!o_illegal);
+	// }}}
 	
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Constraining assumptions
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	
+
+	// None currently
+
+	// }}}	
 `endif	// FORMAL
+// }}}
 endmodule
