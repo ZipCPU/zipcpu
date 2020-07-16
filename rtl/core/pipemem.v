@@ -172,25 +172,36 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	initial	o_wb_stb_lcl = 0;
 	initial	o_wb_stb_gbl = 0;
 	always @(posedge i_clk)
-	if (i_reset)
 	begin
-		r_wb_cyc_gbl <= 1'b0;
-		r_wb_cyc_lcl <= 1'b0;
-		o_wb_stb_gbl <= 1'b0;
-		o_wb_stb_lcl <= 1'b0;
-		cyc <= 1'b0;
-	end else if (cyc)
-	begin
-		if (((!i_wb_stall)&&(!i_pipe_stb)&&(!misaligned))
-			||(i_wb_err))
+		if (cyc)
 		begin
-			o_wb_stb_gbl <= 1'b0;
-			o_wb_stb_lcl <= 1'b0;
+			if (((!i_wb_stall)&&(!i_pipe_stb)&&(!misaligned))
+				||(i_wb_err))
+			begin
+				o_wb_stb_gbl <= 1'b0;
+				o_wb_stb_lcl <= 1'b0;
+			end
+
+			if (((i_wb_ack)&&(nxt_rdaddr == wraddr)
+					&&((!i_pipe_stb)||(misaligned)))
+				||(i_wb_err))
+			begin
+				r_wb_cyc_gbl <= 1'b0;
+				r_wb_cyc_lcl <= 1'b0;
+				o_wb_stb_gbl <= 1'b0;
+				o_wb_stb_lcl <= 1'b0;
+				cyc <= 1'b0;
+			end
+		end else if (i_pipe_stb) // New memory operation
+		begin // Grab the wishbone
+			r_wb_cyc_lcl <= lcl_stb;
+			r_wb_cyc_gbl <= gbl_stb;
+			o_wb_stb_lcl <= lcl_stb;
+			o_wb_stb_gbl <= gbl_stb;
+			cyc <= (!misaligned);
 		end
 
-		if (((i_wb_ack)&&(nxt_rdaddr == wraddr)
-				&&((!i_pipe_stb)||(misaligned)))
-			||(i_wb_err))
+		if (i_reset)
 		begin
 			r_wb_cyc_gbl <= 1'b0;
 			r_wb_cyc_lcl <= 1'b0;
@@ -198,13 +209,12 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			o_wb_stb_lcl <= 1'b0;
 			cyc <= 1'b0;
 		end
-	end else if (i_pipe_stb) // New memory operation
-	begin // Grab the wishbone
-		r_wb_cyc_lcl <= lcl_stb;
-		r_wb_cyc_gbl <= gbl_stb;
-		o_wb_stb_lcl <= lcl_stb;
-		o_wb_stb_gbl <= gbl_stb;
-		cyc <= (!misaligned);
+
+		if (!WITH_LOCAL_BUS)
+		begin
+			r_wb_cyc_lcl <= 1'b0;
+			o_wb_stb_lcl <= 1'b0;
+		end
 	end
 	// }}}
 
@@ -325,14 +335,20 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		initial	lock_gbl = 1'b0;
 		initial	lock_lcl = 1'b0;
 		always @(posedge i_clk)
-		if ((i_reset)||((i_wb_err)&&(cyc))
-			||((i_pipe_stb)&&(misaligned)))
 		begin
-			lock_gbl <= 1'b0;
-			lock_lcl <= 1'b0;
-		end else begin
-			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+			lock_gbl <= r_wb_cyc_gbl || lock_gbl;
+			lock_lcl <= r_wb_cyc_lcl || lock_lcl;
+
+			if (i_reset || (i_wb_err && cyc)
+				|| (i_pipe_stb && misaligned)
+				|| !i_lock)
+			begin
+				lock_gbl <= 1'b0;
+				lock_lcl <= 1'b0;
+			end
+
+			if (!WITH_LOCAL_BUS)
+				lock_lcl <= 1'b0;
 		end
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);

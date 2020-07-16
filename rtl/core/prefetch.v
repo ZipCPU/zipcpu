@@ -57,8 +57,9 @@
 `default_nettype	none
 //
 //
-module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
-			o_insn, o_pc, o_valid, o_illegal,
+module	prefetch(i_clk, i_reset,
+		i_new_pc, i_clear_cache, i_ready, i_pc,
+			o_valid, o_illegal, o_insn, o_pc,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
 			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
@@ -67,13 +68,13 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	parameter	[0:0]	OPT_ALIGNED = 1'b0;
 	input	wire			i_clk, i_reset;
 	// CPU interaction wires
-	input	wire			i_new_pc, i_clear_cache, i_stalled_n;
+	input	wire			i_new_pc, i_clear_cache, i_ready;
 	// We ignore i_pc unless i_new_pc is true as well
 	input	wire	[(AW+1):0]	i_pc;
-	output	reg	[(DW-1):0]	o_insn;	// Instruction read from WB
-	output	reg	[(AW+1):0]	o_pc;	// Address of that instruction
 	output	reg			o_valid; // If the output is valid
 	output	reg			o_illegal; // Result is from a bus err
+	output	reg	[(DW-1):0]	o_insn;	// Instruction read from WB
+	output	reg	[(AW+1):0]	o_pc;	// Address of that instruction
 	// Wishbone outputs
 	output	reg			o_wb_cyc, o_wb_stb;
 	output	wire			o_wb_we;
@@ -108,7 +109,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 			// Start if the last instruction output was
 			// accepted, *and* it wasn't a bus error
 			// response
-			((i_stalled_n)&&(!o_illegal))
+			((i_ready)&&(!o_illegal))
 			// Start if the last bus result ended up
 			// invalid
 			||(invalid)
@@ -163,7 +164,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_wb_addr  <= i_pc[AW+1:2];
-	else if ((o_valid)&&(i_stalled_n)&&(!o_illegal))
+	else if ((o_valid)&&(i_ready)&&(!o_illegal))
 		o_wb_addr  <= o_wb_addr + 1'b1;
 
 	// The instruction returned is given by the data returned from the bus.
@@ -200,7 +201,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		//
 		o_valid   <= 1'b1;
 		o_illegal <= ( i_wb_err);
-	end else if (i_stalled_n)
+	end else if (i_ready)
 	begin
 		// Once the CPU accepts any result we produce, clear
 		// the valid flag, lest we send two identical
@@ -213,7 +214,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		// is given to us, via i_new_pc, or we are asked
 		//  to check again via i_clear_cache
 		//
-		// o_illegal <= (!i_stalled_n);
+		// o_illegal <= (!i_ready);
 	end
 
 	// The o_pc output shares its value with the (last) wishbone address
@@ -229,7 +230,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 		always @(posedge i_clk)
 		if (i_new_pc)
 			o_pc <= i_pc;
-		else if (o_valid && !o_illegal && i_stalled_n)
+		else if (o_valid && !o_illegal && i_ready)
 		begin
 			o_pc <= o_pc + 4;
 			o_pc[1:0] <= 2'b00;
@@ -294,7 +295,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	cpu(
 		.i_clk(i_clk), .i_reset(i_reset),
 		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
-		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_stalled_n),
+		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_ready),
 		.pf_pc(o_pc), .pf_insn(o_insn), .pf_illegal(o_illegal),
 		.fc_pc(f_const_addr), .fc_illegal(f_const_illegal),
 		.fc_insn(f_const_insn), .f_address(f_address));
@@ -334,7 +335,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// instruction.
 	always @(posedge i_clk)
 	// If no instruction is ready, then keep our counter at zero
-	if ((i_reset)||(!o_valid)||(i_stalled_n))
+	if ((i_reset)||(!o_valid)||(i_ready))
 		f_cpu_delay <= 0;
 	else
 		// Otherwise, count the clocks the CPU takes to respond
@@ -379,7 +380,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	// Any time the CPU accepts an instruction, assert that on the
 	// valid line will be low on the next clock
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(o_valid))&&($past(i_stalled_n)))
+	if ((f_past_valid)&&($past(o_valid))&&($past(i_ready)))
 		assert(!o_valid);
 
 	// Since we only change our output on a response from the bus, we
@@ -424,7 +425,7 @@ module	prefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stalled_n, i_pc,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
-			&&($past(o_valid))&&(!$past(i_stalled_n)))
+			&&($past(o_valid))&&(!$past(i_ready)))
 		assert(o_valid == $past(o_valid));
 
 //	always @(posedge i_clk)

@@ -366,8 +366,8 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 		end else begin
 			casez(i_op[2:1])
 			2'b0?: o_wb_data <= i_data << (8*i_addr[$clog2(DW)-1:0]);
-			2'b10: o_wb_data <= i_data[15:0] << (8*i_addr[$clog2(DW)-1:0]);
-			2'b11: o_wb_data <= i_data[7:0] << (8*i_addr[$clog2(DW)-1:0]);
+			2'b10: o_wb_data <= { 16'h0, i_data[15:0] } << (8*i_addr[$clog2(DW)-1:0]);
+			2'b11: o_wb_data <= { 24'h0, i_data[7:0] } << (8*i_addr[$clog2(DW)-1:0]);
 			endcase
 		end
 	end else if (OPT_LOWPOWER && !i_wb_stall)

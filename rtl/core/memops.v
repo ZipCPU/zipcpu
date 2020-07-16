@@ -53,9 +53,6 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			o_wb_stb_gbl, o_wb_stb_lcl,
 			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
-`ifdef	FORMAL
-		, f_nreqs, f_nacks, f_outstanding
-`endif
 		);
 	parameter	ADDRESS_WIDTH=30;
 	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
@@ -64,36 +61,36 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			OPT_ZERO_ON_IDLE=1'b0,
 			OPT_LITTLE_ENDIAN = 1'b0;
 	localparam	AW=ADDRESS_WIDTH;
-	input	wire		i_clk, i_reset;
-	input	wire		i_stb, i_lock;
+	input	wire			i_clk, i_reset;
 	// CPU interface
-	input	wire	[2:0]	i_op;
-	input	wire	[31:0]	i_addr;
-	input	wire	[31:0]	i_data;
-	input	wire	[4:0]	i_oreg;
+	input	wire			i_stb, i_lock;
+	input	wire	[2:0]		i_op;
+	input	wire	[31:0]		i_addr;
+	input	wire	[31:0]		i_data;
+	input	wire	[4:0]		i_oreg;
 	// CPU outputs
-	output	wire		o_busy;
-	output	reg		o_rdbusy;
-	output	reg		o_valid;
-	output	reg		o_err;
-	output	reg	[4:0]	o_wreg;
-	output	reg	[31:0]	o_result;
+	output	wire			o_busy;
+	output	reg			o_rdbusy;
+	output	reg			o_valid;
+	output	reg			o_err;
+	output	reg	[4:0]		o_wreg;
+	output	reg	[31:0]		o_result;
 	// Wishbone outputs
-	output	wire		o_wb_cyc_gbl;
-	output	reg		o_wb_stb_gbl;
-	output	wire		o_wb_cyc_lcl;
-	output	reg		o_wb_stb_lcl;
-	output	reg		o_wb_we;
+	output	wire			o_wb_cyc_gbl;
+	output	reg			o_wb_stb_gbl;
+	output	wire			o_wb_cyc_lcl;
+	output	reg			o_wb_stb_lcl;
+	output	reg			o_wb_we;
 	output	reg	[(AW-1):0]	o_wb_addr;
-	output	reg	[31:0]	o_wb_data;
-	output	reg	[3:0]	o_wb_sel;
+	output	reg	[31:0]		o_wb_data;
+	output	reg	[3:0]		o_wb_sel;
 	// Wishbone inputs
 	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[31:0]	i_wb_data;
 // Formal
 	parameter	F_LGDEPTH = 2;
 `ifdef	FORMAL
-	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 `endif
 
 

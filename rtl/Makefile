@@ -47,11 +47,14 @@ VSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
 		$(PRPHD)/ziptimer.v				\
-	$(CORED)/zipcpu.v $(CORED)/cpuops.v $(CORED)/idecode.v	\
+	$(CORED)/zipcpu.v $(CORED)/zipcore.v $(CORED)/cpuops.v	\
+		$(CORED)/idecode.v $(CORED)/div.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
+		$(CORED)/axilfetch.v $(CORED)/axiicache.v	\
+		$(CORED)/axilops.v $(CORED)/axilpipe.v		\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\
-		$(CORED)/div.v					\
+		$(CORED)/dcache.v				\
 	$(EXD)/busdelay.v					\
 		$(EXD)/wbdblpriarb.v $(EXD)/wbpriarbiter.v	\
 	$(CORED)/idecode.v $(CORED)/cpuops.v

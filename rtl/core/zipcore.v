@@ -3,17 +3,17 @@
 // Filename:	zipcore.v
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-//{{{
+// {{{
 // Purpose:	
 //
-//}}}
+// }}}
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//{{{
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -28,7 +28,7 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//}}}
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
 //		http://www.gnu.org/licenses/gpl.html
 //
@@ -59,8 +59,6 @@
 `define	CPU_SLEEP_BIT	4
 // Compile time defines
 //
-`include "cpudefs.v"
-//
 //
 module	zipcore(i_clk, i_reset, i_interrupt,
 		// Debug interface
@@ -70,72 +68,42 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		// CPU interface to the instruction fetch unit
 		o_pf_new_pc, o_clear_icache, o_pf_ready,
 				o_pf_request_address,
-			i_pf_instruction, i_pf_instruction_pc, i_pf_valid,
-				i_pf_illegal,
+			i_pf_valid, i_pf_illegal, i_pf_instruction,
+				i_pf_instruction_pc,
 		// CPU interface to the memory unit
 		o_clear_dcache, o_mem_ce, o_bus_lock,
-			o_mem_op, o_mem_data, o_mem_addr, o_mem_reg,
+			o_mem_op, o_mem_addr, o_mem_data, o_mem_reg,
 			i_mem_busy, i_mem_rdbusy, i_mem_pipe_stalled,
 				i_mem_valid, i_bus_err, i_mem_wreg,i_mem_result,
 		// Accounting/CPU usage interface
-		o_op_stall, o_pf_stall, o_i_count
-`ifdef	DEBUG_SCOPE
-		, o_debug // , o_dcache_debug
-`endif
+		o_op_stall, o_pf_stall, o_i_count,
+		o_debug
 		);
 	// Parameters
-	//{{{
+	// {{{
 	parameter [31:0] RESET_ADDRESS=32'h010_0000;
 	parameter	ADDRESS_WIDTH=30,
 			LGICACHE=12;
-`ifdef	OPT_MULTIPLY
-	parameter	IMPLEMENT_MPY = `OPT_MULTIPLY;
-`else
 	parameter	IMPLEMENT_MPY = 0;
-`endif
-`ifdef	OPT_DIVIDE
 	parameter [0:0]	IMPLEMENT_DIVIDE = 1;
-`else
-	parameter [0:0]	IMPLEMENT_DIVIDE = 0;
-`endif
 `ifdef	OPT_IMPLEMENT_FPU
 	parameter [0:0]	IMPLEMENT_FPU = 1;
 `else
 	parameter [0:0]	IMPLEMENT_FPU = 0;
 `endif
-`ifdef	OPT_EARLY_BRANCHING
-	parameter [0:0]	EARLY_BRANCHING = 1;
-`else
-	parameter [0:0]	EARLY_BRANCHING = 0;
-`endif
-`ifdef	OPT_CIS
+	parameter [0:0]	OPT_EARLY_BRANCHING = 1;
 	parameter [0:0]	OPT_CIS = 1'b1;
-`else
-	parameter [0:0]	OPT_CIS = 1'b0;
-`endif
 `ifdef	OPT_NO_USERMODE
 	localparam	[0:0]	OPT_NO_USERMODE = 1'b1;
 `else
 	localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
 `endif
-`ifdef	OPT_PIPELINED
 	parameter	[0:0]	OPT_PIPELINED = 1'b1;
-`else
-	parameter	[0:0]	OPT_PIPELINED = 1'b0;
-`endif
-`ifdef	OPT_PIPELINED_BUS_ACCESS
-	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
-`else
-	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
-`endif
+	parameter	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 	parameter	[0:0]	IMPLEMENT_LOCK=1;
 	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
-`ifdef	OPT_DCACHE
 	parameter		OPT_LGDCACHE = 10;
-`else
-	parameter		OPT_LGDCACHE = 0;
-`endif
 	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
 
 	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
@@ -148,9 +116,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	wire			f_mem_gie, f_mem_pc, f_read_cycle;
 `endif
 
-	//}}}
+	// }}}
 	// I/O declarations
-	//{{{
+	// {{{
 	input	wire		i_clk, i_reset, i_interrupt;
 	// Debug interface -- inputs
 	input	wire		i_halt, i_clear_pf_cache;
@@ -175,8 +143,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	output	wire		o_mem_ce;
 	output	wire		o_bus_lock;
 	output	wire [2:0]	o_mem_op;
-	output	wire [31:0]	o_mem_data;
 	output	wire [31:0]	o_mem_addr;
+	output	wire [31:0]	o_mem_data;
 	output	wire [4:0]	o_mem_reg;
 	input	wire 		i_mem_busy, i_mem_rdbusy,
 				i_mem_pipe_stalled, i_mem_valid;
@@ -191,11 +159,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	output	wire		o_pf_stall;
 	output	wire		o_i_count;
 	//
-`ifdef	DEBUG_SCOPE
 	output	reg	[31:0]	o_debug;
-	// output	wire	[31:0]	o_dcache_debug;
-`endif
-	//}}}
+	// }}}
 
 
 	// Registers
@@ -232,7 +197,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//	PIPELINE STAGE #1 :: Prefetch
 	//		Variable declarations
 	//
-	//{{{
+	// {{{
 	reg	[(AW+1):0]	pf_pc;
 	reg			new_pc;
 	wire			clear_pipeline;
@@ -250,7 +215,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 `endif
 
 	assign	clear_pipeline = new_pc;
-	//}}}
+	// }}}
 
 	//
 	//
@@ -258,7 +223,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//		Variable declarations
 	//
 	//
-	//{{{
+	// {{{
 	reg		op_valid /* verilator public_flat */,
 			op_valid_mem, op_valid_alu;
 	reg		op_valid_div, op_valid_fpu;
@@ -286,7 +251,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	wire		prelock_stall;
 	wire		cc_invalid_for_dcd;
 	wire		pending_sreg_write;
-	//}}}
+	// }}}
 
 
 	//
@@ -296,7 +261,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	//
 	//
-	//{{{
+	// {{{
 	// Now, let's read our operands
 	reg	[4:0]	alu_reg;
 	wire	[3:0]	op_opn;
@@ -332,7 +297,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 `else
 	wire	op_sim = 1'b0;
 `endif
-	//}}}
+	// }}}
 
 
 	//
@@ -341,7 +306,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//		Variable declarations
 	//
 	//
-	//{{{
+	// {{{
 	wire	[(AW+1):0]	alu_pc;
 	reg		r_alu_pc_valid, mem_pc_valid;
 	wire		alu_pc_valid;
@@ -373,14 +338,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	div_ce = (op_valid_div)&&(adf_ce_unconditional)&&(set_cond);
 	assign	fpu_ce = (IMPLEMENT_FPU)&&(op_valid_fpu)&&(adf_ce_unconditional)&&(set_cond);
 
-	//}}}
+	// }}}
 
 	//
 	//
 	//	PIPELINE STAGE #5 :: Write-back
 	//		Variable declarations
 	//
-	//{{{
+	// {{{
 	wire		wr_discard, wr_write_pc, wr_write_cc,
 			wr_write_scc, wr_write_ucc;
 	reg		wr_reg_ce, wr_flags_ce;
@@ -394,7 +359,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	reg		last_write_to_cc;
 	wire		cc_write_hold;
 	reg		r_clear_icache, r_clear_dcache;
-	//}}}
+	// }}}
 
 `ifdef	FORMAL
 	wire	f_mem_pc;
@@ -429,7 +394,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	//	PIPELINE STAGE #3 :: Read Operands
 	//		Calculate stall conditions
-	//{{{
+	// {{{
 	generate if (OPT_PIPELINED)
 	begin : GEN_OP_STALL
 		reg	r_cc_invalid_for_dcd;
@@ -459,7 +424,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	pending_sreg_write = r_pending_sreg_write;
 
 		assign	op_stall = (op_valid)&&(
-		//{{{
+		// {{{
 			// Only stall if we're loaded w/validins and the
 			// next stage is accepting our instruction
 			(!adf_ce_unconditional)&&(!mem_ce)
@@ -477,7 +442,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				// CC register
 				||(dcd_F_stall)
 			);
-		//}}}
+		// }}}
 		assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(!op_stall);
 
 	end else begin // !OPT_PIPELINED
@@ -500,13 +465,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// ... right?  The clear_pipeline code, for example, really only needs
 	// to determine whether op_valid is true.
 	// assign	op_change_data_ce = (!op_stall);
-	//}}}
+	// }}}
 
 	//
 	//	PIPELINE STAGE #4 :: ALU / Memory
 	//		Calculate stall conditions
 	//
-	//{{{
+	// {{{
 	// 1. Basic stall is if the previous stage is valid and the next is
 	//	busy.
 	// 2. Also stall if the prior stage is valid and the master clock enable
@@ -578,7 +543,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	mem_stalled = master_stall || i_mem_busy;
 
 	end endgenerate
-	//}}}
+	// }}}
 
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
 			||(ibus_err_flag)||(idiv_err_flag)
@@ -605,7 +570,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//	PIPELINE STAGE #1 :: Prefetch
 	//
 	//
-	//{{{
+	// {{{
 	assign	o_pf_ready = (!dcd_stalled && !dcd_phase);
 
 	assign	o_pf_new_pc = (new_pc)||((dcd_early_branch_stb)&&(!clear_pipeline));
@@ -613,19 +578,19 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	o_pf_request_address = ((dcd_early_branch_stb)&&(!clear_pipeline))
 				? dcd_branch_pc:pf_pc;
 	assign	pf_gie = gie;
-	//}}}
+	// }}}
 
 	//
 	//
 	//	PIPELINE STAGE #2 :: Instruction Decode
 	//
 	//
-	//{{{
+	// {{{
 	assign		dcd_ce =((OPT_PIPELINED)&&(!dcd_valid))||(!dcd_stalled);
 	idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
 		.OPT_PIPELINED(OPT_PIPELINED),
-		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
 		.OPT_FPU(IMPLEMENT_FPU),
 		.OPT_LOCK(OPT_LOCK),
@@ -660,14 +625,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 `endif
 			);
 	assign	dcd_gie = pf_gie;
-	//}}}
+	// }}}
 
 	//
 	//
 	//	PIPELINE STAGE #3 :: Read Operands (Registers)
 	//
 	//
-	//{{{
+	// {{{
 	generate if (OPT_PIPELINED_BUS_ACCESS)
 	begin : GEN_OP_PIPE
 		reg		r_op_pipe;
@@ -753,22 +718,18 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 `endif
 
 	assign	w_cpu_info = {
-	//{{{
+	// {{{
 	1'b1,
 	(IMPLEMENT_MPY    >0)? 1'b1:1'b0,
 	(IMPLEMENT_DIVIDE >0)? 1'b1:1'b0,
 	(IMPLEMENT_FPU    >0)? 1'b1:1'b0,
 	OPT_PIPELINED,
-`ifdef	OPT_TRADITIONAL_CACHE
-	1'b1,
-`else
 	1'b0,
-`endif
-	(EARLY_BRANCHING > 0)? 1'b1:1'b0,
+	(OPT_EARLY_BRANCHING > 0)? 1'b1:1'b0,
 	OPT_PIPELINED_BUS_ACCESS,
 	OPT_CIS
 	};
-	//}}}
+	// }}}
 
 	always @(*)
 	begin
@@ -1040,7 +1001,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		op_wF <= (dcd_wF)&&((!dcd_Rcc)||(!dcd_wR))
 			&&(!dcd_early_branch);
 
-	generate if ((OPT_PIPELINED)||(EARLY_BRANCHING))
+	generate if ((OPT_PIPELINED)||(OPT_EARLY_BRANCHING))
 	begin
 
 		always @(posedge i_clk)
@@ -1055,16 +1016,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end endgenerate
 
 `ifdef	VERILATOR
-`ifdef	SINGLE_FETCH
-	always @(*)
-	begin
-		op_sim      = dcd_sim;
-		op_sim_immv = dcd_sim_immv;
-
-		alu_sim = op_sim;
-		alu_sim_immv = op_sim_immv;
-	end
-`else
 	always @(posedge i_clk)
 	if (op_ce)
 	begin
@@ -1094,10 +1045,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			alu_sim <= 1'b0;
 	end
 `endif
-`endif
 
 
-	generate if ((OPT_PIPELINED)||(EARLY_BRANCHING))
+	generate if ((OPT_PIPELINED)||(OPT_EARLY_BRANCHING))
 	begin : SET_OP_PC
 
 		initial op_pc[0] = 1'b0;
@@ -1217,7 +1167,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//		OR the operation might set register B, and we still need
 	//			a clock to add the offset to it
 	assign	dcd_B_stall = (dcd_rB) // &&(dcd_valid) is checked for elsewhere
-	//{{{
+	// {{{
 				// If the op stage isn't valid, yet something
 				// is running, then it must have been valid.
 				// We'll use the last values from that stage
@@ -1257,9 +1207,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				// ||((i_mem_busy)&&(!mem_we)&&(mem_last_reg==dcd_B)&&(!dcd_zI))
 				)
 			||((dcd_rB)&&(dcd_Bcc)&&(cc_invalid_for_dcd));
-		//}}}
+		// }}}
 		assign	dcd_F_stall = ((!dcd_F[3])
-		//{{{
+		// {{{
 					||((dcd_rA)&&(dcd_A[3:1]==3'h7)
 						&&(dcd_A[4:0] != { gie, 4'hf}))
 					||((dcd_rB)&&(dcd_B[3:1]==3'h7))
@@ -1269,7 +1219,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 						&&(op_R[4:0]!={gie, 4'hf}))
 						||(pending_sreg_write));
 				// &&(dcd_valid) is checked for elsewhere
-		//}}}
+		// }}}
 	end else begin
 		// No stalls without pipelining, 'cause how can you have a pipeline
 		// hazard without the pipeline?
@@ -1277,7 +1227,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	dcd_F_stall = 1'b0;
 	end endgenerate
 
-	//}}}
+	// }}}
 	//
 	//
 	//	PIPELINE STAGE #4 :: Apply Instruction
@@ -1285,13 +1235,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	// ALU
 	cpuops	#(IMPLEMENT_MPY) doalu(i_clk, ((i_reset)||(clear_pipeline)),
-	//{{{
+	// {{{
 			alu_ce, op_opn, op_Av, op_Bv,
 			alu_result, alu_flags, alu_valid, alu_busy);
-	//}}}
+	// }}}
 
 	// Divide
-	//{{{
+	// {{{
 	generate if (IMPLEMENT_DIVIDE != 0)
 	begin : DIVIDE
 `ifdef	FORMAL
@@ -1318,10 +1268,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	unused_divide = div_ce;
 		// verilator lint_on  UNUSED
 	end endgenerate
-	//}}}
+	// }}}
 
 	// (Non-existent) FPU
-	//{{{
+	// {{{
 	generate if (IMPLEMENT_FPU != 0)
 	begin : FPU
 		//
@@ -1349,7 +1299,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	fpu_result= 32'h00;
 		assign	fpu_flags = 4'h0;
 	end endgenerate
-	//}}}
+	// }}}
 
 
 	assign	set_cond = ((op_F[7:4]&op_Fl[3:0])==op_F[3:0]);
@@ -1451,7 +1401,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	// DEBUG Register write access starts here
 	//
-	//{{{
+	// {{{
 	initial	dbgv = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -1480,7 +1430,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		dbg_clear_pipe <= 1'b0;
 
 	assign	alu_gie = gie;
-	//}}}
+	// }}}
 
 	generate if (OPT_PIPELINED)
 	begin : GEN_ALU_PC
@@ -1537,7 +1487,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		mem_pc_valid <= (mem_ce);
 
 	// Bus lock logic
-	//{{{
+	// {{{
 	generate
 	if ((OPT_PIPELINED)&&(!OPT_LOCK))
 	begin : BUSLOCK
@@ -1582,18 +1532,18 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	prelock_stall = 1'b0;
 		assign	o_bus_lock = 1'b0;
 	end endgenerate
-	//}}}
+	// }}}
 
 	// Memory interface
-	//{{{
+	// {{{
 	assign	o_mem_ce   = mem_ce && set_cond;
 	assign	o_mem_op   = op_opn[2:0];
 	assign	o_mem_data = op_Bv;
 	assign	o_mem_addr = op_Av;
 	assign	o_mem_reg  = op_R;
 
-	//}}}
-	//}}}
+	// }}}
+	// }}}
 
 
 	//
@@ -1606,7 +1556,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	//	PIPELINE STAGE #5 :: Write-back results
 	//
-	//{{{
+	// {{{
 	//
 	// This stage is not allowed to stall.  If results are ready to be
 	// written back, they are written back at all cost.  Sleepy CPU's
@@ -2335,7 +2285,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	//
 	// The debug write-back interface
-	//{{{
+	// {{{
 	reg	[31:0]	debug_pc;
 	generate if (OPT_NO_USERMODE)
 	begin
@@ -2458,9 +2408,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 `else
 	assign	o_dbg_stall = !r_halted;
 `endif
-	//}}}
+	// }}}
 
-	//}}}
+	// }}}
 
 	//
 	//
@@ -2472,22 +2422,33 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	o_pf_stall = (master_ce)&&(!i_pf_valid);
 	assign	o_i_count  = (alu_pc_valid)&&(!clear_pipeline);
 
-`ifdef	DEBUG_SCOPE
-	//{{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	// The debug scope output
+	//
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	// {{{
 
-	reg		debug_trigger;
+	reg		debug_trigger, dbg_mem_we;
+	wire	[31:0]	debug_flags;
+
 	initial	debug_trigger = 1'b0;
 	always @(posedge i_clk)
 		debug_trigger <= (!i_halt)&&(o_break);
 
-	wire	[31:0]	debug_flags;
+	always @(posedge i_clk)
+	if (o_mem_ce)
+		dbg_mem_we <= o_mem_op[0];
+
 	assign debug_flags = { debug_trigger, 3'b101,
 				master_ce, i_halt, o_break, sleep,
 				gie, ibus_err_flag, trap, ill_err_i,
 				o_clear_icache, i_pf_valid, i_pf_illegal, dcd_ce,
 				dcd_valid, dcd_stalled, op_ce, op_valid,
 				op_pipe, alu_ce, alu_busy, alu_wR,
-				alu_illegal, alu_wF, mem_ce, mem_we,
+				alu_illegal, alu_wF, mem_ce, dbg_mem_we,
 				i_mem_busy, i_mem_pipe_stalled, (new_pc), (dcd_early_branch) };
 
 	// Verilator lint_off UNUSED
@@ -2533,11 +2494,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	3'b1??: o_debug <= debug_flags;
 	endcase
 
-	//}}}
-`endif
+	// }}}
 
 	// Make verilator happy
-	//{{{
+	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, fpu_ce, wr_spreg_vl[1:0],
@@ -2552,7 +2512,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign generic_ignore = wr_spreg_vl[31:(AW+2)];
 	end endgenerate
 	// verilator lint_on  UNUSED
-	//}}}
+	// }}}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -3153,9 +3113,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(f_dcd_insn_word[31]);
 
 
-	// EARLY_BRANCHING
+	// OPT_EARLY_BRANCHING
 	always @(*)
-	if (!EARLY_BRANCHING)
+	if (!OPT_EARLY_BRANCHING)
 		`ASSERT((!dcd_early_branch)
 					&&(!dcd_early_branch_stb)
 					&&(!dcd_ljmp));
@@ -3188,7 +3148,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
-		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
 		.OPT_FPU(IMPLEMENT_FPU),
 		.OPT_LOCK(OPT_LOCK),
@@ -3223,7 +3183,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		f_op_branch <= 1'b0;
 
 	always @(*)
-	if (!EARLY_BRANCHING)
+	if (!OPT_EARLY_BRANCHING)
 		assert(!f_op_branch);
 	else if ((f_op_early_branch)&&(op_valid))
 		assert(f_op_branch);
@@ -3351,7 +3311,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT((!op_lock)||(op_illegal));
 
 	always @(*)
-	if (!EARLY_BRANCHING)
+	if (!OPT_EARLY_BRANCHING)
 		assert(!f_op_early_branch);
 
 
@@ -3924,7 +3884,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
-		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_DIVIDE(IMPLEMENT_DIVIDE),
 		.OPT_FPU(IMPLEMENT_FPU),
 		.OPT_LOCK(OPT_LOCK),

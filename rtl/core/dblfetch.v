@@ -49,19 +49,22 @@
 //
 `default_nettype	none
 //
-module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
-			i_stall_n, i_pc, o_insn, o_pc, o_valid,
+module	dblfetch(i_clk, i_reset,
+		i_new_pc, i_clear_cache, i_ready, i_pc,
+		o_valid, o_illegal, o_insn, o_pc,
 		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data,
-		o_illegal);
+			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data);
 	parameter		ADDRESS_WIDTH=30;
 	localparam		AW=ADDRESS_WIDTH, DW = 32;
-	input	wire			i_clk, i_reset, i_new_pc, i_clear_cache,
-						i_stall_n;
+	input	wire			i_clk, i_reset;
+	// CPU signals--from the CPU
+	input	wire			i_new_pc, i_clear_cache, i_ready;
 	input	wire	[(AW+1):0]	i_pc;
+	// ... and in return
+	output	reg			o_valid;
+	output	reg			o_illegal;
 	output	reg	[(DW-1):0]	o_insn;
 	output	reg	[(AW+1):0]	o_pc;
-	output	reg			o_valid;
 	// Wishbone outputs
 	output	reg			o_wb_cyc, o_wb_stb;
 	output	wire			o_wb_we;
@@ -70,8 +73,6 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// And return inputs
 	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
 	input	wire	[(DW-1):0]	i_wb_data;
-	// And ... the result if we got an error
-	output	reg		o_illegal;
 
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 32'h0000;
@@ -106,7 +107,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		end
 
 	end else if ((i_new_pc)||(invalid_bus_cycle)
-		||((o_valid)&&(i_stall_n)&&(!o_illegal)))
+		||((o_valid)&&(i_ready)&&(!o_illegal)))
 	begin
 		// Initiate a bus cycle if ... the last bus cycle was
 		// aborted (bus error or new_pc), we've been given a
@@ -132,7 +133,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	end
 
 	always @(*)
-		last_stb = (inflight != 2'b00)||((o_valid)&&(!i_stall_n));
+		last_stb = (inflight != 2'b00)||((o_valid)&&(!i_ready));
 
 	initial	invalid_bus_cycle = 1'b0;
 	always @(posedge i_clk)
@@ -160,11 +161,11 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		o_valid <= 1'b0;
 	else if ((o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
 		o_valid <= 1'b1;
-	else if (i_stall_n)
+	else if (i_ready)
 		o_valid <= cache_valid;
 
 	always @(posedge i_clk)
-	if ((!o_valid)||(i_stall_n))
+	if ((!o_valid)||(i_ready))
 	begin
 		if (cache_valid)
 			o_insn <= cache_word;
@@ -175,7 +176,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_pc <= i_pc;
-	else if ((o_valid)&&(i_stall_n))
+	else if ((o_valid)&&(i_ready))
 	begin
 		o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
 		o_pc[1:0] <= 2'b00;
@@ -185,7 +186,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if ((i_reset)||(i_new_pc)||(i_clear_cache))
 		o_illegal <= 1'b0;
-	else if ((!o_valid)||(i_stall_n))
+	else if ((!o_valid)||(i_ready))
 	begin
 		if (cache_valid)
 			o_illegal <= (o_illegal)||(cache_illegal);
@@ -208,8 +209,8 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		cache_valid <= 1'b0;
 	else begin
 		if ((o_valid)&&(o_wb_cyc)&&((i_wb_ack)||(i_wb_err)))
-			cache_valid <= (!i_stall_n)||(cache_valid);
-		else if (i_stall_n)
+			cache_valid <= (!i_ready)||(cache_valid);
+		else if (i_ready)
 			cache_valid <= 1'b0;
 	end
 
@@ -222,9 +223,9 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	if ((i_reset)||(i_clear_cache)||(i_new_pc))
 		cache_illegal <= 1'b0;
 	// Older logic ...
-	// else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_stall_n))
+	// else if ((o_wb_cyc)&&(i_wb_err)&&(o_valid)&&(!i_ready))
 	//	cache_illegal <= 1'b1;
-	else if ((o_valid  && (!i_stall_n || cache_valid))
+	else if ((o_valid  && (!i_ready || cache_valid))
 				&&(o_wb_cyc)&&(i_wb_ack || i_wb_err))
 		cache_illegal <= i_wb_err;
 
@@ -274,7 +275,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 		f_past_reset       <= i_reset;
 		f_past_clear_cache <= i_clear_cache;
 		f_past_o_valid     <= o_valid;
-		f_past_stall_n     <= i_stall_n;
+		f_past_stall_n     <= i_ready;
 	end
 
 	always @(*)
@@ -332,7 +333,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	cpu(
 		.i_clk(i_clk), .i_reset(i_reset),
 		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
-		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_stall_n),
+		.cpu_pc(i_pc), .pf_valid(o_valid), .cpu_ready(i_ready),
 		.pf_pc(o_pc), .pf_insn(o_insn), .pf_illegal(o_illegal),
 		.fc_illegal(f_const_illegal), .fc_insn(f_const_insn),
 		.fc_pc(f_const_addr), .f_address(f_address));
@@ -352,7 +353,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// Now, let's look at the delay the CPU takes to accept an instruction.
 	always @(posedge i_clk)
 	// If no instruction is ready, then keep our counter at zero
-	if ((!o_valid)||(i_stall_n))
+	if ((!o_valid)||(i_ready))
 		f_cpu_delay <= 0;
 	else
 		// Otherwise, count the clocks the CPU takes to respond
@@ -380,7 +381,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
 			&&(!$past(i_new_pc))&&(!$past(i_clear_cache))
-			&&($past(o_valid))&&(!$past(i_stall_n))
+			&&($past(o_valid))&&(!$past(i_ready))
 			&&($past(cache_valid)))
 	begin
 		assert($stable(cache_valid));
@@ -394,7 +395,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// new bus cycle--hence the assertion below makes sense.
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_new_pc))
-			&&($past(o_valid))&&($past(i_stall_n)))
+			&&($past(o_valid))&&($past(i_ready)))
 		assert(o_pc == f_address);
 
 	always @(posedge i_clk)
@@ -521,18 +522,18 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 	// for more data any time we have nowhere to put it.
 	always @(*)
 	if (o_wb_stb)
-		assert((!cache_valid)||(i_stall_n));
+		assert((!cache_valid)||(i_ready));
 
 	always @(*)
 	if ((o_valid)&&(cache_valid))
 		assert((f_outstanding == 0)&&(!o_wb_stb));
 
 	always @(*)
-	if ((o_valid)&&(!i_stall_n))
+	if ((o_valid)&&(!i_ready))
 		assert(f_outstanding < 2);
 
 	always @(*)
-	if ((!o_valid)||(i_stall_n))
+	if ((!o_valid)||(i_ready))
 		assert(f_outstanding <= 2);
 
 	always @(posedge i_clk)
@@ -561,7 +562,7 @@ module	dblfetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			&&(!$past(i_clear_cache))
 			&&(!$past(invalid_bus_cycle))
 			&&(($past(i_wb_ack))||($past(i_wb_err)))
-			&&((!$past(o_valid))||($past(i_stall_n)))
+			&&((!$past(o_valid))||($past(i_ready)))
 			&&(!$past(cache_valid)))
 		assert(o_pc[AW+1:2] == $past(this_return_address));
 
