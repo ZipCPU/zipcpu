@@ -30,6 +30,22 @@
 //	the bus, and the third component will be adjusted from zero to its
 //	maximum value.
 //
+// For future improvement:
+//
+//	1. This core only handles one "way".  A future version should extend
+//	   this capability to handle a parameterized number of "ways".
+//
+//	2. For large enough bus widths, it might be necessary to add a clock
+//	   to the pipeline in order to select the instruction of interest from
+//	   the large (bus-width sized) cache entry.
+//
+//	3. The core currently only allows invalidating the entire cache.
+//	   A possible future improvement might be to allow the CPU to invalidate
+//	   specific cache line elements instead--perhaps when/if the CPU writes
+//	   to a given address, that address within the instruction cache should
+//	   be invalidated.  Perhaps a cache coherency bus protocol could help
+//	   here as well.  For the time being, though, cache coherency will be
+//	   managed manually by the CPU itself.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
