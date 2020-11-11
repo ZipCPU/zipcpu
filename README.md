@@ -52,7 +52,7 @@ maintaining (creating, really) all of these files for you.
 
 Even more than that,
 the [ZBasic distribution](https://github.com/ZipCPU/zbasic) has complete
-[Verilator support](https://github.com/ZipCPU/zbasic/tree/sim/verilator)
+[Verilator support](https://github.com/ZipCPU/zbasic/tree/master/sim/verilated)
 so that you can build your design, and simulate it, from
 power on reset through bootloader through ... well, however far you'd like to
 simulate and your disk has space for.
