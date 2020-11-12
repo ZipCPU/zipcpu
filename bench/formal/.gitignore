@@ -1,4 +1,14 @@
 old
+#
+faxi_addr.v
+faxi_slave.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+#
+faxil_slave.v
+faxil_master.v
+#
 axiicache_*/
 axilfetch_*/
 axilops_*/

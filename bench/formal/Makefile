@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	To direct the formal verification of particular components of
@@ -14,9 +14,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2017-2019, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2017-2020, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -38,9 +38,9 @@
 ##
 ################################################################################
 ##
-##
+## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops # aximem axifetch (cached versions)
+TESTS += axilfetch axilops axilpipe # aximem axifetch (cached versions)
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 .PHONY: $(TESTS)
@@ -60,7 +60,7 @@ PFCACHE:= pfcache
 WBDLY  := busdelay
 PRIARB := wbpriarbiter
 DBL    := wbdblpriarb
-PIPE   := pipemem
+WBPIPE := pipemem
 MEM    := memops
 TMR    := ziptimer
 CNT    := zipcounter
@@ -68,7 +68,7 @@ JIF    := zipjiffies
 WDG    := wbwatchdog
 INT    := icontrol
 DCD    := idecode
-DMA    := wbdmac
+WBDMA  := wbdmac
 ALU    := cpuops
 DIV    := div
 CPU    := zipcore
@@ -77,6 +77,7 @@ DCACHE := dcache
 AXILPF := axilfetch
 AXIICC := axiicache
 AXILMEM:= axilops
+AXLPIPE:= axilpipe
 
 MMU    := zipmmu
 
@@ -95,11 +96,14 @@ ffetch: prefetch dblfetch pfcache axilfetch axiicache
 fmem:   memops pipemem dcache axilops
 
 .PHONY: $(PFONE)
+## {{{
 $(PFONE) : $(PFONE)_prf/PASS
 $(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf
+## }}}
 
 .PHONY: $(AXILPF)
+## {{{
 $(AXILPF) : $(AXILPF)_prf/PASS      $(AXILPF)_cvr/PASS
 $(AXILPF) : $(AXILPF)_prfdbl/PASS   $(AXILPF)_cvrdbl/PASS
 $(AXILPF) : $(AXILPF)_prff/PASS     $(AXILPF)_cvrf/PASS
@@ -131,52 +135,67 @@ $(AXILPF)_prff64/PASS: $(AXILPFDEPS)
 	sby -f $(AXILPF).sby prff64
 $(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
 	sby -f $(AXILPF).sby cvrf64
+## }}}
 
 .PHONY: $(PFTWO)
+## {{{
 $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
 $(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf
 $(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby cvr
-
+## }}}
 
 .PHONY: $(PFCACHE)
+## {{{
 $(PFCACHE): $(PFCACHE)_prf/PASS $(PFCACHE)_cvr/PASS
 $(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby prf
 $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby cvr
+## }}}
 
 .PHONY: $(AXIICC)
+## {{{
 $(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_cvr/PASS
 $(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby prf
 $(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby cvr
+## }}}
 
 .PHONY: $(WBDLY)
+## {{{
 $(WBDLY): $(WBDLY)_prf/PASS
 $(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
 	sby -f $(WBDLY).sby prf
+## }}}
 
 .PHONY: $(PRIARB)
+## {{{
 $(PRIARB): $(PRIARB)_prf/PASS
 $(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
 	sby -f $(PRIARB).sby prf
+## }}}
 
 .PHONY: $(DBL)
+## {{{
 $(DBL): $(DBL)_prf/PASS
 $(DBL)_prf/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
 	sby -f $(DBL).sby prf
+## }}}
 
 .PHONY: $(MEM)
+## {{{
 $(MEM): $(MEM)_cvr/PASS $(MEM)_prf/PASS
 $(MEM)_prf/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 	sby -f $(MEM).sby prf
 $(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 	sby -f $(MEM).sby cvr
+## }}}
 
 .PHONY: $(AXILMEM)
+## {{{
 $(AXILMEM): $(AXILMEM)_cvr/PASS   $(AXILMEM)_prf/PASS   $(AXILMEM)_prfu/PASS
 $(AXILMEM): $(AXILMEM)_cvr64/PASS $(AXILMEM)_prf64/PASS $(AXILMEM)_prfu64/PASS
 AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(AXIL) $(FMEM)
@@ -192,67 +211,101 @@ $(AXILMEM)_prfu64/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby prfu64
 $(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby cvr64
+## }}}
 
-.PHONY: $(PIPE)
-$(PIPE): $(PIPE)_lcl_aligned_lock/PASS
-$(PIPE): $(PIPE)_lcl_aligned_nolock/PASS
-$(PIPE): $(PIPE)_lcl_noaligned_lock/PASS
-$(PIPE): $(PIPE)_lcl_noaligned_nolock/PASS
-$(PIPE): $(PIPE)_nolcl_aligned_lock/PASS
-$(PIPE): $(PIPE)_nolcl_aligned_nolock/PASS
-$(PIPE): $(PIPE)_nolcl_noaligned_lock/PASS
-$(PIPE): $(PIPE)_nolcl_noaligned_nolock/PASS
-PIPEDEPS := $(PIPE).sby $(RTL)/core/$(PIPE).v $(MASTER) $(FMEM)
-$(PIPE)_lcl_aligned_lock/PASS:       $(PIPEDEPS)
-	sby -f $(PIPE).sby lcl_aligned_lock
-$(PIPE)_lcl_aligned_nolock/PASS:     $(PIPEDEPS)
-	sby -f $(PIPE).sby lcl_aligned_nolock
-$(PIPE)_lcl_noaligned_lock/PASS:     $(PIPEDEPS)
-	sby -f $(PIPE).sby lcl_noaligned_lock
-$(PIPE)_lcl_noaligned_nolock/PASS:   $(PIPEDEPS)
-	sby -f $(PIPE).sby lcl_noaligned_nolock
-$(PIPE)_nolcl_aligned_lock/PASS:     $(PIPEDEPS)
-	sby -f $(PIPE).sby nolcl_aligned_lock
-$(PIPE)_nolcl_aligned_nolock/PASS:   $(PIPEDEPS)
-	sby -f $(PIPE).sby nolcl_aligned_nolock
-$(PIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
-	sby -f $(PIPE).sby nolcl_noaligned_lock
-$(PIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
-	sby -f $(PIPE).sby nolcl_noaligned_nolock
+.PHONY: $(AXLPIPE)
+## {{{
+$(AXLPIPE): $(AXLPIPE)_cvr/PASS   $(AXLPIPE)_prf/PASS   $(AXLPIPE)_prfu/PASS
+$(AXLPIPE): $(AXLPIPE)_cvr64/PASS $(AXLPIPE)_prf64/PASS $(AXLPIPE)_prfu64/PASS
+$(AXLPIPE)_prf/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby prf
+$(AXLPIPE)_prf64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby prf64
+$(AXLPIPE)_prfu/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby prfu
+$(AXLPIPE)_prfu64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby prfu64
+$(AXLPIPE)_cvr/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby cvr
+$(AXLPIPE)_cvr64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby cvr64
+## }}}
+
+.PHONY: $(WBPIPE)
+## {{{
+$(WBPIPE): $(WBPIPE)_lcl_aligned_lock/PASS
+$(WBPIPE): $(WBPIPE)_lcl_aligned_nolock/PASS
+$(WBPIPE): $(WBPIPE)_lcl_noaligned_lock/PASS
+$(WBPIPE): $(WBPIPE)_lcl_noaligned_nolock/PASS
+$(WBPIPE): $(WBPIPE)_nolcl_aligned_lock/PASS
+$(WBPIPE): $(WBPIPE)_nolcl_aligned_nolock/PASS
+$(WBPIPE): $(WBPIPE)_nolcl_noaligned_lock/PASS
+$(WBPIPE): $(WBPIPE)_nolcl_noaligned_nolock/PASS
+PIPEDEPS := $(WBPIPE).sby $(RTL)/core/$(WBPIPE).v $(MASTER) $(FMEM)
+$(WBPIPE)_lcl_aligned_lock/PASS:       $(PIPEDEPS)
+	sby -f $(WBPIPE).sby lcl_aligned_lock
+$(WBPIPE)_lcl_aligned_nolock/PASS:     $(PIPEDEPS)
+	sby -f $(WBPIPE).sby lcl_aligned_nolock
+$(WBPIPE)_lcl_noaligned_lock/PASS:     $(PIPEDEPS)
+	sby -f $(WBPIPE).sby lcl_noaligned_lock
+$(WBPIPE)_lcl_noaligned_nolock/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby lcl_noaligned_nolock
+$(WBPIPE)_nolcl_aligned_lock/PASS:     $(PIPEDEPS)
+	sby -f $(WBPIPE).sby nolcl_aligned_lock
+$(WBPIPE)_nolcl_aligned_nolock/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby nolcl_aligned_nolock
+$(WBPIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby nolcl_noaligned_lock
+$(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
+	sby -f $(WBPIPE).sby nolcl_noaligned_nolock
+## }}}
 
 .PHONY: $(MMU)
+## {{{
 $(MMU): $(MMU)_prf/PASS
 $(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
 	sby -f $(MMU).sby prf
+## }}}
 
 .PHONY: $(TMR)
+## {{{
 $(TMR): $(TMR)_prf/PASS
 $(TMR)_prf/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
 	sby -f $(TMR).sby prf
+## }}}
 
 .PHONY: $(CNT)
+## {{{
 $(CNT): $(CNT)_prf/PASS
 $(CNT)_prf/PASS: $(CNT).sby $(RTL)/peripherals/$(CNT).v $(SLAVE)
 	sby -f $(CNT).sby prf
+## }}}
 
 .PHONY: $(JIF)
+## {{{
 $(JIF): $(JIF)_prf/PASS
 $(JIF)_prf/PASS: $(JIF).sby $(RTL)/peripherals/$(JIF).v $(SLAVE)
 	sby -f $(JIF).sby prf
+## }}}
 
 .PHONY: $(WDG)
+## {{{
 $(WDG): $(WDG)_prf/PASS
 $(WDG)_prf/PASS: $(WDG).sby $(RTL)/peripherals/$(WDG).v $(SLAVE)
 	sby -f $(WDG).sby prf
+## }}}
 
 .PHONY: $(INT)
+## {{{
 $(INT): $(INT)_cvr/PASS $(INT)_prf/PASS
 $(INT)_prf/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
 	sby -f $(INT).sby prf
 $(INT)_cvr/PASS: $(INT).sby $(RTL)/peripherals/$(INT).v $(SLAVE)
 	sby -f $(INT).sby cvr
+## }}}
 
 .PHONY: $(DCD)
+## {{{
 $(DCD): $(DCD)_pipe_div_mpy_cis_opipe/PASS
 $(DCD): $(DCD)_pipe_div_mpy_cis_nopipe/PASS
 $(DCD): $(DCD)_pipe_div_mpy_nocis_pipe/PASS
@@ -275,21 +328,27 @@ $(DCD)_pipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_ide
 	sby -f $(DCD).sby pipe_nodiv_nompy_nocis_nopipe
 $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_idecode.v
 	sby -f $(DCD).sby nopipe_nodiv_nompy_nocis_nopipe
+## }}}
 
 
-.PHONY: $(DMA)
-$(DMA): $(DMA)_prf/PASS
-$(DMA)_prf/PASS: $(RTL)/peripherals/$(DMA).v $(MASTER) $(SLAVE) $(DMA).sby
-	sby -f $(DMA).sby prf
+.PHONY: $(WBDMA)
+## {{{
+$(WBDMA): $(WBDMA)_prf/PASS
+$(WBDMA)_prf/PASS: $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE) $(WBDMA).sby
+	sby -f $(WBDMA).sby prf
+## }}}
 
 .PHONY: $(ALU)
+## {{{
 $(ALU): $(ALU)_prf/PASS
 $(ALU)_prf/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
 	sby -f $(ALU).sby prf
-
-DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core/iscachable.v
+## }}}
 
 .PHONY: $(DCACHE)
+## {{{
+DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core/iscachable.v
+
 $(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
 $(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
 $(DCACHE) : $(DCACHE)_piped/PASS $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
@@ -315,13 +374,17 @@ $(DCACHE)_cover/PASS: $(DCACHE_FILES)
 
 $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby cover_pipe
+## }}}
 
 .PHONY: $(DIV)
+## {{{
 $(DIV) : $(DIV)_prf/PASS
 $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
 	sby -f $(DIV).sby prf
+## }}}
 
 .PHONY: $(CPU)
+## {{{
 $(CPU): $(CPU)_piped/PASS
 $(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
@@ -340,8 +403,10 @@ $(CPU)_lowlogic/PASS: $(CPUDEPS)
 
 $(CPU)_ice40/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby ice40
+## }}}
 
 .PHONY: clean
+## {{{
 clean:
 	rm -rf $(PFONE)_*/    $(PFTWO)_*/     $(PFCACHE)_*/
 	rm -rf $(WBDLY)*/     $(PRIARB)*/     $(DBL)*/
@@ -353,3 +418,4 @@ clean:
 	rm -rf $(CPU)_*/
 	rm -rf $(AXILPF)_*/   $(AXILMEM)_*/   $(AXIICC)_*/
 	rm -f *.check
+## }}}

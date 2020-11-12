@@ -8,9 +8,10 @@ prfu64 prf opt_realignment bus64
 
 [options]
 prf: mode prove
-prf:  depth 20
+prf:  depth 13
 prfu: depth 20
 cvr: mode cover
+cvr: depth 30
 
 [engines]
 cvr: smtbmc

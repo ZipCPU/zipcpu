@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	fmem.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	
@@ -11,9 +11,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2016, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -37,12 +37,15 @@
 //
 //
 `default_nettype none
-//
+// }}}
 module	fmem #(
+		// {{{
 		parameter [0:0]	IMPLEMENT_LOCK = 1'b0,
 		parameter F_LGDEPTH = 4,
 		parameter OPT_MAXDEPTH = 1
+		// }}}
 	) (
+		// {{{
 		input	wire			i_clk,
 		input	wire			i_bus_reset,
 		input	wire			i_cpu_reset,
@@ -71,8 +74,11 @@ module	fmem #(
 		output	reg			f_read_cycle
 		// , output	reg			f_endpipe,
 		// output	reg	[4:0]		f_addr_reg,
+		// }}}
 	);
 
+	// Declarations and setup
+	// {{{
 `ifdef	ZIPCPU
 `define	CPU_ASSUME	assume
 `define	CPU_ASSERT	assert
@@ -82,14 +88,16 @@ module	fmem #(
 `endif
 
 	reg	f_past_valid;
+	reg	past_stb, past_rd, past_busy;
+
 	initial	f_past_valid <= 0;
 	always @(posedge i_clk)
 		f_past_valid <= 1;
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Reset checks
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -109,7 +117,7 @@ module	fmem #(
 		`CPU_ASSUME(!i_err);
 	end
 
-	//
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	always @(*)
@@ -125,12 +133,11 @@ module	fmem #(
 
 	initial	f_outstanding = 0;
 	always @(posedge i_clk)
-	if (i_cpu_reset)
+	if (i_cpu_reset || i_err)
 		f_outstanding <= 0;
-	else casez({ i_stb, i_done, i_err })
-	3'b100: f_outstanding <= f_outstanding + 1;
-	3'b010: f_outstanding <= f_outstanding - 1;
-	3'b??1: f_outstanding <= 0;
+	else casez({ i_stb, i_done })
+	2'b10: f_outstanding <= f_outstanding + 1;
+	2'b01: f_outstanding <= f_outstanding - 1;
 	default: begin end
 	endcase
 
@@ -207,8 +214,6 @@ module	fmem #(
 	else if (f_past_valid && !i_err && $past(i_rdbusy)
 			&& (f_outstanding > (i_valid ? 1:0)))
 		`CPU_ASSUME(i_rdbusy);
-
-	reg	past_stb, past_rd, past_busy;
 
 	initial	past_stb = 1'b0;
 	always @(posedge i_clk)
