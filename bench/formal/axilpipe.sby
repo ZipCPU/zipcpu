@@ -5,21 +5,30 @@ prfu prf opt_realignment   bus32
 cvr64 cvr                  bus64
 prf64 prf                  bus64
 prfu64 prf opt_realignment bus64
+# bmc
+bmcu   bmc opt_realignemnt
+bmc64  bmc                 bus64
+bmcu64 bmc opt_realignemnt bus64
 
 [options]
 prf: mode prove
 prf:  depth 13
 prfu: depth 20
+bmc: mode bmc
+# bmc:  depth 13
+bmcu: depth 40
 cvr: mode cover
 cvr: depth 30
 
 [engines]
 cvr: smtbmc
 # prf: abc pdr
+bmc: smtbmc
 prf: smtbmc
 
 [script]
 read -define AXILPIPE
+bmc: read -define BMC_ASSERT=assert
 read -formal axilpipe.v
 read -formal faxil_master.v
 read -formal fmem.v
