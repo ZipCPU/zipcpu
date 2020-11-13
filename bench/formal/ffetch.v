@@ -1,18 +1,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	ffetch.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:
+// Purpose:	A set of memory properties, with the goal that if any memory
+//		can meet these properties, then the ZipCPU should be able to
+//	interact with that memory properly.
+//
+//	This particular property set regards the instruction fetch.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -28,7 +32,9 @@
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
 //
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -36,36 +42,41 @@
 //
 //
 `default_nettype	none
-//
-module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
-			pf_valid, cpu_ready, pf_pc, pf_insn, pf_illegal,
-			fc_pc, fc_illegal, fc_insn, f_address);
-	parameter	ADDRESS_WIDTH = 30;
-	parameter [0:0]	OPT_ALIGNED  = 1'b0;
-	parameter [0:0]	OPT_CONTRACT = 1'b1;
-	localparam	BUSW = 32;	// Number of data lines on the bus
-	localparam	AW=ADDRESS_WIDTH; // Shorthand for ADDRESS_WIDTH
-	//
-	input	wire			i_clk, i_reset;
-	//
-	// The interface with the rest of the CPU
-	input	wire			cpu_new_pc;
-	input	wire			cpu_clear_cache;
-	input	wire	[(AW+1):0]	cpu_pc;
-	input	wire			pf_valid;
-	input	wire			cpu_ready;
-	input	wire	[(AW+1):0]	pf_pc;
-	input	wire	[(BUSW-1):0]	pf_insn;
-	//
-	// o_illegal will be true if this instruction was the result of
-	// a bus error (This is also part of the CPU interface)
-	input	wire			pf_illegal;
-	//
-	(* anyconst *) output	reg	[(AW+1):0]	fc_pc;
-	(* anyconst *) output	reg			fc_illegal;
-	(* anyconst *) output	reg	[BUSW-1:0]	fc_insn;
-	output	reg	[(AW+1):0]	f_address;
+// }}}
+module	ffetch #(
+		// {{{
+		parameter	ADDRESS_WIDTH = 30,
+		parameter [0:0]	OPT_ALIGNED  = 1'b0,
+		parameter [0:0]	OPT_CONTRACT = 1'b1,
+		localparam	BUSW = 32, // Number of data lines on the bus
+		localparam	AW=ADDRESS_WIDTH // Shorthand for ADDRESS_WIDTH
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		//
+		// The interface with the rest of the CPU
+		input	wire			cpu_new_pc,
+		input	wire			cpu_clear_cache,
+		input	wire	[(AW+1):0]	cpu_pc,
+		input	wire			pf_valid,
+		input	wire			cpu_ready,
+		input	wire	[(AW+1):0]	pf_pc,
+		input	wire	[(BUSW-1):0]	pf_insn,
+		//
+		// o_illegal will be true if this instruction was the result of
+		// a bus error (This is also part of the CPU interface)
+		input	wire			pf_illegal,
+		//
+		(* anyconst *)	output	reg	[(AW+1):0]	fc_pc,
+		(* anyconst *)	output	reg			fc_illegal,
+		(* anyconst *)	output	reg	[BUSW-1:0]	fc_insn,
+				output	reg	[(AW+1):0]	f_address
+		// }}}
+	);
 
+	// Declarations
+	// {{{
 `ifdef	ZIPCPU
 `define	CPU_ASSUME	assume
 `define	CPU_ASSERT	assert
@@ -74,7 +85,17 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 `define	CPU_ASSERT	assume
 `endif
 	reg	[(AW+1):0]	f_next_address;
+	reg		f_past_valid;
 
+	reg		need_new_pc, past_stalled, past_illegal, past_new_pc,
+			past_valid;
+	reg	[31:0]	past_insn;
+	reg [AW+1:0]	last_pc, next_pc, prior_pc;
+
+	// }}}
+
+	// f_address, f_next_address -- address tracking
+	// {{{
 	always @(posedge i_clk)
 	if (cpu_new_pc)
 		f_address <= cpu_pc;
@@ -89,39 +110,41 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 		f_next_address = f_address + 4;
 		f_next_address[1:0] = 2'b00;
 	end
+	// }}}
 
+	// f_past_valid
+	// {{{
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
-	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
-
-	always @(*)
-	if (!f_past_valid)
-		`CPU_ASSERT(i_reset);
-
-	/////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
+	// Reset
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	// Assumptions about our inputs
-	//
-	//
-	/////////////////////////////////////////////////
 
 	//
 	// Assume we start from a reset condition
 	initial	`CPU_ASSERT(i_reset);
-	//
 
-	/////////////////////////////////////////////////////
-	//
+	always @(*)
+	if (!f_past_valid)
+		`CPU_ASSERT(i_reset);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our return responses to the CPU
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	/////////////////////////////////////////////////////
 
+	// pf_pc, and cpu_pc alignment
+	// {{{
 	generate if (OPT_ALIGNED)
 	begin
 
@@ -134,6 +157,7 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 			`CPU_ASSUME(pf_pc[1:0] == 2'b00);
 
 	end endgenerate
+	// }}}
 
 	// Some things to know from the CPU ... there will always be a
 	// i_new_pc request following any reset or clear cache request
@@ -143,11 +167,6 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 		`CPU_ASSUME(!pf_valid);
 		`CPU_ASSUME(!pf_illegal);
 	end
-
-	reg		need_new_pc, past_stalled, past_illegal, past_new_pc,
-			past_valid;
-	reg	[31:0]	past_insn;
-	reg [AW+1:0]	last_pc, next_pc, prior_pc;
 
 	always @(posedge i_clk)
 		past_new_pc <= cpu_new_pc;
@@ -240,22 +259,10 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 	if (f_past_valid && !i_reset && !cpu_new_pc)
 		`CPU_ASSERT(f_next_address == cpu_pc);
 
-	// The CPU is always ready following either a reset or a clear cache
-	// signal
-	// always @(posedge i_clk)
-	// if (f_past_valid && !$past(i_reset) && $past(cpu_clear_cache || cpu_new_pc))
-	//	`CPU_ASSERT(cpu_ready);
-
-	// If the CPU was ready in the past and hasn't accepted a new
-	// instruction, then it must still be ready
-	// always @(posedge i_clk)
-	// if (f_past_valid && !$past(i_reset) && $past(cpu_ready || !pf_valid))
-		// `CPU_ASSERT(cpu_ready);
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Contract checking
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -279,5 +286,5 @@ module	ffetch(i_clk, i_reset, cpu_new_pc, cpu_clear_cache, cpu_pc,
 			`CPU_ASSUME(fc_illegal == pf_illegal);
 
 	end endgenerate
-
+	// }}}
 endmodule

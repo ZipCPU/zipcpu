@@ -6,12 +6,11 @@
 // {{{
 // Purpose:	
 //
-// }}}
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
@@ -30,6 +29,7 @@
 // <http://www.gnu.org/licenses/> for a copy.
 // }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -37,7 +37,9 @@
 //
 //
 `default_nettype	none
-//
+// }}}
+// Macros
+// {{{
 `define	CPU_SUB_OP	4'h0 // also a compare instruction
 `define	CPU_AND_OP	4'h1 // also a test instruction
 `define	CPU_BREV_OP	4'h8
@@ -57,114 +59,100 @@
 `define	CPU_STEP_BIT	6	// Will step one (or two CIS) instructions
 `define	CPU_GIE_BIT	5
 `define	CPU_SLEEP_BIT	4
-// Compile time defines
 //
-//
-module	zipcore(i_clk, i_reset, i_interrupt,
-		// Debug interface
-		i_halt, i_clear_pf_cache, i_dbg_reg, i_dbg_we, i_dbg_data,
-			o_dbg_stall, o_dbg_reg, o_dbg_cc,
-			o_break,
-		// CPU interface to the instruction fetch unit
-		o_pf_new_pc, o_clear_icache, o_pf_ready,
-				o_pf_request_address,
-			i_pf_valid, i_pf_illegal, i_pf_instruction,
-				i_pf_instruction_pc,
-		// CPU interface to the memory unit
-		o_clear_dcache, o_mem_ce, o_bus_lock,
-			o_mem_op, o_mem_addr, o_mem_data, o_mem_reg,
-			i_mem_busy, i_mem_rdbusy, i_mem_pipe_stalled,
-				i_mem_valid, i_bus_err, i_mem_wreg,i_mem_result,
-		// Accounting/CPU usage interface
-		o_op_stall, o_pf_stall, o_i_count,
-		o_debug
-		);
-	// Parameters
-	// {{{
-	parameter [31:0] RESET_ADDRESS=32'h010_0000;
-	parameter	ADDRESS_WIDTH=30,
-			LGICACHE=12;
-	parameter	IMPLEMENT_MPY = 0;
-	parameter [0:0]	IMPLEMENT_DIVIDE = 1;
+// }}}
+module	zipcore #(
+		// {{{
+		parameter [31:0] RESET_ADDRESS=32'h010_0000,
+		parameter	ADDRESS_WIDTH=30,
+				LGICACHE=12,
+		parameter	IMPLEMENT_MPY = 0,
+		parameter [0:0]	IMPLEMENT_DIVIDE = 1,
 `ifdef	OPT_IMPLEMENT_FPU
-	parameter [0:0]	IMPLEMENT_FPU = 1;
+		parameter [0:0]	IMPLEMENT_FPU = 1,
 `else
-	parameter [0:0]	IMPLEMENT_FPU = 0;
+		parameter [0:0]	IMPLEMENT_FPU = 0,
 `endif
-	parameter [0:0]	OPT_EARLY_BRANCHING = 1;
-	parameter [0:0]	OPT_CIS = 1'b1;
+		parameter [0:0]	OPT_EARLY_BRANCHING = 1,
+		parameter [0:0]	OPT_CIS = 1'b1,
+		parameter	[0:0]	OPT_PIPELINED = 1'b1,
+		parameter	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
+		parameter	[0:0]	IMPLEMENT_LOCK=1,
+		parameter		OPT_LGDCACHE = 10,
+	
+		parameter [0:0]	WITH_LOCAL_BUS = 1'b1,
+		localparam	AW=ADDRESS_WIDTH,
+		parameter	F_LGDEPTH=8
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset, i_interrupt,
+		// Debug interface
+		// {{{
+		input	wire		i_halt, i_clear_pf_cache,
+		input	wire	[4:0]	i_dbg_reg,
+		input	wire		i_dbg_we,
+		input	wire	[31:0]	i_dbg_data,
+		//
+		output	wire		o_dbg_stall,
+		output	reg	[31:0]	o_dbg_reg,
+		output	reg	[3:0]	o_dbg_cc,
+		output	wire		o_break,
+		// }}}
+		// Instruction fetch interface
+		// {{{
+		output	wire		o_pf_new_pc,
+		output	wire		o_clear_icache,
+		output	wire		o_pf_ready,
+		output	wire [(AW+1):0]	o_pf_request_address,
+		input	wire		i_pf_valid, i_pf_illegal,
+		input	wire [31:0]	i_pf_instruction,
+		input	wire [(AW+1):0]	i_pf_instruction_pc,
+		// }}}
+		// Memory unit interface
+		// {{{
+		output	wire		o_clear_dcache,
+		output	wire		o_mem_ce,
+		output	wire		o_bus_lock,
+		output	wire [2:0]	o_mem_op,
+		output	wire [31:0]	o_mem_addr,
+		output	wire [31:0]	o_mem_data,
+		output	wire [4:0]	o_mem_reg,
+		input	wire 		i_mem_busy, i_mem_rdbusy,
+					i_mem_pipe_stalled, i_mem_valid,
+		input	wire		i_bus_err,
+		input	wire [4:0]	i_mem_wreg,
+		input	wire [31:0]	i_mem_result,
+		// }}}
+		// Accounting outputs ... to help us count stalls and usage
+		// {{{
+		output	wire		o_op_stall,
+		output	wire		o_pf_stall,
+		output	wire		o_i_count,
+		// }}}
+		// Debug data for on-line/live tracing
+		// {{{
+		output	reg	[31:0]	o_debug
+		//}}}
+	// }}}
+	);
+
+	// Local parameter definitions
+	// {{{
+	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
+	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
+	localparam [(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
+	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 `ifdef	OPT_NO_USERMODE
 	localparam	[0:0]	OPT_NO_USERMODE = 1'b1;
 `else
 	localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
 `endif
-	parameter	[0:0]	OPT_PIPELINED = 1'b1;
-	parameter	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
-	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
-	parameter	[0:0]	IMPLEMENT_LOCK=1;
-	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
-	parameter		OPT_LGDCACHE = 10;
-	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
-
-	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
-	localparam	AW=ADDRESS_WIDTH;
-	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
-	parameter	F_LGDEPTH=8;
-
-`ifdef	FORMAL
-	wire	[F_LGDEPTH-1:0]	f_mem_outstanding;
-	wire			f_mem_gie, f_mem_pc, f_read_cycle;
-`endif
 
 	// }}}
-	// I/O declarations
+
+	// Register declarations
 	// {{{
-	input	wire		i_clk, i_reset, i_interrupt;
-	// Debug interface -- inputs
-	input	wire		i_halt, i_clear_pf_cache;
-	input	wire	[4:0]	i_dbg_reg;
-	input	wire		i_dbg_we;
-	input	wire	[31:0]	i_dbg_data;
-	// Debug interface -- outputs
-	output	wire		o_dbg_stall;
-	output	reg	[31:0]	o_dbg_reg;
-	output	reg	[3:0]	o_dbg_cc;
-	output	wire		o_break;
-	// Instruction fetch interface
-	output	wire [(AW+1):0]	o_pf_request_address;
-	input	wire [(AW+1):0]	i_pf_instruction_pc;
-	output	wire		o_pf_new_pc;
-	output	wire		o_clear_icache;
-	input	wire		i_pf_valid, i_pf_illegal;
-	input	wire [31:0]	i_pf_instruction;
-	output	wire		o_pf_ready;
-	// Memory unit interface
-	output	wire		o_clear_dcache;
-	output	wire		o_mem_ce;
-	output	wire		o_bus_lock;
-	output	wire [2:0]	o_mem_op;
-	output	wire [31:0]	o_mem_addr;
-	output	wire [31:0]	o_mem_data;
-	output	wire [4:0]	o_mem_reg;
-	input	wire 		i_mem_busy, i_mem_rdbusy,
-				i_mem_pipe_stalled, i_mem_valid;
-	input	wire		i_bus_err;
-	input	wire [4:0]	i_mem_wreg;
-	input	wire [31:0]	i_mem_result;
-	// Wishbone interface -- outputs
-	// output	wire		o_wb_we;
-	// Wishbone interface -- inputs
-	// Accounting outputs ... to help us count stalls and usage
-	output	wire		o_op_stall;
-	output	wire		o_pf_stall;
-	output	wire		o_i_count;
-	//
-	output	reg	[31:0]	o_debug;
-	// }}}
-
-
-	// Registers
-	//
 	//	The distributed RAM style comment is necessary on the
 	// SPARTAN6 with XST to prevent XST from oversimplifying the register
 	// set and in the process ruining everything else.  It basically
@@ -191,8 +179,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	// The master chip enable
 	wire		master_ce, master_stall;
-
 	//
+
 	//
 	//	PIPELINE STAGE #1 :: Prefetch
 	//		Variable declarations
@@ -217,7 +205,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	clear_pipeline = new_pc;
 	// }}}
 
-	//
 	//
 	//	PIPELINE STAGE #2 :: Instruction Decode
 	//		Variable declarations
@@ -359,31 +346,37 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	reg		last_write_to_cc;
 	wire		cc_write_hold;
 	reg		r_clear_icache, r_clear_dcache;
+
+	reg		pfpcset;
+	reg	[2:0]	pfpcsrc;
 	// }}}
 
 `ifdef	FORMAL
 	wire	f_mem_pc;
 `endif
-
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	//	MASTER: clock enable.
+	// MASTER: clock enable.
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	assign	master_ce = ((!i_halt)||(alu_phase))
 				&&(!cc_write_hold)&&(!o_break)&&(!sleep);
-
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	//	PIPELINE STAGE #1 :: Prefetch
-	//		Calculate stall conditions
+	// Calculate stall conditions
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
+	//
+	// PIPELINE STAGE #1 :: Prefetch
 	//	These are calculated externally, within the prefetch module.
 	//
-
-	//
-	//	PIPELINE STAGE #2 :: Instruction Decode
-	//		Calculate stall conditions
-
+	// PIPELINE STAGE #2 :: Instruction Decode
+	// {{{
 	always @(*)
 	if (OPT_PIPELINED)
 		dcd_stalled = (dcd_valid)&&(op_stall);
@@ -391,9 +384,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		dcd_stalled = (!master_ce)||(ill_err_i)||(dcd_valid)||(op_valid)
 			||(ibus_err_flag)||(idiv_err_flag)
 			||(alu_busy)||(div_busy)||(fpu_busy)||(i_mem_busy);
+	// }}}
 	//
-	//	PIPELINE STAGE #3 :: Read Operands
-	//		Calculate stall conditions
+	// PIPELINE STAGE #3 :: Read Operands
 	// {{{
 	generate if (OPT_PIPELINED)
 	begin : GEN_OP_STALL
@@ -445,7 +438,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		// }}}
 		assign	op_ce = ((dcd_valid)||(dcd_illegal)||(dcd_early_branch))&&(!op_stall);
 
-	end else begin // !OPT_PIPELINED
+	end else begin : NO_OP_STALLS // !OPT_PIPELINED
 
 		assign	op_stall = 1'b0; // (o_break)||(pending_interrupt);
 		assign	op_ce = ((dcd_valid)||(dcd_early_branch))&&(!op_stall);
@@ -466,11 +459,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// to determine whether op_valid is true.
 	// assign	op_change_data_ce = (!op_stall);
 	// }}}
-
 	//
-	//	PIPELINE STAGE #4 :: ALU / Memory
-	//		Calculate stall conditions
-	//
+	// PIPELINE STAGE #4 :: ALU / Memory
 	// {{{
 	// 1. Basic stall is if the previous stage is valid and the next is
 	//	busy.
@@ -494,7 +484,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		// Verilator lint_off unused
 		wire	unused_alu_stall = alu_stall;
 		// Verilator lint_on  unused
-	end else begin
+	end else begin : NO_ALU_STALLS
 
 		assign	alu_stall = (master_stall);
 		//assign	alu_ce = (master_ce)&&(op_valid_alu)
@@ -544,7 +534,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	end endgenerate
 	// }}}
-
+	//
+	// Master stall condition
+	// {{{
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
 			||(ibus_err_flag)||(idiv_err_flag)
 			||(pending_interrupt)&&(!alu_phase)
@@ -554,7 +546,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				||((i_mem_busy)&&(op_illegal))
 				||((i_mem_busy)&&(op_valid_div))
 				||(alu_illegal)||(o_break)));
-
+	// }}}
+	//
+	// (Everything but memory) stall condition
+	// {{{
 
 	// ALU, DIV, or FPU CE ... equivalent to the OR of all three of these
 	always @(*)
@@ -564,13 +559,16 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			&&((!i_mem_busy)||(!op_wR)||(op_R[4:1] != { gie, 3'h7}));
 	else
 		adf_ce_unconditional = (!master_stall)&&(op_valid)&&(!op_valid_mem);
-
+	// }}}
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//	PIPELINE STAGE #1 :: Prefetch
-	//
-	//
+	// PIPELINE STAGE #1 :: Instruction fetch
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	assign	o_pf_ready = (!dcd_stalled && !dcd_phase);
 
 	assign	o_pf_new_pc = (new_pc)||((dcd_early_branch_stb)&&(!clear_pipeline));
@@ -579,13 +577,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				? dcd_branch_pc:pf_pc;
 	assign	pf_gie = gie;
 	// }}}
-
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//	PIPELINE STAGE #2 :: Instruction Decode
-	//
-	//
+	// PIPELINE STAGE #2 :: Instruction Decode
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	assign		dcd_ce =((OPT_PIPELINED)&&(!dcd_valid))||(!dcd_stalled);
 	idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
@@ -626,13 +625,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			);
 	assign	dcd_gie = pf_gie;
 	// }}}
-
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//	PIPELINE STAGE #3 :: Read Operands (Registers)
-	//
-	//
+	// PIPELINE STAGE #3 :: Read Operands (Registers)
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	generate if (OPT_PIPELINED_BUS_ACCESS)
 	begin : GEN_OP_PIPE
 		reg		r_op_pipe;
@@ -957,7 +956,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	op_break = r_op_break;
 
 	generate if ((!OPT_PIPELINED)||(!OPT_LOCK))
-	begin
+	begin : NO_OPLOCK
 
 		assign op_lock       = 1'b0;
 
@@ -1228,12 +1227,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end endgenerate
 
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// PIPELINE STAGE #4 :: Apply Instruction
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	//	PIPELINE STAGE #4 :: Apply Instruction
-	//
-	//
-	// ALU
+
+	// The ALU itself
 	cpuops	#(IMPLEMENT_MPY) doalu(i_clk, ((i_reset)||(clear_pipeline)),
 	// {{{
 			alu_ce, op_opn, op_Av, op_Bv,
@@ -1301,7 +1303,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end endgenerate
 	// }}}
 
-
+	// Condition handling
+	// {{{
 	assign	set_cond = ((op_F[7:4]&op_Fl[3:0])==op_F[3:0]);
 	initial	alu_wF   = 1'b0;
 	initial	alu_wR   = 1'b0;
@@ -1331,7 +1334,11 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			alu_wF  <= (op_wF)&&(set_cond)&&(!op_illegal);
 
 	end endgenerate
+	// }}}
 
+	// alu_phase
+	// {{{
+	// Instruction phase (which half of the instruction we are on) tracking
 	generate if (OPT_CIS)
 	begin : GEN_ALU_PHASE
 
@@ -1349,7 +1356,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 		assign	alu_phase = 1'b0;
 	end endgenerate
+	// }}}
 
+	// alu_reg
+	// {{{
 	generate if (OPT_PIPELINED)
 	begin
 
@@ -1367,7 +1377,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			else
 				alu_reg <= op_R;
 	end endgenerate
+	// }}}
 
+	// wr_index
+	// {{{
 	initial	wr_index = 0;
 	always @(posedge i_clk)
 	begin
@@ -1397,6 +1410,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		if (!IMPLEMENT_FPU)
 			wr_index[2] <= 1'b0;
 	end
+	// }}}
 
 	//
 	// DEBUG Register write access starts here
@@ -1432,6 +1446,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	alu_gie = gie;
 	// }}}
 
+	// r_alu_pc
+	// {{{
 	generate if (OPT_PIPELINED)
 	begin : GEN_ALU_PC
 		reg	[(AW+1):0]	r_alu_pc;
@@ -1448,7 +1464,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	alu_pc = op_pc;
 
 	end endgenerate
+	// }}}
 
+	// r_alu_illegal
+	// {{{
 	generate if (OPT_PIPELINED)
 	begin : SET_ALU_ILLEGAL
 		reg		r_alu_illegal;
@@ -1466,7 +1485,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end else begin : SET_ALU_ILLEGAL
 		assign	alu_illegal = op_illegal;
 	end endgenerate
+	// }}}
 
+	// r_alu_pc_valid, mem_pc_valid
+	// {{{
 	initial	r_alu_pc_valid = 1'b0;
 	initial	mem_pc_valid = 1'b0;
 	always @(posedge i_clk)
@@ -1485,6 +1507,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		mem_pc_valid <= 1'b0;
 	else
 		mem_pc_valid <= (mem_ce);
+	// }}}
 
 	// Bus lock logic
 	// {{{
@@ -1536,6 +1559,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	// Memory interface
 	// {{{
+	// This logic is now managed outside the ZipCore
+	//
 	assign	o_mem_ce   = mem_ce && set_cond;
 	assign	o_mem_op   = op_opn[2:0];
 	assign	o_mem_data = op_Bv;
@@ -1544,19 +1569,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	// }}}
 	// }}}
-
-
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//
-	//	PIPELINE STAGE #5 :: Write-back results
-	//
+	// PIPELINE STAGE #5 :: Write-back results
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	//
 	// This stage is not allowed to stall.  If results are ready to be
 	// written back, they are written back at all cost.  Sleepy CPU's
@@ -1564,6 +1584,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// anything else.  Indeed, the (master_ce) bit is only as relevant
 	// as knowinig something is available for writeback.
 
+	// wr_discard, wr_reg_ce
+	// {{{
 	//
 	// Write back to our generic register set ...
 	// When shall we write back?  On one of two conditions
@@ -1581,7 +1603,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	3'b100: wr_reg_ce  = (!wr_discard)&&(fpu_valid)&&(!fpu_error);
 	default: wr_reg_ce = (!wr_discard)&&(alu_wR && alu_valid);
 	endcase
+	// }}}
 
+	// wr_reg_id, wr_write-cc, wr_write_scc, wr_write_ucc, wr_write_pc
+	// {{{
 	// Which register shall be written?
 	//	COULD SIMPLIFY THIS: by adding three bits to these registers,
 	//		One or PC, one for CC, and one for GIE match
@@ -1603,9 +1628,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	wr_write_ucc = (wr_reg_id[4:0] == {1'b1, `CPU_CC_REG});
 	// Are we writing to the PC?
 	assign	wr_write_pc = (wr_reg_id[3:0] == `CPU_PC_REG);
+	// }}}
 
-	// What value to write?
-
+	// wr_?preg_vl: Select from among sources the value to be writtena
+	// {{{
 	always @(*)
 	case(wr_index)
 	3'b000: wr_gpreg_vl = dbg_val;
@@ -1623,7 +1649,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// 3'b010: wr_gpreg_vl = alu_result;
 	default: wr_spreg_vl = alu_result;
 	endcase
+	// }}}
 
+	// Update the register set
+	// {{{
 	generate if (OPT_NO_USERMODE)
 	begin : SET_REGISTERS
 
@@ -1638,10 +1667,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			regset[wr_reg_id] <= wr_gpreg_vl;
 
 	end endgenerate
-
+	// }}}
 
 	//
 	// Write back to the condition codes/flags register ...
+
+	// wr_flags_ce : should condition codes be written to?
+	// {{{
 	// When shall we write to our flags register?  alu_wF already
 	// includes the set condition ...
 	// assign	wr_flags_ce = (alu_wF)&&((alu_valid)
@@ -1660,7 +1692,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		default: wr_flags_ce = 0;
 		endcase
 	end
+	// }}}
 
+	// wr_flags: what should the new condition codes be?
+	// {{{
 	always @(*)
 	begin
 		wr_flags = 0;
@@ -1671,7 +1706,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		default: wr_flags = 0;
 		endcase
 	end
+	// }}}
 
+	// w_uflags, w_iflags : Define the current CC registers
+	// {{{
 	assign	w_uflags = { 2'b00, uhalt_phase, ufpu_err_flag,
 			udiv_err_flag, ubus_err_flag, trap, ill_err_u,
 			ubreak, step, 1'b1, sleep,
@@ -1680,8 +1718,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			idiv_err_flag, ibus_err_flag, trap, ill_err_i,
 			break_en, 1'b0, 1'b0, sleep,
 			((wr_flags_ce)&&(!alu_gie))?wr_flags:iflags };
+	// }}}
 
-
+	// flags: The user condition codes, Z, C, N, and V
+	// {{{
 	// What value to write?
 	always @(posedge i_clk)
 	// If explicitly writing the register itself
@@ -1691,14 +1731,20 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	else if ((wr_flags_ce)&&(alu_gie))
 		flags <= (div_valid)?div_flags:((fpu_valid)?fpu_flags
 				: alu_flags);
+	// }}}
 
+	// uflags: The supervisor condition codes, Z, C, N, and V
+	// {{{
 	always @(posedge i_clk)
 	if ((wr_reg_ce)&&(wr_write_scc))
 		iflags <= wr_gpreg_vl[3:0];
 	else if ((wr_flags_ce)&&(!alu_gie))
 		iflags <= (div_valid)?div_flags:((fpu_valid)?fpu_flags
 				: alu_flags);
+	// }}}
 
+	// break_en
+	// {{{
 	// The 'break' enable  bit.  This bit can only be set from supervisor
 	// mode.  It control what the CPU does upon encountering a break
 	// instruction.
@@ -1720,7 +1766,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		break_en <= 1'b0;
 	else if ((wr_reg_ce)&&(wr_write_scc))
 		break_en <= wr_spreg_vl[`CPU_BREAK_BIT];
+	// }}}
 
+	// break_pending
+	// {{{
 	generate if (OPT_PIPELINED)
 	begin : GEN_PENDING_BREAK
 		reg	r_break_pending;
@@ -1741,8 +1790,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 		assign	break_pending = op_break;
 	end endgenerate
+	// }}}
 
-
+	// o_break
+	// {{{
 	assign	o_break = ((break_en)||(!op_gie))&&(break_pending)
 				&&(!clear_pipeline)
 			||(ill_err_i)
@@ -1750,7 +1801,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			||((!alu_gie)&&(div_error))
 			||((!alu_gie)&&(fpu_error))
 			||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
+	// }}}
 
+	// sleep
+	// {{{
 	// The sleep register.  Setting the sleep register causes the CPU to
 	// sleep until the next interrupt.  Setting the sleep register within
 	// interrupt mode causes the processor to halt until a reset.  This is
@@ -1760,6 +1814,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	initial	sleep = 1'b0;
 	generate if (OPT_NO_USERMODE)
 	begin : GEN_NO_USERMODE_SLEEP
+		// {{{
 		reg	r_sleep_is_halt;
 		initial	r_sleep_is_halt = 1'b0;
 		always @(posedge i_clk)
@@ -1779,9 +1834,9 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		else if ((wr_reg_ce)&&(wr_write_cc)
 				&&(wr_spreg_vl[`CPU_GIE_BIT]))
 			sleep <= 1'b1;
-
+		// }}}
 	end else begin : GEN_SLEEP
-
+		// {{{
 		always @(posedge i_clk)
 			if ((i_reset)||(w_switch_to_interrupt))
 				sleep <= 1'b0;
@@ -1806,14 +1861,21 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				// supervisor mode at the same time, lest you
 				// halt the CPU.
 				sleep <= wr_spreg_vl[`CPU_SLEEP_BIT];
+		// }}}
 	end endgenerate
+	// }}}
 
+	// step : debug single-steep control
+	// {{{
 	always @(posedge i_clk)
 	if (i_reset)
 		step <= 1'b0;
 	else if ((wr_reg_ce)&&(!alu_gie)&&(wr_write_ucc))
 		step <= wr_spreg_vl[`CPU_STEP_BIT];
+	// }}}
 
+	// gie, switch_to_interrupt, release_from_interrupt
+	// {{{
 	// The GIE register.  Only interrupts can disable the interrupt register
 	generate if (OPT_NO_USERMODE)
 	begin
@@ -1893,7 +1955,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 		assign	gie = r_gie;
 	end endgenerate
+	// }}}
 
+	// trap, ubreak
+	/// {{{
 	generate if (OPT_NO_USERMODE)
 	begin
 
@@ -1929,8 +1994,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	ubreak = r_ubreak;
 
 	end endgenerate
+	// }}}
 
-
+	// ill_err_i, ill_err_u: Illegal instruction flags
+	// {{{
 	initial	ill_err_i = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -1966,7 +2033,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	ill_err_u = r_ill_err_u;
 
 	end endgenerate
+	// }}}
 
+	// ibus_err_flag, ubus_err_flag : Bus error flags
+	// {{{
 	// Supervisor/interrupt bus error flag -- this will crash the CPU if
 	// ever set.
 	initial	ibus_err_flag = 1'b0;
@@ -1999,9 +2069,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 		assign	ubus_err_flag = r_ubus_err_flag;
 	end endgenerate
+	// }}}
 
+	// idiv_err_flag, udiv_err_flag : Divide by zero error flags
+	// {{{
 	generate if (IMPLEMENT_DIVIDE != 0)
 	begin : DIVERR
+		// {{{
 		reg	r_idiv_err_flag, r_udiv_err_flag;
 
 		// Supervisor/interrupt divide (by zero) error flag -- this will
@@ -2037,13 +2111,20 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 			assign	udiv_err_flag = r_udiv_err_flag;
 		end
+		// }}}
 	end else begin
+		// {{{
 		assign	idiv_err_flag = 1'b0;
 		assign	udiv_err_flag = 1'b0;
+		// }}}
 	end endgenerate
+	// }}}
 
+	// ifpu_err_flag, ufpu_err_flag : Floating point error flag(s)
+	// {{{
 	generate if (IMPLEMENT_FPU !=0)
 	begin : FPUERR
+		// {{{
 		// Supervisor/interrupt floating point error flag -- this will
 		// crash the CPU if ever set.
 		reg		r_ifpu_err_flag, r_ufpu_err_flag;
@@ -2069,11 +2150,17 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 		assign	ifpu_err_flag = r_ifpu_err_flag;
 		assign	ufpu_err_flag = r_ufpu_err_flag;
+		// }}}
 	end else begin
+		// {{{
 		assign	ifpu_err_flag = 1'b0;
 		assign	ufpu_err_flag = 1'b0;
+		// }}}
 	end endgenerate
+	// }}}
 
+	// ihalt_phase, uhalt_phase : If an instruction was broken when halting
+	// {{{
 	generate if (OPT_CIS)
 	begin : GEN_IHALT_PHASE
 		reg		r_ihalt_phase;
@@ -2114,7 +2201,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assign	uhalt_phase = r_uhalt_phase;
 
 	end endgenerate
+	// }}}
 
+	// ipc, upc: Program counters
+	// {{{
 	//
 	// Write backs to the PC register, and general increments of it
 	//	We support two: upc and ipc.  If the instruction is normal,
@@ -2125,13 +2215,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// What happens when the pipeline has gie and !gie instructions within
 	// it?  Do we clear both?  What if a gie instruction tries to clear
 	// a non-gie instruction?
+
+	// upc
 	generate if (OPT_NO_USERMODE)
 	begin
-
+		// {{{
 		assign	upc = {(AW+2){1'b0}};
-
+		// }}}
 	end else begin : SET_USER_PC
-
+		// {{{
 		reg	[(AW+1):0]	r_upc;
 
 		always @(posedge i_clk)
@@ -2141,9 +2233,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				(((alu_pc_valid)&&(!clear_pipeline)&&(!alu_illegal))
 				||(mem_pc_valid)))
 			r_upc <= alu_pc;
+
 		assign	upc = r_upc;
+		// }}}
 	end endgenerate
 
+	// ipc
+	// {{{
 	initial	ipc = { RESET_BUS_ADDRESS, 2'b00 };
 	always @(posedge i_clk)
 	if (i_reset)
@@ -2154,9 +2250,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			(((alu_pc_valid)&&(!clear_pipeline)&&(!alu_illegal))
 			||(mem_pc_valid)))
 		ipc <= alu_pc;
+	// }}}
+	// }}}
 
-	reg		pfpcset;
-	reg	[2:0]	pfpcsrc;
+	// pf_pc : the program counter used by the pre-fetch
+	// {{{
+
+	// pfpcset, pfpcsrc
+	// {{{
 	always @(*)
 	begin
 		pfpcset = 0;
@@ -2192,6 +2293,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			pfpcset = 1;
 		end
 	end
+	// }}}
 
 	initial pf_pc = { RESET_BUS_ADDRESS, 2'b00 };
 	always @(posedge i_clk)
@@ -2222,6 +2324,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	else if ((new_pc)||((!pf_stalled)&&(i_pf_valid)))
 		pf_pc <= { pf_pc[(AW+1):2] + 1'b1, 2'b00 };
 */
+	// }}}
 
 	initial	last_write_to_cc = 1'b0;
 	always @(posedge i_clk)
@@ -2231,6 +2334,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		last_write_to_cc <= (wr_reg_ce)&&(wr_write_cc);
 	assign	cc_write_hold = (wr_reg_ce)&&(wr_write_cc)||(last_write_to_cc);
 
+	// o_clear_icache
+	// {{{
 	// If we aren't pipelined, or equivalently if we have no cache, these
 	// instructions will get quietly (or not so quietly) ignored by the
 	// optimizer.
@@ -2245,7 +2350,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	else
 		r_clear_icache <= 1'b0;
 	assign	o_clear_icache = r_clear_icache;
+	// }}}
 
+	// o_clear_dcache
+	// {{{
 	generate if (OPT_LGDCACHE > 0)
 	begin : CLEAR_DCACHE
 		initial	r_clear_dcache = 1'b1;
@@ -2264,7 +2372,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end endgenerate
 
 	assign	o_clear_dcache = r_clear_dcache;
+	// }}}
 
+	// new_pc : does the Prefetch need to clear the pipeline and start over?
+	// {{{
 	initial	new_pc = 1'b1;
 	always @(posedge i_clk)
 	if ((i_reset)||(o_clear_icache)||(dbg_clear_pipe))
@@ -2282,6 +2393,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		new_pc <= 1'b1;
 	else
 		new_pc <= 1'b0;
+	// }}}
 
 	//
 	// The debug write-back interface
@@ -2411,6 +2523,10 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	// }}}
 
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Accounting outputs
+	// {{{
 
 	//
 	//
@@ -2421,15 +2537,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	assign	o_op_stall = (master_ce)&&(op_stall);
 	assign	o_pf_stall = (master_ce)&&(!i_pf_valid);
 	assign	o_i_count  = (alu_pc_valid)&&(!clear_pipeline);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// The debug scope output
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// {{{
 
 	reg		debug_trigger, dbg_mem_we;
 	wire	[31:0]	debug_flags;
@@ -2495,7 +2610,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	endcase
 
 	// }}}
-
 	// Make verilator happy
 	// {{{
 	// verilator lint_off UNUSED
@@ -2519,13 +2633,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Formal properties
-//
+// {{{
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-	// {{{
 `ifdef	FORMAL
-//
+	// Declarations
+	// {{{
 `ifdef	ZIPCPU
 `define	ASSUME	assume
 `else
@@ -2540,14 +2654,48 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	wire	[6:0]	fc_alu_Aid;
 	wire		fc_alu_wR, fc_alu_M, fc_alu_prepipe;
 	reg		f_alu_phase;
-	////////////////////////////////////////////////////////////////
-	//
-	//
-	// Formal methods section
-	//
-	//
-	////////////////////////////////////////////////////////////////
-	reg	f_past_valid;
+
+	reg		f_past_valid;
+
+	reg	[2:0]	f_dbg_pc_seq, f_dbg_cc_seq, f_dbg_reg_seq;
+
+	wire		fc_op_illegal, fc_op_wF, fc_op_ALU, fc_op_M,
+			fc_op_DV, fc_op_FP, fc_op_break,
+			fc_op_lock, fc_op_wR, fc_op_rA, fc_op_rB,
+			fc_op_sim;
+	wire	[6:0]	fc_op_Rid, fc_op_Aid, fc_op_Bid;
+	wire	[31:0]	fc_op_I;
+	wire	[3:0]	fc_op_cond;
+	wire	[3:0]	fc_op_op;
+	wire	[22:0]	fc_op_sim_immv;
+	wire		f_op_insn; //f_alu_insn,f_wb_insn
+	reg		f_op_phase, f_op_early_branch;
+	reg		f_op_zI;
+	reg	f_op_branch;
+
+	wire	[31:0]	f_Bv;
+	reg	[31:0]	f_Av, f_pre_Bv;
+
+	reg	f_alu_branch;
+
+	(* anyseq *)	reg	bus_reset;
+	wire	[31:0]	f_dcd_mem_addr, f_pipe_addr_diff;
+	wire	[AW-1:0]	f_next_mem, f_op_mem_addr;
+	wire	[4+AW+2+7+4-1:0]	f_op_data;
+
+	wire		fc_alu_illegal, fc_alu_wF, fc_alu_ALU, fc_alu_DV,
+			fc_alu_FP, fc_alu_break, fc_alu_lock,
+			fc_alu_rA, fc_alu_rB, fc_alu_sim;
+	wire	[6:0]	fc_alu_Rid, fc_alu_Bid;
+	wire	[31:0]	fc_alu_I;
+	wire	[3:0]	fc_alu_cond;
+	wire	[3:0]	fc_alu_op;
+	wire	[22:0]	fc_alu_sim_immv;
+
+	wire	[F_LGDEPTH-1:0]	f_mem_outstanding;
+	wire			f_mem_gie, f_mem_pc, f_read_cycle;
+
+
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
@@ -2558,14 +2706,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(posedge i_clk)
 	if (!f_past_valid)
 		assume(i_reset);
-
-	//////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// The debugging interface
-	//
-	//
-	//////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -2605,7 +2751,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		end
 	end
 
-	reg	[2:0]	f_dbg_pc_seq, f_dbg_cc_seq, f_dbg_reg_seq;
 	initial	f_dbg_pc_seq = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -2686,14 +2831,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		assert(o_dbg_ack == $past(i_dbg_stb));
 `endif
 */
-
-	//////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Problem limiting assumptions
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	//////////////////////////////////////////////
+
 	//
 	// Take care that the assumptions below are actually representative
 	// of how the CPU is used.  One "careless" assumption could render
@@ -2758,14 +2904,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	always @(*)
 		assume(!i_dbg_we);
-
-	////////////////////////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Reset checks
-	//
-	//
-	////////////////////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -2828,14 +2972,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		if (div_busy)		`ASSERT(f_past_valid);
 		if (fpu_busy)		`ASSERT(f_past_valid);
 	end
-
-	////////////////////////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Pipeline signaling check
-	//
-	//
-	////////////////////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -2925,12 +3067,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		else
 			`ASSERT(!op_valid);
 	end
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the Program counter
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
+	//
 	always @(*)
 	if (i_pf_valid)
 		`ASSERT(i_pf_instruction_pc[1:0]==2'b00);
@@ -2944,13 +3088,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	always @(*)
 		`ASSERT(!alu_pc[0]);
-
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the prefetch (output) stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
+	//
+
 	always @(posedge i_clk)
 	if ((!clear_pipeline)&&(i_pf_valid))
 		`ASSERT(pf_gie == gie);
@@ -2968,12 +3114,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		.cpu_pc(o_pf_request_address), .pf_valid(i_pf_valid),
 		.cpu_ready(o_pf_ready), .pf_pc(i_pf_instruction_pc),
 		.pf_insn(i_pf_instruction), .pf_illegal(i_pf_illegal));
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the decode stage
-	//
-	////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -2989,9 +3135,8 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	end
 
 	always @(*)
-	if ((dcd_valid)&&(!clear_pipeline))
+	if ((dcd_valid || dcd_phase)&&(!clear_pipeline))
 		assert(f_dcd_insn_gie == dcd_gie);
-
 
 	always @(posedge i_clk)
 	if ((dcd_valid)&&(!dcd_illegal)&&(!clear_pipeline))
@@ -3057,7 +3202,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if ((dcd_valid)&&(!dcd_M))
 		`ASSERT((dcd_illegal)||(!dcd_pipe));
 
-	wire	[31:0]	f_dcd_mem_addr, f_pipe_addr_diff;
 	assign	f_dcd_mem_addr = w_op_BnI+dcd_I;
 	assign	f_pipe_addr_diff = f_dcd_mem_addr - op_Bv;
 
@@ -3124,27 +3268,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if ((dcd_DIV)&&(dcd_valid)&&(!dcd_illegal))
 		`ASSERT(dcd_wR);
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the op stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
-	//
-	wire	fc_op_illegal, fc_op_wF, fc_op_ALU, fc_op_M,
-			fc_op_DV, fc_op_FP, fc_op_break,
-			fc_op_lock, fc_op_wR, fc_op_rA, fc_op_rB,
-			fc_op_sim;
-	wire	[6:0]	fc_op_Rid, fc_op_Aid, fc_op_Bid;
-	wire	[31:0]	fc_op_I;
-	wire	[3:0]	fc_op_cond;
-	wire	[3:0]	fc_op_op;
-	wire	[22:0]	fc_op_sim_immv;
-	wire		f_op_insn; //f_alu_insn,f_wb_insn
-	reg		f_op_phase, f_op_early_branch;
-	reg		f_op_zI;
-	reg	f_op_branch;
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
@@ -3469,15 +3600,16 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if ((!i_reset)&&(break_pending)&&(!clear_pipeline))
 		`ASSERT((op_valid)&&(op_break));
-
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
+	// Memory
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Op: Memory pipeline assertions
 	//
-	//
-	(* anyseq *)	reg	bus_reset;
-	wire	[AW-1:0]	f_next_mem, f_op_mem_addr;
+
 	assign	f_next_mem    = o_mem_addr + 1'b1;
 	assign	f_op_mem_addr = op_Bv[AW+1:2];
 
@@ -3594,15 +3726,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	always @(*)
 	if ((op_valid)&(!op_valid_mem))
 		`ASSERT((op_illegal)||(!op_pipe));
-
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the ALU stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
-	//
+
 	always @(*)
 	if ((alu_ce)&&(!clear_pipeline))
 		`ASSERT((op_valid_alu)&&(op_gie == gie));
@@ -3661,18 +3793,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if ((f_past_valid)&&(wr_reg_ce)
 			&&((!$past(r_halted))||(!$past(i_dbg_we))))
 		`ASSERT(alu_gie == gie);
-
-
-
-
-	wire	[31:0]	f_Bv;
-	reg	[31:0]	f_Av, f_pre_Bv;
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Contract checking : A operand
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// The A operand
-	//
-	//
+
 	always @(*)
 	begin
 		f_Av = regset[fc_op_Aid[4:0]];
@@ -3702,10 +3831,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		else
 			f_Av = regset[fc_op_Aid[4:0]];
 	end
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	// The B operand
+	// Contract checking : B operand
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -3750,12 +3881,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				? ( { f_pre_Bv }+{ fc_op_I[29:0],2'b00 })
 				: (f_pre_Bv + fc_op_I))
 			: fc_op_I;
-
-
-	////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
-	// CONTRACT: The operands to an ALU/MEM/DIV operation
-	//   must be valid.
+	// CONTRACT: The operands to an ALU/MEM/DIV operation must be valid.
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	always @(posedge i_clk)
 	if ((op_valid)&&(!op_illegal)&&(!clear_pipeline))
@@ -3768,7 +3900,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			`ASSERT(f_Bv == op_Bv);
 		end
 	end
-
+	// }}}
 	////////////////////////////////////////////////////////////////
 	//
 	//
@@ -3806,15 +3938,18 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	//
 	////////////////////////////////////////////////
 
-	////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the op stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
+	//
+
 	////////////////////////////////////////////////
 	// op_valid
 	// op_ce
 	// op_stall
-	wire	[4+AW+2+7+4-1:0]	f_op_data;
 	assign	f_op_data = { op_valid_mem, op_valid_alu,
 			op_valid_div, op_valid_fpu,
 		// The Av and Bv values can change while we are stalled in the
@@ -3837,26 +3972,28 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			if (($past(op_valid_div))&&($past(div_busy)))
 				`ASSERT($stable(f_op_data));
 		end
-
-	/////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// CIS instructions, enabled by OPT_CIS
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	/////////
+	// No (current) properties here
 
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the ALU stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
-	//
+
 	// alu_valid
 	// alu_ce
 	// alu_stall
 	// ALU stage assertions
-
-	reg	f_alu_branch;
 
 	always @(posedge i_clk)
 	if ((alu_ce)||(mem_ce)||(div_ce)||(fpu_ce))
@@ -3872,15 +4009,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	else
 		f_alu_branch <= 1'b0;
 
-
-	wire	fc_alu_illegal, fc_alu_wF, fc_alu_ALU, fc_alu_DV,
-			fc_alu_FP, fc_alu_break, fc_alu_lock,
-			fc_alu_rA, fc_alu_rB, fc_alu_sim;
-	wire	[6:0]	fc_alu_Rid, fc_alu_Bid;
-	wire	[31:0]	fc_alu_I;
-	wire	[3:0]	fc_alu_cond;
-	wire	[3:0]	fc_alu_op;
-	wire	[22:0]	fc_alu_sim_immv;
 
 	f_idecode #(.ADDRESS_WIDTH(AW),
 		.OPT_MPY((IMPLEMENT_MPY!=0)? 1'b1:1'b0),
@@ -4010,24 +4138,15 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(fc_alu_M);
 		`ASSERT(!fc_alu_wR);
 	end
-
-	// always @(posedge i_clk)
-	// if ((OPT_PIPELINED)&&(cc_invalid_for_dvd))
-	// begin
-	//	assert((op_valid &&(fc_op_wF
-	//			||(fc_op_wR &&(fc_op_Aid[3:0]==`CPU_CC_REG))))
-	//		||fc_alu_wF
-	//		||((fc_alu_wR &&(fc_alu_Aid[3:0] == `CPU_CC_REG))));
-	// end
-
-
-	////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about the writeback stage
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	////////////////////////////////////////////////
 	//
-	//
+
 	initial	assert((!OPT_LOCK)||(OPT_PIPELINED));
 
 	always @(posedge i_clk)
@@ -4100,6 +4219,14 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(!alu_illegal);
 
 	always @(*)
+	if (!fc_alu_wR)
+		`ASSERT(!i_mem_rdbusy);
+
+	always @(*)
+	if (alu_illegal)
+		`ASSERT(!i_mem_rdbusy);
+
+	always @(*)
 	if (wr_reg_ce)
 	begin
 		`ASSERT(fc_alu_wR);
@@ -4109,15 +4236,12 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		`ASSERT(!fpu_error);
 		`ASSERT(!div_error);
 	end
-
-	//////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Ad-hoc (unsorted) properties
-	//
-	//
-	//////////////////////////////////////////////
-	//
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -4193,13 +4317,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 	if ((wr_reg_ce)&&((wr_write_cc)||(wr_write_pc)))
 		`ASSERT(wr_spreg_vl == wr_gpreg_vl);
 
-//	always @(posedge i_clk)
-//	if ((f_past_valid)&&(alu_gie)&&(wr_reg_ce)
-//			&&((!$past(r_halted))||(!$past(i_dbg_we))))
-//		`ASSERT(wr_reg_id[4]);
-//	else if ((alu_gie)&&((alu_busy)||(div_busy)))
-//		`ASSERT((!alu_wR)||(alu_reg[4]));
-
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(clear_pipeline))&&(!$past(i_reset))
 		&&($past(op_valid))&&($past(op_illegal))&&(!op_illegal))
@@ -4248,8 +4365,6 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 			`ASSERT($stable(f_dcd_insn_word));
 	end
 
-
-
 	always @(posedge i_clk)
 	if ((alu_ce)||(div_ce)||(fpu_ce))
 		`ASSERT(adf_ce_unconditional);
@@ -4267,14 +4382,13 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 				assert(!alu_ce);
 		end
 	end
-
-	//////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover statements
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	//////////////////////////////////////////////
 	always @(posedge i_clk)
 	if ((gie)&&(wr_reg_ce))
 	begin
@@ -4301,7 +4415,7 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 		cover(((wr_reg_ce)&&(!wr_spreg_vl[`CPU_GIE_BIT])
 				&&(wr_reg_id[4])&&(wr_write_cc)));
 	end
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Careless assumptions
@@ -4334,35 +4448,5 @@ module	zipcore(i_clk, i_reset, i_interrupt,
 
 	// }}}
 `endif	// FORMAL
+// }}}
 endmodule
-// Before
-// Cells		18,875		18,634	18,850	18,611	18.567	18,614
-//	SB_CARRY	   569		   573		   574	   574	   569
-//	SB_DFF		   457		   457		   457	   457	   457
-//	SB_DFFE		 2,802		 2,804	 2,803	 2,832	 2,803	 2,803
-//	SB_DFFESR	   295		   297		   268	   297	   297
-//	SB_DFFESS	    46		    46		    46	    46	    46
-//	SB_DFFSR	   276		   276		   276	   276	   276
-//	SB_LUT4		14,346		14,094  14,314	14,074	14,030	14,082
-//	SB_RAM40_4K	    84		    84		    84	    84	    84
-//
-// After
-//
-//
-// Before/Xilinx	(7193 LUTs)		(6308 LUTs)	(6294)
-// Cells		13,371		13,258	11,629		11,578
-//	FDRE		 1,633		 1,637	 1,567		 1,567
-//	LUT1		   173		   173	   174		   174
-//	LUT2		 1,275		 1,258	 1,307		 1,310
-//	LUT3		 1,191		 1,174	   940		   937
-//	LUT4		   472		   506	   420		   418
-//	LUT5		   662		   692	   589		   596
-//	LUT6		 4,784		 4,849	 3,992		 3,961
-//	MUXCY		   611		   611	   611		   611
-//	MUXF7		 1,315		 1,412	   957		   934
-//	MUXF8		   404		   405	   241		   239
-//	RAM128X1D	    54		    54	    54		    54
-//	RAM64X1D	   140		   140	   140		   140
-//	RAMB18E1	    16		    16	    16		    16
-//	RAMB36E1	     2		     2	     2		     2
-//	XORCY		   619		   619	   619		   619
