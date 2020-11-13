@@ -1470,24 +1470,40 @@ module	axilpipe #(
 	//
 	//
 	reg	[LGPIPE:0]	cvr_writes, cvr_reads, cvr_valids;
+	reg			cvr_idle;
+
+	always @(*)
+	begin
+		cvr_idle = 1;
+		if (!S_AXI_ARESETN || i_cpu_reset || o_err || f_done)
+			cvr_idle = 1'b0;
+		if (M_AXI_AWVALID || M_AXI_WVALID || M_AXI_ARVALID)
+			cvr_idle = 1'b0;
+		if (faxil_awr_outstanding > 0)
+			cvr_idle = 1'b0;
+		if (faxil_wr_outstanding > 0)
+			cvr_idle = 1'b0;
+		if (faxil_rd_outstanding > 0)
+			cvr_idle = 1'b0;
+	end
 
 	initial	cvr_writes = 0;
 	always @(posedge i_clk)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset || o_err)
 		cvr_writes <= 0;
 	else if (M_AXI_BVALID&& !misaligned_response_pending  && !(&cvr_writes))
 		cvr_writes <= cvr_writes + 1;
 
 	initial	cvr_reads = 0;
 	always @(posedge i_clk)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset || o_err)
 		cvr_reads <= 0;
 	else if (M_AXI_RVALID && !misaligned_response_pending && !(&cvr_reads))
 		cvr_reads <= cvr_reads + 1;
 
 	initial	cvr_valids = 0;
 	always @(posedge i_clk)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset || o_err)
 		cvr_valids <= 0;
 	else if (o_valid)
 		cvr_valids <= cvr_valids + 1;
@@ -1505,6 +1521,7 @@ module	axilpipe #(
 
 
 	always @(posedge i_clk)
+	if (cvr_idle)
 	begin
 		cover(cvr_writes >  3);
 		cover(cvr_reads  >  3);
@@ -1518,6 +1535,39 @@ module	axilpipe #(
 		cover(cvr_reads  > (1<<LGPIPE)+2);
 		cover(cvr_valids > (1<<LGPIPE)+2);
 	end
+
+	generate if (!OPT_ALIGNMENT_ERR)
+	begin
+		reg	[LGPIPE:0]	cvr_unaligned_writes,
+					cvr_unaligned_reads;
+
+		initial	cvr_writes = 0;
+		always @(posedge i_clk)
+		if (!S_AXI_ARESETN || i_cpu_reset || o_err)
+			cvr_unaligned_writes <= 0;
+		else if (i_stb && i_op[0] && w_misaligned)
+			cvr_unaligned_writes <= cvr_unaligned_writes + 1;
+
+		initial	cvr_reads = 0;
+		always @(posedge i_clk)
+		if (!S_AXI_ARESETN || i_cpu_reset || o_err)
+			cvr_unaligned_reads <= 0;
+		else if (i_stb && !i_op[0] && w_misaligned)
+			cvr_unaligned_reads <= cvr_unaligned_reads + 1;
+
+		always @(posedge i_clk)
+		if (cvr_idle)
+		begin
+			cover(cvr_unaligned_writes >  3);
+			cover(cvr_unaligned_reads  >  3);
+
+			cover(cvr_unaligned_writes > (1<<LGPIPE));
+			cover(cvr_unaligned_reads  > (1<<LGPIPE));
+		end
+
+		
+	end endgenerate
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//

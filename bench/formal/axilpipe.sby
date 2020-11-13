@@ -1,7 +1,8 @@
 [tasks]
 cvr                        bus32
+cvru  cvr opt_realignment  bus32
 prf                        bus32
-prfu prf opt_realignment   bus32
+prfu  prf opt_realignment  bus32
 cvr64 cvr                  bus64
 prf64 prf                  bus64
 prfu64 prf opt_realignment bus64
@@ -18,7 +19,8 @@ bmc: mode bmc
 # bmc:  depth 13
 bmcu: depth 40
 cvr: mode cover
-cvr: depth 30
+cvr:  depth 30
+cvru: depth 42
 
 [engines]
 cvr: smtbmc
@@ -43,6 +45,7 @@ output(cmd)
 --pycode-end--
 
 prep -top axilpipe
+cvr: chformal -assert -remove
 
 [files]
 ../../rtl/core/axilpipe.v

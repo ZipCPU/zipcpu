@@ -217,6 +217,7 @@ $(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
 ## {{{
 $(AXLPIPE): $(AXLPIPE)_cvr/PASS   $(AXLPIPE)_prf/PASS   $(AXLPIPE)_prfu/PASS
 $(AXLPIPE): $(AXLPIPE)_cvr64/PASS $(AXLPIPE)_prf64/PASS $(AXLPIPE)_prfu64/PASS
+$(AXLPIPE): $(AXLPIPE)_cvru/PASS
 $(AXLPIPE)_prf/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby prf
 $(AXLPIPE)_prf64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
@@ -227,6 +228,8 @@ $(AXLPIPE)_prfu64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby prfu64
 $(AXLPIPE)_cvr/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby cvr
+$(AXLPIPE)_cvru/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
+	sby -f $(AXLPIPE).sby cvru
 $(AXLPIPE)_cvr64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby cvr64
 ## }}}
