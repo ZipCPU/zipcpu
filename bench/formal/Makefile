@@ -40,7 +40,7 @@
 ##
 ## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe # aximem axifetch (cached versions)
+TESTS += axilfetch axilops axilpipe # aximem (cached version)
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 .PHONY: $(TESTS)

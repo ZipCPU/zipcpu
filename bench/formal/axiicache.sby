@@ -9,7 +9,7 @@ cvr: mode cover
 cvr: depth 28
 
 [engines]
-smtbmc
+prf: smtbmc
 smtbmc boolector
 
 [script]

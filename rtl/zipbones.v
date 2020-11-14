@@ -220,7 +220,7 @@ module	zipbones(i_clk, i_reset,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(dbg_addr));
-	zipcpu	#(.RESET_ADDRESS(RESET_ADDRESS),
+	zipwb	#(.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
 			.OPT_LGDCACHE(LGDCACHE),

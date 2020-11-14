@@ -3,7 +3,7 @@
 // Filename:	zipwb.v
 //
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-//{{{
+// {{{
 // Purpose:	This is the top level module holding the core of the Zip CPU
 //		together.  The Zip CPU is designed to be as simple as possible.
 //	(actual implementation aside ...)  The instruction set is about as
@@ -68,14 +68,13 @@
 //	Note that a stage can stall even if no instruction is loaded into
 //	it.
 //
-//}}}
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//{{{
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -90,8 +89,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//}}}
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -100,13 +100,11 @@
 //
 `default_nettype	none
 //
-`define	CPU_CC_REG	4'he
-//
 `include "cpudefs.v"
 //
-//
-module	zipcpu #(
-	// {{{
+// }}}
+module	zipwb #(
+		// {{{
 		parameter [31:0] RESET_ADDRESS=32'h010_0000,
 		parameter	ADDRESS_WIDTH=30,
 				LGICACHE=12,
@@ -164,43 +162,44 @@ module	zipcpu #(
 		localparam	AW=ADDRESS_WIDTH,
 		localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2],
 		parameter	F_LGDEPTH=8
-	// }}}
+		// }}}
 	) (
-	// I/O declarations
-	// {{{
-	input	wire		i_clk, i_reset, i_interrupt,
-	// Debug interface -- inputs
-	input	wire		i_halt, i_clear_pf_cache,
-	input	wire	[4:0]	i_dbg_reg,
-	input	wire		i_dbg_we,
-	input	wire	[31:0]	i_dbg_data,
-	// Debug interface -- outputs
-	output	wire		o_dbg_stall,
-	output	reg	[31:0]	o_dbg_reg,
-	output	reg	[3:0]	o_dbg_cc,
-	output	wire		o_break,
-	// CPU interface to the wishbone bus
-	// Wishbone interface -- outputs
-	output	wire		o_wb_gbl_cyc, o_wb_gbl_stb,
-	output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we,
-	output	wire	[(AW-1):0]	o_wb_addr,
-	output	wire	[31:0]	o_wb_data,
-	output	wire	[3:0]	o_wb_sel,
-	// Wishbone interface -- inputs
-	input	wire		i_wb_stall, i_wb_ack,
-	input	wire	[31:0]	i_wb_data,
-	input	wire		i_wb_err,
-	// Accounting outputs ... to help us count stalls and usage
-	output	wire		o_op_stall,
-	output	wire		o_pf_stall,
-	output	wire		o_i_count
-	//
+		// {{{
+		input	wire		i_clk, i_reset, i_interrupt,
+		// Debug interface -- inputs
+		input	wire		i_halt, i_clear_pf_cache,
+		input	wire	[4:0]	i_dbg_reg,
+		input	wire		i_dbg_we,
+		input	wire	[31:0]	i_dbg_data,
+		// Debug interface -- outputs
+		output	wire		o_dbg_stall,
+		output	reg	[31:0]	o_dbg_reg,
+		output	reg	[3:0]	o_dbg_cc,
+		output	wire		o_break,
+		// CPU interface to the wishbone bus
+		// Wishbone interface -- outputs
+		output	wire		o_wb_gbl_cyc, o_wb_gbl_stb,
+		output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we,
+		output	wire	[(AW-1):0]	o_wb_addr,
+		output	wire	[31:0]	o_wb_data,
+		output	wire	[3:0]	o_wb_sel,
+		// Wishbone interface -- inputs
+		input	wire		i_wb_stall, i_wb_ack,
+		input	wire	[31:0]	i_wb_data,
+		input	wire		i_wb_err,
+		// Accounting outputs ... to help us count stalls and usage
+		output	wire		o_op_stall,
+		output	wire		o_pf_stall,
+		output	wire		o_i_count
+		//
 `ifdef	DEBUG_SCOPE
-	, output reg	[31:0]	o_debug
+		, output reg	[31:0]	o_debug
 `endif
 	// }}}
 	);
 
+	// Declarations
+	// {{{
 `ifdef	OPT_SINGLE_FETCH
 	localparam FETCH_LIMIT = (LGICACHE > 0) ? 4 : 1;
 `else
@@ -210,7 +209,6 @@ module	zipcpu #(
 	localparam FETCH_LIMIT = 4;
 `endif	// OPT_DOUBLE_FETCH
 `endif	// OPT_SINGLE_FETCH
-
 
 	wire	[31:0]	cpu_debug;
 
@@ -244,7 +242,14 @@ module	zipcpu #(
 	wire		mem_we, mem_stall, mem_ack, mem_err;
 	wire	[3:0]	mem_sel;
 	// }}}
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// The ZipCPU Core
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	zipcore #(
 		// {{{
@@ -290,8 +295,8 @@ module	zipcpu #(
 		cpu_debug
 		// }}}
 		);
-
-	// o_debug
+	// }}}
+	// o_debug -- the debugging bus input
 	// {{{
 `ifdef	DEBUG_SCOPE
 	assign	o_debug = cpu_debug;
@@ -301,11 +306,10 @@ module	zipcpu #(
 	assign	dbg_unused = &{ 1'b0, cpu_debug };
 `endif
 	// }}}
-
 	////////////////////////////////////////////////////////////////////////
 	//
-	//	Instruction Fetch
-	//{{{
+	// Instruction Fetch
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	generate if (FETCH_LIMIT <= 1)
@@ -354,7 +358,6 @@ module	zipcpu #(
 		// }}}
 	end endgenerate
 	// }}}
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Memory Unit
@@ -444,8 +447,6 @@ module	zipcpu #(
 		assign	mem_pipe_stalled = mem_busy;
 	end endgenerate
 	// }}}
-
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus arbiter
@@ -509,10 +510,11 @@ module	zipcpu #(
 		//}}}
 	end endgenerate
 	//}}}
-
-
+	// Make Verilator happy
+	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, pf_data };
 	// Verilator lint_on  UNUSED
+	// }}}
 endmodule

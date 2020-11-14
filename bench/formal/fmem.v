@@ -149,6 +149,10 @@ module	fmem #(
 		assert(f_outstanding <= OPT_MAXDEPTH);
 
 	always @(*)
+	if (f_outstanding == OPT_MAXDEPTH + ((i_done || i_err) ? 1:0))
+		`CPU_ASSUME(i_pipe_stalled);
+
+	always @(*)
 	if (!i_err && f_outstanding > ((i_done || i_err) ? 1:0))
 		`CPU_ASSUME(i_busy);
 
@@ -367,7 +371,7 @@ module	fmem #(
 		f_gie <= i_oreg[4];
 
 	always @(*)
-	if (i_stb && i_busy)
+	if (i_stb && f_outstanding > 0)
 		`CPU_ASSERT(f_gie == i_oreg[4]);
 
 	always @(*)

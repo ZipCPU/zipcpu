@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	This makefile builds a verilator simulation of the zipsystem.
@@ -12,9 +12,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2015-2017, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2015-2020, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -29,8 +29,9 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
 ##
 ##
@@ -38,6 +39,7 @@
 ##
 ##
 .PHONY: all
+## }}}
 all: zipsystem zipbones cpudefs.h div zipmmu cpuops pfcache
 
 CORED:= core
@@ -47,7 +49,7 @@ VSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
 		$(PRPHD)/ziptimer.v				\
-	$(CORED)/zipcpu.v $(CORED)/zipcore.v $(CORED)/cpuops.v	\
+	$(CORED)/zipwb.v $(CORED)/zipcore.v $(CORED)/cpuops.v	\
 		$(CORED)/idecode.v $(CORED)/div.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
@@ -59,7 +61,8 @@ VSRC := zipsystem.v cpudefs.v					\
 		$(EXD)/wbdblpriarb.v $(EXD)/wbpriarbiter.v	\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VZIP := zipbones.v cpudefs.v					\
-	$(CORED)/zipcpu.v $(CORED)/cpuops.v $(CORED)/idecode.v	\
+	$(CORED)/zipwb.v $(CORED)/zipcore.v			\
+		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\

@@ -774,7 +774,7 @@ module	zipsystem(i_clk, i_reset,
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(!cmd_addr[5])
 					&&(dbg_we)&&(dbg_addr));
-	zipcpu	#(	.RESET_ADDRESS(RESET_ADDRESS),
+	zipwb	#(	.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
 			.LGICACHE(LGICACHE),
 			.OPT_LGDCACHE(LGDCACHE),

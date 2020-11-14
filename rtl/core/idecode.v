@@ -740,9 +740,6 @@ module	idecode #(
 		// {{{
 		reg	r_pipe;
 
-		wire	[13:0]	pipe_addr_diff;
-		assign		pipe_addr_diff = w_I[13:0] - r_I[13:0];
-
 		// Pipeline logic is too extreme for a single clock.
 		// Let's break it into two clocks, using r_insn_is_pipeable
 		// If this function is true, then the instruction associated
@@ -798,22 +795,21 @@ module	idecode #(
 				// Both must be register ops
 				&&(w_rB)
 				// Both must use the same register for B
-				&&(w_dcdB[3:0] == o_dcdB[3:0])
-				// CC or PC registers are not valid addresses
-				//   Captured above
-				// But ... the result can never be B
-				//   Captured above
-				//
-				// Reads to CC or PC not allowed
-				// &&((o_op[0])||(w_dcdR[3:1] != 3'h7))
-				// Prior-reads to CC or PC not allowed
-				//   Captured above
-				// Same condition, or no condition before
-				&&((w_cond[2:0]==o_cond[2:0])
-					||(o_cond[2:0] == 3'h0))
-				// Same or incrementing immediate
-				&&(w_I[13]==r_I[13])
-				&&(pipe_addr_diff <= 14'h4);
+				&&(w_dcdB[3:0] == o_dcdB[3:0]);
+		//		// CC or PC registers are not valid addresses
+		//		//   Captured above
+		//		// But ... the result can never be B
+		//		//   Captured above
+		//		//
+		//		// Reads to CC or PC not allowed
+		//		// &&((o_op[0])||(w_dcdR[3:1] != 3'h7))
+		//		// Prior-reads to CC or PC not allowed
+		//		//   Captured above
+		//		// Same condition, or no condition before
+		//		&&((w_cond[2:0]==o_cond[2:0])
+		//			||(o_cond[2:0] == 3'h0));
+		//		// Same or incrementing immediate
+		//		&&(w_I[22]==r_I[22]);
 		assign o_pipe = r_pipe;
 		// }}}
 	end else begin
@@ -1858,21 +1854,30 @@ module	idecode #(
 				else if (($past(o_wR))
 						&&($past(o_dcdR[3:1]) == 3'h7))
 					`ASSERT(!o_pipe);
-				// else if ((o_wR)&&(o_dcdR[3:1] == 3'h7))
-				//	`ASSERT(!o_pipe);
 				else if (o_wR != $past(o_wR))
 					`ASSERT(!o_pipe);
 				else if ((o_wR)&&($past(o_dcdR) == o_dcdB))
 					`ASSERT(!o_pipe);
 				else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
 					`ASSERT(!o_pipe);
-				else if (($past(o_cond) != 4'h8)
-					&&($past(o_cond) != o_cond))
-					`ASSERT(!o_pipe);
-				else if ($past(r_I[22])!=r_I[22])
-					`ASSERT(!o_pipe);
-				else if (r_I[22:0] - $past(r_I[22:0])>23'h4)
-					`ASSERT(!o_pipe);
+		//
+		// Allow reading into the PC register as a form of jumping
+		//		// else if ((o_wR)&&(o_dcdR[3:1] == 3'h7))
+		//		//	`ASSERT(!o_pipe);
+		// Allow discontinuous reads -- since our crossbar can now
+		// handle them
+		//		else if (($past(o_cond) != 4'h8)
+		//			&&($past(o_cond) != o_cond))
+		//			`ASSERT(!o_pipe);
+		// This never really guaranteed that addresses would only
+		// increment, nor does it guarantee that addresses won't
+		// wrap around, so ... we'll just ignore this and (instead)
+		// generate a bus error in the memory controller on bad
+		// addresses
+		//		else if ($past(r_I[22])!=r_I[22])
+		//			`ASSERT(!o_pipe);
+		//		else if (r_I[22:0] - $past(r_I[22:0])>23'h4)
+		//			`ASSERT(!o_pipe);
 				else if (!$past(o_valid))
 					`ASSERT(!o_pipe);
 				// else
