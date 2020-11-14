@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	memops.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A memory unit to support a CPU.
@@ -19,9 +19,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -36,8 +36,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -45,60 +46,65 @@
 //
 //
 `default_nettype	none
-//
-module	memops(i_clk, i_reset, i_stb, i_lock,
-		i_op, i_addr, i_data, i_oreg,
-			o_busy, o_rdbusy, o_valid, o_err, o_wreg, o_result,
-		o_wb_cyc_gbl, o_wb_cyc_lcl,
-			o_wb_stb_gbl, o_wb_stb_lcl,
-			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
-		);
-	parameter	ADDRESS_WIDTH=30;
-	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
-			WITH_LOCAL_BUS=1'b1,
-			OPT_ALIGNMENT_ERR=1'b1,
-			OPT_ZERO_ON_IDLE=1'b0,
-			OPT_LITTLE_ENDIAN = 1'b0;
-	localparam	AW=ADDRESS_WIDTH;
-	input	wire			i_clk, i_reset;
-	// CPU interface
-	input	wire			i_stb, i_lock;
-	input	wire	[2:0]		i_op;
-	input	wire	[31:0]		i_addr;
-	input	wire	[31:0]		i_data;
-	input	wire	[4:0]		i_oreg;
-	// CPU outputs
-	output	wire			o_busy;
-	output	reg			o_rdbusy;
-	output	reg			o_valid;
-	output	reg			o_err;
-	output	reg	[4:0]		o_wreg;
-	output	reg	[31:0]		o_result;
-	// Wishbone outputs
-	output	wire			o_wb_cyc_gbl;
-	output	reg			o_wb_stb_gbl;
-	output	wire			o_wb_cyc_lcl;
-	output	reg			o_wb_stb_lcl;
-	output	reg			o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	reg	[31:0]		o_wb_data;
-	output	reg	[3:0]		o_wb_sel;
-	// Wishbone inputs
-	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[31:0]	i_wb_data;
-// Formal
-	parameter	F_LGDEPTH = 2;
+// }}}
+module	memops #(
+		// {{{
+		parameter	ADDRESS_WIDTH=30,
+		parameter [0:0]	IMPLEMENT_LOCK=1'b1,
+				WITH_LOCAL_BUS=1'b1,
+				OPT_ALIGNMENT_ERR=1'b1,
+				OPT_ZERO_ON_IDLE=1'b0,
+				OPT_LITTLE_ENDIAN = 1'b0,
+		localparam	AW=ADDRESS_WIDTH,
+		parameter	F_LGDEPTH = 2
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		// CPU interface
+		// {{{
+		input	wire			i_stb, i_lock,
+		input	wire	[2:0]		i_op,
+		input	wire	[31:0]		i_addr,
+		input	wire	[31:0]		i_data,
+		input	wire	[4:0]		i_oreg,
+		// CPU outputs
+		output	wire			o_busy,
+		output	reg			o_rdbusy,
+		output	reg			o_valid,
+		output	reg			o_err,
+		output	reg	[4:0]		o_wreg,
+		output	reg	[31:0]		o_result,
+		// }}}
+		// Wishbone
+		// {{{
+		output	wire			o_wb_cyc_gbl,
+		output	wire			o_wb_cyc_lcl,
+		output	reg			o_wb_stb_gbl,
+		output	reg			o_wb_stb_lcl,
+		output	reg			o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	reg	[31:0]		o_wb_data,
+		output	reg	[3:0]		o_wb_sel,
+		// Wishbone inputs
+		input	wire		i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[31:0]	i_wb_data
+		// }}}
+		// }}}
+	);
+
+	// Declarations
+	// {{{
 `ifdef	FORMAL
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 `endif
-
 
 	reg		misaligned;
 	reg		r_wb_cyc_gbl, r_wb_cyc_lcl;
 	reg	[3:0]	r_op;
 	reg		lock_gbl, lock_lcl;
 	wire		gbl_stb, lcl_stb;
+	// }}}
 
 	// misaligned
 	// {{{
@@ -117,10 +123,13 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	endgenerate
 	// }}}
 
+	// lcl_stb, gbl_stb
+	// {{{
 	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff)
 				&&(!misaligned);
 	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff))
 				&&(!misaligned);
+	// }}}
 
 	// r_wb_cyc_gbl, r_wb_cyc_lcl
 	// {{{
@@ -369,6 +378,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 
 	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	generate if (AW < 22)
 	begin : TOO_MANY_ADDRESS_BITS
@@ -378,7 +388,16 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 	end endgenerate
 	// verilator lint_on  UNUSED
-
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 `define	ASSERT	assert
 `ifdef	MEMOPS
@@ -398,7 +417,7 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -477,17 +496,18 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		else
 			`ASSERT(f_nreqs <= 1);
 	end
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// CPU properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	reg				f_done;
 	wire	[(F_LGDEPTH-1):0]	cpu_outstanding;
 	wire				f_pc, f_rdbusy, f_gie, f_read_cycle;
+	wire	[4:0]			f_last_reg;
 
 	assign	f_rdbusy = f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we;
 
@@ -515,7 +535,8 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		.f_outstanding(cpu_outstanding),
 		.f_pc(f_pc),
 		.f_gie(f_gie),
-		.f_read_cycle(f_read_cycle)
+		.f_read_cycle(f_read_cycle),
+		.f_last_reg(f_last_reg)
 	);
 
 	always @(*)
@@ -544,10 +565,14 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	if (o_busy)
 		assert(o_wb_we == !f_read_cycle);
 
+	always @(*)
+	if (cpu_outstanding > 0)
+		assert(f_last_reg == o_wreg);
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Tying the two together
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -718,9 +743,13 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			&&($past(o_wb_cyc_lcl))&&($past(i_lock))
 			&&($past(lock_lcl)))
 		assert(o_wb_cyc_lcl);
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	always @(posedge i_clk)
 		cover(i_wb_ack);
@@ -749,8 +778,9 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			cover((o_wb_stb_lcl)&&(i_wb_ack));
 
 	end endgenerate
-
+	// }}}
 `endif
+// }}}
 endmodule
 //
 //

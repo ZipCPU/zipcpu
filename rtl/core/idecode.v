@@ -805,9 +805,9 @@ module	idecode #(
 		//		// &&((o_op[0])||(w_dcdR[3:1] != 3'h7))
 		//		// Prior-reads to CC or PC not allowed
 		//		//   Captured above
-		//		// Same condition, or no condition before
+		//		// Same condition, or no condition now
 		//		&&((w_cond[2:0]==o_cond[2:0])
-		//			||(o_cond[2:0] == 3'h0));
+		//			||(w_cond[2:0] == 3'h0));
 		//		// Same or incrementing immediate
 		//		&&(w_I[22]==r_I[22]);
 		assign o_pipe = r_pipe;

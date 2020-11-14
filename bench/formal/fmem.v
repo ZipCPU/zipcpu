@@ -71,7 +71,8 @@ module	fmem #(
 		output	reg [F_LGDEPTH-1:0]	f_outstanding,
 		output	reg			f_pc,
 		output	reg			f_gie,
-		output	reg			f_read_cycle
+		output	reg			f_read_cycle,
+		output	reg	[4:0]		f_last_reg
 		// , output	reg			f_endpipe,
 		// output	reg	[4:0]		f_addr_reg,
 		// }}}
@@ -325,11 +326,20 @@ module	fmem #(
 
 	////////////////////////////////////////////////////////////////////////
 	//
-	// f_pc properties
+	// f_last_reg, f_pc properties
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+	initial	f_pc = 0;
+	always @(posedge i_clk)
+	if (i_stb && !i_pipe_stalled)
+		f_last_reg <= i_oreg;
+
+	always @(*)
+	if (f_outstanding == 1 && i_valid)
+		`CPU_ASSUME(f_last_reg == i_wreg);
+
 	initial	f_pc = 0;
 	always @(posedge i_clk)
 	if (i_cpu_reset || i_err)
@@ -346,6 +356,12 @@ module	fmem #(
 	always @(*)
 	if (f_pc)
 		`CPU_ASSERT(!i_stb);
+
+	always @(*)
+	if (f_last_reg[3:1] != 3'h7)
+		assert(!f_pc);
+	else if (i_rdbusy)
+		assert(f_pc);
 
 	always @(*)
 	if (f_pc)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	pipemem.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A memory unit to support a CPU, this time one supporting
@@ -16,9 +16,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -33,8 +33,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory, run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -42,51 +43,56 @@
 //
 //
 `default_nettype	none
-//
-module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
-		i_op, i_addr, i_data, i_oreg,
-			o_busy, o_rdbusy, o_pipe_stalled, o_valid, o_err, o_wreg, o_result,
-		o_wb_cyc_gbl, o_wb_cyc_lcl,
-			o_wb_stb_gbl, o_wb_stb_lcl,
-			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
-		);
-	parameter	ADDRESS_WIDTH=30;
-	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
-			WITH_LOCAL_BUS=1'b1,
-			OPT_ZERO_ON_IDLE=1'b0,
-			// OPT_ALIGNMENT_ERR
-			OPT_ALIGNMENT_ERR=1'b0;
-	localparam	AW=ADDRESS_WIDTH,
-			FLN=4;
-	parameter [(FLN-1):0]	OPT_MAXDEPTH=4'hd;
-	input	wire		i_clk, i_reset;
-	input	wire		i_pipe_stb, i_lock;
-	// CPU interface
-	input	wire	[2:0]	i_op;
-	input	wire	[31:0]	i_addr;
-	input	wire	[31:0]	i_data;
-	input	wire	[4:0]	i_oreg;
-	// CPU outputs
-	output	wire		o_busy, o_rdbusy;
-	output	wire		o_pipe_stalled;
-	output	reg		o_valid;
-	output	reg		o_err;
-	output	reg	[4:0]	o_wreg;
-	output	reg	[31:0]	o_result;
-	// Wishbone outputs
-	output	wire		o_wb_cyc_gbl;
-	output	reg		o_wb_stb_gbl;
-	output	wire		o_wb_cyc_lcl;
-	output	reg		o_wb_stb_lcl, o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	reg	[31:0]	o_wb_data;
-	output	reg	[3:0]	o_wb_sel;
-	// Wishbone inputs
-	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[31:0]	i_wb_data;
-// Formal
-	parameter	F_LGDEPTH=FLN+1;
+// }}}
+module	pipemem #(
+		// {{{
+		parameter	ADDRESS_WIDTH=30,
+		parameter [0:0]	IMPLEMENT_LOCK=1'b1,
+				WITH_LOCAL_BUS=1'b1,
+				OPT_ZERO_ON_IDLE=1'b0,
+				// OPT_ALIGNMENT_ERR
+				OPT_ALIGNMENT_ERR=1'b0,
+		localparam	AW=ADDRESS_WIDTH,
+				FLN=4,
+		parameter [(FLN-1):0]	OPT_MAXDEPTH=4'hd
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset,
+		// CPU interface
+		// {{{
+		input	wire		i_pipe_stb, i_lock,
+		input	wire	[2:0]	i_op,
+		input	wire	[31:0]	i_addr,
+		input	wire	[31:0]	i_data,
+		input	wire	[4:0]	i_oreg,
+		// CPU outputs
+		output	wire		o_busy, o_rdbusy,
+		output	wire		o_pipe_stalled,
+		output	reg		o_valid,
+		output	reg		o_err,
+		output	reg	[4:0]	o_wreg,
+		output	reg	[31:0]	o_result,
+		// }}}
+		// Wishbone outputs
+		// {{{
+		output	wire		o_wb_cyc_gbl,
+		output	wire		o_wb_cyc_lcl,
+		output	reg		o_wb_stb_gbl,
+		output	reg		o_wb_stb_lcl, o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	reg	[31:0]	o_wb_data,
+		output	reg	[3:0]	o_wb_sel,
+		// Wishbone inputs
+		input	wire		i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[31:0]	i_wb_data
+		// }}}
+		// }}}
+	);
+
+	// Declarations
+	// {{{
+	localparam	F_LGDEPTH=FLN+1;
 `ifdef	FORMAL
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	reg	f_pc;
@@ -99,13 +105,13 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	wire	[(FLN-1):0]		nxt_rdaddr, fifo_fill;
 	reg	[(3+5-1):0]	fifo_oreg [0:15];
 	reg			fifo_gie;
-	wire	gbl_stb, lcl_stb, lcl_bus;
-	wire	[7:0]	w_wreg;
-	reg	misaligned;
+	wire			gbl_stb, lcl_stb, lcl_bus;
+	wire	[7:0]		w_wreg;
+	reg			misaligned;
+	// }}}
 
-	initial	rdaddr = 0;
-	initial	wraddr = 0;
-
+	// misaligned
+	// {{{
 	always	@(*)
 	if (OPT_ALIGNMENT_ERR)
 	begin
@@ -117,14 +123,23 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		endcase
 	end else
 		misaligned = 1'b0;
+	// }}}
 
+	// fifo_oreg
+	// {{{
 	always @(posedge i_clk)
 		fifo_oreg[wraddr] <= { i_oreg[3:0], i_op[2:1], i_addr[1:0] };
+	// }}}
 
+	// fifo_gie
+	// {{{
 	always @(posedge i_clk)
 	if (i_pipe_stb)
 		fifo_gie <= i_oreg[4];
+	// }}}
 
+	// wraddr
+	// {{{
 	initial	wraddr = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -133,7 +148,10 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			wraddr <= 0;
 	else if (i_pipe_stb)
 		wraddr <= wraddr + 1'b1;
+	// }}}
 
+	// rdaddr
+	// {{{
 	initial	rdaddr = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -142,9 +160,12 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		rdaddr <= 0;
 	else if ((i_wb_ack)&&(cyc))
 		rdaddr <= rdaddr + 1'b1;
+	// }}}
 
 	assign	fifo_fill = wraddr - rdaddr;
 
+	// fifo_full
+	// {{{
 	initial	fifo_full = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -155,14 +176,17 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		fifo_full <= (fifo_fill >= OPT_MAXDEPTH-1);
 	else
 		fifo_full <= (fifo_fill >= OPT_MAXDEPTH);
+	// }}}
 
 	assign	nxt_rdaddr = rdaddr + 1'b1;
 
-
+	// lcl_bus, lcl_stb, gbl_stb
+	// {{{
 	assign	lcl_bus = (i_addr[31:24]==8'hff)&&(WITH_LOCAL_BUS);
 	assign	lcl_stb = (lcl_bus)&&(!misaligned);
 	assign	gbl_stb = ((!lcl_bus)||(!WITH_LOCAL_BUS))&&(!misaligned);
 			//= ((i_addr[31:8]!=24'hc00000)||(i_addr[7:5]!=3'h0));
+	// }}}
 
 	// cyc, [or]_wb_[cyc|stb]_[lcl|gbl]
 	// {{{
@@ -297,8 +321,11 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 
 	assign	w_wreg = fifo_oreg[rdaddr];
 
+	// o_wreg
+	// {{{
 	always @(posedge i_clk)
 		o_wreg <= { fifo_gie, w_wreg[7:4] };
+	// }}}
 
 	// o_result
 	// {{{
@@ -384,6 +411,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// Declarations
+	// {{{
 `define	ASSERT	assert
 `ifdef	PIPEMEM
 `define	ASSUME	assume
@@ -399,8 +428,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	reg				f_past_valid;
 	wire				f_pc_check, f_gie, f_read_cycle;
 	reg				f_alignment_err;
-
-
+	wire	[4:0]			f_last_reg;
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Reset properties
@@ -478,7 +507,8 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 			.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
 			.f_outstanding(fcpu_outstanding),
 			.f_pc(f_pc_check), .f_gie(f_gie),
-			.f_read_cycle(f_read_cycle)
+			.f_read_cycle(f_read_cycle),
+			.f_last_reg(f_last_reg)
 	);
 
 	always @(*)
@@ -497,7 +527,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Other (induction) properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -661,7 +691,13 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 	begin
 		`ASSERT(fifo_fill == f_outstanding + ((f_stb)?1:0));
 	end
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// The FIFO check
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 
 `define	FIFOCHECK
 `ifdef	FIFOCHECK
@@ -702,8 +738,19 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 				== (f_pc && fc_addr == lastaddr));
 	end
 
-	initial	assert(!fifo_full);
+	always @(*)
+	if (fifo_fill > 0)
+		assert({ fifo_gie, fifo_oreg[lastaddr][7:4] } == f_last_reg);
 
+	initial	assert(!fifo_full);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Cover properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	always @(posedge i_clk)
 		cover(cyc && !fifo_full);
 
@@ -724,7 +771,7 @@ module	pipemem(i_clk, i_reset, i_pipe_stb, i_lock,
 		cover(o_valid);
 
 `endif // FIFOCHECK
-
+	// }}}
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(f_past_valid))&&($past(f_cyc))&&($past(f_cyc,2)))
 		`ASSERT($stable(o_wreg[4]));

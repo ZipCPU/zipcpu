@@ -887,6 +887,7 @@ module	axilpipe #(
 
 	wire	[LGPIPE:0]	cpu_outstanding;
 	wire			cpu_gie, cpu_pc, cpu_read_cycle;
+	wire	[4:0]		cpu_last_reg;
 	reg			f_done;
 
 
@@ -1402,6 +1403,21 @@ module	axilpipe #(
 	end
 	// }}}
 
+	// Verifying the cpu_last_reg
+	always @(*)
+	if (M_AXI_WVALID || M_AXI_ARVALID)
+		assert(cpu_last_reg == ar_oreg);
+	else if (!f_clrfifo && f_fifo_fill > 0)
+	begin
+		if (f_first_in_fifo && f_first_addr == f_last_written)
+			assert(f_first_return_reg == cpu_last_reg);
+		if (f_next_in_fifo && f_next_addr == f_last_written)
+			assert(f_next_return_reg == cpu_last_reg);
+		if (rdaddr == f_last_written
+				&& (rdaddr != f_first_addr)
+				&& (rdaddr != f_next_addr))
+			`BMC_ASSERT(return_reg == cpu_last_reg);
+	end
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1432,7 +1448,8 @@ module	axilpipe #(
 		.i_rdbusy(o_rdbusy), .i_valid(o_valid), .i_done(f_done),
 		.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
 		.f_outstanding(cpu_outstanding),
-		.f_pc(cpu_pc), .f_gie(cpu_gie), .f_read_cycle(cpu_read_cycle));
+		.f_pc(cpu_pc), .f_gie(cpu_gie), .f_read_cycle(cpu_read_cycle),
+		.f_last_reg(cpu_last_reg));
 
 	always @(*)
 	if (flush_request)

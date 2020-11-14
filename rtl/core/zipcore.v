@@ -1200,8 +1200,10 @@ module	zipcore #(
 				//
 				((!dcd_zI)&&(
 					((op_R == dcd_B)&&(op_wR))
-					||((i_mem_rdbusy)&&(!dcd_pipe))
-					||(((alu_busy)||(div_busy))&&(alu_reg == dcd_B))
+					// ||((i_mem_rdbusy)&&(!dcd_pipe))
+					||(((alu_busy ||
+						div_busy || i_mem_rdbusy))
+						&&(alu_reg == dcd_B))
 					||((wr_reg_ce)&&(wr_reg_id[3:1] == 3'h7))
 					))
 				// Stall following any instruction that will
@@ -1371,7 +1373,7 @@ module	zipcore #(
 	begin
 
 		always @(posedge i_clk)
-		if (adf_ce_unconditional)
+		if (alu_ce || div_ce || o_mem_ce || fpu_ce)
 			alu_reg <= op_R;
 		else if ((r_halted)&&(i_dbg_we))
 			alu_reg <= i_dbg_reg;
@@ -2701,7 +2703,7 @@ module	zipcore #(
 
 	wire	[F_LGDEPTH-1:0]	f_mem_outstanding;
 	wire			f_mem_gie, f_mem_pc, f_read_cycle;
-
+	wire	[4:0]		f_last_reg;
 
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
@@ -3661,7 +3663,8 @@ module	zipcore #(
 		.i_result(i_mem_result),
 		.f_outstanding(f_mem_outstanding),
 		.f_pc(f_mem_pc), .f_gie(f_mem_gie),
-		.f_read_cycle(f_read_cycle)
+		.f_read_cycle(f_read_cycle),
+		.f_last_reg(f_last_reg)
 		// }}}
 	);
 	//
@@ -4505,7 +4508,11 @@ module	zipcore #(
 	always @(posedge i_clk)
 	if (OPT_MEMPIPE && (op_valid && op_rB)
 			&&(!f_op_zI)&&((i_mem_rdbusy)||(i_mem_valid)))
-		assume(fc_alu_Aid[4:0] != op_Bid);
+		assert(f_last_reg != op_Bid);
+
+	always @(posedge i_clk)
+	if (i_mem_rdbusy)
+		assert(f_last_reg == alu_reg);
 
 	// }}}
 `endif	// FORMAL

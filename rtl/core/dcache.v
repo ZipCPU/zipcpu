@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	dcache.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	To provide a simple data cache for the ZipCPU.  The cache is
@@ -47,9 +47,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2016-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -59,8 +59,9 @@
 // ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -79,61 +80,67 @@
 `define	ASSUME	assert
 `endif
 `endif
-
-module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
-		i_op, i_addr, i_data, i_oreg,
-			o_busy, o_rdbusy, o_pipe_stalled, o_valid, o_err, o_wreg,o_data,
-		o_wb_cyc_gbl, o_wb_cyc_lcl, o_wb_stb_gbl, o_wb_stb_lcl,
-			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
+ // }}}
+module	dcache #(
+		// {{{
+		parameter	LGCACHELEN = 8,
+				ADDRESS_WIDTH=30,
+				LGNLINES=(LGCACHELEN-3), // Log of the number of separate cache lines
+				NAUX=5,	// # of aux d-wires to keep aligned w/memops
+		parameter [0:0]	OPT_LOCAL_BUS=1'b1,
+		parameter [0:0]	OPT_PIPE=1'b1,
+		parameter [0:0]	OPT_LOCK=1'b1,
+		parameter [0:0]	OPT_DUAL_READ_PORT=1'b1,
+		parameter 	OPT_FIFO_DEPTH = 4,
+		localparam	AW = ADDRESS_WIDTH, // Just for ease of notation below
+		localparam	CS = LGCACHELEN, // Number of bits in a cache address
+		localparam	LS = CS-LGNLINES, // Bits to spec position w/in cline
+		parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
+						? LS : OPT_FIFO_DEPTH),
+		parameter [0:0]	OPT_LOWPOWER = 1'b0,
+		localparam	LGAUX = 3, // log_2 of the maximum number of piped data
+		localparam	DW = 32, // Bus data width
+		localparam	DP = OPT_FIFO_DEPTH,
+		//
+		localparam [1:0]	DC_IDLE  = 2'b00, // Bus is idle
+		localparam [1:0]	DC_WRITE = 2'b01, // Write
+		localparam [1:0]	DC_READS = 2'b10, // Read a single value(!cachd)
+		localparam [1:0]	DC_READC = 2'b11 // Read a whole cache line
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset, i_clear,
+		// Interface from the CPU
+		// {{{
+		input	wire		i_pipe_stb, i_lock,
+		input	wire [2:0]	i_op,
+		input	wire [(DW-1):0]	i_addr,
+		input	wire [(DW-1):0]	i_data,
+		input	wire [(NAUX-1):0] i_oreg, // Aux data, such as reg to write to
+		// Outputs, going back to the CPU
+		output	reg		o_busy, o_rdbusy,
+		output	reg		o_pipe_stalled,
+		output	reg		o_valid, o_err,
+		output reg [(NAUX-1):0]	o_wreg,
+		output	reg [(DW-1):0]	o_data,
+		// }}}
+		// Wishbone bus master outputs
+		// {{{
+		output	wire		o_wb_cyc_gbl, o_wb_cyc_lcl,
+		output	reg		o_wb_stb_gbl, o_wb_stb_lcl,
+		output	reg		o_wb_we,
+		output	reg [(AW-1):0]	o_wb_addr,
+		output	reg [(DW-1):0]	o_wb_data,
+		output	wire [(DW/8-1):0] o_wb_sel,
+		// Wishbone bus slave response inputs
+		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[(DW-1):0]	i_wb_data
+		// }}}
+		// }}}
 	);
-	parameter	LGCACHELEN = 8,
-			ADDRESS_WIDTH=30,
-			LGNLINES=(LGCACHELEN-3), // Log of the number of separate cache lines
-			NAUX=5;	// # of aux d-wires to keep aligned w/memops
-	parameter [0:0]	OPT_LOCAL_BUS=1'b1;
-	parameter [0:0]	OPT_PIPE=1'b1;
-	parameter [0:0]	OPT_LOCK=1'b1;
-	parameter [0:0]	OPT_DUAL_READ_PORT=1'b1;
-	parameter 	OPT_FIFO_DEPTH = 4;
-	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
-	localparam	CS = LGCACHELEN; // Number of bits in a cache address
-	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
-	parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
-					? LS : OPT_FIFO_DEPTH);
-	parameter [0:0]	OPT_LOWPOWER = 1'b0;
-	localparam	LGAUX = 3; // log_2 of the maximum number of piped data
-	localparam	DW = 32; // Bus data width
-	localparam	DP = OPT_FIFO_DEPTH;
-	//
-	localparam [1:0]	DC_IDLE  = 2'b00; // Bus is idle
-	localparam [1:0]	DC_WRITE = 2'b01; // Write
-	localparam [1:0]	DC_READS = 2'b10; // Read a single value(!cachd)
-	localparam [1:0]	DC_READC = 2'b11; // Read a whole cache line
-	//
-	input	wire		i_clk, i_reset, i_clear;
-	// Interface from the CPU
-	input	wire		i_pipe_stb, i_lock;
-	input	wire [2:0]		i_op;
-	input	wire [(DW-1):0]	i_addr;
-	input	wire [(DW-1):0]	i_data;
-	input	wire [(NAUX-1):0] i_oreg; // Aux data, such as reg to write to
-	// Outputs, going back to the CPU
-	output	reg		o_busy, o_rdbusy;
-	output	reg		o_pipe_stalled;
-	output	reg		o_valid, o_err;
-	output reg [(NAUX-1):0]	o_wreg;
-	output	reg [(DW-1):0]	o_data;
-	// Wishbone bus master outputs
-	output	wire		o_wb_cyc_gbl, o_wb_cyc_lcl;
-	output	reg		o_wb_stb_gbl, o_wb_stb_lcl;
-	output	reg		o_wb_we;
-	output	reg [(AW-1):0]	o_wb_addr;
-	output	reg [(DW-1):0]	o_wb_data;
-	output	wire [(DW/8-1):0] o_wb_sel;
-	// Wishbone bus slave response inputs
-	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[(DW-1):0]	i_wb_data;
+
+	// Declarations
+	// {{{
 `ifdef FORMAL
 	wire [(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	wire			f_pc, f_gie, f_read_cycle;
@@ -143,8 +150,6 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 	//
 	// output	reg	[31:0]		o_debug;
 
-	// Declare our variables
-	// {{{
 	reg	cyc, stb, last_ack, end_of_line, last_line_stb;
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	// npending is the number of pending non-cached operations, counted
@@ -184,6 +189,7 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 	reg	[AW:0]		f_return_address;
 	reg	[AW:0]		f_pending_addr;
 	reg			f_pc_pending;
+	reg	[4:0]		f_last_reg;
 `endif
 	wire	cache_miss_inow, w_cachable;
 	wire	raw_cachable_address;
@@ -499,7 +505,10 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 
 		always @(posedge i_clk)
 		if (r_rd_pending)
+		begin
 			`ASSERT(f_pc_pending == (fifo_data[f_last_wraddr][7:5] == 3'h7));
+			`ASSERT({ gie, fifo_data[f_last_wraddr][7:4] } == f_last_reg);
+		end
 
 `define	INSPECT_FIFO
 		reg	[((1<<(DP+1))-1):0]	f_valid_fifo_entry;
@@ -684,6 +693,12 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 				= (o_wb_addr[LS-1:0] - f_outstanding[LS-1:0]);
 		// }}}
 
+		// f_last_reg
+		// {{{
+		always @(*)
+		if (o_rdbusy)
+			assert(o_wreg == f_last_reg);
+		// }}}
 `endif
 		// verilator lint_off UNUSED
 		wire	unused_no_fifo;
@@ -1252,7 +1267,8 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 		i_op, i_addr, i_data, i_oreg,
 			o_busy, o_rdbusy,
 		o_valid, f_done, o_err, o_wreg, o_data,
-		f_cpu_outstanding, f_pc, f_gie, f_read_cycle);
+		f_cpu_outstanding, f_pc, f_gie, f_read_cycle,
+		f_last_reg);
 
 	always @(*)
 	if (OPT_PIPE || (!o_err && !r_svalid && !r_dvalid))

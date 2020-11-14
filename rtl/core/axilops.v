@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	axilops.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A memory unit to support a CPU based upon AXI-lite.
@@ -11,9 +11,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -28,8 +28,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -37,8 +38,9 @@
 //
 //
 `default_nettype	none
-//
+// }}}
 module	axilops #(
+		// {{{
 		parameter	ADDRESS_WIDTH=30,
 		parameter	C_AXI_ADDR_WIDTH = ADDRESS_WIDTH,
 		parameter	C_AXI_DATA_WIDTH = 32,
@@ -56,7 +58,9 @@ module	axilops #(
 		parameter [0:0]	OPT_ALIGNMENT_ERR = 1'b1,
 		parameter [0:0]	OPT_ZERO_ON_IDLE = 1'b0,
 		localparam	AXILLSB = $clog2(C_AXI_ADDR_WIDTH/8)
+		// }}}
 	) (
+		// {{{
 		input	wire				S_AXI_ACLK,
 		input	wire				S_AXI_ARESETN,
 		input	wire				i_cpu_reset,
@@ -78,6 +82,7 @@ module	axilops #(
 		// AXI-Lite bus interface
 		//
 		// Writes
+		// {{{
 		output	reg				M_AXI_AWVALID,
 		input	wire				M_AXI_AWREADY,
 		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_AWADDR,
@@ -91,8 +96,9 @@ module	axilops #(
 		input	wire				M_AXI_BVALID,
 		output	reg				M_AXI_BREADY,
 		input	wire [1:0]			M_AXI_BRESP,
-		//
+		// }}}
 		// Reads
+		// {{{
 		output	reg				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
 		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
@@ -102,8 +108,12 @@ module	axilops #(
 		output	reg				M_AXI_RREADY,
 		input	wire [C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
 		input	wire [1:0]			M_AXI_RRESP
-		);
+		// }}}
+		// }}}
+	);
 
+	// Declarations
+	// {{{
 	wire	i_clk = S_AXI_ACLK;
 	wire	i_reset = !S_AXI_ARESETN;
 
@@ -124,8 +134,7 @@ module	axilops #(
 					swapped_wstrb_byte;
 	reg	[C_AXI_DATA_WIDTH-1:0]	axi_wdata;
 	reg [C_AXI_DATA_WIDTH/8-1:0]	axi_wstrb;
-
-
+	// }}}
 
 	initial	M_AXI_AWVALID = 1'b0;
 	initial	M_AXI_WVALID = 1'b0;
@@ -135,14 +144,16 @@ module	axilops #(
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN)
 	begin
+		// {{{
 		M_AXI_AWVALID <= 1'b0;
 		M_AXI_WVALID  <= 1'b0;
 		M_AXI_ARVALID <= 1'b0;
 		M_AXI_BREADY  <= 1'b0;
 		M_AXI_RREADY  <= 1'b0;
-
+		// }}}
 	end else if (M_AXI_BREADY || M_AXI_RREADY)
-	begin
+	begin // Something is outstanding
+		// {{{
 		if (M_AXI_AWREADY)
 			M_AXI_AWVALID <= M_AXI_AWVALID && misaligned_aw_request;
 		if (M_AXI_WREADY)
@@ -155,8 +166,10 @@ module	axilops #(
 			M_AXI_BREADY <= 1'b0;
 			M_AXI_RREADY <= 1'b0;
 		end
+		// }}}
 	end else begin // New memory operation
-		// Grab the wishbone
+		// {{{
+		// Initiate a request
 		M_AXI_AWVALID <=  i_op[0];
 		M_AXI_WVALID  <=  i_op[0];
 		M_AXI_ARVALID <= !i_op[0];
@@ -174,8 +187,11 @@ module	axilops #(
 			M_AXI_BREADY <= 0;
 			M_AXI_RREADY <= 0;
 		end
+		// }}}
 	end
 
+	// r_flushing
+	// {{{
 	initial	r_flushing = 1'b0;
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN)
@@ -190,7 +206,10 @@ module	axilops #(
 		if (misaligned_response_pending)
 			r_flushing <= r_flushing;
 	end
+	// }}}
 
+	// M_AXI_AxADDR
+	// {{{
 	initial	M_AXI_AWADDR = 0;
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN && OPT_ZERO_ON_IDLE)
@@ -219,13 +238,19 @@ module	axilops #(
 
 	always @(*)
 		M_AXI_ARADDR = M_AXI_AWADDR;
+	// }}}
 
+	// AxPROT
+	// {{{
 	always @(*)
 	begin
 		M_AXI_AWPROT = 3'b000;
 		M_AXI_ARPROT = 3'b000;
 	end
+	// }}}
 
+	// shifted_wstrb_*
+	// {{{
 	always @(*)
 		shifted_wstrb_word = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
 						4'b1111} << i_addr[AXILLSB-1:0];
@@ -237,10 +262,13 @@ module	axilops #(
 	always @(*)
 		shifted_wstrb_byte = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
 						4'b0001} << i_addr[AXILLSB-1:0];
+	// }}}
 
-
+	// Swapping WSTRB bits
+	// {{{
 	generate if (SWAP_WSTRB)
 	begin : SWAPPING_WSTRB
+		// {{{
 		genvar	gw, gb;
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
@@ -254,8 +282,9 @@ module	axilops #(
 			swapped_wstrb_byte[gw*4+gb]
 					= shifted_wstrb_byte[gw*4+(3-gb)];
 		end
-
+		// }}}
 	end else begin : KEEP_WSTRB
+		// {{{
 
 		always @(*)
 			swapped_wstrb_word = shifted_wstrb_word;
@@ -265,11 +294,12 @@ module	axilops #(
 
 		always @(*)
 			swapped_wstrb_byte = shifted_wstrb_byte;
-
+		// }}}
 	end endgenerate
+	// }}}
 
-
-
+	// wdata, wstrb
+	// {{{
 	initial	axi_wdata = 0;
 	initial	axi_wstrb = 0;
 	initial	next_wdata  = 0;
@@ -277,6 +307,7 @@ module	axilops #(
 	always @(posedge i_clk)
 	if (OPT_ZERO_ON_IDLE && !S_AXI_ARESETN)
 	begin
+		// {{{
 		axi_wdata <= 0;
 		axi_wstrb <= 0;
 
@@ -284,11 +315,13 @@ module	axilops #(
 		next_wstrb  <= 0;
 
 		r_op <= 0;
+		// }}}
 	end else if (i_stb)
 	begin
+		// {{{
 		if (OPT_ZERO_ON_IDLE && SWAP_WSTRB)
 		begin
-
+			// {{{
 			casez(i_op[2:1])
 			2'b10: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
@@ -300,10 +333,10 @@ module	axilops #(
 				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
 				    i_data } << (8*(3-i_addr[AXILLSB-1:0]));
 			endcase
-
+			// }}}
 		end else if (OPT_ZERO_ON_IDLE && !SWAP_WSTRB)
 		begin
-
+			// {{{
 			casez(i_op[2:1])
 			2'b10: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
@@ -315,9 +348,9 @@ module	axilops #(
 				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
 				    i_data } << (8*i_addr[AXILLSB-1:0]);
 			endcase
-
+			// }}}
 		end else begin
-
+			// {{{
 			casez(i_op[2:1])
 			2'b10: { next_wdata, axi_wdata }
 				<= { (2*C_AXI_DATA_WIDTH/16){ i_data[15:0] } };
@@ -326,18 +359,23 @@ module	axilops #(
 			default: { next_wdata, axi_wdata }
 				<= { (2*C_AXI_DATA_WIDTH/32){ i_data } };
 			endcase
+			// }}}
 		end
 
+		// next_wstrb, axi_wstrb
+		// {{{
 		casez(i_op[2:1])
 		2'b0?: { next_wstrb, axi_wstrb } <= swapped_wstrb_word;
 		2'b10: { next_wstrb, axi_wstrb } <= swapped_wstrb_halfword;
 		2'b11: { next_wstrb, axi_wstrb } <= swapped_wstrb_byte;
 		endcase
+		// }}}
 
 		r_op <= { i_op[2:1] , i_addr[AXILLSB-1:0] };
 
 		// On a read set everything to zero but only if OPT_ZERO_ON_IDLE
 		// is set
+		// {{{
 		if (OPT_ZERO_ON_IDLE && !i_op[0])
 			{ next_wstrb, next_wdata, axi_wstrb, axi_wdata } <= 0;
 
@@ -351,23 +389,27 @@ module	axilops #(
 				{ next_wdata, next_wstrb,
 				axi_wdata, axi_wstrb } <= 0;
 		end
-
+		// }}}
 	end else if ((M_AXI_WVALID && M_AXI_WREADY)
 			|| (M_AXI_ARVALID && M_AXI_ARREADY))
 	begin
+		// {{{
 		axi_wdata <= OPT_ALIGNMENT_ERR ? 0 : next_wdata;
 		axi_wstrb <= OPT_ALIGNMENT_ERR ? 0 : next_wstrb;
 		if (OPT_ZERO_ON_IDLE)
 			{ next_wdata, next_wstrb } <= 0;
+		// }}}
 	end else if ((OPT_ZERO_ON_IDLE)&&(M_AXI_WREADY))
 	begin
+		// {{{
 		axi_wdata <= 0;
 		axi_wstrb <= 0;
+		// }}}
 	end
 
 	generate if (SWAP_ENDIANNESS)
 	begin : SWAP_WRITE_DATA_STRB
-
+		// {{{
 		genvar	gw, gb;
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
@@ -377,14 +419,16 @@ module	axilops #(
 			M_AXI_WDATA[32*gw + 8*gb +: 8] = axi_wdata[32*gw+8*(3-gb) +: 8];
 			M_AXI_WSTRB[4*gw + gb] = axi_wstrb[4*gw+(3-gb)];
 		end
-
+		// }}}
 	end else begin : KEEP_WRITE_DATA_STRB
-
+		// {{{
 		always @(*)
 			{ M_AXI_WSTRB, M_AXI_WDATA } = { axi_wstrb, axi_wdata };
-
+		// }}}
 	end endgenerate
 
+	// w_misaligned
+	// {{{
 	always @(*)
 	casez(i_op[2:1])
 	// Full word
@@ -394,10 +438,13 @@ module	axilops #(
 	// Bytes are always aligned
 	2'b11: w_misaligned = 1'b0;
 	endcase
+	// }}}
 
+	// misaligned_[aw_|]request, pending_err, misaligned_response_pending
+	// {{{
 	generate if (OPT_ALIGNMENT_ERR)
 	begin
-
+		// {{{
 		always @(*)
 		begin
 			misaligned_request = 1'b0;
@@ -407,9 +454,9 @@ module	axilops #(
 			misaligned_read = 1'b0;
 			pending_err = 1'b0;
 		end
-
+		// }}}
 	end else begin
-
+		// {{{
 		initial	misaligned_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
@@ -454,9 +501,12 @@ module	axilops #(
 		else if ((M_AXI_BVALID && M_AXI_BRESP[1])
 				|| (M_AXI_RVALID && M_AXI_RRESP[1]))
 			pending_err <= 1'b1;
-
+		// }}}
 	end endgenerate
+	// }}}
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN || r_flushing || i_cpu_reset)
@@ -464,7 +514,10 @@ module	axilops #(
 	else
 		o_valid <= M_AXI_RVALID && !M_AXI_RRESP[1] && !pending_err
 				&& !misaligned_response_pending;
+	// }}}
 
+	// o_err
+	// {{{
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
 	if (r_flushing || i_cpu_reset || o_err)
@@ -477,22 +530,32 @@ module	axilops #(
 			|| pending_err;
 	else
 		o_err <= 1'b0;
+	// }}}
 
+	// o_busy, o_rdbusy
+	// {{{
 	always @(*)
 	begin
 		o_busy   = M_AXI_BREADY || M_AXI_RREADY;
 		o_rdbusy = M_AXI_RREADY && !r_flushing;
 	end
+	// }}}
 
+	// o_wreg
+	// {{{
 	always @(posedge i_clk)
 	if (i_stb)
 		o_wreg    <= i_oreg;
+	// }}}
 
+	// last_result, o_result
+	// {{{
 	always @(posedge i_clk)
 	if ((OPT_ZERO_ON_IDLE)&&(!M_AXI_RREADY || !S_AXI_ARESETN))
 		{ last_result, o_result } <= 0;
 	else if (M_AXI_RVALID)
 	begin
+		// {{{
 		if (!misaligned_response_pending && OPT_ZERO_ON_IDLE)
 			last_result <= 0;
 		else
@@ -515,14 +578,26 @@ module	axilops #(
 		2'b11: o_result[31: 8] <= 0;
 		default: begin end
 		endcase
+		// }}}
 	end
+	// }}}
 
 	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, i_lock, M_AXI_RRESP[0], M_AXI_BRESP[0] };
 	// verilator lint_on  UNUSED
-
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 `define	ASSERT	assert
 `ifdef	AXILOPS
@@ -784,12 +859,13 @@ module	axilops #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Contract properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	wire	[3:0]	cpu_outstanding;
 	reg		f_done;
+	wire	[4:0]	f_last_reg;
 
 	initial	f_done = 1'b0;
 	always @(posedge i_clk)
@@ -802,7 +878,9 @@ module	axilops #(
 
 
 	fmem
-	fcheck(.i_clk(S_AXI_ACLK),
+	fcheck(
+		// {{{
+		.i_clk(S_AXI_ACLK),
 		.i_bus_reset(!S_AXI_ARESETN),
 		.i_cpu_reset(i_cpu_reset),
 		.i_stb(i_stb),
@@ -815,7 +893,10 @@ module	axilops #(
 		.f_outstanding(cpu_outstanding),
 		.f_pc(f_pc),
 		.f_gie(f_gie),
-		.f_read_cycle(f_read_cycle));
+		.f_read_cycle(f_read_cycle),
+		.f_last_reg(f_last_reg)
+		// }}}
+	);
 
 	always @(*)
 	if (r_flushing)
@@ -832,6 +913,10 @@ module	axilops #(
 		assert(o_wreg[3:1] != 3'h7);
 
 	always @(*)
+	if (cpu_outstanding > 0)
+		assert(o_wreg == f_last_reg);
+
+	always @(*)
 	if (o_busy)
 		assert(o_wreg[4] == f_gie);
 
@@ -843,11 +928,11 @@ module	axilops #(
 
 	// ????   Not written yet
 	//
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -884,8 +969,9 @@ module	axilops #(
 
 	always @(posedge i_clk)
 		cover(cvr_reads > 3);
-
+	// }}}
 `endif
+// }}}
 endmodule
 //
 //
