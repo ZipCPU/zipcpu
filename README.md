@@ -8,7 +8,7 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
   (Note that the ZipCPU is *not* a RISC-V CPU, nor does it copy any other instruction set but its own.)
 
-- A load/store architecture.  Only load and store instructions may access 
+- A load/store architecture.  Only load and store instructions may access
   memory.
 
 - Wishbone compliant.  All memory and peripherals are accessed across a single
@@ -84,7 +84,7 @@ Now back to the regular readme.
 ## Getting Started
 
 If you'd like to get started with the ZipCPU, you might wish to know that this
-repository contains the [CPU](./rtl/core/zipcore.v), its [documentation](./doc/spec.pdf), and the [toolchain](./sw).
+repository contains the [CPU](rtl/core/zipcore.v), its [documentation](doc/spec.pdf), and the [toolchain](sw).
 The CPU implementation found here, though, is just that: a CPU.  This
 implementation requires a bus with peripherals hanging off of it, things such
 as [RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
@@ -115,7 +115,7 @@ maintaining (creating, really) all of these files for you.
 
 Even more than that,
 the [ZBasic distribution](https://github.com/ZipCPU/zbasic) has complete
-[Verilator support](https://github.com/ZipCPU/zbasic/tree/sim/verilator)
+[Verilator support](https://github.com/ZipCPU/zbasic/tree/master/sim/verilated)
 so that you can build your design, and simulate it, from
 power on reset through bootloader through ... well, however far you'd like to
 simulate and your disk has space for.
@@ -161,9 +161,6 @@ itself.
   I've now proved that this component works.  A
   [test bench](sim/verilator/zipmmu_tb.cpp) also exists
   to exercise it.
-
-- A [data cache](../../tree/master/rtl/core/dcache.v) has been
-  written for the ZipCPU, but has yet to be fully optimized.
 
 - FATFS support now exists for the [SDCard](https://github.com/ZipCPU/sdspi),
   it's just not (yet) integrated into the
