@@ -1,27 +1,90 @@
 # The Zip CPU
 
 The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
+
 - 32-bit.  All registers, addresses, and instructions are 32-bits in length.  While the byte-size itself was at one time 32-bits, the CPU now handles 8-bit bytes like all other CPUs
+
 - A RISC CPU.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (eventually) floating point instructions.
-- A load/store architecture.  Only load and store instructions may access memory.
-- Wishbone compliant.  All memory and peripherals are accessed across a single wishbone bus.
-- A Von-Neumann architecture, meaning that both instructions and data share a common bus.
-- A pipelined architecture, having stages for prefetch, decode, read-operand(s), a combined stage containing the ALU, memory, divide, and floating point units, and then the final write-back stage.
-- A two mode machine: supervisor and user, with each mode having a different access level.
+
+  (Note that the ZipCPU is *not* a RISC-V CPU, nor does it copy any other instruction set but its own.)
+
+- A load/store architecture.  Only load and store instructions may access 
+  memory.
+
+- Wishbone compliant.  All memory and peripherals are accessed across a single
+  wishbone bus. (_DEPRECATED_)
+
+- A Von-Neumann architecture, meaning that both instructions and data share a common bus. (_DEPRECATED_)
+
+- A pipelined architecture, having stages for prefetch, decode, read-operand(s),
+  a combined stage containing the ALU, memory, divide, and floating point units,
+  and then the final write-back stage.
+
+- A two mode machine: supervisor and user, with each mode having a different
+  access level.
+
 - Completely open source, licensed under the GPL.
+
+## The ZipCore branch
+
+This particular branch of the ZipCPU is designed to be bus independent.
+Once complete, it will have support for Wishbone, AXI-lite, and AXI buses,
+and it will be capable of adding support for additiona buses.  Core CPU
+functions have now been moved into a [ZipCore](rtl/core/zipcore.v).  It should
+now be possible to generate support for any bus interface meeting the
+requirements in either [ffetch](bench/formal/ffetch.v) (for instructions)
+or [fmem](bench/formal/fmem.v) (for data).
+
+Status:
+
+- All of the memory units have now been re-verified with the new interface
+  property files.
+
+  -- Instruction fetch units (pick one): [prefetch](rtl/core/prefetch.v) (single instruction fetch), [dblfetch](rtl/core/dblfetch.v) (twin instruction fetch), [pfcache](rtl/core/pfcache.v) (WB fetch with cache), [axilfetch](rtl/core/axilfetch.v) (AXI-lite fetch with possible FIFO, allowing multiple instructions to be in the pipeline at once, [axiicache](rtl/core/axiicache.v) (AXI instruction cache)
+
+  -- Data units (pick one): [memops](rtl/core/memops.v) (WB single operation on the bus at a time), [pipemem](rtl/core/pipemem.v) (WB multiple operations allowed to be on the bus), [dcache](rtl/core/dcache.v) (WB data cache), [axilops](rtl/core/axilops.v), [axilpipe](rtl/core/axilpipe.v) (AXI-lite memory unit allowing multiple transactions to be outstanding).  There's no AXI data cache implementation (yet).
+
+  -- Formal verification has been done to guarantee bus functionality.  Not all cores have been checked for full contract handling.
+
+- None of the AXI components support atomic accesses (yet).
+
+- The caches do not snoop the bus for coherency purposes, and so may get out
+  of sync.  There's a clear-cache instruction to handle this, but it's a manual
+  approach to the problem.
+
+- The [ZipCore](rtl/core/zipcore.v) passes a formal check, but has not yet
+  been integrated back into any simulation environments.
+
+- While there exists a [Wishbone wrapper](rtl/core/zipwb.v) for
+  the [ZipCore](rtl/core/zipcore.v), the AXI wrapper still needs to be created
+  and tested.
+
+  -- The AXI wrapper will no longer include the [ZipSystem](rtl/zipsystem.v) peripherals.  These will instead be placed on the regular bus.  An [AXI-lite peripheral set](rtl/peripherals/axilperiphs.v) has been created for this purpose.
+
+- The AXI components and bus really require that the ZipCPU be a little
+  endian machine.  Compiler support doesn't (yet) exist for a little endian
+  version.  Several options have been added to the AXI controllers in an attempt
+  to make endian support work both ways (even in violation of the AXI spec).
+  As with the other things, these haven't (yet) been tested.
+
+Now back to the regular readme.
 
 ## Unique features and characteristics
 
 - Only 29 instructions are currently implemented.  Six additional instructions have been reserved for a floating point unit, but such a unit has yet to be implemented.
+
 - (Almost) all instructions can be executed conditionally.  Exceptions include load immediate, the debug break instruction, the bus lock and simulation instructions, and the no-operation instruction.  The assembler will quietly turn a conditional load immediate into a two-instruction equivalent.
+
 - Simplfied wishbone bus.  While the ZipCPU conforms to the Wishbone B4 standard, some simplifications have been made.  All tgx lines have been removed, although the select lines have been kept.  All accesses are (or can be) pipelined.  Finally, the ZipCPU project (and its daughter projects/[peripherals](rtl/peripherals)) assumes that the strobe line is zero whenever the cycle is zero.  This simplifies peripheral processing.
+
 - The CPU makes heavy use of pipelined wishbone processing wherever and whenever it can.  Hence, loading two vaues in a row may cost only one clock more than just loading the one value.
+
 - The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An [interrupt peripheral](rtl/peripherals/icontrol.v) handles the combining of multiple interrupts into a single interrupt line.
 
 ## Getting Started
 
 If you'd like to get started with the ZipCPU, you might wish to know that this
-repository contains the [CPU](./rtl/core/zipcpu.v), its [documentation](./doc/spec.pdf), and the [toolchain](./sw).
+repository contains the [CPU](./rtl/core/zipcore.v), its [documentation](./doc/spec.pdf), and the [toolchain](./sw).
 The CPU implementation found here, though, is just that: a CPU.  This
 implementation requires a bus with peripherals hanging off of it, things such
 as [RAM](https://github.com/ZipCPU/zbasic/blob/master/rtl/memdev.v),
@@ -102,11 +165,9 @@ itself.
 - A [data cache](../../tree/master/rtl/core/dcache.v) has been
   written for the ZipCPU, but has yet to be fully optimized.
 
-- I would also like to integrate [SDCard
-  support](https://github.com/ZipCPU/sdspi) into the
-  [newlib](https://sourceware.org/newlib) C-library to give
-  the CPU file access.  If and when this takes place, it will take place as
-  part of the [ZBasic repository](https://github.com/ZipCPU/zbasic) first.
+- FATFS support now exists for the [SDCard](https://github.com/ZipCPU/sdspi),
+  it's just not (yet) integrated into the
+  [newlib](https://sourceware.org/newlib) C-library.
 
 - The [ZipOS](https://github.com/ZipCPU/s6soc/tree/master/sw/zipos)
   would greatly speed up and improve the bare bones [newlib](https://sourceware.org/newlib) library--primarily
