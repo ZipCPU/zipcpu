@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
 [*] Wed Jun 10 11:33:14 2020
 [*]
-[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/pipemem_nolcl_noaligned_nolock/engine_0/trace.vcd"
-[dumpfile_mtime] "Wed Jun 10 02:09:24 2020"
-[dumpfile_size] 11025
-[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/pipemem.gtkw"
 [timestart] 0
 [size] 1920 1021
 [pos] -919 -417

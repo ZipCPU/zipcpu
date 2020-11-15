@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.98 (w)1999-2018 BSI
 [*] Sat Dec  8 19:23:32 2018
 [*]
-[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dcache_piped/engine_0/trace.vcd"
-[dumpfile_mtime] "Sat Dec  8 19:20:42 2018"
-[dumpfile_size] 53195
-[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dcache.gtkw"
 [timestart] 0
 [size] 1918 1021
 [pos] -1 -1

@@ -59,7 +59,8 @@ module	fmem #(
 		input	wire	[31:0]		i_addr,
 		input	wire	[31:0]		i_data,
 		input	wire	[4:0]		i_oreg,
-		// input	wire	[4:0]		i_areg,
+		input	wire	[4:0]		i_areg, // Base address register
+		//
 		input	wire			i_busy,
 		input	wire			i_rdbusy,
 		input	wire			i_valid,
@@ -72,9 +73,9 @@ module	fmem #(
 		output	reg			f_pc,
 		output	reg			f_gie,
 		output	reg			f_read_cycle,
-		output	reg	[4:0]		f_last_reg
+		output	reg	[4:0]		f_last_reg,
+		output	reg	[4:0]		f_addr_reg
 		// , output	reg			f_endpipe,
-		// output	reg	[4:0]		f_addr_reg,
 		// }}}
 	);
 
@@ -186,6 +187,8 @@ module	fmem #(
 		`CPU_ASSERT(!i_stb);
 	end
 
+	// Stability while stalled
+	// {{{
 	always @(posedge i_clk)
 	if (f_past_valid && $past(i_stb && i_pipe_stalled && !i_cpu_reset))
 	begin
@@ -195,6 +198,7 @@ module	fmem #(
 		`CPU_ASSERT($stable(i_oreg));
 		`CPU_ASSERT($stable(i_lock));
 	end
+	// }}}
 
 	always @(*)
 	if (!IMPLEMENT_LOCK)
@@ -326,12 +330,16 @@ module	fmem #(
 
 	////////////////////////////////////////////////////////////////////////
 	//
-	// f_last_reg, f_pc properties
+	// f_addr_reg, f_last_reg, f_pc properties
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	initial	f_pc = 0;
+
+	// The last register
+	// {{{
+	// For pipeline hazard purposes, it's important to be able to know and
+	// track the last register that will be returned to the CPU.
 	always @(posedge i_clk)
 	if (i_stb && !i_pipe_stalled)
 		f_last_reg <= i_oreg;
@@ -339,7 +347,39 @@ module	fmem #(
 	always @(*)
 	if (f_outstanding == 1 && i_valid)
 		`CPU_ASSUME(f_last_reg == i_wreg);
+	// }}}
 
+	//
+	// The base address register
+	// {{{
+	// In any string of reads, the ZipCPU will only ever use a single
+	// base address.  The ZipCPU will *not* read into the base address
+	// register unless that read is the last in the string of reads.
+	always @(posedge i_clk)
+	if (i_stb)
+		f_addr_reg <= i_areg;
+
+	always @(*)
+	if (i_stb && i_rdbusy)
+		`CPU_ASSERT(i_areg == f_addr_reg);
+
+	always @(*)
+	if (i_rdbusy)
+		`CPU_ASSERT(!i_stb || f_last_reg != i_areg);
+
+	always @(*)
+	if (i_rdbusy && i_valid)
+	begin
+		if (f_outstanding > 1)
+			`CPU_ASSUME(i_wreg != f_addr_reg);
+	end
+	// }}}
+
+	// f_pc
+	// {{{
+	// True if any register will return a write to either the program
+	// counter or the CC register.  If such a read exists, it must be the
+	// last in a sequence.
 	initial	f_pc = 0;
 	always @(posedge i_clk)
 	if (i_cpu_reset || i_err)
@@ -374,6 +414,7 @@ module	fmem #(
 		`CPU_ASSUME(f_outstanding > 0);
 	end else if (i_valid)
 		`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
+	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//

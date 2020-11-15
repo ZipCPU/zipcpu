@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
 [*] Thu May 21 13:30:02 2020
 [*]
-[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/memops_prf/engine_0/trace_induct.vcd"
-[dumpfile_mtime] "Thu May 21 13:25:20 2020"
-[dumpfile_size] 6932
-[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/memops.gtkw"
 [timestart] 0
 [size] 1920 1021
 [pos] -1 -1

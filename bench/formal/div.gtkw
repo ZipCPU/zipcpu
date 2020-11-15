@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
 [*] Sat Aug 11 16:11:56 2018
 [*]
-[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/div.vcd"
-[dumpfile_mtime] "Sat Aug 11 15:44:52 2018"
-[dumpfile_size] 3746
-[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/sim/verilator/div_tb.gtkw"
 [timestart] 0
 [size] 1698 819
 [pos] -1 -1

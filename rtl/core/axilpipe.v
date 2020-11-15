@@ -887,7 +887,10 @@ module	axilpipe #(
 
 	wire	[LGPIPE:0]	cpu_outstanding;
 	wire			cpu_gie, cpu_pc, cpu_read_cycle;
-	wire	[4:0]		cpu_last_reg;
+	wire	[4:0]		cpu_last_reg, cpu_addr_reg;
+	reg	[4:0]		f_ar_areg;
+
+	(* anyseq *) reg [4:0]	f_areg;
 	reg			f_done;
 
 
@@ -1404,6 +1407,7 @@ module	axilpipe #(
 	// }}}
 
 	// Verifying the cpu_last_reg
+	// {{{
 	always @(*)
 	if (M_AXI_WVALID || M_AXI_ARVALID)
 		assert(cpu_last_reg == ar_oreg);
@@ -1418,6 +1422,43 @@ module	axilpipe #(
 				&& (rdaddr != f_next_addr))
 			`BMC_ASSERT(return_reg == cpu_last_reg);
 	end
+	// }}}
+
+	// Verifying the cpu_addr_reg
+	// {{{
+	always @(posedge S_AXI_ACLK)
+	if (i_stb)
+		f_ar_areg <= f_areg;
+
+	always @(*)
+	if (o_rdbusy)
+		`ASSERT(f_ar_areg == cpu_addr_reg);
+
+	always @(*)
+	if (!f_clrfifo && o_rdbusy && f_fifo_fill > 0)
+	begin
+		if (f_first_in_fifo && f_first_addr != f_last_written)
+			assert(f_first_return_reg != cpu_addr_reg
+				|| f_first_misaligned);
+		if (f_next_in_fifo && f_next_addr != f_last_written)
+			assert(f_next_return_reg != cpu_addr_reg
+				|| f_next_misaligned);
+
+		// If the base address register exists in the FIFO, then it
+		// can't be part of any current requests.
+		if ((f_first_in_fifo && (f_first_return_reg == cpu_addr_reg) && !f_first_misaligned)
+			||(f_next_in_fifo && (f_next_return_reg == cpu_addr_reg) && !f_next_misaligned))
+			assert(!M_AXI_WVALID && !M_AXI_ARVALID);
+			
+		if ((rdaddr != f_last_written || M_AXI_WVALID || M_AXI_ARVALID)
+				&& !misaligned_response_pending
+				&& (cpu_outstanding > (o_valid ? 1:0))
+				&& (rdaddr != f_first_addr)
+				&& (rdaddr != f_next_addr))
+			`BMC_ASSERT(return_reg != cpu_addr_reg);
+	end
+
+	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1436,8 +1477,13 @@ module	axilpipe #(
 				&& !misaligned_response_pending;
 
 
-	fmem #(.F_LGDEPTH(LGPIPE+1), .OPT_MAXDEPTH(1<<LGPIPE))
-	fcheck(.i_clk(S_AXI_ACLK),
+	fmem #(
+		// {{{
+		.F_LGDEPTH(LGPIPE+1), .OPT_MAXDEPTH(1<<LGPIPE)
+		// }}}
+	) fcheck(
+		// {{{
+		.i_clk(S_AXI_ACLK),
 		.i_bus_reset(!S_AXI_ARESETN),
 		.i_cpu_reset(i_cpu_reset),
 		.i_stb(i_stb),
@@ -1445,11 +1491,14 @@ module	axilpipe #(
 		.i_clear_cache(1'b0),
 		.i_lock(i_lock), .i_op(i_op), .i_addr(i_addr),
 		.i_data(i_data), .i_oreg(i_oreg), .i_busy(o_busy),
+			.i_areg(f_areg),
 		.i_rdbusy(o_rdbusy), .i_valid(o_valid), .i_done(f_done),
 		.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
 		.f_outstanding(cpu_outstanding),
 		.f_pc(cpu_pc), .f_gie(cpu_gie), .f_read_cycle(cpu_read_cycle),
-		.f_last_reg(cpu_last_reg));
+		.f_last_reg(cpu_last_reg), .f_addr_reg(cpu_addr_reg)
+		// }}}
+	);
 
 	always @(*)
 	if (flush_request)

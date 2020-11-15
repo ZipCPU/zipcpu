@@ -392,7 +392,7 @@ $(CPU): $(CPU)_piped/PASS
 $(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
-	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE)  \
+	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE) 		 \
 	$(CPU).sby $(FMEM) $(IFETCH)
 
 $(CPU)_piped/PASS: $(CPUDEPS)

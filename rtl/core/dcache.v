@@ -189,7 +189,8 @@ module	dcache #(
 	reg	[AW:0]		f_return_address;
 	reg	[AW:0]		f_pending_addr;
 	reg			f_pc_pending;
-	reg	[4:0]		f_last_reg;
+	reg	[4:0]		f_last_reg, f_addr_reg;
+	(* anyseq *) reg [4:0]	f_areg;
 `endif
 	wire	cache_miss_inow, w_cachable;
 	wire	raw_cachable_address;
@@ -619,6 +620,21 @@ module	dcache #(
 			`ASSERT(f_twin_double || f_twin_last);
 		else if ($past(f_twin_last))
 			`ASSERT(f_twin_none || f_twin_single || f_twin_last);
+
+		// f_addr_reg test
+		// {{{
+		always @(*)
+		if (o_rdbusy)
+		begin
+		if (f_twin_valid_one && f_twin_base != f_last_wraddr)
+			`ASSERT({ gie, fifo_data[f_twin_base][7:4] } != f_addr_reg);
+		if (f_twin_valid_two && f_twin_next != f_last_wraddr)
+			`ASSERT({ gie, fifo_data[f_twin_next][7:4] } != f_addr_reg);
+		if ((rdaddr != f_last_wraddr)&&(rdaddr != f_twin_base)
+				&&(rdaddr != f_twin_next))
+			assume({ gie, fifo_data[rdaddr][7:4] } != f_addr_reg);
+		end
+		// }}}
 
 `endif // TWIN_WRITE_TEST
 
@@ -1264,11 +1280,11 @@ module	dcache #(
 	) f_cpu(i_clk, i_reset, i_reset,
 		// The CPU interface
 		i_pipe_stb, o_pipe_stalled, i_clear, i_lock,
-		i_op, i_addr, i_data, i_oreg,
+		i_op, i_addr, i_data, i_oreg, f_areg,
 			o_busy, o_rdbusy,
 		o_valid, f_done, o_err, o_wreg, o_data,
 		f_cpu_outstanding, f_pc, f_gie, f_read_cycle,
-		f_last_reg);
+		f_last_reg, f_addr_reg);
 
 	always @(*)
 	if (OPT_PIPE || (!o_err && !r_svalid && !r_dvalid))

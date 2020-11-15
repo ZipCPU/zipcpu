@@ -428,7 +428,8 @@ module	pipemem #(
 	reg				f_past_valid;
 	wire				f_pc_check, f_gie, f_read_cycle;
 	reg				f_alignment_err;
-	wire	[4:0]			f_last_reg;
+	wire	[4:0]			f_last_reg, f_addr_reg;
+	(* anyseq *) reg	[4:0]	f_areg;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -494,6 +495,7 @@ module	pipemem #(
 
 	fmem #(.F_LGDEPTH(F_LGDEPTH), .OPT_MAXDEPTH(OPT_MAXDEPTH))
 	iface(
+		// {{{
 		.i_clk(i_clk),
 		.i_bus_reset(i_reset),
 		.i_cpu_reset(i_reset),
@@ -502,13 +504,15 @@ module	pipemem #(
 		.i_clear_cache(1'b0),
 		.i_lock(i_lock),
 		.i_op(i_op), .i_addr(i_addr), .i_data(i_data), .i_oreg(i_oreg),
+		.i_areg(f_areg),
 		.i_busy(o_busy), .i_rdbusy(o_busy && !o_wb_we),
 		.i_valid(o_valid), .i_done(f_done),
 			.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
 			.f_outstanding(fcpu_outstanding),
 			.f_pc(f_pc_check), .f_gie(f_gie),
 			.f_read_cycle(f_read_cycle),
-			.f_last_reg(f_last_reg)
+			.f_last_reg(f_last_reg), .f_addr_reg(f_addr_reg)
+		// }}}
 	);
 
 	always @(*)
@@ -731,11 +735,20 @@ module	pipemem #(
 	if (cyc && !o_wb_we)
 	begin
 		if (f_mem_used[rdaddr] && fc_addr != rdaddr)
+		begin
 			assume((fifo_oreg[rdaddr][7:5] == 3'h7)
 				== (f_pc && rdaddr == lastaddr));
+			assume(({ fifo_gie, fifo_oreg[rdaddr][7:4] } != f_addr_reg)
+				|| (rdaddr == lastaddr));
+		end
+
 		if (f_mem_used[fc_addr])
+		begin
 			`ASSERT((fifo_oreg[fc_addr][7:5] == 3'h7)
 				== (f_pc && fc_addr == lastaddr));
+			`ASSERT(({ fifo_gie, fifo_oreg[fc_addr][7:4] } != f_addr_reg)
+				|| fc_addr == lastaddr);
+		end
 	end
 
 	always @(*)

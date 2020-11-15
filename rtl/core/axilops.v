@@ -865,7 +865,8 @@ module	axilops #(
 	//
 	wire	[3:0]	cpu_outstanding;
 	reg		f_done;
-	wire	[4:0]	f_last_reg;
+	wire	[4:0]	f_last_reg, f_addr_reg;
+	(* anyseq *) reg [4:0]	f_areg;
 
 	initial	f_done = 1'b0;
 	always @(posedge i_clk)
@@ -888,13 +889,14 @@ module	axilops #(
 		.i_clear_cache(1'b0),
 		.i_lock(i_lock), .i_op(i_op), .i_addr(i_addr),
 		.i_data(i_data), .i_oreg(i_oreg), .i_busy(o_busy),
+			.i_areg(f_areg),
 		.i_rdbusy(o_rdbusy), .i_valid(o_valid), .i_done(f_done),
 		.i_err(o_err), .i_wreg(o_wreg), .i_result(o_result),
 		.f_outstanding(cpu_outstanding),
 		.f_pc(f_pc),
 		.f_gie(f_gie),
 		.f_read_cycle(f_read_cycle),
-		.f_last_reg(f_last_reg)
+		.f_last_reg(f_last_reg), .f_addr_reg(f_addr_reg)
 		// }}}
 	);
 

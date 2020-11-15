@@ -507,7 +507,8 @@ module	memops #(
 	reg				f_done;
 	wire	[(F_LGDEPTH-1):0]	cpu_outstanding;
 	wire				f_pc, f_rdbusy, f_gie, f_read_cycle;
-	wire	[4:0]			f_last_reg;
+	wire	[4:0]			f_last_reg, f_addr_reg;
+	(* anyseq *)	reg	[4:0]	f_areg;
 
 	assign	f_rdbusy = f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we;
 
@@ -518,9 +519,15 @@ module	memops #(
 	else
 		f_done <= ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_ack);
 
-	fmem #(.F_LGDEPTH(F_LGDEPTH), .IMPLEMENT_LOCK(IMPLEMENT_LOCK),
-		.OPT_MAXDEPTH(1))
-	fmemi(.i_clk(i_clk),
+	fmem #(
+		// {{{
+		.F_LGDEPTH(F_LGDEPTH),
+		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+		.OPT_MAXDEPTH(1)
+		// }}}
+	) fmemi(
+		// {{{
+		.i_clk(i_clk),
 		.i_bus_reset(i_reset),
 		.i_cpu_reset(i_reset),
 		.i_stb(i_stb),
@@ -528,6 +535,7 @@ module	memops #(
 		.i_clear_cache(1'b0),
 		.i_lock(i_lock),
 		.i_op(i_op), .i_addr(i_addr), .i_data(i_data), .i_oreg(i_oreg),
+		.i_areg(f_areg),
 		.i_busy(o_busy),
 		.i_rdbusy(f_rdbusy),
 		.i_valid(o_valid), .i_done(f_done), .i_err(o_err),
@@ -536,7 +544,8 @@ module	memops #(
 		.f_pc(f_pc),
 		.f_gie(f_gie),
 		.f_read_cycle(f_read_cycle),
-		.f_last_reg(f_last_reg)
+		.f_last_reg(f_last_reg), .f_addr_reg(f_addr_reg)
+		// }}}
 	);
 
 	always @(*)

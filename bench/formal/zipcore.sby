@@ -7,10 +7,11 @@ ice40		nopipe    mpy div cis nobkram
 [options]
 mode prove
 depth 18
-piped:    depth 14
-nopipe:   depth 11
-lowlogic: depth  8
-ice40:    depth 11
+piped:    depth  9
+nopipe:   depth  4
+nopipe:   depth  4
+lowlogic: depth  4
+ice40:    depth  5
 
 [engines]
 smtbmc boolector
