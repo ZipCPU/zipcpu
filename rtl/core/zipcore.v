@@ -1287,7 +1287,7 @@ module	zipcore #(
 				//
 				((!dcd_zI)&&(
 					((op_R == dcd_B)&&(op_wR))
-					// ||((i_mem_rdbusy)&&(!dcd_pipe))
+					||((i_mem_rdbusy)&&(!dcd_pipe))
 					||(((alu_busy ||
 						div_busy || i_mem_rdbusy))
 						&&(alu_reg == dcd_B))
@@ -4645,10 +4645,9 @@ module	zipcore #(
 		assume(fc_op_Bid[3:0] != CPU_CC_REG || f_op_zI);
 
 	always @(*)
-	if (op_valid && !op_illegal && wr_reg_ce && op_rB && fc_op_I != 0
-			&& op_Bid != f_last_reg)
-		assume(i_mem_wreg != op_Bid);
-
+	if (op_valid && !f_op_zI && i_mem_rdbusy && (f_last_reg != { gie, CPU_PC_REG }))
+		assert(!op_rB || fc_op_Bid[4:0] == f_addr_reg
+			||((f_mem_outstanding == 1) && (fc_op_Bid[4:0] != f_last_reg)));
 	// }}}
 `endif	// FORMAL
 // }}}
