@@ -68,10 +68,10 @@ module	ffetch #(
 		// a bus error (This is also part of the CPU interface)
 		input	wire			pf_illegal,
 		//
-		(* anyconst *)	output	reg	[(AW+1):0]	fc_pc,
-		(* anyconst *)	output	reg			fc_illegal,
-		(* anyconst *)	output	reg	[BUSW-1:0]	fc_insn,
-				output	reg	[(AW+1):0]	f_address
+		output	wire	[(AW+1):0]	fc_pc,
+		output	wire			fc_illegal,
+		output	wire	[BUSW-1:0]	fc_insn,
+		output	reg	[(AW+1):0]	f_address
 		// }}}
 	);
 
@@ -92,6 +92,13 @@ module	ffetch #(
 	reg	[31:0]	past_insn;
 	reg [AW+1:0]	last_pc, next_pc, prior_pc;
 
+	(* anyconst *)	reg	[(AW+1):0]	r_fc_pc;
+	(* anyconst *)	reg			r_fc_illegal;
+	(* anyconst *)	reg	[BUSW-1:0]	r_fc_insn;
+
+	assign	fc_pc		= r_fc_pc;
+	assign	fc_illegal	= r_fc_illegal;
+	assign	fc_insn		= r_fc_insn;
 	// }}}
 
 	// f_address, f_next_address -- address tracking

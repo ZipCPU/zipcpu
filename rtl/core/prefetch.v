@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	prefetch.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This is a very simple instruction fetch approach.  It gets
@@ -29,9 +29,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -46,8 +46,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -56,36 +57,41 @@
 //
 `default_nettype	none
 //
-//
-module	prefetch(i_clk, i_reset,
-		i_new_pc, i_clear_cache, i_ready, i_pc,
-			o_valid, o_illegal, o_insn, o_pc,
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data);
-	parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32;
-	localparam		AW=ADDRESS_WIDTH,
-				DW=DATA_WIDTH;
-	parameter	[0:0]	OPT_ALIGNED = 1'b0;
-	input	wire			i_clk, i_reset;
-	// CPU interaction wires
-	input	wire			i_new_pc, i_clear_cache, i_ready;
-	// We ignore i_pc unless i_new_pc is true as well
-	input	wire	[(AW+1):0]	i_pc;
-	output	reg			o_valid; // If the output is valid
-	output	reg			o_illegal; // Result is from a bus err
-	output	reg	[(DW-1):0]	o_insn;	// Instruction read from WB
-	output	reg	[(AW+1):0]	o_pc;	// Address of that instruction
-	// Wishbone outputs
-	output	reg			o_wb_cyc, o_wb_stb;
-	output	wire			o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	wire	[(DW-1):0]	o_wb_data;
-	// And return inputs
-	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[(DW-1):0]	i_wb_data;
+// }}}
+module	prefetch #(
+		// {{{
+		parameter		ADDRESS_WIDTH=30, DATA_WIDTH=32,
+		localparam		AW=ADDRESS_WIDTH,
+					DW=DATA_WIDTH,
+		parameter	[0:0]	OPT_ALIGNED = 1'b0
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		// CPU interaction wires
+		input	wire			i_new_pc, i_clear_cache,
+						i_ready,
+		// We ignore i_pc unless i_new_pc is true as well
+		input	wire	[(AW+1):0]	i_pc,
+		output	reg			o_valid, // If output is valid
+		output	reg			o_illegal, // bus err result
+		output	reg	[(DW-1):0]	o_insn,	// Insn read from WB
+		output	reg	[(AW+1):0]	o_pc,	// Addr of that insn
+		// Wishbone outputs
+		output	reg			o_wb_cyc, o_wb_stb,
+		output	wire			o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	wire	[(DW-1):0]	o_wb_data,
+		// And return inputs
+		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[(DW-1):0]	i_wb_data
+		// }}}
+	);
 
 	// Declare local variables
+	// {{{
 	reg			invalid;
+	// }}}
 
 	// These are kind of obligatory outputs when dealing with a bus, that
 	// we'll set them here.  Nothing's going to pay attention to these,
@@ -93,6 +99,8 @@ module	prefetch(i_clk, i_reset,
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 32'h0000;
 
+	// o_wb_cyc, o_wb_stb
+	// {{{
 	// Let's build it simple and upgrade later: For each instruction
 	// we do one bus cycle to get the instruction.  Later we should
 	// pipeline this, but for now let's just do one at a time.
@@ -101,10 +109,12 @@ module	prefetch(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((i_reset || i_clear_cache)||((o_wb_cyc)&&((i_wb_ack)||(i_wb_err))))
 	begin
+		// {{{
 		// End any bus cycle on a reset, or a return ACK
 		// or error.
 		o_wb_cyc <= 1'b0;
 		o_wb_stb <= 1'b0;
+		// }}}
 	end else if ((!o_wb_cyc)&&(
 			// Start if the last instruction output was
 			// accepted, *and* it wasn't a bus error
@@ -116,11 +126,14 @@ module	prefetch(i_clk, i_reset,
 			// Start on any request for a new address
 			||(i_new_pc)))
 	begin
+		// {{{
 		// Initiate a bus transaction
 		o_wb_cyc <= 1'b1;
 		o_wb_stb <= 1'b1;
+		// }}}
 	end else if (o_wb_cyc)
 	begin
+		// {{{
 		// If our request has been accepted, then drop the
 		// strobe line
 		if (!i_wb_stall)
@@ -136,9 +149,12 @@ module	prefetch(i_clk, i_reset,
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
 		end
+		// }}}
 	end
+	// }}}
 
-	//
+	// invalid
+	// {{{
 	// If during the current bus request, a command came in from the CPU
 	// that will invalidate the results of that request, then we need to
 	// keep track of an "invalid" flag to remember that and so squash
@@ -150,9 +166,10 @@ module	prefetch(i_clk, i_reset,
 		invalid <= 1'b0;
 	else if (i_new_pc)
 		invalid <= 1'b1;
+	// }}}
 
 	// The wishbone request address, o_wb_addr
-	//
+	// {{{
 	// The rule regarding this address is that it can *only* be changed
 	// when no bus request is active.  Further, since the CPU is depending
 	// upon this value to know what "PC" is associated with the instruction
@@ -166,13 +183,18 @@ module	prefetch(i_clk, i_reset,
 		o_wb_addr  <= i_pc[AW+1:2];
 	else if ((o_valid)&&(i_ready)&&(!o_illegal))
 		o_wb_addr  <= o_wb_addr + 1'b1;
+	// }}}
 
+	// o_insn
+	// {{{
 	// The instruction returned is given by the data returned from the bus.
 	always @(posedge i_clk)
 	if ((o_wb_cyc)&&(i_wb_ack))
 		o_insn <= i_wb_data;
+	// }}}
 
-	//
+	// o_valid, o_illegal
+	// {{{
 	// Finally, the flags associated with the prefetch.  The rule is that
 	// if the output represents a return from the bus, then o_valid needs
 	// to be true.  o_illegal will be true any time the last bus request
@@ -216,16 +238,18 @@ module	prefetch(i_clk, i_reset,
 		//
 		// o_illegal <= (!i_ready);
 	end
+	// }}}
 
 	// The o_pc output shares its value with the (last) wishbone address
+	// {{{
 	generate if (OPT_ALIGNED)
 	begin : ALIGNED_PF_PC
-
+		// {{{
 		always @(*)
 			o_pc = { o_wb_addr, 2'b00 };
-
+		// }}}
 	end else begin : GENERATE_PF_PC
-
+		// {{{
 		initial	o_pc = 0;
 		always @(posedge i_clk)
 		if (i_new_pc)
@@ -235,20 +259,33 @@ module	prefetch(i_clk, i_reset,
 			o_pc <= o_pc + 4;
 			o_pc[1:0] <= 2'b00;
 		end
-
+		// }}}
 	end endgenerate
-
 `ifdef	FORMAL
 	always @(*)
 		assert(o_pc[AW+1:2] == o_wb_addr);
 `endif
+	// }}}
 
 	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	wire	[1:0]	unused;
 	assign	unused = i_pc[1:0];
 	// verilator lint_on  UNUSED
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// Declarations
+	// {{{
 	localparam	F_LGDEPTH=2;
 	reg	f_past_valid;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks,
@@ -262,11 +299,11 @@ module	prefetch(i_clk, i_reset,
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus interface properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -278,11 +315,11 @@ module	prefetch(i_clk, i_reset,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
 			f_nreqs, f_nacks, f_outstanding);
-
+	// }}}
 	/////////////////////////////////////////////////
 	//
 	// CPU interface properties
-	//
+	// {{{
 	/////////////////////////////////////////////////
 	//
 	//
@@ -347,12 +384,11 @@ module	prefetch(i_clk, i_reset,
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
+	// }}}
 	/////////////////////////////////////////////////
 	//
-	//
 	// Assertions about our outputs
-	//
-	//
+	// {{{
 	/////////////////////////////////////////////////
 	//
 	// Assertions about our wishbone control outputs first
@@ -484,14 +520,25 @@ module	prefetch(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(invalid)))
 		assert(!invalid);
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Contract checking
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	wire	f_this_addr, f_this_pc, f_this_req, f_this_data;
+	reg	f_addr_pending;
+	reg	f_insn_pending;
+
 	assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
 	assign	f_this_pc   = (o_pc[AW+1:2]== f_const_addr[AW+1:2]);
 	assign	f_this_req  = (i_pc[AW+2:2]== f_const_addr[AW+1:2]);
 	assign	f_this_data = (i_wb_data ==   f_const_insn);
 
-	reg	f_addr_pending;
+	// f_addr_pending
+	// {{{
 	initial	f_addr_pending = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -503,7 +550,10 @@ module	prefetch(i_clk, i_reset,
 		if ((!i_wb_ack)&&(!i_wb_err))
 			f_addr_pending <= 1'b1;
 	end
+	// }}}
 
+	// 1. Assume the correct response for the given address
+	// {{{
 	always @(*)
 	if ((o_wb_stb)&&(f_this_addr)&&(!i_wb_stall))
 	begin
@@ -522,9 +572,10 @@ module	prefetch(i_clk, i_reset,
 		if (i_wb_ack)
 			assume(f_this_data);
 	end
+	// }}}
 
-	reg	f_insn_pending;
-
+	// f_insn_pending
+	// {{{
 	initial	f_insn_pending = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -535,6 +586,7 @@ module	prefetch(i_clk, i_reset,
 		f_insn_pending <= 1'b1;
 	else if ((o_valid)||(i_new_pc))
 		f_insn_pending <= 1'b0;
+	// }}}
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))&&(o_wb_cyc)&&(f_insn_pending))
@@ -560,7 +612,9 @@ module	prefetch(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))&&(f_insn_pending))
 		assert(f_this_addr);
+	// }}}
 `endif
+// }}}
 endmodule
 //
 // Usage:	(this)	(mid)	(past)

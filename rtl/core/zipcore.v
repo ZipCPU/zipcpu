@@ -2994,7 +2994,7 @@ module	zipcore #(
 		assume(i_halt);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_dbg_we))&&(!$past(o_dbg_stall)))
+	if ((f_past_valid)&&($past(i_dbg_we)))
 		assume(i_halt);
 
 	always @(*)
@@ -4629,16 +4629,8 @@ module	zipcore #(
 	//
 
 	always @(posedge i_clk)
-	if (!$past(o_mem_ce))
-		assume(!$rose(i_mem_busy));
-
-	always @(posedge i_clk)
 	if ($past(o_break))
 		assume(i_halt || i_reset);
-
-	always @(posedge i_clk)
-	if (i_dbg_we || $past(i_dbg_we))
-		assume(i_halt);
 
 	always @(*)
 	if (op_valid)

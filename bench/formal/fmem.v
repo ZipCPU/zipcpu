@@ -130,6 +130,10 @@ module	fmem #(
 	if (!f_past_valid || $past(i_bus_reset || i_cpu_reset))
 		`CPU_ASSUME(!i_rdbusy);
 
+	always @(posedge i_clk)
+	if (f_past_valid && !$past(i_busy || i_stb))
+		`CPU_ASSUME(!i_busy);
+
 	always @(*)
 		`CPU_ASSUME(!i_valid || !i_err);
 
