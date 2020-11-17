@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipbones.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	In the spirit of keeping the Zip CPU small, this implements a
@@ -12,9 +12,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -31,8 +31,9 @@
 // <http://www.gnu.org/licenses/> for a copy.
 //
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// }}}
 //		http://www.gnu.org/licenses/gpl.html
-//
+// {{{
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -57,81 +58,89 @@
 `else
 `define	LGDCACHE_DEFAULT	0
 `endif
-module	zipbones(i_clk, i_reset,
-		// Wishbone master interface from the CPU
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-			i_wb_stall, i_wb_ack, i_wb_data, i_wb_err,
-		// Incoming interrupts
-		i_ext_int,
-		// Our one outgoing interrupt
-		o_ext_int,
-		// Wishbone slave interface for debugging purposes
-		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
-			o_dbg_stall, o_dbg_ack, o_dbg_data
-`ifdef	DEBUG_SCOPE
-		, o_cpu_debug
-`endif
-		);
-	parameter	RESET_ADDRESS=32'h0100000, ADDRESS_WIDTH=30,
-			LGICACHE=`LGICACHE_DEFAULT,
-			LGDCACHE=`LGDCACHE_DEFAULT;
-	parameter [0:0]	START_HALTED=0;
-	parameter	EXTERNAL_INTERRUPTS=1,
+// }}}
+module	zipbones #(
+		// {{{
+		parameter	RESET_ADDRESS=32'h1000_0000, ADDRESS_WIDTH=30,
+				LGICACHE=`LGICACHE_DEFAULT,
+				LGDCACHE=`LGDCACHE_DEFAULT,	// Set to zero for no data cache
+		parameter [0:0]	START_HALTED=0,
+		parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
-			IMPLEMENT_MPY = `OPT_MULTIPLY;
+				IMPLEMENT_MPY = `OPT_MULTIPLY,
 `else
-			IMPLEMENT_MPY = 0;
+				IMPLEMENT_MPY = 0,
 `endif
-	parameter [0:0]
+		parameter [0:0]
 `ifdef	OPT_DIVIDE
-			IMPLEMENT_DIVIDE=1,
+				IMPLEMENT_DIVIDE=1,
 `else
-			IMPLEMENT_DIVIDE=0,
+				IMPLEMENT_DIVIDE=0,
 `endif
 `ifdef	OPT_IMPLEMENT_FPU
-			IMPLEMENT_FPU=1,
+				IMPLEMENT_FPU=1,
 `else
-			IMPLEMENT_FPU=0,
+				IMPLEMENT_FPU=0,
 `endif
-			IMPLEMENT_LOCK=1;
-	localparam	// Derived parameters
-			PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-			PAW=ADDRESS_WIDTH,
+				IMPLEMENT_LOCK=1,
+		localparam	// Derived parameters
+				PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
+				PAW=ADDRESS_WIDTH,
 `ifdef	OPT_MMU
-			VIRTUAL_ADDRESS_WIDTH=30,
+				VIRTUAL_ADDRESS_WIDTH=30,
 `else
-			VIRTUAL_ADDRESS_WIDTH=PAW,
+				VIRTUAL_ADDRESS_WIDTH=PAW,
 `endif
-			LGTLBSZ = 6,
-			VAW=VIRTUAL_ADDRESS_WIDTH;
-
-	localparam	AW=ADDRESS_WIDTH;
-	input	wire	i_clk, i_reset;
-	// Wishbone master
-	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
-	output	wire	[(PAW-1):0]	o_wb_addr;
-	output	wire	[31:0]	o_wb_data;
-	output	wire	[3:0]	o_wb_sel;
-	input	wire		i_wb_stall, i_wb_ack;
-	input	wire	[31:0]	i_wb_data;
-	input	wire		i_wb_err;
-	// Incoming interrupts
-	input	wire		i_ext_int;
-	// Outgoing interrupt
-	output	wire		o_ext_int;
-	// Wishbone slave
-	input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr;
-	input	wire	[31:0]	i_dbg_data;
-	output	wire		o_dbg_ack;
-	output	wire		o_dbg_stall;
-	output	wire	[31:0]	o_dbg_data;
-	//
+				LGTLBSZ = 6,
+				VAW=VIRTUAL_ADDRESS_WIDTH,
+		localparam	AW=ADDRESS_WIDTH
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset,
+		// Wishbone master interface from the CPU
+		// {{{
+		output	wire		o_wb_cyc, o_wb_stb, o_wb_we,
+		output	wire	[(PAW-1):0]	o_wb_addr,
+		output	wire	[31:0]	o_wb_data,
+		output	wire	[3:0]	o_wb_sel,
+		input	wire		i_wb_stall, i_wb_ack,
+		input	wire	[31:0]	i_wb_data,
+		input	wire		i_wb_err,
+		// Incoming interrupts
+		input	wire		i_ext_int,
+		// Outgoing interrupt
+		output	wire		o_ext_int,
+		// Wishbone slave interface for debugging purposes
+		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
+					i_dbg_addr,
+		input	wire	[31:0]	i_dbg_data,
+		input	wire	[3:0]	i_dbg_sel,
+		output	wire		o_dbg_stall,
+		output	wire		o_dbg_ack,
+		output	wire	[31:0]	o_dbg_data
 `ifdef	DEBUG_SCOPE
-	output	wire	[31:0]	o_cpu_debug;
+		, output wire	[31:0]	o_cpu_debug
 `endif
+		// }}}
+	);
+
+	// Declarations
+	// {{{
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_stall;
 	wire	[31:0]	dbg_idata, dbg_odata;
 	reg		dbg_ack;
+	wire		cpu_break, dbg_cmd_write;
+	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_cache;
+	reg	[4:0]	cmd_addr;
+	wire	[2:0]	cpu_dbg_cc;
+	wire		cpu_reset, cpu_halt, cpu_dbg_stall;
+	wire		cpu_lcl_cyc, cpu_lcl_stb, 
+			cpu_dbg_we,
+			cpu_op_stall, cpu_pf_stall, cpu_i_count;
+	wire	[31:0]	cpu_dbg_data;
+	wire	[31:0]	cmd_data;
+	// }}}
 
 	assign	dbg_cyc     = i_dbg_cyc;
 	assign	dbg_stb     = i_dbg_stb;
@@ -148,16 +157,12 @@ module	zipbones(i_clk, i_reset,
 	// write to set the local address.  This interface allows access to
 	// the Zip System on a debug basis only, and not to the rest of the
 	// wishbone bus.  Further, to access these registers, the control
-	// register must first be accessed to both stop the CPU and to 
+	// register must first be accessed to both stop the CPU and to
 	// set the following address in question.  Hence all accesses require
 	// two accesses: write the address to the control register (and halt
 	// the CPU if not halted), then read/write the data from the data
 	// register.
 	//
-	wire		cpu_break, dbg_cmd_write;
-	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache;
-	reg	[4:0]	cmd_addr;
-	wire	[3:0]	cpu_dbg_cc;
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(!dbg_addr);
 	//
 	// Always start us off with an initial reset
@@ -172,30 +177,45 @@ module	zipbones(i_clk, i_reset,
 		cmd_halt <= START_HALTED;
 	else if (cmd_reset)
 		cmd_halt <= START_HALTED;
-	else if (dbg_cmd_write)
-		cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
-	else if ((cmd_step)||(cpu_break))
-		cmd_halt  <= 1'b1;
+	else if (cpu_break)
+		// The cause of the break must be cured before we can start
+		cmd_halt <= 1'b1;
+	else if (dbg_cmd_write && dbg_idata[`HALT_BIT] && !dbg_idata[`STEP_BIT])
+		// On any request to halt, we can always come to a halt
+		cmd_halt <= 1'b1;
+	else if (cmd_step)
+		// Following any step command, we can always halt
+		cmd_halt <= 1'b1;
+	else if (!cmd_halt || !cpu_dbg_stall)
+	begin
+		// If we have fully halted, or if we are not halted at all,
+		// then we can consider being released from the halted state
+		if (dbg_cmd_write)
+			cmd_halt <= ((dbg_idata[`HALT_BIT])&&(!dbg_idata[`STEP_BIT]));
+	end
 
-	initial	cmd_clear_pf_cache = 1'b1;
+	initial	cmd_clear_cache = 1'b1;
 	always @(posedge i_clk)
-		cmd_clear_pf_cache <= (dbg_cmd_write)&&(dbg_idata[`CLEAR_CACHE_BIT]);
+		cmd_clear_cache <= cmd_halt && dbg_cmd_write
+			&& dbg_idata[`CLEAR_CACHE_BIT] && dbg_idata[`HALT_BIT];
 	//
 	initial	cmd_step  = 1'b0;
 	always @(posedge i_clk)
-		cmd_step <= (dbg_cmd_write)&&(dbg_idata[`STEP_BIT]);
+	if (i_reset)
+		cmd_step <= 1'b0;
+	else if ((dbg_cmd_write)&&(dbg_idata[`STEP_BIT]))
+		cmd_step <= 1'b1;
+	else if (!cpu_dbg_stall)
+		cmd_step <= 1'b0;
 	//
 	initial	cmd_addr = 5'h0;
 	always @(posedge i_clk)
-		if (dbg_cmd_write)
-			cmd_addr <= dbg_idata[4:0];
+	if (dbg_cmd_write)
+		cmd_addr <= dbg_idata[4:0];
 
-	wire	cpu_reset;
 	assign	cpu_reset = (cmd_reset);
 
-	wire	cpu_halt, cpu_dbg_stall;
 	assign	cpu_halt = (cmd_halt);
-	wire	[31:0]	cmd_data;
 	// Values:
 	//	0x0003f -> cmd_addr mask
 	//	0x00040 -> reset
@@ -203,22 +223,18 @@ module	zipbones(i_clk, i_reset,
 	//	0x00100 -> cmd_step
 	//	0x00200 -> cmd_stall
 	//	0x00400 -> cmd_halt
-	//	0x00800 -> cmd_clear_pf_cache
+	//	0x00800 -> cmd_clear_cache
 	//	0x01000 -> cc.sleep
 	//	0x02000 -> cc.gie
 	//	0x10000 -> External interrupt line is high
 	assign	cmd_data = { 7'h00, 8'h00, i_ext_int,
-			cpu_dbg_cc,
+			cpu_break, cpu_dbg_cc,
 			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 			i_ext_int, cpu_reset, 1'b0, cmd_addr };
 
 	//
 	// The CPU itself
-	//
-	wire		cpu_lcl_cyc, cpu_lcl_stb, 
-			cpu_dbg_we,
-			cpu_op_stall, cpu_pf_stall, cpu_i_count;
-	wire	[31:0]	cpu_dbg_data;
+	// {{{
 	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(dbg_addr));
 	zipwb	#(.RESET_ADDRESS(RESET_ADDRESS),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
@@ -226,7 +242,7 @@ module	zipbones(i_clk, i_reset,
 			.OPT_LGDCACHE(LGDCACHE),
 			.WITH_LOCAL_BUS(0))
 		thecpu(i_clk, cpu_reset, i_ext_int,
-			cpu_halt, cmd_clear_pf_cache, cmd_addr[4:0], cpu_dbg_we,
+			cpu_halt, cmd_clear_cache, cmd_addr[4:0], cpu_dbg_we,
 				dbg_idata, cpu_dbg_stall, cpu_dbg_data,
 				cpu_dbg_cc, cpu_break,
 			o_wb_cyc, o_wb_stb,
@@ -239,20 +255,26 @@ module	zipbones(i_clk, i_reset,
 			, o_cpu_debug
 `endif
 			);
+	// }}}
 
 	// Return debug response values
+	// {{{
 	assign	dbg_odata = (!dbg_addr)?cmd_data :cpu_dbg_data;
 	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
 		dbg_ack <= (dbg_stb)&&(!o_dbg_stall);
+
 	assign	dbg_stall= (cpu_dbg_stall)&&(dbg_addr);
+	// }}}
 
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
 
 	// Make Verilator happy
+	// {{{
 	// verilator lint_off UNUSED
-	wire	[4:0] unused;
-	assign	unused = { dbg_cyc, cpu_lcl_stb, cpu_op_stall, cpu_pf_stall, cpu_i_count };
+	wire	unused;
+	assign	unused = &{ 1'b0, dbg_cyc, cpu_lcl_stb, cpu_op_stall,
+			cpu_pf_stall, cpu_i_count, i_dbg_sel };
 	// verilator lint_on  UNUSED
-
+	// }}}
 endmodule

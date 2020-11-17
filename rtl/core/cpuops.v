@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	cpuops.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This is the ZipCPU ALU function.  It handles all of the
@@ -12,9 +12,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -29,8 +29,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -41,23 +42,44 @@
 //
 //
 `include "cpudefs.v"
-//
-module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
-			o_busy);
-	parameter		IMPLEMENT_MPY = `OPT_MULTIPLY;
-	parameter	[0:0]	OPT_SHIFTS = 1'b1;
-	input	wire	i_clk, i_reset, i_stb;
-	input	wire	[3:0]	i_op;
-	input	wire	[31:0]	i_a, i_b;
-	output	reg	[31:0]	o_c;
-	output	wire	[3:0]	o_f;
-	output	reg		o_valid;
-	output	wire		o_busy;
+// }}}
+module	cpuops #(
+		// {{{
+		parameter		IMPLEMENT_MPY = `OPT_MULTIPLY,
+		parameter	[0:0]	OPT_SHIFTS = 1'b1
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset, i_stb,
+		input	wire	[3:0]	i_op,
+		input	wire	[31:0]	i_a, i_b,
+		output	reg	[31:0]	o_c,
+		output	wire	[3:0]	o_f,
+		output	reg		o_valid,
+		output	wire		o_busy
+		// }}}
+	);
+
+	// Declarations
+	// {{{
+	wire	[31:0]	w_brev_result;
+	wire	z, n, v, vx;
+	reg	c, pre_sign, set_ovfl, keep_sgn_on_ovfl;
+
+	wire	[32:0]		w_lsr_result, w_asr_result, w_lsl_result;
+
+	wire	[63:0]	mpy_result; // Where we dump the multiply result
+	wire	mpyhi;		// Return the high half of the multiply
+	wire	mpybusy;	// The multiply is busy if true
+	wire	mpydone;	// True if we'll be valid on the next clock;
+	wire	this_is_a_multiply_op;
+	reg	r_busy;
 
 	genvar	k;
+	// }}}
 
 	// Shift register pre-logic
-	wire	[32:0]		w_lsr_result, w_asr_result, w_lsl_result;
+	// {{{
 	generate if (OPT_SHIFTS)
 	begin : IMPLEMENT_SHIFTS
 		wire	signed	[32:0]	w_pre_asr_input, w_pre_asr_shifted;
@@ -79,19 +101,20 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 		assign	w_lsl_result = { i_a[31:0],      1'b0 };
 
 	end endgenerate
+	// }}}
 
 	//
 	// Bit reversal pre-logic
-	wire	[31:0]	w_brev_result;
+	// {{{
 	generate
 	for(k=0; k<32; k=k+1)
 	begin : bit_reversal_cpuop
 		assign w_brev_result[k] = i_b[31-k];
 	end endgenerate
+	// }}}
 
-	// Prelogic for our flags registers
-	wire	z, n, v;
-	reg	c, pre_sign, set_ovfl, keep_sgn_on_ovfl;
+	// Prelogic for our flags registers : set_ovfl and keep_sgn_on_ovfl
+	// {{{
 	always @(posedge i_clk)
 	if (i_stb) // 1 LUT
 		set_ovfl<=(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
@@ -104,19 +127,16 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 		keep_sgn_on_ovfl<=
 			(((i_op==4'h0)&&(i_a[31] != i_b[31]))//SUB&CMP
 			||((i_op==4'h2)&&(i_a[31] == i_b[31]))); // ADD
+	// }}}
 
-	wire	[63:0]	mpy_result; // Where we dump the multiply result
-	wire	mpyhi;		// Return the high half of the multiply
-	wire	mpybusy;	// The multiply is busy if true
-	wire	mpydone;	// True if we'll be valid on the next clock;
-
+	// Multiply
+	// {{{
 	// A 4-way multiplexer can be done in one 6-LUT.
 	// A 16-way multiplexer can therefore be done in 4x 6-LUT's with
 	//	the Xilinx multiplexer fabric that follows.
 	// Given that we wish to apply this multiplexer approach to 33-bits,
 	// this will cost a minimum of 132 6-LUTs.
 
-	wire	this_is_a_multiply_op;
 	assign	this_is_a_multiply_op = (i_stb)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
 
 	//
@@ -129,10 +149,11 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 `endif
 	`MPYOP #(.IMPLEMENT_MPY(IMPLEMENT_MPY)) thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
 		i_a, i_b, mpydone, mpybusy, mpy_result, mpyhi);
+	// }}}
 
 	//
 	// The master ALU case statement
-	//
+	// {{{
 	always @(posedge i_clk)
 	if (i_stb)
 	begin
@@ -157,8 +178,10 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 	end else // if (mpydone)
 		// set the output based upon the multiply result
 		o_c <= (mpyhi)?mpy_result[63:32]:mpy_result[31:0];
+	// }}}
 
-	reg	r_busy;
+	// o_busy, r_busy
+	// {{{
 	initial	r_busy = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -169,15 +192,20 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 		r_busy <= 1'b0;
 
 	assign	o_busy = (r_busy); // ||((IMPLEMENT_MPY>1)&&(this_is_a_multiply_op));
+	// }}}
 
-
+	// Flags assignment and determination
+	// {{{
 	assign	z = (o_c == 32'h0000);
 	assign	n = (o_c[31]);
 	assign	v = (set_ovfl)&&(pre_sign != o_c[31]);
-	wire	vx = (keep_sgn_on_ovfl)&&(pre_sign != o_c[31]);
+	assign	vx = (keep_sgn_on_ovfl)&&(pre_sign != o_c[31]);
 
 	assign	o_f = { v, n^vx, c, z };
+	// }}}
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -186,14 +214,26 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 		o_valid <= (i_stb);
 	else
 		o_valid <=((i_stb)&&(!this_is_a_multiply_op))||(mpydone);
-
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// Declarations
+	// {{{
 	initial	assume(i_reset);
 	reg	f_past_valid;
 
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid = 1'b1;
+	// }}}
 
 `define	ASSERT	assert
 `ifdef	CPUOPS
@@ -203,26 +243,35 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 `endif
 
 	// No request should be given us if/while we are busy
+	// {{{
 	always @(posedge i_clk)
 	if (o_busy)
 		`ASSUME(!i_stb);
+	// }}}
 
 	// Following any request other than a multiply request, we should
 	// respond in the next cycle
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(o_busy))&&(!$past(this_is_a_multiply_op)))
 		`ASSERT(!o_busy);
+	// }}}
 
 	// Valid and busy can never both be asserted
+	// {{{
 	always @(posedge i_clk)
 		`ASSERT((!o_valid)||(!r_busy));
+	// }}}
 
 	// Following any busy, we should always become valid
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_busy))&&(!o_busy))
 		`ASSERT($past(i_reset) || o_valid);
+	// }}}
 
 	// Check the shift values
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_stb)))
 	begin
@@ -276,7 +325,9 @@ module	cpuops(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_c, o_f, o_valid,
 				||({o_c,c}=={{(31){$past(i_a[31])}},$past(i_a[31:30])}));
 		end
 	end
+	// }}}
 `endif
+// }}}
 endmodule
 //
 // iCE40	NoMPY,w/Shift	NoMPY,w/o Shift

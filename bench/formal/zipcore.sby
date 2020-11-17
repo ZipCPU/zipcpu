@@ -7,7 +7,7 @@ ice40		nopipe    mpy div cis nobkram
 [options]
 mode prove
 depth 18
-piped:    depth  9
+piped:    depth  5
 nopipe:   depth  4
 nopipe:   depth  4
 lowlogic: depth  4
@@ -17,7 +17,7 @@ ice40:    depth  5
 smtbmc boolector
 
 [script]
-nobkram: read -define -DNO_DISTRIBUTED_RAM
+nobkram: read -define NO_DISTRIBUTED_RAM
 read -define -DZIPCPU
 #
 read -formal -D ZIPCPU cpuops.v
@@ -29,6 +29,7 @@ read -formal -D ZIPCPU f_idecode.v
 read -formal -D ZIPCPU ffetch.v
 read -formal -D ZIPCPU abs_div.v
 read -formal -D ZIPCPU abs_mpy.v
+read -formal -D ZIPCPU fdebug.v
 #
 read -formal zipcore.v
 --pycode-begin--
@@ -59,6 +60,7 @@ prep -top zipcore
 f_idecode.v
 ffetch.v
 fmem.v
+fdebug.v
 abs_div.v
 abs_mpy.v
 #

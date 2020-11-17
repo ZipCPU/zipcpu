@@ -307,7 +307,7 @@ module	memops #(
 		5'b01111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		//
 		5'b1100?: o_result <= { 16'h00, i_wb_data[15: 0] };
-		5'b1101?: o_result <= { 16'h00, i_wb_data[32:16] };
+		5'b1101?: o_result <= { 16'h00, i_wb_data[31:16] };
 		5'b11100: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		5'b11101: o_result <= { 24'h00, i_wb_data[15: 8] };
 		5'b11110: o_result <= { 24'h00, i_wb_data[23:16] };

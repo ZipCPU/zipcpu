@@ -167,14 +167,14 @@ module	zipwb #(
 		// {{{
 		input	wire		i_clk, i_reset, i_interrupt,
 		// Debug interface -- inputs
-		input	wire		i_halt, i_clear_pf_cache,
+		input	wire		i_halt, i_clear_cache,
 		input	wire	[4:0]	i_dbg_reg,
 		input	wire		i_dbg_we,
 		input	wire	[31:0]	i_dbg_data,
 		// Debug interface -- outputs
 		output	wire		o_dbg_stall,
 		output	reg	[31:0]	o_dbg_reg,
-		output	reg	[3:0]	o_dbg_cc,
+		output	reg	[2:0]	o_dbg_cc,
 		output	wire		o_break,
 		// CPU interface to the wishbone bus
 		// Wishbone interface -- outputs
@@ -274,7 +274,7 @@ module	zipwb #(
 	) core (i_clk, i_reset, i_interrupt,
 		// {{{
 		// Debug interface
-		i_halt, i_clear_pf_cache, i_dbg_reg, i_dbg_we, i_dbg_data,
+		i_halt, i_clear_cache, i_dbg_reg, i_dbg_we, i_dbg_data,
 			o_dbg_stall, o_dbg_reg, o_dbg_cc,
 			o_break,
 		// Instruction fetch interface
@@ -303,7 +303,7 @@ module	zipwb #(
 `else
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug };
+	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache };
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////

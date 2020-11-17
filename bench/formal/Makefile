@@ -88,6 +88,7 @@ MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
 FMEM   := fmem.v
 IFETCH := ffetch.v
+FDBG   := fdebug.v
 AXIL   := faxil_master.v faxil_slave.v
 AXI    := faxi_master.v faxi_slave.v faxi_valaddr.v faxi_wstrb.v faxi_addr.v
 
@@ -333,7 +334,6 @@ $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_i
 	sby -f $(DCD).sby nopipe_nodiv_nompy_nocis_nopipe
 ## }}}
 
-
 .PHONY: $(WBDMA)
 ## {{{
 $(WBDMA): $(WBDMA)_prf/PASS
@@ -393,7 +393,7 @@ $(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
 	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE) 		 \
-	$(CPU).sby $(FMEM) $(IFETCH)
+	$(CPU).sby $(FMEM) $(IFETCH) $(FDBG)
 
 $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped

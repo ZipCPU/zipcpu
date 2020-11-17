@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	This makefile builds the final verilator simulation of the
@@ -94,9 +94,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
+## }}}
 ## Copyright (C) 2015-2017, Gisselquist Technology, LLC
-##
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -111,14 +111,15 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
 ##
 ##
 ################################################################################
 ##
-##
+## }}}
 all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
 
 CXX	:= g++
@@ -217,8 +218,16 @@ stest: zipsys_tb
 itest: zipsys_tb
 	./zipsys_tb $(TESTF)
 
+.PHONY: stestb
+stestb: zipsys_tb
+	./zipbones_tb -s $(TESTF)
+
+.PHONY: itestb
+itestb: zipsys_tb
+	./zipbones_tb $(TESTF)
+
 .PHONY: test
-test: zipsys_tb stest
+test: zipsys_tb stest stestb
 	./zipsys_tb -a $(TESTF)
 
 .PHONY: dhrystone

@@ -1,10 +1,10 @@
 [*]
 [*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
-[*] Mon Jul 13 21:45:42 2020
+[*] Tue Nov 17 13:00:10 2020
 [*]
 [timestart] 0
 [size] 1221 600
-[pos] 493 -429
+[pos] 1920 12
 *-5.814017 90 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] zipcore.
 [treeopen] zipcore.instruction_decoder.
@@ -17,8 +17,6 @@
 @28
 [color] 2
 zipcore.i_reset
-[color] 2
-zipcore.i_clear_pf_cache
 [color] 2
 zipcore.i_clk
 [color] 2
@@ -37,6 +35,11 @@ zipcore.ipc[31:0]
 @28
 [color] 2
 zipcore.i_interrupt
+zipcore.o_dbg_stall
+@29
+zipcore.o_dbg_cc[2:0]
+@23
+zipcore.o_dbg_reg[31:0]
 @1000200
 -External Inputs
 @c00200
@@ -85,7 +88,7 @@ zipcore.mem_stalled
 zipcore.i_mem_pipe_stalled
 @1401200
 -Stall
-@800200
+@c00200
 -Busy
 @28
 zipcore.alu_busy
@@ -94,20 +97,16 @@ zipcore.i_mem_busy
 zipcore.i_mem_rdbusy
 @22
 zipcore.f_mem_outstanding[3:0]
-@1000200
+@1401200
 -Busy
-@c00200
+@800200
 -f_instruction
-@1401200
+@22
+zipcore.f_dcd_insn_word[31:0]
+zipcore.f_op_insn_word[31:0]
+zipcore.f_alu_insn_word[31:0]
+@1000200
 -f_instruction
-@c00200
--f_instruction_decoded
-@1401200
--f_instruction_decoded
-@c00200
--f_insn_flags
-@1401200
--f_insn_flags
 @c00200
 -Prefetch
 @22

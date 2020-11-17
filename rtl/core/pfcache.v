@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	pfcache.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Keeping our CPU fed with instructions, at one per clock and
@@ -34,9 +34,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -51,8 +51,9 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
@@ -60,49 +61,56 @@
 //
 //
 `default_nettype	none
-//
-module	pfcache(i_clk, i_reset,
-		i_new_pc, i_clear_cache, i_ready, i_pc,
-			o_valid, o_illegal, o_insn, o_pc,
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
+// }}}
+module	pfcache #(
+		// {{{
 `ifdef	FORMAL
-		, f_pc_wb
-`endif
-		);
-`ifdef	FORMAL
-	parameter	LGCACHELEN = 4, ADDRESS_WIDTH=30,
-			LGLINES=2; // Log of the number of separate cache lines
+		parameter	LGCACHELEN = 4, ADDRESS_WIDTH=30,
+				LGLINES=2, // Log of # of separate cache lines
 `else
-	parameter	LGCACHELEN = 12, ADDRESS_WIDTH=30,
-			LGLINES=6; // Log of the number of separate cache lines
+		parameter	LGCACHELEN = 12, ADDRESS_WIDTH=30,
+				LGLINES=6, // Log of # of separate cache lines
 `endif
-	localparam	CACHELEN=(1<<LGCACHELEN); //Wrd Size of our cache memory
-	localparam	CW=LGCACHELEN;	// Short hand for LGCACHELEN
-	localparam	LS=LGCACHELEN-LGLINES; // Size of a cache line
-	localparam	BUSW = 32;	// Number of data lines on the bus
-	localparam	AW=ADDRESS_WIDTH; // Shorthand for ADDRESS_WIDTH
-	//
-	input	wire			i_clk, i_reset;
-	//
-	// The interface with the rest of the CPU
-	input	wire			i_new_pc;
-	input	wire			i_clear_cache;
-	input	wire			i_ready;
-	input	wire	[(AW+1):0]	i_pc;
-	output	reg			o_valid;
-	output	reg			o_illegal;
-	output	wire	[(BUSW-1):0]	o_insn;
-	output	wire	[(AW+1):0]	o_pc;
-	//
-	// The wishbone bus interface
-	output	reg			o_wb_cyc, o_wb_stb;
-	output	wire			o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	wire	[(BUSW-1):0]	o_wb_data;
-	//
-	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[(BUSW-1):0]	i_wb_data;
+		localparam	CACHELEN=(1<<LGCACHELEN), //Wrd Size of cach mem
+		localparam	CW=LGCACHELEN,	// Short hand for LGCACHELEN
+		localparam	LS=LGCACHELEN-LGLINES, // Size of a cache line
+		localparam	BUSW = 32,	// Number of data lines on the bus
+		localparam	AW=ADDRESS_WIDTH // Shorthand for ADDRESS_WIDTH
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		//
+		// The interface with the rest of the CPU
+		// {{{
+		input	wire			i_new_pc,
+		input	wire			i_clear_cache,
+		input	wire			i_ready,
+		input	wire	[(AW+1):0]	i_pc,
+		output	reg			o_valid,
+		output	reg			o_illegal,
+		output	wire	[(BUSW-1):0]	o_insn,
+		output	wire	[(AW+1):0]	o_pc,
+		// }}}
+		// The wishbone bus interface
+		// {{{
+		output	reg			o_wb_cyc, o_wb_stb,
+		output	wire			o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	wire	[(BUSW-1):0]	o_wb_data,
+		//
+		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[(BUSW-1):0]	i_wb_data
+		// }}}
+`ifdef	FORMAL
+		, output wire	[AW-1:0]	f_pc_wb
+`endif
+		// }}}
+	);
+
+	// Declarations
+	// {{{
+
 	//
 	// o_illegal will be true if this instruction was the result of a
 	// bus error (This is also part of the CPU interface)
@@ -115,7 +123,6 @@ module	pfcache(i_clk, i_reset,
 	assign	o_wb_data = 0;
 
 `ifdef	FORMAL
-	output	wire	[AW-1:0]	f_pc_wb;
 	assign	f_pc_wb = i_pc[AW+1:2];
 `endif
 
@@ -147,14 +154,14 @@ module	pfcache(i_clk, i_reset,
 	reg	[(LGLINES-1):0]	saddr;
 	wire			w_advance;
 	wire			w_invalidate_result;
+	// }}}
 
 	assign	w_advance = (i_new_pc)||((r_v)&&(i_ready));
-
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Read the instruction from the cache
-	//
-	/////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	// We'll read two values from the cache, the first is the value if
@@ -205,13 +212,12 @@ module	pfcache(i_clk, i_reset,
 	// will be.  We just read it in the last clock, now we just need to
 	// select between the two possibilities we just read.
 	assign	o_insn= (isrc) ? r_pc_cache : r_last_cache;
-
-
-	/////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Read the tag value associated with this tcache line
-	//
-	/////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -244,13 +250,13 @@ module	pfcache(i_clk, i_reset,
 		lastpc <= i_pc;
 
 	assign	lasttag = lastpc[(AW+1):LS+2];
-
-	/////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Use the tag value to determine if our output instruction will be
 	// valid.
-	//
-	/////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	assign	w_v_from_pc = ((i_pc[(AW+1):LS+2] == lasttag)
@@ -324,13 +330,13 @@ module	pfcache(i_clk, i_reset,
 		// if (i_new_pc)
 		//	o_valid = 0;
 	end
-		
-	/////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// If the instruction isn't in our cache, then we need to load
 	// a new cache line from memory.
-	//
-	/////////////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	initial	needload = 1'b0;
@@ -479,15 +485,14 @@ module	pfcache(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((o_wb_cyc)&&(i_wb_ack))
 		saddr <= wraddr[(CW-1):LS];
-
-	/////////////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Handle bus errors here.  If a bus read request
 	// returns an error, then we'll mark the entire
 	// line as having a (valid) illegal value.
-	//
-	/////////////////////////////////////////////////
-	//
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	//
@@ -517,18 +522,19 @@ module	pfcache(i_clk, i_reset,
 		o_illegal <= (!i_wb_err)&&(illegal_valid)&&(!isrc)
 			&&(illegal_cache == lastpc[(AW+1):LS+2]);
 	end
-		
-
+	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Formal property section
-//
+// {{{
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// Declarations, reset, and f_past_valid
+	// {{{
 	reg	f_past_valid;
 	reg	[4:0]	f_cpu_delay;
 	reg	[((1<<(LGLINES))-1):0]	f_past_valid_mask;
@@ -547,11 +553,11 @@ module	pfcache(i_clk, i_reset,
 	always @(*)
 	if (!f_past_valid)
 		assume(i_reset);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -594,6 +600,7 @@ module	pfcache(i_clk, i_reset,
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -605,13 +612,13 @@ module	pfcache(i_clk, i_reset,
 	if (o_wb_cyc && !bus_abort)
 		assert(!o_valid);
 
-	/////////////////////////////////////////////////
-	//
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our outputs
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	/////////////////////////////////////////////////
 
 	localparam	F_LGDEPTH=LS+1;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
@@ -686,15 +693,14 @@ module	pfcache(i_clk, i_reset,
 			||(cache_tags[illegal_cache[CW-1:LS]]
 					!= illegal_cache[AW-1:CW]));
 	end
-
-	/////////////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our return responses to the CPU
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	/////////////////////////////////////////////////////
-
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc)))
@@ -779,16 +785,16 @@ module	pfcache(i_clk, i_reset,
 		end else
 			assert(o_illegal);
 	end
-
-`ifdef	PFCACHE
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions associated with a response to a known
 	// address request
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+`ifdef	PFCACHE
 	wire		f_this_pc, f_this_insn, f_this_data, f_this_line,
 			f_this_ack, f_this_tag; // f_this_addr;
 	assign	f_this_pc   = (o_pc == f_const_addr);
@@ -849,10 +855,12 @@ module	pfcache(i_clk, i_reset,
 		assert((!valid_mask[f_const_addr[CW+1:LS+2]])
 			||(cache_tags[f_const_addr[CW+1:LS+2]] != f_const_addr[AW+1:CW+2]));
 `endif
-
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	reg	f_valid_legal;
@@ -883,6 +891,7 @@ module	pfcache(i_clk, i_reset,
 			&&($past(f_valid_legal && i_ready,4))
 			&&($past(f_valid_legal && i_ready,5))
 			&&($past(f_valid_legal && i_ready,6)));
-
+	// }}}
 `endif	// FORMAL
+// }}}
 endmodule

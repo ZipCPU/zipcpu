@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	mpy_tb.cpp
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Bench testing for the multiply ALU instructions used within the
@@ -13,9 +13,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2016, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -30,14 +30,15 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
@@ -61,6 +62,8 @@
 #include "cpudefs.h"
 // #include "twoc.h"
 
+// class CPUOPS_TB declaration
+// {{{
 class	CPUOPS_TB : public TESTB<Vcpuops> {
 public:
 	// Nothing special to do in a startup.
@@ -68,7 +71,8 @@ public:
 
 	// ~CPUOPS_TB(void) {}
 
-	//
+	// reset
+	// {{{
 	// Calls TESTB<>::reset to reset the core.  Makes sure the i_stb line
 	// is low during this reset.
 	//
@@ -78,10 +82,10 @@ public:
 
 		TESTB<Vcpuops>::reset();
 	}
+	// }}}
 
-	//
 	// dbgdump();
-	//
+	// {{{
 	// Just before the positive edge of every clock, we call this function
 	// (if the debug flag is set).  This prints out a line of information
 	// telling us what is going on within the logic, allowing us access
@@ -160,10 +164,10 @@ public:
 #endif
 		puts(outstr);
 	}
+	// }}}
 
-	//
 	// tick()
-	//
+	// {{{
 	// Call this to step the processor.
 	//
 	// This is a bit unusual compared to other tick() functions I have in
@@ -185,10 +189,10 @@ public:
 		if (debug)
 			dbgdump();
 	}
+	// }}}
 
-	//
-	// clear_ops
-	//
+	// clear_ops()
+	// {{{
 	// Runs enough clocks through the device until it is neither busy nor
 	// valid.  At this point, the ALU should be thoroughly clear.  Then
 	// we tick things once more.
@@ -202,8 +206,10 @@ public:
 		} while((m_core->o_busy)||(m_core->o_valid));
 		tick();
 	}
+	// }}}
 
-	//
+	// op(op, a, b)
+	// {{{
 	// This is a fairly generic CPU operation call.  What makes it less
 	// than generic are two things: 1) the ALU is cleared before any
 	// new instruction, and 2) the tick count at the end is compared
@@ -253,8 +259,10 @@ public:
 
 		return m_core->o_c;
 	}
+	// }}}
 
-	//
+	// test(a,b)
+	// {{{
 	// Here's our testing function.  Pardon the verbosity of the error
 	// messages within it, but ...  well, hopefully you won't ever encounter
 	// any of those errors. ;)
@@ -264,16 +272,18 @@ public:
 	// against a local multiply on the local (host) machine.  If there's
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
+		// {{{
 		const	int OP_MPY = 0x0c, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
 		const	bool	debug = false;
 		int64_t		ia, ib, sv;
 		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
+		// }}}
 
 		clear_ops();
 
 		if (debug)
-		printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
+			printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
 
 		ia = (long)a; ib = (long)b; sv = ia * ib;
 		ua = ((uint64_t)a)&0x0ffffffffu;
@@ -286,6 +296,7 @@ public:
 		tick();
 
 		// Let's check our answers, and see if we got the right results
+		// {{{
 		if ((r ^ sv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #1\n");
 			printf("Comparing 0x%08x to 0x%016llx\n", r, (long long)sv);
@@ -313,10 +324,14 @@ public:
 			closetrace();
 			exit(EXIT_FAILURE);
 		}
+		// }}}
 	}
+	// }}}
 };
+// }}}
 
 void	usage(void) {
+// {{{
 	printf("USAGE: mpy_tb [a b]\n");
 	printf("\n");
 	printf(
@@ -332,6 +347,7 @@ void	usage(void) {
 "If the two arguments a and b are given, they will be interpreted according\n"
 "to the form of strtol, and the test will only involve testing those two\n"
 "parameters\n\n");
+// }}}
 }
 
 int	main(int argc, char **argv) {
@@ -342,28 +358,35 @@ int	main(int argc, char **argv) {
 	int	rcode = EXIT_SUCCESS;
 	// tb->opentrace("mpy_tb.vcd");
 
-	// Get us started by a couple of clocks past reset.  This isn't that
-	// unreasonable, since the CPU needs to load up the pipeline before
-	// any first instruction will be executed.
+	// Get us started by a couple of clocks past reset.
+	// {{{
+	// This isn't that unreasonable, since the CPU needs to load up the
+	//  pipeline before any first instruction will be executed.
 	tb->reset();
 	tb->tick();
 	tb->tick();
 	tb->tick();
+	// }}}
 
-	// Look for options, such as '-h'.  Trap those here, and produce a usage
-	// statement.
+	// Look for options, such as '-h'.
+	// {{{
+	// Trap those here, and produce a usage statement.
 	if ((argc > 1)&&(argv[1][0]=='-')&&(isalpha(argv[1][1]))) {
 		usage();
 		exit(EXIT_SUCCESS);
 	}
+	// }}}
 
 	if (argc == 3) {
 		// Were we given enough arguments to run a user-specified test?
+		// {{{
 		tb->mpy_test(
 			strtol(argv[1], NULL, 0),
 			strtol(argv[2], NULL, 0));
+		// }}}
 	} else {
 		// Otherwise we run through a canned set of tests.
+		// {{{
 		tb->mpy_test(0,0);
 		tb->mpy_test(-1,0);
 		tb->mpy_test(-1,-1);
@@ -377,6 +400,7 @@ int	main(int argc, char **argv) {
 
 		for(int a=0; ((a&0x80000000)==0); a+=0x197e2)
 			tb->mpy_test(0xf97e27ab, a);
+		// }}}
 	}
 
 	printf("SUCCESS!\n");
