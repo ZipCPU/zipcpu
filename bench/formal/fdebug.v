@@ -10,6 +10,36 @@
 //	controls reset, the halt bit, external stepping control, external
 //	cache clearing, and any register override bits.
 //
+// Ports:
+//	i_clk
+//	i_reset	Positive, synchronous, reset everything
+//	i_cpu_reset	The CPU is being reset and only the CPU--not the bus.
+//	i_halt		A request is being made to halt the CPU
+//	i_halted	Signal from the CPU that it has come to a complete halt
+//	i_clear_cache	Request to clear the CPU's cache.  Can only be issued
+//			with i_halt true, must hold true once set until
+//			i_halted.
+//	i_dbg_we	A request to write to a CPU register.  i_halt must
+//			also be true.  The request must remain valid until
+//			!i_dbg_stall is also true.
+//	i_dbg_reg	The register to be written.  Registers 0-15 are in the
+//			supervisor set, 16-31 in the user set.  Registers
+//			15 and 31 are program counters, 14 and 30 are flags,
+//			13 and 29 are (by convention) stack pointers.
+//	i_dbg_data	The data to be written to i_dbg_reg when i_dbg_we is
+//			set.  Note that there's no byte enables, strobes, or
+//			any other mechanism for less than 32-bit writes.  All
+//			writes are 32-bits.
+//	i_dbg_stall	The CPU is not able to handle a write request at this
+//			time.
+//	i_dbg_break	The CPU has suffered from a break condition and cannot
+//			continue operating.
+//	i_dbg_cc	CPU conditions:
+//		i_bus_err:	The supervisor has suffered from a bus error
+//		gie:		CPU is in user mode
+//		sleep:		CPU is asleep (if in user mode), or halted
+//				if in supervisor mode (gie is clear)
+//
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
@@ -43,7 +73,15 @@
 `default_nettype	none
 // }}}
 module	fdebug #(
-		parameter [0:0]	OPT_DISTRIBUTED_RAM = 1'b0
+		// {{{
+		// Some FPGA's have no distributed RAM, and so require an extra
+		// clock cycle to access CPU register data.  In such cases, CPU
+		// reads require an extra clock cycle:
+		//	1. Address valid, 2. (wait state), 3. Data available
+		// Set OPT_DISTRIBUTED_RAM to 1'b0 if such a wait state is
+		// required.
+		parameter [0:0]	OPT_DISTRIBUTED_RAM = 1'b1
+		// }}}
 	) (
 		// {{{
 		input	wire		i_clk,
@@ -81,10 +119,14 @@ module	fdebug #(
 	if (!f_past_valid)
 		assume(i_reset);
 
+	always @(posedge i_clk)
+	if (!f_past_valid || $past(i_reset))
+		`CPU_ASSUME(i_cpu_reset);
+
 	// Stall checking
 	// {{{
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_dbg_we && i_dbg_stall))
+	if (f_past_valid && $past(!i_reset && !i_cpu_reset && i_dbg_we && i_dbg_stall))
 	begin
 		`CPU_ASSUME(i_dbg_we);
 		`CPU_ASSUME($stable(i_dbg_reg));
@@ -92,7 +134,8 @@ module	fdebug #(
 	end
 
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_clear_cache && i_dbg_stall))
+	if (f_past_valid && $past(!i_reset && !i_cpu_reset
+					&& i_clear_cache && i_dbg_stall))
 		`CPU_ASSUME(i_clear_cache);
 	// }}}
 
@@ -103,10 +146,11 @@ module	fdebug #(
 		`CPU_ASSUME(i_halt);
 
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_dbg_we))
+	if (f_past_valid && (!i_reset && !i_cpu_reset)
+			&& $past(!i_reset && !i_cpu_reset) && $past(i_dbg_we))
 		`CPU_ASSUME(i_halt);
 
-	generate if (OPT_DISTRIBUTED_RAM)
+	generate if (!OPT_DISTRIBUTED_RAM)
 	begin
 		always @(posedge i_clk)
 		if (f_past_valid && $past(f_past_valid) && $past(i_dbg_we,2))
@@ -125,12 +169,12 @@ module	fdebug #(
 	// The clear cache signal will only ever be applied if/when the
 	// CPU is halted
 	// {{{
-	always @(posedge i_clk)
-	if (!i_halt)
+	always @(*)
+	if (!i_halt && !i_reset && !i_cpu_reset)
 		`CPU_ASSUME(!i_clear_cache);
 
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_clear_cache))
+	if (f_past_valid && $past(!i_reset && !i_cpu_reset && i_clear_cache))
 		`CPU_ASSUME(i_halt);
 	// }}}
 	// }}}
@@ -142,8 +186,9 @@ module	fdebug #(
 
 	// The CPU will always come to a halt on a break
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_dbg_break))
-		`CPU_ASSUME(i_halt);
+	if (f_past_valid && !$past(i_reset || i_cpu_reset)
+			&& $past(i_dbg_break))
+		`CPU_ASSUME(i_halt || i_reset || i_cpu_reset);
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Complete halt assertions
@@ -169,7 +214,7 @@ module	fdebug #(
 	// comes to a complete halt
 	// {{{
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_halt && !i_halted))
+	if (f_past_valid && $past(!i_reset && !i_cpu_reset && i_halt && !i_halted))
 		`CPU_ASSUME(i_halt);
 	// }}}
 

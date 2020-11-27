@@ -215,10 +215,13 @@ module	axilfetch #(
 
 		//
 		// Throttle the number of requests we make
+		// Verilator lint_off CMPCONST
+		//	out_fill will only capture 0 or 1 if DATA_WIDTH == 32
 		if (fill + (M_AXI_ARVALID ? 1:0)
 				+ ((o_valid &&(!i_ready || out_fill > 1)) ? 1:0)
 				>= FETCH_LIMIT)
 			M_AXI_ARVALID <= 1'b0;
+		// Verilator lint_on  CMPCONST
 		if (i_cpu_reset || i_clear_cache || full_bus)
 			M_AXI_ARVALID <= 1'b0;
 	end
@@ -364,7 +367,10 @@ module	axilfetch #(
 		// {{{
 		// FIFO cache
 
+		// Verilator lint_off CMPCONST
+		//	out_fill will only capture 0 or 1 if DATA_WIDTH == 32
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
+		// Verilator lint_on  CMPCONST
 
 		sfifo #(.BW(1+C_AXI_DATA_WIDTH), .LGFLEN(LGFIFO))
 		fcache(.i_clk(S_AXI_ACLK), .i_reset(fifo_reset),

@@ -66,6 +66,7 @@ module	axilops #(
 		input	wire				i_cpu_reset,
 		//
 		// CPU interface
+		// {{{
 		input	wire				i_stb,
 		input	wire				i_lock,
 		input	wire	[2:0]			i_op,
@@ -78,7 +79,7 @@ module	axilops #(
 		output	reg				o_err,
 		output	reg	[4:0]			o_wreg,
 		output	reg	[31:0]			o_result,
-		//
+		// }}}
 		// AXI-Lite bus interface
 		//
 		// Writes

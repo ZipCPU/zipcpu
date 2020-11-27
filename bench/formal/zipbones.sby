@@ -1,0 +1,23 @@
+[tasks]
+prf
+# cvr
+
+[options]
+prf: mode prove
+# cvr: mode cover
+depth 10
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipbones.v
+read -formal fdebug.v
+read -formal fwb_slave.v
+prep -top zipbones
+
+[files]
+cpudefs.v ../../rtl/cpudefs.v
+../../rtl/zipbones.v
+../../rtl/ex/fwb_slave.v
+fdebug.v

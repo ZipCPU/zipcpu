@@ -123,12 +123,12 @@ module	axilpipe #(
 	wire	i_clk = S_AXI_ACLK;
 
 	reg	misaligned_request, w_misaligned, misaligned_aw_request,
-		misaligned_response_pending,pending_err;
+		misaligned_response_pending, pending_err;
 	reg	[C_AXI_DATA_WIDTH-1:0]	next_wdata;
 	reg [C_AXI_DATA_WIDTH/8-1:0]	next_wstrb;
 
 
-	reg				writing, none_outstanding, bus_abort,
+	reg				none_outstanding, bus_abort,
 					read_abort, write_abort;
 	reg	[LGPIPE:0]		beats_outstanding;
 	reg				r_flushing, flush_request,
@@ -207,10 +207,6 @@ module	axilpipe #(
 	end
 	// }}}
 
-	always @(posedge S_AXI_ACLK)
-	if (!o_busy)
-		writing <= i_op[0];
-
 	// o_busy,
 	// {{{
 	// True if the bus is busy doing ... something, whatever it might be.
@@ -251,6 +247,12 @@ module	axilpipe #(
 	else if (o_rdbusy && !M_AXI_ARVALID)
 		o_rdbusy <= (beats_outstanding > (M_AXI_RVALID ? 1:0));
 `ifdef	FORMAL
+	reg	writing;
+
+	always @(posedge S_AXI_ACLK)
+	if (!o_busy)
+		writing <= i_op[0];
+
 	always @(*)
 	begin
 		if (writing)
@@ -688,7 +690,7 @@ module	axilpipe #(
 		rdaddr <= rdaddr + 1;
 	// }}}
 
-	// ar_oreg, ar_op
+	// ar_oreg, ar_op, adr_lsb
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_stb)
@@ -838,7 +840,8 @@ module	axilpipe #(
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0], i_lock,
-			i_addr[31:C_AXI_ADDR_WIDTH],
+			// i_addr[31:C_AXI_ADDR_WIDTH],
+			pending_err, adr_lsb,
 			none_outstanding };
 	// verilator lint_on  UNUSED
 	// }}}

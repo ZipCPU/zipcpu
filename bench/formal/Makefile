@@ -40,20 +40,16 @@
 ##
 ## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe # aximem (cached version)
+TESTS += axilfetch axilops axilpipe axilperiphs # aximem (cached version)
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
+TESTS += zipbones zipaxil
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
 
-SMTBMC  := yosys-smtbmc
-# SOLVER  := -s z3
-SOLVER  := -s yices
-# SOLVER  := -s boolector
-BMCARGS := --presat $(SOLVER)
-INDARGS := $(SOLVER) -i
-
+## Proofs
+## {{{
 PFONE  := prefetch
 PFTWO  := dblfetch
 PFCACHE:= pfcache
@@ -78,12 +74,20 @@ AXILPF := axilfetch
 AXIICC := axiicache
 AXILMEM:= axilops
 AXLPIPE:= axilpipe
+AXLPH  := axilperiphs
+
+## CPU Wrappers
+BONES  := zipbones
+ZAXIL  := zipaxil
 
 MMU    := zipmmu
+## }}}
 
 .PHONY: cpu
 cpu: zipcore
 
+## Interfaces
+## {{{
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
 FMEM   := fmem.v
@@ -91,11 +95,17 @@ IFETCH := ffetch.v
 FDBG   := fdebug.v
 AXIL   := faxil_master.v faxil_slave.v
 AXI    := faxi_master.v faxi_slave.v faxi_valaddr.v faxi_wstrb.v faxi_addr.v
+## }}}
 
+## Macro names
+## {{{
 .PHONY: fmem ffetch
 ffetch: prefetch dblfetch pfcache axilfetch axiicache
 fmem:   memops pipemem dcache axilops
+## }}}
 
+## Instruction fetch routines
+## {{{
 .PHONY: $(PFONE)
 ## {{{
 $(PFONE) : $(PFONE)_prf/PASS
@@ -111,7 +121,7 @@ $(AXILPF) : $(AXILPF)_prff/PASS     $(AXILPF)_cvrf/PASS
 $(AXILPF) : $(AXILPF)_prf64/PASS    $(AXILPF)_cvr64/PASS
 $(AXILPF) : $(AXILPF)_prfdbl64/PASS $(AXILPF)_cvrdbl64/PASS
 $(AXILPF) : $(AXILPF)_prff64/PASS   $(AXILPF)_cvrf64/PASS
-AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(AXIL) $(IFETCH)
+AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(AXIL) $(IFETCH) $(RTL)/ex/sfifo.v
 $(AXILPF)_prf/PASS: $(AXILPFDEPS)
 	sby -f $(AXILPF).sby prf
 $(AXILPF)_cvr/PASS: $(AXILPFDEPS)
@@ -164,21 +174,10 @@ $(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 $(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby cvr
 ## }}}
-
-.PHONY: $(WBDLY)
-## {{{
-$(WBDLY): $(WBDLY)_prf/PASS
-$(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby prf
 ## }}}
 
-.PHONY: $(PRIARB)
+## Data units
 ## {{{
-$(PRIARB): $(PRIARB)_prf/PASS
-$(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
-	sby -f $(PRIARB).sby prf
-## }}}
-
 .PHONY: $(DBL)
 ## {{{
 $(DBL): $(DBL)_prf/PASS
@@ -263,14 +262,10 @@ $(WBPIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
 $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 	sby -f $(WBPIPE).sby nolcl_noaligned_nolock
 ## }}}
-
-.PHONY: $(MMU)
-## {{{
-$(MMU): $(MMU)_prf/PASS
-$(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
-	sby -f $(MMU).sby prf
 ## }}}
 
+## Peripherals
+## {{{
 .PHONY: $(TMR)
 ## {{{
 $(TMR): $(TMR)_prf/PASS
@@ -337,10 +332,20 @@ $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_i
 .PHONY: $(WBDMA)
 ## {{{
 $(WBDMA): $(WBDMA)_prf/PASS
-$(WBDMA)_prf/PASS: $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE) $(WBDMA).sby
+$(WBDMA)_prf/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE)
 	sby -f $(WBDMA).sby prf
 ## }}}
 
+.PHONY: $(AXLPH)
+## {{{
+$(AXLPH): $(AXLPH)_prf/PASS
+$(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE)
+	sby -f $(AXLPH).sby prf
+## }}}
+## }}}
+
+## ZipCPU core components
+## {{{
 .PHONY: $(ALU)
 ## {{{
 $(ALU): $(ALU)_prf/PASS
@@ -406,6 +411,49 @@ $(CPU)_lowlogic/PASS: $(CPUDEPS)
 
 $(CPU)_ice40/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby ice40
+## }}}
+## }}}
+
+## ZipCPU wrappers
+## {{{
+.PHONY: $(BONES)
+## {{{
+$(BONES): $(BONES)_prf/PASS
+$(BONES)_prf/PASS: $(BONES).sby $(RTL)/$(BONES).v $(FDBG) $(SLAVE)
+	sby -f $(BONES).sby prf
+## }}}
+
+.PHONY: $(ZAXIL)
+## {{{
+$(ZAXIL): $(ZAXIL)_prf/PASS
+$(ZAXIL)_prf/PASS: $(ZAXIL).sby $(RTL)/$(ZAXIL).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuffer.v
+	sby -f $(ZAXIL).sby prf
+## }}}
+## }}}
+
+## Other
+## {{{
+.PHONY: $(MMU)
+## {{{
+$(MMU): $(MMU)_prf/PASS
+$(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
+	sby -f $(MMU).sby prf
+## }}}
+
+.PHONY: $(WBDLY)
+## {{{
+$(WBDLY): $(WBDLY)_prf/PASS
+$(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby prf
+## }}}
+
+.PHONY: $(PRIARB)
+## {{{
+$(PRIARB): $(PRIARB)_prf/PASS
+$(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
+	sby -f $(PRIARB).sby prf
+## }}}
+
 ## }}}
 
 .PHONY: clean

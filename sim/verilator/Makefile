@@ -120,7 +120,7 @@
 ################################################################################
 ##
 ## }}}
-all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
+all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb zipaxil_tb # zipmmu_tb
 
 CXX	:= g++
 #
@@ -153,6 +153,7 @@ SIMSRCS := memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
+AXLOBJS := $(OBJDIR)/zipaxil_tb.o  $(SIMOBJS)
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
 #
 # Use the verilated_cov.cpp source when you want to run Verilator coverage
@@ -162,8 +163,10 @@ VLOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(VLSRCS)))
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
 RAWSYSLIB := $(RTLOBJD)/Vzipsystem__ALL.a
 RAWBONLIB := $(RTLOBJD)/Vzipbones__ALL.a
+RAWAXLLIB := $(RTLOBJD)/Vzipaxil__ALL.a
 SYSLIBS	:= $(RAWSYSLIB) -lncurses -lelf
 BONLIBS	:= $(RAWBONLIB) -lncurses -lelf
+AXLLIBS	:= $(RAWAXLLIB) -lncurses -lelf
 TESTF	:= ../../bench/asm/simtest
 DHRYSTONEF := ../asm/zipdhry.z
 
@@ -179,6 +182,10 @@ $(OBJDIR)/zipbones_tb.o: zipcpu_tb.cpp
 	$(mk-objdir)
 	$(CXX) -DZIPBONES $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
 
+$(OBJDIR)/zipaxil_tb.o: zipaxil_tb.cpp
+	$(mk-objdir)
+	$(CXX) $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
+
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
 	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
@@ -192,6 +199,9 @@ zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
 
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
 	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
+
+zipaxil_tb: $(AXLOBJS) $(VLOBJS) $(RAWAXLLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -o $@
 
 div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@

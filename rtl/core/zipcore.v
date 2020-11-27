@@ -73,9 +73,10 @@ module	zipcore #(
 		// Debug interface
 		// {{{
 		input	wire		i_halt, i_clear_cache,
-		input	wire	[4:0]	i_dbg_reg,
+		input	wire	[4:0]	i_dbg_wreg,
 		input	wire		i_dbg_we,
 		input	wire	[31:0]	i_dbg_data,
+		input	wire	[4:0]	i_dbg_rreg,
 		//
 		output	wire		o_dbg_stall,
 		output	reg	[31:0]	o_dbg_reg,
@@ -117,7 +118,7 @@ module	zipcore #(
 		// {{{
 		output	reg	[31:0]	o_debug
 		//}}}
-	// }}}
+		// }}}
 	);
 
 	// Local parameter definitions
@@ -1487,13 +1488,13 @@ module	zipcore #(
 		if (alu_ce || div_ce || o_mem_ce || fpu_ce)
 			alu_reg <= op_R;
 		else if (i_dbg_we && !o_dbg_stall)
-			alu_reg <= i_dbg_reg;
+			alu_reg <= i_dbg_wreg;
 
 	end else begin
 
 		always @(posedge i_clk)
 			if (i_dbg_we && !o_dbg_stall)
-				alu_reg <= i_dbg_reg;
+				alu_reg <= i_dbg_wreg;
 			else
 				alu_reg <= op_R;
 	end endgenerate
@@ -1557,9 +1558,9 @@ module	zipcore #(
 
 		if (!OPT_PIPELINED)
 			dbg_clear_pipe <= 1'b1;
-		if ((i_dbg_reg == op_Bid)&&(op_rB))
+		if ((i_dbg_wreg == op_Bid)&&(op_rB))
 			dbg_clear_pipe <= 1'b1;
-		if (i_dbg_reg[3:1] == 3'h7)
+		if (i_dbg_wreg[3:1] == 3'h7)
 			dbg_clear_pipe <= 1'b1;
 	end else if ((!OPT_PIPELINED)&&(i_clear_cache && !o_dbg_stall))
 		dbg_clear_pipe <= 1'b1;
@@ -2536,7 +2537,7 @@ module	zipcore #(
 		always @(*)
 		begin
 			debug_pc = 0;
-			if (i_dbg_reg[4])
+			if (i_dbg_rreg[4])
 				// User mode
 				debug_pc[(AW+1):0]
 					= { upc[(AW+1):2], uhalt_phase, 1'b0 };
@@ -2556,10 +2557,10 @@ module	zipcore #(
 		// {{{
 		always @(posedge i_clk)
 		begin
-			o_dbg_reg <= regset[i_dbg_reg[3:0]];
-			if (i_dbg_reg[3:0] == CPU_PC_REG)
+			o_dbg_reg <= regset[i_dbg_rreg[3:0]];
+			if (i_dbg_rreg[3:0] == CPU_PC_REG)
 				o_dbg_reg <= debug_pc;
-			else if (i_dbg_reg[3:0] == CPU_CC_REG)
+			else if (i_dbg_rreg[3:0] == CPU_CC_REG)
 			begin
 				o_dbg_reg[15:0] <= w_iflags;
 				o_dbg_reg[31:23] <= w_cpu_info;
@@ -2577,16 +2578,16 @@ module	zipcore #(
 		reg	[31:0]	pre_dbg_special;
 
 		always @(posedge i_clk)
-			dbg_reg_sel <= (i_dbg_reg[3:1] == 3'h7);
+			dbg_reg_sel <= (i_dbg_rreg[3:1] == 3'h7);
 
 		always @(posedge i_clk)
-			pre_dbg_reg <= regset[i_dbg_reg];
+			pre_dbg_reg <= regset[i_dbg_rreg];
 
 		always @(posedge i_clk)
-		if (i_dbg_reg[0])
+		if (i_dbg_rreg[0])
 			pre_dbg_special <= debug_pc;
 		else begin
-			pre_dbg_special[15:0] <= (i_dbg_reg[4])
+			pre_dbg_special[15:0] <= (i_dbg_rreg[4])
 						? w_uflags : w_iflags;
 			pre_dbg_special[31:23] <= w_cpu_info;
 			pre_dbg_special[CPU_GIE_BIT] <= gie;
@@ -2601,16 +2602,16 @@ module	zipcore #(
 `else
 		// {{{
 		always @(*)
-			pre_dbg_reg = regset[i_dbg_reg];
+			pre_dbg_reg = regset[i_dbg_rreg];
 
 		always @(posedge i_clk)
 		begin
 			o_dbg_reg <= pre_dbg_reg;
-			if (i_dbg_reg[3:0] == CPU_PC_REG)
+			if (i_dbg_rreg[3:0] == CPU_PC_REG)
 				o_dbg_reg <= debug_pc;
-			else if (i_dbg_reg[3:0] == CPU_CC_REG)
+			else if (i_dbg_rreg[3:0] == CPU_CC_REG)
 			begin
-				o_dbg_reg[15:0] <= (i_dbg_reg[4])
+				o_dbg_reg[15:0] <= (i_dbg_rreg[4])
 						? w_uflags : w_iflags;
 				o_dbg_reg[31:23] <= w_cpu_info;
 				o_dbg_reg[CPU_GIE_BIT] <= gie;
@@ -2886,12 +2887,12 @@ module	zipcore #(
 		.i_halted(r_halted),
 		.i_clear_cache(i_clear_cache),
 		.i_dbg_we(i_dbg_we),
-		.i_dbg_reg(i_dbg_reg),
+		.i_dbg_reg(i_dbg_wreg),
 		.i_dbg_data(i_dbg_data),
 		.i_dbg_stall(o_dbg_stall),
 		.i_dbg_break(o_break),
-		.i_dbg_cc(o_dbg_cc),
-		// .i_dbg_rreg(i_dbg_rreg),
+		.i_dbg_cc(o_dbg_cc)
+		// , .i_dbg_rreg(i_dbg_rreg),
 		// .i_dbg_rdata(o_dbg_rdata),
 		// }}}
 	);
@@ -2912,33 +2913,33 @@ module	zipcore #(
 	if (f_past_valid&&$past(f_past_valid)
 			&& $past(i_halt)&&$past(i_halt,2)&&(!$past(i_dbg_we)))
 	begin
-		if ($past(i_dbg_reg[3:1],2) != 3'h7)
+		if ($past(i_dbg_rreg[3:1],2) != 3'h7)
 			`ASSERT(o_dbg_reg
-				== $past(regset[i_dbg_reg],2));
+				== $past(regset[i_dbg_rreg],2));
 	end
 `else
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_halt))&&(!$past(i_dbg_we)))
 	begin
-		if ($past(i_dbg_reg[3:1]) != 3'h7)
-			`ASSERT(o_dbg_reg == $past(regset[i_dbg_reg]));
-		if ($past(i_dbg_reg[4:0]) == 5'h0f)
+		if ($past(i_dbg_rreg[3:1]) != 3'h7)
+			`ASSERT(o_dbg_reg == $past(regset[i_dbg_rreg]));
+		if ($past(i_dbg_rreg[4:0]) == 5'h0f)
 			`ASSERT(o_dbg_reg[AW+1:0] == $past({ ipc[(AW+1):2], ihalt_phase, 1'b0}));
-		if ($past(i_dbg_reg[4:0]) == 5'h1f)
+		if ($past(i_dbg_rreg[4:0]) == 5'h1f)
 			`ASSERT(o_dbg_reg[AW+1:0] == $past({ upc[(AW+1):2], uhalt_phase, 1'b0}));
-		if ($past(i_dbg_reg[4:0]) == 5'h0e)
+		if ($past(i_dbg_rreg[4:0]) == 5'h0e)
 		begin
 			`ASSERT(o_dbg_reg[15:6] == $past(w_iflags[15:6]));
 			`ASSERT(o_dbg_reg[ 4:0] == $past(w_iflags[ 4:0]));
 		end
 
-		if ($past(i_dbg_reg[4:0]) == 5'h1e)
+		if ($past(i_dbg_rreg[4:0]) == 5'h1e)
 		begin
 			`ASSERT(o_dbg_reg[15:6] == $past(w_uflags[15:6]));
 			`ASSERT(o_dbg_reg[ 4:0] == $past(w_uflags[ 4:0]));
 		end
 
-		if ($past(i_dbg_reg[3:0]) == 4'he)
+		if ($past(i_dbg_rreg[3:0]) == 4'he)
 		begin
 			`ASSERT(o_dbg_reg[15] == 1'b0);
 			`ASSERT(o_dbg_reg[31:23] == w_cpu_info);
@@ -2953,7 +2954,7 @@ module	zipcore #(
 		f_dbg_pc_seq <= 0;
 	else begin
 		f_dbg_pc_seq[0] <= i_dbg_we && !o_dbg_stall
-				&& (i_dbg_reg == { gie, CPU_PC_REG });
+				&& (i_dbg_wreg == { gie, CPU_PC_REG });
 		f_dbg_pc_seq[2:1] <= f_dbg_pc_seq[1:0];
 	end
 
@@ -2977,7 +2978,7 @@ module	zipcore #(
 		f_dbg_cc_seq <= 0;
 	else begin
 		f_dbg_cc_seq[0] <= i_dbg_we && !o_dbg_stall
-				&& (i_dbg_reg == { gie, CPU_CC_REG });
+				&& (i_dbg_wreg == { gie, CPU_CC_REG });
 		f_dbg_cc_seq[2:1] <= f_dbg_cc_seq[1:0];
 	end
 
@@ -2985,7 +2986,7 @@ module	zipcore #(
 	if (f_dbg_cc_seq[0])
 	begin
 		`ASSERT(wr_reg_ce);
-		`ASSERT(wr_reg_id == $past(i_dbg_reg));
+		`ASSERT(wr_reg_id == $past(i_dbg_wreg));
 		`ASSERT(wr_spreg_vl == $past(i_dbg_data));
 	end
 
@@ -2995,21 +2996,21 @@ module	zipcore #(
 		f_dbg_reg_seq <= 0;
 	else begin
 		f_dbg_reg_seq[0] <= i_dbg_we && !o_dbg_stall
-				&& (i_dbg_reg[3:1] != 3'h7 );
+				&& (i_dbg_rreg[3:1] != 3'h7 );
 		f_dbg_reg_seq[2:1] <= f_dbg_reg_seq[1:0];
 	end
 
 	always @(posedge i_clk)
 	begin
-		if (f_dbg_reg_seq[0])
+		if (f_dbg_reg_seq[0] && !i_reset)
 		begin
-			`ASSERT(dbgv && alu_reg == $past(i_dbg_reg));
-			`ASSERT($past(i_dbg_reg[3:1]) != 3'h7);
+			`ASSERT(dbgv && alu_reg == $past(i_dbg_wreg));
+			`ASSERT($past(i_dbg_rreg[3:1]) != 3'h7);
 			`ASSERT(dbg_val == $past(i_dbg_data));
 
 			`ASSERT(wr_reg_ce);
 			`ASSERT(wr_gpreg_vl == $past(i_dbg_data));
-			`ASSERT(wr_reg_id == $past(i_dbg_reg));
+			`ASSERT(wr_reg_id == $past(i_dbg_wreg));
 		end
 
 		// if (f_dbg_reg_seq[1])
@@ -3144,7 +3145,7 @@ module	zipcore #(
 	end
 
 	always @(posedge i_clk)
-	if (OPT_PIPELINED && !i_halt && (wr_flags_ce
+	if (OPT_PIPELINED && !i_halt && !i_reset && (wr_flags_ce
 			|| (wr_reg_ce && wr_reg_id == { op_gie, CPU_CC_REG })))
 		`ASSERT(cc_invalid_for_dcd);
 
@@ -3544,7 +3545,7 @@ module	zipcore #(
 						&& (f_mem_outstanding <= 1)
 						&& (!fc_op_M || !op_pipe))
 					|| fc_op_Bid[4:0] == f_addr_reg);
-				if (!i_halt)
+				if (!i_halt && !i_reset)
 				`ASSERT((!wr_reg_ce)
 					||(wr_reg_id != fc_op_Bid[4:0])
 					||(!op_rB)||(fc_op_I == 0));
@@ -4568,10 +4569,6 @@ module	zipcore #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	always @(*)
-	if (op_valid)
-		assume(fc_op_Bid[3:0] != CPU_CC_REG || f_op_zI);
 
 	// Once asserted, an interrupt will stay asserted while the CPU is
 	// in user mode

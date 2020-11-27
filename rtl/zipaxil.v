@@ -1,0 +1,1029 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+// Filename:	zipaxil.v
+// {{{
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+//
+// Purpose:	A potential top level module holding the core of the Zip CPU
+//		together--this one with AXI-lite instruction, data, and debug
+//	interfaces.  In general, the Zip CPU is designed to be as simple as
+//	possible.  (actual implementation aside ...)  The instruction set is
+//	about as RISC as you can get, with only 26 instruction types currently
+//	supported.  (There are still 8-instruction Op-Codes reserved for
+//	floating point, and 5 which can be used for transactions not requiring
+//	registers.) Please see the accompanying spec.pdf file for a description
+//	of these instructions.
+//
+//	All instructions are 32-bits wide.  All bus accesses, both address and
+//	data, are 32-bits over a wishbone bus.
+//
+//	The Zip CPU is fully pipelined with the following pipeline stages:
+//
+//		1. Prefetch, returns the instruction from memory.
+//
+//		2. Instruction Decode
+//
+//		3. Read Operands
+//
+//		4. Apply Instruction
+//
+//		4. Write-back Results
+//
+//	Further information about the inner workings of this CPU, such as
+//	what causes pipeline stalls, may be found in the spec.pdf file.  (The
+//	documentation within this file had become out of date and out of sync
+//	with the spec.pdf, so look to the spec.pdf for accurate and up to date
+//	information.)
+//
+// Creator:	Dan Gisselquist, Ph.D.
+//		Gisselquist Technology, LLC
+//
+////////////////////////////////////////////////////////////////////////////////
+// }}}
+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// {{{
+// This program is free software (firmware): you can redistribute it and/or
+// modify it under the terms of  the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or (at
+// your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+// target there if the PDF file isn't present.)  If not, see
+// <http://www.gnu.org/licenses/> for a copy.
+// }}}
+// License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
+//		http://www.gnu.org/licenses/gpl.html
+//
+//
+////////////////////////////////////////////////////////////////////////////////
+//
+//
+`default_nettype	none
+//
+`include "cpudefs.v"
+//
+// }}}
+module	zipaxil #(
+		// {{{
+		parameter	C_DBG_ADDR_WIDTH = 8,
+		localparam	C_DBG_DATA_WIDTH = 32,
+		localparam	DBGLSB = $clog2(C_DBG_DATA_WIDTH/8),
+		parameter	C_AXI_ADDR_WIDTH = 32,
+		parameter	C_AXI_DATA_WIDTH = 32,
+		localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH,
+		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
+				LGICACHE=12,
+`ifdef	OPT_MULTIPLY
+		parameter	IMPLEMENT_MPY = `OPT_MULTIPLY,
+`else
+		parameter	IMPLEMENT_MPY = 0,
+`endif
+`ifdef	OPT_DIVIDE
+		parameter [0:0]	IMPLEMENT_DIVIDE = 1,
+`else
+		parameter [0:0]	IMPLEMENT_DIVIDE = 0,
+`endif
+`ifdef	OPT_IMPLEMENT_FPU
+		parameter [0:0]	IMPLEMENT_FPU = 1,
+`else
+		parameter [0:0]	IMPLEMENT_FPU = 0,
+`endif
+`ifdef	OPT_EARLY_BRANCHING
+		parameter [0:0]	EARLY_BRANCHING = 1,
+`else
+		parameter [0:0]	EARLY_BRANCHING = 0,
+`endif
+`ifdef	OPT_CIS
+		parameter [0:0]	OPT_CIS = 1'b1,
+`else
+		parameter [0:0]	OPT_CIS = 1'b0,
+`endif
+		localparam	[0:0]	OPT_NO_USERMODE = 1'b0,
+`ifdef	OPT_PIPELINED
+		parameter	[0:0]	OPT_PIPELINED = 1'b1,
+`else
+		parameter	[0:0]	OPT_PIPELINED = 1'b0,
+`endif
+`ifdef	OPT_PIPELINED_BUS_ACCESS
+		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
+`else
+		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
+`endif
+		localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
+		localparam	[0:0]	IMPLEMENT_LOCK=0,
+		localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
+		localparam		OPT_LGDCACHE = 0,
+		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
+
+		localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
+		localparam	AW=ADDRESS_WIDTH-2,
+		localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2],
+		parameter	F_LGDEPTH=8
+		// }}}
+	) (
+		// {{{
+		input	wire		S_AXI_ACLK, S_AXI_ARESETN,
+					i_interrupt,
+		// Debug interface
+		// {{{
+		// Debug interface -- inputs
+//		input	wire		i_halt, i_clear_cache,
+//		input	wire	[4:0]	i_dbg_wreg,
+//		input	wire		i_dbg_we,
+//		input	wire	[31:0]	i_dbg_data,
+//		input	wire	[4:0]	i_dbg_rreg,
+		// Debug interface -- outputs
+//		output	wire		cpu_dbg_stall,
+//		output	reg	[31:0]	o_dbg_reg,
+//		output	reg	[2:0]	o_dbg_cc,
+//		output	wire		o_break,
+		input	wire		S_DBG_AWVALID,
+		output	wire		S_DBG_AWREADY,
+		input	wire	[C_DBG_ADDR_WIDTH-1:0]	S_DBG_AWADDR,
+		input	wire	[2:0]	S_DBG_AWPROT,
+		//
+		input	wire		S_DBG_WVALID,
+		output	wire		S_DBG_WREADY,
+		input	wire	[31:0]	S_DBG_WDATA,
+		input	wire	[3:0]	S_DBG_WSTRB,
+		//
+		output	reg		S_DBG_BVALID,
+		input	wire		S_DBG_BREADY,
+		output	wire	[1:0]	S_DBG_BRESP,
+		//
+		input	wire		S_DBG_ARVALID,
+		output	wire		S_DBG_ARREADY,
+		input	wire	[7:0]	S_DBG_ARADDR,
+		input	wire	[2:0]	S_DBG_ARPROT,
+		//
+		output	reg		S_DBG_RVALID,
+		input	wire		S_DBG_RREADY,
+		output	reg	[31:0]	S_DBG_RDATA,
+		output	wire	[1:0]	S_DBG_RRESP,
+		//
+		// }}}
+		// Instruction bus (master)
+		// {{{
+		output	wire				M_INSN_AWVALID,
+		input	wire				M_INSN_AWREADY,
+		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_INSN_AWADDR,
+		output	wire	[2:0]			M_INSN_AWPROT,
+		//
+		output	wire				M_INSN_WVALID,
+		input	wire				M_INSN_WREADY,
+		output	wire	[C_AXI_DATA_WIDTH-1:0]	M_INSN_WDATA,
+		output	wire [C_AXI_DATA_WIDTH/8-1:0]	M_INSN_WSTRB,
+		//
+		input	wire				M_INSN_BVALID,
+		output	wire				M_INSN_BREADY,
+		input	wire	[1:0]			M_INSN_BRESP,
+		//
+		output	wire				M_INSN_ARVALID,
+		input	wire				M_INSN_ARREADY,
+		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_INSN_ARADDR,
+		output	wire	[2:0]			M_INSN_ARPROT,
+		//
+		input	wire				M_INSN_RVALID,
+		output	wire				M_INSN_RREADY,
+		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_INSN_RDATA,
+		input	wire	[1:0]			M_INSN_RRESP,
+		// }}}
+		// Data bus (master)
+		// {{{
+		output	wire				M_DATA_AWVALID,
+		input	wire				M_DATA_AWREADY,
+		output	wire [C_AXI_ADDR_WIDTH-1:0]	M_DATA_AWADDR,
+		output	wire	[2:0]			M_DATA_AWPROT,
+		//
+		output	wire				M_DATA_WVALID,
+		input	wire				M_DATA_WREADY,
+		output	wire [C_AXI_DATA_WIDTH-1:0]	M_DATA_WDATA,
+		output	wire [C_AXI_DATA_WIDTH/8-1:0]	M_DATA_WSTRB,
+		//
+		input	wire				M_DATA_BVALID,
+		output	wire				M_DATA_BREADY,
+		input	wire	[1:0]			M_DATA_BRESP,
+		//
+		output	wire				M_DATA_ARVALID,
+		input	wire				M_DATA_ARREADY,
+		output	wire [C_AXI_ADDR_WIDTH-1:0]	M_DATA_ARADDR,
+		output	wire	[2:0]			M_DATA_ARPROT,
+		//
+		input	wire				M_DATA_RVALID,
+		output	wire				M_DATA_RREADY,
+		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_DATA_RDATA,
+		input	wire	[1:0]			M_DATA_RRESP,
+		// }}}
+		// Accounting outputs ... to help us count stalls and usage
+		output	wire		o_op_stall,
+		output	wire		o_pf_stall,
+		output	wire		o_i_count
+		//
+`ifdef	DEBUG_SCOPE
+		, output reg	[31:0]	o_debug
+`endif
+	// }}}
+	);
+
+	// Declarations
+	// {{{
+	localparam FETCH_LIMIT = 4;
+	wire	[31:0]	cpu_debug;
+
+	localparam	RESET_BIT = 6,
+			STEP_BIT = 8,
+			HALT_BIT = 10,
+			CLEAR_CACHE_BIT = 11;
+	localparam [0:0]	OPT_LOWPOWER = 1'b1;
+	localparam [0:0]	START_HALTED = 1'b0;
+	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
+
+	// AXI-lite signal handling
+	// {{{
+	wire		awskd_valid, wskd_valid, arskd_valid;
+	wire		dbg_write_ready, dbg_read_ready;
+	wire	[C_DBG_ADDR_WIDTH-DBGLSB-1:0]	awskd_addr, arskd_addr;
+	wire	[31:0]	wskd_data;
+	wire	[3:0]	wskd_strb;
+	reg		dbg_write_valid, dbg_read_valid;
+	reg	[4:0]	dbg_write_reg;
+	wire	[4:0]	dbg_read_reg;
+	reg	[31:0]	dbg_write_data;
+	wire	[31:0]	dbg_read_data;
+	wire		cpu_dbg_stall, cpu_break;
+	wire	[2:0]	cpu_dbg_cc;
+	// }}}
+
+	// CPU control registers
+	// {{{
+	reg		cmd_halt, cmd_reset, cmd_step, cmd_clear_cache;
+	wire	[31:0]	cpu_status;
+	wire		dbg_cmd_write;
+	// }}}
+
+	// Fetch
+	// {{{
+	wire		pf_new_pc, clear_icache, pf_ready;
+	wire [AW+1:0]	pf_request_address;
+	wire	[31:0]	pf_instruction;
+	wire [AW+1:0]	pf_instruction_pc;
+	wire		pf_valid, pf_illegal;
+	// }}}
+	// Memory
+	// {{{
+	wire		clear_dcache, mem_ce, bus_lock;
+	wire	[2:0]	mem_op;
+	wire	[31:0]	mem_cpu_addr;
+	wire	[31:0]	mem_wdata;
+	wire	[4:0]	mem_reg;
+	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
+			mem_bus_err;
+	wire	[4:0]	mem_wreg;
+	wire	[31:0]	mem_result;
+	// }}}
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Debug signal handling
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	//
+	// Write signaling
+	// {{{
+	skidbuffer #(
+		// {{{
+		.OPT_OUTREG(0),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
+		.DW(C_DBG_ADDR_WIDTH-DBGLSB)
+		// }}}
+	) dbgawskd(
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+		.i_valid(S_DBG_AWVALID),
+		.o_ready(S_DBG_AWREADY),
+		.i_data(S_DBG_AWADDR[C_DBG_ADDR_WIDTH-1:DBGLSB]),
+		.o_valid(awskd_valid), .i_ready(dbg_write_ready),
+			.o_data(awskd_addr)
+		// }}}
+	);
+
+	skidbuffer #(
+		// {{{
+		.OPT_OUTREG(0),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
+		.DW(C_DBG_DATA_WIDTH+C_DBG_DATA_WIDTH/8)
+		// }}}
+	) dbgwskd(
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+		.i_valid(S_DBG_WVALID),
+		.o_ready(S_DBG_WREADY),
+		.i_data({ S_DBG_WDATA, S_DBG_WSTRB }),
+		.o_valid(wskd_valid), .i_ready(dbg_write_ready),
+			.o_data({ wskd_data, wskd_strb })
+		// }}}
+	);
+
+	assign	dbg_write_ready = awskd_valid && wskd_valid
+			&& ((wskd_strb==0) || awskd_addr[5] || !cpu_dbg_stall
+				|| !dbg_write_valid)
+			&& (!S_DBG_BVALID || S_DBG_BREADY);
+
+	// dbg_write_valid
+	// {{{
+	initial	dbg_write_valid = 0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		dbg_write_valid <= 1'b0;
+	else if (!dbg_write_valid || !cpu_dbg_stall)
+	begin
+		dbg_write_valid <= dbg_write_ready && (|wskd_strb) && !awskd_addr[5];
+	end
+	// }}}
+
+	// dbg_write_reg
+	// {{{
+	always @(posedge S_AXI_ACLK)
+	if (!dbg_write_valid || !cpu_dbg_stall)
+	begin
+		dbg_write_reg <= awskd_addr[4:0];
+		if (OPT_LOWPOWER && !dbg_write_valid)
+			dbg_write_reg <= 0;
+	end
+	// }}}
+
+	// dbg_write_data
+	// {{{
+	always @(posedge S_AXI_ACLK)
+	if (!dbg_write_valid || !cpu_dbg_stall)
+	begin
+		dbg_write_data <= wskd_data;
+		if (OPT_LOWPOWER && !dbg_write_ready)
+			dbg_write_data <= 0;
+	end
+	// }}}
+
+	// S_DBG_BVALID
+	//  {{{
+	initial	S_DBG_BVALID = 1'b0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		S_DBG_BVALID <= 1'b0;
+	else if (dbg_write_ready)
+		S_DBG_BVALID <= 1'b1;
+	else if (S_DBG_BREADY)
+		S_DBG_BVALID <= 1'b0;
+	// }}}
+
+	// S_DBG_BRESP
+	// {{{
+	assign	S_DBG_BRESP = 2'b00;
+	// }}}
+
+	// }}}
+
+	//
+	// Read signaling
+	// {{{
+
+	skidbuffer #(
+		// {{{
+		.OPT_OUTREG(0),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
+		.DW(C_DBG_ADDR_WIDTH-DBGLSB)
+		// }}}
+	) dbgarskd(
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+		.i_valid(S_DBG_ARVALID),
+		.o_ready(S_DBG_ARREADY),
+		.i_data(S_DBG_ARADDR[C_DBG_ADDR_WIDTH-1:DBGLSB]),
+		.o_valid(arskd_valid), .i_ready(dbg_read_ready),
+			.o_data(arskd_addr)
+		// }}}
+	);
+
+	assign	dbg_read_ready = arskd_valid && !dbg_read_valid
+				&& (!S_DBG_RVALID || S_DBG_RREADY);
+
+	assign	dbg_read_reg = (OPT_LOWPOWER && !dbg_read_ready)
+					? 5'h0 : arskd_addr[4:0];
+
+	// dbg_read_valid
+	// {{{
+	initial	dbg_read_valid = 0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		dbg_read_valid <= 0;
+	else
+		dbg_read_valid <= dbg_read_ready && arskd_addr[5];
+	// }}}
+
+	// S_DBG_RVALID
+	// {{{
+	initial	S_DBG_RVALID = 0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		S_DBG_RVALID <= 0;
+	else if (!S_DBG_RVALID || S_DBG_RREADY)
+		S_DBG_RVALID <= (dbg_read_ready && !arskd_addr[5])
+					|| dbg_read_valid;
+	// }}}
+
+	// S_DBG_RDATA
+	// {{{
+	initial	S_DBG_RDATA = 0;
+	always @(posedge S_AXI_ACLK)
+	if (OPT_LOWPOWER && !S_AXI_ARESETN)
+		S_DBG_RDATA <= 0;
+	else if (!S_DBG_RVALID || S_DBG_RREADY)
+	begin
+		// {{{
+		if (dbg_read_valid)
+			S_DBG_RDATA <= dbg_read_data;
+		else
+			S_DBG_RDATA <= cpu_status;
+
+		if (OPT_LOWPOWER && !dbg_read_valid && !dbg_read_ready)
+			S_DBG_RDATA <= 0;
+		// }}}
+	end
+	// }}}
+
+	assign	S_DBG_RRESP = 2'b00;
+	// }}}
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Reset, halt, clear-cache, and step controls
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	assign	dbg_cmd_write = (dbg_write_ready && awskd_addr[5]);
+
+	// cmd_reset
+	// {{{
+	initial	cmd_reset = 1'b1;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		cmd_reset <= 1'b1;
+	else if (cpu_break && !START_HALTED)
+		cmd_reset <= 1'b1;
+	else
+		cmd_reset <= (dbg_cmd_write && wskd_strb[0]
+					&& wskd_data[RESET_BIT]);
+	// }}}
+
+	// cmd_halt
+	// {{{
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		cmd_halt <= START_HALTED;
+	else if (cmd_reset && START_HALTED)
+		cmd_halt <= START_HALTED;
+	else begin
+		// {{{
+		if (!dbg_write_valid && !cpu_dbg_stall && dbg_cmd_write
+			&& wskd_strb[1] && (!wskd_data[HALT_BIT]
+				|| wskd_data[STEP_BIT]))
+			cmd_halt <= 1'b0;
+
+		if (cpu_break && START_HALTED)
+			cmd_halt <= 1'b1;
+
+		if (dbg_cmd_write && wskd_strb[1] && wskd_data[HALT_BIT]
+				&& !wskd_data[STEP_BIT])
+			cmd_halt <= 1'b1;
+
+		if (dbg_write_ready && !awskd_addr[5] && wskd_strb != 0)
+			cmd_halt <= 1'b1;
+
+		if (cmd_step)
+			cmd_halt <= 1'b1;
+
+		if (cmd_clear_cache)
+			cmd_halt <= 1'b1;
+
+		if (dbg_cmd_write && wskd_strb[1] && wskd_data[CLEAR_CACHE_BIT])
+			cmd_halt <= 1'b1;
+		// }}}
+	end
+	// }}}
+
+	// cmd_clear_cache
+	// {{{
+	initial	cmd_clear_cache = 1'b0;
+	always @(posedge  S_AXI_ACLK)
+	if (!S_AXI_ARESETN || cmd_reset)
+		cmd_clear_cache <= 1'b0;
+	else if (dbg_cmd_write && wskd_data[CLEAR_CACHE_BIT]
+			&& wskd_data[HALT_BIT] && wskd_strb[1])
+		cmd_clear_cache <= 1'b1;
+	else if (cmd_halt && !cpu_dbg_stall)
+		cmd_clear_cache <= 1'b0;
+	// }}}
+
+	// cmd_step
+	// {{{
+	initial	cmd_step = 1'b0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN)
+		cmd_step <= 1'b0;
+	else if (dbg_cmd_write && wskd_data[STEP_BIT] && wskd_strb[1])
+		cmd_step <= 1'b1;
+	else if (!cpu_dbg_stall)
+		cmd_step <= 1'b0;
+	// }}}
+
+	// cpu_status
+	// {{{
+	//	0x10000 -> cpu_gie
+	//	0x08000 -> (Reserved/unused)
+	//	0x04000 -> cpu_break
+	//	0x02000 -> cpu_gie
+	//	0x01000 -> cpu_sleep
+	//	0x00800 -> cmd_clear_cache
+	//	0x00400 -> cmd_halt
+	//	0x00200 -> cmd_stall
+	//	0x00100 -> cmd_step
+	//	0x00080 -> Interrupt pending
+	//	0x00040 -> Reset
+	//	0x0003f -> Unused (old register address)
+	assign	cpu_status = { 8'h0, 7'h0, i_interrupt,
+			cpu_break, cpu_dbg_cc,
+			1'b0, cmd_halt, !cpu_dbg_stall, 1'b0,
+			i_interrupt, cmd_reset, 6'h0 };
+	// }}}
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// The ZipCPU Core
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+`ifdef	FORMAL
+	// {{{
+	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
+				f_cpu_break;
+	(* anyseq *) reg [2:0]	f_cpu_dbg_cc;
+	(* anyseq *) reg [2:0]	f_cpu_dbg_read_data;
+
+	assign	cpu_dbg_stall	= f_cpu_stall;
+	assign	cpu_break	= f_cpu_break;
+	assign	cpu_dbg_cc	= f_cpu_dbg_cc;
+	assign	dbg_read_data	= f_cpu_dbg_read_data;
+
+	fdebug #(
+		// {{{
+		.OPT_DISTRIBUTED_RAM(1'b1)
+		// }}}
+	) fdbg (
+		// {{{
+		.i_clk(S_AXI_ACLK),
+		.i_reset(!S_AXI_ARESETN),
+		.i_cpu_reset(cmd_reset),
+		.i_halt(cmd_halt),
+		.i_halted(f_cpu_halted),
+		.i_clear_cache(cmd_clear_cache),
+		.i_dbg_we(dbg_write_valid),
+		.i_dbg_reg(dbg_write_reg),
+		.i_dbg_data(dbg_write_data),
+		.i_dbg_stall(cpu_dbg_stall),
+		.i_dbg_break(cpu_break),
+		.i_dbg_cc(cpu_dbg_cc)
+		// }}}
+	);
+	// }}}
+`else
+	zipcore #(
+		// {{{
+		.RESET_ADDRESS(RESET_ADDRESS),
+		.ADDRESS_WIDTH(C_AXI_ADDR_WIDTH-2),
+		.IMPLEMENT_MPY(IMPLEMENT_MPY),
+		.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
+		.IMPLEMENT_FPU(IMPLEMENT_FPU),
+		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_CIS(OPT_CIS),
+		// .OPT_NO_USERMODE(OPT_NO_USERMODE),
+		.OPT_PIPELINED(OPT_PIPELINED),
+		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
+		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
+		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
+		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
+		// localparam	AW=ADDRESS_WIDTH;
+		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
+		.F_LGDEPTH(F_LGDEPTH)
+		// }}}
+	) core (S_AXI_ACLK, cmd_reset, i_interrupt,
+		// {{{
+		// Debug interface
+		cmd_halt, cmd_clear_cache,
+			dbg_write_reg, dbg_write_valid, dbg_write_data,
+			dbg_read_reg, cpu_dbg_stall, dbg_read_data,
+			cpu_dbg_cc, cpu_break,
+		// Instruction fetch interface
+		// {{{
+		pf_new_pc, clear_icache, pf_ready, pf_request_address,
+			pf_valid, pf_illegal, pf_instruction,
+				pf_instruction_pc,
+		// }}}
+		// Memory unit interface
+		// {{{
+		clear_dcache, mem_ce, bus_lock,
+			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
+			mem_busy, mem_rdbusy, mem_pipe_stalled,
+				mem_valid, mem_bus_err, mem_wreg, mem_result,
+		// }}}
+		// Accounting/CPU usage interface
+		o_op_stall, o_pf_stall, o_i_count,
+		cpu_debug
+		// }}}
+	);
+`endif
+	// }}}
+	// o_debug -- the debugging bus input
+	// {{{
+`ifdef	DEBUG_SCOPE
+	assign	o_debug = cpu_debug;
+`else
+	// Verilator lint_off UNUSED
+	wire	dbg_unused;
+	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache };
+`endif
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Instruction Fetch
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+
+`ifndef	FORMAL
+	/*
+	generate if (LGICACHE > 0)
+	begin : INSN_CACHE
+
+		axiicache #(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.FETCH_LIMIT(FETCH_LIMIT),
+			.SWAP_ENDIANNESS(SWAP_ENDIANNESS),
+			.SWAP_ENDIANNESS(SWAP_ENDIANNESS)
+			// }}}
+		) pf (
+		// {{{
+			i_clk, i_reset,
+				// CPU signals
+				pf_new_pc, clear_icache, pf_ready,
+					pf_request_address,
+				pf_valid, pf_illegal, pf_instruction,
+					pf_instruction_pc,
+				// Wishbone signals
+				pf_cyc, pf_stb, pf_we, pf_addr, pf_data,
+				pf_stall, pf_ack, pf_err, i_wb_data);
+		// }}}
+	end else begin : AXILFETCH
+	*/
+		axilfetch #(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.FETCH_LIMIT(FETCH_LIMIT),
+			.SWAP_ENDIANNESS(SWAP_ENDIANNESS)
+			// }}}
+		) pf (
+			// {{{
+			.S_AXI_ACLK(S_AXI_ACLK), .S_AXI_ARESETN(S_AXI_ARESETN),
+			// CPU signals
+			// {{{
+			.i_cpu_reset(cmd_reset),
+			.i_new_pc(pf_new_pc),
+			.i_clear_cache(clear_icache),
+			.i_ready(pf_ready),
+			.i_pc(pf_request_address),
+			.o_insn(pf_instruction),
+			.o_pc(pf_instruction_pc),
+			.o_valid(pf_valid),
+			.o_illegal(pf_illegal),
+			// }}}
+			// AXI-lite bus signals
+			// {{{
+			.M_AXI_ARVALID(M_INSN_ARVALID),
+			.M_AXI_ARREADY(M_INSN_ARREADY),
+			.M_AXI_ARADDR(M_INSN_ARADDR),
+			.M_AXI_ARPROT(M_INSN_ARPROT),
+			//
+			.M_AXI_RVALID(M_INSN_RVALID),
+			.M_AXI_RREADY(M_INSN_RREADY),
+			.M_AXI_RDATA(M_INSN_RDATA),
+			.M_AXI_RRESP(M_INSN_RRESP)
+			// }}}
+			// }}}
+		);
+	// end endgenerate
+`endif
+
+	// Assign values to the (unused) M_INSN_* write ports
+	// {{{
+	assign	M_INSN_AWVALID = 0;
+	assign	M_INSN_AWVALID = 0;
+	assign	M_INSN_AWADDR  = 0;
+	assign	M_INSN_AWPROT  = 0;
+	//
+	assign	M_INSN_WVALID = 0;
+	assign	M_INSN_WDATA  = 0;
+	assign	M_INSN_WSTRB  = 0;
+	//
+	assign	M_INSN_BREADY = 1'b1;
+	// }}}
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Memory Unit
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+`ifndef	FORMAL
+	generate /* if (OPT_DCACHE)
+	begin : DATA_CACHE
+
+		dcache #(
+			// {{{
+			.LGCACHELEN(OPT_LGDCACHE),
+			.ADDRESS_WIDTH(AW),
+			.LGNLINES(OPT_LGDCACHE-3),
+			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			.OPT_PIPE(OPT_MEMPIPE),
+			.OPT_LOCK(OPT_LOCK)
+`ifdef	FORMAL
+			, .OPT_FIFO_DEPTH(2)
+			, .F_LGDEPTH(F_LGDEPTH)
+`endif
+			// }}}
+		) mem(i_clk, i_reset, clear_dcache,
+			/// {{{
+			// CPU interface
+			mem_ce, bus_lock, mem_op, mem_cpu_addr, mem_wdata, mem_reg,
+			mem_busy, mem_rdbusy, mem_pipe_stalled,
+			mem_valid, mem_bus_err, mem_wreg, mem_result,
+			// Wishbone interface
+			mem_cyc_gbl, mem_cyc_lcl,
+				mem_stb_gbl, mem_stb_lcl,
+				mem_we, mem_bus_addr, mem_data, mem_sel,
+				mem_stall, mem_ack, mem_err, i_wb_data
+			/// }}}
+		);
+	end else */ if (OPT_PIPELINED_BUS_ACCESS)
+	begin : PIPELINED_MEM
+
+		axilpipe #(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH)
+			// }}}
+		) domem(
+			// {{{
+			.S_AXI_ACLK(S_AXI_ACLK), .S_AXI_ARESETN(S_AXI_ARESETN),
+			.i_cpu_reset(cmd_reset),
+			// CPU interface
+			// {{{
+			.i_stb(mem_ce),
+			.i_lock(bus_lock),
+			.i_op(mem_op),
+			.i_addr(mem_cpu_addr),
+			.i_data(mem_wdata),
+			.i_oreg(mem_reg),
+			.o_busy(mem_busy),
+			.o_pipe_stalled(mem_pipe_stalled),
+			.o_rdbusy(mem_rdbusy),
+			.o_valid(mem_valid),
+			.o_err(mem_bus_err),
+			.o_wreg(mem_wreg),
+			.o_result(mem_result),
+			// }}}
+			// AXI-lite
+			// Write interface
+			// {{{
+			.M_AXI_AWVALID(M_DATA_AWVALID),
+			.M_AXI_AWREADY(M_DATA_AWREADY),
+			.M_AXI_AWADDR(M_DATA_AWADDR),
+			.M_AXI_AWPROT(M_DATA_AWPROT),
+			//
+			.M_AXI_WVALID(M_DATA_WVALID),
+			.M_AXI_WREADY(M_DATA_WREADY),
+			.M_AXI_WDATA(M_DATA_WDATA),
+			.M_AXI_WSTRB(M_DATA_WSTRB),
+			//
+			.M_AXI_BVALID(M_DATA_BVALID),
+			.M_AXI_BREADY(M_DATA_BREADY),
+			.M_AXI_BRESP(M_DATA_BRESP),
+			// }}}
+			// Read interface
+			// {{{
+			.M_AXI_ARVALID(M_DATA_ARVALID),
+			.M_AXI_ARREADY(M_DATA_ARREADY),
+			.M_AXI_ARADDR(M_DATA_ARADDR),
+			.M_AXI_ARPROT(M_DATA_ARPROT),
+			//
+			.M_AXI_RVALID(M_DATA_RVALID),
+			.M_AXI_RREADY(M_DATA_RREADY),
+			.M_AXI_RDATA(M_DATA_RDATA),
+			.M_AXI_RRESP(M_DATA_RRESP)
+			// }}}
+			// }}}
+		);
+
+	end else begin : BARE_MEM
+
+		axilops	#(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.SWAP_ENDIANNESS(SWAP_ENDIANNESS),
+			.SWAP_WSTRB(1'b0),
+			.OPT_ALIGNMENT_ERR(1'b0),
+			.OPT_ZERO_ON_IDLE(1'b0)
+			// }}}
+		) domem(
+			// {{{
+			.S_AXI_ACLK(S_AXI_ACLK), .S_AXI_ARESETN(S_AXI_ARESETN),
+			.i_cpu_reset(cmd_reset),
+			// CPU interface
+			// {{{
+			.i_stb(mem_ce),
+			.i_lock(bus_lock),
+			.i_op(mem_op),
+			.i_addr(mem_cpu_addr),
+			.i_data(mem_wdata),
+			.i_oreg(mem_reg),
+			.o_busy(mem_busy),
+			.o_rdbusy(mem_rdbusy),
+			.o_valid(mem_valid),
+			.o_err(mem_bus_err),
+			.o_wreg(mem_wreg),
+			.o_result(mem_result),
+			// }}}
+			// AXI-lite
+			// Write interface
+			// {{{
+			.M_AXI_AWVALID(M_DATA_AWVALID),
+			.M_AXI_AWREADY(M_DATA_AWREADY),
+			.M_AXI_AWADDR(M_DATA_AWADDR),
+			.M_AXI_AWPROT(M_DATA_AWPROT),
+			//
+			.M_AXI_WVALID(M_DATA_WVALID),
+			.M_AXI_WREADY(M_DATA_WREADY),
+			.M_AXI_WDATA(M_DATA_WDATA),
+			.M_AXI_WSTRB(M_DATA_WSTRB),
+			//
+			.M_AXI_BVALID(M_DATA_BVALID),
+			.M_AXI_BREADY(M_DATA_BREADY),
+			.M_AXI_BRESP(M_DATA_BRESP),
+			// }}}
+			// Read interface
+			// {{{
+			.M_AXI_ARVALID(M_DATA_ARVALID),
+			.M_AXI_ARREADY(M_DATA_ARREADY),
+			.M_AXI_ARADDR(M_DATA_ARADDR),
+			.M_AXI_ARPROT(M_DATA_ARPROT),
+			//
+			.M_AXI_RVALID(M_DATA_RVALID),
+			.M_AXI_RREADY(M_DATA_RREADY),
+			.M_AXI_RDATA(M_DATA_RDATA),
+			.M_AXI_RRESP(M_DATA_RRESP)
+			// }}}
+			// }}}
+		);
+
+		assign	mem_pipe_stalled = mem_busy;
+	end endgenerate
+`endif
+	// }}}
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, S_DBG_AWADDR[DBGLSB-1:0],
+			S_DBG_ARADDR[DBGLSB-1:0],
+			S_DBG_ARPROT, S_DBG_AWPROT,
+			M_INSN_AWREADY, M_INSN_WREADY,
+			M_INSN_BVALID, M_INSN_BRESP };
+	// Verilator lint_on  UNUSED
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+`ifdef	FORMAL
+	wire	[F_LGDEPTH-1:0]	faxil_rd_outstanding,
+				faxil_wr_outstanding, faxil_awr_outstanding;
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// AXI-lite debug interface
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+
+	faxil_slave #(
+		// {{{
+		.C_AXI_DATA_WIDTH(C_DBG_DATA_WIDTH),
+		.C_AXI_ADDR_WIDTH(C_DBG_ADDR_WIDTH),
+		.F_LGDEPTH(F_LGDEPTH),
+		.F_AXI_MAXWAIT(0),
+		.F_AXI_MAXDELAY(0)
+		// }}}
+	) faxil (
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
+		// AXI-lite debug writes
+		// {{{
+		.i_axi_awvalid(S_DBG_AWVALID),
+		.i_axi_awready(S_DBG_AWREADY),
+		.i_axi_awaddr(S_DBG_AWADDR),
+		.i_axi_awprot(S_DBG_AWPROT),
+		//
+		.i_axi_wvalid(S_DBG_WVALID),
+		.i_axi_wready(S_DBG_WREADY),
+		.i_axi_wdata(S_DBG_WDATA),
+		.i_axi_wstrb(S_DBG_WSTRB),
+		//
+		.i_axi_bvalid(S_DBG_BVALID),
+		.i_axi_bready(S_DBG_BREADY),
+		.i_axi_bresp(S_DBG_BRESP),
+		// }}}
+		// AXI-lite debug reads
+		// {{{
+		.i_axi_arvalid(S_DBG_ARVALID),
+		.i_axi_arready(S_DBG_ARREADY),
+		.i_axi_araddr(S_DBG_ARADDR),
+		.i_axi_arprot(S_DBG_ARPROT),
+		//
+		.i_axi_rvalid(S_DBG_RVALID),
+		.i_axi_rready(S_DBG_RREADY),
+		.i_axi_rdata(S_DBG_RDATA),
+		.i_axi_rresp(S_DBG_RRESP),
+		// }}}
+		// Induction
+		// {{{
+		.f_axi_rd_outstanding(faxil_rd_outstanding),
+		.f_axi_wr_outstanding(faxil_wr_outstanding),
+		.f_axi_awr_outstanding(faxil_awr_outstanding)
+		// }}}
+		// }}}
+	);
+
+	always @(*)
+	if (S_AXI_ARESETN)
+	begin
+		assert(faxil_rd_outstanding == (S_DBG_ARREADY ? 0:1)
+				+(dbg_read_valid ? 1:0) + (S_DBG_RVALID ? 1:0));
+
+		assert(!dbg_read_valid || !S_DBG_RVALID);
+
+		assert(faxil_wr_outstanding == (S_DBG_WREADY ? 0:1)
+				+(S_DBG_BVALID ? 1:0));
+
+		assert(faxil_awr_outstanding == (S_DBG_AWREADY ? 0:1)
+				+(S_DBG_BVALID ? 1:0));
+	end
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// CPU's debug interface
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	// Captured above
+
+	// }}}
+`endif
+// }}}
+endmodule

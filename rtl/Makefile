@@ -40,12 +40,12 @@
 ##
 .PHONY: all
 ## }}}
-all: zipsystem zipbones cpudefs.h div zipmmu cpuops pfcache
+all: zipsystem zipbones zipaxil cpudefs.h div zipmmu cpuops pfcache
 
 CORED:= core
 PRPHD:= peripherals
 EXD  := ex
-VSRC := zipsystem.v cpudefs.v					\
+SYSSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
 		$(PRPHD)/ziptimer.v				\
@@ -60,14 +60,20 @@ VSRC := zipsystem.v cpudefs.v					\
 	$(EXD)/busdelay.v					\
 		$(EXD)/wbdblpriarb.v $(EXD)/wbpriarbiter.v	\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-VZIP := zipbones.v cpudefs.v					\
+BONSRC := zipbones.v cpudefs.v					\
 	$(CORED)/zipwb.v $(CORED)/zipcore.v			\
 		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\
 		$(CORED)/div.v					\
-	$(EXD)/busdelay.v $(EXD)/wbdblpriarb.v		\
+	$(EXD)/busdelay.v $(EXD)/wbdblpriarb.v			\
+	$(CORED)/idecode.v $(CORED)/cpuops.v
+AXLSRC := zipaxil.v cpudefs.v $(CORED)/zipcore.v		\
+		$(CORED)/cpuops.v $(CORED)/idecode.v		\
+		$(CORED)/axilfetch.v $(CORED)/prefetch.v	\
+		$(CORED)/axilops.v $(CORED)/axilpipe.v		\
+		$(CORED)/div.v					\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
 VOBJ := obj_dir
 SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
@@ -85,13 +91,17 @@ VFLAGS := -Wall -MMD --trace $(COVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
 
 VERILATE=$(VERILATOR) $(VFLAGS)
 
-$(VOBJ)/Vzipsystem.cpp: $(VSRC)
+$(VOBJ)/Vzipsystem.cpp: $(SYSSRC)
 	$(VERILATE) zipsystem.v
 $(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
 
-$(VOBJ)/Vzipbones.cpp: $(VZIP)
+$(VOBJ)/Vzipbones.cpp: $(BONSRC)
 	$(VERILATE) zipbones.v
 $(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
+
+$(VOBJ)/Vzipaxil.cpp: $(AXLSRC)
+	$(VERILATE) zipaxil.v
+$(VOBJ)/Vzipaxil.h: $(VOBJ)/Vzipaxil.cpp
 
 $(VOBJ)/Vdiv.cpp: $(CORED)/div.v
 	$(VERILATE) $(CORED)/div.v
@@ -114,6 +124,9 @@ $(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
 
 $(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
 	$(SUBMAKE) Vzipbones.mk
+
+$(VOBJ)/Vzipaxil__ALL.a: $(VOBJ)/Vzipaxil.cpp $(VOBJ)/Vzipaxil.h
+	$(SUBMAKE) Vzipaxil.mk
 
 $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
 	$(SUBMAKE) Vdiv.mk
@@ -143,6 +156,9 @@ zipsystem: $(VOBJ)/Vzipsystem__ALL.a cpudefs.h
 
 .PHONY: zipbones
 zipbones: $(VOBJ)/Vzipbones__ALL.a cpudefs.h
+
+.PHONY: zipaxil
+zipaxil: $(VOBJ)/Vzipaxil__ALL.a cpudefs.h
 
 .PHONY: div
 div: $(VOBJ)/Vdiv__ALL.a

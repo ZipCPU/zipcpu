@@ -168,9 +168,10 @@ module	zipwb #(
 		input	wire		i_clk, i_reset, i_interrupt,
 		// Debug interface -- inputs
 		input	wire		i_halt, i_clear_cache,
-		input	wire	[4:0]	i_dbg_reg,
+		input	wire	[4:0]	i_dbg_wreg,
 		input	wire		i_dbg_we,
 		input	wire	[31:0]	i_dbg_data,
+		input	wire	[4:0]	i_dbg_rreg,
 		// Debug interface -- outputs
 		output	wire		o_dbg_stall,
 		output	reg	[31:0]	o_dbg_reg,
@@ -274,8 +275,8 @@ module	zipwb #(
 	) core (i_clk, i_reset, i_interrupt,
 		// {{{
 		// Debug interface
-		i_halt, i_clear_cache, i_dbg_reg, i_dbg_we, i_dbg_data,
-			o_dbg_stall, o_dbg_reg, o_dbg_cc,
+		i_halt, i_clear_cache, i_dbg_wreg, i_dbg_we, i_dbg_data,
+			i_dbg_rreg, o_dbg_stall, o_dbg_reg, o_dbg_cc,
 			o_break,
 		// Instruction fetch interface
 		// {{{
@@ -327,7 +328,7 @@ module	zipwb #(
 				pf_cyc, pf_stb, pf_we, pf_addr, pf_data,
 				pf_stall, pf_ack, pf_err, i_wb_data);
 		// }}}
-	end else if (FETCH_LIMIT == 2)
+	end else if (FETCH_LIMIT == 2 || LGICACHE == 0)
 	begin : DBLFETCH
 
 		dblfetch #(ADDRESS_WIDTH)

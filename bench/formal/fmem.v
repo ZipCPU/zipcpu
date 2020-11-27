@@ -4,7 +4,82 @@
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	
+// Purpose:	To formalize the interface between the CPU and the memory unit.
+//		Memory units that meet these criteria may interact with the
+//	ZipCPU without error.
+//
+// Portlist:
+//	i_clk	This is a synchronous interface
+//	i_bus_reset	A global reset signal.  This resets the entire bus.
+//	i_cpu_reset	Must be true during a global reset signal.  This
+//			resets the CPU.  The bus may (or may not) be reset at
+//			the same time.
+//	i_stb		The CPU is making a request of the memory unit
+//	i_pipe_stalled	The memory unit cannot accept the CPU's request
+//	i_clear_cache	The CPU would like to clear any cached memory
+//	i_lock		The CPU would like to initiate a locked sequence.
+//			(This will be true from the first read operation,
+//			through one ALU operation, to the strobe associated with
+//			a following write operation.)
+//	i_op		The type of memory operation requested
+//		3'b000: (Illegal/Unused)
+//		3'b001:	(Illegal/Unused)
+//		3'b010:	Load   a 32'b word (i.e. a read)
+//		3'b011:	Store  a 32'b word (i.e. a write)
+//		3'b100:	Load   a 16'b word
+//		3'b101:	Store  a 16'b word
+//		3'b110:	Load  an 8'b word
+//		3'b111:	Store an 8'b word
+//	i_addr		The address to read from or write to.  Only valid when
+//			i_stb is also true.
+//	i_data		The data to be written during a store operation.
+//	i_areg		The register to write the return data back to
+//	i_busy		Whether the memory unit is busy doing something or not.
+//			If the memory unit is busy, it may still accept
+//			further reads (during a read cycle), or further writes
+//			(during a write cycle) if i_pipe_stalled is clear.
+//
+//			Note that just because the memory unit is busy doesn't
+//			mean it's busy doing anything relevant for the CPU.
+//			The CPU may have issued a command, and then been reset.
+//			In that case, the memory unit may still need to complete
+//			the last command.
+//	i_rdbusy	Not only is the memory unit busy, but it's busy in a
+//			way where it might write data back to the CPU when it
+//			is done.
+//	i_valid		A read has completed, the data for that read is now
+//			available in i_result, to be written to i_wreg
+//	i_done		An operation has completed--either read or write
+//	i_err		A bus error has occurred.  It may or may not be clear
+//			which instruction caused it.  The CPU should begin any
+//			exception handling.
+//	i_wreg		If i_valid is true, this is the register that the
+//			result needs to be written to.
+//	i_result	The result of the last read
+//
+// Other ports are useful for synchronizing these formal properties to the
+// CPU.  These include:
+//
+//	f_outstanding	A counter of how many requests are outstanding.  This
+//			is incremented on every i_stb, and decremented on every
+//			i_done.
+//	f_pc		True if the last read will be written to either the
+//			flags register or the program counter.
+//	f_gie		True if the registers to be read are user mode
+//			registers (i.e. the "Global Interrupt Enable" for the
+//			ZipCPU is set), requested by the CPU within user mode,
+//			or clear if they are supervisor registers (the Global
+//			Interrupt Enable, or gie bit, is clear).  The memory
+//			unit will only do one or the other, never both.
+//	f_read_cycle	True if we are in a read cycle (i.e. a load), false
+//			during any store operations.  The memory must cease
+//			to be busy before switching directions.
+//	f_last_reg	The last read register.  Once data is returned to this
+//			register, the current string or reads will be complete.
+//	f_addr_reg	The base address register.  On any string of reads,
+//			the CPU will guarantee that the loads are not stored
+//			into the base address register unless it is the last
+//			register in any sequence.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.

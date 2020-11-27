@@ -29,5 +29,5 @@ prep -top axilperiphs
 ../../rtl/peripherals/zipjiffies.v
 faxil_slave.v
 ../../rtl/ex/fwb_slave.v
-../../../../opencores/wb2axip/trunk/rtl/skidbuffer.v
-../../../../opencores/wb2axip/trunk/rtl/sfifo.v
+../../rtl/ex/skidbuffer.v
+../../rtl/ex/sfifo.v

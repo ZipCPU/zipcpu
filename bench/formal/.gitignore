@@ -16,6 +16,7 @@ axilperiphs_*/
 axilpipe_*/
 busdelay_*/
 cpuops_*/
+dblfetch_*/
 dcache_*/
 div_*/
 icontrol_*/
@@ -29,10 +30,11 @@ wbdmac_*/
 wbdblpriarb_*/
 wbpriarbiter_*/
 wbwatchdog_*/
+zipaxil_*/
+zipbones_*/
 zipcounter_*/
 zipcore_*/
 zipcpu_*/
 ziptimer_*/
 zipjiffies_*/
-dblfetch_*/
 zipmmu_*/
