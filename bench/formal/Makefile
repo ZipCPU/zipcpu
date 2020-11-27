@@ -339,7 +339,7 @@ $(WBDMA)_prf/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE)
 .PHONY: $(AXLPH)
 ## {{{
 $(AXLPH): $(AXLPH)_prf/PASS
-$(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE)
+$(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE) $(RTL)/ex/sfifo.v $(RTL)/ex/skidbuffer.v
 	sby -f $(AXLPH).sby prf
 ## }}}
 ## }}}
