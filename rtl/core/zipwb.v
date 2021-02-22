@@ -1,9 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipwb.v
-//
-// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 // {{{
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+//
 // Purpose:	This is the top level module holding the core of the Zip CPU
 //		together.  The Zip CPU is designed to be as simple as possible.
 //	(actual implementation aside ...)  The instruction set is about as
@@ -73,7 +73,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published

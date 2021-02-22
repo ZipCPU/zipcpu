@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020, Gisselquist Technology, LLC
+// Copyright (C) 2020-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -253,15 +253,15 @@ module	axilops #(
 	// shifted_wstrb_*
 	// {{{
 	always @(*)
-		shifted_wstrb_word = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+		shifted_wstrb_word = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
 						4'b1111} << i_addr[AXILLSB-1:0];
 
 	always @(*)
-		shifted_wstrb_halfword = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+		shifted_wstrb_halfword = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
 						4'b0011} << i_addr[AXILLSB-1:0];
 
 	always @(*)
-		shifted_wstrb_byte = { {(C_AXI_DATA_WIDTH/4-4){1'b0}},
+		shifted_wstrb_byte = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
 						4'b0001} << i_addr[AXILLSB-1:0];
 	// }}}
 
@@ -390,6 +390,7 @@ module	axilops #(
 				{ next_wdata, next_wstrb,
 				axi_wdata, axi_wstrb } <= 0;
 		end
+		// }}}
 		// }}}
 	end else if ((M_AXI_WVALID && M_AXI_WREADY)
 			|| (M_AXI_ARVALID && M_AXI_ARREADY))

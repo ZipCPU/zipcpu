@@ -40,7 +40,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -61,7 +61,6 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -79,7 +78,7 @@ module	zipaxil #(
 		parameter	C_AXI_DATA_WIDTH = 32,
 		localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH,
 		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
-				LGICACHE=12,
+		parameter [0:0]	START_HALTED = 1'b0,
 `ifdef	OPT_MULTIPLY
 		parameter	IMPLEMENT_MPY = `OPT_MULTIPLY,
 `else
@@ -105,7 +104,7 @@ module	zipaxil #(
 `else
 		parameter [0:0]	OPT_CIS = 1'b0,
 `endif
-		localparam	[0:0]	OPT_NO_USERMODE = 1'b0,
+		// localparam	[0:0]	OPT_NO_USERMODE = 1'b0,
 `ifdef	OPT_PIPELINED
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 `else
@@ -116,16 +115,17 @@ module	zipaxil #(
 `else
 		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
 `endif
-		localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
+		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
 		localparam	[0:0]	IMPLEMENT_LOCK=0,
-		localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
-		localparam		OPT_LGDCACHE = 0,
-		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
-
-		localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
-		localparam	AW=ADDRESS_WIDTH-2,
-		localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2],
-		parameter	F_LGDEPTH=8
+		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
+		// localparam		OPT_LGDCACHE = 0,
+		// localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
+		parameter	RESET_DURATION = 10,
+		// localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
+		localparam	AW=ADDRESS_WIDTH-2
+`ifdef	FORMAL
+		, parameter	F_LGDEPTH=8
+`endif
 		// }}}
 	) (
 		// {{{
@@ -242,7 +242,6 @@ module	zipaxil #(
 			HALT_BIT = 10,
 			CLEAR_CACHE_BIT = 11;
 	localparam [0:0]	OPT_LOWPOWER = 1'b1;
-	localparam [0:0]	START_HALTED = 1'b0;
 	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
 
 	// AXI-lite signal handling
@@ -260,6 +259,8 @@ module	zipaxil #(
 	wire		cpu_dbg_stall, cpu_break;
 	wire	[2:0]	cpu_dbg_cc;
 	// }}}
+
+	reg	reset_hold;
 
 	// CPU control registers
 	// {{{
@@ -473,17 +474,53 @@ module	zipaxil #(
 	//
 	assign	dbg_cmd_write = (dbg_write_ready && awskd_addr[5]);
 
+	//
+	// Always start us off with an initial reset
+	// {{{
+	generate if (RESET_DURATION > 0)
+	begin : INITIAL_RESET_HOLD
+		// {{{
+		reg	[$clog2(RESET_DURATION)-1:0]	reset_counter;
+
+		initial	reset_counter = RESET_DURATION;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			reset_counter <= RESET_DURATION;
+		else if (reset_counter > 0)
+			reset_counter <= reset_counter - 1;
+
+		initial	reset_hold = 1;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			reset_hold <= 1;
+		else
+			reset_hold <= (reset_counter > 1);
+`ifdef	FORMAL
+		always @(*)
+			assert(reset_hold == (reset_counter != 0));
+`endif
+		// }}}
+	end else begin
+
+		always @(*)
+			reset_hold = 0;
+
+	end endgenerate
+
 	// cmd_reset
 	// {{{
 	initial	cmd_reset = 1'b1;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		cmd_reset <= 1'b1;
+	else if (reset_hold)
+		cmd_reset <= 1'b1;
 	else if (cpu_break && !START_HALTED)
 		cmd_reset <= 1'b1;
 	else
 		cmd_reset <= (dbg_cmd_write && wskd_strb[0]
 					&& wskd_data[RESET_BIT]);
+	// }}}
 	// }}}
 
 	// cmd_halt
@@ -500,22 +537,35 @@ module	zipaxil #(
 				|| wskd_data[STEP_BIT]))
 			cmd_halt <= 1'b0;
 
+		// Reasons to halt
+
+		// 1. Halt on any unhandled CPU exception.  The cause of the
+		//	exception must be cured before we can (re)start.
+		//	If the CPU is configured to start immediately on power
+		//	up, we leave it to reset on any exception instead.
 		if (cpu_break && START_HALTED)
 			cmd_halt <= 1'b1;
+
+		// 2. Halt on any user request to halt.  (Only valid if the
+		//	STEP bit isn't also set)
 
 		if (dbg_cmd_write && wskd_strb[1] && wskd_data[HALT_BIT]
 				&& !wskd_data[STEP_BIT])
 			cmd_halt <= 1'b1;
 
+		// 3. Halt on any user request to write to a CPU register
 		if (dbg_write_ready && !awskd_addr[5] && wskd_strb != 0)
 			cmd_halt <= 1'b1;
 
+		// 4. Halt following any step command
 		if (cmd_step)
 			cmd_halt <= 1'b1;
 
+		// 4. Halt following any clear cache
 		if (cmd_clear_cache)
 			cmd_halt <= 1'b1;
 
+		// 5. Halt on any clear cache bit--independent of any step bit
 		if (dbg_cmd_write && wskd_strb[1] && wskd_data[CLEAR_CACHE_BIT])
 			cmd_halt <= 1'b1;
 		// }}}
@@ -622,12 +672,12 @@ module	zipaxil #(
 		.OPT_PIPELINED(OPT_PIPELINED),
 		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
-		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+		.IMPLEMENT_LOCK(IMPLEMENT_LOCK)
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
-		// localparam	AW=ADDRESS_WIDTH;
-		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
-		.F_LGDEPTH(F_LGDEPTH)
+`ifdef	FORMAL
+		, .F_LGDEPTH(F_LGDEPTH)
+`endif
 		// }}}
 	) core (S_AXI_ACLK, cmd_reset, i_interrupt,
 		// {{{

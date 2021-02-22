@@ -23,7 +23,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020, Gisselquist Technology, LLC
+// Copyright (C) 2020-2021, Gisselquist Technology, LLC
 // {{{
 //
 // This file is part of the WB2AXIP project.
@@ -63,7 +63,8 @@ module	axilperiphs #(
 		// {{{
 		input	wire					S_AXI_ACLK,
 		input	wire					S_AXI_ARESETN,
-		//
+		// AXI-lite interface
+		// {{{
 		input	wire					S_AXI_AWVALID,
 		output	wire					S_AXI_AWREADY,
 		input	wire	[C_AXI_ADDR_WIDTH-1:0]		S_AXI_AWADDR,
@@ -93,6 +94,7 @@ module	axilperiphs #(
 		input wire [EXTERNAL_INTERRUPTS-1:0]	i_ivec,
 		output	wire				o_interrupt,
 		output	wire				o_watchdog_reset
+		// }}}
 	);
 
 	////////////////////////////////////////////////////////////////////////

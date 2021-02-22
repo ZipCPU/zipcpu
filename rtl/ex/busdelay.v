@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	busdelay.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Delay any access to the wishbone bus by a single clock.
@@ -36,9 +36,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -53,53 +53,57 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype	none
-//
-module	busdelay(i_clk, i_reset,
-		// The input bus
-		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
-			o_wb_stall, o_wb_ack, o_wb_data, o_wb_err,
-		// The delayed bus
-		o_dly_cyc, o_dly_stb, o_dly_we, o_dly_addr,o_dly_data,o_dly_sel,
-			i_dly_stall, i_dly_ack, i_dly_data, i_dly_err);
-	parameter		AW=32, DW=32;
-	localparam		F_LGDEPTH=4;
-	parameter	 [0:0]	DELAY_STALL = 1;
-	input	wire			i_clk, i_reset;
-	// Input/master bus
-	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
-	input	wire	[(AW-1):0]	i_wb_addr;
-	input	wire	[(DW-1):0]	i_wb_data;
-	input	wire	[(DW/8-1):0]	i_wb_sel;
-	output	wire			o_wb_stall;
-	output	reg			o_wb_ack;
-	output	reg	[(DW-1):0]	o_wb_data;
-	output	reg			o_wb_err;
-	// Delayed bus
-	output	reg			o_dly_cyc, o_dly_stb, o_dly_we;
-	output	reg	[(AW-1):0]	o_dly_addr;
-	output	reg	[(DW-1):0]	o_dly_data;
-	output	reg	[(DW/8-1):0]	o_dly_sel;
-	input	wire			i_dly_stall;
-	input	wire			i_dly_ack;
-	input	wire	[(DW-1):0]	i_dly_data;
-	input	wire			i_dly_err;
+// }}}
+module	busdelay #(
+		// {{{
+		parameter		AW=32, DW=32,
+		localparam		F_LGDEPTH=4,
+		parameter	 [0:0]	DELAY_STALL = 1
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		// Input/master bus
+		// {{{
+		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
+		input	wire	[(AW-1):0]	i_wb_addr,
+		input	wire	[(DW-1):0]	i_wb_data,
+		input	wire	[(DW/8-1):0]	i_wb_sel,
+		output	wire			o_wb_stall,
+		output	reg			o_wb_ack,
+		output	reg	[(DW-1):0]	o_wb_data,
+		output	reg			o_wb_err,
+		// }}}
+		// Delayed bus
+		// {{{
+		output	reg			o_dly_cyc, o_dly_stb, o_dly_we,
+		output	reg	[(AW-1):0]	o_dly_addr,
+		output	reg	[(DW-1):0]	o_dly_data,
+		output	reg	[(DW/8-1):0]	o_dly_sel,
+		input	wire			i_dly_stall,
+		input	wire			i_dly_ack,
+		input	wire	[(DW-1):0]	i_dly_data,
+		input	wire			i_dly_err
+		// }}}
+		// }}}
+	);
 
 `ifdef	FORMAL
 	wire	[2+AW+DW+DW/8-1:0]	f_wpending;
 `endif
 
-	generate
-	if (DELAY_STALL != 0)
+	generate if (DELAY_STALL)
 	begin
+		// {{{
 		reg			r_stb, r_we;
 		reg	[(AW-1):0]	r_addr;
 		reg	[(DW-1):0]	r_data;
@@ -187,8 +191,9 @@ module	busdelay(i_clk, i_reset,
 `ifdef	FORMAL
 		assign	f_wpending = { r_stb, r_we, r_addr, r_data, r_sel };
 `endif
+		// }}}
 	end else begin
-
+		// {{{
 		initial	o_dly_cyc   = 1'b0;
 		initial	o_dly_stb   = 1'b0;
 		initial	o_dly_we    = 1'b0;
@@ -264,8 +269,17 @@ module	busdelay(i_clk, i_reset,
 		// than to be sure we set it to the right number of bits
 		assign	f_wpending = { i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel };
 `endif
+		// }}}
 	end endgenerate
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 
 `ifdef	BUSDELAY
@@ -470,4 +484,5 @@ module	busdelay(i_clk, i_reset,
 		assert(f_exp_nacks == f_wb_nacks);
 	end
 `endif
+// }}}
 endmodule

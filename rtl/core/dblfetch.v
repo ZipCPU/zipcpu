@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	dblfetch.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This is one step beyond the simplest instruction fetch,
@@ -22,9 +22,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2017-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -39,60 +39,70 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype	none
-//
-module	dblfetch(i_clk, i_reset,
-		i_new_pc, i_clear_cache, i_ready, i_pc,
-		o_valid, o_illegal, o_insn, o_pc,
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data);
-	parameter		ADDRESS_WIDTH=30;
-	localparam		AW=ADDRESS_WIDTH, DW = 32;
-	input	wire			i_clk, i_reset;
-	// CPU signals--from the CPU
-	input	wire			i_new_pc, i_clear_cache, i_ready;
-	input	wire	[(AW+1):0]	i_pc;
-	// ... and in return
-	output	reg			o_valid;
-	output	reg			o_illegal;
-	output	reg	[(DW-1):0]	o_insn;
-	output	reg	[(AW+1):0]	o_pc;
-	// Wishbone outputs
-	output	reg			o_wb_cyc, o_wb_stb;
-	output	wire			o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	wire	[(DW-1):0]	o_wb_data;
-	// And return inputs
-	input	wire			i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[(DW-1):0]	i_wb_data;
+// }}}
+module	dblfetch #(
+		// {{{
+		parameter		ADDRESS_WIDTH=30,
+		localparam		AW=ADDRESS_WIDTH, DW = 32
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		// CPU signals--from the CPU
+		input	wire			i_new_pc, i_clear_cache,i_ready,
+		input	wire	[(AW+1):0]	i_pc,
+		// ... and in return
+		output	reg			o_valid,
+		output	reg			o_illegal,
+		output	reg	[(DW-1):0]	o_insn,
+		output	reg	[(AW+1):0]	o_pc,
+		// Wishbone outputs
+		output	reg			o_wb_cyc, o_wb_stb,
+		output	wire			o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	wire	[(DW-1):0]	o_wb_data,
+		// And return inputs
+		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[(DW-1):0]	i_wb_data
+		// }}}
+	);
 
-	assign	o_wb_we = 1'b0;
-	assign	o_wb_data = 32'h0000;
-
+	// Local declarations
+	// {{{
 	reg			last_stb, invalid_bus_cycle;
 
 	reg	[(DW-1):0]	cache_word;
 	reg			cache_valid;
 	reg	[1:0]		inflight;
 	reg			cache_illegal;
+	// }}}
 
+	assign	o_wb_we = 1'b0;
+	assign	o_wb_data = 32'h0000;
+
+	// o_wb_cyc, o_wb_stb
+	// {{{
 	initial	o_wb_cyc = 1'b0;
 	initial	o_wb_stb = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||((o_wb_cyc)&&(i_wb_err)))
-	begin
+	begin : RESET_ABORT
+		// {{{
 		o_wb_cyc <= 1'b0;
 		o_wb_stb <= 1'b0;
+		// }}}
 	end else if (o_wb_cyc)
-	begin
+	begin : END_CYCLE
+		// {{{
 		if ((!o_wb_stb)||(!i_wb_stall))
 			o_wb_stb <= (!last_stb);
 
@@ -105,18 +115,23 @@ module	dblfetch(i_clk, i_reset,
 			o_wb_cyc <= 1'b0;
 			o_wb_stb <= 1'b0;
 		end
-
+		// }}}
 	end else if ((i_new_pc)||(invalid_bus_cycle)
 		||((o_valid)&&(i_ready)&&(!o_illegal)))
-	begin
+	begin : START_CYCLE
+		// {{{
 		// Initiate a bus cycle if ... the last bus cycle was
 		// aborted (bus error or new_pc), we've been given a
 		// new PC to go get, or we just exhausted our one
 		// instruction cache
 		o_wb_cyc <= 1'b1;
 		o_wb_stb <= 1'b1;
+		// }}}
 	end
+	// }}}
 
+	// inflight
+	// {{{
 	initial	inflight = 2'b00;
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
@@ -131,30 +146,42 @@ module	dblfetch(i_clk, i_reset,
 		default: begin end
 		endcase
 	end
+	// }}}
 
+	// last_stb
+	// {{{
 	always @(*)
 		last_stb = (inflight != 2'b00)||((o_valid)&&(!i_ready));
+	// }}}
 
+	// invalid_bus_cycle
+	// {{{
 	initial	invalid_bus_cycle = 1'b0;
 	always @(posedge i_clk)
 	if ((o_wb_cyc)&&(i_new_pc))
 		invalid_bus_cycle <= 1'b1;
 	else if (!o_wb_cyc)
 		invalid_bus_cycle <= 1'b0;
+	// }}}
 
+	// o_wb_addr
+	// {{{
 	initial	o_wb_addr = {(AW){1'b1}};
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_wb_addr <= i_pc[AW+1:2];
 	else if ((o_wb_stb)&&(!i_wb_stall))
 		o_wb_addr <= o_wb_addr + 1'b1;
+	// }}}
 
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Now for the immediate output word to the CPU
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_new_pc)||(i_clear_cache))
@@ -163,7 +190,10 @@ module	dblfetch(i_clk, i_reset,
 		o_valid <= 1'b1;
 	else if (i_ready)
 		o_valid <= cache_valid;
+	// }}}
 
+	// o_insn
+	// {{{
 	always @(posedge i_clk)
 	if ((!o_valid)||(i_ready))
 	begin
@@ -172,7 +202,10 @@ module	dblfetch(i_clk, i_reset,
 		else
 			o_insn <= i_wb_data;
 	end
+	// }}}
 
+	// o_pc
+	// {{{
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_pc <= i_pc;
@@ -181,7 +214,10 @@ module	dblfetch(i_clk, i_reset,
 		o_pc[AW+1:2] <= o_pc[AW+1:2] + 1'b1;
 		o_pc[1:0] <= 2'b00;
 	end
+	// }}}
 
+	// o_illegal
+	// {{{
 	initial	o_illegal = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_new_pc)||(i_clear_cache))
@@ -193,16 +229,19 @@ module	dblfetch(i_clk, i_reset,
 		else if ((o_wb_cyc)&&(i_wb_err))
 			o_illegal <= 1'b1;
 	end
+	// }}}
 
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Now for the output/cached word
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
+	// cache_valid
+	// {{{
 	initial	cache_valid = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_new_pc)||(i_clear_cache))
@@ -213,11 +252,17 @@ module	dblfetch(i_clk, i_reset,
 		else if (i_ready)
 			cache_valid <= 1'b0;
 	end
+	// }}}
 
+	// cache_word
+	// {{{
 	always @(posedge i_clk)
 	if (i_wb_ack)
 		cache_word <= i_wb_data;
+	// }}}
 
+	// cache_illegal
+	// {{{
 	initial	cache_illegal = 1'b0;
 	always @(posedge i_clk)
 	if ((i_reset)||(i_clear_cache)||(i_new_pc))
@@ -228,19 +273,21 @@ module	dblfetch(i_clk, i_reset,
 	else if ((o_valid  && (!i_ready || cache_valid))
 				&&(o_wb_cyc)&&(i_wb_ack || i_wb_err))
 		cache_illegal <= i_wb_err;
+	// }}}
 
-
+	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Formal property section
-//
+// {{{
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
-
+	// Local declarations
+	// {{{
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
  	reg	f_past_valid;
@@ -264,7 +311,7 @@ module	dblfetch(i_clk, i_reset,
 	wire	[AW-1:0]	this_return_address,
 				next_pc_address;
 	wire	[AW+1:0]	f_address;
-
+	// }}}
 
 	initial	f_past_reset = 1'b1;
 	initial	f_past_clear_cache = 1'b0;
@@ -288,7 +335,7 @@ module	dblfetch(i_clk, i_reset,
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -300,31 +347,38 @@ module	dblfetch(i_clk, i_reset,
 	//
 	// It may be that the CPU treats us differently.  We'll only restrict
 	// our solver to this here.
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Wishbone bus properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
 	//
 	// Add a bunch of wishbone-based asserts
-	fwb_master #(.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
-				.F_MAX_STALL(2),
-				.F_MAX_REQUESTS(0), .F_OPT_SOURCE(1),
-				.F_OPT_RMW_BUS_OPTION(1),
-				.F_OPT_DISCONTINUOUS(0))
-		f_wbm(i_clk, i_reset,
+	fwb_master #(
+		// {{{
+		.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
+			.F_MAX_STALL(2),
+			.F_MAX_REQUESTS(0), .F_OPT_SOURCE(1),
+			.F_OPT_RMW_BUS_OPTION(1),
+			.F_OPT_DISCONTINUOUS(0)
+		// }}}
+	) f_wbm(
+		// {{{
+		i_clk, i_reset,
 			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data, 4'h0,
 			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
-			f_nreqs, f_nacks, f_outstanding);
-
+			f_nreqs, f_nacks, f_outstanding
+		// }}}
+	);
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our interaction with the CPU
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -361,11 +415,11 @@ module	dblfetch(i_clk, i_reset,
 
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our outputs
-	//
+	// {{{
 	//
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -427,12 +481,12 @@ module	dblfetch(i_clk, i_reset,
 	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(i_clear_cache))
 			&&($past(o_valid))&&(!o_valid)&&(!o_illegal))
 		assert((o_wb_cyc)||(invalid_bus_cycle));
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	// Our "contract" with the CPU
-	//
+	// {{{
 	//
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -509,14 +563,13 @@ module	dblfetch(i_clk, i_reset,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(cache_illegal))&&(!cache_valid))
 		assert(!cache_illegal);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Additional assertions necessary to pass induction
-	//
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	// We have only a one word cache.  Hence, we shouldn't be asking
 	// for more data any time we have nowhere to put it.
@@ -551,9 +604,13 @@ module	dblfetch(i_clk, i_reset,
 
 	assign	this_return_address = o_wb_addr - f_outstanding;
 	assign	next_pc_address = f_next_addr[AW+1:2];
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Address checking
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))
@@ -610,14 +667,14 @@ module	dblfetch(i_clk, i_reset,
 	always @(*)
 	if (cache_valid)
 		assert(o_valid);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
-	//
 	//
 	// Cover statements
-	//
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	reg	f_cvr_aborted, f_cvr_fourth_ack;
 
 	always @(posedge i_clk)
@@ -641,16 +698,18 @@ module	dblfetch(i_clk, i_reset,
 	always @(posedge i_clk)
 		cover(!o_wb_cyc && (f_nreqs == f_nacks)
 			&& !f_cvr_aborted && f_cvr_fourth_ack);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Temporary simplifications
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
+	// }}}
 `endif	// FORMAL
+// }}}
 endmodule
 //
 // Usage:		(this)	(prior)	(old)  (S6)

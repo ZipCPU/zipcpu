@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -29,11 +29,10 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
-// License:	GPL, v3, as defined and found on www.gnu.org,
 // }}}
-//		http://www.gnu.org/licenses/gpl.html
+// License:	GPL, v3, as defined and found on www.gnu.org,
 // {{{
+//		http://www.gnu.org/licenses/gpl.html
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -42,47 +41,47 @@
 //
 `include "cpudefs.v"
 //
-`define	RESET_BIT	6
-`define	STEP_BIT	8
-`define	HALT_BIT	10
-`define	CLEAR_CACHE_BIT	11
-//
-`ifdef	OPT_TRADITIONAL_PFCACHE
-`define	LGICACHE_DEFAULT	8
-`else
-`define	LGICACHE_DEFAULT	0
-`endif
-//
-`ifdef	OPT_DCACHE
-`define	LGDCACHE_DEFAULT	10
-`else
-`define	LGDCACHE_DEFAULT	0
-`endif
 // }}}
 module	zipbones #(
 		// {{{
-		parameter	RESET_ADDRESS=32'h1000_0000, ADDRESS_WIDTH=30,
-				LGICACHE=`LGICACHE_DEFAULT,
-				LGDCACHE=`LGDCACHE_DEFAULT,	// Set to zero for no data cache
+		parameter	RESET_ADDRESS=32'h1000_0000,
+				ADDRESS_WIDTH=30,
+		// CPU options
+		// {{{
+`ifdef	OPT_TRADITIONAL_PFCACHE
+				LGICACHE = 8,
+`else
+				LGICACHE = 0,
+`endif
+`ifdef	OPT_DCACHE
+				// Set to zero for no data cache
+				LGDCACHE = 10,
+`else
+				LGDCACHE = 0,
+`endif
 		parameter [0:0]	START_HALTED=0,
 		parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
-				IMPLEMENT_MPY = `OPT_MULTIPLY,
+				OPT_MPY = `OPT_MULTIPLY,
 `else
-				IMPLEMENT_MPY = 0,
+				OPT_MPY = 0,
 `endif
-		parameter [0:0]
 `ifdef	OPT_DIVIDE
-				IMPLEMENT_DIVIDE=1,
+		parameter [0:0]	OPT_DIV=1,
 `else
-				IMPLEMENT_DIVIDE=0,
+		parameter [0:0]	OPT_DIV=0,
 `endif
 `ifdef	OPT_IMPLEMENT_FPU
-				IMPLEMENT_FPU=1,
+		parameter [0:0]	OPT_FPU = 1,
 `else
-				IMPLEMENT_FPU=0,
+		parameter [0:0]	OPT_FPU = 0,
 `endif
-				IMPLEMENT_LOCK=1,
+		parameter [0:0]	OPT_LOCK = 1,
+		localparam [0:0] OPT_DMA = 0, OPT_ACCOUNTING = 1'b0,
+		parameter	RESET_DURATION = 10,
+		// }}}
+		// Short-cut names
+		// {{{
 		localparam	// Derived parameters
 				PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 				PAW=ADDRESS_WIDTH,
@@ -93,7 +92,27 @@ module	zipbones #(
 `endif
 				LGTLBSZ = 6,
 				VAW=VIRTUAL_ADDRESS_WIDTH,
-		localparam	AW=ADDRESS_WIDTH
+		localparam	AW=ADDRESS_WIDTH,
+		// }}}
+		// Debug bit allocations
+		// {{{
+		//	DBGCTRL
+		//		10 HALT
+		//		 9 HALT(ED)
+		//		 8 STEP	(W=1 steps, and returns to halted)
+		//		 7 INTERRUPT-FLAG
+		//		 6 RESET_FLAG
+		//		ADDRESS:
+		//		 5	PERIPHERAL-BIT
+		//		[4:0]	REGISTER-ADDR
+		//	DBGDATA
+		//		read/writes internal registers
+		//
+		localparam	RESET_BIT = 6,
+		localparam	STEP_BIT = 8,
+		localparam	HALT_BIT = 10,
+		localparam	CLEAR_CACHE_BIT = 11
+		// }}}
 		// }}}
 	) (
 		// {{{
@@ -110,7 +129,7 @@ module	zipbones #(
 		// }}}
 		// Incoming interrupts
 		input	wire		i_ext_int,
-		// Outgoing interrupt
+		// Our one outgoing interrupt
 		output	wire		o_ext_int,
 		// Wishbone slave interface for debugging purposes
 		// {{{
@@ -136,6 +155,7 @@ module	zipbones #(
 	reg	[31:0]	dbg_odata;
 	reg		dbg_ack;
 	wire		cpu_break, dbg_cmd_write;
+	wire		reset_hold;
 	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
 			cmd_write;
 	reg	[4:0]	cmd_waddr;
@@ -165,6 +185,13 @@ module	zipbones #(
 	assign	o_dbg_ack   = dbg_ack;
 	assign	o_dbg_stall = dbg_stall;
 	assign	o_dbg_data  = dbg_odata;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// The external debug interface
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	// We offer only a limited interface here, requiring a pre-register
 	// write to set the local address.  This interface allows access to
@@ -178,6 +205,41 @@ module	zipbones #(
 	//
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(dbg_addr[5]);
 
+	//
+	// Always start us off with an initial reset
+	// {{{
+	generate if (RESET_DURATION > 0)
+	begin : INITIAL_RESET_HOLD
+		// {{{
+		reg	[$clog2(RESET_DURATION)-1:0]	reset_counter;
+		reg					hold;
+
+		initial	reset_counter = RESET_DURATION;
+		always @(posedge i_clk)
+		if (i_reset)
+			reset_counter <= RESET_DURATION;
+		else if (reset_counter > 0)
+			reset_counter <= reset_counter - 1;
+
+		initial	hold = 1;
+		always @(posedge i_clk)
+		if (i_reset)
+			hold <= 1;
+		else
+			hold <= (reset_counter > 1);
+
+		assign	reset_hold = hold;
+`ifdef	FORMAL
+		always @(*)
+			assert(reset_hold == (reset_counter != 0));
+`endif
+		// }}}
+	end else begin
+
+		assign reset_hold = 0;
+
+	end endgenerate
+
 	// cmd_reset
 	// {{{
 	// Always start us off with an initial reset
@@ -185,10 +247,13 @@ module	zipbones #(
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_reset <= 1'b1;
+	else if (reset_hold)
+		cmd_reset <= 1'b1;
 	else if (cpu_break && !START_HALTED)
 		cmd_reset <= 1'b1;
 	else
-		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[`RESET_BIT]));
+		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[RESET_BIT]));
+	// }}}
 	// }}}
 
 	// cmd_halt
@@ -197,16 +262,16 @@ module	zipbones #(
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_halt <= START_HALTED;
-	else if (cmd_reset)
+	else if (cmd_reset && START_HALTED)
 		cmd_halt <= START_HALTED;
 	else begin
 		// {{{
-		// When shall we release from a halt?  Only if we have come
-		// to a full and complete stop.  Even then, we only release if
-		// we aren't being given a command to step the CPU.
+		// When shall we release from a halt?  Only if we have come to
+		// a full and complete stop.  Even then, we only release if we
+		// aren't being given a command to step the CPU.
 		//
 		if (!cmd_write && !cpu_dbg_stall && dbg_cmd_write
-			&& (!dbg_idata[`HALT_BIT] || dbg_idata[`STEP_BIT]))
+			&& (!dbg_idata[HALT_BIT] || dbg_idata[STEP_BIT]))
 			cmd_halt <= 1'b0;
 
 		// Reasons to halt
@@ -220,8 +285,8 @@ module	zipbones #(
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && dbg_idata[`HALT_BIT]
-						&& !dbg_idata[`STEP_BIT])
+		if (dbg_cmd_write && dbg_idata[HALT_BIT]
+						&& !dbg_idata[STEP_BIT])
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -237,7 +302,7 @@ module	zipbones #(
 			cmd_halt <= 1'b1;
 
 		// 5. Halt on any clear cache bit--independent of any step bit
-		if (dbg_cmd_write && dbg_idata[`CLEAR_CACHE_BIT])
+		if (dbg_cmd_write && dbg_idata[CLEAR_CACHE_BIT])
 			cmd_halt <= 1'b1;
 		// }}}
 	end
@@ -249,8 +314,8 @@ module	zipbones #(
 	always @(posedge i_clk)
 	if (i_reset || cpu_reset)
 		cmd_clear_cache <= 1'b0;
-	else if (cmd_halt && dbg_cmd_write
-			&& dbg_idata[`CLEAR_CACHE_BIT] && dbg_idata[`HALT_BIT])
+	else if (dbg_cmd_write && dbg_idata[CLEAR_CACHE_BIT]
+			&& dbg_idata[HALT_BIT])
 		cmd_clear_cache <= 1'b1;
 	else if (cmd_halt && !cpu_dbg_stall)
 		cmd_clear_cache <= 1'b0;
@@ -262,7 +327,7 @@ module	zipbones #(
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_step <= 1'b0;
-	else if (dbg_cmd_write && dbg_idata[`STEP_BIT])
+	else if (dbg_cmd_write && dbg_idata[STEP_BIT])
 		cmd_step <= 1'b1;
 	else if (!cpu_dbg_stall)
 		cmd_step <= 1'b0;
@@ -300,7 +365,8 @@ module	zipbones #(
 		cmd_waddr <= dbg_addr[4:0];
 		cmd_wdata <= dbg_idata;
 	end
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// The CPU itself
 	// {{{
@@ -343,6 +409,10 @@ module	zipbones #(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
 		.LGICACHE(LGICACHE),
 		.OPT_LGDCACHE(LGDCACHE),
+		.IMPLEMENT_MPY(OPT_MPY),
+		.IMPLEMENT_DIV(OPT_DIV),
+		.IMPLEMENT_FPU(OPT_FPU),
+		.IMPLEMENT_LOCK(OPT_LOCK),
 		.WITH_LOCAL_BUS(0)
 		// }}}
 	) thecpu(

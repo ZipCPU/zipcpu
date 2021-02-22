@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -44,9 +44,8 @@
 // }}}
 module	zipcore #(
 		// {{{
-		parameter [31:0] RESET_ADDRESS=32'h010_0000,
-		parameter	ADDRESS_WIDTH=30,
-				LGICACHE=12,
+		parameter [ADDRESS_WIDTH+1:0] RESET_ADDRESS=32'h010_0000,
+		parameter	ADDRESS_WIDTH=30,	// 32-b word addr width
 		parameter	IMPLEMENT_MPY = 0,
 		parameter [0:0]	IMPLEMENT_SHIFTS = 1,
 		parameter [0:0]	IMPLEMENT_DIVIDE = 1,
@@ -63,9 +62,10 @@ module	zipcore #(
 		parameter		OPT_LGDCACHE = 10,
 		parameter	[0:0]	OPT_NO_USERMODE = 1'b0,
 
-		parameter [0:0]	WITH_LOCAL_BUS = 1'b1,
-		localparam	AW=ADDRESS_WIDTH,
-		parameter	F_LGDEPTH=4
+		localparam	AW=ADDRESS_WIDTH
+`ifdef	FORMAL
+		, parameter	F_LGDEPTH=4
+`endif
 		// }}}
 	) (
 		// {{{
@@ -123,6 +123,7 @@ module	zipcore #(
 
 	// Local parameter definitions
 	// {{{
+	// Verilator lint_off UNUSED
 	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 	localparam [(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
@@ -145,6 +146,7 @@ module	zipcore #(
 			CPU_STEP_BIT    =  6, // Will step one (or two CIS) ins
 			CPU_GIE_BIT     =  5,
 			CPU_SLEEP_BIT   =  4;
+	// Verilator lint_on  UNUSED
 	// }}}
 
 	// Register declarations
@@ -1783,7 +1785,7 @@ module	zipcore #(
 
 		always @(posedge i_clk)
 		if (wr_reg_ce)
-			regset[{1'b0,wr_reg_id[3:0]}] <= wr_gpreg_vl;
+			regset[wr_reg_id[3:0]] <= wr_gpreg_vl;
 
 	end else begin : SET_REGISTERS
 

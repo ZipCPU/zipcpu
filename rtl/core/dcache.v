@@ -48,7 +48,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2016-2020, Gisselquist Technology, LLC
+// Copyright (C) 2016-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -98,7 +98,6 @@ module	dcache #(
 		parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
 						? LS : OPT_FIFO_DEPTH),
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
-		localparam	LGAUX = 3, // log_2 of the maximum number of piped data
 		localparam	DW = 32, // Bus data width
 		localparam	DP = OPT_FIFO_DEPTH,
 		//
@@ -740,6 +739,7 @@ module	dcache #(
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
+		// {{{
 		c_v <= 0;
 		c_wr   <= 1'b0;
 		c_wsel <= 4'hf;
@@ -755,6 +755,7 @@ module	dcache #(
 		stb <= 1'b0;
 		state <= DC_IDLE;
 		set_vflag <= 1'b0;
+		// }}}
 	end else begin
 		// By default, update the cache from the write 1-clock ago
 		// c_wr <= (wr_cstb)&&(wr_wtag == wr_vtag);

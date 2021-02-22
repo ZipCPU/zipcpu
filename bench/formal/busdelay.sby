@@ -1,5 +1,6 @@
 [tasks]
 prf
+prfd prf opt_delay_stall
 
 [options]
 prf: mode prove
@@ -12,6 +13,8 @@ smtbmc
 read -formal -D BUSDELAY busdelay.v
 read -formal -D BUSDELAY fwb_slave.v
 read -formal -D BUSDELAY fwb_master.v
+opt_delay_stall:  hierarchy -top busdelay -chparam opt_delay_stall 1
+~opt_delay_stall: hierarchy -top busdelay -chparam opt_delay_stall 0
 prep -top busdelay
 
 [files]

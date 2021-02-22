@@ -265,7 +265,7 @@ module	ffetch #(
 	always @(posedge i_clk)
 	if (f_past_valid && !i_reset && !cpu_new_pc)
 		`CPU_ASSERT(f_next_address == cpu_pc);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Contract checking

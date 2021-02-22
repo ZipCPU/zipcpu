@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020, Gisselquist Technology, LLC
+// Copyright (C) 2020-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -35,9 +35,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
 // }}}
 module	axilfetch #(
 		// {{{
@@ -47,7 +45,6 @@ module	axilfetch #(
 		parameter	FETCH_LIMIT=16,
 		parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
 		localparam	AW=C_AXI_ADDR_WIDTH,
-		localparam	DW=DATA_WIDTH,
 		localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8),
 		localparam	INSNS_PER_WORD = C_AXI_DATA_WIDTH / DATA_WIDTH
 		// }}}
@@ -446,6 +443,7 @@ module	axilfetch #(
 `ifdef	FORMAL
 	// Declarations
 	// {{{
+	localparam	DW=DATA_WIDTH;
 	localparam	F_LGDEPTH=LGDEPTH+2;
 	reg	f_past_valid;
 	wire	[(F_LGDEPTH-1):0]	faxil_outstanding;

@@ -1,5 +1,6 @@
 [tasks]
 prf
+prfr prf opt_reload
 
 [options]
 prf: mode prove
@@ -11,6 +12,8 @@ smtbmc
 [script]
 read -formal -DZIPTIMER ziptimer.v
 read -formal -DZIPTIMER fwb_slave.v
+opt_reload:  hierarchy -top ziptimer -chparam RELOADABLE 1
+~opt_reload: hierarchy -top ziptimer -chparam RELOADABLE 0
 prep -top ziptimer
 
 [files]

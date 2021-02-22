@@ -1,5 +1,6 @@
 [tasks]
 prf
+prf64 prf bus64
 cvr
 
 [options]

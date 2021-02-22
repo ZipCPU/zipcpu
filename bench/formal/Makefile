@@ -75,6 +75,7 @@ AXIICC := axiicache
 AXILMEM:= axilops
 AXLPIPE:= axilpipe
 AXLPH  := axilperiphs
+AXIDCC := axidcache
 
 ## CPU Wrappers
 BONES  := zipbones
@@ -168,9 +169,11 @@ $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 
 .PHONY: $(AXIICC)
 ## {{{
-$(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_cvr/PASS
+$(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_prf64/PASS $(AXIICC)_cvr/PASS
 $(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby prf
+$(AXIICC)_prf64/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
+	sby -f $(AXIICC).sby prf64
 $(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby cvr
 ## }}}
@@ -262,15 +265,28 @@ $(WBPIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
 $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 	sby -f $(WBPIPE).sby nolcl_noaligned_nolock
 ## }}}
+
+.PHONY: $(AXIDCC)
+## {{{
+$(AXIDCC): $(AXIDCC)_prf/PASS $(AXIDCC)_prf64/PASS $(AXIDCC)_cvr/PASS
+$(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prf
+$(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prf64
+$(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIICC).sby cvr
+## }}}
 ## }}}
 
 ## Peripherals
 ## {{{
 .PHONY: $(TMR)
 ## {{{
-$(TMR): $(TMR)_prf/PASS
+$(TMR): $(TMR)_prf/PASS $(TMR)_prfr/PASS
 $(TMR)_prf/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
 	sby -f $(TMR).sby prf
+$(TMR)_prfr/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
+	sby -f $(TMR).sby prfr
 ## }}}
 
 .PHONY: $(CNT)
@@ -442,9 +458,11 @@ $(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
 
 .PHONY: $(WBDLY)
 ## {{{
-$(WBDLY): $(WBDLY)_prf/PASS
+$(WBDLY): $(WBDLY)_prf/PASS $(WBDLY)_prfd/PASS
 $(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
 	sby -f $(WBDLY).sby prf
+$(WBDLY)_prfd/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby prfd
 ## }}}
 
 .PHONY: $(PRIARB)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipjiffies.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This peripheral is motivated by the Linux use of 'jiffies'.
@@ -44,9 +44,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -61,39 +61,44 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype	none
-//
-module	zipjiffies(i_clk, i_reset, i_ce,
-		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
-			o_wb_stall, o_wb_ack, o_wb_data,
-		o_int);
-	parameter	BW = 32;
-	input	wire			i_clk, i_reset, i_ce;
-	// Wishbone inputs
-	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
-	input	wire	[(BW-1):0]	i_wb_data;
-	// Wishbone outputs
-	output	wire			o_wb_stall;
-	output	reg			o_wb_ack;
-	output	wire	[(BW-1):0]	o_wb_data;
-	// Interrupt line
-	output	reg			o_int;
+// }}}
+module	zipjiffies #(
+		parameter	BW = 32
+	) (
+		// {{{
+		input	wire			i_clk, i_reset, i_ce,
+		// Wishbone inputs
+		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
+		input	wire	[(BW-1):0]	i_wb_data,
+		// Wishbone outputs
+		output	wire			o_wb_stall,
+		output	reg			o_wb_ack,
+		output	wire	[(BW-1):0]	o_wb_data,
+		// Interrupt line
+		output	reg			o_int
+		// }}}
+	);
 
+	// Local declarations
+	// {{{
 	reg	[(BW-1):0]		r_counter;
 	//
 	reg				int_set,  new_set, int_now;
 	reg		[(BW-1):0]	int_when, new_when;
 	reg	signed	[(BW-1):0]	till_wb,  till_when;
+	// }}}
 
-	//
+	// r_counter
+	// {{{
 	// Our counter logic: The counter is always counting up--it cannot
 	// be stopped or altered.  It's really quite simple.  Okay, not quite.
 	// We still support the clock enable line.  We do this in order to
@@ -101,14 +106,16 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	// debugger, the timer's all slow down so that everything can be stepped
 	// together, one clock at a time.
 	//
-
 	initial	r_counter = 0;
 	always @(posedge i_clk)
 	if (i_reset)
 		r_counter <= 0;
 	else if (i_ce)
 		r_counter <= r_counter+1;
+	// }}}
 
+	// int_now
+	// {{{
 	initial	int_now = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -117,8 +124,10 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		int_now <= ((r_counter + 1) == (int_when));
 	else
 		int_now <= 1'b0;
+	// }}}
 
-	//
+	// new_set, new_when
+	// {{{
 	// Writes to the counter set an interrupt--but only if they are in the
 	// future as determined by the signed result of an unsigned subtract.
 	//
@@ -141,15 +150,21 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		if (i_reset)
 			new_set <= 1'b0;
 	end
+	// }}}
 
+	// o_int, int_set
+	// {{{
 	initial	o_int   = 1'b0;
 	initial	int_set = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
+		// {{{
 		o_int <= 0;
 		int_set <= 0;
+		// }}}
 	end else begin
+		// {{{
 		o_int <= 1'b0;
 		if ((i_ce)&&(int_set)&&(r_counter == int_when))
 			// Interrupts are self-clearing
@@ -161,13 +176,19 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 			int_set <= 1'b1;
 		else if (int_now)
 			int_set <= 1'b0;
+		// }}}
 	end
+	// }}}
 
+	// int_when
+	// {{{
 	always @(posedge i_clk)
 	if ((new_set)&&(till_wb > 0)&&((till_when[BW-1])||(!int_set)))
 		int_when <= new_when;
+	// }}}
 
-	//
+	// o_wb_ack
+	// {{{
 	// Acknowledge any wishbone accesses -- everything we did took only
 	// one clock anyway.
 	//
@@ -177,15 +198,27 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		o_wb_ack <= 1'b0;
 	else
 		o_wb_ack <= i_wb_stb;
+	// }}}
 
 	assign	o_wb_data = r_counter;
 	assign	o_wb_stall = 1'b0;
 
 	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = i_wb_cyc;
 	// verilator lint_on  UNUSED
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
@@ -195,7 +228,7 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -204,12 +237,13 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 	// Anytime the stb is high, the cycle line must also be high
 	always @(posedge i_clk)
 		assume((!i_wb_stb)||(i_wb_cyc));
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions about our bus outputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
+	//
 	//
 
 	// We never stall the bus
@@ -222,12 +256,11 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 		assert(o_wb_ack);
 	else
 		assert(!o_wb_ack);
-
-
-	////////////////////////////////////////////////////////////////////////
+	// }}}
+	///////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our internal state and our outputs
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -294,6 +327,7 @@ module	zipjiffies(i_clk, i_reset, i_ce,
 			||($past(till_wb[BW-1]))
 			||($past(till_wb == 0))))
 		assert(int_when == $past(int_when));
-	//
+	// }}}
 `endif
+// }}}
 endmodule

@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020, Gisselquist Technology, LLC
+// Copyright (C) 2020-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -55,7 +55,10 @@ module	axilpipe #(
 		//
 		// parameter [0:0]	IMPLEMENT_LOCK=1'b1,
 		parameter [0:0]	OPT_ALIGNMENT_ERR = 1'b1,
+		// Verilator lint_off UNUSED
+		// This *should* be used -- need to rewrite so that it is
 		parameter [0:0]	OPT_ZERO_ON_IDLE = 1'b0,
+		// Verilator lint_on  UNUSED
 		localparam	AXILLSB = $clog2(C_AXI_ADDR_WIDTH/8)
 		// }}}
 	) (
@@ -85,31 +88,31 @@ module	axilpipe #(
 		// {{{
 		// Writes
 		// {{{
-		output	reg				M_AXI_AWVALID,
-		input	wire				M_AXI_AWREADY,
-		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_AWADDR,
-		output	wire	[2:0]			M_AXI_AWPROT,
+		output	reg			M_AXI_AWVALID,
+		input	wire			M_AXI_AWREADY,
+		output	reg	[AW-1:0]	M_AXI_AWADDR,
+		output	wire	[2:0]		M_AXI_AWPROT,
 		//
-		output	reg				M_AXI_WVALID,
-		input	wire				M_AXI_WREADY,
-		output	reg [C_AXI_DATA_WIDTH-1:0]	M_AXI_WDATA,
-		output	reg [C_AXI_DATA_WIDTH/8-1:0]	M_AXI_WSTRB,
+		output	reg			M_AXI_WVALID,
+		input	wire			M_AXI_WREADY,
+		output	reg	[DW-1:0]	M_AXI_WDATA,
+		output	reg	[DW/8-1:0]	M_AXI_WSTRB,
 		//
-		input	wire				M_AXI_BVALID,
-		output	wire				M_AXI_BREADY,
-		input	wire [1:0]			M_AXI_BRESP,
+		input	wire			M_AXI_BVALID,
+		output	wire			M_AXI_BREADY,
+		input	wire [1:0]		M_AXI_BRESP,
 		// }}}
 		// Reads
 		// {{{
-		output	reg				M_AXI_ARVALID,
-		input	wire				M_AXI_ARREADY,
-		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
-		output	wire	[2:0]			M_AXI_ARPROT,
+		output	reg			M_AXI_ARVALID,
+		input	wire			M_AXI_ARREADY,
+		output	reg	[AW-1:0]	M_AXI_ARADDR,
+		output	wire	[2:0]		M_AXI_ARPROT,
 		//
-		input	wire				M_AXI_RVALID,
-		output	wire				M_AXI_RREADY,
-		input	wire [C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
-		input	wire [1:0]			M_AXI_RRESP
+		input	wire			M_AXI_RVALID,
+		output	wire			M_AXI_RREADY,
+		input	wire	[DW-1:0]	M_AXI_RDATA,
+		input	wire	[1:0]		M_AXI_RRESP
 		// }}}
 		// }}}
 		// }}}
@@ -767,6 +770,21 @@ module	axilpipe #(
 			default: begin end
 			endcase
 		end
+
+		// Keep Verilator happy
+		// {{{
+		// Verilator lint_off UNUSED
+		wire	wide_unused;
+
+		if (C_AXI_DATA_WIDTH > 32)
+		begin : WIDE_WIDTH_UNUSED
+			assign	wide_unused = &{ 1'b0,
+				wide_return[C_AXI_DATA_WIDTH-1:32] };
+		end else begin : WIDE_WIDTH_NOT_UNUSED
+			assign	wide_unused = 1'b0;
+		end
+		// Verilator lint_on  UNUSED
+		// }}}
 		// }}}
 	end else begin : REALIGN_RETURN_DATA
 		// {{{
@@ -804,6 +822,21 @@ module	axilpipe #(
 			if (fifo_read_data[AXILLSB+2:AXILLSB+1])
 				o_result[15:8] <= 0;
 		end
+
+		// Keep Verilator happy
+		// {{{
+		// Verilator lint_off UNUSED
+		wire	wide_unused;
+
+		if (C_AXI_DATA_WIDTH > 32)
+		begin : WIDE_WIDTH_UNUSED
+			assign	wide_unused = &{ 1'b0,
+				wide_return[C_AXI_DATA_WIDTH-1:32] };
+		end else begin : WIDE_WIDTH_NOT_UNUSED
+			assign	wide_unused = 1'b0;
+		end
+		// Verilator lint_on  UNUSED
+		// }}}
 		// }}}
 	end endgenerate
 
@@ -841,7 +874,7 @@ module	axilpipe #(
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0], i_lock,
 			// i_addr[31:C_AXI_ADDR_WIDTH],
-			pending_err, adr_lsb,
+			pending_err, adr_lsb, i_addr[31:AW],
 			none_outstanding };
 	// verilator lint_on  UNUSED
 	// }}}

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipcounter.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:
@@ -26,9 +26,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -43,62 +43,79 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-module	zipcounter(i_clk, i_reset, i_event,
-		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
-			o_wb_stall, o_wb_ack, o_wb_data,
-		o_int);
-	parameter	BW = 32;
-	//
-	localparam	F_LGDEPTH = 2;
-	//
-	input	wire			i_clk, i_reset, i_event;
-	// Wishbone inputs
-	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
-	input	wire	[(BW-1):0]	i_wb_data;
-	// Wishbone outputs
-	output	wire			o_wb_stall;
-	output	reg			o_wb_ack;
-	output	reg	[(BW-1):0]	o_wb_data;
-	// Interrupt line
-	output	reg			o_int;
+// }}}
+module	zipcounter #(
+		// {{{
+		parameter	BW = 32,
+		//
+		localparam	F_LGDEPTH = 2
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset, i_event,
+		// Wishbone inputs
+		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
+		input	wire	[(BW-1):0]	i_wb_data,
+		// Wishbone outputs
+		output	wire			o_wb_stall,
+		output	reg			o_wb_ack,
+		output	reg	[(BW-1):0]	o_wb_data,
+		// Interrupt line
+		output	reg			o_int
+		// }}}
+	);
 
+	// o_int, o_wb_data
+	// {{{
 	initial	o_int = 0;
 	initial	o_wb_data = 32'h00;
 	always @(posedge i_clk)
-		if (i_reset)
-			{ o_int, o_wb_data } <= 0;
-		else if ((i_wb_stb)&&(i_wb_we))
-			{ o_int, o_wb_data } <= { 1'b0, i_wb_data };
-		else if (i_event)
-			{ o_int, o_wb_data } <= o_wb_data+{{(BW-1){1'b0}},1'b1};
-		else
-			o_int <= 1'b0;
+	if (i_reset)
+		{ o_int, o_wb_data } <= 0;
+	else if ((i_wb_stb)&&(i_wb_we))
+		{ o_int, o_wb_data } <= { 1'b0, i_wb_data };
+	else if (i_event)
+		{ o_int, o_wb_data } <= o_wb_data+{{(BW-1){1'b0}},1'b1};
+	else
+		o_int <= 1'b0;
+	// }}}
 
+	// o_wb_ack
+	// {{{
 	initial	o_wb_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		o_wb_ack <= 1'b0;
 	else
 		o_wb_ack <= i_wb_stb;
+	// }}}
 	assign	o_wb_stall = 1'b0;
 
 
 	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = i_wb_cyc;
 	// verilator lint_on  UNUSED
-
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
@@ -108,23 +125,21 @@ module	zipcounter(i_clk, i_reset, i_event,
 	always @(*)
 	if (!f_past_valid)
 		assume(i_reset);
-
-	////////////////////////////////////////////////
-	//
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our inputs
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	////////////////////////////////////////////////
 	//
 
-	////////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus interface properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	////////////////////////////////////////////////
 	//
 
 	// We never stall the bus
@@ -138,41 +153,52 @@ module	zipcounter(i_clk, i_reset, i_event,
 
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 
-	fwb_slave #( .AW(1), .F_MAX_STALL(0),
+	fwb_slave #(
+		// {{{
+		.AW(1), .F_MAX_STALL(0),
 			.F_MAX_ACK_DELAY(1), .F_LGDEPTH(F_LGDEPTH)
-		) fwbi(i_clk, i_reset,
+		// }}}
+	) fwbi(
+		// {{{
+		i_clk, i_reset,
 		i_wb_cyc, i_wb_stb, i_wb_we, 1'b0, i_wb_data, 4'hf,
 			o_wb_ack, o_wb_stall, o_wb_data, 1'b0,
-		f_nreqs, f_nacks, f_outstanding);
+		f_nreqs, f_nacks, f_outstanding
+		// }}}
+	);
 
 	always @(*)
 	if ((o_wb_ack)&&(i_wb_cyc))
 		assert(f_outstanding==1);
 	else
 		assert(f_outstanding == 0);
-
-	////////////////////////////////////////////////
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assumptions about our outputs
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
-	//
-	////////////////////////////////////////////////
 	//
 
 	// Drop the interrupt line and reset the counter on any reset
+	// {{{
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_reset)))
+	if (!f_past_valid || $past(i_reset))
 		assert((!o_int)&&(o_wb_data == 0));
+	// }}}
 
 	// Clear the interrupt and set the counter on any write (other than
 	// during a reset)
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))
 		&&($past(i_wb_stb))&&($past(i_wb_we)))
 		assert((!o_int)&&(o_wb_data == $past(i_wb_data)));
+	// }}}
 
 	// Normal logic of the routine itself
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&(!$past(i_wb_stb)))
 	begin
@@ -198,12 +224,15 @@ module	zipcounter(i_clk, i_reset, i_event,
 				assert(!o_int);
 		end
 	end
+	// ?}}}
 
-	//
 	// The output interrupt should never be true two clocks in a row
+	// {{{
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_int)))
 		assert(!o_int);
-
+	// }}}
+	// }}}
 `endif
+// }}}
 endmodule
