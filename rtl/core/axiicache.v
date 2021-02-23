@@ -88,7 +88,9 @@ module	axiicache #(
 		localparam	LGINSN  = $clog2(INSN_WIDTH/8),
 		localparam	INSN_PER_WORD = C_AXI_DATA_WIDTH/INSN_WIDTH,
 		localparam	AW=C_AXI_ADDR_WIDTH,
-		localparam	DW=C_AXI_DATA_WIDTH
+		localparam	DW=C_AXI_DATA_WIDTH,
+		localparam	LS=LGLINESZ, // Size of a cache line in words
+				LSB=LGLINESZ+ADDRLSB
 		// }}}
 	) (
 		// {{{
@@ -143,8 +145,6 @@ module	axiicache #(
 			CACHELENW = CACHELEN/(C_AXI_DATA_WIDTH/8); // Word sz
 	localparam	CWB=LGCACHESZ, // Short hand for LGCACHESZ
 			CW=LGCACHESZ-ADDRLSB; // now in words
-	localparam	LS=LGLINESZ, // Size of a cache line in words
-			LSB=LGLINESZ+ADDRLSB;
 	localparam	LGLINES=CWB-LSB;
 	//
 
@@ -332,11 +332,11 @@ module	axiicache #(
 	// }}}
 
 	// }}}
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Fill the cache with the new data
 	// {{{
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -404,11 +404,11 @@ module	axiicache #(
 	// }}}
 
 	// }}}
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Read the instruction from the cache
 	// {{{
-	/////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -433,13 +433,13 @@ module	axiicache #(
 		always @(*)
 			o_insn = cache_line;
 
-	end else begin
+	end else begin : SHIFT_CACHE_LINE
 
 		reg	[C_AXI_DATA_WIDTH-1:0]	shifted;
 
 		always @(*)
 		begin
-			shifted=cache_line >> (INSN_WIDTH * o_pc[LSB-1:LGINSN]);
+			shifted=cache_line >> (INSN_WIDTH * o_pc[ADDRLSB-1:LGINSN]);
 			o_insn = shifted[DW-1:0];
 		end
 	end endgenerate
@@ -989,6 +989,15 @@ module	axiicache #(
 		cover((f_valid_legal)
 			&&($past(f_valid_legal && i_ready))
 			&&($past(f_valid_legal && i_ready,2))
+			&&($past(!o_illegal && i_ready && i_new_pc,3))
+			&&($past(f_valid_legal && i_ready,4))
+			&&($past(f_valid_legal && i_ready,5))
+			&&($past(f_valid_legal && i_ready,6)));
+
+	always @(posedge S_AXI_ACLK)		// Trace 7
+		cover((f_valid_legal)
+			&&($past(f_valid_legal && i_ready))
+			&&($past(!o_illegal && i_ready,2))
 			&&($past(!o_illegal && i_ready && i_new_pc,3))
 			&&($past(f_valid_legal && i_ready,4))
 			&&($past(f_valid_legal && i_ready,5))
