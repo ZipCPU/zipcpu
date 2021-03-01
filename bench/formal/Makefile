@@ -458,11 +458,16 @@ $(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
 
 .PHONY: $(WBDLY)
 ## {{{
-$(WBDLY): $(WBDLY)_prf/PASS $(WBDLY)_prfd/PASS
+$(WBDLY): $(WBDLY)_prf/PASS   $(WBDLY)_prfd/PASS
+$(WBDLY): $(WBDLY)_prflp/PASS $(WBDLY)_prfdlp/PASS
 $(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
 	sby -f $(WBDLY).sby prf
 $(WBDLY)_prfd/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
 	sby -f $(WBDLY).sby prfd
+$(WBDLY)_prflp/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby prflp
+$(WBDLY)_prfdlp/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
+	sby -f $(WBDLY).sby prfdlp
 ## }}}
 
 .PHONY: $(PRIARB)

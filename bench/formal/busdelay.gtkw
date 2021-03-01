@@ -1,0 +1,82 @@
+[*]
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Mon Mar  1 16:06:49 2021
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1920 1054
+[pos] -1 -1
+*-3.908651 25 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] busdelay.
+[sst_width] 329
+[signals_width] 206
+[sst_expanded] 1
+[sst_vpaned_height] 290
+@28
+busdelay.i_clk
+busdelay.i_reset
+@200
+-
+@28
+[color] 3
+busdelay.i_wb_cyc
+[color] 3
+busdelay.i_wb_stb
+[color] 3
+busdelay.i_wb_we
+@22
+[color] 3
+busdelay.i_wb_addr[31:0]
+[color] 3
+busdelay.i_wb_data[31:0]
+[color] 3
+busdelay.i_wb_sel[3:0]
+@28
+busdelay.o_wb_stall
+busdelay.o_wb_ack
+@22
+busdelay.o_wb_data[31:0]
+@28
+[color] 1
+busdelay.o_wb_err
+@200
+-
+@28
+busdelay.o_dly_cyc
+busdelay.o_dly_stb
+busdelay.o_dly_we
+@22
+busdelay.o_dly_addr[31:0]
+busdelay.o_dly_data[31:0]
+busdelay.o_dly_sel[3:0]
+@28
+[color] 3
+busdelay.i_dly_stall
+[color] 3
+busdelay.i_dly_ack
+@22
+[color] 3
+busdelay.i_dly_data[31:0]
+@28
+[color] 1
+busdelay.i_dly_err
+@200
+-
+-
+@22
+busdelay.f_wb_request[69:0]
+busdelay.f_pending[69:0]
+busdelay.f_dly_request[69:0]
+@200
+-
+@22
+busdelay.f_wb_outstanding[3:0]
+busdelay.f_dly_outstanding[3:0]
+@201
+-
+@28
+busdelay.f_never
+@22
+busdelay.f_nvr_request[69:0]
+[pattern_trace] 1
+[pattern_trace] 0
