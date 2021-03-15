@@ -408,7 +408,10 @@ module	axilops #(
 		axi_wstrb <= 0;
 		// }}}
 	end
+	// }}}
 
+	// M_AXI_WDATA, M_AXI_WSTRB
+	// {{{
 	generate if (SWAP_ENDIANNESS)
 	begin : SWAP_WRITE_DATA_STRB
 		// {{{
@@ -428,6 +431,7 @@ module	axilops #(
 			{ M_AXI_WSTRB, M_AXI_WDATA } = { axi_wstrb, axi_wdata };
 		// }}}
 	end endgenerate
+	// }}}
 
 	// w_misaligned
 	// {{{
