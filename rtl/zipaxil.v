@@ -679,8 +679,9 @@ module	zipaxil #(
 		, .F_LGDEPTH(F_LGDEPTH)
 `endif
 		// }}}
-	) core (S_AXI_ACLK, cmd_reset, i_interrupt,
+	) core (
 		// {{{
+		S_AXI_ACLK, cmd_reset, i_interrupt,
 		// Debug interface
 		cmd_halt, cmd_clear_cache,
 			dbg_write_reg, dbg_write_valid, dbg_write_data,

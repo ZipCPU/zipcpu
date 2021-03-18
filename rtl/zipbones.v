@@ -166,9 +166,9 @@ module	zipbones #(
 			cpu_dbg_we,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_dbg_data;
-	wire	[31:0]	cmd_data;
+	wire	[31:0]	cpu_status;
 	reg		dbg_pre_addr, dbg_pre_ack;
-	reg	[31:0]	dbg_cmd_data;
+	reg	[31:0]	dbg_cpu_status;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -337,17 +337,20 @@ module	zipbones #(
 
 	assign	cpu_halt = (cmd_halt);
 	// Values:
-	//	0x0003f -> cmd_addr mask
-	//	0x00040 -> reset
-	//	0x00080 -> PIC interrrupt pending
-	//	0x00100 -> cmd_step
-	//	0x00200 -> cmd_stall
-	//	0x00400 -> cmd_halt
-	//	0x00800 -> cmd_clear_cache
-	//	0x01000 -> cc.sleep
+	//	0x10000 -> External interrupt is high
+	//
+	//	0x08000 -> cpu_break (CPU is halted on an error)
+	//	0x04000 -> Supervisor bus error
 	//	0x02000 -> cc.gie
-	//	0x10000 -> External interrupt line is high
-	assign	cmd_data = { 7'h00, 8'h00, i_ext_int,
+	//	0x01000 -> cc.sleep
+	//	0x00800 -> cmd_clear_cache
+	//	0x00400 -> cmd_halt
+	//	0x00200 -> cmd_stall
+	//	0x00100 -> cmd_step
+	//	0x00080 -> PIC interrrupt pending
+	//	0x00040 -> reset
+	//	0x0003f -> cmd_addr mask
+	assign	cpu_status = { 7'h00, 8'h00, i_ext_int,
 			cpu_break, cpu_dbg_cc,
 			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 			i_ext_int, cpu_reset, 6'h0 };
@@ -420,7 +423,7 @@ module	zipbones #(
 		i_clk, cpu_reset, i_ext_int,
 			cpu_halt, cmd_clear_cache,
 				cmd_waddr, cmd_write,
-				cmd_wdata, i_dbg_addr[4:0],
+				cmd_wdata, dbg_addr[4:0],
 				cpu_dbg_stall, cpu_dbg_data,
 				cpu_dbg_cc, cpu_break,
 			o_wb_cyc, o_wb_stb,
@@ -439,13 +442,13 @@ module	zipbones #(
 
 	// Return debug response values
 	// {{{
-	// assign	dbg_odata = (dbg_addr[5])?cmd_data :cpu_dbg_data;
+	// assign	dbg_odata = (dbg_addr[5])?cpu_status :cpu_dbg_data;
 
 	always @(posedge i_clk)
 		dbg_pre_addr <= dbg_addr[5];
 
 	always @(posedge i_clk)
-		dbg_cmd_data <= cmd_data;
+		dbg_cpu_status <= cpu_status;
 
 	initial	dbg_pre_ack = 1'b0;
 	always @(posedge i_clk)
@@ -463,7 +466,7 @@ module	zipbones #(
 
 	always @(posedge i_clk)
 	if (dbg_pre_addr)
-		dbg_odata <= dbg_cmd_data;
+		dbg_odata <= dbg_cpu_status;
 	else
 		dbg_odata <= cpu_dbg_data;
 
