@@ -14,6 +14,7 @@ axilfetch_*/
 axilops_*/
 axilperiphs_*/
 axilpipe_*/
+axiops_*/
 busdelay_*/
 cpuops_*/
 dblfetch_*/
