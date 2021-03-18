@@ -33,7 +33,6 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -49,15 +48,9 @@ module	axilops #(
 		localparam	AW = C_AXI_ADDR_WIDTH,
 		localparam	DW = C_AXI_DATA_WIDTH,
 		//
-		// AXI locks are a challenge, and require support from the
-		// CPU.  Specifically, we have to be able to unroll and re-do
-		// the load instruction on any atomic access failure.  For that
-		// reason, we'll ignore the lock request initially.
-		//
-		// parameter [0:0]	IMPLEMENT_LOCK=1'b1,
-		parameter [0:0]	OPT_ALIGNMENT_ERR = 1'b1,
-		parameter [0:0]	OPT_ZERO_ON_IDLE = 1'b0,
-		localparam	AXILLSB = $clog2(C_AXI_ADDR_WIDTH/8)
+		parameter [0:0]		OPT_ALIGNMENT_ERR = 1'b1,
+		parameter [0:0]		OPT_LOWPOWER = 1'b0,
+		localparam	AXILSB = $clog2(C_AXI_ADDR_WIDTH/8)
 		// }}}
 	) (
 		// {{{
@@ -86,29 +79,29 @@ module	axilops #(
 		// {{{
 		output	reg				M_AXI_AWVALID,
 		input	wire				M_AXI_AWREADY,
-		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_AWADDR,
-		output	reg	[2:0]			M_AXI_AWPROT,
+		output	reg	[AW-1:0]		M_AXI_AWADDR,
+		output	wire	[2:0]			M_AXI_AWPROT,
 		//
 		output	reg				M_AXI_WVALID,
 		input	wire				M_AXI_WREADY,
-		output	reg [C_AXI_DATA_WIDTH-1:0]	M_AXI_WDATA,
-		output	reg [C_AXI_DATA_WIDTH/8-1:0]	M_AXI_WSTRB,
+		output	reg	[DW-1:0]		M_AXI_WDATA,
+		output	reg	[DW/8-1:0]		M_AXI_WSTRB,
 		//
 		input	wire				M_AXI_BVALID,
 		output	reg				M_AXI_BREADY,
-		input	wire [1:0]			M_AXI_BRESP,
+		input	wire	[1:0]			M_AXI_BRESP,
 		// }}}
 		// Reads
 		// {{{
 		output	reg				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
-		output	reg [C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
-		output	reg	[2:0]			M_AXI_ARPROT,
+		output	reg	[AW-1:0]		M_AXI_ARADDR,
+		output	wire	[2:0]			M_AXI_ARPROT,
 		//
 		input	wire				M_AXI_RVALID,
 		output	reg				M_AXI_RREADY,
-		input	wire [C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
-		input	wire [1:0]			M_AXI_RRESP
+		input	wire	[DW-1:0]		M_AXI_RDATA,
+		input	wire	[1:0]			M_AXI_RRESP
 		// }}}
 		// }}}
 	);
@@ -116,27 +109,32 @@ module	axilops #(
 	// Declarations
 	// {{{
 	wire	i_clk = S_AXI_ACLK;
-	wire	i_reset = !S_AXI_ARESETN;
+	// wire	i_reset = !S_AXI_ARESETN;
 
 	reg	misaligned_request, w_misaligned, misaligned_aw_request,
-		misaligned_response_pending,pending_err, misaligned_read;
+		misaligned_response_pending,pending_err, misaligned_read,
+		w_misalignment_err;
 	reg	r_flushing;
 	reg	[3:0]			r_op;
-	reg	[C_AXI_DATA_WIDTH-1:0]	next_wdata;
-	reg [C_AXI_DATA_WIDTH/8-1:0]	next_wstrb;
+	reg	[DW-1:0]		next_wdata;
+	reg	[DW/8-1:0]		next_wstrb;
 	reg	[31:0]			last_result;
-	reg	[31:0]			endian_swapped_wdata;
+	// reg	[31:0]			endian_swapped_wdata;
 	// reg	[31:0]			endian_swapped_result;
-	reg [2*C_AXI_DATA_WIDTH/8-1:0]	shifted_wstrb_word,
+	reg	[2*DW/8-1:0]		shifted_wstrb_word,
 					shifted_wstrb_halfword,
 					shifted_wstrb_byte;
-	reg [2*C_AXI_DATA_WIDTH/8-1:0]	swapped_wstrb_word,
+	reg	[2*DW/8-1:0]		swapped_wstrb_word,
 					swapped_wstrb_halfword,
 					swapped_wstrb_byte;
-	reg	[C_AXI_DATA_WIDTH-1:0]	axi_wdata;
-	reg [C_AXI_DATA_WIDTH/8-1:0]	axi_wstrb;
+	reg	[DW-1:0]		axi_wdata;
+	reg	[DW/8-1:0]		axi_wstrb;
+	reg	[AXILSB-1:0]		swapaddr;
+
 	// }}}
 
+	// xVALID, and xREADY
+	// {{{
 	initial	M_AXI_AWVALID = 1'b0;
 	initial	M_AXI_WVALID = 1'b0;
 	initial	M_AXI_ARVALID = 1'b0;
@@ -158,7 +156,7 @@ module	axilops #(
 		if (M_AXI_AWREADY)
 			M_AXI_AWVALID <= M_AXI_AWVALID && misaligned_aw_request;
 		if (M_AXI_WREADY)
-			M_AXI_WVALID <= M_AXI_WVALID && misaligned_request;
+			M_AXI_WVALID  <= M_AXI_WVALID && misaligned_request;
 		if (M_AXI_ARREADY)
 			M_AXI_ARVALID <= M_AXI_ARVALID && misaligned_request;
 
@@ -178,8 +176,7 @@ module	axilops #(
 		M_AXI_BREADY  <=  i_op[0];
 		M_AXI_RREADY  <= !i_op[0];
 
-		if (i_cpu_reset || o_err || !i_stb
-				|| (OPT_ALIGNMENT_ERR && w_misaligned))
+		if (i_cpu_reset || o_err || !i_stb || w_misalignment_err)
 		begin
 			M_AXI_AWVALID <= 0;
 			M_AXI_WVALID  <= 0;
@@ -190,6 +187,7 @@ module	axilops #(
 		end
 		// }}}
 	end
+	// }}}
 
 	// r_flushing
 	// {{{
@@ -213,28 +211,31 @@ module	axilops #(
 	// {{{
 	initial	M_AXI_AWADDR = 0;
 	always @(posedge i_clk)
-	if (!S_AXI_ARESETN && OPT_ZERO_ON_IDLE)
+	if (!S_AXI_ARESETN && OPT_LOWPOWER)
 		M_AXI_AWADDR <= 0;
 	else if (!M_AXI_BREADY && !M_AXI_RREADY)
-	begin
-		M_AXI_AWADDR <= (i_stb && OPT_ZERO_ON_IDLE) ? 0 : i_addr;
+	begin // Initial address
+		// {{{
+		M_AXI_AWADDR <= i_addr;
 
-		if (OPT_ZERO_ON_IDLE && !i_stb)
+		if (OPT_LOWPOWER && !i_stb)
 			M_AXI_AWADDR <= 0;
 
 		if (SWAP_WSTRB)
-			M_AXI_AWADDR[1:0] <= 2'b00;
-
+			M_AXI_AWADDR[AXILSB-1:0] <= 0;
+		// }}}
 	end else if ((M_AXI_AWVALID && M_AXI_AWREADY)
 			||(M_AXI_ARVALID && M_AXI_ARREADY))
-	begin
-		M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILLSB]
-			<= M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILLSB] + 1;
-		M_AXI_AWADDR[AXILLSB-1:0] <= 0;
+	begin // Subsequent addresses
+		// {{{
+		M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILSB]
+			<= M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILSB] + 1;
+		M_AXI_AWADDR[AXILSB-1:0] <= 0;
 
-		if (OPT_ZERO_ON_IDLE && ((M_AXI_RREADY && !misaligned_request)
+		if (OPT_LOWPOWER && ((M_AXI_RREADY && !misaligned_request)
 			|| (M_AXI_BREADY && !misaligned_aw_request)))
 			M_AXI_AWADDR <= 0;
+		// }}}
 	end
 
 	always @(*)
@@ -243,26 +244,26 @@ module	axilops #(
 
 	// AxPROT
 	// {{{
-	always @(*)
-	begin
-		M_AXI_AWPROT = 3'b000;
-		M_AXI_ARPROT = 3'b000;
-	end
+	localparam [2:0]	AXI_UNPRIVILEGED_NONSECURE_DATA_ACCESS = 3'h0;
+	localparam [2:0]	OPT_PROT=AXI_UNPRIVILEGED_NONSECURE_DATA_ACCESS;
+
+	assign	M_AXI_AWPROT  = OPT_PROT;
+	assign	M_AXI_ARPROT  = OPT_PROT;
 	// }}}
 
 	// shifted_wstrb_*
 	// {{{
 	always @(*)
-		shifted_wstrb_word = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
-						4'b1111} << i_addr[AXILLSB-1:0];
+		shifted_wstrb_word = { {(2*DW/8-4){1'b0}},
+						4'b1111} << i_addr[AXILSB-1:0];
 
 	always @(*)
-		shifted_wstrb_halfword = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
-						4'b0011} << i_addr[AXILLSB-1:0];
+		shifted_wstrb_halfword = { {(2*DW/8-4){1'b0}},
+						4'b0011} << i_addr[AXILSB-1:0];
 
 	always @(*)
-		shifted_wstrb_byte = { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
-						4'b0001} << i_addr[AXILLSB-1:0];
+		shifted_wstrb_byte = { {(2*DW/8-4){1'b0}},
+						4'b0001} << i_addr[AXILSB-1:0];
 	// }}}
 
 	// Swapping WSTRB bits
@@ -272,8 +273,11 @@ module	axilops #(
 		// {{{
 		genvar	gw, gb;
 
-		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
+		for(gw=0; gw<2*DW/32; gw=gw+1)
+		begin : FOREACH_32B_WORD
 		for(gb=0; gb<32/8; gb=gb+1)
+		begin : FOREACH_BYTE
+
 		always @(*)
 		begin
 			swapped_wstrb_word[gw*4+gb]
@@ -282,7 +286,7 @@ module	axilops #(
 					= shifted_wstrb_halfword[gw*4+(3-gb)];
 			swapped_wstrb_byte[gw*4+gb]
 					= shifted_wstrb_byte[gw*4+(3-gb)];
-		end
+		end end end
 		// }}}
 	end else begin : KEEP_WSTRB
 		// {{{
@@ -301,12 +305,19 @@ module	axilops #(
 
 	// wdata, wstrb
 	// {{{
+	always @(*)
+	begin
+		swapaddr = i_addr[AXILSB-1:0];
+		if (SWAP_WSTRB)
+			swapaddr[1:0] = 3 - i_addr[1:0];
+	end
+
 	initial	axi_wdata = 0;
 	initial	axi_wstrb = 0;
 	initial	next_wdata  = 0;
 	initial	next_wstrb  = 0;
 	always @(posedge i_clk)
-	if (OPT_ZERO_ON_IDLE && !S_AXI_ARESETN)
+	if (OPT_LOWPOWER && !S_AXI_ARESETN)
 	begin
 		// {{{
 		axi_wdata <= 0;
@@ -320,34 +331,19 @@ module	axilops #(
 	end else if (i_stb)
 	begin
 		// {{{
-		if (OPT_ZERO_ON_IDLE && SWAP_WSTRB)
+		if (OPT_LOWPOWER)
 		begin
 			// {{{
 			casez(i_op[2:1])
 			2'b10: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
-				    i_data[15:0] } << (8*(3-i_addr[AXILLSB-1:0]));
+				    i_data[15:0] } << (8*swapaddr);
 			2'b11: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
-				    i_data[7:0] } << (8*(3-i_addr[AXILLSB-1:0]));
+				    i_data[7:0] } << (8*swapaddr);
 			default: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
-				    i_data } << (8*(3-i_addr[AXILLSB-1:0]));
-			endcase
-			// }}}
-		end else if (OPT_ZERO_ON_IDLE && !SWAP_WSTRB)
-		begin
-			// {{{
-			casez(i_op[2:1])
-			2'b10: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
-				    i_data[15:0] } << (8*i_addr[AXILLSB-1:0]);
-			2'b11: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
-				    i_data[7:0] } << (8*i_addr[AXILLSB-1:0]);
-			default: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
-				    i_data } << (8*i_addr[AXILLSB-1:0]);
+				    i_data } << (8*swapaddr);
 			endcase
 			// }}}
 		end else begin
@@ -372,23 +368,23 @@ module	axilops #(
 		endcase
 		// }}}
 
-		r_op <= { i_op[2:1] , i_addr[AXILLSB-1:0] };
+		r_op <= { i_op[2:1] , i_addr[AXILSB-1:0] };
 
-		// On a read set everything to zero but only if OPT_ZERO_ON_IDLE
+		// On a read set everything to zero but only if OPT_LOWPOWER
 		// is set
 		// {{{
-		if (OPT_ZERO_ON_IDLE && !i_op[0])
+		if (OPT_LOWPOWER && !i_op[0])
 			{ next_wstrb, next_wdata, axi_wstrb, axi_wdata } <= 0;
 
 		if (OPT_ALIGNMENT_ERR)
 			{ next_wstrb, next_wdata } <= 0;
-		if (OPT_ZERO_ON_IDLE)
+		if (OPT_LOWPOWER)
 		begin
-			if (OPT_ALIGNMENT_ERR && w_misaligned)
+			if (w_misalignment_err)
 				{ axi_wdata, axi_wstrb } <= 0;
 			if (o_err || i_cpu_reset)
 				{ next_wdata, next_wstrb,
-				axi_wdata, axi_wstrb } <= 0;
+					axi_wdata, axi_wstrb } <= 0;
 		end
 		// }}}
 		// }}}
@@ -398,10 +394,10 @@ module	axilops #(
 		// {{{
 		axi_wdata <= OPT_ALIGNMENT_ERR ? 0 : next_wdata;
 		axi_wstrb <= OPT_ALIGNMENT_ERR ? 0 : next_wstrb;
-		if (OPT_ZERO_ON_IDLE)
+		if (OPT_LOWPOWER)
 			{ next_wdata, next_wstrb } <= 0;
 		// }}}
-	end else if ((OPT_ZERO_ON_IDLE)&&(M_AXI_WREADY))
+	end else if (OPT_LOWPOWER && M_AXI_WREADY)
 	begin
 		// {{{
 		axi_wdata <= 0;
@@ -438,12 +434,18 @@ module	axilops #(
 	always @(*)
 	casez(i_op[2:1])
 	// Full word
-	2'b0?: w_misaligned = (i_addr[AXILLSB-1:0]+3) >= (1<<AXILLSB);
+	2'b0?: w_misaligned = (i_addr[AXILSB-1:0]+3) >= (1<<AXILSB);
 	// Half word
-	2'b10: w_misaligned = (i_addr[AXILLSB-1:0]+1) >= (1<<AXILLSB);
+	2'b10: w_misaligned = (i_addr[AXILSB-1:0]+1) >= (1<<AXILSB);
 	// Bytes are always aligned
 	2'b11: w_misaligned = 1'b0;
 	endcase
+	// }}}
+
+	// w_misalignment_err
+	// {{{
+	always @(*)
+		w_misalignment_err = OPT_ALIGNMENT_ERR && w_misaligned;
 	// }}}
 
 	// misaligned_[aw_|]request, pending_err, misaligned_response_pending
@@ -463,43 +465,62 @@ module	axilops #(
 		// }}}
 	end else begin
 		// {{{
+
+		// misaligned_request
+		// {{{
 		initial	misaligned_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
 			misaligned_request <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_request <= w_misaligned;
+			misaligned_request <= w_misaligned
+						&& !w_misalignment_err;
 		else if ((M_AXI_WVALID && M_AXI_WREADY)
 					|| (M_AXI_ARVALID && M_AXI_ARREADY))
 			misaligned_request <= 1'b0;
-	
+		// }}}
+
+		// misaligned_aw_request
+		// {{{	
 		initial	misaligned_aw_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
 			misaligned_aw_request <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_aw_request <= w_misaligned && i_op[0];
+			misaligned_aw_request <= w_misaligned && i_op[0]
+					&& !w_misalignment_err;
 		else if (M_AXI_AWREADY)
 			misaligned_aw_request <= 1'b0;
+		// }}}
 
+		// misaligned_response_pending
+		// {{{
 		initial	misaligned_response_pending = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
 			misaligned_response_pending <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_response_pending <= w_misaligned;
+			misaligned_response_pending <= w_misaligned
+						&& !w_misalignment_err;
 		else if (M_AXI_BVALID || M_AXI_RVALID)
 			misaligned_response_pending <= 1'b0;
-	
+		// }}}
+
+		// misaligned_read
+		// {{{
 		initial	misaligned_read = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
 			misaligned_read <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_read <= w_misaligned && !i_op[0];
+			misaligned_read <= w_misaligned && !i_op[0]
+						&& !w_misalignment_err;
 		else if (M_AXI_RVALID)
 			misaligned_read <= (misaligned_response_pending);
+		// }}}
 
+		// pending_err
+		// {{{
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN || i_stb || (!M_AXI_BREADY && !M_AXI_RREADY)
 				|| o_err || r_flushing || i_cpu_reset)
@@ -507,6 +528,8 @@ module	axilops #(
 		else if ((M_AXI_BVALID && M_AXI_BRESP[1])
 				|| (M_AXI_RVALID && M_AXI_RRESP[1]))
 			pending_err <= 1'b1;
+		// }}}
+
 		// }}}
 	end endgenerate
 	// }}}
@@ -528,7 +551,7 @@ module	axilops #(
 	always @(posedge i_clk)
 	if (r_flushing || i_cpu_reset || o_err)
 		o_err <= 1'b0;
-	else if (OPT_ALIGNMENT_ERR && i_stb && w_misaligned)
+	else if (i_stb && w_misalignment_err)
 		o_err <= 1'b1;
 	else if ((M_AXI_BVALID || M_AXI_RVALID) && !misaligned_response_pending)
 		o_err <= (M_AXI_BVALID && M_AXI_BRESP[1])
@@ -557,12 +580,12 @@ module	axilops #(
 	// last_result, o_result
 	// {{{
 	always @(posedge i_clk)
-	if ((OPT_ZERO_ON_IDLE)&&(!M_AXI_RREADY || !S_AXI_ARESETN))
+	if (OPT_LOWPOWER &&(!M_AXI_RREADY || !S_AXI_ARESETN))
 		{ last_result, o_result } <= 0;
 	else if (M_AXI_RVALID)
 	begin
 		// {{{
-		if (!misaligned_response_pending && OPT_ZERO_ON_IDLE)
+		if (!misaligned_response_pending && OPT_LOWPOWER)
 			last_result <= 0;
 		else
 			last_result <= M_AXI_RDATA;
@@ -573,13 +596,13 @@ module	axilops #(
 		// Verilator lint_off WIDTH
 		if (misaligned_read && !OPT_ALIGNMENT_ERR)
 			o_result <= { M_AXI_RDATA, last_result }
-						>> (8*r_op[AXILLSB-1:0]);
+						>> (8*r_op[AXILSB-1:0]);
 		else
 			o_result <= { 32'h0, M_AXI_RDATA }
-						>> (8*r_op[AXILLSB-1:0]);
+						>> (8*r_op[AXILSB-1:0]);
 		// Verilator lint_on WIDTH
 
-		casez(r_op[AXILLSB +: 2])
+		casez(r_op[AXILSB +: 2])
 		2'b10: o_result[31:16] <= 0;
 		2'b11: o_result[31: 8] <= 0;
 		default: begin end
@@ -768,7 +791,7 @@ module	axilops #(
 		`ASSERT(o_busy == (M_AXI_BREADY || M_AXI_RREADY));
 
 	always @(*)
-	if (o_busy && !misaligned_request && OPT_ZERO_ON_IDLE)
+	if (o_busy && !misaligned_request && OPT_LOWPOWER)
 	begin
 		assert(next_wdata == 0);
 		assert(next_wstrb == 0);
@@ -840,7 +863,7 @@ module	axilops #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	generate if (OPT_ZERO_ON_IDLE)
+	generate if (OPT_LOWPOWER)
 	begin
 		always @(*)
 		if (!M_AXI_AWVALID && !M_AXI_ARVALID)
