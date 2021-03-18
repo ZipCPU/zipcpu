@@ -92,15 +92,36 @@
 // }}}
 `include "cpudefs.v"
 //
-// If space is tight, you might not wish to have your performance and
-// accounting counters, so let's make those optional here
-//	Without this flag, Slice LUT count is 3315 (ZipSystem),2432 (ZipCPU)
-//	When including counters,
-//		Slice LUTs	ZipSystem	ZipCPU
-//	With Counters		3315		2432
-//	Without Counters	2796		2046
-
+// Debug address space:
+// {{{
+//	 0-15	0x0?	Supervisors registers
+//	16-31	0x1?	User registers
+//	32-63	0x2?	CPU command register (singular, one register only)
+//	64	0x40	Interrupt controller
+//	65	0x41	Watchdog
+//	66	0x42	Bus watchdog
+//	67	0x43	CTRINT
+//	68	0x44	Timer A
+//	69	0x45	Timer B
+//	70	0x46	Timer C
+//	71	0x47	Jiffies
+//	72	0x48	Master task counter
+//	73	0x49	Master task counter
+//	74	0x4a	Master task counter
+//	75	0x4b	Master instruction counter
+//	76	0x4c	User task counter
+//	77	0x4d	User task counter
+//	78	0x4e	User task counter
+//	79	0x4f	User instruction counter
+//	80	0x50	DMAC	Control/Status register
+//	81	0x51	DMAC	Length
+//	82	0x52	DMAC	Read (source) address
+//	83	0x53	DMAC	Write (destination) address
 //
+/////// /////// /////// ///////
+//
+//	(MMU ... is not available via debug bus)
+// }}}
 module	zipsystem #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
@@ -139,6 +160,7 @@ module	zipsystem #(
 `else
 		parameter [0:0]	OPT_DMA=0,
 `endif
+		parameter [0:0]	OPT_LOWPOWER=0,
 `ifdef	INCLUDE_ACCOUNTING_COUNTERS
 		localparam [0:0]	OPT_ACCOUNTING = 1'b1,
 `else
@@ -241,7 +263,7 @@ module	zipsystem #(
 		// Wishbone slave interface for debugging purposes
 		// {{{
 		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
-					i_dbg_addr,
+		input	wire	[6:0]	i_dbg_addr,
 		input	wire	[31:0]	i_dbg_data,
 		input	wire	[3:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
@@ -277,7 +299,8 @@ module	zipsystem #(
 	wire	sel_counter, sel_timer, sel_pic, sel_apic,
 		sel_watchdog, sel_bus_watchdog, sel_dmac, sel_mmus;
 
-	wire		dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_stall;
+	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
+	wire	[6:0]	dbg_addr;
 	wire	[31:0]	dbg_idata, dbg_odata;
 	reg		dbg_ack;
 	wire	[3:0]	dbg_sel;
@@ -287,12 +310,13 @@ module	zipsystem #(
 	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache,
 			reset_hold, cpu_halt;
 	reg	[5:0]	cmd_addr;
-	wire	[3:0]	cpu_dbg_cc;
+	wire	[2:0]	cpu_dbg_cc;
+	wire		cpu_break;
 
 	wire		cpu_reset;
 	wire		cpu_dbg_stall;
 	wire	[31:0]	pic_data;
-	wire	[31:0]	cmd_data;
+	wire	[31:0]	cpu_status;
 	wire		cpu_gie;
 
 	wire		wdt_stall, wdt_ack, wdt_reset;
@@ -436,8 +460,11 @@ module	zipsystem #(
 		// {{{
 		wire		dbg_err;
 		assign		dbg_err = 1'b0;
-		busdelay #(1,32)
-		wbdelay(
+		busdelay #(
+			// {{{
+			.AW(7),.DW(32)
+			// }}}
+		) wbdelay(
 			// {{{
 			i_clk, i_reset,
 			i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
@@ -498,7 +525,7 @@ module	zipsystem #(
 	// the CPU if not halted), then read/write the data from the data
 	// register.
 	//
-	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(!dbg_addr);
+	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)&&(dbg_addr[6:4] == 3'h2);
 	//
 	// Always start us off with an initial reset
 	//
@@ -579,28 +606,32 @@ module	zipsystem #(
 	assign	cpu_reset = (cmd_reset);
 
 	// Values:
-	//	0x0003f -> cmd_addr mask
-	//	0x00040 -> reset
-	//	0x00080 -> PIC interrrupt pending
-	//	0x00100 -> cmd_step
-	//	0x00200 -> cmd_stall
-	//	0x00400 -> cmd_halt
-	//	0x00800 -> cmd_clear_pf_cache
-	//	0x01000 -> cc.sleep
-	//	0x02000 -> cc.gie
-	//	0x04000 -> External (PIC) interrupt line is high
+	//	0xxxxx_0000 -> External interrupt lines
+	//
+	//	0x0_8000 -> cpu_break (CPU is halted on an error)
+	//	0x0_4000 -> Supervisor bus error
+	//	0x0_2000 -> cc.gie
+	//	0x0_1000 -> cc.sleep
+	//	0x0_0800 -> cmd_clear_pf_cache
+	//	0x0_0400 -> cmd_halt
+	//	0x0_0200 -> cmd_stall
+	//	0x0_0100 -> cmd_step
+	//	0x0_0080 -> PIC interrrupt pending
+	//	0x0_0040 -> reset
+	//	0x0_003f -> cmd_addr mask
 	//	Other external interrupts follow
 	generate
 	if (EXTERNAL_INTERRUPTS < 16)
-		assign	cmd_data = { {(16-EXTERNAL_INTERRUPTS){1'b0}},
+		assign	cpu_status = { {(16-EXTERNAL_INTERRUPTS){1'b0}},
 					i_ext_int,
-				cpu_dbg_cc,	// 4 bits
+				cpu_break, cpu_dbg_cc,	// 4 bits
 				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-				pic_data[15], cpu_reset, cmd_addr };
+				pic_interrupt, cpu_reset, 6'h0 };
 	else
-		assign	cmd_data = { i_ext_int[15:0], cpu_dbg_cc,
+		assign	cpu_status = { i_ext_int[15:0],
+				cpu_break, cpu_dbg_cc,	// 4 bits
 				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-				pic_data[15], cpu_reset, cmd_addr };
+				pic_interrupt, cpu_reset, 6'h0 };
 	endgenerate
 
 	assign	cpu_gie = cpu_dbg_cc[1];
@@ -1028,7 +1059,8 @@ module	zipsystem #(
 	//
 	//
 	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(!cmd_addr[5])
-					&&(dbg_we)&&(dbg_addr));
+					&&(dbg_we)&&(dbg_addr[6:4] == 3'h0));
+
 	zipwb	#(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
@@ -1255,23 +1287,42 @@ module	zipsystem #(
 	//
 	//
 
+	always @(posedge i_clk)
+		dbg_pre_addr <= { dbg_addr[6], (dbg_addr[6:5] == 2'h0) };
+
+	always @(posedge i_clk)
+		dbg_cpu_status <= cpu_status;
+
+	initial	dbg_pre_ack = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset || !i_dbg_cyc)
+		dbg_pre_ack <= 1'b0
+	else
+		dbg_pre_ack <= dbg_stb && !o_dbg_stall;
+
 	// A return from one of three busses:
 	//	CMD	giving command instructions to the CPU (step, halt, etc)
 	//	CPU-DBG-DATA	internal register responses from within the CPU
 	//	sys	Responses from the front-side bus here in the ZipSystem
-	assign	dbg_odata = (!dbg_addr) ? cmd_data
+	assign	dbg_odata = (!dbg_addr) ? cpu_status
 				:((!cmd_addr[5])?cpu_dbg_data : sys_idata);
 	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
-	if (i_reset)
+	if (i_reset || !dbg_cyc)
 		dbg_ack <= 1'b0;
 	else
-		dbg_ack <= (dbg_stb)&&(!dbg_stall);
+		dbg_ack <= dbg_pre_ack;
 
-	assign	dbg_stall=(dbg_cyc)&&(
-		((!sys_dbg_cyc)&&(cpu_dbg_stall))
-			||(sys_stall)
-		)&&(dbg_addr);
+	always @(posedge i_clk)
+	if (!OPT_LOWPOWER || (dbg_cyc && dbg_pre_ack))
+	casez(dbg_pre_addr)
+	2'b00: dbg_odata <= dbg_cpu_status;
+	2'b01: dbg_odata <= cpu_dbg_data;
+	2'b1?: dbg_odata <= sys_idata;
+	endcase
+
+	assign	dbg_stall = (!cmd_write || !cpu_dbg_stall) && dbg_we
+			&& (dbg_addr[6:5] == 2'b00);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
