@@ -392,7 +392,7 @@ module	axilfetch #(
 	// out_fill
 	// {{{
 	initial	out_fill = 0;
-	always @(posedge S_AXI_ARESETN)
+	always @(posedge S_AXI_ACLK)
 	if (fifo_reset)
 		out_fill <= 0;
 	else if (fifo_rd)
@@ -405,7 +405,7 @@ module	axilfetch #(
 
 	// out_data
 	// {{{
-	always @(posedge S_AXI_ARESETN)
+	always @(posedge S_AXI_ACLK)
 	if (fifo_rd)
 		out_data <= fifo_data[C_AXI_DATA_WIDTH-1:0]>>(DATA_WIDTH*shift);
 	else if (i_ready)
@@ -417,7 +417,7 @@ module	axilfetch #(
 	// o_illegal
 	// {{{
 	initial	o_illegal = 1'b0;
-	always @(posedge S_AXI_ARESETN)
+	always @(posedge S_AXI_ACLK)
 	if (fifo_reset)
 		o_illegal <= 1'b0;
 	else if (!o_illegal && fifo_rd && !fifo_empty)
