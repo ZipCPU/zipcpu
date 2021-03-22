@@ -264,20 +264,20 @@ module	ziptimer #(
 		assert(r_zero == (r_value == 0));
 
 	always @(*)
-		if (r_value != 0)
-			assert(r_running);
+	if (r_value != 0)
+		assert(r_running);
 
 	always @(*)
-		if (auto_reload)
-			assert(r_running);
+	if (auto_reload)
+		assert(r_running);
 
 	always @(*)
-		if (!RELOADABLE)
-			assert(auto_reload == 0);
+	if (!RELOADABLE)
+		assert(auto_reload == 0);
 
 	always @(*)
-		if (auto_reload)
-			assert(interval_count != 0);
+	if (auto_reload)
+		assert(interval_count != 0);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(r_value)==0)
@@ -289,8 +289,9 @@ module	ziptimer #(
 			&&($past(r_value)==0)&&($past(auto_reload)))
 	begin
 		if ($past(i_ce))
+		begin
 			assert(r_value == interval_count);
-		else
+		end else
 			assert(r_value == $past(r_value));
 	end
 
@@ -299,14 +300,16 @@ module	ziptimer #(
 			&&(!$past(wb_write))&&($past(r_value)!=0))
 	begin
 		if ($past(i_ce))
+		begin
 			assert(r_value == $past(r_value)-1'b1);
-		else
+		end else
 			assert(r_value == $past(r_value));
 	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(wb_write)))
 		assert(r_value == $past(i_wb_data[(VW-1):0]));
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(wb_write))
 			&&(RELOADABLE)&&(|$past(i_wb_data[(VW-1):0])))
@@ -314,16 +317,19 @@ module	ziptimer #(
 
 	always @(posedge i_clk)
 	if (!(f_past_valid)||($past(i_reset)))
+	begin
 		assert(!o_int);
-	else if (($past(wb_write))||(!$past(i_ce)))
+	end else if (($past(wb_write))||(!$past(i_ce)))
+	begin
 		assert(!o_int);
-	else
+	end else
 		assert(o_int == ((r_running)&&(r_value == 0)));
 
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
+	begin
 		assert(!o_wb_ack);
-	else if ($past(i_wb_stb))
+	end else if ($past(i_wb_stb))
 		assert(o_wb_ack);
 
 	always @(*)

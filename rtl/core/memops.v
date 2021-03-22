@@ -53,7 +53,7 @@ module	memops #(
 		parameter [0:0]	IMPLEMENT_LOCK=1'b1,
 				WITH_LOCAL_BUS=1'b1,
 				OPT_ALIGNMENT_ERR=1'b1,
-				OPT_ZERO_ON_IDLE=1'b0,
+				OPT_LOWPOWER=1'b0,
 				OPT_LITTLE_ENDIAN = 1'b0,
 		localparam	AW=ADDRESS_WIDTH,
 		parameter	F_LGDEPTH = 2
@@ -191,7 +191,7 @@ module	memops #(
 	if (i_stb)
 	begin
 		o_wb_we   <= i_op[0];
-		if (OPT_ZERO_ON_IDLE)
+		if (OPT_LOWPOWER)
 		begin
 			casez({ OPT_LITTLE_ENDIAN, i_op[2:1], i_addr[1:0] })
 			5'b0100?: o_wb_data <= { i_data[15:0], 16'h00 };
@@ -238,7 +238,7 @@ module	memops #(
 		default: o_wb_sel <= 4'b1111;
 		endcase
 		r_op <= { i_op[2:1] , i_addr[1:0] };
-	end else if ((OPT_ZERO_ON_IDLE)&&(!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
+	end else if ((OPT_LOWPOWER)&&(!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
 	begin
 		o_wb_we   <= 1'b0;
 		o_wb_addr <= 0;
@@ -293,12 +293,13 @@ module	memops #(
 	// o_result
 	// {{{
 	always @(posedge i_clk)
-	if ((OPT_ZERO_ON_IDLE)&&(!i_wb_ack))
+	if ((OPT_LOWPOWER)&&(!i_wb_ack))
 		o_result <= 32'h0;
 	else begin
 		casez({ OPT_LITTLE_ENDIAN, r_op })
 		5'b?01??: o_result <= i_wb_data;
 		//
+		// Big endian
 		5'b0100?: o_result <= { 16'h00, i_wb_data[31:16] };
 		5'b0101?: o_result <= { 16'h00, i_wb_data[15: 0] };
 		5'b01100: o_result <= { 24'h00, i_wb_data[31:24] };
@@ -306,6 +307,8 @@ module	memops #(
 		5'b01110: o_result <= { 24'h00, i_wb_data[15: 8] };
 		5'b01111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		//
+		// Little endian : Same bus result, just grab a different bits
+		//   from the bus return to send back to the CPU.
 		5'b1100?: o_result <= { 16'h00, i_wb_data[15: 0] };
 		5'b1101?: o_result <= { 16'h00, i_wb_data[31:16] };
 		5'b11100: o_result <= { 24'h00, i_wb_data[ 7: 0] };
@@ -407,9 +410,11 @@ module	memops #(
 `endif
 
 	reg	f_past_valid;
+
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
+
 	always @(*)
 	if (!f_past_valid)
 		`ASSUME(i_reset);
@@ -482,8 +487,9 @@ module	memops #(
 	// This core only ever has zero or one outstanding transaction(s)
 	always @(posedge i_clk)
 	if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
+	begin
 		`ASSERT(f_outstanding == 0);
-	else
+	end else
 		`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
 
 	// The LOCK function only allows up to two transactions (at most)
@@ -492,8 +498,9 @@ module	memops #(
 	if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
 	begin
 		if (IMPLEMENT_LOCK)
+		begin
 			`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
-		else
+		end else
 			`ASSERT(f_nreqs <= 1);
 	end
 	// }}}
@@ -507,8 +514,11 @@ module	memops #(
 	reg				f_done;
 	wire	[(F_LGDEPTH-1):0]	cpu_outstanding;
 	wire				f_pc, f_rdbusy, f_gie, f_read_cycle;
-	wire	[4:0]			f_last_reg, f_addr_reg;
+	wire	[4:0]			f_last_reg;
+	wire	[4:0]			f_addr_reg;
+	// Verilator lint_off UNDRIVEN
 	(* anyseq *)	reg	[4:0]	f_areg;
+	// Verilator lint_on  UNDRIVEN
 
 	assign	f_rdbusy = f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we;
 
@@ -558,8 +568,9 @@ module	memops #(
 
 	always @(*)
 	if (f_pc)
+	begin
 		assert(o_wreg[3:1] == 3'h7);
-	else if (f_rdbusy)
+	end else if (f_rdbusy)
 		assert(o_wreg[3:1] != 3'h7);
 
 	always @(*)
@@ -629,8 +640,9 @@ module	memops #(
 	if (f_past_valid && !$past(i_reset))
 	begin
 		if (($past(f_cyc))&&($past(i_wb_err)))
+		begin
 			`ASSERT(o_err);
-		else if ($past(misaligned))
+		end else if ($past(misaligned))
 			`ASSERT(o_err);
 	end
 
@@ -640,10 +652,12 @@ module	memops #(
 	begin
 		if(($past(f_cyc))&&($past(i_wb_ack))
 				&&(!$past(o_wb_we)))
+		begin
 			`ASSERT(o_valid);
-		else if ($past(misaligned))
+		end else if ($past(misaligned))
+		begin
 			`ASSERT((!o_valid)&&(o_err));
-		else
+		end else
 			`ASSERT(!o_valid);
 	end
 
@@ -787,6 +801,14 @@ module	memops #(
 			cover((o_wb_stb_lcl)&&(i_wb_ack));
 
 	end endgenerate
+	// }}}
+
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, f_nacks, f_addr_reg };
+	// Verilator lint_on  UNUSED
 	// }}}
 `endif
 // }}}

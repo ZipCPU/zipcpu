@@ -546,7 +546,7 @@ module	pfcache #(
 	// will return valid results
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 
 	//
 	// Assume we start from a reset condition
@@ -653,8 +653,9 @@ module	pfcache #(
 	begin
 		if ((!o_wb_cyc)&&($past(o_wb_cyc))&&(!$past(i_reset))
 				&&(!$past(i_clear_cache)) &&(!$past(i_wb_err)))
+		begin
 			assert(f_nacks == (1<<LS));
-		else if (o_wb_cyc)
+		end else if (o_wb_cyc)
 			assert(f_nacks[(LS-1):0] == wraddr[(LS-1):0]);
 	end
 
@@ -674,7 +675,7 @@ module	pfcache #(
 
 	initial	f_past_valid_mask = 0;
 	always @(posedge i_clk)
-		f_past_valid_mask = valid_mask;
+		f_past_valid_mask <= valid_mask;
 
 	always @(posedge i_clk)
 	if ((o_valid)&&($past(!o_valid || !o_illegal)))
@@ -740,8 +741,9 @@ module	pfcache #(
 			&& !i_clear_cache)
 	begin
 		if (isrc)
+		begin
 			assert(lastpc == r_pc);
-		else
+		end else
 			assert(f_next_lastpc == r_pc);
 	end
 

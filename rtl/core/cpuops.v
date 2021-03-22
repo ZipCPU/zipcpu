@@ -232,7 +232,7 @@ module	cpuops #(
 
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 	// }}}
 
 `define	ASSERT	assert

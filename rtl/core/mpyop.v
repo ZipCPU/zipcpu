@@ -61,7 +61,7 @@ module	mpyop #(
 		output	wire		o_valid, // True if the result is valid
 		output	wire		o_busy,	//
 		output	wire	[63:0]	o_result, // multiply result
-		output	reg		o_hi	// Return the high half of mpy
+		output	wire		o_hi	// Return the high half of mpy
 		// }}}
 	);
 
@@ -83,7 +83,7 @@ module	mpyop #(
 		assign	o_result   = 64'h00;
 		assign	o_busy     = 1'b0;
 		assign	o_valid    = i_stb;
-		always @(*) o_hi = 1'b0; // Not needed
+		assign	o_hi = 1'b0; // Not needed
 
 `ifdef	VERILATOR
 		// verilator lint_off UNUSED
@@ -105,7 +105,7 @@ module	mpyop #(
 
 		assign	o_busy  = 1'b0;
 		assign	o_valid = i_stb;
-		always @(*) o_hi = i_op[1];
+		assign	o_hi = i_op[1];
 
 `ifdef	VERILATOR
 		// verilator lint_off UNUSED
@@ -147,9 +147,13 @@ module	mpyop #(
 
 		// o_hi
 		// {{{
+		reg	r_hi;
+
 		always @(posedge i_clk)
 		if (i_stb)
-			o_hi  <= i_op[1];
+			r_hi  <= i_op[1];
+
+		assign	o_hi = r_hi;
 		// }}}
 		// }}}
 	end else begin : MPN2
@@ -218,9 +222,12 @@ module	mpyop #(
 		// }}}
 `endif
 
+		reg	r_hi;
 		always @(posedge i_clk)
 		if (i_stb)
-			o_hi  <= i_op[1];
+			r_hi  <= i_op[1];
+
+		assign	o_hi    = r_hi;
 		assign	o_busy  = mpypipe[0];
 		assign	o_result = (r_sgn[1])?r_smpy_result:r_umpy_result;
 		assign	o_valid = mpypipe[1];
@@ -236,7 +243,7 @@ module	mpyop #(
 		// {{{
 		reg	[63:0]	r_mpy_result;
 		reg	[31:0]	r_mpy_a_input, r_mpy_b_input;
-		reg		r_mpy_signed;
+		reg		r_mpy_signed, r_hi;
 		reg	[2:0]	mpypipe;
 		reg	[31:0]	pp_f, pp_l; // F and L from FOIL
 		reg	[32:0]	pp_oi; // The O and I from FOIL
@@ -275,10 +282,11 @@ module	mpyop #(
 			r_mpy_signed  <= i_op[0];
 
 			if (i_stb)
-				o_hi  <= i_op[1];
+				r_hi  <= i_op[1];
 		end
 		// }}}
 
+		assign	o_hi    = r_hi;
 		assign	o_busy  = |mpypipe[1:0];
 		assign	o_valid = mpypipe[2];
 
@@ -352,6 +360,7 @@ module	mpyop #(
 		// Use an external multiply implementation, for when DSPs aren't
 		// available.
 		//
+		reg		r_hi;
 		// verilator lint_off UNUSED
 		wire		unused_aux;
 		wire	[65:0]	full_result;
@@ -366,7 +375,9 @@ module	mpyop #(
 
 		always @(posedge i_clk)
 		if (i_stb)
-			o_hi  <= i_op[1];
+			r_hi  <= i_op[1];
+
+		assign	o_hi = r_hi;
 		// }}}
 	end end end end end
 	endgenerate // All possible multiply results have been determined

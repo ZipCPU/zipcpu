@@ -188,8 +188,10 @@ module	dcache #(
 	reg	[AW:0]		f_return_address;
 	reg	[AW:0]		f_pending_addr;
 	reg			f_pc_pending;
-	reg	[4:0]		f_last_reg, f_addr_reg;
+	wire	[4:0]		f_last_reg, f_addr_reg;
+	// Verilator lint_off UNDRIVEN
 	(* anyseq *) reg [4:0]	f_areg;
+	// Verilator lint_on  UNDRIVEN
 `endif
 	wire	cache_miss_inow, w_cachable;
 	wire	raw_cachable_address;
@@ -467,14 +469,17 @@ module	dcache #(
 		if ((r_dvalid)||(r_svalid))
 		begin
 			if (r_svalid)
+			begin
 				`ASSERT(f_fill == 1);
-			else if (r_dvalid)
+			end else if (r_dvalid)
+			begin
 				`ASSERT(f_fill == 1);
-			else
+			end else
 				`ASSERT(f_fill == 0);
 		end else if (r_rd_pending)
+		begin
 			`ASSERT(f_fill == 1);
-		else
+		end else
 			`ASSERT(f_fill == npending);
 
 
@@ -491,11 +496,15 @@ module	dcache #(
 
 		always @(posedge i_clk)
 		if (f_pc_pending)
+		begin
 			`ASSUME(!i_pipe_stb);
+		end
 
 		always @(posedge i_clk)
 		if (state == DC_WRITE)
+		begin
 			`ASSERT(!f_pc_pending);
+		end
 
 		always @(*)
 		begin
@@ -542,8 +551,9 @@ module	dcache #(
 			if (f_valid_fifo_entry[k])
 			begin
 				if (!f_pc_pending)
+				begin
 					`ASSERT((o_wb_we)||(fifo_data_k[7:5] != 3'h7));
-				else if (k != f_last_wraddr)
+				end else if (k != f_last_wraddr)
 					`ASSERT(fifo_data_k[7:5] != 3'h7);
 			end
 `endif // INSPECT_FIFO
@@ -580,10 +590,12 @@ module	dcache #(
 
 `define	TWIN_WRITE_TEST
 `ifdef	TWIN_WRITE_TEST
-		(* anyconst *)	reg	[DP:0]		f_twin_base;
 				reg	[DP:0]		f_twin_next;
+		// Verilator lint_off UNDRIVEN
+		(* anyconst *)	reg	[DP:0]		f_twin_base;
 		(* anyconst *)	reg	[AW+NAUX+4-2-1:0]	f_twin_first,
 							f_twin_second;
+		// Verilator lint_on  UNDRIVEN
 		reg	f_twin_none, f_twin_single, f_twin_double, f_twin_last;
 		reg	f_twin_valid_one, f_twin_valid_two;
 
@@ -610,14 +622,18 @@ module	dcache #(
 
 		always @(posedge i_clk)
 		if ((!f_past_valid)||($past(i_reset))||($past(cyc && i_wb_err)))
+		begin
 			`ASSERT(f_twin_none);
-		else if ($past(f_twin_none))
+		end else if ($past(f_twin_none))
+		begin
 			`ASSERT(f_twin_none || f_twin_single || f_twin_last);
-		else if ($past(f_twin_single))
+		end else if ($past(f_twin_single))
+		begin
 			`ASSERT(f_twin_none || f_twin_single || f_twin_double || f_twin_last);
-		else if ($past(f_twin_double))
+		end else if ($past(f_twin_double))
+		begin
 			`ASSERT(f_twin_double || f_twin_last);
-		else if ($past(f_twin_last))
+		end else if ($past(f_twin_last))
 			`ASSERT(f_twin_none || f_twin_single || f_twin_last);
 
 		// f_addr_reg test
@@ -642,14 +658,18 @@ module	dcache #(
 
 		always @(posedge i_clk)
 		if (r_svalid||r_dvalid || r_rd_pending)
+		begin
 			`ASSERT(f_fill == 1);
-		else if (f_fill > 0)
+		end else if (f_fill > 0)
+		begin
 			`ASSERT(cyc);
+		end
 
 		always @(posedge i_clk)
 		if (state != 0)
+		begin
 			`ASSERT(f_fill > 0);
-		else if (!r_svalid && !r_dvalid && !r_rd_pending)
+		end else if (!r_svalid && !r_dvalid && !r_rd_pending)
 			`ASSERT(f_fill == 0);
 
 `endif // FORMAL
@@ -1275,17 +1295,41 @@ module	dcache #(
 	reg	[F_LGDEPTH-1:0]	f_cpu_outstanding;
 
 	fmem #(
+		// {{{
 		.IMPLEMENT_LOCK(OPT_LOCK),
 		.F_LGDEPTH(F_LGDEPTH),
 		.OPT_MAXDEPTH(1<<(F_LGDEPTH-1))
-	) f_cpu(i_clk, i_reset, i_reset,
+		// }}}
+	) f_cpu(
+		// {{{
+		.i_clk(i_clk),
+			.i_bus_reset(i_reset),
+			.i_cpu_reset(i_reset),
 		// The CPU interface
-		i_pipe_stb, o_pipe_stalled, i_clear, i_lock,
-		i_op, i_addr, i_data, i_oreg, f_areg,
-			o_busy, o_rdbusy,
-		o_valid, f_done, o_err, o_wreg, o_data,
-		f_cpu_outstanding, f_pc, f_gie, f_read_cycle,
-		f_last_reg, f_addr_reg);
+		.i_stb(i_pipe_stb),
+			.i_pipe_stalled(o_pipe_stalled),
+		.i_clear_cache(i_clear),
+			.i_lock(i_lock),
+		.i_op(i_op),
+			.i_addr(i_addr),
+			.i_data(i_data),
+			.i_oreg(i_oreg),
+			.i_areg(f_areg),
+			.i_busy(o_busy),
+			.i_rdbusy(o_rdbusy),
+		.i_valid(o_valid),
+		.i_done(f_done),
+		.i_err(o_err),
+		.i_wreg(o_wreg),
+		.i_result(o_data),
+		.f_outstanding(f_cpu_outstanding),
+		.f_pc(f_pc),
+		.f_gie(f_gie),
+		.f_read_cycle(f_read_cycle),
+		.f_last_reg(f_last_reg),
+		.f_addr_reg(f_addr_reg)
+		// }}}
+	);
 
 	always @(*)
 	if (OPT_PIPE || (!o_err && !r_svalid && !r_dvalid))
@@ -1338,8 +1382,9 @@ module	dcache #(
 	//  {{{
 	always @(*)
 	if (state == DC_READS || state == DC_READC || r_svalid || r_dvalid)
+	begin
 		assert(f_read_cycle);
-	else if (state == DC_WRITE)
+	end else if (state == DC_WRITE)
 		assert(!f_read_cycle);
 	// }}}
 
@@ -1357,8 +1402,9 @@ module	dcache #(
 	if (cyc && !o_wb_we)
 	begin
 		if (state == DC_READC)
+		begin
 			assert(f_cpu_outstanding == 1);
-		else
+		end else
 			assert(f_cpu_outstanding == f_outstanding
 				+ (r_svalid ? 1:0) + (r_dvalid ? 1:0)
 				+ (o_valid  ? 1:0) + (stb ? 1:0));
@@ -1423,8 +1469,9 @@ module	dcache #(
 		if (o_wb_stb_lcl)
 		begin
 			if (o_wb_we)
+			begin
 				assert(state == DC_WRITE);
-			else
+			end else
 				assert(state == DC_READS);
 		end
 
@@ -1509,8 +1556,9 @@ module	dcache #(
 
 		always @(*)
 		if (f_const_addr[AW])
+		begin
 			assume(&f_const_addr[(AW-1):(DW-8)]);
-		else
+		end else
 			assume(!(&f_const_addr[(AW-1):(DW-8)]));
 
 	end endgenerate
@@ -1608,25 +1656,29 @@ module	dcache #(
 				// If we are writing to this valid cache line
 				// {{{
 				if (c_wsel[3])
+				begin
 					`ASSERT(c_wdata[31:24]
 							== f_const_data[31:24]);
-				else
+				end else
 					`ASSERT(f_cmem_here[31:24]
 							== f_const_data[31:24]);
 				if (c_wsel[2])
+				begin
 					`ASSERT(c_wdata[23:16]
 							== f_const_data[23:16]);
-				else
+				end else
 					`ASSERT(f_cmem_here[23:16] == f_const_data[23:16]);
 				if (c_wsel[1])
+				begin
 					`ASSERT(c_wdata[15:8]
 							== f_const_data[15:8]);
-				else
+				end else
 					`ASSERT(f_cmem_here[15:8] == f_const_data[15:8]);
 				if (c_wsel[0])
+				begin
 					`ASSERT(c_wdata[7:0]
 							== f_const_data[7:0]);
-				else
+				end else
 					`ASSERT(f_cmem_here[7:0] == f_const_data[7:0]);
 				// }}}
 			end else
@@ -1654,8 +1706,9 @@ module	dcache #(
 			// constant address f_const_addr.  Make sure the data
 			// is correct.
 			if ((c_wr)&&(c_waddr[CS-1:0] == f_const_addr[CS-1:0]))
+			begin
 				`ASSERT(c_wdata == f_const_data);
-			else
+			end else
 				`ASSERT(f_cmem_here == f_const_data);
 		end
 
@@ -1712,8 +1765,9 @@ module	dcache #(
 	if (state == DC_READC)
 	begin
 		if (($past(i_wb_ack))&&(!$past(f_stb)))
+		begin
 			`ASSERT(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
-		else if (f_nacks > 0)
+		end else if (f_nacks > 0)
 		begin
 			`ASSERT(f_nacks-1 == { 1'b0, c_waddr[LS-1:0] });
 			`ASSERT(c_waddr[CS-1:LS] == o_wb_addr[CS-1:LS]);
@@ -1738,8 +1792,9 @@ module	dcache #(
 	if ((f_past_valid)&&(o_valid)&&($past(f_pending_addr) == f_const_addr))
 	begin
 		if (f_const_buserr)
+		begin
 			`ASSERT(o_err);
-		else if (f_pending_rd)
+		end else if (f_pending_rd)
 		begin
 			casez($past(req_data[3:0]))
 			4'b0???: `ASSERT(o_data ==f_const_data);
@@ -1762,8 +1817,9 @@ module	dcache #(
 		||(f_this_return))&&(f_cyc))
 	begin
 		if (f_const_buserr)
+		begin
 			assume(!i_wb_ack);
-		else begin
+		end else begin
 			assume(!i_wb_err);
 			assume(i_wb_data == f_const_data);
 		end
@@ -1791,6 +1847,15 @@ module	dcache #(
 		end
 	end
 	// }}}
+
+	// ?? why was I assuming this again?
+	always @(*)
+	if (f_cval_in_cache)
+	begin
+		assume((!i_wb_err)
+				||(!i_pipe_stb)
+				||(f_const_addr[AW-1:0] != i_addr[AW+1:2]));
+	end
 
 `endif	// DCACHE
 	// }}}
@@ -1848,13 +1913,18 @@ module	dcache #(
 		if (!OPT_PIPE)
 		begin
 			if (r_rd_pending)
+			begin
 				`ASSERT(o_busy);
-			else if (r_svalid)
+			end else if (r_svalid)
+			begin
 				`ASSERT(o_busy);
-			else if (o_valid)
+			end else if (o_valid)
+			begin
 				`ASSERT(!o_busy);
-			else if (o_err)
+			end else if (o_err)
+			begin
 				`ASSERT(!o_busy);
+			end
 		end
 	end else begin
 		`ASSERT(o_busy);
@@ -1871,8 +1941,9 @@ module	dcache #(
 			`ASSERT(!r_dvalid);
 			`ASSERT(!r_rd_pending);
 			if (!OPT_PIPE)
+			begin
 				`ASSERT(!o_valid);
-			else if (o_valid)
+			end else if (o_valid)
 				`ASSERT(f_rdpending == 2);
 		end
 
@@ -1886,13 +1957,15 @@ module	dcache #(
 		if (r_rd_pending)
 		begin
 			if ((OPT_PIPE)&&(o_valid))
+			begin
 				`ASSERT(f_rdpending <= 2);
-			else
+			end else
 				`ASSERT(f_rdpending == 1);
 
 		end else if ((OPT_PIPE)&&(o_valid)&&($past(r_dvalid|r_svalid)))
-				`ASSERT(f_rdpending <= 2);
-		else
+		begin
+			`ASSERT(f_rdpending <= 2);
+		end else
 			`ASSERT(f_rdpending <= 1);
 	end
 
@@ -1907,11 +1980,14 @@ module	dcache #(
 		`ASSERT(r_rd_pending);
 		`ASSERT(r_cachable);
 		if (($past(cyc))&&(!$past(o_wb_stb_gbl)))
+		begin
 			`ASSERT(!o_wb_stb_gbl);
+		end
 
 		if ((OPT_PIPE)&&(o_valid))
+		begin
 			`ASSERT(f_rdpending == 2);
-		else
+		end else
 			`ASSERT(f_rdpending == 1);
 	end
 
@@ -1923,9 +1999,10 @@ module	dcache #(
 		if (OPT_PIPE)
 		begin
 			if (o_valid)
+			begin
 				`ASSERT((f_rdpending == npending + 1)
 					||(f_rdpending == npending));
-			else
+			end else
 				`ASSERT(f_rdpending == npending);
 		end
 	end else if (state == DC_WRITE)
@@ -1955,14 +2032,16 @@ module	dcache #(
 
 	always @(*)
 	if (OPT_PIPE)
+	begin
 		`ASSERT(f_rdpending <= 2);
-	else
+	end else
 		`ASSERT(f_rdpending <= 1);
 
 	always @(posedge i_clk)
 	if ((!OPT_PIPE)&&(o_valid))
+	begin
 		`ASSERT(f_rdpending == 1);
-	else if (o_valid)
+	end else if (o_valid)
 		`ASSERT(f_rdpending >= 1);
 
 
@@ -1979,8 +2058,9 @@ module	dcache #(
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_err)))
+	begin
 		`ASSUME(!i_lock);
-	else if ((f_past_valid)&&(OPT_LOCK)&&($past(i_lock))
+	end else if ((f_past_valid)&&(OPT_LOCK)&&($past(i_lock))
 			&&((!$past(o_valid)) || ($past(i_pipe_stb))))
 		`ASSUME($stable(i_lock));
 
@@ -1999,8 +2079,9 @@ module	dcache #(
 
 	always @(posedge i_clk)
 	if (state == DC_WRITE)
+	begin
 		`ASSERT(o_wb_we);
-	else if ((state == DC_READS)||(state == DC_READC))
+	end else if ((state == DC_READS)||(state == DC_READC))
 		`ASSERT(!o_wb_we);
 
 	always @(*)
@@ -2039,11 +2120,15 @@ module	dcache #(
 	if (state == DC_READC)
 	begin
 		if (LS == 0)
+		begin
 			`ASSERT(end_of_line);
-		else if (f_nacks < (1<<LS)-1)
+		end else if (f_nacks < (1<<LS)-1)
+		begin
 			`ASSERT(!end_of_line);
-		else if (f_nacks == (1<<LS)-1)
+		end else if (f_nacks == (1<<LS)-1)
+		begin
 			`ASSERT(end_of_line);
+		end
 		`ASSERT(f_nacks <= (1<<LS));
 		`ASSERT(f_nreqs <= (1<<LS));
 		if (f_nreqs < (1<<LS))
@@ -2082,8 +2167,9 @@ module	dcache #(
 
 	always @(*)
 	if (!OPT_PIPE)
+	begin
 		`ASSERT(o_pipe_stalled == o_busy);
-	else if (o_pipe_stalled)
+	end else if (o_pipe_stalled)
 		`ASSERT(o_busy);
 
 	//
@@ -2092,15 +2178,18 @@ module	dcache #(
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(cyc))&&(!$past(i_wb_err)))
 	begin
 		if (($past(i_pipe_stb))&&(!$past(o_pipe_stalled)))
+		begin
 			`ASSERT(cyc);
-		else if ($past(f_outstanding > 1))
+		end else if ($past(f_outstanding > 1))
+		begin
 			`ASSERT(cyc);
-		else if (($past(f_outstanding == 1))
+		end else if (($past(f_outstanding == 1))
 				&&((!$past(i_wb_ack))
 					||(($past(f_stb))
 						&&(!$past(i_wb_stall)))))
+		begin
 			`ASSERT(cyc);
-		else if (($past(f_outstanding == 0))
+		end else if (($past(f_outstanding == 0))
 				&&($past(f_stb)&&(!$past(i_wb_ack))))
 			`ASSERT(cyc);
 	end
@@ -2112,9 +2201,10 @@ module	dcache #(
 		begin
 			`ASSERT(npending == 0);
 		end else if (($past(i_pipe_stb))||($past(i_wb_stall && stb)))
+		begin
 			`ASSERT((npending == f_outstanding+1)
 				||(npending == f_outstanding+2));
-		else
+		end else
 			`ASSERT(npending == f_outstanding);
 	end
 
@@ -2243,7 +2333,6 @@ module	dcache #(
 					&&(!w_cachable);
 		wire	f_cvr_reads  = (!recent_reset)&&(i_pipe_stb)&&(!i_op[0])
 					&&(!w_cachable);
-		wire	f_cvr_test  = (!recent_reset)&&(cyc);
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(o_valid)))
@@ -2351,8 +2440,9 @@ module	dcache #(
 	if((OPT_LOCK)&&(OPT_LOCAL_BUS))
 	begin
 		if ((i_lock)&&(o_wb_cyc_gbl)&&(i_pipe_stb))
+		begin
 			assume(!(&i_addr[(DW-1):(DW-8)]));
-		else if ((i_lock)&&(o_wb_cyc_lcl)&&(i_pipe_stb))
+		end else if ((i_lock)&&(o_wb_cyc_lcl)&&(i_pipe_stb))
 			assume(&i_addr[(DW-1):(DW-8)]);
 	end
 
@@ -2364,15 +2454,6 @@ module	dcache #(
 				||(f_pending_addr[AW]==(&i_addr[DW-1:DW-8])));
 	end
 
-	// ?? why was I assuming this again?
-	always @(*)
-	if (f_cval_in_cache)
-	begin
-		assume((!i_wb_err)
-				||(!i_pipe_stb)
-				||(f_const_addr[AW-1:0] != i_addr[AW+1:2]));
-	end
-
 	// If the bus is active, but we allow a second item in anyway 'cause
 	// we are piped, then assume that we don't cross from local to global
 	// buses
@@ -2381,8 +2462,9 @@ module	dcache #(
 	begin
 		`ASSUME(i_op[0] == o_wb_we);
 		if (o_wb_cyc_lcl)
+		begin
 			assume(&i_addr[DW-1:DW-8]);
-		else
+		end else
 			assume(!(&i_addr[DW-1:DW-8]));
 	end
 

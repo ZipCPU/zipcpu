@@ -424,12 +424,12 @@ module	pipemem #(
 	reg				f_done;
 	wire	[3:0]			f_pipe_used;
 	reg	[(1<<FLN)-1:0]		f_mem_used;
-	wire	[(1<<FLN)-1:0]		f_zero;
 	reg				f_past_valid;
 	wire				f_pc_check, f_gie, f_read_cycle;
-	reg				f_alignment_err;
 	wire	[4:0]			f_last_reg, f_addr_reg;
+	// Verilator lint_off UNDRIVEN
 	(* anyseq *) reg	[4:0]	f_areg;
+	// Verilator lint_on  UNDRIVEN
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -440,7 +440,7 @@ module	pipemem #(
 	//
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 
 	initial	`ASSUME( i_reset);
 	always @(*)
@@ -647,8 +647,9 @@ module	pipemem #(
 	if ((f_past_valid)&&(!i_reset)&&(!$past(misaligned)))
 	begin
 		if (f_stb)
+		begin
 			`ASSERT(f_pipe_used == f_outstanding + 4'h1);
-		else
+		end else
 			`ASSERT(f_pipe_used == f_outstanding);
 	end
 
@@ -705,8 +706,9 @@ module	pipemem #(
 
 `define	FIFOCHECK
 `ifdef	FIFOCHECK
+	// Verilator lint_off UNDRIVEN
 	(* anyconst *)	reg	[3:0]	fc_addr;
-	reg	fc_used;
+	// Verilator lint_on  UNDRIVEN
 
 	wire	[3:0]	lastaddr = wraddr - 1'b1;
 
@@ -727,8 +729,6 @@ module	pipemem #(
 			else if (k >= rdaddr)
 				f_mem_used[k] = 1'b1;
 		end
-
-		fc_used = f_mem_used[fc_addr];
 	end
 
 	always @(*)
@@ -792,6 +792,13 @@ module	pipemem #(
 	always @(*)
 		`ASSERT((!f_cyc)||(!o_valid)||(o_wreg[3:1]!=3'h7));
 
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, f_nreqs, f_nacks };
+	// Verilator lint_off UNUSED
+	// }}}
 `endif // FORMAL
 // }}}
 endmodule

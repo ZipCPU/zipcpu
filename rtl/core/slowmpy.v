@@ -234,8 +234,9 @@ module	slowmpy #(
 	if (o_done)
 	begin
 		if ((f_a == 0)||(f_b == 0))
+		begin
 			`ASSERT(o_p == 0);
-		else
+		end else
 			`ASSERT(o_p[NA+NB-1] == f_a[NA-1] ^ f_b[NA-1]);
 	end
 	// }}}
@@ -252,7 +253,7 @@ module	slowmpy #(
 	initial	cvr_past_done = 1'b0;
 	always @(posedge i_clk)
 	if (o_done)
-		cvr_past_done = 1'b1;
+		cvr_past_done <= 1'b1;
 
 	always @(posedge i_clk)
 		cover((o_done)&&(cvr_past_done));

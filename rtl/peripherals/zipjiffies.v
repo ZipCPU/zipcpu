@@ -253,8 +253,9 @@ module	zipjiffies #(
 	// We always ack every transaction on the following clock
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb)))
+	begin
 		assert(o_wb_ack);
-	else
+	end else
 		assert(!o_wb_ack);
 	// }}}
 	///////////////////////////////////////////////////////////////////////
@@ -278,8 +279,9 @@ module	zipjiffies #(
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
 			&&($past(i_wb_we)))
+	begin
 		assert(new_set);
-	else
+	end else
 		assert(!new_set);
 
 	//
@@ -317,8 +319,9 @@ module	zipjiffies #(
 
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
+	begin
 		assert(!o_int);
-	else if (($past(new_set))&&($past(till_wb) < 0))
+	end else if (($past(new_set))&&($past(till_wb) < 0))
 		assert(o_int);
 
 	always @(posedge i_clk)

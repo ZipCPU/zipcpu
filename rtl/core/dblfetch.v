@@ -293,37 +293,23 @@ module	dblfetch #(
  	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 
 	// Keep track of some alternatives to $past that can still be used
 	// in a VERILATOR environment
-	reg	f_past_reset, f_past_clear_cache, f_past_o_valid,
-		f_past_stall_n;
 	reg	[AW+1:0]	f_next_addr, f_dbl_next;
 	localparam	F_LGDEPTH=2;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	wire		[AW+1:0]	f_const_addr;
 	wire		[DW-1:0]	f_const_insn;
 	wire				f_const_illegal;
-	wire	f_this_addr, f_this_pc, f_this_req, f_this_data,
-		f_this_insn, f_this_return,
-		f_cache_pc, f_cache_insn;
+	wire	f_this_pc,
+		f_this_insn, f_this_return;
+	// wire	f_this_addr, f_this_req, f_this_data, f_cache_pc, f_cache_insn;
 	wire	[AW-1:0]	this_return_address,
 				next_pc_address;
 	wire	[AW+1:0]	f_address;
 	// }}}
-
-	initial	f_past_reset = 1'b1;
-	initial	f_past_clear_cache = 1'b0;
-	initial	f_past_o_valid = 1'b0;
-	initial	f_past_stall_n = 1'b1;
-	always @(posedge i_clk)
-	begin
-		f_past_reset       <= i_reset;
-		f_past_clear_cache <= i_clear_cache;
-		f_past_o_valid     <= o_valid;
-		f_past_stall_n     <= i_ready;
-	end
 
 	always @(*)
 	begin
@@ -503,16 +489,18 @@ module	dblfetch #(
 	// it easier to follow the complex logic on a scope.  They don't
 	// affect anything synthesized.
 	//
-	assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
 	assign	f_this_pc   = (o_pc[AW+1:2]== f_const_addr[AW+1:2]);
-	assign	f_this_req  = (i_pc[AW+1:2]== f_const_addr[AW+1:2]);
-	assign	f_this_data = (i_wb_data ==   f_const_insn);
 	assign	f_this_insn = (o_insn    ==   f_const_insn);
 
+	// Verilator lint_off WIDTH
 	assign	f_this_return = (o_wb_addr - f_outstanding == f_const_addr[AW+1:2]);
+	// Verilator lint_on  WIDTH
 
-	assign	f_cache_pc   = (next_pc_address== f_const_addr[AW+1:2])&&cache_valid;
-	assign	f_cache_insn = (cache_word     == f_const_insn)&&cache_valid;
+	// assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
+	// assign	f_this_req  = (i_pc[AW+1:2]== f_const_addr[AW+1:2]);
+	// assign	f_this_data = (i_wb_data ==   f_const_insn);
+	// assign	f_cache_pc   = (next_pc_address== f_const_addr[AW+1:2])&&cache_valid;
+	// assign	f_cache_insn = (cache_word     == f_const_insn)&&cache_valid;
 
 
 	//
@@ -541,8 +529,9 @@ module	dblfetch #(
 			assume(i_wb_data == f_const_insn);
 
 		if (f_const_illegal)
+		begin
 			assume(!i_wb_ack);
-		else
+		end else
 			assume(!i_wb_err);
 	end
 
@@ -602,7 +591,9 @@ module	dblfetch #(
 	if (o_wb_cyc)
 		assert(inflight == f_outstanding);
 
+	// Verilator lint_off WIDTH
 	assign	this_return_address = o_wb_addr - f_outstanding;
+	// Verilator lint_on  WIDTH
 	assign	next_pc_address = f_next_addr[AW+1:2];
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -651,8 +642,9 @@ module	dblfetch #(
 	if ((f_past_valid)&&($past(o_wb_cyc))&&(o_wb_cyc))
 	begin
 		if ((o_valid)&&(!cache_valid))
+		begin
 			assert(this_return_address == next_pc_address);
-		else if (!o_valid)
+		end else if (!o_valid)
 			assert(this_return_address == o_pc[AW+1:2]);
 	end else if ((f_past_valid)&&(!invalid_bus_cycle)
 			&&(!o_wb_cyc)&&(o_valid)&&(!o_illegal)
@@ -684,7 +676,7 @@ module	dblfetch #(
 	initial	f_cvr_aborted = 0;
 	always @(posedge i_clk)
 	if (i_reset)
-		f_cvr_aborted = 0;
+		f_cvr_aborted <= 0;
 	else if (!o_wb_cyc && (f_nreqs != f_nacks))
 		f_cvr_aborted <= 1;
 
@@ -707,6 +699,14 @@ module	dblfetch #(
 	//
 	//
 
+	// }}}
+
+	// Make Verilator happy -- formal section
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused_formal;
+	assign	unused_formal = &{ f_dbl_next[1:0], f_const_addr[1:0] };
+	// Verilator lint_on  UNUSED
 	// }}}
 `endif	// FORMAL
 // }}}

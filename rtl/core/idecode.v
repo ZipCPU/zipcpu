@@ -912,8 +912,9 @@ module	idecode #(
 	///////////////////////////
 	always @(*)
 	if (OPT_PIPELINED)
+	begin
 		`ASSUME(i_ce == ((!o_valid)||(!i_stalled)));
-	else
+	end else
 		`ASSUME(i_ce == !i_stalled);
 
 	always @(posedge i_clk)
@@ -979,16 +980,23 @@ module	idecode #(
 	if ((o_valid)&&(!o_early_branch))
 		`ASSERT((o_illegal)||(o_pc[1] == o_phase));
 
-	wire	[4+21+32+1+4+1+4+11+AW+3+23-1:0]	f_result;
-	assign	f_result = { o_valid, o_phase, o_illegal,
-			i_gie, o_dcdR, o_dcdA, o_dcdB, o_I, o_zI, o_cond,
-			o_wF, o_op, o_ALU, o_M, o_DV, o_FP, o_break, o_lock,
-			o_wR, o_rA, o_rB, o_early_branch, o_branch_pc, o_ljmp,
-			o_pipe, o_sim, o_sim_immv, o_pc };
+	wire	[3+7+7+7+32+1+4+1+4+10+(AW+2)+3+23+(AW+2)-1:0]	f_result;
+	assign	f_result = { o_phase, o_illegal, i_gie,
+			o_dcdR, o_dcdA, o_dcdB,
+			o_I, o_zI, o_cond, o_wF, o_op,
+			o_ALU, o_M, o_DV, o_FP, o_break, o_lock,
+			o_wR, o_rA, o_rB, o_early_branch,
+			o_branch_pc, o_ljmp, o_pipe, o_sim,
+			o_sim_immv, o_pc };
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&(f_last_insn))
-		`ASSERT(f_result == $past(f_result));
+	if ((f_past_valid)&&(!$past(i_reset))&&($stable(i_gie))&&(f_last_insn))
+	begin
+		`ASSERT($stable(f_result));
+		if (OPT_PIPELINED)
+			// All but valid will be stable
+			`ASSERT($stable(o_valid));
+	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(pf_valid))
@@ -1061,17 +1069,20 @@ module	idecode #(
 		`ASSERT(w_dcdB[3:0] == iword[22:19]);
 
 		if (iword[26:24] == 3'b000)
+		begin
 			`ASSERT(w_cis_op == 5'h0);
-		else if (iword[26:24] == 5'h01)
+		end else if (iword[26:24] == 5'h01)
+		begin
 			`ASSERT(w_cis_op == 5'h01);
-		else // if (iword[26:24] == 3'b010)
+		end else // if (iword[26:24] == 3'b010)
 			`ASSERT(w_cis_op == 5'h02);
 
 		`ASSERT(w_cond == 4'h8);
 
 		if (iword[CISIMMSEL])
+		begin
 			`ASSERT(w_I == { {(23-3){iword[18]}}, iword[18:16] });
-		else
+		end else
 			`ASSERT(w_I == { {(23-7){iword[22]}}, iword[22:16] });
 		// }}}
 	end else
@@ -1309,8 +1320,9 @@ module	idecode #(
 
 		`ASSERT(w_cond == 4'h8);
 		if (iword[CISIMMSEL])
+		begin
 			`ASSERT(w_I == { {(23-3){iword[18]}}, iword[18:16] });
-		else
+		end else
 			`ASSERT(w_I == { {(23-7){iword[22]}}, iword[22:16] });
 		`ASSERT(w_wF);
 		// }}}
@@ -1343,8 +1355,9 @@ module	idecode #(
 		`ASSERT(!w_fpu);
 		`ASSERT(!w_mpy);
 		if (w_sto)
+		begin
 			`ASSERT((w_rA)&&(!w_wR));
-		else
+		end else
 			`ASSERT((!w_rA)&&(w_wR));
 		`ASSERT(!w_ALU);
 		`ASSERT(w_rB == iword[IMMSEL]);
@@ -1374,8 +1387,9 @@ module	idecode #(
 		`ASSERT(!w_fpu);
 		`ASSERT(!w_mpy);
 		if (w_sto)
+		begin
 			`ASSERT((w_rA)&&(!w_wR));
-		else
+		end else
 			`ASSERT((!w_rA)&&(w_wR));
 		`ASSERT(!w_ALU);
 		`ASSERT(w_rB);
@@ -1383,13 +1397,15 @@ module	idecode #(
 		`ASSERT(w_dcdB[4] == i_gie);
 		`ASSERT(w_dcdA[3:0] == iword[30:27]);
 		if (iword[CISIMMSEL])
+		begin
 			`ASSERT(w_dcdB[3:0] == iword[22:19]);
-		else
+		end else
 			`ASSERT(w_dcdB[3:0] == CPU_SP_REG);
 
 		if (w_sto)
+		begin
 			`ASSERT(w_cis_op == 5'h13);
-		else
+		end else
 			`ASSERT(w_cis_op == 5'h12);
 
 		`ASSERT(w_cond == 4'h8);
@@ -1507,8 +1523,9 @@ module	idecode #(
 		`ASSERT(!w_ldilo);
 		`ASSERT((w_wR)&&(!w_ALU));
 		if ((w_cis_op == 5'he)||(w_cis_op == 5'hf))
+		begin
 			`ASSERT(!w_rA);
-		else
+		end else
 			`ASSERT(w_rA);
 		`ASSERT(!w_special);
 		`ASSERT(w_rB == iword[IMMSEL]);
@@ -1701,9 +1718,10 @@ module	idecode #(
 		if ((f_past_valid)&&(!$past(i_reset)))
 		begin
 			if ((o_phase)&&($past(i_ce)))
+			begin
 				`ASSERT((iword[30:16] == $past(i_instruction[14:0]))
 					&&(iword[CISBIT]));
-			else if (!o_phase)
+			end else if (!o_phase)
 				`ASSERT(iword == i_instruction);
 
 			if ((!$past(o_phase))&&($past(i_ce))
@@ -1713,8 +1731,9 @@ module	idecode #(
 					&&($past(i_instruction[CISBIT]))
 					&&((!$past(w_dcdR_pc))
 						||(!$past(w_wR))))
+			begin
 				`ASSERT(o_phase);
-			else if (($past(o_phase))&&($past(i_ce)))
+			end else if (($past(o_phase))&&($past(i_ce)))
 				`ASSERT(!o_phase);
 			if (($past(i_ce))&&(!$past(o_phase))
 				&&($past(i_illegal))&&($past(i_pf_valid)))
@@ -1733,8 +1752,9 @@ module	idecode #(
 				`ASSERT(o_pc[1:0]==2'b00);
 				`ASSERT(o_pc[AW+1:2] == $past(i_pc[AW+1:2])+1'b1);
 			end else if ($past(iword[CISBIT])&&($past(o_phase)))
+			begin
 				`ASSERT(o_pc[(AW+1):1] == $past(o_pc[(AW+1):1]) + 1'b1);
-			else if ($past(iword[CISBIT]))
+			end else if ($past(iword[CISBIT]))
 			begin
 				`ASSERT(o_pc[(AW+1):1] == { $past(i_pc[(AW+1):2]), 1'b1});
 				if (o_valid)
@@ -1779,8 +1799,9 @@ module	idecode #(
 
 		always @(posedge i_clk)
 		if ((f_past_valid)&&($past(i_ce))&&($past(i_pf_valid)))
+		begin
 			`ASSERT(o_pc[AW+1:2] == $past(i_pc[AW+1:2]) + 1'b1);
-		else if (f_past_valid)
+		end else if (f_past_valid)
 			`ASSERT(o_pc == $past(o_pc));
 
 		always @(*)
@@ -1810,16 +1831,18 @@ module	idecode #(
 		&&($past(w_fpu)))
 	begin
 		if (OPT_FPU)
+		begin
 			`ASSERT(o_FP);
-		else if (!$past(w_special))
+		end else if (!$past(w_special))
 			`ASSERT(o_illegal);
 	end
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_ce && pf_valid))&&($past(w_lock)))
 	begin
 		if (OPT_LOCK)
+		begin
 			`ASSERT(o_lock);
-		else
+		end else
 			`ASSERT(o_illegal);
 	end
 	////////////////////////////////////////////////////////////////////////
@@ -1830,10 +1853,10 @@ module	idecode #(
 	//
 	//
 
-	wire	[20:0]	f_next_pipe_I, f_this_pipe_I;
+	// wire	[20:0]	f_next_pipe_I, f_this_pipe_I;
 
-	assign	f_this_pipe_I = r_I[22:2];
-	assign	f_next_pipe_I = r_I[22:2]+1'b1;
+	// assign	f_this_pipe_I = r_I[22:2];
+	// assign	f_next_pipe_I = r_I[22:2]+1'b1;
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset)))
@@ -1844,21 +1867,29 @@ module	idecode #(
 				&&(($past(pf_valid))||($past(o_phase))))
 			begin
 				if ((!$past(o_M))||(!o_M))
+				begin
 					`ASSERT(!o_pipe);
-				else if ($past(o_op[0])!=o_op[0])
+				end else if ($past(o_op[0])!=o_op[0])
+				begin
 					`ASSERT(!o_pipe);
-				else if ($past(o_rB)!=o_rB)
+				end else if ($past(o_rB)!=o_rB)
+				begin
 					`ASSERT(!o_pipe);
-				else if ((o_rB)&&($past(o_dcdB) != o_dcdB))
+				end else if ((o_rB)&&($past(o_dcdB) != o_dcdB))
+				begin
 					`ASSERT(!o_pipe);
-				else if (($past(o_wR))
+				end else if (($past(o_wR))
 						&&($past(o_dcdR[3:1]) == 3'h7))
+				begin
 					`ASSERT(!o_pipe);
-				else if (o_wR != $past(o_wR))
+				end else if (o_wR != $past(o_wR))
+				begin
 					`ASSERT(!o_pipe);
-				else if ((o_wR)&&($past(o_dcdR) == o_dcdB))
+				end else if ((o_wR)&&($past(o_dcdR) == o_dcdB))
+				begin
 					`ASSERT(!o_pipe);
-				else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
+				end else if ((o_wR)&&(o_dcdB[3:1] == 3'h7))
+				begin
 					`ASSERT(!o_pipe);
 		//
 		// Allow reading into the PC register as a form of jumping
@@ -1878,7 +1909,7 @@ module	idecode #(
 		//			`ASSERT(!o_pipe);
 		//		else if (r_I[22:0] - $past(r_I[22:0])>23'h4)
 		//			`ASSERT(!o_pipe);
-				else if (!$past(o_valid))
+				end else if (!$past(o_valid))
 					`ASSERT(!o_pipe);
 				// else
 					// assert(o_pipe);
@@ -1945,10 +1976,12 @@ module	idecode #(
 
 	always @(posedge i_clk)
 	if (!OPT_CIS)
+	begin
 		`ASSERT(!o_phase);
-	else if (!f_insn_word[31])
+	end else if (!f_insn_word[31])
+	begin
 		`ASSERT(!o_phase);
-	else if (o_phase)
+	end else if (o_phase)
 		`ASSERT(o_pc[1]);
 
 	always @(*)
@@ -1997,9 +2030,7 @@ module	idecode #(
 	wire	[22:0]	fc_sim_immv;
 
 	f_idecode #(
-		.ADDRESS_WIDTH(AW),
 		.OPT_MPY(OPT_MPY),
-		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_DIVIDE(OPT_DIVIDE),
 		.OPT_FPU(OPT_FPU),
 		.OPT_CIS(OPT_CIS),
@@ -2080,9 +2111,10 @@ module	idecode #(
 				&&(o_cond[3])
 				// From PC to PC
 				&&(o_dcdR[5])&&(o_dcdB[5]))
+		begin
 			`ASSERT((o_ljmp)
 				||((f_insn_word[31])&&(o_phase || o_illegal)));
-		else if (o_valid)
+		end else if (o_valid)
 			`ASSERT(!o_ljmp);
 
 	end endgenerate

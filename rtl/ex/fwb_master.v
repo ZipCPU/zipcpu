@@ -80,7 +80,7 @@ module	fwb_master #(
 		// add.
 		parameter [0:0]		F_OPT_RMW_BUS_OPTION = 1,
 		//
-		// 
+		//
 		// If true, allow the bus to issue multiple discontinuous
 		// requests.
 		// Unlike F_OPT_RMW_BUS_OPTION, these requests may be issued
@@ -425,8 +425,9 @@ module	fwb_master #(
 	if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
 	begin
 		if (i_wb_stb)
+		begin
 			`SLAVE_ASSUME(f_nreqs < F_MAX_REQUESTS);
-		else
+		end else
 			`SLAVE_ASSUME(f_nreqs <= F_MAX_REQUESTS);
 		`SLAVE_ASSERT(f_nacks <= f_nreqs);
 		assert(f_outstanding < (1<<F_LGDEPTH)-1);
@@ -545,3 +546,5 @@ module	fwb_master #(
 	end endgenerate
 	// }}}
 endmodule
+`undef	SLAVE_ASSUME
+`undef	SLAVE_ASSERT

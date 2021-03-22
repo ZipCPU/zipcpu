@@ -169,8 +169,9 @@ module	zipcounter #(
 
 	always @(*)
 	if ((o_wb_ack)&&(i_wb_cyc))
+	begin
 		assert(f_outstanding==1);
-	else
+	end else
 		assert(f_outstanding == 0);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -218,8 +219,9 @@ module	zipcounter #(
 			// Likewise, if the counter rolled over, then the
 			// output interrupt, o_int, should be true.
 			if ($past(o_wb_data)=={(BW){1'b1}})
+			begin
 				assert(o_int);
-			else
+			end else
 				// In all other circumstances it should be clear
 				assert(!o_int);
 		end

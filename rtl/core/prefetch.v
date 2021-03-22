@@ -290,15 +290,13 @@ module	prefetch #(
 	reg	f_past_valid;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks,
 					f_outstanding;
-	reg	[(AW-1):0]	f_last_pc;
-	reg			f_last_pc_valid;
 	reg	[(AW-1):0]	f_req_addr;
 
 	// Keep track of a flag telling us whether or not $past()
 	// will return valid results
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -489,30 +487,28 @@ module	prefetch #(
 	// Let's examine whether or not we "walk" though PC addresses one
 	// at a time like we expect.
 	//
-	initial	f_last_pc_valid = 1'b0;
-	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache)||(i_new_pc)||(invalid))
-		f_last_pc_valid <= 1'b0;
-	else if (o_valid)
-		f_last_pc_valid <= (!o_illegal);
 
+	// f_req_addr
+	// {{{
 	initial	f_req_addr = 0;
 	always @(posedge i_clk)
 	if (i_new_pc)
 		f_req_addr <= i_pc[AW+1:2];
 	else if ((!invalid)&&(o_wb_cyc)&&(i_wb_ack)&&(!i_wb_err))
 		f_req_addr <= f_req_addr + 1'b1;
+	// }}}
 
 	// Let's also keep the formal methods on track.  Any time we are
 	// requesting a value, it should either be from the req_addr, or if
 	// not a new value should've come in rendering this one invalid.
 	always @(posedge i_clk)
 	if (o_wb_cyc)
+	begin
 		assert((invalid)||(f_req_addr == o_wb_addr));
 
-	// This isn't good enough for induction, so we'll need to
-	// constrain this further
-	else if ((!o_valid)&&(!i_new_pc)&&(!i_reset && !i_clear_cache))
+		// This isn't good enough for induction, so we'll need to
+		// constrain this further
+	end else if ((!o_valid)&&(!i_new_pc)&&(!i_reset && !i_clear_cache))
 		assert(f_req_addr == o_wb_addr);
 
 	// In this version, invalid should only ever be high for one cycle.
@@ -534,7 +530,7 @@ module	prefetch #(
 
 	assign	f_this_addr = (o_wb_addr ==   f_const_addr[AW+1:2]);
 	assign	f_this_pc   = (o_pc[AW+1:2]== f_const_addr[AW+1:2]);
-	assign	f_this_req  = (i_pc[AW+2:2]== f_const_addr[AW+1:2]);
+	assign	f_this_req  = (i_pc[AW+1:2]== f_const_addr[AW+1:2]);
 	assign	f_this_data = (i_wb_data ==   f_const_insn);
 
 	// f_addr_pending
@@ -558,16 +554,18 @@ module	prefetch #(
 	if ((o_wb_stb)&&(f_this_addr)&&(!i_wb_stall))
 	begin
 		if (!f_const_illegal)
+		begin
 			assume(!i_wb_err);
-		else
+		end else
 			assume(!i_wb_ack);
 		if (i_wb_ack)
 			assume(f_this_data);
 	end else if ((o_wb_cyc)&&(f_addr_pending))
 	begin
 		if (!f_const_illegal)
+		begin
 			assume(!i_wb_err);
-		else
+		end else
 			assume(!i_wb_ack);
 		if (i_wb_ack)
 			assume(f_this_data);
@@ -612,6 +610,15 @@ module	prefetch #(
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(o_wb_cyc))&&(f_insn_pending))
 		assert(f_this_addr);
+	// }}}
+
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused_formal;
+	assign	unused_formal = &{ 1'b0, f_nreqs, f_nacks, f_outstanding,
+			f_const_addr[1:0] };
+	// Verilator lint_on  UNUSED
 	// }}}
 `endif
 // }}}

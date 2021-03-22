@@ -138,8 +138,9 @@ module	wbwatchdog #(
 	if ((!f_past_valid)||($past(i_reset)))
 	begin
 		if (!f_past_valid)
+		begin
 			assert(r_value == {(BW){1'b1}});
-		else // if ($past(i_reset))
+		end else // if ($past(i_reset))
 			assert(r_value == $past(i_timeout));
 		assert(!o_int);
 	end

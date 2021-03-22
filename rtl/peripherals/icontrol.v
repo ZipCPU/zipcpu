@@ -320,7 +320,6 @@ module	icontrol #(
 	//
 	wire	[1:0]	f_nreqs, f_nacks, f_outstanding;
 	reg		past_stb;
-	(* anyseq *) wire		i_wb_cyc;
 
 	always @(*)
 	if (i_wb_stb)

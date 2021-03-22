@@ -475,8 +475,9 @@ module	div #(
 
 	always @(*)
 	if ((o_valid)&&(!o_err))
+	begin
 		assert(r_z == ((o_quotient == 0)? 1'b1:1'b0));
-	else if (o_busy)
+	end else if (o_busy)
 		assert(r_z == (((o_quotient&f_bits_set[BW-1:0]) == 0)? 1'b1: 1'b0));
 
 	always @(*)

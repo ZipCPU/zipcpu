@@ -737,12 +737,15 @@ module wbdmac #(
 		if ((!i_reset)&&(i_swb_cyc))
 		begin
 			if ((!s_stb)&&(!o_swb_ack))
+			begin
 				assert(f_swb_outstanding == 0);
-			else if ((s_stb)&&(!o_swb_ack))
+			end else if ((s_stb)&&(!o_swb_ack))
+			begin
 				assert(f_swb_outstanding == 1);
-			else if ((!s_stb)&&(o_swb_ack))
+			end else if ((!s_stb)&&(o_swb_ack))
+			begin
 				assert(f_swb_outstanding == 1);
-			else if ((s_stb)&&(o_swb_ack))
+			end else if ((s_stb)&&(o_swb_ack))
 				assert(f_swb_outstanding == 2);
 		end
 		// }}}
@@ -825,8 +828,9 @@ module wbdmac #(
 	if ((f_past_valid)&&(!$past(o_mwb_cyc))&&(o_mwb_cyc))
 	begin
 		if (o_mwb_we)
+		begin
 			assert(o_mwb_addr == cfg_waddr);
-		else
+		end else
 			assert(o_mwb_addr == cfg_raddr);
 	end
 
@@ -841,8 +845,9 @@ module wbdmac #(
 	end else if ((f_past_valid)&&($past(o_mwb_cyc)))
 	begin
 		if (($past(i_mwb_ack))&&($past(o_mwb_we)))
+		begin
 			assert(cfg_len == $past(cfg_len)-1'b1);
-		else
+		end else
 			assert(cfg_len == $past(cfg_len));
 	end else if ((f_past_valid)&&(($past(dma_state) != DMA_IDLE)
 			||(!$past(s_stb))||(!$past(s_we))
@@ -879,9 +884,11 @@ module wbdmac #(
 	always @(posedge i_clk)
 	if ((o_mwb_cyc)&&(!o_mwb_we))
 		assert(bus_nracks <= cfg_len);
+
 	always @(posedge i_clk)
 	if ((o_mwb_cyc)&&(!o_mwb_we))
 		assert(nread <= nracks);
+
 	always @(posedge i_clk)
 	if ((o_mwb_cyc)&&(o_mwb_we))
 		assert(nwritten-nwacks
@@ -907,17 +914,21 @@ module wbdmac #(
 	always @(*)
 	if (o_mwb_stb)
 		assert(nwritten <= cfg_blocklen_sub_one);
+
 	always @(posedge i_clk)
 		assert(nwritten <= f_cfg_blocklen);
 
 	always @(*)
 	if ((o_mwb_stb)&&(!o_mwb_we))
+	begin
 		assert(nracks < f_cfg_blocklen);
-	else
+	end else
 		assert(nracks <= f_cfg_blocklen);
+
 	always @(*)
 	if ((o_mwb_cyc)&&(i_mwb_ack)&&(!o_mwb_we))
 		assert(nread < f_cfg_blocklen);
+
 	always @(*)
 		assert(nread <= nracks);
 
