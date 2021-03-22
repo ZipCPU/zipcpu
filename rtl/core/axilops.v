@@ -4,7 +4,9 @@
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	A memory unit to support a CPU based upon AXI-lite.
+// Purpose:	A memory unit to support a CPU based upon AXI-lite.  This is
+//		a very basic memory unit designed to be low on logic and yet
+//	to still support a lot of options.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -43,14 +45,65 @@ module	axilops #(
 		parameter	ADDRESS_WIDTH=30,
 		parameter	C_AXI_ADDR_WIDTH = ADDRESS_WIDTH,
 		parameter	C_AXI_DATA_WIDTH = 32,
+		//
+		// SWAP_ENDIANNESS
+		// {{{
+		// The ZipCPU was designed to be a big endian machine.  With
+		// no other adjustments, this design will make the ZipCPU
+		// *little* endian, for the simple reason that the AXI bus is
+		// a little endian bus.  However, if SWAP_ENDIANNESS is set,
+		// the bytes within 32-bit words on the AXI bus will be swapped.
+		// This will return the CPU to being a big endian CPU on a
+		// little endian bus.  It will also break any design that
+		// assumes the bus is presented to it in its proper order.
+		// Simple things like counters or interrupt controllers will
+		// therefore cease to work with this option unless they also
+		// swap the endianness of the words they are given.
 		parameter [0:0]	SWAP_ENDIANNESS = 1'b0,
+		// }}}
+		// SWAP_WSTRB
+		// {{{
+		// SWAP_WSTRB represents a second attempt to fix the endianness
+		// issue.  It is incompatible with the SWAP_ENDIANNESS option
+		// above.  If SWAP_WSTRB is set, then half words and words will
+		// be placed on the bus in little endian order, but at big
+		// endian addresses.  Words written to the bus will be written
+		// in little endian order.  Halfwords written to the bus at
+		// address 2 will be written to address 0, halfwords written to
+		// address 0 will be written to address 2.  Bytes written to the
+		// but at address 3 will be written to address 0, address 2
+		// will be written to address 1, address 1 to address 2, and
+		// address 3 to address 0.
+		//
+		// This may just be a half baked attempt to solve this problem,
+		// since it will fail if you ever trie to access bytes or
+		// halfwords at other than their intended widths.
 		parameter [0:0]	SWAP_WSTRB = 1'b1,
+		// }}}
+		// OPT_ALIGNMENT_ERR
+		// {{{
+		// If set, OPT_ALIGNMENT_ERR will generate an alignment error
+		// on any attempt to write to or read from an unaligned word.
+		// If not set, unaligned reads (or writes) will be expanded into
+		// pairs so as to still accomplish the action requested.  The
+		// bus does not guarantee protection, however, that these two
+		// writes or two reads will proceed uninterrupted.  Since
+		// unaligned writes and unaligned reads are no longer
+		// guaranteed to be atomic by the AXI bus, it is possible that
+		// any unaligned operations might yield an incoherent result.
+		parameter [0:0]		OPT_ALIGNMENT_ERR = 1'b1,
+		// }}}
+		// OPT_LOWPOWER
+		// {{{
+		// If set, the design will use extra logic to guarantee that any
+		// unused registers are kept at zero until they are used.  This
+		// will help to guarantee the design (ideally) has fewer
+		// transitions and therefore uses lower power.
+		parameter [0:0]		OPT_LOWPOWER = 1'b0,
+		// }}}
 		localparam	AW = C_AXI_ADDR_WIDTH,
 		localparam	DW = C_AXI_DATA_WIDTH,
-		//
-		parameter [0:0]		OPT_ALIGNMENT_ERR = 1'b1,
-		parameter [0:0]		OPT_LOWPOWER = 1'b0,
-		localparam	AXILSB = $clog2(C_AXI_ADDR_WIDTH/8)
+		localparam	AXILSB = $clog2(C_AXI_DATA_WIDTH/8)
 		// }}}
 	) (
 		// {{{
@@ -130,6 +183,8 @@ module	axilops #(
 	reg	[DW-1:0]		axi_wdata;
 	reg	[DW/8-1:0]		axi_wstrb;
 	reg	[AXILSB-1:0]		swapaddr;
+	wire	[DW-1:0]		endian_swapped_rdata;
+	reg	[DW-1:0]		pre_result;
 
 	// }}}
 
@@ -169,10 +224,12 @@ module	axilops #(
 	end else begin // New memory operation
 		// {{{
 		// Initiate a request
-		M_AXI_AWVALID <=  i_op[0];
-		M_AXI_WVALID  <=  i_op[0];
-		M_AXI_ARVALID <= !i_op[0];
+		M_AXI_AWVALID <=  i_op[0];	// Write request
+		M_AXI_WVALID  <=  i_op[0];	// Write request
+		M_AXI_ARVALID <= !i_op[0];	// Read request
 
+		// Set BREADY or RREADY to accept the response.  These will
+		// remain ready until the response is returned.
 		M_AXI_BREADY  <=  i_op[0];
 		M_AXI_RREADY  <= !i_op[0];
 
@@ -194,17 +251,33 @@ module	axilops #(
 	initial	r_flushing = 1'b0;
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN)
+		// If everything is reset, then we don't need to worry about
+		// or wait for any pending returns--they'll be canceled by the
+		// global reset.
 		r_flushing <= 1'b0;
-	else if (i_cpu_reset && o_busy)
-		r_flushing <= misaligned_response_pending
-				||(!M_AXI_BVALID && !M_AXI_RVALID);
 	else if (M_AXI_BREADY || M_AXI_RREADY)
 	begin
+		if (i_cpu_reset)
+			// If only the CPU is reset, however, we have a problem.
+			// The bus hasn't been reset, and so it is still active.
+			// We can't respond to any new requests from the CPU
+			// until we flush any transactions that are currently
+			// active.
+			r_flushing <= 1'b1;
 		if (M_AXI_BVALID || M_AXI_RVALID)
+			// A request just came back, therefore we can clear
+			// r_flushing
 			r_flushing <= 1'b0;
 		if (misaligned_response_pending)
-			r_flushing <= r_flushing;
-	end
+			// ... unless we're in the middle of a misaligned
+			// request.  In that case, there will be a second
+			// return that we still need to wait for.  This request,
+			// though, will clear misaligned_response_pending.
+			r_flushing <= r_flushing || i_cpu_reset;
+	end else
+		// If nothing is active, we don't care about the CPU reset.
+		// Flushing just stays at zero.
+		r_flushing <= 1'b0;
 	// }}}
 
 	// M_AXI_AxADDR
@@ -221,7 +294,11 @@ module	axilops #(
 		if (OPT_LOWPOWER && !i_stb)
 			M_AXI_AWADDR <= 0;
 
-		if (SWAP_WSTRB)
+		if (SWAP_ENDIANNESS || SWAP_WSTRB)
+			// When adjusting endianness, reads (or writes) are
+			// always full words.  This is important since the
+			// the bytes at issues may (or may not) be in their
+			// expected locations
 			M_AXI_AWADDR[AXILSB-1:0] <= 0;
 		// }}}
 	end else if ((M_AXI_AWVALID && M_AXI_AWREADY)
@@ -481,7 +558,7 @@ module	axilops #(
 		// }}}
 
 		// misaligned_aw_request
-		// {{{	
+		// {{{
 		initial	misaligned_aw_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
@@ -577,6 +654,39 @@ module	axilops #(
 		o_wreg    <= i_oreg;
 	// }}}
 
+	// endian_swapped_rdata
+	// {{{
+	generate if (SWAP_ENDIANNESS)
+	begin : SWAP_RDATA_ENDIANNESS
+		genvar	gw, gb;
+
+		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
+		for(gb=0; gb<32/8; gb=gb+1)
+			assign	endian_swapped_rdata[gw*32+gb*8 +: 8]
+					= M_AXI_RDATA[gw*32+(3-gb)*8 +: 8];
+	end else begin : KEEP_RDATA
+		assign	endian_swapped_rdata = M_AXI_RDATA;
+	end endgenerate
+	// }}}
+
+	// pre_result
+	// {{{
+	// The purpose of the pre-result is to guarantee that the synthesis
+	// tool knows we want a shift of the full DW width.
+	always @(*)
+	begin
+		if (misaligned_read && !OPT_ALIGNMENT_ERR)
+			pre_result <= { endian_swapped_rdata, last_result }
+					>> (8*r_op[AXILSB-1:0]);
+		else
+			pre_result <= { 32'h0, endian_swapped_rdata }
+						>> (8*r_op[AXILSB-1:0]);
+
+		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
+			pre_result <= 0;
+	end
+
+	// }}}
 	// last_result, o_result
 	// {{{
 	always @(posedge i_clk)
@@ -588,19 +698,12 @@ module	axilops #(
 		if (!misaligned_response_pending && OPT_LOWPOWER)
 			last_result <= 0;
 		else
-			last_result <= M_AXI_RDATA;
+			last_result <= endian_swapped_rdata;
 
 		if (OPT_ALIGNMENT_ERR)
 			last_result <= 0;
 
-		// Verilator lint_off WIDTH
-		if (misaligned_read && !OPT_ALIGNMENT_ERR)
-			o_result <= { M_AXI_RDATA, last_result }
-						>> (8*r_op[AXILSB-1:0]);
-		else
-			o_result <= { 32'h0, M_AXI_RDATA }
-						>> (8*r_op[AXILSB-1:0]);
-		// Verilator lint_on WIDTH
+		o_result <= pre_result;
 
 		casez(r_op[AXILSB +: 2])
 		2'b10: o_result[31:16] <= 0;

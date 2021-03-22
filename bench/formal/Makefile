@@ -221,19 +221,31 @@ $(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
 ## {{{
 $(AXIMEM): $(AXIMEM)_cvr/PASS   $(AXIMEM)_prf/PASS   $(AXIMEM)_prfu/PASS
 $(AXIMEM): $(AXIMEM)_cvr64/PASS $(AXIMEM)_prf64/PASS $(AXIMEM)_prfu64/PASS
+$(AXIMEM): $(AXIMEM)_prflp/PASS   $(AXIMEM)_prfulp/PASS
+$(AXIMEM): $(AXIMEM)_prf64lp/PASS $(AXIMEM)_prfu64lp/PASS
 AXIMEMDEPS:= $(AXIMEM).sby $(RTL)/core/$(AXIMEM).v $(AXI) $(FMEM)
 $(AXIMEM)_prf/PASS: $(AXIMEMDEPS)
 	sby -f $(AXIMEM).sby prf
 $(AXIMEM)_prfu/PASS: $(AXIMEMDEPS)
 	sby -f $(AXIMEM).sby prfu
-$(AXIMEM)_cvr/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby cvr
 $(AXIMEM)_prf64/PASS: $(AXIMEMDEPS)
 	sby -f $(AXIMEM).sby prf64
 $(AXIMEM)_prfu64/PASS: $(AXIMEMDEPS)
 	sby -f $(AXIMEM).sby prfu64
+$(AXIMEM)_prflp/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prflp
+$(AXIMEM)_prfulp/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prfulp
+$(AXIMEM)_prf64lp/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prf64lp
+$(AXIMEM)_prfu64lp/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prfu64lp
+
+$(AXIMEM)_cvr/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby cvr
 $(AXIMEM)_cvr64/PASS: $(AXIMEMDEPS)
 	sby -f $(AXIMEM).sby cvr64
+
 ## }}}
 
 .PHONY: $(AXLPIPE)
