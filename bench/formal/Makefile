@@ -40,7 +40,7 @@
 ##
 ## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe axilperiphs # aximem (cached version)
+TESTS += axilfetch axilops axilpipe axilperiphs axiops # aximem (cached version)
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil
@@ -73,6 +73,7 @@ DCACHE := dcache
 AXILPF := axilfetch
 AXIICC := axiicache
 AXILMEM:= axilops
+AXIMEM := axiops
 AXLPIPE:= axilpipe
 AXLPH  := axilperiphs
 AXIDCC := axidcache
@@ -214,6 +215,25 @@ $(AXILMEM)_prfu64/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby prfu64
 $(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby cvr64
+## }}}
+
+.PHONY: $(AXIMEM)
+## {{{
+$(AXIMEM): $(AXIMEM)_cvr/PASS   $(AXIMEM)_prf/PASS   $(AXIMEM)_prfu/PASS
+$(AXIMEM): $(AXIMEM)_cvr64/PASS $(AXIMEM)_prf64/PASS $(AXIMEM)_prfu64/PASS
+AXIMEMDEPS:= $(AXIMEM).sby $(RTL)/core/$(AXIMEM).v $(AXI) $(FMEM)
+$(AXIMEM)_prf/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prf
+$(AXIMEM)_prfu/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prfu
+$(AXIMEM)_cvr/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby cvr
+$(AXIMEM)_prf64/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prf64
+$(AXIMEM)_prfu64/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby prfu64
+$(AXIMEM)_cvr64/PASS: $(AXIMEMDEPS)
+	sby -f $(AXIMEM).sby cvr64
 ## }}}
 
 .PHONY: $(AXLPIPE)
@@ -409,8 +429,10 @@ $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
 
 .PHONY: $(CPU)
 ## {{{
-$(CPU): $(CPU)_piped/PASS
-$(CPU): $(CPU)_nopipe/PASS $(CPU)_lowlogic/PASS $(CPU)_ice40/PASS
+$(CPU): $(CPU)_piped/PASS     $(CPU)_nopipe/PASS
+$(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS
+$(CPU): $(CPU)_pipedlp/PASS   $(CPU)_nopipelp/PASS   $(CPU)_lowlogiclp/PASS
+$(CPU): $(CPU)_pipedlpck/PASS $(CPU)_nopipelpck/PASS $(CPU)_lowlogiclpck/PASS
 CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
 	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE) 		 \
@@ -418,15 +440,24 @@ CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
 
 $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped
-
 $(CPU)_nopipe/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby nopipe
-
 $(CPU)_lowlogic/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogic
-
 $(CPU)_ice40/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby ice40
+$(CPU)_pipedlp/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby pipedlp
+$(CPU)_nopipelp/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby nopipelp
+$(CPU)_lowlogiclp/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby lowlogiclp
+$(CPU)_pipedlpck/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby pipedlpck
+$(CPU)_nopipelpck/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby nopipelpck
+$(CPU)_lowlogiclpck/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby lowlogiclpck
 ## }}}
 ## }}}
 
