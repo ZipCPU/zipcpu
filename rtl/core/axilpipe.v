@@ -216,7 +216,7 @@ module	axilpipe #(
 	// If the bus is busy, the CPU will avoid issuing further interactions
 	// to the bus other than pipelined interactions.
 	initial	o_busy = 0;
-	always @(posedge  S_AXI_ACLK)
+	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		o_busy <= 0;
 	else if (i_stb && (!w_misaligned || !OPT_ALIGNMENT_ERR)
@@ -240,7 +240,7 @@ module	axilpipe #(
 	// True if the CPU should expect some kind of pending response from a
 	// read, and so should stall for that purpose.  False otherwise.
 	initial	o_rdbusy = 0;
-	always @(posedge  S_AXI_ACLK)
+	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset || r_flushing)
 		o_rdbusy <= 0;
 	else if ((i_stb && (w_misaligned && OPT_ALIGNMENT_ERR)) || bus_abort)
@@ -284,7 +284,7 @@ module	axilpipe #(
 						|| M_AXI_ARVALID) ? 1:0);
 
 		initial	r_pipe_stalled = 0;
-		always @(posedge  S_AXI_ACLK)
+		always @(posedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN || i_cpu_reset)
 			r_pipe_stalled <= 0;
 		else if (M_AXI_RVALID || M_AXI_BVALID)
@@ -314,7 +314,7 @@ module	axilpipe #(
 		end
 
 		initial	r_pipe_stalled = 0;
-		always @(posedge  S_AXI_ACLK)
+		always @(posedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN || i_cpu_reset || bus_abort)
 			r_pipe_stalled <= 0;
 		else begin
