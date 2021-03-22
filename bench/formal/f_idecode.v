@@ -57,16 +57,13 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 		o_op, o_ALU, o_M, o_DV, o_FP, o_break, o_lock,
 		o_wR, o_rA, o_rB, o_prepipe, o_sim, o_sim_immv
 		);
-	parameter		ADDRESS_WIDTH=24;
 	parameter	[0:0]	OPT_MPY    = 1'b1;
-	parameter	[0:0]	OPT_EARLY_BRANCHING = 1'b1;
 	parameter	[0:0]	OPT_DIVIDE = 1'b1;
 	parameter	[0:0]	OPT_FPU    = 1'b0;
 	parameter	[0:0]	OPT_CIS    = 1'b1;
 	parameter	[0:0]	OPT_LOCK   = 1'b1;
 	parameter	[0:0]	OPT_OPIPE  = 1'b1;
 	parameter	[0:0]	OPT_SIM    = 1'b0;
-	localparam		AW = ADDRESS_WIDTH;
 	//
 	input	wire [31:0]	i_instruction;
 	input	wire		i_phase, i_gie;
@@ -86,7 +83,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 
 	wire	[4:0]	w_op;
 	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev,
-			w_noop, w_lock, w_sim, w_break, w_special, w_add,
+			w_noop, w_lock, w_sim, w_break, w_special, // w_add,
 			w_mpy;
 	wire	[4:0]	w_dcdR, w_dcdB, w_dcdA;
 	wire		w_dcdR_pc, w_dcdR_cc;
@@ -95,12 +92,8 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	wire	[3:0]	w_cond;
 	wire		w_wF, w_mem, w_sto, w_div, w_fpu;
 	wire		w_wR, w_rA, w_rB, w_wR_n;
-	wire		w_ljmp, w_ljmp_dly, w_cis_ljmp;
 	wire	[31:0]	iword;
-	wire		pf_valid;
 
-
-	reg	[15:0]	r_nxt_half;
 
 	generate if (OPT_CIS)
 	begin : SET_IWORD
@@ -113,28 +106,6 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 
 		assign	iword = { 1'b0, i_instruction[30:0] };
 
-	end endgenerate
-
-	generate
-	if (OPT_EARLY_BRANCHING)
-	begin
-		if (OPT_CIS)
-		begin : CIS_EARLY_BRANCHING
-
-			assign	w_cis_ljmp = (iword[31:16] == 16'hfcf8);
-
-		end else begin : NOCIS_EARLY_BRANCH
-
-			assign	w_cis_ljmp = 1'b0;
-
-		end
-
-		assign	w_ljmp = (iword == 32'h7c87c000);
-
-	end else begin : NO_EARLY_BRANCHING
-
-		assign	w_cis_ljmp = 1'b0;
-		assign	w_ljmp = 1'b0;
 	end endgenerate
 
 	reg	[4:0]	w_cis_op;
@@ -173,7 +144,7 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	assign	w_ldilo  = (w_cis_op[4:0] == 5'h09);
 	assign	w_ALU    = (!w_cis_op[4]) // anything with [4]==0, but ...
 				&&(w_cis_op[3:1] != 3'h7); // not the divide
-	assign	w_add    = (w_cis_op[4:0] == 5'h02);
+	// assign	w_add    = (w_cis_op[4:0] == 5'h02);
 	assign	w_mem    = (w_cis_op[4:3] == 2'b10)&&(w_cis_op[2:1] !=2'b00);
 	assign	w_sto    = (w_mem)&&( w_cis_op[0]);
 	assign	w_div    = (!iword[`CISBIT])&&(w_op[4:1] == 4'h7);
@@ -272,7 +243,6 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 	// w_dcd[17:14] -- (5+i0+i1) = 3 LUTs, 1 delay
 	// w_dcd[22:18] : 5 LUTs, 1 delay (assuming high bit is o/w determined)
 	wire	[22:0]	w_I, w_fullI;
-	wire		w_Iz;
 
 	assign	w_fullI = (w_ldi) ? { iword[22:0] } // LDI
 			// MOVE immediates have one less bit
@@ -302,41 +272,38 @@ module	f_idecode(i_instruction, i_phase, i_gie,
 
 	end endgenerate
 
-	assign	w_Iz = (w_I == 0);
-
-
 	initial	o_illegal = 1'b0;
 	always @(*)
 	begin
-		o_illegal <= 1'b0;
+		o_illegal = 1'b0;
 		if ((!OPT_CIS)&&(i_instruction[`CISBIT]))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 		if ((!OPT_MPY)&&(w_mpy))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 
 		if ((!OPT_DIVIDE)&&(w_div))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 		else if ((OPT_DIVIDE)&&(w_div)&&(w_dcdR[3:1]==3'h7))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 
 
 		if ((!OPT_FPU)&&(w_fpu))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 
 		if ((!OPT_SIM)&&(w_sim))
 			// Simulation instructions on real hardware should
 			// always cause an illegal instruction error
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 
 		// There are two (missing) special instructions
 		// These should cause an illegal instruction error
 		if ((w_dcdR[3:1]==3'h7)&&(w_cis_op[4:1]==4'b1101))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 
 		// If the lock function isn't implemented, this should
 		// also cause an illegal instruction error
 		if ((!OPT_LOCK)&&(w_lock))
-			o_illegal <= 1'b1;
+			o_illegal = 1'b1;
 	end
 
 	generate if (OPT_OPIPE)

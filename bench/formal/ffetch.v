@@ -87,14 +87,14 @@ module	ffetch #(
 	reg	[(AW+1):0]	f_next_address;
 	reg		f_past_valid;
 
-	reg		need_new_pc, past_stalled, past_illegal, past_new_pc,
-			past_valid;
+	reg		need_new_pc, past_stalled, past_illegal;
 	reg	[31:0]	past_insn;
-	reg [AW+1:0]	last_pc, next_pc, prior_pc;
 
+	// Verilator lint_off UNDRIVEN
 	(* anyconst *)	reg	[(AW+1):0]	r_fc_pc;
 	(* anyconst *)	reg			r_fc_illegal;
 	(* anyconst *)	reg	[BUSW-1:0]	r_fc_insn;
+	// Verilator lint_on  UNDRIVEN
 
 	assign	fc_pc		= r_fc_pc;
 	assign	fc_illegal	= r_fc_illegal;
@@ -125,7 +125,7 @@ module	ffetch #(
 	// will return valid results
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -175,19 +175,6 @@ module	ffetch #(
 		`CPU_ASSUME(!pf_illegal);
 	end
 
-	always @(posedge i_clk)
-		past_new_pc <= cpu_new_pc;
-
-	always @(posedge i_clk)
-		last_pc <= cpu_pc;
-
-	always @(*)
-	begin
-		next_pc  <= last_pc + 4;
-		next_pc[1:0] <= 2'b00;
-		prior_pc <= last_pc - 4;
-	end
-
 	initial	need_new_pc = 1'b1;
 	always @(posedge i_clk)
 		need_new_pc <= (i_reset || cpu_clear_cache);
@@ -202,9 +189,6 @@ module	ffetch #(
 
 	always @(posedge i_clk)
 		past_insn <= pf_insn;
-
-	always @(posedge i_clk)
-		past_valid <= pf_valid;
 
 	always @(*)
 	if (need_new_pc)
@@ -247,15 +231,17 @@ module	ffetch #(
 
 	always @(posedge i_clk)
 	if (!f_past_valid || $past(i_reset || cpu_clear_cache))
+	begin
 		`CPU_ASSUME(!pf_valid);
-	else if ((f_past_valid)&&(!$past(pf_illegal && !cpu_new_pc))&&(pf_illegal))
+	end else if ((f_past_valid)&&(!$past(pf_illegal && !cpu_new_pc))&&(pf_illegal))
 		// pf_illegal can only rise if pf_valid is true
 		`CPU_ASSUME(pf_valid);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&($past(i_reset || cpu_new_pc || cpu_clear_cache)))
+	begin
 		`CPU_ASSUME(!pf_illegal || pf_valid);
-	else if (f_past_valid && $past(pf_illegal))
+	end else if (f_past_valid && $past(pf_illegal))
 		`CPU_ASSUME(pf_illegal);
 
 	always @(*)
@@ -282,8 +268,9 @@ module	ffetch #(
 		if (pf_valid && fc_pc[AW+1:2] == f_address[AW+1:2])
 		begin
 			if (fc_illegal)
+			begin
 				`CPU_ASSUME(pf_illegal);
-			else if (!pf_illegal)
+			end else if (!pf_illegal)
 				`CPU_ASSUME(fc_insn == pf_insn);
 		end
 
