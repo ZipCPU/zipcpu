@@ -4,6 +4,13 @@ nopipe		nopipe            cis
 lowlogic	nopipe		
 ice40		nopipe    mpy div cis nobkram
 
+pipedlp		pipelined mpy div cis pipelined earlybranching opt_lowpower
+nopipelp	nopipe            cis opt_lowpower
+lowlogiclp	nopipe opt_lowpower
+
+pipedlpck	pipelined mpy div cis pipelined earlybranching opt_lowpower opt_ckgate
+lowlogiclpck	nopipe opt_lowpower opt_ckgate
+
 [options]
 mode prove
 depth 18
@@ -40,6 +47,8 @@ cmd += " -chparam IMPLEMENT_DIVIDE %d" % ( 1 if "div"            in tags else 0)
 cmd += " -chparam OPT_CIS          %d" % ( 1 if "cis"            in tags else 0)
 cmd += " -chparam OPT_PIPELINED    %d" % ( 1 if "pipelined"      in tags else 0)
 cmd += " -chparam OPT_EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags else 0)
+cmd += " -chparam OPT_LOWPOWER    %d" % ( 1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam OPT_GATE_CLOCK  %d" % ( 1 if "opt_ckgate"   in tags else 0)
 output(cmd)
 --pycode-end--
 
