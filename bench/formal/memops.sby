@@ -1,6 +1,13 @@
 [tasks]
 cvr
 prf
+prflp       prf opt_lowpower
+prflck      prf              opt_lock
+prflcklp    prf opt_lowpower opt_lock
+prflcl      prf                       opt_local
+prflplcl    prf opt_lowpower          opt_local
+prflcklcl   prf              opt_lock opt_local
+prflcklplcl prf opt_lowpower opt_lock opt_local
 
 [options]
 prf: mode prove
@@ -15,6 +22,14 @@ read -define MEMOPS
 read -formal memops.v
 read -formal fmem.v
 read -formal fwb_master.v
+--pycode-begin--
+cmd  = "hierarchy -top memops"
+cmd += " -chparam IMPLEMENT_LOCK %d"    % (1 if "opt_lock"     in tags else 0)
+cmd += " -chparam WITH_LOCAL_BUS %d"    % (1 if "opt_local"    in tags else 0)
+cmd += " -chparam OPT_LOWPOWER %d"      % (1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "opt_aligned" in tags else 0)
+output(cmd)
+--pycode-end--
 prep -top memops
 
 [files]

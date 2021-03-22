@@ -74,6 +74,10 @@
 //	f_read_cycle	True if we are in a read cycle (i.e. a load), false
 //			during any store operations.  The memory must cease
 //			to be busy before switching directions.
+//	f_axi_write_cycle
+//			True if we are in an AXI exclusive access write cycle.
+//			If this cycle fails, the write will return and require
+//			a write to the program counter.
 //	f_last_reg	The last read register.  Once data is returned to this
 //			register, the current string or reads will be complete.
 //	f_addr_reg	The base address register.  On any string of reads,
@@ -117,7 +121,8 @@ module	fmem #(
 		// {{{
 		parameter [0:0]	IMPLEMENT_LOCK = 1'b0,
 		parameter F_LGDEPTH = 4,
-		parameter OPT_MAXDEPTH = 1
+		parameter OPT_MAXDEPTH = 1,
+		parameter OPT_AXI_LOCK = 0
 		// }}}
 	) (
 		// {{{
@@ -148,6 +153,7 @@ module	fmem #(
 		output	reg			f_pc,
 		output	reg			f_gie,
 		output	reg			f_read_cycle,
+		output	reg			f_axi_write_cycle,
 		output	reg	[4:0]		f_last_reg,
 		output	reg	[4:0]		f_addr_reg
 		// , output	reg			f_endpipe,
@@ -166,8 +172,11 @@ module	fmem #(
 
 	reg	f_past_valid;
 	reg	past_stb, past_rd, past_busy;
+	// Verilator lint_off UNDRIVEN
+	(* anyconst *) reg f_check_axi_lock;
+	// Verilator lint_on  UNDRIVEN
 
-	initial	f_past_valid <= 0;
+	initial	f_past_valid = 0;
 	always @(posedge i_clk)
 		f_past_valid <= 1;
 	// }}}
@@ -275,7 +284,7 @@ module	fmem #(
 		`CPU_ASSERT($stable(i_addr));
 		`CPU_ASSERT($stable(i_data));
 		`CPU_ASSERT($stable(i_oreg));
-		`CPU_ASSERT($stable(i_lock));
+		// `CPU_ASSERT($stable(i_lock));
 	end
 	// }}}
 
@@ -286,20 +295,30 @@ module	fmem #(
 	always @(posedge i_clk)
 	if (IMPLEMENT_LOCK && f_past_valid && !$past(i_cpu_reset))
 	begin
-		if ($past(!i_lock && (!i_stb || i_busy)))
-			`CPU_ASSERT(!i_lock);
+	//	if ($past(!i_lock && (!i_stb || i_busy)))
+	//		`CPU_ASSERT(!i_lock);
 	end
 
 	always @(*)
 	if (!i_done)
+	begin
 		`CPU_ASSUME(!i_valid);
-	else if (i_rdbusy)
+	end else if (i_rdbusy)
 		`CPU_ASSUME(i_valid);
 
 	always @(posedge i_clk)
 	if (f_past_valid && !$past(i_rdbusy))
+	begin
 		`CPU_ASSUME(!i_valid);
-	else if (f_past_valid && !i_err && $past(i_rdbusy)
+	end else if (f_past_valid && $past(i_rdbusy) && f_axi_write_cycle)
+	begin
+		`CPU_ASSUME(f_outstanding == 1);
+		if (i_valid)
+		begin
+			`CPU_ASSUME(i_wreg[3:0] == 4'hf && i_done);
+		end else
+			`CPU_ASSUME(i_rdbusy || i_done || i_err);
+	end else if (f_past_valid && !i_err && $past(i_rdbusy)
 			&& (f_outstanding > (i_valid ? 1:0)))
 		`CPU_ASSUME(i_rdbusy);
 
@@ -337,7 +356,7 @@ module	fmem #(
 		`CPU_ASSUME(i_busy || i_valid || i_err);
 
 		if (i_busy)
-			`CPU_ASSUME(i_err || i_rdbusy == past_rd);
+			`CPU_ASSUME(i_err || i_rdbusy == past_rd || f_axi_write_cycle);
 	end else if (!past_rd || !i_busy)
 		`CPU_ASSUME(!i_rdbusy);
 
@@ -369,6 +388,10 @@ module	fmem #(
 	always @(*)
 	if (!i_cpu_reset && i_busy && f_outstanding > 0)
 		`CPU_ASSERT(!i_clear_cache);
+
+	always @(*)
+	if (i_clear_cache)
+		`CPU_ASSERT(!i_stb);
 
 	always @(*)
 	if (i_pipe_stalled)
@@ -424,7 +447,7 @@ module	fmem #(
 		f_last_reg <= i_oreg;
 
 	always @(*)
-	if (f_outstanding == 1 && i_valid)
+	if (f_outstanding == 1 && i_valid && !f_axi_write_cycle)
 		`CPU_ASSUME(f_last_reg == i_wreg);
 	// }}}
 
@@ -465,7 +488,11 @@ module	fmem #(
 		f_pc <= 0;
 	else if (i_stb && !i_op[0] && i_oreg[3:1] == 3'h7)
 		f_pc <= 1'b1;
+	else if (f_check_axi_lock && i_stb && i_op[0] && i_lock)
+		f_pc <= 1'b1;
 	else if (i_valid && i_wreg[3:1] == 3'h7)
+		f_pc <= 1'b0;
+	else if (f_axi_write_cycle && i_done)
 		f_pc <= 1'b0;
 
 	//
@@ -478,19 +505,26 @@ module	fmem #(
 
 	always @(*)
 	if (f_last_reg[3:1] != 3'h7)
-		assert(!f_pc);
-	else if (i_rdbusy)
+	begin
+		assert(!f_pc || f_axi_write_cycle);
+	end else if (i_rdbusy)
 		assert(f_pc);
 
 	always @(*)
 	if (f_pc)
 	begin
-		`CPU_ASSUME(f_read_cycle);
-		if (f_outstanding > 1 && !i_err)
-			`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
-		else if (f_outstanding == 1 && i_valid)
-			`CPU_ASSUME(i_wreg[3:1] == 3'h7);
-		`CPU_ASSUME(f_outstanding > 0);
+		`CPU_ASSUME(f_read_cycle || f_axi_write_cycle);
+		if (f_axi_write_cycle)
+		begin
+			`CPU_ASSUME(f_outstanding == 1);
+		end else begin
+			if (f_outstanding > 1 && !i_err)
+			begin
+				`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
+			end else if (f_outstanding == 1 && i_valid)
+				`CPU_ASSUME(i_wreg[3:1] == 3'h7);
+			`CPU_ASSUME(f_outstanding > 0);
+		end
 	end else if (i_valid)
 		`CPU_ASSUME(!i_valid || i_wreg[3:1] != 3'h7);
 	// }}}
@@ -516,6 +550,43 @@ module	fmem #(
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
+	// f_axi_write_cycle properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	always @(*)
+	if (!OPT_AXI_LOCK || !IMPLEMENT_LOCK)
+	begin
+		assume(f_check_axi_lock == 1'b0);
+	end else if (OPT_AXI_LOCK == 1)
+		assume(f_check_axi_lock == 1'b1);
+
+	initial	f_axi_write_cycle = 1'b0;
+	always @(posedge i_clk)
+	if (i_cpu_reset || i_clear_cache || !f_check_axi_lock)
+		f_axi_write_cycle <= 1'b0;
+	else if (i_stb && i_lock && i_op[0])
+		f_axi_write_cycle <= 1'b1;
+	else if (i_err || i_valid || !i_rdbusy)
+		f_axi_write_cycle <= 1'b0;
+
+	always @(*)
+	if (!f_check_axi_lock)
+		assert(f_axi_write_cycle == 0);
+
+	always @(*)
+	if (f_axi_write_cycle)
+		`CPU_ASSUME(i_rdbusy || i_valid || i_err || i_done);
+
+	always @(*)
+	if (f_axi_write_cycle)
+		assert(f_pc);
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// f_read_cycle properties
 	// {{{
 	////////////////////////////////////////////////////////////////////////
@@ -533,14 +604,20 @@ module	fmem #(
 	always @(*)
 	if (!f_read_cycle)
 	begin
-		`CPU_ASSERT(!i_rdbusy);
-		`CPU_ASSERT(!i_valid);
+		if (!f_axi_write_cycle)
+		begin
+			`CPU_ASSUME(!i_rdbusy);
+			`CPU_ASSUME(!i_valid);
+		end
 	end else if (i_done)
 	begin
 		`CPU_ASSUME(i_valid || i_err);
 		if (!i_err)
 		`CPU_ASSUME((f_outstanding <= (i_valid ? 1:0)) || i_rdbusy);
 	end
+
+	always @(*)
+		`CPU_ASSUME(!f_read_cycle || !f_axi_write_cycle);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -615,5 +692,13 @@ module	fmem #(
 
 	always @(*)
 		cover(cvr_returns > 2);
+	// }}}
+
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, i_result };
+	// Verilator lint_on  UNUSED
 	// }}}
 endmodule

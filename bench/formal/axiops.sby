@@ -1,0 +1,47 @@
+[tasks]
+cvr                        bus32
+prf                        bus32
+prfu prf   opt_realignment bus32
+cvr64 cvr                  bus64
+prf64 prf                  bus64
+prfu64 prf opt_realignment bus64
+
+[options]
+prf: mode prove
+prf:  depth 3
+prf:  depth 9
+prfu: depth 9
+cvr: mode cover
+
+[engines]
+cvr: smtbmc
+# prf: abc pdr
+prf: smtbmc
+
+[script]
+read -define AXIOPS
+read -formal axiops.v
+read -formal faxi_master.v
+read -formal faxi_wstrb.v
+read -formal faxi_valaddr.v
+read -formal faxi_addr.v
+read -formal fmem.v
+--pycode-begin--
+cmd = "hierarchy -top axiops"
+cmd +=" -chparam OPT_LOCK 1"
+cmd +=" -chparam OPT_ALIGNMENT_ERR %d" % (0 if "opt_realignment" in tags else 1)
+if ("bus64" in tags):
+	cmd +=" -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd +=" -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axiops
+
+[files]
+../../rtl/core/axiops.v
+faxi_master.v
+faxi_wstrb.v
+faxi_valaddr.v
+faxi_addr.v
+fmem.v
