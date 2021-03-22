@@ -72,8 +72,10 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 
 	end else begin // Our single clock option (no extra clocks)
 
+		// Verilator lint_off UNDRIVEN
 		(* anyseq *) reg	[2:0]	next_delay_to_valid;
 		(* anyseq *) reg	[63:0]	any_result;
+		// Verilator lint_on  UNDRIVEN
 
 		assign	o_result = any_result;
 
@@ -126,4 +128,8 @@ module	abs_mpy(i_clk,i_reset, i_stb, i_op, i_a, i_b, o_valid, o_busy, o_result, 
 	end
 	endgenerate // All possible multiply results have been determined
 
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, i_op, i_a, i_b };
+	// Verilator lint_on  UNUSED
 endmodule

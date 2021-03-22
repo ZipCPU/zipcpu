@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	abs_div.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	The original divide module provides an Integer divide
@@ -73,9 +73,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -90,40 +90,50 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype	none
-//
-module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
-		o_busy, o_valid, o_err, o_quotient, o_flags);
-	parameter		BW=32, LGBW = 5;
-	parameter	[4:0]	MAXDELAY = 3;
-	input	wire		i_clk, i_reset;
-	// Input parameters
-	input	wire		i_wr, i_signed;
-	input	wire [(BW-1):0]	i_numerator, i_denominator;
-	// Output parameters
-	output	wire		o_busy;
-	output	reg		o_valid, o_err;
-	output	reg [(BW-1):0]	o_quotient;
-	output	wire	[3:0]	o_flags;
+// }}}
+module	abs_div #(
+		// {{{
+		parameter		BW=32, LGBW = 5,
+		parameter	[4:0]	MAXDELAY = 3
+		// }}}
+	) (
+		// {{{
+		input	wire		i_clk, i_reset,
+		// Input parameters
+		input	wire		i_wr, i_signed,
+		input	wire [(BW-1):0]	i_numerator, i_denominator,
+		// Output parameters
+		output	wire		o_busy,
+		output	reg		o_valid, o_err,
+		output	reg [(BW-1):0]	o_quotient,
+		output	wire	[3:0]	o_flags
+		// }}}
+	);
 
+	// Declarations
+	// {{{
+	// Verilator lint_off UNDRIVEN
 	(* anyseq *)	reg			any_err;
 	(* anyseq *)	reg	[(BW-1):0]	any_quotient;
 	(* anyseq *)	reg	[5:0]		wait_time;
+	(* anyseq *)	reg	[3:0]		any_flags;
+	// Verilator lint_on  UNDRIVEN
+	reg	[5:0]	r_busy_counter;
+	// }}}
 
 	always @(*)
 		o_err      = any_err;
 	always @(*)
 		o_quotient = any_quotient;
-
-	reg	[5:0]	r_busy_counter;
 
 	always @(*)
 		assume(wait_time > 5'h1);
@@ -131,6 +141,8 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 	always @(*)
 		assume((MAXDELAY == 0)||(wait_time < MAXDELAY));
 
+	// r_busy_counter
+	// {{{
 	initial	r_busy_counter = 0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -139,25 +151,35 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 		r_busy_counter <= wait_time;
 	else if (r_busy_counter > 0)
 		r_busy_counter <= r_busy_counter - 1'b1;
+	// }}}
 
 	always @(*)
-	assert((MAXDELAY == 0)||(r_busy_counter < MAXDELAY));
+		assert((MAXDELAY == 0)||(r_busy_counter < MAXDELAY));
 
 	assign	o_busy = (r_busy_counter != 0);
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		o_valid <= 1'b0;
 	else
 		o_valid <= (r_busy_counter == 1);
-
-	(* anyseq *)	reg	[3:0]	any_flags;
+	// }}}
 
 	assign o_flags    = (o_valid) ? 
 			{ 1'b0, o_quotient[31], any_flags[1],
 					(o_quotient == 0) } : any_flags;
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 	reg	f_past_valid;
 	initial	f_past_valid = 0;
@@ -214,4 +236,5 @@ module	abs_div(i_clk, i_reset, i_wr, i_signed, i_numerator, i_denominator,
 		assume((!o_busy)||(!o_valid));
 
 `endif
+// }}}
 endmodule
