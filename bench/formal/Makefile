@@ -443,12 +443,13 @@ $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
 ## {{{
 $(CPU): $(CPU)_piped/PASS     $(CPU)_nopipe/PASS
 $(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS
-$(CPU): $(CPU)_pipedlp/PASS   $(CPU)_nopipelp/PASS   $(CPU)_lowlogiclp/PASS
-$(CPU): $(CPU)_pipedlpck/PASS $(CPU)_nopipelpck/PASS $(CPU)_lowlogiclpck/PASS
-CPUDEPS:= $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v $(RTL)/core/idecode.v \
-	$(RTL)/ex/wbdblpriarb.v $(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v  \
-	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE) 		 \
-	$(CPU).sby $(FMEM) $(IFETCH) $(FDBG)
+$(CPU): $(CPU)_pipedlp/PASS   $(CPU)_lowlogiclp/PASS   $(CPU)_nopipelp/PASS
+$(CPU): $(CPU)_pipedlpck/PASS $(CPU)_lowlogiclpck/PASS
+CPUDEPS:= $(CPU).sby $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v		\
+	$(RTL)/core/idecode.v $(RTL)/ex/wbdblpriarb.v			\
+	$(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v			\
+	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE)		\
+	$(FMEM) $(IFETCH) $(FDBG)
 
 $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped
@@ -466,8 +467,6 @@ $(CPU)_lowlogiclp/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogiclp
 $(CPU)_pipedlpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby pipedlpck
-$(CPU)_nopipelpck/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby nopipelpck
 $(CPU)_lowlogiclpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogiclpck
 ## }}}

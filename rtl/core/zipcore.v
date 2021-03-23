@@ -270,8 +270,8 @@ module	zipcore #(
 	wire	[7:0]	op_F;
 	wire		op_ce, op_phase, op_pipe;
 	reg		r_op_break;
-	reg	[3:0]	r_op_opn;
-	wire	w_op_valid;
+	wire		w_op_valid;
+	wire		op_lowpower_clear;
 	wire	[8:0]	w_cpu_info;
 	// Some pipeline control wires
 	reg	op_illegal;
@@ -707,7 +707,7 @@ module	zipcore #(
 		if ((OPT_LOWPOWER && i_reset)||(clear_pipeline)||(i_halt))
 			r_op_pipe <= 1'b0;
 		else if (op_ce)
-			r_op_pipe <= (dcd_pipe)&&(op_valid_mem);
+			r_op_pipe <= (dcd_pipe)&&(op_valid_mem)&&(!OPT_LOWPOWER || !dcd_illegal);
 		else if ((wr_reg_ce)&&(wr_reg_id == op_Bid[4:0]))
 			r_op_pipe <= 1'b0;
 		else if (mem_ce) // Clear us any time an op_ is clocked in
@@ -716,7 +716,7 @@ module	zipcore #(
 		assign	op_pipe = r_op_pipe;
 `ifdef	FORMAL
 		always @(*)
-		if (OPT_LOWPOWER && !op_valid)
+		if (OPT_LOWPOWER && !op_valid_mem)
 			assert(!r_op_pipe);
 `endif
 	end else begin
@@ -816,15 +816,23 @@ module	zipcore #(
 		initial	op_rB  = 0;
 		initial	op_Rcc = 0;
 		always @(posedge i_clk)
-		if (op_ce)
 		begin
-			op_R   <= dcd_R;
-			op_Aid <= dcd_A;
-			if ((dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal))
-				op_Bid <= dcd_B;
-			op_rA  <= (dcd_rA)&&(!dcd_early_branch)&&(!dcd_illegal);
-			op_rB  <= (dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal);
-			op_Rcc <= (dcd_Rcc)&&(dcd_wR)&&(dcd_R[4]==dcd_gie);
+			if (op_ce && (!OPT_LOWPOWER || w_op_valid))
+			begin
+				op_R   <= dcd_R;
+				op_Aid <= dcd_A;
+				if ((dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal))
+					op_Bid <= dcd_B;
+				op_rA  <= (dcd_rA)&&(!dcd_early_branch)&&(!dcd_illegal);
+				op_rB  <= (dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal);
+				op_Rcc <= (dcd_Rcc)&&(dcd_wR)&&(dcd_R[4]==dcd_gie);
+			end
+
+			if (op_lowpower_clear)
+			begin
+				op_rA <= 1'b0;
+				op_rB <= 1'b0;
+			end
 		end
 		// }}}
 	end else begin : OP_REG_COPY
@@ -871,14 +879,20 @@ module	zipcore #(
 	end
 
 // 44313
+	initial	r_op_Av = 0;
 	always @(posedge i_clk)
-	if (avsrc[2])
-	case(avsrc[1:0])
-	2'b00:	r_op_Av <= wr_gpreg_vl;
-	2'b01:	r_op_Av <= w_pcA_v;
-	2'b10:	r_op_Av <= { w_cpu_info, w_op_Av[22:16], (dcd_A[4])?w_uflags:w_iflags };
-	2'b11:	r_op_Av <= w_op_Av;
-	endcase
+	begin
+		if (avsrc[2])
+		case(avsrc[1:0])
+		2'b00:	r_op_Av <= wr_gpreg_vl;
+		2'b01:	r_op_Av <= w_pcA_v;
+		2'b10:	r_op_Av <= { w_cpu_info, w_op_Av[22:16], (dcd_A[4])?w_uflags:w_iflags };
+		2'b11:	r_op_Av <= w_op_Av;
+		endcase
+
+		if (op_lowpower_clear)
+			r_op_Av <= 0;
+	end
 	// }}}
 
 	// w_op_B -- The registered value of the op B register
@@ -925,12 +939,18 @@ module	zipcore #(
 			bvsrc = 3'b110;
 	end
 
+	initial	r_op_Bv = 0;
 	always @(posedge i_clk)
-	if (bvsrc[2]) casez(bvsrc[1:0])
-	2'b00: r_op_Bv <= w_pcB_v + { dcd_I[29:0], 2'b00 };
-	2'b01: r_op_Bv <= w_op_BnI + dcd_I;
-	2'b1?: r_op_Bv <= wr_gpreg_vl;
-	endcase
+	begin
+		if (bvsrc[2]) casez(bvsrc[1:0])
+		2'b00: r_op_Bv <= w_pcB_v + { dcd_I[29:0], 2'b00 };
+		2'b01: r_op_Bv <= w_op_BnI + dcd_I;
+		2'b1?: r_op_Bv <= wr_gpreg_vl;
+		endcase
+
+		if (op_lowpower_clear)
+			r_op_Bv <= 0;
+	end
 	// }}}
 
 	// op_F
@@ -944,22 +964,28 @@ module	zipcore #(
 	// these two bits are redundant.  Hence the convoluted expression
 	// below, arriving at what we finally want in the (now wire net)
 	// op_F.
+	initial	r_op_F = 7'h00;
 	always @(posedge i_clk)
-	if ((!OPT_PIPELINED)||(op_ce))
-		// Cannot do op_change_data_ce here since op_F depends
-		// upon being either correct for a valid op, or correct
-		// for the last valid op
-	begin // Set the flag condition codes, bit order is [3:0]=VNCZ
-		case(dcd_F[2:0])
-		3'h0:	r_op_F <= 7'h00;	// Always
-		3'h1:	r_op_F <= 7'h11;	// Z
-		3'h2:	r_op_F <= 7'h44;	// LT
-		3'h3:	r_op_F <= 7'h22;	// C
-		3'h4:	r_op_F <= 7'h08;	// V
-		3'h5:	r_op_F <= 7'h10;	// NE
-		3'h6:	r_op_F <= 7'h40;	// GE (!N)
-		3'h7:	r_op_F <= 7'h20;	// NC
-		endcase
+	begin
+		if ((!OPT_PIPELINED)||(op_ce))
+			// Cannot do op_change_data_ce here since op_F depends
+			// upon being either correct for a valid op, or correct
+			// for the last valid op
+		begin // Set the flag condition codes, bit order is [3:0]=VNCZ
+			case(dcd_F[2:0])
+			3'h0:	r_op_F <= 7'h00;	// Always
+			3'h1:	r_op_F <= 7'h11;	// Z
+			3'h2:	r_op_F <= 7'h44;	// LT
+			3'h3:	r_op_F <= 7'h22;	// C
+			3'h4:	r_op_F <= 7'h08;	// V
+			3'h5:	r_op_F <= 7'h10;	// NE
+			3'h6:	r_op_F <= 7'h40;	// GE (!N)
+			3'h7:	r_op_F <= 7'h20;	// NC
+			endcase
+		end
+
+		if (op_lowpower_clear)
+			r_op_F <= 7'h00;
 	end // Bit order is { (flags_not_used), VNCZ mask, VNCZ value }
 	assign	op_F = { r_op_F[3], r_op_F[6:0] };
 	// }}}
@@ -1025,6 +1051,30 @@ module	zipcore #(
 		op_valid_fpu <= 1'b0;
 		// }}}
 	end
+	// }}}
+
+	// op_lowpower_clear
+	// {{{
+	generate if (!OPT_LOWPOWER || !OPT_PIPELINED)
+	begin : NO_OP_LOWPOWER_CLEAR
+
+		assign	op_lowpower_clear = 1'b0;
+
+	end else begin : GEN_OP_LOWPOWER_CLEAR
+		reg		r_op_lowpower_clear;
+
+		always @(*)
+		if (i_reset || clear_pipeline)
+			r_op_lowpower_clear = 1'b1;
+		else if (op_ce && !w_op_valid)
+			r_op_lowpower_clear = 1'b1;
+		else if ((!op_ce || !w_op_valid)&&(adf_ce_unconditional || mem_ce))
+			r_op_lowpower_clear = 1'b1;
+		else
+			r_op_lowpower_clear = 1'b0;
+
+		assign	op_lowpower_clear = r_op_lowpower_clear;
+	end endgenerate
 	// }}}
 
 	// op_break
@@ -1100,9 +1150,14 @@ module	zipcore #(
 	// op_wF
 	// {{{
 	always @(posedge i_clk)
-	if ((!OPT_PIPELINED)||(op_ce))
-		op_wF <= (dcd_wF)&&((!dcd_Rcc)||(!dcd_wR))
-			&&(!dcd_early_branch);
+	begin
+		if ((!OPT_PIPELINED)||(op_ce))
+			op_wF <= (dcd_wF)&&((!dcd_Rcc)||(!dcd_wR))
+				&&(!dcd_early_branch);
+
+		if (op_lowpower_clear)
+			op_wF <= 1'b0;
+	end
 	// }}}
 
 	// op_wR
@@ -1110,9 +1165,14 @@ module	zipcore #(
 	generate if ((OPT_PIPELINED)||(OPT_EARLY_BRANCHING))
 	begin
 
+		initial	op_wR = 1'b0;
 		always @(posedge i_clk)
-		if (op_ce)
-			op_wR <= (dcd_wR)&&(!dcd_early_branch);
+		begin
+			if (op_ce)
+				op_wR <= (dcd_wR)&&(!dcd_early_branch);
+			if (op_lowpower_clear)
+				op_wR <= 1'b0;
+		end
 
 	end else begin
 
@@ -1163,7 +1223,7 @@ module	zipcore #(
 
 		initial op_pc[0] = 1'b0;
 		always @(posedge i_clk)
-		if (op_ce)
+		if (op_ce && (!OPT_LOWPOWER || w_op_valid))
 			op_pc <= (dcd_early_branch)?dcd_branch_pc:dcd_pc;
 
 	end else begin : SET_OP_PC
@@ -1177,14 +1237,16 @@ module	zipcore #(
 	// op_opn -- the opcode of the current operation
 	// {{{
 	generate if (!OPT_PIPELINED)
-	begin
-		always @(*)
-			r_op_opn = dcd_opn;
+	begin : COPY_DCD_OPN
 
-	end else begin
+		assign	op_opn = dcd_opn;
+
+	end else begin : FWD_OPERATION
+
+		reg	[3:0]	r_op_opn;
 
 		always @(posedge i_clk)
-		if (op_ce)
+		if (op_ce && (!OPT_LOWPOWER || w_op_valid || dcd_early_branch))
 		begin
 			// Which ALU operation?  Early branches are
 			// unimplemented moves
@@ -1194,9 +1256,9 @@ module	zipcore #(
 			// What register will these results be written into?
 		end
 
-	end endgenerate
+		assign	op_opn = r_op_opn;
 
-	assign	op_opn = r_op_opn;
+	end endgenerate
 	// }}}
 	assign	op_gie = gie;
 
@@ -4576,20 +4638,42 @@ module	zipcore #(
 	// In low power mode, *nothing* should change unless we are doing
 	// something.
 
-	generate if (OPT_LOWPOWER)
+	generate if (OPT_LOWPOWER && OPT_PIPELINED)
 	begin : F_OPT_LOWPOWER_CHECK
-		wire	[64:0]	op_state;
+		wire	[70:0]	op_state;
 
-		assign	op_state = { op_stall, op_opn, op_R, op_Rcc, op_Aid,
-				op_Bid, op_rA, op_rB, op_pc,
-				op_wR, op_wF, r_op_F, r_op_break, r_op_opn,
-				op_illegal };
+		//
+		// OP* registers can only be expected to hold steady if
+		// pipelined.  If not pipelined, many of these registers
+		// become aliases for the decode registers which will
+		// (of course) change from one clock to the next.
+		// 
+		assign	op_state = { op_valid_mem, op_valid_div, op_valid_alu,
+				op_valid_fpu,
+				op_opn, op_R, op_Rcc, op_Aid,
+				op_Bid, op_pc,
+				r_op_break, op_illegal };
 
 		always @(posedge i_clk)
 		if (f_past_valid && !$past(i_reset) && !$past(clear_pipeline)
-			&& ($past(op_valid && !adf_ce_unconditional)
-				||(!$past(op_valid) && !op_valid)))
+			&& ($past(op_valid && !adf_ce_unconditional && !mem_ce)
+				||($past(!op_valid && !dcd_ljmp) && !op_valid)))
+		begin
 			assert($stable(op_state));
+		end
+
+		always @(posedge i_clk)
+		if (f_past_valid && !op_valid)
+		begin
+			assert(r_op_F == 7'h00);
+			assert(!op_wR);
+			assert(!op_wF);
+			assert(!op_rA);
+			assert(!op_rB);
+
+			assert(r_op_Av == 0);
+			assert(r_op_Bv == 0);
+		end
 
 	end endgenerate
 
