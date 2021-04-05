@@ -73,7 +73,7 @@ module	axiicache #(
 		parameter	LGLINESZ=3,
 		//
 		// LGWAYS is the number of cache "ways"
-		parameter	LGWAYS = 0,
+		// parameter	LGWAYS = 0,
 		//
 		parameter	C_AXI_ID_WIDTH = 1,
 		parameter	C_AXI_ADDR_WIDTH = 32,
@@ -86,7 +86,7 @@ module	axiicache #(
 		parameter [C_AXI_ID_WIDTH-1:0]	AXI_ID = 0,
 		localparam	ADDRLSB = $clog2(C_AXI_DATA_WIDTH/8),
 		localparam	LGINSN  = $clog2(INSN_WIDTH/8),
-		localparam	INSN_PER_WORD = C_AXI_DATA_WIDTH/INSN_WIDTH,
+		// localparam	INSN_PER_WORD = C_AXI_DATA_WIDTH/INSN_WIDTH,
 		localparam	AW=C_AXI_ADDR_WIDTH,
 		localparam	DW=C_AXI_DATA_WIDTH,
 		localparam	LS=LGLINESZ, // Size of a cache line in words
@@ -129,20 +129,22 @@ module	axiicache #(
 		output reg [INSN_WIDTH-1:0] o_insn,
 		output	reg [AW-1:0]	o_pc,
 		output	reg		o_valid,
-		output	reg		o_illegal,
+		output	reg		o_illegal
 		// }}}
+`ifdef	DEPRECATED
 		output	wire [AW-1:0]		illegal_addr,
 		output	wire [AW-LSB-1:0]	bus_tag,
 		output	wire [AW-LSB-1:0]	o_tag,
 		output	wire [AW-LSB-1:0]	i_tag,
 		output	wire [AW-LSB-1:0]	lastpc_tag
+`endif
 		// }}}
 	);
 
 	// Register/local parameter declarations
 	// {{{
-	localparam CACHELEN=(1<<LGCACHESZ), //Byte Size of our cache memory
-			CACHELENW = CACHELEN/(C_AXI_DATA_WIDTH/8); // Word sz
+	// localparam CACHELEN=(1<<LGCACHESZ); //Byte Size of our cache memory
+	// localparam CACHELENW = CACHELEN/(C_AXI_DATA_WIDTH/8); // Word sz
 	localparam	CWB=LGCACHESZ, // Short hand for LGCACHESZ
 			CW=LGCACHESZ-ADDRLSB; // now in words
 	localparam	LGLINES=CWB-LSB;
@@ -834,12 +836,13 @@ module	axiicache #(
 	if (!i_cpu_reset && !i_new_pc && !i_clear_cache)
 		assert(next_addr == i_pc);
 
-
+`ifdef	DEPRECATED
 	assign	illegal_addr = { illegal_tag, {(LSB){1'b0}} };
 	assign	bus_tag = axi_araddr[AW-1:LSB];
 	assign	o_tag   = o_pc[AW-1:LSB];
 	assign	i_tag   = i_pc[AW-1:LSB];
 	assign	lastpc_tag= last_pc[AW-1:LSB];
+`endif
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////

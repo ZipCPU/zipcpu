@@ -173,7 +173,6 @@ module	axidcache #(
 	reg	[DW-1:0]	cached_iword, cached_rword;
 	// }}}
 
-	reg	[AXILSB:0]	mislsb;
 	reg			misaligned;
 
 	wire			cache_miss_inow, address_is_cachable;

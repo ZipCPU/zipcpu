@@ -40,10 +40,10 @@
 // }}}
 module	axiops #(
 		// {{{
-		parameter	ADDRESS_WIDTH=32,
-		parameter	C_AXI_ID_WIDTH = 1,
-		parameter	C_AXI_ADDR_WIDTH = ADDRESS_WIDTH,
+		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 32,
+		parameter	C_AXI_ID_WIDTH = 1,
+		localparam	ADDRESS_WIDTH=C_AXI_ADDR_WIDTH,
 		parameter [((C_AXI_ID_WIDTH > 0)? C_AXI_ID_WIDTH:1)-1:0]
 					AXI_ID = 0,
 		//

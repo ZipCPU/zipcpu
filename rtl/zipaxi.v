@@ -1,39 +1,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipaxil.v
+// Filename:	zipaxi.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A potential top level module holding the core of the Zip CPU
-//		together--this one with AXI-lite instruction, data, and debug
-//	interfaces.  In general, the Zip CPU is designed to be as simple as
-//	possible.  (actual implementation aside ...)  The instruction set is
-//	about as RISC as you can get, with only 26 instruction types currently
-//	supported.  (There are still 8-instruction Op-Codes reserved for
-//	floating point, and 5 which can be used for transactions not requiring
-//	registers.) Please see the accompanying spec.pdf file for a description
-//	of these instructions.
+//		together--this one with AXI4 instruction and data interfaces,
+//	and an AXI-lite debug interfaces.  In general, the Zip CPU is designed
+//	to be as simple as possible.  (actual implementation aside ...)  The
+//	instruction set is about as RISC as you can get, with only 26
+//	instruction types currently supported.  (There are still 8-instruction
+//	Op-Codes reserved for floating point, and 5 which can be used for
+//	transactions not requiring registers.) Please see the accompanying
+//	spec.pdf file for a description of these instructions.
 //
-//	All instructions are 32-bits wide.  All bus accesses, both address and
-//	data, are 32-bits over a wishbone bus.
-//
-//	The Zip CPU is fully pipelined with the following pipeline stages:
-//
-//		1. Prefetch, returns the instruction from memory.
-//
-//		2. Instruction Decode
-//
-//		3. Read Operands
-//
-//		4. Apply Instruction
-//
-//		4. Write-back Results
-//
-//	Further information about the inner workings of this CPU, such as
-//	what causes pipeline stalls, may be found in the spec.pdf file.  (The
-//	documentation within this file had become out of date and out of sync
-//	with the spec.pdf, so look to the spec.pdf for accurate and up to date
-//	information.)
+//	This version is bus width agnostic for both instruction and data buses,
+//	although the debug bus must still be 32-bits.  Instruction and data
+//	buses must be at least 32-bits wide.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
@@ -69,14 +52,18 @@
 `include "cpudefs.v"
 //
 // }}}
-module	zipaxil #(
+module	zipaxi #(
 		// {{{
 		parameter	C_DBG_ADDR_WIDTH = 8,
 		localparam	C_DBG_DATA_WIDTH = 32,
 		localparam	DBGLSB = $clog2(C_DBG_DATA_WIDTH/8),
 		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 32,
+		parameter	C_AXI_ID_WIDTH = 1,
+		parameter	INSN_ID = 0,
+		parameter	DATA_ID = 0,
 		localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH,
+		localparam	AXILSB = $clog2(C_AXI_DATA_WIDTH/8),
 		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
 		parameter [0:0]	START_HALTED = 1'b0,
 `ifdef	OPT_MULTIPLY
@@ -118,8 +105,11 @@ module	zipaxil #(
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
 		localparam	[0:0]	IMPLEMENT_LOCK=0,
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
-		// localparam		OPT_LGDCACHE = 0,
-		// localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
+		parameter		LGICACHE = 8,
+		parameter		LGILINESZ= 3,
+		parameter		OPT_LGDCACHE  = 0,
+		parameter		OPT_LGDLINESZ = 3,
+		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
 		parameter	RESET_DURATION = 10,
 		// localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
 		localparam	AW=ADDRESS_WIDTH-2
@@ -173,52 +163,88 @@ module	zipaxil #(
 		// {{{
 		output	wire				M_INSN_AWVALID,
 		input	wire				M_INSN_AWREADY,
+		output	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_AWID,
 		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_INSN_AWADDR,
+		output	wire	[7:0]			M_INSN_AWLEN,
+		output	wire	[2:0]			M_INSN_AWSIZE,
+		output	wire	[1:0]			M_INSN_AWBURST,
+		output	wire				M_INSN_AWLOCK,
+		output	wire	[3:0]			M_INSN_AWCACHE,
 		output	wire	[2:0]			M_INSN_AWPROT,
+		output	wire	[3:0]			M_INSN_AWQOS,
 		//
 		output	wire				M_INSN_WVALID,
 		input	wire				M_INSN_WREADY,
 		output	wire	[C_AXI_DATA_WIDTH-1:0]	M_INSN_WDATA,
 		output	wire [C_AXI_DATA_WIDTH/8-1:0]	M_INSN_WSTRB,
+		output	wire				M_INSN_WLAST,
 		//
 		input	wire				M_INSN_BVALID,
+		input	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_BID,
 		output	wire				M_INSN_BREADY,
 		input	wire	[1:0]			M_INSN_BRESP,
 		//
 		output	wire				M_INSN_ARVALID,
 		input	wire				M_INSN_ARREADY,
+		output	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_ARID,
 		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_INSN_ARADDR,
+		output	wire	[7:0]			M_INSN_ARLEN,
+		output	wire	[2:0]			M_INSN_ARSIZE,
+		output	wire	[1:0]			M_INSN_ARBURST,
+		output	wire				M_INSN_ARLOCK,
+		output	wire	[3:0]			M_INSN_ARCACHE,
 		output	wire	[2:0]			M_INSN_ARPROT,
+		output	wire	[3:0]			M_INSN_ARQOS,
 		//
 		input	wire				M_INSN_RVALID,
 		output	wire				M_INSN_RREADY,
+		input	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_RID,
 		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_INSN_RDATA,
+		input	wire				M_INSN_RLAST,
 		input	wire	[1:0]			M_INSN_RRESP,
 		// }}}
 		// Data bus (master)
 		// {{{
 		output	wire				M_DATA_AWVALID,
 		input	wire				M_DATA_AWREADY,
+		output	wire	[C_AXI_ID_WIDTH-1:0]	M_DATA_AWID,
 		output	wire [C_AXI_ADDR_WIDTH-1:0]	M_DATA_AWADDR,
+		output	wire	[7:0]			M_DATA_AWLEN,
+		output	wire	[2:0]			M_DATA_AWSIZE,
+		output	wire	[1:0]			M_DATA_AWBURST,
+		output	wire				M_DATA_AWLOCK,
+		output	wire	[3:0]			M_DATA_AWCACHE,
 		output	wire	[2:0]			M_DATA_AWPROT,
+		output	wire	[3:0]			M_DATA_AWQOS,
 		//
 		output	wire				M_DATA_WVALID,
 		input	wire				M_DATA_WREADY,
 		output	wire [C_AXI_DATA_WIDTH-1:0]	M_DATA_WDATA,
 		output	wire [C_AXI_DATA_WIDTH/8-1:0]	M_DATA_WSTRB,
+		output	wire				M_DATA_WLAST,
 		//
 		input	wire				M_DATA_BVALID,
 		output	wire				M_DATA_BREADY,
+		input	wire	[C_AXI_ID_WIDTH-1:0]	M_DATA_BID,
 		input	wire	[1:0]			M_DATA_BRESP,
 		//
 		output	wire				M_DATA_ARVALID,
 		input	wire				M_DATA_ARREADY,
+		output	wire	[C_AXI_ID_WIDTH-1:0]	M_DATA_ARID,
 		output	wire [C_AXI_ADDR_WIDTH-1:0]	M_DATA_ARADDR,
+		output	wire	[7:0]			M_DATA_ARLEN,
+		output	wire	[2:0]			M_DATA_ARSIZE,
+		output	wire	[1:0]			M_DATA_ARBURST,
+		output	wire				M_DATA_ARLOCK,
+		output	wire	[3:0]			M_DATA_ARCACHE,
 		output	wire	[2:0]			M_DATA_ARPROT,
+		output	wire	[3:0]			M_DATA_ARQOS,
 		//
 		input	wire				M_DATA_RVALID,
 		output	wire				M_DATA_RREADY,
+		input	wire	[C_AXI_ID_WIDTH-1:0]	M_DATA_RID,
 		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_DATA_RDATA,
+		input	wire				M_DATA_RLAST,
 		input	wire	[1:0]			M_DATA_RRESP,
 		// }}}
 		// Accounting outputs ... to help us count stalls and usage
@@ -241,7 +267,7 @@ module	zipaxil #(
 			STEP_BIT = 8,
 			HALT_BIT = 10,
 			CLEAR_CACHE_BIT = 11;
-	localparam [0:0]	OPT_LOWPOWER = 1'b1;
+	localparam [0:0]	OPT_LOWPOWER = 1'b0;
 	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
 
 	// AXI-lite signal handling
@@ -674,7 +700,7 @@ module	zipaxil #(
 		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
-		.OPT_DCACHE(1'b0),
+		.OPT_DCACHE(OPT_DCACHE),
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		.OPT_GATE_CLOCK(1'b0)
@@ -684,28 +710,47 @@ module	zipaxil #(
 		// }}}
 	) core (
 		// {{{
-		S_AXI_ACLK, cmd_reset, i_interrupt,
+		.i_clk(S_AXI_ACLK), .i_reset(cmd_reset),
+			.i_interrupt(i_interrupt),
 		// Debug interface
-		cmd_halt, cmd_clear_cache,
-			dbg_write_reg, dbg_write_valid, dbg_write_data,
-			dbg_read_reg, cpu_dbg_stall, dbg_read_data,
-			cpu_dbg_cc, cpu_break,
+		// {{{
+		.i_halt(cmd_halt), .i_clear_cache(cmd_clear_cache),
+		.i_dbg_wreg(dbg_write_reg), .i_dbg_we(dbg_write_valid),
+		.i_dbg_data(dbg_write_data), .i_dbg_rreg(dbg_read_reg),
+		.o_dbg_stall(cpu_dbg_stall), .o_dbg_reg(dbg_read_data),
+		.o_dbg_cc(cpu_dbg_cc), .o_break(cpu_break),
+		// }}}
 		// Instruction fetch interface
 		// {{{
-		pf_new_pc, clear_icache, pf_ready, pf_request_address,
-			pf_valid, pf_illegal, pf_instruction,
-				pf_instruction_pc,
+		.o_pf_new_pc(pf_new_pc), .o_clear_icache(clear_icache),
+		.o_pf_ready(pf_ready),
+			.o_pf_request_address(pf_request_address),
+		.i_pf_valid(pf_valid),
+			.i_pf_illegal(pf_illegal),
+			.i_pf_instruction(pf_instruction),
+			.i_pf_instruction_pc(pf_instruction_pc),
 		// }}}
 		// Memory unit interface
 		// {{{
-		clear_dcache, mem_ce, bus_lock,
-			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
-			mem_busy, mem_rdbusy, mem_pipe_stalled,
-				mem_valid, mem_bus_err, mem_wreg, mem_result,
+		.o_clear_dcache(clear_dcache), .o_mem_ce(mem_ce),
+		.o_bus_lock(bus_lock), .o_mem_op(mem_op),
+			.o_mem_addr(mem_cpu_addr),
+			.o_mem_data(mem_wdata),
+			.o_mem_lock_pc(mem_lock_pc),
+			.o_mem_reg(mem_reg),
+			.i_mem_busy(mem_busy),
+			.i_mem_rdbusy(mem_rdbusy),
+			.i_mem_pipe_stalled(mem_pipe_stalled),
+			.i_mem_valid(mem_valid),
+			.i_bus_err(mem_bus_err),
+			.i_mem_wreg(mem_wreg),
+			.i_mem_result(mem_result),
 		// }}}
 		// Accounting/CPU usage interface
-		o_op_stall, o_pf_stall, o_i_count,
-		cpu_debug
+		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
+		.o_i_count(o_i_count),
+		.o_clken(cpu_clken),
+		.o_debug(cpu_debug)
 		// }}}
 	);
 `endif
@@ -728,6 +773,58 @@ module	zipaxil #(
 	//
 
 `ifndef	FORMAL
+	generate if (LGICACHE > 0)
+	begin : INSN_CACHE
+
+		axiicache #(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.AXI_ID(INSN_ID),
+			.LGCACHESZ(LGICACHE),
+			.LGLINESZ(LGILINESZ),
+			.SWAP_ENDIANNESS(SWAP_ENDIANNESS)
+			// }}}
+		) pf (
+		// {{{
+			.S_AXI_ACLK(S_AXI_ACLK), .S_AXI_ARESETN(S_AXI_ARESETN),
+			// CPU signals
+			// {{{
+			.i_cpu_reset(cmd_reset),
+			.i_new_pc(pf_new_pc),
+			.i_clear_cache(clear_icache),
+			.i_ready(pf_ready),
+			.i_pc(pf_request_address),
+			.o_insn(pf_instruction),
+			.o_pc(pf_instruction_pc),
+			.o_valid(pf_valid),
+			.o_illegal(pf_illegal),
+			// }}}
+			// AXI4 (full) bus signals
+			// {{{
+			.M_AXI_ARVALID(M_INSN_ARVALID),
+			.M_AXI_ARREADY(M_INSN_ARREADY),
+			.M_AXI_ARID(   M_INSN_ARID),
+			.M_AXI_ARADDR( M_INSN_ARADDR),
+			.M_AXI_ARLEN(  M_INSN_ARLEN),
+			.M_AXI_ARSIZE( M_INSN_ARSIZE),
+			.M_AXI_ARBURST(M_INSN_ARBURST),
+			.M_AXI_ARLOCK( M_INSN_ARLOCK),
+			.M_AXI_ARCACHE(M_INSN_ARCACHE),
+			.M_AXI_ARPROT( M_INSN_ARPROT),
+			.M_AXI_ARQOS(  M_INSN_ARQOS),
+			//
+			.M_AXI_RVALID(M_INSN_RVALID),
+			.M_AXI_RREADY(M_INSN_RREADY),
+			.M_AXI_RID(   M_INSN_RID),
+			.M_AXI_RDATA( M_INSN_RDATA),
+			.M_AXI_RLAST( M_INSN_RLAST),
+			.M_AXI_RRESP( M_INSN_RRESP)
+			// }}}
+		// }}}
+		);
+
+	end else begin : AXILFETCH
 
 		axilfetch #(
 			// {{{
@@ -766,20 +863,40 @@ module	zipaxil #(
 			// }}}
 		);
 
+		assign	M_INSN_ARID = INSN_ID;
+		// ARADDR
+		assign	M_INSN_ARLEN = 0;
+		assign	M_INSN_ARSIZE = AXILSB[2:0];
+		assign	M_INSN_ARBURST = 2'b01;
+		assign	M_INSN_ARLOCK  = 1'b0;
+		assign	M_INSN_ARCACHE = 4'h3;
+		// PROT
+		assign	M_INSN_ARQOS   = 4'h0;
+
+	end endgenerate
 `endif
 
 	// Assign values to the (unused) M_INSN_* write ports
 	// {{{
 	assign	M_INSN_AWVALID = 0;
 	assign	M_INSN_AWVALID = 0;
+	assign	M_INSN_AWID = INSN_ID;
 	assign	M_INSN_AWADDR  = 0;
+	assign	M_INSN_AWLEN   = 0;
+	assign	M_INSN_AWSIZE  = 0;
+	assign	M_INSN_AWBURST = 0;
+	assign	M_INSN_AWLOCK  = 0;
+	assign	M_INSN_AWCACHE = 0;
 	assign	M_INSN_AWPROT  = 0;
+	assign	M_INSN_AWQOS   = 0;
 	//
 	assign	M_INSN_WVALID = 0;
 	assign	M_INSN_WDATA  = 0;
 	assign	M_INSN_WSTRB  = 0;
+	assign	M_INSN_WLAST  = 0;
 	//
 	assign	M_INSN_BREADY = 1'b1;
+	//
 	// }}}
 
 	// }}}
@@ -790,7 +907,100 @@ module	zipaxil #(
 	////////////////////////////////////////////////////////////////////////
 	//
 `ifndef	FORMAL
-	generate if (OPT_PIPELINED_BUS_ACCESS)
+	generate if (OPT_DCACHE)
+	begin : DATA_CACHE
+
+		axidcache #(
+			// {{{
+			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.C_AXI_ID_WIDTH(C_AXI_ID_WIDTH),
+			.AXI_ID(DATA_ID),
+			.LGCACHELEN(OPT_LGDCACHE),
+			.LGNLINES(OPT_LGDCACHE-$clog2(C_AXI_DATA_WIDTH/8)-OPT_LGDLINESZ),
+			// .SWAP_ENDIANNESS(SWAP_ENDIANNESS),
+			// .SWAP_WSTRB(1'b0),
+			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
+			.OPT_LOWPOWER(OPT_LOWPOWER)
+			// .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			// .OPT_PIPE(OPT_MEMPIPE),
+			// .OPT_LOCK(IMPLEMENT_LOCK)
+// `ifdef	FORMAL
+			// Used with OPT_PIPE, not yet enabled
+			// , .OPT_FIFO_DEPTH(2)
+			// , .F_LGDEPTH(F_LGDEPTH)
+// `endif
+			// }}}
+		) mem(
+			// {{{
+			.S_AXI_ACLK(S_AXI_ACLK), .S_AXI_ARESETN(S_AXI_ARESETN),
+			.i_cpu_reset(cmd_reset), .i_clear(clear_dcache),
+			// CPU interface
+			// {{{
+			.i_pipe_stb(mem_ce),
+			.i_lock(bus_lock),
+			.i_op(mem_op),
+			.i_addr(mem_cpu_addr),
+			.i_data(mem_wdata),
+			.i_oreg(mem_reg),
+			.o_busy(mem_busy),
+			.o_pipe_stalled(mem_pipe_stalled),
+			.o_rdbusy(mem_rdbusy),
+			.o_valid(mem_valid),
+			.o_err(mem_bus_err),
+			.o_wreg(mem_wreg),
+			.o_data(mem_result),
+			// }}}
+			// Write interface
+			// {{{
+			.M_AXI_AWVALID(M_DATA_AWVALID),
+			.M_AXI_AWREADY(M_DATA_AWREADY),
+			.M_AXI_AWID(   M_DATA_AWID),
+			.M_AXI_AWADDR( M_DATA_AWADDR),
+			.M_AXI_AWLEN(  M_DATA_AWLEN),
+			.M_AXI_AWSIZE( M_DATA_AWSIZE),
+			.M_AXI_AWBURST(M_DATA_AWBURST),
+			.M_AXI_AWLOCK( M_DATA_AWLOCK),
+			.M_AXI_AWCACHE(M_DATA_AWCACHE),
+			.M_AXI_AWPROT( M_DATA_AWPROT),
+			.M_AXI_AWQOS(  M_DATA_AWQOS),
+			//
+			.M_AXI_WVALID(M_DATA_WVALID),
+			.M_AXI_WREADY(M_DATA_WREADY),
+			.M_AXI_WDATA(M_DATA_WDATA),
+			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WLAST(M_DATA_WLAST),
+			//
+			.M_AXI_BVALID(M_DATA_BVALID),
+			.M_AXI_BREADY(M_DATA_BREADY),
+			.M_AXI_BID(   M_DATA_BID),
+			.M_AXI_BRESP( M_DATA_BRESP),
+			// }}}
+			// Read interface
+			// {{{
+			.M_AXI_ARVALID(M_DATA_ARVALID),
+			.M_AXI_ARREADY(M_DATA_ARREADY),
+			.M_AXI_ARID(   M_DATA_ARID),
+			.M_AXI_ARADDR( M_DATA_ARADDR),
+			.M_AXI_ARLEN(  M_DATA_ARLEN),
+			.M_AXI_ARSIZE( M_DATA_ARSIZE),
+			.M_AXI_ARBURST(M_DATA_ARBURST),
+			.M_AXI_ARLOCK( M_DATA_ARLOCK),
+			.M_AXI_ARCACHE(M_DATA_ARCACHE),
+			.M_AXI_ARPROT( M_DATA_ARPROT),
+			.M_AXI_ARQOS(  M_DATA_ARQOS),
+			//
+			.M_AXI_RVALID(M_DATA_RVALID),
+			.M_AXI_RREADY(M_DATA_RREADY),
+			.M_AXI_RID(   M_DATA_RID),
+			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RLAST( M_DATA_RLAST),
+			.M_AXI_RRESP( M_DATA_RRESP)
+			// }}}
+			// }}}
+		);
+
+	end else if (OPT_PIPELINED_BUS_ACCESS)
 	begin : PIPELINED_MEM
 
 		axilpipe #(
@@ -851,14 +1061,42 @@ module	zipaxil #(
 			// }}}
 		);
 
+		// Convert from AXI-lite to AXI4
+		// {{{
+		assign	M_DATA_AWID    = DATA_ID;
+		assign	M_DATA_AWLEN   = 0;
+		assign	M_DATA_AWSIZE  = AXILSB[2:0];
+		assign	M_DATA_AWBURST = 2'b01;
+		assign	M_DATA_AWLOCK  = 1'b0;
+		assign	M_DATA_AWCACHE = 4'h3;
+		assign	M_DATA_AWQOS   = 4'h0;
+
+		assign	M_DATA_WLAST   = 1'b1;
+
+		assign	M_DATA_ARID    = DATA_ID;
+		assign	M_DATA_ARLEN   = 0;
+		assign	M_DATA_ARSIZE  = AXILSB[2:0];
+		assign	M_DATA_ARBURST = 2'b01;
+		assign	M_DATA_ARLOCK  = 1'b0;
+		assign	M_DATA_ARCACHE = 4'h3;
+		assign	M_DATA_ARQOS   = 4'h0;
+
+		wire	unused_axil_data;
+		assign	unused_axil_data = &{ 1'b0, M_DATA_BID,
+					M_DATA_RID, M_DATA_RLAST };
+		// }}}
 	end else begin : BARE_MEM
 
-		axilops	#(
+		axiops	#(
 			// {{{
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.C_AXI_ID_WIDTH(C_AXI_ID_WIDTH),
+			.AXI_ID(DATA_ID),
 			.SWAP_ENDIANNESS(SWAP_ENDIANNESS),
 			.SWAP_WSTRB(1'b0),
+			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
+			.OPT_LOCK(IMPLEMENT_LOCK),
 			.OPT_ALIGNMENT_ERR(1'b0),
 			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// }}}
@@ -872,6 +1110,7 @@ module	zipaxil #(
 			.i_lock(bus_lock),
 			.i_op(mem_op),
 			.i_addr(mem_cpu_addr),
+			.i_restart_pc(mem_lock_pc),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
 			.o_busy(mem_busy),
@@ -881,34 +1120,52 @@ module	zipaxil #(
 			.o_wreg(mem_wreg),
 			.o_result(mem_result),
 			// }}}
-			// AXI-lite
+			// AXI4 (full)
 			// Write interface
 			// {{{
 			.M_AXI_AWVALID(M_DATA_AWVALID),
 			.M_AXI_AWREADY(M_DATA_AWREADY),
-			.M_AXI_AWADDR(M_DATA_AWADDR),
-			.M_AXI_AWPROT(M_DATA_AWPROT),
+			.M_AXI_AWID(   M_DATA_AWID),
+			.M_AXI_AWADDR( M_DATA_AWADDR),
+			.M_AXI_AWLEN(  M_DATA_AWLEN),
+			.M_AXI_AWSIZE( M_DATA_AWSIZE),
+			.M_AXI_AWBURST(M_DATA_AWBURST),
+			.M_AXI_AWLOCK( M_DATA_AWLOCK),
+			.M_AXI_AWCACHE(M_DATA_AWCACHE),
+			.M_AXI_AWPROT( M_DATA_AWPROT),
+			.M_AXI_AWQOS(  M_DATA_AWQOS),
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
 			.M_AXI_WDATA(M_DATA_WDATA),
 			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WLAST(M_DATA_WLAST),
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
 			.M_AXI_BREADY(M_DATA_BREADY),
-			.M_AXI_BRESP(M_DATA_BRESP),
+			.M_AXI_BID(   M_DATA_BID),
+			.M_AXI_BRESP( M_DATA_BRESP),
 			// }}}
 			// Read interface
 			// {{{
 			.M_AXI_ARVALID(M_DATA_ARVALID),
 			.M_AXI_ARREADY(M_DATA_ARREADY),
-			.M_AXI_ARADDR(M_DATA_ARADDR),
-			.M_AXI_ARPROT(M_DATA_ARPROT),
+			.M_AXI_ARID(   M_DATA_ARID),
+			.M_AXI_ARADDR( M_DATA_ARADDR),
+			.M_AXI_ARLEN(  M_DATA_ARLEN),
+			.M_AXI_ARSIZE( M_DATA_ARSIZE),
+			.M_AXI_ARBURST(M_DATA_ARBURST),
+			.M_AXI_ARLOCK( M_DATA_ARLOCK),
+			.M_AXI_ARCACHE(M_DATA_ARCACHE),
+			.M_AXI_ARPROT( M_DATA_ARPROT),
+			.M_AXI_ARQOS(  M_DATA_ARQOS),
 			//
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
-			.M_AXI_RDATA(M_DATA_RDATA),
-			.M_AXI_RRESP(M_DATA_RRESP)
+			.M_AXI_RID(   M_DATA_RID),
+			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RLAST( M_DATA_RLAST),
+			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
 			// }}}
 		);
@@ -921,11 +1178,14 @@ module	zipaxil #(
 	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, S_DBG_AWADDR[DBGLSB-1:0],
+	assign	unused = &{ 1'b0, cpu_clken,
+			S_DBG_AWADDR[DBGLSB-1:0],
 			S_DBG_ARADDR[DBGLSB-1:0],
 			S_DBG_ARPROT, S_DBG_AWPROT,
 			M_INSN_AWREADY, M_INSN_WREADY,
-			M_INSN_BVALID, M_INSN_BRESP };
+			M_INSN_BVALID, M_INSN_BID, M_INSN_BRESP,
+			mem_lock_pc
+		 };
 	// Verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

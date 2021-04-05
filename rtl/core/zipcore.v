@@ -59,7 +59,7 @@ module	zipcore #(
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 		parameter	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
 		parameter	[0:0]	IMPLEMENT_LOCK=1,
-		parameter		OPT_LGDCACHE = 10,
+		parameter	[0:0]	OPT_DCACHE = 1,
 		parameter	[0:0]	OPT_NO_USERMODE = 1'b0,
 		parameter	[0:0]	OPT_LOWPOWER = 1'b0,
 		parameter	[0:0]	OPT_GATE_CLOCK = 1'b1,
@@ -128,7 +128,6 @@ module	zipcore #(
 	// Local parameter definitions
 	// {{{
 	// Verilator lint_off UNUSED
-	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 	localparam [(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
 	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
@@ -2653,7 +2652,7 @@ module	zipcore #(
 
 	// o_clear_dcache
 	// {{{
-	generate if (OPT_LGDCACHE > 0)
+	generate if (OPT_DCACHE)
 	begin : CLEAR_DCACHE
 		reg	r_clear_dcache;
 
@@ -4017,7 +4016,7 @@ module	zipcore #(
 		begin
 			if (OPT_PIPELINED_BUS_ACCESS)
 			begin end
-			else if (OPT_LGDCACHE != 0)
+			else if (OPT_DCACHE)
 				`ASSERT(!i_mem_valid || i_mem_wreg != op_Bid);
 		end
 		// }}}
@@ -4028,7 +4027,7 @@ module	zipcore #(
 	if ((op_valid_mem)&&(op_pipe))
 	begin
 		// {{{
-		if ((i_mem_busy)&&(OPT_LGDCACHE == 0))
+		if ((i_mem_busy)&&(!OPT_DCACHE))
 			`ASSERT((f_op_mem_addr == o_mem_addr)
 				||(f_op_mem_addr == f_next_mem));
 		if (i_mem_valid)
@@ -4039,7 +4038,7 @@ module	zipcore #(
 
 		if (f_past_valid)
 		begin
-			if ((i_mem_busy)&&(OPT_LGDCACHE==0))
+			if ((i_mem_busy)&&(!OPT_DCACHE))
 			`ASSERT((op_Bv[(AW+1):2]==o_mem_addr[(AW-1):0])
 				||(op_Bv[(AW+1):2]==o_mem_addr[(AW-1):0]+1'b1));
 

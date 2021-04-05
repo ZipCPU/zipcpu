@@ -43,7 +43,7 @@ TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
 TESTS += axilfetch axilops axilpipe axilperiphs axiops axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
-TESTS += zipbones zipaxil
+TESTS += zipbones zipaxil zipaxi
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -81,6 +81,7 @@ AXIDCC := axidcache
 ## CPU Wrappers
 BONES  := zipbones
 ZAXIL  := zipaxil
+ZAXI   := zipaxi
 
 MMU    := zipmmu
 ## }}}
@@ -497,6 +498,13 @@ $(BONES)_prf/PASS: $(BONES).sby $(RTL)/$(BONES).v $(FDBG) $(SLAVE)
 $(ZAXIL): $(ZAXIL)_prf/PASS
 $(ZAXIL)_prf/PASS: $(ZAXIL).sby $(RTL)/$(ZAXIL).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuffer.v
 	sby -f $(ZAXIL).sby prf
+## }}}
+
+.PHONY: $(ZAXI)
+## {{{
+$(ZAXI): $(ZAXI)_prf/PASS
+$(ZAXI)_prf/PASS: $(ZAXI).sby $(RTL)/$(ZAXI).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuffer.v
+	sby -f $(ZAXI).sby prf
 ## }}}
 ## }}}
 

@@ -874,7 +874,8 @@ module	axilpipe #(
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0], i_lock,
 			// i_addr[31:C_AXI_ADDR_WIDTH],
-			pending_err, adr_lsb, i_addr[31:AW],
+			(&i_addr),
+			pending_err, adr_lsb,
 			none_outstanding };
 	// verilator lint_on  UNUSED
 	// }}}
