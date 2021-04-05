@@ -835,6 +835,7 @@ module	dcache #(
 			in_cache <= (i_op[0])&&(w_cachable);
 			if ((i_pipe_stb)&&(i_op[0]))
 			begin // Write  operation
+				// {{{
 				state <= DC_WRITE;
 				o_wb_addr <= i_addr[(AW+1):2];
 				o_wb_we <= 1'b1;
@@ -852,9 +853,9 @@ module	dcache #(
 					r_wb_cyc_gbl <= 1'b1;
 					o_wb_stb_gbl <= 1'b1;
 				end
-
+				// }}}
 			end else if (r_cache_miss)
-			begin
+			begin // Cache miss
 				state <= DC_READC;
 				o_wb_addr <= { r_ctag, {(LS){1'b0}} };
 
@@ -950,9 +951,8 @@ module	dcache #(
 		end
 		DC_WRITE: begin
 			// {{{
-			c_wr    <= (stb)&&(c_v[o_wb_addr[CS-1:LS]])
-				&&(c_vtags[o_wb_addr[CS-1:LS]]==o_wb_addr[AW-1:LS])
-				&&(stb);
+			c_wr    <= stb && (c_v[o_wb_addr[CS-1:LS]])
+				&&(c_vtags[o_wb_addr[CS-1:LS]]==o_wb_addr[AW-1:LS]);
 			c_wdata <= o_wb_data;
 			c_waddr <= r_addr[CS-1:0];
 			c_wsel  <= o_wb_sel;
