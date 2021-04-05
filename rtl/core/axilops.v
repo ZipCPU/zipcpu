@@ -78,7 +78,16 @@ module	axilops #(
 		// This may just be a half baked attempt to solve this problem,
 		// since it will fail if you ever trie to access bytes or
 		// halfwords at other than their intended widths.
-		parameter [0:0]	SWAP_WSTRB = 1'b1,
+		parameter [0:0]	SWAP_WSTRB = 1'b0,
+		// }}}
+		// OPT_SIGN_EXTEND
+		// {{{
+		// Some CPU's want memory accesses to be sign extended upon
+		// return.  The ZipCPU is not one of those CPU's.  However,
+		// since it's fairly easy to do so, we'll implement this logic
+		// if ever OPT_SIGN_EXTEND is true so you can see how it would
+		// be done if necessary.
+		parameter [0:0]	OPT_SIGN_EXTEND = 1'b0,
 		// }}}
 		// OPT_ALIGNMENT_ERR
 		// {{{
@@ -291,7 +300,7 @@ module	axilops #(
 		// {{{
 		M_AXI_AWADDR <= i_addr;
 
-		if (OPT_LOWPOWER && !i_stb)
+		if (OPT_LOWPOWER && (i_cpu_reset || o_err || !i_stb || w_misalignment_err))
 			M_AXI_AWADDR <= 0;
 
 		if (SWAP_ENDIANNESS || SWAP_WSTRB)
@@ -307,6 +316,7 @@ module	axilops #(
 		// {{{
 		M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILSB]
 			<= M_AXI_AWADDR[C_AXI_ADDR_WIDTH-1:AXILSB] + 1;
+
 		M_AXI_AWADDR[AXILSB-1:0] <= 0;
 
 		if (OPT_LOWPOWER && ((M_AXI_RREADY && !misaligned_request)
@@ -408,33 +418,17 @@ module	axilops #(
 	end else if (i_stb)
 	begin
 		// {{{
-		if (OPT_LOWPOWER)
-		begin
-			// {{{
-			casez(i_op[2:1])
-			2'b10: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
-				    i_data[15:0] } << (8*swapaddr);
-			2'b11: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
-				    i_data[7:0] } << (8*swapaddr);
-			default: { next_wdata, axi_wdata }
-				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
-				    i_data } << (8*swapaddr);
-			endcase
-			// }}}
-		end else begin
-			// {{{
-			casez(i_op[2:1])
-			2'b10: { next_wdata, axi_wdata }
-				<= { (2*C_AXI_DATA_WIDTH/16){ i_data[15:0] } };
-			2'b11: { next_wdata, axi_wdata }
-				<= { (2*C_AXI_DATA_WIDTH/8){  i_data[7:0] } };
-			default: { next_wdata, axi_wdata }
-				<= { (2*C_AXI_DATA_WIDTH/32){ i_data } };
-			endcase
-			// }}}
-		end
+		casez(i_op[2:1])
+		2'b10: { next_wdata, axi_wdata }
+			<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
+			    i_data[15:0] } << (8*swapaddr);
+		2'b11: { next_wdata, axi_wdata }
+			<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
+			    i_data[7:0] } << (8*swapaddr);
+		default: { next_wdata, axi_wdata }
+			<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
+			    i_data } << (8*swapaddr);
+		endcase
 
 		// next_wstrb, axi_wstrb
 		// {{{
@@ -458,10 +452,10 @@ module	axilops #(
 		if (OPT_LOWPOWER)
 		begin
 			if (w_misalignment_err)
-				{ axi_wdata, axi_wstrb } <= 0;
+				{ axi_wdata, axi_wstrb, r_op } <= 0;
 			if (o_err || i_cpu_reset)
 				{ next_wdata, next_wstrb,
-					axi_wdata, axi_wstrb } <= 0;
+					axi_wdata, axi_wstrb, r_op } <= 0;
 		end
 		// }}}
 		// }}}
@@ -650,8 +644,12 @@ module	axilops #(
 	// o_wreg
 	// {{{
 	always @(posedge i_clk)
-	if (i_stb)
+	if (OPT_LOWPOWER && (!S_AXI_ARESETN || i_cpu_reset || o_err || (i_stb && w_misalignment_err)))
+		o_wreg <= 0;
+	else if (i_stb && (!OPT_LOWPOWER || !i_op[0]))
 		o_wreg    <= i_oreg;
+	else if (OPT_LOWPOWER && (o_valid || o_err))
+		o_wreg <= 0;
 	// }}}
 
 	// endian_swapped_rdata
@@ -676,26 +674,26 @@ module	axilops #(
 	always @(*)
 	begin
 		if (misaligned_read && !OPT_ALIGNMENT_ERR)
-			pre_result <= { endian_swapped_rdata, last_result }
+			pre_result = { endian_swapped_rdata, last_result }
 					>> (8*r_op[AXILSB-1:0]);
 		else
-			pre_result <= { 32'h0, endian_swapped_rdata }
+			pre_result = { 32'h0, endian_swapped_rdata }
 						>> (8*r_op[AXILSB-1:0]);
 
 		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
-			pre_result <= 0;
+			pre_result = 0;
 	end
 
 	// }}}
 	// last_result, o_result
 	// {{{
 	always @(posedge i_clk)
-	if (OPT_LOWPOWER &&(!M_AXI_RREADY || !S_AXI_ARESETN))
+	if (OPT_LOWPOWER &&(!M_AXI_RREADY || !S_AXI_ARESETN || r_flushing || i_cpu_reset))
 		{ last_result, o_result } <= 0;
 	else if (M_AXI_RVALID)
 	begin
 		// {{{
-		if (!misaligned_response_pending && OPT_LOWPOWER)
+		if ((M_AXI_RRESP[1] || !misaligned_response_pending) && OPT_LOWPOWER)
 			last_result <= 0;
 		else
 			last_result <= endian_swapped_rdata;
@@ -705,11 +703,28 @@ module	axilops #(
 
 		o_result <= pre_result;
 
-		casez(r_op[AXILSB +: 2])
-		2'b10: o_result[31:16] <= 0;
-		2'b11: o_result[31: 8] <= 0;
-		default: begin end
-		endcase
+		if (OPT_SIGN_EXTEND)
+		begin
+			// {{{
+			// Optionally sign extend the return result.
+			casez(r_op[AXILSB +: 2])
+			2'b10: o_result[31:16] <= {(16){pre_result[15]}};
+			2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
+			default: begin end
+			endcase
+			// }}}
+		end else begin
+			// Fill unused return bits with zeros
+			casez(r_op[AXILSB +: 2])
+			2'b10: o_result[31:16] <= 0;
+			2'b11: o_result[31: 8] <= 0;
+			default: begin end
+			endcase
+		end
+
+		if (OPT_LOWPOWER && (M_AXI_RRESP[1] || pending_err
+					|| misaligned_response_pending))
+			o_result <= 0;
 		// }}}
 	end
 	// }}}
@@ -751,12 +766,24 @@ module	axilops #(
 	if (!f_past_valid)
 		`ASSUME(!S_AXI_ARESETN);
 
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus property checks
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	faxil_master #(
+		// {{{
 		.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
 		.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 		.F_OPT_ASSUME_RESET(1'b1),
 		.F_LGDEPTH(F_LGDEPTH)
-	) faxil(.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
+		// }}}
+	) faxil(
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
 		//
 		.i_axi_awready(M_AXI_AWREADY),
 		.i_axi_awaddr( M_AXI_AWADDR),
@@ -786,7 +813,9 @@ module	axilops #(
 		//
 		.f_axi_rd_outstanding(faxil_rd_outstanding),
 		.f_axi_wr_outstanding(faxil_wr_outstanding),
-		.f_axi_awr_outstanding(faxil_awr_outstanding));
+		.f_axi_awr_outstanding(faxil_awr_outstanding)
+		// }}}
+	);
 
 
 	always @(*)
@@ -876,6 +905,7 @@ module	axilops #(
 		// Rule: Only one of the two VALID's may be valid, never both
 		`ASSERT(!M_AXI_RVALID || (!M_AXI_AWVALID && !M_AXI_WVALID));
 	end
+	// }}}
 
 	always @(*)
 	if (!o_busy)
@@ -961,13 +991,15 @@ module	axilops #(
 
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Zero on idle checks
+	// OPT_LOWPOWER / Zero on idle checks
 	//
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	generate if (OPT_LOWPOWER)
 	begin
+		genvar	fb;
+
 		always @(*)
 		if (!M_AXI_AWVALID && !M_AXI_ARVALID)
 			`ASSERT(M_AXI_AWADDR == 0);
@@ -980,6 +1012,30 @@ module	axilops #(
 
 			`ASSERT(next_wdata == 0);
 			`ASSERT(next_wstrb == 0);
+		end
+
+		always @(*)
+		if (S_AXI_ARESETN && !o_valid)
+			`ASSERT(o_result == 0);
+
+		always @(*)
+		if (S_AXI_ARESETN && (!o_valid && !o_err) && (!M_AXI_RREADY || r_flushing))
+			`ASSERT(o_wreg == 0);
+
+		always @(*)
+		if (S_AXI_ARESETN && (OPT_ALIGNMENT_ERR || !M_AXI_RREADY
+					|| misaligned_response_pending))
+			`ASSERT(last_result == 0);
+
+		for(fb=0; fb<C_AXI_DATA_WIDTH/8; fb=fb+1)
+		begin
+			always @(*)
+			if (S_AXI_ARESETN && !M_AXI_WSTRB[fb])
+				`ASSERT(M_AXI_WDATA[fb*8 +: 8] == 8'h0);
+
+			always @(*)
+			if (S_AXI_ARESETN && !next_wstrb[fb])
+				`ASSERT(next_wdata[fb*8 +: 8] == 8'h0);
 		end
 
 		// always @(*)
@@ -1042,16 +1098,16 @@ module	axilops #(
 
 	always @(*)
 	if (f_pc)
-		assert(o_wreg[3:1] == 3'h7);
+		assert(o_wreg[3:1] == 3'h7 || (OPT_LOWPOWER && o_err));
 	else if (o_rdbusy)
 		assert(o_wreg[3:1] != 3'h7);
 
 	always @(*)
-	if (cpu_outstanding > 0)
+	if (cpu_outstanding > 0 && (!OPT_LOWPOWER || (f_read_cycle && !o_err)))
 		assert(o_wreg == f_last_reg);
 
 	always @(*)
-	if (o_busy)
+	if (o_busy && (!OPT_LOWPOWER || (M_AXI_RREADY && !r_flushing)))
 		assert(o_wreg[4] == f_gie);
 
 	always @(*)

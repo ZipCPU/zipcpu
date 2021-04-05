@@ -1,10 +1,15 @@
 [tasks]
-cvr                        bus32
-prf                        bus32
-prfu prf opt_realignment   bus32
-cvr64 cvr                  bus64
-prf64 prf                  bus64
-prfu64 prf opt_realignment bus64
+prf                          bus32
+prfu     prf opt_realignment bus32
+prf64    prf                 bus64
+prfu64   prf opt_realignment bus64
+prflp    prf                 bus32 opt_lowpower
+prfulp   prf opt_realignment bus32 opt_lowpower
+prf64lp  prf                 bus64 opt_lowpower
+prfu64lp prf opt_realignment bus64 opt_lowpower
+
+cvr                          bus32
+cvr64    cvr                 bus64 opt_lowpower
 
 [options]
 prf: mode prove
@@ -24,6 +29,7 @@ read -formal faxil_master.v
 read -formal fmem.v
 --pycode-begin--
 cmd = "hierarchy -top axilops"
+cmd +=" -chparam OPT_LOWPOWER %d" % (1 if "opt_lowpower" in tags else 0)
 cmd +=" -chparam OPT_ALIGNMENT_ERR %d" % (0 if "opt_realignment" in tags else 1)
 if ("bus64" in tags):
 	cmd +=" -chparam C_AXI_DATA_WIDTH 64"
@@ -31,7 +37,6 @@ else:
 	cmd +=" -chparam C_AXI_DATA_WIDTH 32"
 output(cmd)
 --pycode-end--
-
 prep -top axilops
 
 [files]
