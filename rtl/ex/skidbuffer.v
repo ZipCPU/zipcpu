@@ -89,7 +89,8 @@ module skidbuffer #(
 		parameter	[0:0]	OPT_OUTREG = 1,
 		//
 		parameter	[0:0]	OPT_PASSTHROUGH = 0,
-		parameter		DW = 8
+		parameter		DW = 8,
+		parameter	[0:0]	OPT_INITIAL = 1'b1
 		// }}}
 	) (
 		// {{{
@@ -127,7 +128,7 @@ module skidbuffer #(
 
 		// r_valid
 		// {{{
-		initial	r_valid = 0;
+		initial if (OPT_INITIAL) r_valid = 0;
 		always @(posedge i_clk)
 		if (i_reset)
 			r_valid <= 0;
@@ -140,7 +141,7 @@ module skidbuffer #(
 
 		// r_data
 		// {{{
-		initial	r_data = 0;
+		initial if (OPT_INITIAL) r_data = 0;
 		always @(posedge i_clk)
 		if (OPT_LOWPOWER && i_reset)
 			r_data <= 0;
@@ -185,7 +186,7 @@ module skidbuffer #(
 			// {{{
 			// o_valid
 			// {{{
-			initial	o_valid = 0;
+			initial if (OPT_INITIAL) o_valid = 0;
 			always @(posedge i_clk)
 			if (i_reset)
 				o_valid <= 0;
@@ -195,7 +196,7 @@ module skidbuffer #(
 
 			// o_data
 			// {{{
-			initial	o_data = 0;
+			initial if (OPT_INITIAL) o_data = 0;
 			always @(posedge i_clk)
 			if (OPT_LOWPOWER && i_reset)
 				o_data <= 0;
@@ -233,7 +234,7 @@ module skidbuffer #(
 
 	reg	f_past_valid;
 
-	initial	f_past_valid <= 0;
+	initial	f_past_valid = 0;
 	always @(posedge i_clk)
 		f_past_valid <= 1;
 
@@ -250,7 +251,7 @@ module skidbuffer #(
 	always @(posedge i_clk)
 	if (!f_past_valid)
 	begin
-		`ASSUME(!i_valid);
+		`ASSUME(!i_valid || !OPT_INITIAL);
 	end else if ($past(i_valid && !o_ready && !i_reset) && !i_reset)
 		`ASSUME(i_valid && $stable(i_data));
 
@@ -287,7 +288,7 @@ module skidbuffer #(
 		if (!f_past_valid) // || $past(i_reset))
 		begin
 			// Following any reset, valid must be deasserted
-			assert(!o_valid);
+			assert(!o_valid || !OPT_INITIAL);
 		end else if ($past(o_valid && !i_ready && !i_reset) && !i_reset)
 			// Following any stall, valid must remain high and
 			// data must be preserved
