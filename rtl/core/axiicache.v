@@ -151,7 +151,7 @@ module	axiicache #(
 	reg	[DW-1:0]	cache		[0:((1<<CW)-1)];
 	reg	[(AW-CWB-1):0]	cache_tags	[0:((1<<(LGLINES))-1)];
 	reg	[((1<<(LGLINES))-1):0]	cache_valid;
-	reg	[DW-1:0]	cache_line;
+	reg	[DW-1:0]	cache_word;
 
 	reg			last_valid, void_access, from_pc, pc_valid,
 				illegal_valid, request_pending, bus_abort,
@@ -412,26 +412,26 @@ module	axiicache #(
 	//
 	//
 
-	// cache_line -- the line number of the address requested
+	// cache_word -- the cache word at the requested address
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc || (!o_valid || i_ready))
 	begin
-		cache_line <= cache[(i_new_pc || o_valid)
+		cache_word <= cache[(i_new_pc || o_valid)
 				? i_pc[CWB-1:ADDRLSB] : o_pc[CWB-1:ADDRLSB]];
 	end
 	// }}}
 
 	// o_insn
 	// {{{
-	// Generate the outgoing instruction from the given cache_line
+	// Generate the outgoing instruction from the given cache_word
 	// This involves shifting large cache words down to the desired/correct
 	// word of interest
 	generate if (C_AXI_DATA_WIDTH == INSN_WIDTH)
 	begin : NO_LINE_SHIFT
 
 		always @(*)
-			o_insn = cache_line;
+			o_insn = cache_word;
 
 	end else begin : SHIFT_CACHE_LINE
 
@@ -439,7 +439,7 @@ module	axiicache #(
 
 		always @(*)
 		begin
-			shifted=cache_line >> (INSN_WIDTH * o_pc[ADDRLSB-1:LGINSN]);
+			shifted=cache_word >> (INSN_WIDTH * o_pc[ADDRLSB-1:LGINSN]);
 			o_insn = shifted[DW-1:0];
 		end
 	end endgenerate
