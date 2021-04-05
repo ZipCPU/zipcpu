@@ -40,7 +40,7 @@
 ##
 ## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe axilperiphs axiops # aximem (cached version)
+TESTS += axilfetch axilops axilpipe axilperiphs axiops axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil
@@ -103,7 +103,7 @@ AXI    := faxi_master.v faxi_slave.v faxi_valaddr.v faxi_wstrb.v faxi_addr.v
 ## {{{
 .PHONY: fmem ffetch
 ffetch: prefetch dblfetch pfcache axilfetch axiicache
-fmem:   memops pipemem dcache axilops
+fmem:   memops pipemem dcache axilops axiops axidcache
 ## }}}
 
 ## Instruction fetch routines
@@ -200,19 +200,30 @@ $(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 
 .PHONY: $(AXILMEM)
 ## {{{
-$(AXILMEM): $(AXILMEM)_cvr/PASS   $(AXILMEM)_prf/PASS   $(AXILMEM)_prfu/PASS
-$(AXILMEM): $(AXILMEM)_cvr64/PASS $(AXILMEM)_prf64/PASS $(AXILMEM)_prfu64/PASS
+$(AXILMEM): $(AXILMEM)_cvr/PASS     $(AXILMEM)_prf/PASS   $(AXILMEM)_prfu/PASS
+$(AXILMEM): $(AXILMEM)_cvr64/PASS   $(AXILMEM)_prf64/PASS $(AXILMEM)_prfu64/PASS
+$(AXILMEM): $(AXILMEM)_prflp/PASS   $(AXILMEM)_prfulp/PASS
+$(AXILMEM): $(AXILMEM)_prf64lp/PASS $(AXILMEM)_prfu64lp/PASS
 AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(AXIL) $(FMEM)
-$(AXILMEM)_prf/PASS: $(AXILMEMDEPS)
+$(AXILMEM)_prf/PASS:      $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby prf
-$(AXILMEM)_prfu/PASS: $(AXILMEMDEPS)
+$(AXILMEM)_prfu/PASS:     $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby prfu
+$(AXILMEM)_prf64/PASS:    $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prf64
+$(AXILMEM)_prfu64/PASS:   $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prfu64
+$(AXILMEM)_prflp/PASS:    $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prflp
+$(AXILMEM)_prfulp/PASS:   $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prfulp
+$(AXILMEM)_prf64lp/PASS:  $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prf64lp
+$(AXILMEM)_prfu64lp/PASS: $(AXILMEMDEPS)
+	sby -f $(AXILMEM).sby prfu64lp
+
 $(AXILMEM)_cvr/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby cvr
-$(AXILMEM)_prf64/PASS: $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prf64
-$(AXILMEM)_prfu64/PASS: $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prfu64
 $(AXILMEM)_cvr64/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby cvr64
 ## }}}
@@ -306,7 +317,7 @@ $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf64
 $(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIICC).sby cvr
+	sby -f $(AXIDCC).sby cvr
 ## }}}
 ## }}}
 

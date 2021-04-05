@@ -10,6 +10,7 @@ faxil_slave.v
 faxil_master.v
 #
 axiicache_*/
+axidcache_*/
 axilfetch_*/
 axilops_*/
 axilperiphs_*/

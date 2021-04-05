@@ -1,0 +1,45 @@
+[tasks]
+prf
+prf64 prf bus64
+cvr
+
+[options]
+prf: mode prove
+prf: depth  10
+prf: depth  14
+cvr: mode cover
+cvr: depth 40
+
+[engines]
+# prf: smtbmc
+smtbmc boolector
+
+[script]
+read -formal faxi_valaddr.v
+read -formal faxi_wstrb.v
+read -formal faxi_addr.v
+read -formal faxi_master.v
+read -formal fmem.v
+read -formal axidcache.v
+read -formal iscachable.v
+--pycode-begin--
+cmd = "hierarchy -top axidcache"
+cmd += " -chparam LGCACHELEN %d" % (7 if "bus64" in tags else 6)
+cmd += " -chparam LGNLINES %d" % (3 if "cvr" in tags else 3)
+if ("bus64" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd += " -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axidcache
+
+[files]
+ffetch.v
+../../rtl/core/axidcache.v
+../../rtl/core/iscachable.v
+fmem.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+faxi_addr.v
