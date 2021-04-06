@@ -3975,7 +3975,7 @@ module	zipcore #(
 		// }}}
 	) chkmemops(
 		// {{{
-		.i_clk(i_clk), .i_bus_reset(i_reset), .i_cpu_reset(i_reset),
+		.i_clk(i_clk), .i_sys_reset(i_reset), .i_cpu_reset(i_reset),
 		//
 		.i_stb(o_mem_ce),
 		.i_pipe_stalled(i_mem_pipe_stalled),

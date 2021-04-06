@@ -1303,7 +1303,7 @@ module	dcache #(
 	) f_cpu(
 		// {{{
 		.i_clk(i_clk),
-			.i_bus_reset(i_reset),
+			.i_sys_reset(i_reset),
 			.i_cpu_reset(i_reset),
 		// The CPU interface
 		.i_stb(i_pipe_stb),

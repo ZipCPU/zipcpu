@@ -538,7 +538,7 @@ module	memops #(
 	) fmemi(
 		// {{{
 		.i_clk(i_clk),
-		.i_bus_reset(i_reset),
+		.i_sys_reset(i_reset),
 		.i_cpu_reset(i_reset),
 		.i_stb(i_stb),
 		.i_pipe_stalled(o_busy),

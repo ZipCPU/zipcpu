@@ -10,7 +10,7 @@
 //
 // Portlist:
 //	i_clk	This is a synchronous interface
-//	i_bus_reset	A global reset signal.  This resets the entire bus.
+//	i_sys_reset	A global reset signal.  This resets the entire bus.
 //	i_cpu_reset	Must be true during a global reset signal.  This
 //			resets the CPU.  The bus may (or may not) be reset at
 //			the same time.
@@ -119,15 +119,45 @@
 // }}}
 module	fmem #(
 		// {{{
+		// IMPLEMENT_LOCK
+		// {{{
+		// If false, forces the i_lock parameter to be zero and
+		// guarantees no bus locking.  Can be set to 1'b1 to test both
+		// with and without bus locking.
+		// }}}
 		parameter [0:0]	IMPLEMENT_LOCK = 1'b0,
+		// F_LGDEPTH
+		// {{{
+		// This is the number of bits required to hold our internal
+		// counters.  It should have a sufficient number of bits to
+		// hold the OPT_MAXDEPTH.
+		// }}}
 		parameter F_LGDEPTH = 4,
-		parameter OPT_MAXDEPTH = 1,
+		// OPT_MAXDEPTH
+		// {{{
+		// OPT_MAXDEPTH is the maximum number of requests which may be
+		// outstanding at any given time
+		// }}}
+		parameter [F_LGDEPTH-1:0]	OPT_MAXDEPTH = 1,
+		// OPT_AXI_LOCK
+		// {{{
+		// AXI locks have special semantics.  When a lock takes place
+		// with AXI semantics, there must be a locked read followed by
+		// a locked write.  The locked write is treated as a read that
+		// might write back to the program counter of the CPU, and so
+		// rdbusy will be true during the locked write.  If you want to
+		// check both the AXI and non-AXI lock semantics, feel free to
+		// set this to one.
 		parameter OPT_AXI_LOCK = 0
+		// }}}
 		// }}}
 	) (
 		// {{{
+		//
+		// See above comments for a description of these signals
+		//
 		input	wire			i_clk,
-		input	wire			i_bus_reset,
+		input	wire			i_sys_reset,
 		input	wire			i_cpu_reset,
 		//
 		// CPU interface
@@ -189,10 +219,10 @@ module	fmem #(
 	//
 	always @(*)
 	if (!f_past_valid)
-		assume(i_bus_reset);
+		assume(i_sys_reset);
 
 	always @(*)
-	if (i_bus_reset)
+	if (i_sys_reset)
 		assume(i_cpu_reset);
 
 	always @(posedge i_clk)
@@ -211,7 +241,7 @@ module	fmem #(
 		`CPU_ASSUME(!i_rdbusy);
 
 	always @(posedge i_clk)
-	if (!f_past_valid || $past(i_bus_reset || i_cpu_reset))
+	if (!f_past_valid || $past(i_sys_reset || i_cpu_reset))
 		`CPU_ASSUME(!i_rdbusy);
 
 	always @(posedge i_clk)

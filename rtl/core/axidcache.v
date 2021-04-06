@@ -1249,7 +1249,7 @@ module	axidcache #(
 		// }}}
 	) fmemp (
 		// {{{
-		.i_clk(S_AXI_ACLK), .i_bus_reset(!S_AXI_ARESETN),
+		.i_clk(S_AXI_ACLK), .i_sys_reset(!S_AXI_ARESETN),
 			.i_cpu_reset(i_cpu_reset),
 		.i_stb(i_pipe_stb),
 			.i_pipe_stalled(o_pipe_stalled),

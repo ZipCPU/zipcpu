@@ -497,7 +497,7 @@ module	pipemem #(
 	iface(
 		// {{{
 		.i_clk(i_clk),
-		.i_bus_reset(i_reset),
+		.i_sys_reset(i_reset),
 		.i_cpu_reset(i_reset),
 		.i_stb(i_pipe_stb),
 		.i_pipe_stalled(o_pipe_stalled),
