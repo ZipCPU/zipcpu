@@ -75,7 +75,7 @@ module	axiops #(
 		// but at address 3 will be written to address 0, address 2
 		// will be written to address 1, address 1 to address 2, and
 		// address 3 to address 0.
-		// 
+		//
 		// This may just be a half baked attempt to solve this problem,
 		// since it will fail if you ever trie to access bytes or
 		// halfwords at other than their intended widths.
@@ -149,7 +149,7 @@ module	axiops #(
 		output	wire	[IW-1:0]		M_AXI_AWID,
 		output	reg	[AW-1:0]		M_AXI_AWADDR,
 		output	wire	[7:0]			M_AXI_AWLEN,
-		output	reg 	[2:0]			M_AXI_AWSIZE,
+		output	wire 	[2:0]			M_AXI_AWSIZE,
 		output	wire	[1:0]			M_AXI_AWBURST,
 		output	wire				M_AXI_AWLOCK,
 		output	wire	[3:0]			M_AXI_AWCACHE,
@@ -204,12 +204,12 @@ module	axiops #(
 	wire	i_clk = S_AXI_ACLK;
 	// wire	i_reset = !S_AXI_ARESETN;
 
-	reg	misaligned_request, w_misaligned, misaligned_aw_request,
-		misaligned_response_pending,pending_err, misaligned_read,
-		w_misalignment_err;
+	reg	w_misaligned, w_misalignment_err;
+	wire	misaligned_request, misaligned_aw_request,
+		misaligned_response_pending, pending_err, misaligned_read;
 	reg	r_flushing;
 	reg	[AW-1:0]		r_pc;
-	reg	[3:0]			r_op;
+	reg	[AXILSB+1:0]		r_op;
 	reg	[DW-1:0]		next_wdata;
 	reg	[DW/8-1:0]		next_wstrb;
 	reg	[31:0]			last_result;
@@ -226,7 +226,7 @@ module	axiops #(
 	reg				r_lock;
 	reg	[AXILSB-1:0]		swapaddr;
 	wire	[DW-1:0]		endian_swapped_rdata;
-	reg	[DW-1:0]		pre_result;
+	reg	[2*DW-1:0]		pre_result;
 
 	// }}}
 
@@ -550,19 +550,18 @@ module	axiops #(
 		if (OPT_LOWPOWER)
 		begin
 			if (w_misalignment_err)
-				{ axi_wdata, axi_wstrb } <= 0;
+				{ axi_wdata, axi_wstrb, r_op } <= 0;
 			if (o_err || i_cpu_reset)
 				{ next_wdata, next_wstrb,
-					axi_wdata, axi_wstrb } <= 0;
+					axi_wdata, axi_wstrb, r_op } <= 0;
 		end
 		// }}}
 		// }}}
-	end else if ((M_AXI_WVALID && M_AXI_WREADY)
-			|| (M_AXI_ARVALID && M_AXI_ARREADY))
+	end else if ((misaligned_request || !OPT_LOWPOWER) && M_AXI_WREADY)
 	begin
 		// {{{
-		axi_wdata <= OPT_ALIGNMENT_ERR ? 0 : next_wdata;
-		axi_wstrb <= OPT_ALIGNMENT_ERR ? 0 : next_wstrb;
+		axi_wdata <= next_wdata;
+		axi_wstrb <= next_wstrb;
 		if (OPT_LOWPOWER)
 			{ next_wdata, next_wstrb } <= 0;
 		// }}}
@@ -603,9 +602,9 @@ module	axiops #(
 	always @(*)
 	casez(i_op[2:1])
 	// Full word
-	2'b0?: w_misaligned = (i_addr[AXILSB-1:0]+3) >= (1<<AXILSB);
+	2'b0?: w_misaligned = ((i_addr[AXILSB-1:0]+3) >= (1<<AXILSB));
 	// Half word
-	2'b10: w_misaligned = (i_addr[AXILSB-1:0]+1) >= (1<<AXILSB);
+	2'b10: w_misaligned = ((i_addr[AXILSB-1:0]+1) >= (1<<AXILSB));
 	// Bytes are always aligned
 	2'b11: w_misaligned = 1'b0;
 	endcase
@@ -633,81 +632,93 @@ module	axiops #(
 	generate if (OPT_ALIGNMENT_ERR)
 	begin
 		// {{{
-		always @(*)
-		begin
-			misaligned_request = 1'b0;
+		assign	misaligned_request = 1'b0;
 
-			misaligned_aw_request = 1'b0;
-			misaligned_response_pending = 1'b0;
-			misaligned_read = 1'b0;
-			pending_err = 1'b0;
-		end
+		assign	misaligned_aw_request = 1'b0;
+		assign	misaligned_response_pending = 1'b0;
+		assign	misaligned_read = 1'b0;
+		assign	pending_err = 1'b0;
 		// }}}
 	end else begin
 		// {{{
+		reg	r_misaligned_request, r_misaligned_aw_request,
+			r_misaligned_response_pending, r_misaligned_read,
+			r_pending_err;
 
 		// misaligned_request
 		// {{{
-		initial	misaligned_request = 0;
+		initial	r_misaligned_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
-			misaligned_request <= 0;
+			r_misaligned_request <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_request <= w_misaligned
+			r_misaligned_request <= w_misaligned
 						&& !w_misalignment_err;
 		else if ((M_AXI_WVALID && M_AXI_WREADY)
 					|| (M_AXI_ARVALID && M_AXI_ARREADY))
-			misaligned_request <= 1'b0;
+			r_misaligned_request <= 1'b0;
+
+		assign	misaligned_request = r_misaligned_request;
 		// }}}
 
 		// misaligned_aw_request
 		// {{{
-		initial	misaligned_aw_request = 0;
+		initial	r_misaligned_aw_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
-			misaligned_aw_request <= 0;
+			r_misaligned_aw_request <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_aw_request <= w_misaligned && i_op[0]
+			r_misaligned_aw_request <= w_misaligned && i_op[0]
 					&& !w_misalignment_err;
 		else if (M_AXI_AWREADY)
-			misaligned_aw_request <= 1'b0;
+			r_misaligned_aw_request <= 1'b0;
+
+		assign	misaligned_aw_request = r_misaligned_aw_request;
 		// }}}
 
 		// misaligned_response_pending
 		// {{{
-		initial	misaligned_response_pending = 0;
+		initial	r_misaligned_response_pending = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
-			misaligned_response_pending <= 0;
+			r_misaligned_response_pending <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_response_pending <= w_misaligned
+			r_misaligned_response_pending <= w_misaligned
 						&& !w_misalignment_err;
 		else if (M_AXI_BVALID || M_AXI_RVALID)
-			misaligned_response_pending <= 1'b0;
+			r_misaligned_response_pending <= 1'b0;
+
+		assign	misaligned_response_pending
+					= r_misaligned_response_pending;
 		// }}}
 
 		// misaligned_read
 		// {{{
-		initial	misaligned_read = 0;
+		initial	r_misaligned_read = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
-			misaligned_read <= 0;
+			r_misaligned_read <= 0;
 		else if (i_stb && !o_err && !i_cpu_reset)
-			misaligned_read <= w_misaligned && !i_op[0]
+			r_misaligned_read <= w_misaligned && !i_op[0]
 						&& !w_misalignment_err;
 		else if (M_AXI_RVALID)
-			misaligned_read <= (misaligned_response_pending);
+			r_misaligned_read <= (misaligned_response_pending);
+
+		assign	misaligned_read = r_misaligned_read;
 		// }}}
 
 		// pending_err
 		// {{{
+		initial	r_pending_err = 1'b0;
 		always @(posedge i_clk)
-		if (!S_AXI_ARESETN || i_stb || (!M_AXI_BREADY && !M_AXI_RREADY)
-				|| o_err || r_flushing || i_cpu_reset)
-			pending_err <= 1'b0;
+		if (i_cpu_reset || (!M_AXI_BREADY && !M_AXI_RREADY)
+				|| r_flushing)
+			r_pending_err <= 1'b0;
 		else if ((M_AXI_BVALID && M_AXI_BRESP[1])
 				|| (M_AXI_RVALID && M_AXI_RRESP[1]))
-			pending_err <= 1'b1;
+			r_pending_err <= 1'b1;
+
+		assign	pending_err = r_pending_err;
 		// }}}
 
 		// }}}
@@ -718,7 +729,7 @@ module	axiops #(
 	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
-	if (!S_AXI_ARESETN || r_flushing || i_cpu_reset)
+	if (i_cpu_reset || r_flushing)
 		o_valid <= 1'b0;
 	else if (r_lock)
 		o_valid <= (M_AXI_RVALID && M_AXI_RRESP == EXOKAY)
@@ -798,14 +809,14 @@ module	axiops #(
 	// pre_result
 	// {{{
 	// The purpose of the pre-result is to guarantee that the synthesis
-	// tool knows we want a shift of the full DW width.
+	// tool knows we want a shift of the full 2*DW width.
 	always @(*)
 	begin
 		if (misaligned_read && !OPT_ALIGNMENT_ERR)
 			pre_result = { endian_swapped_rdata, last_result }
 					>> (8*r_op[AXILSB-1:0]);
 		else
-			pre_result = { 32'h0, endian_swapped_rdata }
+			pre_result = { {(DW){1'b0}}, endian_swapped_rdata }
 						>> (8*r_op[AXILSB-1:0]);
 
 		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
@@ -874,7 +885,8 @@ module	axiops #(
 	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, M_AXI_RLAST };
+	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, M_AXI_RLAST,
+			pre_result[2*C_AXI_DATA_WIDTH:32] };
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
@@ -897,6 +909,7 @@ module	axiops #(
 `endif
 	localparam	F_LGDEPTH = 10;
 
+	reg			f_misaligned;
 	wire	[F_LGDEPTH-1:0]	faxi_awr_nbursts,
 				faxi_rd_nbursts, faxi_rd_outstanding;
 	wire	[8:0]		faxi_wr_pending;
@@ -1075,6 +1088,7 @@ module	axiops #(
 		// }}}
 	);
 
+
 	always @(*)
 	begin
 		assert(faxi_wrid_nbursts == faxi_awr_nbursts);
@@ -1207,6 +1221,114 @@ module	axiops #(
 
 	assign	f_exlock_len = 0;
 	assign	f_exlock_burst = M_AXI_AWBURST;
+
+	// f_misaligned
+	// {{{
+	always @(*)
+	begin
+		f_misaligned = 0;
+		case(r_op[AXILSB +: 2])
+		2'b01: f_misaligned = ((r_op[AXILSB-1:0] + 3) >= (1<<AXILSB));
+		2'b10: f_misaligned = ((r_op[AXILSB-1:0] + 1) >= (1<<AXILSB));
+		default: f_misaligned = 0;
+		endcase
+
+		if (!M_AXI_BREADY && !M_AXI_RREADY)
+			f_misaligned = 0;
+	end
+	// }}}
+
+	always @(*)
+	if (!M_AXI_RREADY && !M_AXI_BREADY)
+	begin
+		// {{{
+		assert(!misaligned_aw_request);
+		assert(!misaligned_request);
+		assert(!misaligned_response_pending);
+		assert(faxi_awr_nbursts == 0);
+		assert(faxi_wr_pending  == 0);
+		assert(faxi_rd_outstanding  == 0);
+		// }}}
+	end else if (f_misaligned)
+	begin
+		// {{{
+		assert(!OPT_ALIGNMENT_ERR);
+
+		if (misaligned_aw_request || misaligned_request)
+		begin
+			// {{{
+			if (misaligned_aw_request)
+			begin
+				assert(faxi_awr_nbursts == 0);
+			end else if (M_AXI_BREADY)
+			begin
+				assert(faxi_awr_nbursts
+					== (M_AXI_AWVALID ? 0:1)
+						+ (misaligned_response_pending ? 1:0));
+			end else
+				assert(faxi_awr_nbursts == 0);
+
+			if (misaligned_request && M_AXI_BREADY)
+			begin
+				// assert(faxil_wr_outstanding  == 0);
+				assert(faxi_rd_outstanding == 0);
+			end else if (M_AXI_RREADY)
+			begin
+				assert(faxi_rd_outstanding
+					== (M_AXI_ARVALID ? 0:1)
+						+ (!misaligned_request && misaligned_response_pending ? 1:0));
+				// assert(faxil_wr_outstanding == 0);
+			end else begin
+				//assert(faxil_wr_outstanding
+				//	== (M_AXI_WVALID ? 0:1)
+				//		+ (misaligned_response_pending ? 1:0));
+				assert(faxi_rd_outstanding == 0);
+			end
+			// }}}
+		end else if (M_AXI_BREADY)
+		begin
+			// {{{
+			assert(faxi_awr_nbursts
+				== (M_AXI_AWVALID ? 0:1)
+					+ (misaligned_response_pending ? 1:0));
+			//assert(faxil_wr_outstanding
+			//	== (M_AXI_WVALID ? 0:1)
+			//		+ (misaligned_response_pending ? 1:0));
+			// }}}
+		end else begin // Read cycle
+			// {{{
+			assert(M_AXI_RREADY);
+			assert(faxi_rd_outstanding
+				== (M_AXI_ARVALID ? 0:1)
+					+ (misaligned_response_pending ? 1:0));
+			// }}}
+		end
+		// }}}
+	end else if (M_AXI_BREADY)
+	begin
+		// {{{
+		assert(!misaligned_aw_request);
+		assert(!misaligned_request);
+		assert(!misaligned_response_pending);
+		assert(!pending_err);
+		assert(faxi_awr_nbursts == (M_AXI_AWVALID ? 0:1));
+		// assert(faxil_wr_outstanding  == (M_AXI_WVALID  ? 0:1));
+		assert(faxi_rd_outstanding  == 0);
+		assert(!misaligned_read);
+		// }}}
+	end else begin
+		// {{{
+		assert(M_AXI_RREADY);
+		assert(!misaligned_aw_request);
+		assert(!misaligned_request);
+		assert(!misaligned_response_pending);
+		assert(!misaligned_read);
+		assert(!pending_err);
+		assert(faxi_awr_nbursts == 0);
+		// assert(faxil_wr_outstanding  == 0);
+		assert(faxi_rd_outstanding  == (M_AXI_ARVALID ? 0:1));
+		// }}}
+	end
 	// }}}
 
 	always @(*)
@@ -1284,28 +1406,6 @@ module	axiops #(
 		assert(o_wreg[3:0] == 4'hf);
 
 	// }}}
-
-/*
-	// The 3'b00? opcode isn't defined
-	always @(*)
-		`ASSUME(i_op[2:1] != 2'b00);
-
-	always @(posedge i_clk)
-	if ((!f_past_valid)||($past(i_cpu_reset)))
-		`ASSUME(!i_stb);
-
-	always @(*)
-	if (!S_AXI_ARESETN)
-		`ASSUME(i_cpu_reset);
-
-	always @(*)
-	if (o_busy)
-	begin
-		`ASSUME(!i_stb);
-		`ASSERT(!o_valid);
-		`ASSERT(!o_err);
-	end
-*/
 	////////////////////////////////////////////////////////////////////////
 	//
 	// OPT_LOWPOWER / Zero on idle checks
@@ -1337,7 +1437,7 @@ module	axiops #(
 
 		always @(*)
 		if (S_AXI_ARESETN && (OPT_ALIGNMENT_ERR || !M_AXI_RREADY
-				|| misaligned_response_pending))
+					|| misaligned_response_pending))
 			`ASSERT(last_result == 0);
 
 		for(fb=0; fb<C_AXI_DATA_WIDTH/8; fb=fb+1)
@@ -1409,11 +1509,10 @@ module	axiops #(
 	always @(*)
 	if (r_flushing)
 	begin
-		`ASSERT(cpu_outstanding <= 0);
-	end else begin
+		`ASSERT(cpu_outstanding == 0);
+	end else
 		`ASSERT(cpu_outstanding == (o_busy ? 1:0)
 			+ ((f_done || o_err) ? 1 : 0));
-	end
 
 	always @(*)
 	if (o_rdbusy && M_AXI_BREADY)
@@ -1444,10 +1543,6 @@ module	axiops #(
 		assert(o_wreg[3:1] == 3'h7);
 	end else if (o_rdbusy)
 		assert(o_wreg[3:1] != 3'h7);
-
-//	always @(*)
-//	if (cpu_outstanding > 0 && (M_AXI_RREADY || (!r_lock && !o_err)))
-//		assert(o_wreg == f_last_reg);
 
 	always @(*)
 	if (o_busy)
