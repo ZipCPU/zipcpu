@@ -133,11 +133,11 @@ module	zipsystem #(
 `endif
 `ifdef	OPT_DCACHE
 				// Set to zero for no data cache
-				LGDCACHE=`LGDCACHE_DEFAULT,
+				LGDCACHE=10,
 `else
 				LGDCACHE=0,
 `endif
-		parameter [0:0]	START_HALTED=1;
+		parameter [0:0]	START_HALTED=1,
 		parameter	EXTERNAL_INTERRUPTS=1,
 `ifdef	OPT_MULTIPLY
 				OPT_MPY = `OPT_MULTIPLY,
@@ -284,8 +284,11 @@ module	zipsystem #(
 	wire		ctri_int, tma_int, tmb_int, tmc_int, jif_int, dmac_int;
 	wire		mtc_int, moc_int, mpc_int, mic_int,
 			utc_int, uoc_int, upc_int, uic_int;
+	wire	[31:0]	actr_data;
+	wire		actr_ack, actr_stall;
 
 	//
+	wire	cpu_clken;
 	//
 	//
 	wire	sys_cyc, sys_stb, sys_we;
@@ -301,7 +304,8 @@ module	zipsystem #(
 
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
 	wire	[6:0]	dbg_addr;
-	wire	[31:0]	dbg_idata, dbg_odata;
+	wire	[31:0]	dbg_idata;
+	reg	[31:0]	dbg_odata;
 	reg		dbg_ack;
 	wire	[3:0]	dbg_sel;
 	wire		no_dbg_err;
@@ -311,7 +315,6 @@ module	zipsystem #(
 			reset_hold, cpu_halt;
 	reg	[5:0]	cmd_addr;
 	wire	[2:0]	cpu_dbg_cc;
-	wire		cpu_break;
 
 	wire		cpu_reset;
 	wire		cpu_dbg_stall;
@@ -341,12 +344,12 @@ module	zipsystem #(
 	wire	[31:0]	ctri_data;
 
 	wire		tma_stall, tma_ack;
-	wire	[31:0]	tma_data;
 	wire		tmb_stall, tmb_ack;
-	wire	[31:0]	tmb_data;
 	wire		tmc_stall, tmc_ack;
-	wire	[31:0]	tmc_data;
 	wire		jif_stall, jif_ack;
+	wire	[31:0]	tma_data;
+	wire	[31:0]	tmb_data;
+	wire	[31:0]	tmc_data;
 	wire	[31:0]	jif_data;
 
 	wire		pic_interrupt, pic_stall, pic_ack;
@@ -411,7 +414,7 @@ module	zipsystem #(
 	end else if (EXTERNAL_INTERRUPTS <= 9) // && !OPT_ACCOUNTING
 	begin
 		assign	alt_int_vector = { 15'h00 };
-	end else if (OPT_ACCOUNTING && EXTENAL_INTERRUPTS >= 15)
+	end else if (OPT_ACCOUNTING && EXTERNAL_INTERRUPTS >= 15)
 	begin
 		assign	alt_int_vector = { i_ext_int[14:8],
 					mtc_int, moc_int, mpc_int, mic_int,
@@ -646,10 +649,15 @@ module	zipsystem #(
 	ziptimer #(32,31,0)
 	watchdog(
 		// {{{
-		i_clk, cpu_reset, !cmd_halt,
-			sys_cyc, (sys_stb)&&(sel_watchdog), sys_we,
-				sys_data,
-			wdt_stall, wdt_ack, wdt_data, wdt_reset
+		.i_clk(i_clk), .i_reset(cpu_reset),
+		.i_ce(!cmd_halt),
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_watchdog)),
+			.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+			.o_wb_stall(wdt_stall),
+			.o_wb_ack(wdt_ack),
+			.o_wb_data(wdt_data),
+			.o_int(wdt_reset)
 		// }}}
 	);
 
@@ -697,24 +705,25 @@ module	zipsystem #(
 		// {{{
 		// Local definitions
 		// {{{
+		// Verilator lint_off UNUSED
 		wire		mtc_stall, mtc_ack;
-		wire	[31:0]	mtc_data;
 		wire		moc_stall, moc_ack;
-		wire	[31:0]	moc_data;
 		wire		mpc_stall, mpc_ack;
-		wire	[31:0]	mpc_data;
 		wire		mic_stall, mic_ack;
-		wire	[31:0]	mic_data;
 		wire		utc_stall, utc_ack;
-		wire	[31:0]	utc_data;
 		wire		uoc_stall, uoc_ack;
-		wire	[31:0]	uoc_data;
 		wire		upc_stall, upc_ack;
-		wire	[31:0]	upc_data;
 		wire		uic_stall, uic_ack;
+		// Verilator lint_on  UNUSED
+		wire	[31:0]	mtc_data;
+		wire	[31:0]	moc_data;
+		wire	[31:0]	mpc_data;
+		wire	[31:0]	mic_data;
+		wire	[31:0]	utc_data;
+		wire	[31:0]	uoc_data;
+		wire	[31:0]	upc_data;
 		wire	[31:0]	uic_data;
-		wire		actr_stall, actr_ack;
-		reg	[31:0]	actr_data;
+		reg	[31:0]	r_actr_data;
 		// }}}
 
 		// Master counters
@@ -826,23 +835,22 @@ module	zipsystem #(
 		always @(*)
 		begin
 			case(sys_addr[2:0])
-			3'h0: actr_data = mtc_data;
-			3'h1: actr_data = moc_data;
-			3'h2: actr_data = mpc_data;
-			3'h3: actr_data = mic_data;
-			3'h4: actr_data = utc_data;
-			3'h5: actr_data = uoc_data;
-			3'h6: actr_data = upc_data;
-			3'h7: actr_data = uic_data;
+			3'h0: r_actr_data = mtc_data;
+			3'h1: r_actr_data = moc_data;
+			3'h2: r_actr_data = mpc_data;
+			3'h3: r_actr_data = mic_data;
+			3'h4: r_actr_data = utc_data;
+			3'h5: r_actr_data = uoc_data;
+			3'h6: r_actr_data = upc_data;
+			3'h7: r_actr_data = uic_data;
 			endcase
 		end
+
+		assign	actr_data = r_actr_data;
 		// }}}
 		// }}}
 	end else begin : NO_ACCOUNTING_COUNTERS
 		// {{{
-		reg		actr_ack;
-		wire		actr_stall;
-		wire	[31:0]	actr_data;
 
 		assign	actr_stall = 1'b0;
 		assign	actr_data = 32'h0000;
@@ -856,8 +864,7 @@ module	zipsystem #(
 		assign	upc_int = 1'b0;
 		assign	uic_int = 1'b0;
 
-		always @(posedge i_clk)
-			actr_ack <= sel_counter;
+		assign	actr_ack = sel_counter;
 		// }}}
 	end endgenerate
 	// }}}
@@ -943,19 +950,27 @@ module	zipsystem #(
 			icontrol #(8)
 			ctri(
 			// {{{
-			i_clk, cpu_reset, sys_cyc, (ctri_sel), sys_we,
-				sys_data, 4'hf, ctri_stall, ctri_ack, ctri_data,
-				alt_int_vector[7:0], ctri_int
+			.i_clk(i_clk), .i_reset(cpu_reset),
+			.i_wb_cyc(sys_cyc), .i_wb_stb(ctri_sel),
+			.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+			.o_wb_stall(ctri_stall), .o_wb_ack(ctri_ack),
+			.o_wb_data(ctri_data),
+			.i_brd_ints(alt_int_vector[7:0]), .o_interrupt(ctri_int)
 			// }}}
 			);
 		end else begin : ALT_PIC
 			icontrol #(8+(EXTERNAL_INTERRUPTS-9))
 			ctri(	
 			// {{{
-			i_clk, cpu_reset, sys_cyc, (ctri_sel), sys_we,
-				sys_data, 4'hf, ctri_stall, ctri_ack, ctri_data,
-				alt_int_vector[(EXTERNAL_INTERRUPTS-2):0],
-					ctri_int
+			.i_clk(i_clk), .i_reset(cpu_reset),
+			.i_wb_cyc(sys_cyc), .i_wb_stb(ctri_sel),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+				.i_wb_sel(4'hf),
+				.o_wb_stall(ctri_stall),
+				.o_wb_ack(ctri_ack),
+				.o_wb_data(ctri_data),
+				.i_brd_ints(alt_int_vector[(EXTERNAL_INTERRUPTS-2):0]),
+				.o_interrupt(ctri_int)
 			// }}}
 			);
 		end
@@ -970,10 +985,15 @@ module	zipsystem #(
 			icontrol #(EXTERNAL_INTERRUPTS-9)
 			ctri(
 				// {{{
-				i_clk, cpu_reset, (ctri_sel), sys_we,
-				sys_data, ctri_stall, ctri_ack, ctri_data,
-				alt_int_vector[(EXTERNAL_INTERRUPTS-10):0],
-				ctri_int
+				.i_clk(i_clk), .i_reset(cpu_reset),
+				.i_wb_cyc(sys_cyc), .i_wb_stb(ctri_sel),
+					.i_wb_we(sys_we), .i_wb_data(sys_data),
+				.i_wb_sel(4'hf),
+				.o_wb_stall(ctri_stall),
+				.o_wb_ack(ctri_ack),
+				.o_wb_data(ctri_data),
+				.i_brd_ints(alt_int_vector[(EXTERNAL_INTERRUPTS-10):0]),
+				.o_interrupt(ctri_int)
 				// }}}
 			);
 		end
@@ -990,34 +1010,63 @@ module	zipsystem #(
 	//
 	// Timer A
 	//
-	ziptimer timer_a(i_clk, cpu_reset, !cmd_halt,
-		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00),
-			sys_we, sys_data,
-		tma_stall, tma_ack, tma_data, tma_int);
+	ziptimer
+	timer_a(
+		// {{{
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_wb_cyc(sys_cyc),
+		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00)),
+		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+		.o_wb_stall(tma_stall), .o_wb_ack(tma_ack),
+		.o_wb_data(tma_data),
+		.o_int(tma_int)
+		// }}}
+	);
 
 	//
 	// Timer B
 	//
-	ziptimer timer_b(i_clk, cpu_reset, !cmd_halt,
-		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01),
-			sys_we, sys_data,
-		tmb_stall, tmb_ack, tmb_data, tmb_int);
+	ziptimer timer_b(
+		// {{{
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_wb_cyc(sys_cyc),
+		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01)),
+		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+		.o_wb_stall(tmb_stall), .o_wb_ack(tmb_ack),
+		.o_wb_data(tmb_data),
+		.o_int(tmb_int)
+		// }}}
+	);
 
 	//
 	// Timer C
 	//
-	ziptimer timer_c(i_clk, cpu_reset, !cmd_halt,
-		sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0]==2'b10),
-			sys_we, sys_data,
-		tmc_stall, tmc_ack, tmc_data, tmc_int);
+	ziptimer timer_c(
+		// {{{
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_wb_cyc(sys_cyc),
+		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b10)),
+		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+		.o_wb_stall(tmc_stall), .o_wb_ack(tmc_ack),
+		.o_wb_data(tmc_data),
+		.o_int(tmc_int)
+		// }}}
+	);
 
 	//
 	// JIFFIES
 	//
-	zipjiffies jiffies(i_clk, cpu_reset, !cmd_halt,
-			sys_cyc, (sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b11), sys_we,
-				sys_data,
-			jif_stall, jif_ack, jif_data, jif_int);
+	zipjiffies jiffies(
+		// {{{
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_wb_cyc(sys_cyc),
+		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b11)),
+		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
+		.o_wb_stall(jif_stall), .o_wb_ack(jif_ack),
+		.o_wb_data(jif_data),
+		.o_int(jif_int)
+		// }}}
+	);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1075,16 +1124,30 @@ module	zipsystem #(
 		// }}}
 	) thecpu(
 		// {{{
-		i_clk, cpu_reset, pic_interrupt,
-		cpu_halt, cmd_clear_pf_cache, cmd_addr[4:0], cpu_dbg_we,
-			dbg_idata, cpu_dbg_stall, cpu_dbg_data,
-			cpu_dbg_cc, cpu_break,
-		cpu_gbl_cyc, cpu_gbl_stb,
-			cpu_lcl_cyc, cpu_lcl_stb,
-			cpu_we, cpu_addr, cpu_data, cpu_sel,
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_interrupt(pic_interrupt),
+			.o_cpu_clken(cpu_clken),
+		// Debug interface
+		// {{{
+		.i_halt(cpu_halt), .i_clear_cache(cmd_clear_pf_cache),
+			.i_dbg_wreg(cmd_addr[4:0]), .i_dbg_we(cpu_dbg_we),
+			.i_dbg_data(dbg_idata),
+			.i_dbg_rreg(cmd_addr[4:0]),
+			.o_dbg_stall(cpu_dbg_stall),
+			.o_dbg_reg(cpu_dbg_data), .o_dbg_cc(cpu_dbg_cc),
+			.o_break(cpu_break),
+		// }}}
+		// Wishbone bus interface
+		// {{{
+		.o_wb_gbl_cyc(cpu_gbl_cyc), .o_wb_gbl_stb(cpu_gbl_stb),
+		.o_wb_lcl_cyc(cpu_lcl_cyc), .o_wb_lcl_stb(cpu_lcl_stb),
+			.o_wb_we(cpu_we), .o_wb_addr(cpu_addr),
+			.o_wb_data(cpu_data), .o_wb_sel(cpu_sel),
 			// Return values from the Wishbone bus
-			cpu_stall, cpu_ack, cpu_idata, cpu_err,
-		cpu_op_stall, cpu_pf_stall, cpu_i_count
+			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
+			.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
+		// }}}
+		.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
+		.o_i_count(cpu_i_count)
 `ifdef	DEBUG_SCOPE
 		, o_cpu_debug
 `endif
@@ -1198,12 +1261,12 @@ module	zipsystem #(
 	//			by not waiting for the CPU to fully halt,
 	//			his results may not be what he expects.
 	//
-	wire	sys_dbg_cyc = ((dbg_cyc)&&(!cpu_lcl_cyc)&&(dbg_addr))
+	wire	sys_dbg_cyc = ((dbg_cyc)&&(!cpu_lcl_cyc)&&(dbg_addr[6]))
 				&&(cmd_addr[5]);
 	assign	sys_cyc = (cpu_lcl_cyc)||(sys_dbg_cyc);
 	assign	sys_stb = (cpu_lcl_cyc)
 				? (cpu_lcl_stb)
-				: ((dbg_stb)&&(dbg_addr)&&(cmd_addr[5]));
+				: ((dbg_stb)&&(dbg_addr[6])&&(cmd_addr[5]));
 
 	assign	sys_we  = (cpu_lcl_cyc) ? cpu_we : dbg_we;
 	assign	sys_addr= (cpu_lcl_cyc) ? cpu_addr[7:0] : { 3'h0, cmd_addr[4:0]};
@@ -1286,6 +1349,9 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+	reg		dbg_pre_ack;
+	reg	[1:0]	dbg_pre_addr;
+	reg	[31:0]	dbg_cpu_status;
 
 	always @(posedge i_clk)
 		dbg_pre_addr <= { dbg_addr[6], (dbg_addr[6:5] == 2'h0) };
@@ -1296,7 +1362,7 @@ module	zipsystem #(
 	initial	dbg_pre_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset || !i_dbg_cyc)
-		dbg_pre_ack <= 1'b0
+		dbg_pre_ack <= 1'b0;
 	else
 		dbg_pre_ack <= dbg_stb && !o_dbg_stall;
 
@@ -1304,8 +1370,8 @@ module	zipsystem #(
 	//	CMD	giving command instructions to the CPU (step, halt, etc)
 	//	CPU-DBG-DATA	internal register responses from within the CPU
 	//	sys	Responses from the front-side bus here in the ZipSystem
-	assign	dbg_odata = (!dbg_addr) ? cpu_status
-				:((!cmd_addr[5])?cpu_dbg_data : sys_idata);
+	// assign	dbg_odata = (!dbg_addr) ? cpu_status
+	//			:((!cmd_addr[5])?cpu_dbg_data : sys_idata);
 	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset || !dbg_cyc)
@@ -1321,7 +1387,7 @@ module	zipsystem #(
 	2'b1?: dbg_odata <= sys_idata;
 	endcase
 
-	assign	dbg_stall = (!cmd_write || !cpu_dbg_stall) && dbg_we
+	assign	dbg_stall = (!dbg_cmd_write || !cpu_dbg_stall) && dbg_we
 			&& (dbg_addr[6:5] == 2'b00);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1412,16 +1478,17 @@ module	zipsystem #(
 	// {{{
 	// verilator lint_off UNUSED
 	wire		unused;
-	assign unused = &{ 1'b0, pic_ack, pic_stall,
+	assign unused = &{ 1'b0, dbg_addr[5:0],
+		pic_ack, pic_stall, cpu_clken,
 		tma_ack, tma_stall, tmb_ack, tmb_stall, tmc_ack, tmc_stall,
 		jif_ack, jif_stall, no_dbg_err, dbg_sel,
 		sel_mmus, ctri_ack, ctri_stall, mmus_stall, dmac_stall,
 		wdt_ack, wdt_stall, actr_ack, actr_stall,
 		wdbus_ack, i_dbg_sel,
-		moc_ack, mtc_ack, mic_ack, mpc_ack,
-		uoc_ack, utc_ack, uic_ack, upc_ack,
-		moc_stall, mtc_stall, mic_stall, mpc_stall,
-		uoc_stall, utc_stall, uic_stall, upc_stall,
+		// moc_ack, mtc_ack, mic_ack, mpc_ack,
+		// uoc_ack, utc_ack, uic_ack, upc_ack,
+		// moc_stall, mtc_stall, mic_stall, mpc_stall,
+		// uoc_stall, utc_stall, uic_stall, upc_stall,
 		// Unused MMU pins
 		pf_return_stb, pf_return_we, pf_return_p, pf_return_v,
 		pf_return_cachable, cpu_miss };

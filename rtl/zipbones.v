@@ -149,6 +149,7 @@ module	zipbones #(
 
 	// Declarations
 	// {{{
+	wire		cpu_clken;
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
 	wire	[5:0]	dbg_addr;
 	wire	[31:0]	dbg_idata;
@@ -163,7 +164,6 @@ module	zipbones #(
 	wire	[2:0]	cpu_dbg_cc;
 	wire		cpu_reset, cpu_halt, cpu_dbg_stall;
 	wire		cpu_lcl_cyc, cpu_lcl_stb, 
-			cpu_dbg_we,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_dbg_data;
 	wire	[31:0]	cpu_status;
@@ -373,7 +373,6 @@ module	zipbones #(
 	//
 	// The CPU itself
 	// {{{
-	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(!dbg_addr[5]));
 `ifdef	FORMAL
 	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
 				f_cpu_break;
@@ -413,25 +412,32 @@ module	zipbones #(
 		.LGICACHE(LGICACHE),
 		.OPT_LGDCACHE(LGDCACHE),
 		.IMPLEMENT_MPY(OPT_MPY),
-		.IMPLEMENT_DIV(OPT_DIV),
+		.IMPLEMENT_DIVIDE(OPT_DIV),
 		.IMPLEMENT_FPU(OPT_FPU),
 		.IMPLEMENT_LOCK(OPT_LOCK),
 		.WITH_LOCAL_BUS(0)
 		// }}}
 	) thecpu(
 		// {{{
-		i_clk, cpu_reset, i_ext_int,
-			cpu_halt, cmd_clear_cache,
-				cmd_waddr, cmd_write,
-				cmd_wdata, dbg_addr[4:0],
-				cpu_dbg_stall, cpu_dbg_data,
-				cpu_dbg_cc, cpu_break,
-			o_wb_cyc, o_wb_stb,
-				cpu_lcl_cyc, cpu_lcl_stb,
-				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-				i_wb_stall, i_wb_ack, i_wb_data,
-				(i_wb_err)||(cpu_lcl_cyc),
-			cpu_op_stall, cpu_pf_stall, cpu_i_count
+		.i_clk(i_clk), .i_reset(cpu_reset), .i_interrupt(i_ext_int),
+			.o_cpu_clken(cpu_clken),
+		.i_halt(cpu_halt), .i_clear_cache(cmd_clear_cache),
+				.i_dbg_wreg(cmd_waddr), .i_dbg_we(cmd_write),
+				.i_dbg_data(cmd_wdata),
+				.i_dbg_rreg(dbg_addr[4:0]),
+			.o_dbg_stall(cpu_dbg_stall), .o_dbg_reg(cpu_dbg_data),
+				.o_dbg_cc(cpu_dbg_cc), .o_break(cpu_break),
+			.o_wb_gbl_cyc(o_wb_cyc), .o_wb_gbl_stb(o_wb_stb),
+				.o_wb_lcl_cyc(cpu_lcl_cyc),
+				.o_wb_lcl_stb(cpu_lcl_stb),
+				.o_wb_we(o_wb_we), .o_wb_addr(o_wb_addr),
+				.o_wb_data(o_wb_data), .o_wb_sel(o_wb_sel),
+				.i_wb_stall(i_wb_stall),
+				.i_wb_ack(i_wb_ack),
+				.i_wb_data(i_wb_data),
+				.i_wb_err((i_wb_err)||(cpu_lcl_cyc)),
+			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
+				.o_i_count(cpu_i_count)
 `ifdef	DEBUG_SCOPE
 			, o_cpu_debug
 `endif
@@ -480,7 +486,7 @@ module	zipbones #(
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, dbg_cyc, cpu_lcl_stb, cpu_op_stall,
-			cpu_pf_stall, cpu_i_count };
+			cpu_pf_stall, cpu_i_count, cpu_clken };
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,6 +502,9 @@ module	zipbones #(
 	localparam	F_LGDEPTH = 3;
 
 	reg	[F_LGDEPTH-1:0]	fwb_nreqs, fwb_nacks, fwb_outstanding;
+	wire			cpu_dbg_we;
+
+	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(!dbg_addr[5]));
 
 	fwb_slave #(
 		.AW(6), .DW(32), .F_LGDEPTH(F_LGDEPTH)

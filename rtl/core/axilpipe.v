@@ -129,7 +129,7 @@ module	axilpipe #(
 
 	reg	w_misaligned;
 	wire	misaligned_request, misaligned_aw_request, pending_err,
-			misaligned_response_pending, w_misalignment_err;
+			w_misalignment_err;
 	reg	[C_AXI_DATA_WIDTH-1:0]	next_wdata;
 	reg [C_AXI_DATA_WIDTH/8-1:0]	next_wstrb;
 
@@ -153,7 +153,6 @@ module	axilpipe #(
 	reg [2*C_AXI_DATA_WIDTH-1:0]	wide_return, wide_wdata;
 	reg [2*C_AXI_DATA_WIDTH/8-1:0]	wide_wstrb;
 	reg	[C_AXI_DATA_WIDTH-1:0]	misdata;
-	reg	[AXILLSB-1:0]		lastshift;
 
 
 	// }}}
@@ -631,7 +630,7 @@ module	axilpipe #(
 		2'b11: wide_wdata
 			= { {(2*C_AXI_DATA_WIDTH-8){1'b0}}, i_data[7:0] } << (8*i_addr[AXILLSB-1:0]);
 		default: wide_wdata
-			= { {(2*C_AXI_DATA_WIDTH){1'b0}}, i_data }
+			= { {(C_AXI_DATA_WIDTH){1'b0}}, i_data }
 					<< (8*i_addr[AXILLSB-1:0]);
 		endcase
 
@@ -664,8 +663,8 @@ module	axilpipe #(
 			// }}}
 		end else begin
 			// {{{
-			{ next_wdata, M_AXI_WDATA, next_wdata } <= wide_wdata;
-			{ next_wstrb, M_AXI_WSTRB, next_wstrb } <= wide_wstrb;
+			{ M_AXI_WDATA, next_wdata } <= wide_wdata;
+			{ M_AXI_WSTRB, next_wstrb } <= wide_wstrb;
 			// }}}
 		end
 
@@ -685,10 +684,10 @@ module	axilpipe #(
 	begin
 		// {{{
 		// Generate an error on any misaligned request
-		wire	misaligned_request = 1'b0;
+		assign	misaligned_request = 1'b0;
 
-		wire	misaligned_aw_request = 1'b0;
-		wire	pending_err = 1'b0;
+		assign	misaligned_aw_request = 1'b0;
+		assign	pending_err = 1'b0;
 		// }}}
 	end else begin
 		// {{{
@@ -803,28 +802,6 @@ module	axilpipe #(
 	//
 	//
 
-	// misaligned_response_pending
-	// {{{
-	generate if (OPT_ALIGNMENT_ERR)
-	begin : NO_MISALIGNED_RESPONSES
-
-		assign	misaligned_response_pending = 0;
-
-	end else begin : MISALIGNED_RESPONSE_PENDING
-		reg	r_misaligned_response_pending;
-
-		always @(*)
-		begin
-			r_misaligned_response_pending = fifo_misaligned;
-			if (wraddr == rdaddr)
-				r_misaligned_response_pending = 0;
-		end
-
-		assign	misaligned_response_pending
-				= r_misaligned_response_pending;
-	end endgenerate
-	// }}}
-
 	// o_valid
 	// {{{
 	initial	o_valid = 1'b0;
@@ -851,11 +828,10 @@ module	axilpipe #(
 	// {{{
 	always @(*)
 	if (fifo_misaligned && !OPT_ALIGNMENT_ERR)
-		wide_return = { M_AXI_RDATA, misdata }
-				>> (8*fifo_read_data[AXILLSB-1:0]);
+		wide_return = { M_AXI_RDATA, misdata } >> (8*fifo_lsb);
 	else
 		wide_return = { {(C_AXI_DATA_WIDTH){1'b0}}, M_AXI_RDATA }
-					>> (8*fifo_read_data[AXILLSB-1:0]);
+					>> (8*fifo_lsb);
 	// }}}
 
 	// misdata
@@ -886,12 +862,13 @@ module	axilpipe #(
 			2'b11: o_result[15: 8] <= {( 8){o_result[ 7]}};
 			endcase
 			// }}}
-		end else begin
+		end else if (fifo_op[1])
+		begin
 			// {{{
-			case(fifo_op)
-			2'b10: o_result[31:16] <= 0;
-			2'b11: o_result[15: 8] <= 0;
-			endcase
+			if (fifo_op[0])
+				o_result[15: 8] <= 0;
+			else
+				o_result[31:16] <= 0;
 			// }}}
 		end
 
@@ -937,7 +914,7 @@ module	axilpipe #(
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0], i_lock,
 			// i_addr[31:C_AXI_ADDR_WIDTH],
 			(&i_addr), wide_return[2*C_AXI_DATA_WIDTH-1:32],
-			pending_err, adr_lsb,
+			pending_err, adr_lsb, fifo_read_op,
 			none_outstanding };
 	// verilator lint_on  UNUSED
 	// }}}
@@ -969,6 +946,7 @@ module	axilpipe #(
 	reg	[LGPIPE:0]	f_fifo_fill;
 
 	reg		f_clrfifo, f_wrfifo, f_rdfifo;
+	wire		misaligned_response_pending;
 	reg	[1:0]	f_fsmfifo;
 	(* anyconst *)	reg	[LGPIPE:0]		f_first_addr;
 			reg	[LGPIPE:0]		f_next_addr,
@@ -1153,6 +1131,29 @@ module	axilpipe #(
 	always @(*)
 	if (!S_AXI_ARESETN)
 		`ASSUME(i_cpu_reset);
+
+	// misaligned_response_pending
+	// {{{
+	generate if (OPT_ALIGNMENT_ERR)
+	begin : NO_MISALIGNED_RESPONSES
+
+		assign	misaligned_response_pending = 0;
+
+	end else begin : MISALIGNED_RESPONSE_PENDING
+		reg	r_misaligned_response_pending;
+
+		always @(*)
+		begin
+			r_misaligned_response_pending = fifo_misaligned;
+			if (wraddr == rdaddr)
+				r_misaligned_response_pending = 0;
+		end
+
+		assign	misaligned_response_pending
+				= r_misaligned_response_pending;
+	end endgenerate
+	// }}}
+
 
 	always @(*)
 	if (o_busy)

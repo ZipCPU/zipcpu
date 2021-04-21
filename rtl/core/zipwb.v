@@ -133,39 +133,28 @@ module	zipwb #(
 `else
 		parameter [0:0]	OPT_CIS = 1'b0,
 `endif
-`ifdef	OPT_NO_USERMODE
-		localparam	[0:0]	OPT_NO_USERMODE = 1'b1,
-`else
-		localparam	[0:0]	OPT_NO_USERMODE = 1'b0,
-`endif
 `ifdef	OPT_PIPELINED
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 `else
 		parameter	[0:0]	OPT_PIPELINED = 1'b0,
 `endif
-`ifdef	OPT_PIPELINED_BUS_ACCESS
-		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
-`else
-		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
-`endif
-		localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
 		parameter	[0:0]	IMPLEMENT_LOCK=1,
-		localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
 `ifdef	OPT_DCACHE
 		parameter		OPT_LGDCACHE = 10,
 `else
 		parameter		OPT_LGDCACHE = 0,
 `endif
-		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
 
 		parameter [0:0]	WITH_LOCAL_BUS = 1'b1,
-		localparam	AW=ADDRESS_WIDTH,
-		localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2],
-		parameter	F_LGDEPTH=8
+		localparam	AW=ADDRESS_WIDTH
+`ifdef	FORMAL
+		, parameter	F_LGDEPTH=8
+`endif
 		// }}}
 	) (
 		// {{{
 		input	wire		i_clk, i_reset, i_interrupt,
+		output	wire		o_cpu_clken,
 		// Debug interface -- inputs
 		input	wire		i_halt, i_clear_cache,
 		input	wire	[4:0]	i_dbg_wreg,
@@ -201,6 +190,19 @@ module	zipwb #(
 
 	// Declarations
 	// {{{
+	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
+`ifdef	OPT_PIPELINED_BUS_ACCESS
+	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
+`else
+	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
+`endif
+	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
+	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
+`ifdef	OPT_NO_USERMODE
+	localparam	[0:0]	OPT_NO_USERMODE = 1'b1;
+`else
+	localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
+`endif
 `ifdef	OPT_SINGLE_FETCH
 	localparam FETCH_LIMIT = (LGICACHE > 0) ? 4 : 1;
 `else
@@ -212,7 +214,6 @@ module	zipwb #(
 `endif	// OPT_SINGLE_FETCH
 
 	wire	[31:0]	cpu_debug;
-	wire		w_clken;
 
 	// Fetch
 	// {{{
@@ -220,7 +221,6 @@ module	zipwb #(
 	wire [AW+1:0]	pf_request_address;
 	wire	[31:0]	pf_instruction;
 	wire [AW+1:0]	pf_instruction_pc;
-	wire	[31:0]	pf_instruction, pf_instruction_pc;
 	wire		pf_valid, pf_illegal;
 	//
 	wire [AW-1:0]	pf_addr;
@@ -232,6 +232,7 @@ module	zipwb #(
 	wire		clear_dcache, mem_ce, bus_lock;
 	wire	[2:0]	mem_op;
 	wire	[31:0]	mem_cpu_addr;
+	wire [AW+1:0]	mem_lock_pc;
 	wire	[31:0]	mem_wdata, mem_data;
 	wire	[4:0]	mem_reg;
 	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
@@ -262,21 +263,22 @@ module	zipwb #(
 		.IMPLEMENT_FPU(IMPLEMENT_FPU),
 		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
 		.OPT_CIS(OPT_CIS),
-		// .OPT_NO_USERMODE(OPT_NO_USERMODE),
+		.OPT_NO_USERMODE(OPT_NO_USERMODE),
 		.OPT_PIPELINED(OPT_PIPELINED),
-		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
-		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
-		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+		.OPT_PIPELINED_BUS_ACCESS(OPT_MEMPIPE),
+		.IMPLEMENT_LOCK(IMPLEMENT_LOCK)
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		// localparam	AW=ADDRESS_WIDTH;
 		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
-		.F_LGDEPTH(F_LGDEPTH)
+`ifdef	FORMAL
+		, .F_LGDEPTH(F_LGDEPTH)
+`endif
 		// }}}
 	) core (
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset), .i_interrupt(i_interrupt),
-		.o_clken(w_clken),
+		.o_clken(o_cpu_clken),
 		// Debug interface
 		// {{{
 		.i_halt(i_halt), .i_clear_cache(i_clear_cache),
@@ -301,7 +303,7 @@ module	zipwb #(
 			.o_bus_lock(bus_lock),
 			.o_mem_op(mem_op), .o_mem_addr(mem_cpu_addr),
 				.o_mem_data(mem_wdata),
-				// .o_lock_pc
+				.o_mem_lock_pc(mem_lock_pc),
 				.o_mem_reg(mem_reg),
 			.i_mem_busy(mem_busy), .i_mem_rdbusy(mem_rdbusy),
 				.i_mem_pipe_stalled(mem_pipe_stalled),
@@ -326,7 +328,7 @@ module	zipwb #(
 `else
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache };
+	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache, mem_lock_pc };
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -537,7 +539,7 @@ module	zipwb #(
 	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, pf_data, w_clken };
+	assign	unused = &{ 1'b0, pf_data };
 	// Verilator lint_on  UNUSED
 	// }}}
 endmodule

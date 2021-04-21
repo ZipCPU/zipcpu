@@ -79,6 +79,7 @@ module	zipjiffies #(
 		// Wishbone inputs
 		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
 		input	wire	[(BW-1):0]	i_wb_data,
+		input	wire	[BW/8-1:0]	i_wb_sel,
 		// Wishbone outputs
 		output	wire			o_wb_stall,
 		output	reg			o_wb_ack,
@@ -207,7 +208,7 @@ module	zipjiffies #(
 	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = i_wb_cyc;
+	assign	unused = &{ 1'b0, i_wb_cyc, i_wb_sel };
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

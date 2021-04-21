@@ -282,7 +282,8 @@ module	zipaxil #(
 	// {{{
 	wire		clear_dcache, mem_ce, bus_lock;
 	wire	[2:0]	mem_op;
-	wire	[31:0]	mem_cpu_addr, mem_lock_pc;
+	wire	[31:0]	mem_cpu_addr;
+	wire [AW+1:0]	mem_lock_pc;
 	wire	[31:0]	mem_wdata;
 	wire	[4:0]	mem_reg;
 	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
@@ -684,28 +685,45 @@ module	zipaxil #(
 		// }}}
 	) core (
 		// {{{
-		S_AXI_ACLK, cmd_reset, i_interrupt,
+		.i_clk(S_AXI_ACLK), .i_reset(cmd_reset),
+			.i_interrupt(i_interrupt),
+		.o_clken(cpu_clken),
 		// Debug interface
-		cmd_halt, cmd_clear_cache,
-			dbg_write_reg, dbg_write_valid, dbg_write_data,
-			dbg_read_reg, cpu_dbg_stall, dbg_read_data,
-			cpu_dbg_cc, cpu_break,
+		// {{{
+		.i_halt(cmd_halt), .i_clear_cache(cmd_clear_cache),
+			.i_dbg_wreg(dbg_write_reg), .i_dbg_we(dbg_write_valid),
+			.i_dbg_data(dbg_write_data),.i_dbg_rreg(dbg_read_reg),
+			.o_dbg_stall(cpu_dbg_stall),.o_dbg_reg(dbg_read_data),
+			.o_dbg_cc(cpu_dbg_cc), .o_break(cpu_break),
+		// }}}
 		// Instruction fetch interface
 		// {{{
-		pf_new_pc, clear_icache, pf_ready, pf_request_address,
-			pf_valid, pf_illegal, pf_instruction,
-				pf_instruction_pc,
+		.o_pf_new_pc(pf_new_pc), .o_clear_icache(clear_icache),
+			.o_pf_ready(pf_ready),
+			.o_pf_request_address(pf_request_address),
+		.i_pf_valid(pf_valid), .i_pf_illegal(pf_illegal),
+			.i_pf_instruction(pf_instruction),
+			.i_pf_instruction_pc(pf_instruction_pc),
 		// }}}
 		// Memory unit interface
 		// {{{
-		clear_dcache, mem_ce, bus_lock,
-			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
-			mem_busy, mem_rdbusy, mem_pipe_stalled,
-				mem_valid, mem_bus_err, mem_wreg, mem_result,
+		.o_clear_dcache(clear_dcache), .o_mem_ce(mem_ce),
+			.o_bus_lock(bus_lock),
+			.o_mem_op(mem_op), .o_mem_addr(mem_cpu_addr),
+			.o_mem_data(mem_wdata),
+			.o_mem_lock_pc(mem_lock_pc),
+			.o_mem_reg(mem_reg),
+		.i_mem_busy(mem_busy), .i_mem_rdbusy(mem_rdbusy),
+			.i_mem_pipe_stalled(mem_pipe_stalled),
+		.i_mem_valid(mem_valid),
+			.i_bus_err(mem_bus_err),
+			.i_mem_wreg(mem_wreg),
+			.i_mem_result(mem_result),
 		// }}}
 		// Accounting/CPU usage interface
-		o_op_stall, o_pf_stall, o_i_count,
-		cpu_debug
+		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
+		.o_i_count(o_i_count),
+		.o_debug(cpu_debug)
 		// }}}
 	);
 `endif
@@ -921,7 +939,8 @@ module	zipaxil #(
 	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, S_DBG_AWADDR[DBGLSB-1:0],
+	assign	unused = &{ 1'b0, cpu_clken, S_DBG_AWADDR[DBGLSB-1:0],
+			mem_lock_pc,
 			S_DBG_ARADDR[DBGLSB-1:0],
 			S_DBG_ARPROT, S_DBG_AWPROT,
 			M_INSN_AWREADY, M_INSN_WREADY,

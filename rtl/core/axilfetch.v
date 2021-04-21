@@ -44,9 +44,7 @@ module	axilfetch #(
 		parameter	DATA_WIDTH=32,
 		parameter	FETCH_LIMIT=16,
 		parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
-		localparam	AW=C_AXI_ADDR_WIDTH,
-		localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8),
-		localparam	INSNS_PER_WORD = C_AXI_DATA_WIDTH / DATA_WIDTH
+		localparam	AW=C_AXI_ADDR_WIDTH
 		// }}}
 	) (
 		// {{{
@@ -82,6 +80,8 @@ module	axilfetch #(
 
 	// Declarations
 	// {{{
+	localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8);
+	localparam	INSNS_PER_WORD = C_AXI_DATA_WIDTH / DATA_WIDTH;
 	localparam	LGDEPTH = $clog2(FETCH_LIMIT)+4;
 	localparam	LGFIFO = $clog2(FETCH_LIMIT);
 	localparam	W = LGDEPTH;

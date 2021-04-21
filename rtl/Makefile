@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2015-2020, Gisselquist Technology, LLC
+## Copyright (C) 2015-2021, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -40,11 +40,30 @@
 ##
 .PHONY: all
 ## }}}
-all: zipsystem zipbones zipaxil cpudefs.h div zipmmu cpuops pfcache
+all: zipsystem zipbones zipaxil zipaxi cpudefs.h div zipmmu cpuops pfcache
 
 CORED:= core
 PRPHD:= peripherals
 EXD  := ex
+## Verilator setup
+## {{{
+VOBJ := obj_dir
+SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
+ifeq ($(VERILATOR_ROOT),)
+VERILATOR := verilator
+else
+VERILATOR := $(VERILATOR_ROOT)/bin/verilator
+endif
+##
+# VCOVERAGE to get coverage analysis of our test cases
+# VCOVERAGE := --coverage
+VCOVERAGE :=
+##
+VFLAGS := -Wall -MMD --trace $(VCOVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
+
+## }}}
+## Dependency suggestions
+## {{{
 SYSSRC := zipsystem.v cpudefs.v					\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
@@ -53,8 +72,6 @@ SYSSRC := zipsystem.v cpudefs.v					\
 		$(CORED)/idecode.v $(CORED)/div.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
 		$(CORED)/pfcache.v				\
-		$(CORED)/axilfetch.v $(CORED)/axiicache.v	\
-		$(CORED)/axilops.v $(CORED)/axilpipe.v		\
 		$(CORED)/memops.v $(CORED)/pipemem.v		\
 		$(CORED)/dcache.v				\
 	$(EXD)/busdelay.v					\
@@ -73,76 +90,26 @@ AXLSRC := zipaxil.v cpudefs.v $(CORED)/zipcore.v		\
 		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/axilfetch.v $(CORED)/prefetch.v	\
 		$(CORED)/axilops.v $(CORED)/axilpipe.v		\
+		$(CORED)/axidcache.v				\
 		$(CORED)/div.v					\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-VOBJ := obj_dir
-SUBMAKE := $(MAKE) --no-print-directory --directory=$(VOBJ) -f
-ifeq ($(VERILATOR_ROOT),)
-VERILATOR := verilator
-else
-VERILATOR := $(VERILATOR_ROOT)/bin/verilator
-endif
+AXISRC := zipaxi.v cpudefs.v $(CORED)/zipcore.v			\
+		$(CORED)/cpuops.v $(CORED)/idecode.v		\
+		$(CORED)/axilfetch.v $(CORED)/axiicache.v	\
+		$(CORED)/axiops.v $(CORED)/axilpipe.v		\
+		$(CORED)/axidcache.v				\
+		$(CORED)/div.v					\
+	$(CORED)/idecode.v $(CORED)/cpuops.v
+## }}}
 #
-# Define VCOVERAGE to get coverage analysis of our test cases
-# VCOVERAGE := --coverage
-VCOVERAGE :=
-VFLAGS := -Wall -MMD --trace $(COVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
-
 
 VERILATE=$(VERILATOR) $(VFLAGS)
-
-$(VOBJ)/Vzipsystem.cpp: $(SYSSRC)
-	$(VERILATE) zipsystem.v
-$(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
-
-$(VOBJ)/Vzipbones.cpp: $(BONSRC)
-	$(VERILATE) zipbones.v
-$(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
-
-$(VOBJ)/Vzipaxil.cpp: $(AXLSRC)
-	$(VERILATE) zipaxil.v
-$(VOBJ)/Vzipaxil.h: $(VOBJ)/Vzipaxil.cpp
-
-$(VOBJ)/Vdiv.cpp: $(CORED)/div.v
-	$(VERILATE) $(CORED)/div.v
-$(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
-
-$(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
-	$(VERILATE) $(CORED)/cpuops.v
-$(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
-
-$(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
-	$(VERILATE) $(PRPHD)/zipmmu.v
-$(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
-
-$(VOBJ)/Vpfcache.cpp: $(CORED)/pfcache.v
-	$(VERILATE) $(CORED)/pfcache.v
-$(VOBJ)/Vpfcache.h: $(VOBJ)/Vpfcache.cpp
-
-$(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
-	$(SUBMAKE) Vzipsystem.mk
-
-$(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
-	$(SUBMAKE) Vzipbones.mk
-
-$(VOBJ)/Vzipaxil__ALL.a: $(VOBJ)/Vzipaxil.cpp $(VOBJ)/Vzipaxil.h
-	$(SUBMAKE) Vzipaxil.mk
-
-$(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
-	$(SUBMAKE) Vdiv.mk
-
-$(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
-	$(SUBMAKE) Vcpuops.mk
-
-$(VOBJ)/Vzipmmu__ALL.a: $(VOBJ)/Vzipmmu.cpp $(VOBJ)/Vzipmmu.h
-	$(SUBMAKE) Vzipmmu.mk
-
-$(VOBJ)/Vpfcache__ALL.a: $(VOBJ)/Vpfcache.cpp $(VOBJ)/Vpfcache.h
-	$(SUBMAKE) Vpfcache.mk
 
 # $(VOBJ)/V%__ALL.a: $(VOBJ)/V%.cpp $(VOBJ)/V%.h
 #	$(SUBMAKE) V%.mk
 
+## cpudefs.h
+## {{{
 cpudefs.h: cpudefs.v
 	@echo "Building cpudefs.h"
 	@echo "// " > $@
@@ -150,35 +117,97 @@ cpudefs.h: cpudefs.v
 	@echo "// To generate this file, \"make cpudefs.h\" in the rtl directory." >> $@
 	@echo "// " >> $@
 	@grep "^\`" $^ | sed -e '{ s/^`/#/ }' >> $@
+## }}}
 
 .PHONY: zipsystem
+## {{{
 zipsystem: $(VOBJ)/Vzipsystem__ALL.a cpudefs.h
+$(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
+$(VOBJ)/Vzipsystem.cpp: $(SYSSRC)
+	$(VERILATE) zipsystem.v
+$(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
+	$(SUBMAKE) Vzipsystem.mk
+## }}}
 
 .PHONY: zipbones
+## {{{
 zipbones: $(VOBJ)/Vzipbones__ALL.a cpudefs.h
+$(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
+$(VOBJ)/Vzipbones.cpp: $(BONSRC)
+	$(VERILATE) zipbones.v
+$(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
+	$(SUBMAKE) Vzipbones.mk
+## }}}
 
 .PHONY: zipaxil
+## {{{
 zipaxil: $(VOBJ)/Vzipaxil__ALL.a cpudefs.h
+$(VOBJ)/Vzipaxil.h: $(VOBJ)/Vzipaxil.cpp
+$(VOBJ)/Vzipaxil.cpp: $(AXLSRC)
+	$(VERILATE) zipaxil.v
+$(VOBJ)/Vzipaxil__ALL.a: $(VOBJ)/Vzipaxil.cpp $(VOBJ)/Vzipaxil.h
+	$(SUBMAKE) Vzipaxil.mk
+## }}}
+
+.PHONY: zipaxi
+## {{{
+zipaxi: $(VOBJ)/Vzipaxi__ALL.a cpudefs.h
+$(VOBJ)/Vzipaxi.h: $(VOBJ)/Vzipaxi.cpp
+$(VOBJ)/Vzipaxi__ALL.a: $(VOBJ)/Vzipaxi.cpp $(VOBJ)/Vzipaxi.h
+	$(SUBMAKE) Vzipaxi.mk
+$(VOBJ)/Vzipaxi.cpp: $(AXISRC)
+	$(VERILATE) zipaxi.v
+## }}}
 
 .PHONY: div
+## {{{
 div: $(VOBJ)/Vdiv__ALL.a
+$(VOBJ)/Vdiv.h: $(VOBJ)/Vdiv.cpp
+$(VOBJ)/Vdiv.cpp: $(CORED)/div.v
+	$(VERILATE) $(CORED)/div.v
+$(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
+	$(SUBMAKE) Vdiv.mk
+## }}}
 
 .PHONY: cpuops
+## {{{
 cpuops: $(VOBJ)/Vcpuops__ALL.a cpudefs.h
+$(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
+$(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
+	$(VERILATE) $(CORED)/cpuops.v
+$(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
+	$(SUBMAKE) Vcpuops.mk
+## }}}
 
 .PHONY: zipmmu
+## {{{
 zipmmu: $(VOBJ)/Vzipmmu__ALL.a
+$(VOBJ)/Vzipmmu.h: $(VOBJ)/Vzipmmu.cpp
+$(VOBJ)/Vzipmmu.cpp: $(PRPHD)/zipmmu.v
+	$(VERILATE) $(PRPHD)/zipmmu.v
+$(VOBJ)/Vzipmmu__ALL.a: $(VOBJ)/Vzipmmu.cpp $(VOBJ)/Vzipmmu.h
+	$(SUBMAKE) Vzipmmu.mk
+## }}}
 
 .PHONY: pfcache
+## {{{
 pfcache: $(VOBJ)/Vpfcache__ALL.a
+$(VOBJ)/Vpfcache.h: $(VOBJ)/Vpfcache.cpp
+$(VOBJ)/Vpfcache.cpp: $(CORED)/pfcache.v
+	$(VERILATE) $(CORED)/pfcache.v
+$(VOBJ)/Vpfcache__ALL.a: $(VOBJ)/Vpfcache.cpp $(VOBJ)/Vpfcache.h
+	$(SUBMAKE) Vpfcache.mk
+## }}}
 
 .PHONY: clean
+## {{{
 clean:
 	rm -rf $(VOBJ) cpudefs.h
+## }}}
 
-#
-# Note Verilator's dependency created information, and include it here if we
-# can
+## Verilator generated dependencies
+## {{{
+# Note Verilator's dependency created information, and include it here if we can
 DEPS := $(wildcard $(VOBJ)/*.d)
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -186,3 +215,4 @@ ifneq ($(DEPS),)
 include $(DEPS)
 endif
 endif
+## }}}
