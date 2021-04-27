@@ -4,10 +4,11 @@ prfr prf opt_reload
 
 [options]
 prf: mode prove
-depth 5
+depth 3
 
 [engines]
 smtbmc
+smtbmc boolector
 
 [script]
 read -formal -DZIPTIMER ziptimer.v

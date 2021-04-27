@@ -262,6 +262,10 @@ module	ziptimer #(
 
 
 	always @(*)
+	if (i_wb_stb)
+		assume(i_wb_cyc);
+
+	always @(*)
 		assert(r_zero == (r_value == 0));
 
 	always @(*)
@@ -311,10 +315,21 @@ module	ziptimer #(
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(wb_write)))
 		assert(r_value == $past(i_wb_data[(VW-1):0]));
 
+	// Check auto_reload
+	// {{{
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(wb_write))
-			&&(RELOADABLE)&&(|$past(i_wb_data[(VW-1):0])))
-		assert(auto_reload == $past(i_wb_data[(BW-1)]));
+	if (!f_past_valid || $past(i_reset) || !RELOADABLE)
+	begin
+		assert(!auto_reload);
+	end else if ($past(wb_write))
+	begin
+		if (!$past(i_wb_data[BW-1]))
+			assert(!auto_reload);
+		else
+			assert(auto_reload == $past(|i_wb_data[VW-1:0]));
+	end else
+		assert($stable(auto_reload));
+	// }}}
 
 	always @(posedge i_clk)
 	if (!(f_past_valid)||($past(i_reset)))
@@ -340,4 +355,5 @@ module	ziptimer #(
 	always @(*)
 		assert(o_wb_data[VW-1:0] == r_value);
 `endif
+// }}}
 endmodule
