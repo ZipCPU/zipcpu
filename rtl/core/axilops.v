@@ -799,31 +799,29 @@ module	axilops #(
 		// {{{
 		.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
 		//
+		.i_axi_awvalid(M_AXI_AWVALID),
 		.i_axi_awready(M_AXI_AWREADY),
 		.i_axi_awaddr( M_AXI_AWADDR),
-		.i_axi_awcache(4'h0),
 		.i_axi_awprot( M_AXI_AWPROT),
-		.i_axi_awvalid(M_AXI_AWVALID),
 		//
+		.i_axi_wvalid(M_AXI_WVALID),
 		.i_axi_wready(M_AXI_WREADY),
 		.i_axi_wdata( M_AXI_WDATA),
 		.i_axi_wstrb( M_AXI_WSTRB),
-		.i_axi_wvalid(M_AXI_WVALID),
 		//
-		.i_axi_bresp( M_AXI_BRESP),
 		.i_axi_bvalid(M_AXI_BVALID),
 		.i_axi_bready(M_AXI_BREADY),
+		.i_axi_bresp( M_AXI_BRESP),
 		//
+		.i_axi_arvalid(M_AXI_ARVALID),
 		.i_axi_arready(M_AXI_ARREADY),
 		.i_axi_araddr( M_AXI_ARADDR),
-		.i_axi_arcache(4'h0),
 		.i_axi_arprot( M_AXI_ARPROT),
-		.i_axi_arvalid(M_AXI_ARVALID),
 		//
-		.i_axi_rresp( M_AXI_RRESP),
 		.i_axi_rvalid(M_AXI_RVALID),
-		.i_axi_rdata( M_AXI_RDATA),
 		.i_axi_rready(M_AXI_RREADY),
+		.i_axi_rdata( M_AXI_RDATA),
+		.i_axi_rresp( M_AXI_RRESP),
 		//
 		.f_axi_rd_outstanding(faxil_rd_outstanding),
 		.f_axi_wr_outstanding(faxil_wr_outstanding),

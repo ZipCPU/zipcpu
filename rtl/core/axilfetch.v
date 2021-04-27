@@ -534,30 +534,41 @@ module	axilfetch #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	faxil_master #(.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
-			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
-			.F_OPT_READ_ONLY(1'b1),
-			.F_OPT_COVER_BURST(5),
-			.F_OPT_ASSUME_RESET(1'b1),
-			.F_LGDEPTH(F_LGDEPTH)
-	) faxil(.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
-		//
+	faxil_master #(
+		// {{{
+		.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
+		.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+		.F_OPT_READ_ONLY(1'b1),
+		.F_OPT_COVER_BURST(5),
+		.F_OPT_ASSUME_RESET(1'b1),
+		.F_LGDEPTH(F_LGDEPTH)
+		// }}}
+	) faxil(
+		// {{{
+		.i_clk(S_AXI_ACLK), .i_axi_reset_n(S_AXI_ARESETN),
+		// Unused write interface
+		// {{{
 		.i_axi_awvalid(1'b0), .i_axi_awready(1'b1),
 		.i_axi_wvalid(1'b0), .i_axi_wready(1'b1),
 		.i_axi_bvalid(1'b0), .i_axi_bready(1'b1),
-		//
+		// }}}
+		// Read address channel
+		// {{{
 		.i_axi_arvalid(M_AXI_ARVALID),
 		.i_axi_arready(M_AXI_ARREADY),
 		.i_axi_araddr( M_AXI_ARADDR),
 		.i_axi_arprot( 3'h0),
-		.i_axi_arcache(4'h0),
-		//
+		// }}}
+		// Read return / data interface
+		// {{{
 		.i_axi_rvalid(M_AXI_RVALID),
 		.i_axi_rready(M_AXI_RREADY),
 		.i_axi_rdata(M_AXI_RDATA),
 		.i_axi_rresp(M_AXI_RRESP),
-		//
-		.f_axi_rd_outstanding(faxil_outstanding));
+		// }}}
+		.f_axi_rd_outstanding(faxil_outstanding)
+		// }}}
+	);
 
 
 	always @(*)
