@@ -113,7 +113,7 @@ module	axiops #(
 		parameter [0:0]		OPT_LOWPOWER = 1'b1,
 		// }}}
 		parameter [3:0]	OPT_QOS = 0,
-		localparam	IW = (C_AXI_ID_WIDTH > 0) ? 1:C_AXI_ID_WIDTH,
+		localparam	IW = (C_AXI_ID_WIDTH > 0) ? C_AXI_ID_WIDTH:1,
 		localparam	AW = C_AXI_ADDR_WIDTH,
 		localparam	DW = C_AXI_DATA_WIDTH,
 		localparam	AXILSB = $clog2(C_AXI_DATA_WIDTH/8)
