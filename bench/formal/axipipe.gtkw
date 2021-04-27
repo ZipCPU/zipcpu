@@ -1,0 +1,173 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Thu Nov 12 17:36:32 2020
+[*]
+[timestart] 0
+[size] 1705 845
+[pos] -1 -1
+*-5.760617 30 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] axipipe.
+[sst_width] 270
+[signals_width] 300
+[sst_expanded] 1
+[sst_vpaned_height] 229
+@28
+axipipe.S_AXI_ACLK
+axipipe.S_AXI_ARESETN
+axipipe.i_cpu_reset
+@200
+-
+@800200
+-CPU
+@28
+[color] 3
+axipipe.i_stb
+[color] 2
+axipipe.o_pipe_stalled
+[color] 3
+axipipe.i_op[2:0]
+@22
+[color] 3
+axipipe.i_oreg[4:0]
+[color] 3
+axipipe.i_addr[31:0]
+[color] 3
+axipipe.i_data[31:0]
+@200
+-
+@28
+[color] 2
+axipipe.o_busy
+[color] 2
+axipipe.o_rdbusy
+[color] 2
+axipipe.o_valid
+@22
+[color] 2
+axipipe.o_wreg[4:0]
+[color] 2
+axipipe.o_result[31:0]
+@28
+[color] 2
+axipipe.o_err
+axipipe.f_done
+@1000200
+-CPU
+@800200
+-FIFO
+@28
+axipipe.f_clrfifo
+axipipe.f_wrfifo
+axipipe.f_rdfifo
+axipipe.f_fsmfifo[1:0]
+@23
+axipipe.f_first_addr[4:0]
+axipipe.f_next_addr[4:0]
+@200
+-
+@28
+axipipe.f_first_in_fifo
+axipipe.f_next_in_fifo
+@22
+axipipe.f_next_return_reg[4:0]
+@28
+axipipe.cpu_gie
+@1000200
+-FIFO
+@28
+axipipe.r_flushing
+axipipe.bus_abort
+axipipe.read_abort
+axipipe.write_abort
+[color] 2
+axipipe.w_misaligned
+axipipe.misaligned_aw_request
+axipipe.misaligned_request
+axipipe.misaligned_response_pending
+@c00200
+-AXI Write
+@28
+[color] 2
+axipipe.M_AXI_AWVALID
+[color] 3
+axipipe.M_AXI_AWREADY
+@22
+[color] 2
+axipipe.M_AXI_AWADDR[29:0]
+@200
+-
+@28
+[color] 2
+axipipe.M_AXI_WVALID
+[color] 3
+axipipe.M_AXI_WREADY
+@22
+[color] 2
+axipipe.M_AXI_WDATA[31:0]
+[color] 2
+axipipe.M_AXI_WSTRB[3:0]
+@200
+-
+@28
+[color] 3
+axipipe.M_AXI_BVALID
+@c00028
+[color] 3
+axipipe.M_AXI_BRESP[1:0]
+@28
+[color] 3
+(0)axipipe.M_AXI_BRESP[1:0]
+[color] 3
+(1)axipipe.M_AXI_BRESP[1:0]
+@1401200
+-group_end
+-AXI Write
+@28
+axipipe.w_misaligned
+@22
+axipipe.rdaddr[4:0]
+axipipe.wraddr[4:0]
+[color] 2
+axipipe.beats_outstanding[4:0]
+axipipe.faxil_awr_outstanding[4:0]
+axipipe.faxil_rd_outstanding[4:0]
+axipipe.faxil_wr_outstanding[4:0]
+axipipe.f_fifo_fill[4:0]
+axipipe.cpu_outstanding[4:0]
+@800200
+-AXI Read
+@28
+[color] 2
+axipipe.M_AXI_ARVALID
+[color] 3
+axipipe.M_AXI_ARREADY
+@22
+[color] 2
+axipipe.M_AXI_ARADDR[29:0]
+@200
+-
+@28
+[color] 3
+axipipe.M_AXI_RVALID
+@22
+[color] 3
+axipipe.M_AXI_RDATA[31:0]
+@28
+[color] 3
+axipipe.M_AXI_RRESP[1:0]
+@1000200
+-AXI Read
+@28
+axipipe.none_outstanding
+@22
+axipipe.beats_outstanding[4:0]
+@200
+-
+@28
+axipipe.f_done
+axipipe.r_flushing
+axipipe.flush_request
+@22
+axipipe.flushcount[4:0]
+[pattern_trace] 1
+[pattern_trace] 0

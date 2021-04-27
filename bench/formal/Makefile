@@ -40,7 +40,7 @@
 ##
 ## }}}
 TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe axilperiphs axiops axidcache
+TESTS += axilfetch axilops axilpipe axilperiphs axiops axipipe axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
@@ -75,6 +75,7 @@ AXIICC := axiicache
 AXILMEM:= axilops
 AXIMEM := axiops
 AXLPIPE:= axilpipe
+AXIPIPE:= axipipe
 AXLPH  := axilperiphs
 AXIDCC := axidcache
 
@@ -279,6 +280,27 @@ $(AXLPIPE)_cvru/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby cvru
 $(AXLPIPE)_cvr64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 	sby -f $(AXLPIPE).sby cvr64
+## }}}
+
+.PHONY: $(AXIPIPE)
+## {{{
+$(AXIPIPE): $(AXIPIPE)_cvr/PASS   $(AXIPIPE)_prf/PASS   $(AXIPIPE)_prfu/PASS
+$(AXIPIPE): $(AXIPIPE)_cvr64/PASS $(AXIPIPE)_prf64/PASS $(AXIPIPE)_prfu64/PASS
+$(AXIPIPE): $(AXIPIPE)_cvru/PASS
+$(AXIPIPE)_prf/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prf
+$(AXIPIPE)_prf64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prf64
+$(AXIPIPE)_prfu/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfu
+$(AXIPIPE)_prfu64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfu64
+$(AXIPIPE)_cvr/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby cvr
+$(AXIPIPE)_cvru/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby cvru
+$(AXIPIPE)_cvr64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby cvr64
 ## }}}
 
 .PHONY: $(WBPIPE)
