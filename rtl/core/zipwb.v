@@ -328,7 +328,7 @@ module	zipwb #(
 `else
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache, mem_lock_pc };
+	assign	dbg_unused = &{ 1'b0, cpu_debug };
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -539,7 +539,7 @@ module	zipwb #(
 	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, pf_data };
+	assign	unused = &{ 1'b0, pf_data, mem_lock_pc, clear_dcache };
 	// Verilator lint_on  UNUSED
 	// }}}
 endmodule

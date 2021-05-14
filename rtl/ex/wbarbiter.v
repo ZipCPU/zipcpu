@@ -66,11 +66,11 @@ module	wbarbiter #(
 		// {{{
 		parameter			DW=32, AW=32,
 		parameter			SCHEME="ALTERNATING",
-		parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0,
-		parameter			F_MAX_STALL = 3,
-		parameter			F_MAX_ACK_DELAY = 3
+		parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0
 `ifdef	FORMAL
-		, parameter			F_LGDEPTH=3
+		, parameter			F_MAX_STALL = 3,
+		parameter			F_MAX_ACK_DELAY = 3,
+		parameter			F_LGDEPTH=3
 `endif
 		// }}}
 	) (
@@ -98,7 +98,7 @@ module	wbarbiter #(
 		output	wire	[(AW-1):0]	o_adr,
 		output	wire	[(DW-1):0]	o_dat,
 		output	wire	[(DW/8-1):0]	o_sel,
-		input	wire			i_stall, i_ack, i_err,
+		input	wire			i_stall, i_ack, i_err
 		// }}}
 `ifdef	FORMAL
 		, output	wire	[(F_LGDEPTH-1):0]

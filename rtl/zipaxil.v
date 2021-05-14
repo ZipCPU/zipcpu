@@ -735,7 +735,7 @@ module	zipaxil #(
 `else
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache };
+	assign	dbg_unused = &{ 1'b0, cpu_debug };
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -940,7 +940,7 @@ module	zipaxil #(
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, cpu_clken, S_DBG_AWADDR[DBGLSB-1:0],
-			mem_lock_pc,
+			mem_lock_pc, clear_dcache,
 			S_DBG_ARADDR[DBGLSB-1:0],
 			S_DBG_ARPROT, S_DBG_AWPROT,
 			M_INSN_AWREADY, M_INSN_WREADY,

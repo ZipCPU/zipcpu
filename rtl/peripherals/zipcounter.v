@@ -54,9 +54,10 @@
 // }}}
 module	zipcounter #(
 		// {{{
-		parameter	BW = 32,
-		//
-		localparam	F_LGDEPTH = 2
+		parameter	BW = 32
+`ifdef	FORMAL
+		, localparam	F_LGDEPTH = 2
+`endif
 		// }}}
 	) (
 		// {{{

@@ -66,7 +66,9 @@
 module	busdelay #(
 		// {{{
 		parameter		AW=32, DW=32,
+`ifdef	FORMAL
 		localparam		F_LGDEPTH=4,
+`endif
 		parameter	 [0:0]	DELAY_STALL  = 1,
 		parameter	 [0:0]	OPT_LOWPOWER = 0
 		// }}}

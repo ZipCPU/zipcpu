@@ -60,7 +60,7 @@ module	zipbones #(
 				LGDCACHE = 0,
 `endif
 		parameter [0:0]	START_HALTED=0,
-		parameter	EXTERNAL_INTERRUPTS=1,
+		parameter
 `ifdef	OPT_MULTIPLY
 				OPT_MPY = `OPT_MULTIPLY,
 `else
@@ -77,22 +77,22 @@ module	zipbones #(
 		parameter [0:0]	OPT_FPU = 0,
 `endif
 		parameter [0:0]	OPT_LOCK = 1,
-		localparam [0:0] OPT_DMA = 0, OPT_ACCOUNTING = 1'b0,
 		parameter	RESET_DURATION = 10,
 		// }}}
 		// Short-cut names
 		// {{{
 		localparam	// Derived parameters
-				PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
+				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 				PAW=ADDRESS_WIDTH,
 `ifdef	OPT_MMU
-				VIRTUAL_ADDRESS_WIDTH=30,
+				// VIRTUAL_ADDRESS_WIDTH=30,
 `else
-				VIRTUAL_ADDRESS_WIDTH=PAW,
+				// VIRTUAL_ADDRESS_WIDTH=PAW,
 `endif
-				LGTLBSZ = 6,
-				VAW=VIRTUAL_ADDRESS_WIDTH,
-		localparam	AW=ADDRESS_WIDTH,
+				// LGTLBSZ = 6,
+				// VAW=VIRTUAL_ADDRESS_WIDTH,
+		// localparam	AW=ADDRESS_WIDTH,
+		localparam	DW=32,	// Bus data width
 		// }}}
 		// Debug bit allocations
 		// {{{
@@ -120,11 +120,11 @@ module	zipbones #(
 		// Wishbone master interface from the CPU
 		// {{{
 		output	wire		o_wb_cyc, o_wb_stb, o_wb_we,
-		output	wire	[(PAW-1):0]	o_wb_addr,
-		output	wire	[31:0]	o_wb_data,
-		output	wire	[3:0]	o_wb_sel,
+		output wire [(PAW-1):0]	o_wb_addr,
+		output	wire [DW-1:0]	o_wb_data,
+		output	wire [DW/8-1:0]	o_wb_sel,
 		input	wire		i_wb_stall, i_wb_ack,
-		input	wire	[31:0]	i_wb_data,
+		input	wire [DW-1:0]	i_wb_data,
 		input	wire		i_wb_err,
 		// }}}
 		// Incoming interrupts
@@ -135,11 +135,11 @@ module	zipbones #(
 		// {{{
 		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
 		input	wire	[5:0]	i_dbg_addr,
-		input	wire	[31:0]	i_dbg_data,
-		input	wire	[3:0]	i_dbg_sel,
+		input	wire [DW-1:0]	i_dbg_data,
+		input	wire [DW/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire	[31:0]	o_dbg_data
+		output	wire [DW-1:0]	o_dbg_data
 		// }}}
 `ifdef	DEBUG_SCOPE
 		, output wire	[31:0]	o_cpu_debug

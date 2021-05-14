@@ -64,7 +64,6 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
@@ -95,8 +94,10 @@ module	dcache #(
 		localparam	AW = ADDRESS_WIDTH, // Just for ease of notation below
 		localparam	CS = LGCACHELEN, // Number of bits in a cache address
 		localparam	LS = CS-LGNLINES, // Bits to spec position w/in cline
+`ifdef	FORMAL
 		parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
 						? LS : OPT_FIFO_DEPTH),
+`endif
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
 		localparam	DW = 32, // Bus data width
 		localparam	DP = OPT_FIFO_DEPTH,

@@ -82,12 +82,14 @@ module	wbdblpriarb #(
 		// using VER1LATOR, 'cause zeroing things on idle can make them
 		// stand out all the more when staring at wires and dumps and
 		// such.
-		parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0,
+		parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0
 		// }}}
+`ifdef FORMAL
 		// Parameters used in the formal proof only
-		parameter	F_LGDEPTH = 3,
+		, parameter	F_LGDEPTH = 3,
 		parameter	F_MAX_STALL = 0,
 		parameter	F_MAX_ACK_DELAY=0
+`endif
 		// }}}
 	) (
 		// {{{

@@ -178,17 +178,17 @@ module	zipsystem #(
 		// Short-cut names
 		// {{{
 		localparam	// Derived parameters
-				PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
+				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 				PAW=ADDRESS_WIDTH,
 `ifdef	OPT_MMU
 				VIRTUAL_ADDRESS_WIDTH=30,
 `else
 				VIRTUAL_ADDRESS_WIDTH=PAW,
 `endif
-				LGTLBSZ = 6,	// Log TLB size
-				VAW=VIRTUAL_ADDRESS_WIDTH,
+				// LGTLBSZ = 6,	// Log TLB size
+				// VAW=VIRTUAL_ADDRESS_WIDTH,
 
-		localparam	AW=ADDRESS_WIDTH,
+		// localparam	AW=ADDRESS_WIDTH,
 		// }}}
 		// Peripheral addresses
 		// {{{
