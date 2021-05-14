@@ -2,7 +2,7 @@
 ################################################################################
 ##
 ## Filename:	gas-script.sh
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	To configure binutils to properly build the binutils portion of
@@ -12,9 +12,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2016-2020, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2016-2021, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -31,8 +31,11 @@
 ##
 ################################################################################
 ##
-##
+## }}}
 VERSION=binutils-2.27
+
+## Patch the original version
+## {{{
 if [[ ! -d $VERSION-zip/ ]]
 then
   tar -xjf ./$VERSION.tar.bz2 --transform s,$VERSION,$VERSION-zip,
@@ -45,7 +48,10 @@ then
     echo "ZipCPU binutils patch not found"
   fi
 fi
+## }}}
 
+## Set up a install directory
+## {{{
 set +h
 set -e
 CLFS_HOST=$MACHTYPE
@@ -56,9 +62,17 @@ then
 fi
 INSTALL_BASE=${INSTALLD}
 mkdir -p ${INSTALL_BASE}/cross-tools
+## }}}
+
+## Setup a build  directory
+## {{{
 mkdir -p build-gas
 echo ../$VERSION-zip/configure
 cd build-gas
+## }}}
+
+## Configure binutils
+## {{{
 AR=ar AS=as	\
 ../$VERSION-zip/configure --with-gas				\
 	--prefix=${INSTALL_BASE}/cross-tools			\
@@ -66,4 +80,4 @@ AR=ar AS=as	\
 	--disable-nls		--disable-multilib		\
 	--enable-plugins	--enable-threads		\
 	--disable-werror
-
+## }}}

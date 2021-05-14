@@ -7,8 +7,14 @@ build-gcc/
 build-nlib/
 gcc-6.2.0/
 gcc-6.2.0-zip/
+gcc-10.3.0/
+gcc-10.3.0-zip/
+gcc-*.tar.*z
 newlib-2.5.0/
 newlib-2.5.0-zip/
+newlib-4.1.0/
+newlib-4.1.0-zip/
+newlib-*.tar.*z
 2017*.patch
 lib/
 zipos/
