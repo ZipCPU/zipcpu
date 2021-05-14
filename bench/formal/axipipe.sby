@@ -1,20 +1,23 @@
 [tasks]
-cvr                        bus32
-cvru  cvr opt_realignment  bus32
-prf                        bus32
-prfu  prf opt_realignment  bus32
-cvr64 cvr                  bus64
-prf64 prf                  bus64
-prfu64 prf opt_realignment bus64
+cvr                         bus32 opt_lock
+cvru   cvr opt_realignment  bus32 opt_lock
+prf                         bus32 opt_lock
+prfu   prf opt_realignment  bus32 opt_lock
+prfs   prf                  bus32 opt_lock swap_wstrb
+prfsu  prf opt_realignment  bus32 opt_lock swap_wstrb
+cvr64 cvr                   bus64 opt_lock
+prf64 prf                   bus64 opt_lock
+prfu64  prf opt_realignment bus64 opt_lock
+prfs64  prf                 bus64 opt_lock swap_wstrb
+prfsu64 prf opt_realignment bus64 opt_lock swap_wstrb
 # bmc
-bmcu   bmc opt_realignemnt
-bmc64  bmc                 bus64
-bmcu64 bmc opt_realignemnt bus64
+bmcu    bmc opt_realignemnt      opt_lock
+bmc64   bmc                 bus64 opt_lock
+bmcu64  bmc opt_realignemnt bus64 opt_lock
 
 [options]
 prf: mode prove
-prf:  depth 13
-prfu: depth 20
+prfu: depth 17
 bmc: mode bmc
 # bmc:  depth 13
 bmcu: depth 40
@@ -44,7 +47,8 @@ if ("bus64" in tags):
 	cmd +=" -chparam C_AXI_DATA_WIDTH 64"
 else:
 	cmd +=" -chparam C_AXI_DATA_WIDTH 32"
-cmd +=" -chparam OPT_LOCK 1"
+cmd +=" -chparam OPT_LOCK %d" % (1 if "opt_lock" in tags else 0)
+cmd +=" -chparam SWAP_WSTRB %d" % (1 if "swap_wstrb" in tags else 0)
 cmd +=" -chparam OPT_LOWPOWER 0"
 output(cmd)
 --pycode-end--

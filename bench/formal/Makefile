@@ -284,8 +284,10 @@ $(AXLPIPE)_cvr64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
 
 .PHONY: $(AXIPIPE)
 ## {{{
-$(AXIPIPE): $(AXIPIPE)_cvr/PASS   $(AXIPIPE)_prf/PASS   $(AXIPIPE)_prfu/PASS
-$(AXIPIPE): $(AXIPIPE)_cvr64/PASS $(AXIPIPE)_prf64/PASS $(AXIPIPE)_prfu64/PASS
+$(AXIPIPE): $(AXIPIPE)_cvr/PASS    $(AXIPIPE)_prf/PASS   $(AXIPIPE)_prfu/PASS
+$(AXIPIPE): $(AXIPIPE)_cvr64/PASS  $(AXIPIPE)_prf64/PASS $(AXIPIPE)_prfu64/PASS
+$(AXIPIPE): $(AXIPIPE)_prfs/PASS   $(AXIPIPE)_prfsu/PASS
+$(AXIPIPE): $(AXIPIPE)_prfs64/PASS $(AXIPIPE)_prfsu64/PASS
 $(AXIPIPE): $(AXIPIPE)_cvru/PASS
 $(AXIPIPE)_prf/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
 	sby -f $(AXIPIPE).sby prf
@@ -295,6 +297,14 @@ $(AXIPIPE)_prfu/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
 	sby -f $(AXIPIPE).sby prfu
 $(AXIPIPE)_prfu64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
 	sby -f $(AXIPIPE).sby prfu64
+$(AXIPIPE)_prfs/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfs
+$(AXIPIPE)_prfs64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfs64
+$(AXIPIPE)_prfsu/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfsu
+$(AXIPIPE)_prfsu64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
+	sby -f $(AXIPIPE).sby prfsu64
 $(AXIPIPE)_cvr/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
 	sby -f $(AXIPIPE).sby cvr
 $(AXIPIPE)_cvru/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
