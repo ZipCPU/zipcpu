@@ -103,7 +103,7 @@ module	zipaxi #(
 		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
 `endif
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
-		localparam	[0:0]	IMPLEMENT_LOCK=0,
+		localparam	[0:0]	IMPLEMENT_LOCK=1,
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
 		parameter		LGICACHE = 8,
 		parameter		LGILINESZ= 3,
@@ -268,6 +268,7 @@ module	zipaxi #(
 			HALT_BIT = 10,
 			CLEAR_CACHE_BIT = 11;
 	localparam [0:0]	OPT_LOWPOWER = 1'b0;
+	localparam [0:0]	OPT_ALIGNMENT_ERR = 1'b0;
 	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
 
 	// AXI-lite signal handling
@@ -762,7 +763,7 @@ module	zipaxi #(
 `else
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug, clear_dcache };
+	assign	dbg_unused = &{ 1'b0, cpu_debug };
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1003,10 +1004,15 @@ module	zipaxi #(
 	end else if (OPT_PIPELINED_BUS_ACCESS)
 	begin : PIPELINED_MEM
 
-		axilpipe #(
+		axipipe #(
 			// {{{
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
-			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH) //,
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.C_AXI_ID_WIDTH(C_AXI_ID_WIDTH),
+			.AXI_ID(DATA_ID),
+			.OPT_LOCK(IMPLEMENT_LOCK),
+			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
+			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND)
 			// }}}
 		) domem(
@@ -1019,6 +1025,7 @@ module	zipaxi #(
 			.i_lock(bus_lock),
 			.i_op(mem_op),
 			.i_addr(mem_cpu_addr),
+			.i_restart_pc(mem_lock_pc),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
 			.o_busy(mem_busy),
@@ -1029,61 +1036,62 @@ module	zipaxi #(
 			.o_wreg(mem_wreg),
 			.o_result(mem_result),
 			// }}}
-			// AXI-lite
+			// AXI
 			// Write interface
 			// {{{
 			.M_AXI_AWVALID(M_DATA_AWVALID),
 			.M_AXI_AWREADY(M_DATA_AWREADY),
-			.M_AXI_AWADDR(M_DATA_AWADDR),
-			.M_AXI_AWPROT(M_DATA_AWPROT),
+			.M_AXI_AWID(   M_DATA_AWID),
+			.M_AXI_AWADDR( M_DATA_AWADDR),
+			.M_AXI_AWLEN(  M_DATA_AWLEN),
+			.M_AXI_AWSIZE( M_DATA_AWSIZE),
+			.M_AXI_AWBURST(M_DATA_AWBURST),
+			.M_AXI_AWLOCK( M_DATA_AWLOCK),
+			.M_AXI_AWCACHE(M_DATA_AWCACHE),
+			.M_AXI_AWPROT( M_DATA_AWPROT),
+			.M_AXI_AWQOS(  M_DATA_AWQOS),
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
 			.M_AXI_WDATA(M_DATA_WDATA),
 			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WLAST(M_DATA_WLAST),
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
 			.M_AXI_BREADY(M_DATA_BREADY),
-			.M_AXI_BRESP(M_DATA_BRESP),
+			.M_AXI_BID(   M_DATA_BID),
+			.M_AXI_BRESP( M_DATA_BRESP),
 			// }}}
 			// Read interface
 			// {{{
 			.M_AXI_ARVALID(M_DATA_ARVALID),
 			.M_AXI_ARREADY(M_DATA_ARREADY),
-			.M_AXI_ARADDR(M_DATA_ARADDR),
-			.M_AXI_ARPROT(M_DATA_ARPROT),
+			.M_AXI_ARID(   M_DATA_ARID),
+			.M_AXI_ARADDR( M_DATA_ARADDR),
+			.M_AXI_ARLEN(  M_DATA_ARLEN),
+			.M_AXI_ARSIZE( M_DATA_ARSIZE),
+			.M_AXI_ARBURST(M_DATA_ARBURST),
+			.M_AXI_ARLOCK( M_DATA_ARLOCK),
+			.M_AXI_ARCACHE(M_DATA_ARCACHE),
+			.M_AXI_ARPROT( M_DATA_ARPROT),
+			.M_AXI_ARQOS(  M_DATA_ARQOS),
 			//
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
-			.M_AXI_RDATA(M_DATA_RDATA),
-			.M_AXI_RRESP(M_DATA_RRESP)
+			.M_AXI_RID(   M_DATA_RID),
+			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RLAST( M_DATA_RLAST),
+			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
 			// }}}
 		);
 
-		// Convert from AXI-lite to AXI4
+		// Make Verilator happy
 		// {{{
-		assign	M_DATA_AWID    = DATA_ID;
-		assign	M_DATA_AWLEN   = 0;
-		assign	M_DATA_AWSIZE  = AXILSB[2:0];
-		assign	M_DATA_AWBURST = 2'b01;
-		assign	M_DATA_AWLOCK  = 1'b0;
-		assign	M_DATA_AWCACHE = 4'h3;
-		assign	M_DATA_AWQOS   = 4'h0;
-
-		assign	M_DATA_WLAST   = 1'b1;
-
-		assign	M_DATA_ARID    = DATA_ID;
-		assign	M_DATA_ARLEN   = 0;
-		assign	M_DATA_ARSIZE  = AXILSB[2:0];
-		assign	M_DATA_ARBURST = 2'b01;
-		assign	M_DATA_ARLOCK  = 1'b0;
-		assign	M_DATA_ARCACHE = 4'h3;
-		assign	M_DATA_ARQOS   = 4'h0;
-
-		wire	unused_axil_data;
-		assign	unused_axil_data = &{ 1'b0, M_DATA_BID,
-					M_DATA_RID, M_DATA_RLAST };
+		// Verilator lint_off UNUSED
+		wire	unused_pipe;
+		assign	unused_pipe = &{ 1'b0, clear_dcache };
+		// Verilator lint_on  UNUSED
 		// }}}
 	end else begin : BARE_MEM
 
@@ -1097,7 +1105,7 @@ module	zipaxi #(
 			.SWAP_WSTRB(1'b0),
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
 			.OPT_LOCK(IMPLEMENT_LOCK),
-			.OPT_ALIGNMENT_ERR(1'b0),
+			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
 			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// }}}
 		) domem(
@@ -1171,6 +1179,14 @@ module	zipaxi #(
 		);
 
 		assign	mem_pipe_stalled = mem_busy;
+
+		// Make Verilator happy
+		// {{{
+		// Verilator lint_off UNUSED
+		wire	unused_bare;
+		assign	unused_bare = &{ 1'b0, clear_dcache };
+		// Verilator lint_on  UNUSED
+		// }}}
 	end endgenerate
 `endif
 	// }}}
