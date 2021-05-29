@@ -6334,7 +6334,7 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/acconfig.h newlib-4.1.0-zip/new
  #undef _FVWRITE_IN_STREAMIO
 diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/configure.host newlib-4.1.0-zip/newlib/configure.host
 --- newlib-4.1.0/newlib/configure.host	2020-12-18 18:50:49.000000000 -0500
-+++ newlib-4.1.0-zip/newlib/configure.host	2021-05-10 15:23:04.729495729 -0400
++++ newlib-4.1.0-zip/newlib/configure.host	2021-05-29 12:09:48.019833233 -0400
 @@ -370,6 +370,9 @@
    z8k)
  	machine_dir=z8k
@@ -6345,18 +6345,17 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/configure.host newlib-4.1.0-zip
    spu)
  	stdio_dir=
  	libm_machine_dir=spu
-@@ -633,6 +636,10 @@
+@@ -633,6 +636,9 @@
    z8k-*-coff)
  	sys_dir=z8ksim
  	;;
 +  zip*)
 +	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED "
-+	newlib_cflags="${newlib_cflags} -DNO_FLOATING_POINT"
 +	;;
  esac
  
  # Host specific flag settings -- usually for features that are not
-@@ -929,6 +936,9 @@
+@@ -929,6 +935,9 @@
    z8k-*-*)
  	syscall_dir=syscalls
  	;;
