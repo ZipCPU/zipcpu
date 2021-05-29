@@ -6963,8 +6963,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/Makefile.in binutils
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27-original/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2020-01-23 15:51:51.878102394 -0500
-@@ -0,0 +1,527 @@
++++ binutils-2.27-zip/opcodes/zip-dis.c	2021-05-29 14:21:47.238829081 -0400
+@@ -0,0 +1,565 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip-dis.c
@@ -7138,6 +7138,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +	return 0;
 +}
 +
++static	inline	int
++NOUT_CHAR(uint32_t iword) {
++	if ((iword & 0xf7ffff00)==0x77c00400)
++		return 1;
++	return 0;
++}
++
 +static uint32_t
 +zip_bitreverse(uint32_t v) {
 +	uint32_t r=0, b;
@@ -7157,7 +7164,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +
 +	r = val & ((1l<<bits)-1);
 +	if (r & (1l << (bits-1)))
-+		r |= (-1l << bits);
++		r |= (((unsigned long)-1l) << bits);
 +	return r;
 +}
 +
@@ -7179,6 +7186,14 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +}
 +
 +static	void
++zip_pad_to(int width, char *str) {
++	int	k = strlen(str);
++	for(; k<width; k++)
++		str[k] = ' ';
++	str[k] = '\0';
++}
++
++static	void
 +zipi_to_halfstring(const uint32_t addr, const ZIPI ins, const ZIPI nxtword, char *line, const ZOPCODE *listp, uint32_t *refaddr)
 +{
 +	*refaddr = 0;
@@ -7190,8 +7205,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +		*refaddr = TWOWORD_VALUE(ins,nxtword);
 +
 +		sprintf(line, "%s%s", "LDI", zip_ccstr[cv]);
-+		sprintf(line, "%-11s", line);
-+		sprintf(line, "%s0x%08x", line, *refaddr);
++		zip_pad_to(11, line);
++		sprintf(&line[strlen(line)], "0x%08x", *refaddr);
 +		sprintf(&line[strlen(line)], ",%s", zip_regstr[dv]);
 +
 +		return;
@@ -7202,8 +7217,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +
 +			*refaddr = iv + addr + 8;
 +			sprintf(line, "%s%s", "JSR", zip_ccstr[cv]);
-+			sprintf(line, "%-11s", line);
-+			sprintf(line, "%s0x%08x", line, *refaddr);
++			zip_pad_to(11, line);
++			sprintf(&line[strlen(line)], "0x%08x", *refaddr);
 +
 +			return;
 +		} else if ((nxtword&0xfff80000) == 0x7c800000) {
@@ -7241,8 +7256,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +		}
 +	} else if (TWOWORD_CIS_LJSR(ins)) {
 +		*refaddr = nxtword;
-+		sprintf(line, "%-11s", "LJSR");
-+		sprintf(line, "%s0x%08x", line, *refaddr);
++		sprintf(line, "%-11s0x%08x", "LJSR", *refaddr);
 +		return;
 +	} else if (CIS_JSR(ins)) {
 +		int ra = zip_getbits(ins, ZIP_REGFIELD(3));
@@ -7257,11 +7271,29 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +		ref = (iv<<2) + addr + 4;
 +
 +		sprintf(line, "%s%s", "MOV", zip_ccstr[cv]);
-+		sprintf(line, "%-11s", line);
-+		sprintf(line, "%s0x%08x", line, ref);
-+		sprintf(line, "%s,%s", line, zip_regstr[dv]);
++		zip_pad_to(11, line);
++		sprintf(&line[strlen(line)], "0x%08x", ref);
++		sprintf(&line[strlen(line)], ",%s", zip_regstr[dv]);
 +
 +		*refaddr = ref;
++		return;
++	} else if (NOUT_CHAR(ins)) {
++		int	imv = ins & 0x0ff;
++		sprintf(line, "%-11s", "NOUT"); // Pad it to 11 chars
++		sprintf(&line[strlen(line)], "$%d", imv);
++		switch(imv) {
++		case '\a': strcat(line, "    \'\\a\'"); break;
++		case '\b': strcat(line, "    \'\\b\'"); break;
++		case '\f': strcat(line, "    \'\\f\'"); break;
++		case '\n': strcat(line, "    \'\\n\'"); break;
++		case '\r': strcat(line, "    \'\\r\'"); break;
++		case '\t': strcat(line, "    \'\\t\'"); break;
++		case '\\': strcat(line, "    \'\\\\\'"); break;
++		default:
++			if (isprint(imv))
++				sprintf(&line[strlen(line)], "    \'%c\'", imv);
++			break;
++		}
 +		return;
 +	}
 +
@@ -7287,8 +7319,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +			sprintf(line, "%s", listp[i].s_opstr);
 +			if (listp[i].s_cf != ZIP_OPUNUSED) {
 +				int bv = zip_getbits(ins, listp[i].s_cf);
++				sprintf(line, "%s", listp[i].s_opstr);
 +				strcat(line, zip_ccstr[bv]);
-+			} sprintf(line, "%-11s", line); // Pad it to 11 chars
++
++				zip_pad_to(11, line);
++			} else
++				sprintf(line, "%-11s", listp[i].s_opstr);
 +
 +			int	ra = -1, rb = -1, rr = -1, imv = 0;
 +
@@ -7445,8 +7481,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +	} else
 +		zipi_to_double_string(vma, iword, nxtword, astr, bstr,&refaddr);
 +
-+	if (bstr[0])
-+		sprintf(astr, "%-25s | %s", astr,bstr);
++	if (bstr[0]) {
++		zip_pad_to(25, astr);
++		sprintf(&astr[strlen(astr)], "| %s",bstr);
++	}
 +
 +	// Remove any trailing spaces
 +	unsigned ln = strlen(astr);
