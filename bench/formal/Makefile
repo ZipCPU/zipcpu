@@ -344,11 +344,16 @@ $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 
 .PHONY: $(AXIDCC)
 ## {{{
-$(AXIDCC): $(AXIDCC)_prf/PASS $(AXIDCC)_prf64/PASS $(AXIDCC)_cvr/PASS
+$(AXIDCC): $(AXIDCC)_prf/PASS  $(AXIDCC)_prf64/PASS  $(AXIDCC)_cvr/PASS
+$(AXIDCC): $(AXIDCC)_prfs/PASS $(AXIDCC)_prfs64/PASS $(AXIDCC)_cvr/PASS
 $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf64
+$(AXIDCC)_prfs/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs
+$(AXIDCC)_prfs64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs64
 $(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby cvr
 ## }}}

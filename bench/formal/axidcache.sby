@@ -1,6 +1,8 @@
 [tasks]
 prf
-prf64 prf bus64
+prf64  prf bus64
+prfs   prf       swap_wstrb
+prfs64 prf bus64 swap_wstrb
 cvr
 
 [options]
@@ -25,6 +27,8 @@ read -formal iscachable.v
 cmd = "hierarchy -top axidcache"
 cmd += " -chparam LGCACHELEN %d" % (7 if "bus64" in tags else 6)
 cmd += " -chparam LGNLINES %d" % (3 if "cvr" in tags else 3)
+cmd += " -chparam SWAP_WSTRB %d" % (1 if "swap_wstrb" in tags else 0)
+cmd += " -chparam OPT_SIGN_EXTEND %d" % (1 if "sign_extend" in tags else 0)
 if ("bus64" in tags):
 	cmd += " -chparam C_AXI_DATA_WIDTH 64"
 else:
