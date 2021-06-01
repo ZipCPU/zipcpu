@@ -210,7 +210,7 @@ module	fdebug #(
 		`CPU_ASSERT(i_halted);
 	// }}}
 
-	// Once requested, the halt request will remain activve until the CPU
+	// Once requested, the halt request will remain active until the CPU
 	// comes to a complete halt
 	// {{{
 	always @(posedge i_clk)
