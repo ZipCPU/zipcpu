@@ -64,8 +64,9 @@ module	zipaxi #(
 		parameter	DATA_ID = 0,
 		localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH,
 		localparam	AXILSB = $clog2(C_AXI_DATA_WIDTH/8),
-		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
+		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=0,
 		parameter [0:0]	START_HALTED = 1'b0,
+		parameter [0:0]	SWAP_WSTRB = 1'b0,
 `ifdef	OPT_MULTIPLY
 		parameter	IMPLEMENT_MPY = `OPT_MULTIPLY,
 `else
@@ -109,7 +110,7 @@ module	zipaxi #(
 		parameter		LGILINESZ= 3,
 		parameter		OPT_LGDCACHE  = 0,
 		parameter		OPT_LGDLINESZ = 3,
-		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
+		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 2),
 		parameter	RESET_DURATION = 10,
 		// localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
 		localparam	AW=ADDRESS_WIDTH-2
@@ -120,7 +121,7 @@ module	zipaxi #(
 	) (
 		// {{{
 		input	wire		S_AXI_ACLK, S_AXI_ARESETN,
-					i_interrupt,
+					i_interrupt, i_cpu_reset,
 		// Debug interface
 		// {{{
 		// Debug interface -- inputs
@@ -248,6 +249,9 @@ module	zipaxi #(
 		input	wire	[1:0]			M_DATA_RRESP,
 		// }}}
 		// Accounting outputs ... to help us count stalls and usage
+		output	wire		o_cmd_reset,
+		output	wire		o_halted,
+		output	wire		o_gie,
 		output	wire		o_op_stall,
 		output	wire		o_pf_stall,
 		output	wire		o_i_count
@@ -309,7 +313,8 @@ module	zipaxi #(
 	// {{{
 	wire		clear_dcache, mem_ce, bus_lock;
 	wire	[2:0]	mem_op;
-	wire	[31:0]	mem_cpu_addr, mem_lock_pc;
+	wire	[31:0]	mem_cpu_addr;
+	wire	[AW+1:0]	mem_lock_pc;
 	wire	[31:0]	mem_wdata;
 	wire	[4:0]	mem_reg;
 	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
@@ -512,14 +517,14 @@ module	zipaxi #(
 
 		initial	reset_counter = RESET_DURATION;
 		always @(posedge S_AXI_ACLK)
-		if (!S_AXI_ARESETN)
+		if (!S_AXI_ARESETN || i_cpu_reset)
 			reset_counter <= RESET_DURATION;
 		else if (reset_counter > 0)
 			reset_counter <= reset_counter - 1;
 
 		initial	reset_hold = 1;
 		always @(posedge S_AXI_ACLK)
-		if (!S_AXI_ARESETN)
+		if (!S_AXI_ARESETN || i_cpu_reset)
 			reset_hold <= 1;
 		else
 			reset_hold <= (reset_counter > 1);
@@ -539,7 +544,7 @@ module	zipaxi #(
 	// {{{
 	initial	cmd_reset = 1'b1;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_reset <= 1'b1;
 	else if (reset_hold)
 		cmd_reset <= 1'b1;
@@ -555,6 +560,9 @@ module	zipaxi #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
+		cmd_halt <= START_HALTED;
+	else if (i_cpu_reset && (!dbg_write_ready
+				&& (!dbg_write_valid || !cpu_dbg_stall)))
 		cmd_halt <= START_HALTED;
 	else if (cmd_reset && START_HALTED)
 		cmd_halt <= START_HALTED;
@@ -617,7 +625,7 @@ module	zipaxi #(
 	// {{{
 	initial	cmd_step = 1'b0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
 	else if (dbg_cmd_write && wskd_data[STEP_BIT] && wskd_strb[1])
 		cmd_step <= 1'b1;
@@ -673,7 +681,7 @@ module	zipaxi #(
 		// {{{
 		.i_clk(S_AXI_ACLK),
 		.i_reset(!S_AXI_ARESETN),
-		.i_cpu_reset(cmd_reset),
+		.i_cpu_reset(cmd_reset || i_cpu_reset),
 		.i_halt(cmd_halt),
 		.i_halted(f_cpu_halted),
 		.i_clear_cache(cmd_clear_cache),
@@ -701,7 +709,7 @@ module	zipaxi #(
 		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
-		.OPT_DCACHE(OPT_DCACHE),
+		.OPT_DCACHE(OPT_LGDCACHE != 0),
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		.OPT_GATE_CLOCK(1'b0)
@@ -755,6 +763,9 @@ module	zipaxi #(
 		// }}}
 	);
 `endif
+	assign	o_cmd_reset	= cmd_reset;
+	assign	o_gie		= cpu_dbg_cc[1];
+	assign	o_halted	= !cpu_dbg_stall;
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
@@ -779,11 +790,15 @@ module	zipaxi #(
 
 		axiicache #(
 			// {{{
+			.C_AXI_ID_WIDTH(C_AXI_ID_WIDTH),
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
 			.AXI_ID(INSN_ID),
 			.LGCACHESZ(LGICACHE),
 			.LGLINESZ(LGILINESZ),
+			// Instruction fetches don't need subword access,
+			// so SWAPWSTRB doesn't make any sense here.
+			// .SWAP_WSTRB(SWAP_WSTRB),
 			.SWAP_ENDIANNESS(SWAP_ENDIANNESS)
 			// }}}
 		) pf (
@@ -832,6 +847,7 @@ module	zipaxi #(
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
 			.FETCH_LIMIT(FETCH_LIMIT),
+			// .SWAP_WSTRB(SWAP_WSTRB),
 			.SWAP_ENDIANNESS(SWAP_ENDIANNESS)
 			// }}}
 		) pf (
@@ -920,7 +936,7 @@ module	zipaxi #(
 			.LGCACHELEN(OPT_LGDCACHE),
 			.LGNLINES(OPT_LGDCACHE-$clog2(C_AXI_DATA_WIDTH/8)-OPT_LGDLINESZ),
 			// .SWAP_ENDIANNESS(SWAP_ENDIANNESS),
-			// .SWAP_WSTRB(1'b0),
+			.SWAP_WSTRB(SWAP_WSTRB),
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
 			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
@@ -941,7 +957,7 @@ module	zipaxi #(
 			.i_pipe_stb(mem_ce),
 			.i_lock(bus_lock),
 			.i_op(mem_op),
-			.i_addr(mem_cpu_addr),
+			.i_addr(mem_cpu_addr[AW+1:0]),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
 			.o_busy(mem_busy),
@@ -1001,7 +1017,7 @@ module	zipaxi #(
 			// }}}
 		);
 
-	end else if (OPT_PIPELINED_BUS_ACCESS)
+	end else if (OPT_PIPELINED_BUS_ACCESS && OPT_LGDCACHE > 0)
 	begin : PIPELINED_MEM
 
 		axipipe #(
@@ -1012,6 +1028,7 @@ module	zipaxi #(
 			.AXI_ID(DATA_ID),
 			.OPT_LOCK(IMPLEMENT_LOCK),
 			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
+			.SWAP_WSTRB(SWAP_WSTRB),
 			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND)
 			// }}}
@@ -1024,7 +1041,7 @@ module	zipaxi #(
 			.i_stb(mem_ce),
 			.i_lock(bus_lock),
 			.i_op(mem_op),
-			.i_addr(mem_cpu_addr),
+			.i_addr(mem_cpu_addr[AW+1:0]),
 			.i_restart_pc(mem_lock_pc),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
@@ -1102,7 +1119,7 @@ module	zipaxi #(
 			.C_AXI_ID_WIDTH(C_AXI_ID_WIDTH),
 			.AXI_ID(DATA_ID),
 			.SWAP_ENDIANNESS(SWAP_ENDIANNESS),
-			.SWAP_WSTRB(1'b0),
+			.SWAP_WSTRB(SWAP_WSTRB),
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
 			.OPT_LOCK(IMPLEMENT_LOCK),
 			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
@@ -1117,7 +1134,7 @@ module	zipaxi #(
 			.i_stb(mem_ce),
 			.i_lock(bus_lock),
 			.i_op(mem_op),
-			.i_addr(mem_cpu_addr),
+			.i_addr(mem_cpu_addr[AW+1:0]),
 			.i_restart_pc(mem_lock_pc),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
