@@ -72,13 +72,11 @@
 module	zipaxil #(
 		// {{{
 		parameter	C_DBG_ADDR_WIDTH = 8,
-		localparam	C_DBG_DATA_WIDTH = 32,
-		localparam	DBGLSB = $clog2(C_DBG_DATA_WIDTH/8),
 		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 32,
-		localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH,
 		parameter [C_AXI_ADDR_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
 		parameter [0:0]	START_HALTED = 1'b0,
+		parameter [0:0]	SWAP_WSTRB = 1'b0,
 `ifdef	OPT_MULTIPLY
 		parameter	IMPLEMENT_MPY = `OPT_MULTIPLY,
 `else
@@ -104,25 +102,13 @@ module	zipaxil #(
 `else
 		parameter [0:0]	OPT_CIS = 1'b0,
 `endif
-		// localparam	[0:0]	OPT_NO_USERMODE = 1'b0,
 `ifdef	OPT_PIPELINED
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 `else
 		parameter	[0:0]	OPT_PIPELINED = 1'b0,
 `endif
-`ifdef	OPT_PIPELINED_BUS_ACCESS
-		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
-`else
-		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
-`endif
-		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
-		localparam	[0:0]	IMPLEMENT_LOCK=0,
-		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
-		// localparam		OPT_LGDCACHE = 0,
-		// localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0),
-		parameter	RESET_DURATION = 10,
+		parameter	RESET_DURATION = 10
 		// localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
-		localparam	AW=ADDRESS_WIDTH-2
 `ifdef	FORMAL
 		, parameter	F_LGDEPTH=8
 `endif
@@ -130,7 +116,7 @@ module	zipaxil #(
 	) (
 		// {{{
 		input	wire		S_AXI_ACLK, S_AXI_ARESETN,
-					i_interrupt,
+					i_interrupt, i_cpu_reset,
 		// Debug interface
 		// {{{
 		// Debug interface -- inputs
@@ -222,6 +208,9 @@ module	zipaxil #(
 		input	wire	[1:0]			M_DATA_RRESP,
 		// }}}
 		// Accounting outputs ... to help us count stalls and usage
+		output	wire		o_cmd_reset,
+		output	wire		o_halted,
+		output	wire		o_gie,
 		output	wire		o_op_stall,
 		output	wire		o_pf_stall,
 		output	wire		o_i_count
@@ -234,6 +223,20 @@ module	zipaxil #(
 
 	// Declarations
 	// {{{
+	// localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
+	localparam	[0:0]	IMPLEMENT_LOCK=0;
+	localparam	C_DBG_DATA_WIDTH = 32;
+	localparam	DBGLSB = $clog2(C_DBG_DATA_WIDTH/8);
+	localparam	ADDRESS_WIDTH = C_AXI_ADDR_WIDTH;
+	localparam	AW=ADDRESS_WIDTH-2;
+`ifdef	OPT_PIPELINED_BUS_ACCESS
+	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
+`else
+	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
+`endif
+	localparam		OPT_LGDCACHE = (OPT_PIPELINED_BUS_ACCESS)? 1:0;
+	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
+
 	localparam FETCH_LIMIT = 4;
 	wire	[31:0]	cpu_debug;
 
@@ -242,6 +245,7 @@ module	zipaxil #(
 			HALT_BIT = 10,
 			CLEAR_CACHE_BIT = 11;
 	localparam [0:0]	OPT_LOWPOWER = 1'b1;
+	localparam [0:0]	OPT_ALIGNMENT_ERR = 1'b0;
 	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
 
 	// AXI-lite signal handling
@@ -283,7 +287,7 @@ module	zipaxil #(
 	wire		clear_dcache, mem_ce, bus_lock;
 	wire	[2:0]	mem_op;
 	wire	[31:0]	mem_cpu_addr;
-	wire [AW+1:0]	mem_lock_pc;
+	wire	[AW+1:0]	mem_lock_pc;
 	wire	[31:0]	mem_wdata;
 	wire	[4:0]	mem_reg;
 	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
@@ -486,14 +490,14 @@ module	zipaxil #(
 
 		initial	reset_counter = RESET_DURATION;
 		always @(posedge S_AXI_ACLK)
-		if (!S_AXI_ARESETN)
+		if (!S_AXI_ARESETN || i_cpu_reset)
 			reset_counter <= RESET_DURATION;
 		else if (reset_counter > 0)
 			reset_counter <= reset_counter - 1;
 
 		initial	reset_hold = 1;
 		always @(posedge S_AXI_ACLK)
-		if (!S_AXI_ARESETN)
+		if (!S_AXI_ARESETN || i_cpu_reset)
 			reset_hold <= 1;
 		else
 			reset_hold <= (reset_counter > 1);
@@ -513,7 +517,7 @@ module	zipaxil #(
 	// {{{
 	initial	cmd_reset = 1'b1;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_reset <= 1'b1;
 	else if (reset_hold)
 		cmd_reset <= 1'b1;
@@ -529,6 +533,9 @@ module	zipaxil #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
+		cmd_halt <= START_HALTED;
+	else if (i_cpu_reset && (!dbg_write_ready
+				&& (!dbg_write_valid || !cpu_dbg_stall)))
 		cmd_halt <= START_HALTED;
 	else if (cmd_reset && START_HALTED)
 		cmd_halt <= START_HALTED;
@@ -591,7 +598,7 @@ module	zipaxil #(
 	// {{{
 	initial	cmd_step = 1'b0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
 	else if (dbg_cmd_write && wskd_data[STEP_BIT] && wskd_strb[1])
 		cmd_step <= 1'b1;
@@ -647,7 +654,7 @@ module	zipaxil #(
 		// {{{
 		.i_clk(S_AXI_ACLK),
 		.i_reset(!S_AXI_ARESETN),
-		.i_cpu_reset(cmd_reset),
+		.i_cpu_reset(cmd_reset || i_cpu_reset),
 		.i_halt(cmd_halt),
 		.i_halted(f_cpu_halted),
 		.i_clear_cache(cmd_clear_cache),
@@ -675,7 +682,7 @@ module	zipaxil #(
 		.OPT_PIPELINED_BUS_ACCESS(OPT_PIPELINED_BUS_ACCESS),
 		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
-		.OPT_DCACHE(1'b0),
+		.OPT_DCACHE(OPT_DCACHE),
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		.OPT_GATE_CLOCK(1'b0)
@@ -727,6 +734,9 @@ module	zipaxil #(
 		// }}}
 	);
 `endif
+	assign	o_cmd_reset	= cmd_reset;
+	assign	o_gie		= cpu_dbg_cc[1];
+	assign	o_halted	= !cpu_dbg_stall;
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
@@ -814,7 +824,9 @@ module	zipaxil #(
 		axilpipe #(
 			// {{{
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
-			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH) //,
+			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
+			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
+			.SWAP_WSTRB(SWAP_WSTRB) //,
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND)
 			// }}}
 		) domem(
@@ -842,8 +854,8 @@ module	zipaxil #(
 			// {{{
 			.M_AXI_AWVALID(M_DATA_AWVALID),
 			.M_AXI_AWREADY(M_DATA_AWREADY),
-			.M_AXI_AWADDR(M_DATA_AWADDR),
-			.M_AXI_AWPROT(M_DATA_AWPROT),
+			.M_AXI_AWADDR( M_DATA_AWADDR),
+			.M_AXI_AWPROT( M_DATA_AWPROT),
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
@@ -852,19 +864,19 @@ module	zipaxil #(
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
 			.M_AXI_BREADY(M_DATA_BREADY),
-			.M_AXI_BRESP(M_DATA_BRESP),
+			.M_AXI_BRESP( M_DATA_BRESP),
 			// }}}
 			// Read interface
 			// {{{
 			.M_AXI_ARVALID(M_DATA_ARVALID),
 			.M_AXI_ARREADY(M_DATA_ARREADY),
-			.M_AXI_ARADDR(M_DATA_ARADDR),
-			.M_AXI_ARPROT(M_DATA_ARPROT),
+			.M_AXI_ARADDR( M_DATA_ARADDR),
+			.M_AXI_ARPROT( M_DATA_ARPROT),
 			//
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
-			.M_AXI_RDATA(M_DATA_RDATA),
-			.M_AXI_RRESP(M_DATA_RRESP)
+			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
 			// }}}
 		);
@@ -876,8 +888,8 @@ module	zipaxil #(
 			.C_AXI_ADDR_WIDTH(C_AXI_ADDR_WIDTH),
 			.C_AXI_DATA_WIDTH(C_AXI_DATA_WIDTH),
 			.SWAP_ENDIANNESS(SWAP_ENDIANNESS),
-			.SWAP_WSTRB(1'b0),
-			.OPT_ALIGNMENT_ERR(1'b0),
+			.SWAP_WSTRB(SWAP_WSTRB),
+			.OPT_ALIGNMENT_ERR(OPT_ALIGNMENT_ERR),
 			.OPT_LOWPOWER(OPT_LOWPOWER)
 			// }}}
 		) domem(
@@ -904,8 +916,8 @@ module	zipaxil #(
 			// {{{
 			.M_AXI_AWVALID(M_DATA_AWVALID),
 			.M_AXI_AWREADY(M_DATA_AWREADY),
-			.M_AXI_AWADDR(M_DATA_AWADDR),
-			.M_AXI_AWPROT(M_DATA_AWPROT),
+			.M_AXI_AWADDR( M_DATA_AWADDR),
+			.M_AXI_AWPROT( M_DATA_AWPROT),
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
@@ -914,19 +926,19 @@ module	zipaxil #(
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
 			.M_AXI_BREADY(M_DATA_BREADY),
-			.M_AXI_BRESP(M_DATA_BRESP),
+			.M_AXI_BRESP( M_DATA_BRESP),
 			// }}}
 			// Read interface
 			// {{{
 			.M_AXI_ARVALID(M_DATA_ARVALID),
 			.M_AXI_ARREADY(M_DATA_ARREADY),
-			.M_AXI_ARADDR(M_DATA_ARADDR),
-			.M_AXI_ARPROT(M_DATA_ARPROT),
+			.M_AXI_ARADDR( M_DATA_ARADDR),
+			.M_AXI_ARPROT( M_DATA_ARPROT),
 			//
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
-			.M_AXI_RDATA(M_DATA_RDATA),
-			.M_AXI_RRESP(M_DATA_RRESP)
+			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
 			// }}}
 		);
