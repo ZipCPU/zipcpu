@@ -52,11 +52,12 @@ module	axilperiphs #(
 		// Size of the AXI-lite bus.  These are fixed, since 1) AXI-lite
 		// is fixed at a width of 32-bits by Xilinx def'n, and 2) since
 		// we only ever have 4 configuration words.
-		parameter	C_AXI_ADDR_WIDTH =  5,
+		parameter	C_AXI_ADDR_WIDTH =  6,
 		localparam	C_AXI_DATA_WIDTH = 32,
 		parameter [0:0]	OPT_SKIDBUFFER = 1'b1,
 		parameter [0:0]	OPT_LOWPOWER = 0,
 		parameter 	EXTERNAL_INTERRUPTS = 1,
+		parameter [0:0]	OPT_COUNTERS = 1,
 		localparam	ADDRLSB = $clog2(C_AXI_DATA_WIDTH)-3
 		// }}}
 	) (
@@ -90,7 +91,11 @@ module	axilperiphs #(
 		output	wire	[1:0]				S_AXI_RRESP,
 		// }}}
 		input	wire				i_cpu_reset,
-		input	wire				i_cmd_halt,
+		input	wire				i_cpu_halted,
+		input	wire				i_cpu_gie,
+		input	wire				i_cpu_pfstall,
+		input	wire				i_cpu_opstall,
+		input	wire				i_cpu_icount,
 		input wire [EXTERNAL_INTERRUPTS-1:0]	i_ivec,
 		output	wire				o_interrupt,
 		output	wire				o_watchdog_reset
@@ -100,10 +105,30 @@ module	axilperiphs #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Register/wire signal declarations
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
-	// {{{
+	//
+	localparam	[3:0]	ADR_PIC		= 4'h0,
+				ADR_WATCHDOG	= 4'h1,
+				ADR_APIC	= 4'h2;
+				// No bus watchdog
+				
+	localparam	[3:0]	ADR_TIMERA = 4'h4,
+				ADR_TIMERB = 4'h5,
+				ADR_TIMERC = 4'h6,
+				ADR_JIFFIES= 4'h7;
+
+	localparam	[3:0]	ADR_MCLOCKS = 4'h8,
+				ADR_MOPSTALL = 4'h9,
+				ADR_MPFSTALL = 4'ha,
+				ADR_MICOUNT  = 4'hb;
+
+	localparam	[3:0]	ADR_UCLOCKS = 4'hc,
+				ADR_UOPSTALL = 4'hd,
+				ADR_UPFSTALL = 4'he,
+				ADR_UICOUNT  = 4'hf;
+
 	wire	i_reset = !S_AXI_ARESETN;
 
 	wire				axil_write_ready;
@@ -127,7 +152,6 @@ module	axilperiphs #(
 	wire		apic_stall, apic_ack, apic_int;
 	wire	[31:0]	apic_data;
 
-	wire		tmrb_stall, tmrb_ack, tmrb_int;
 	wire		tmra_stall, tmra_ack, tmra_int;
 	wire	[31:0]	tmra_data;
 
@@ -140,14 +164,13 @@ module	axilperiphs #(
 	wire		jif_stall, jif_ack, jif_int;
 	wire	[31:0]	jif_data;
 	// }}}
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// AXI-lite signaling
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
-	// {{{
+	//
 
 	//
 	// Write signaling
@@ -273,26 +296,35 @@ module	axilperiphs #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	// AXI-lite register logic
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
-	// {{{
-	// wire		aint, bint, cint, jifint, altint;
+	//
 
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Interrupt handling
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	reg	[30:0]	int_vector;
 
+	// Generate the interrupt vector
+	// {{{
 	generate if (EXTERNAL_INTERRUPTS == 0)
-	begin
-
+	begin : NO_EXTERNAL_INTERRUPTS
+		// {{{
 		always @(*)
 		begin
 			int_vector = 0;
 			int_vector[5:0] = { apic_int, tmra_int, tmrb_int,
 					tmrc_int, jif_int, 1'b0 };
 		end
-
+		// }}}
 	end else if (EXTERNAL_INTERRUPTS == 1)
-	begin
+	begin : SINGLE_EXTERNAL_INTERRUPT
+		// {{{
 
 		always @(*)
 		begin
@@ -300,9 +332,9 @@ module	axilperiphs #(
 			int_vector[5:0] = { apic_int, tmra_int, tmrb_int,
 					tmrc_int, jif_int, i_ivec[0] };
 		end
-
-	end else begin
-
+		// }}}
+	end else begin : MANY_EXTERNAL_INTERRUPTS
+		// {{{
 		always @(*)
 		begin
 			int_vector = 0;
@@ -311,41 +343,54 @@ module	axilperiphs #(
 			int_vector[EXTERNAL_INTERRUPTS+5-1:6]
 					= i_ivec[EXTERNAL_INTERRUPTS-1:1];
 		end
-
+		// }}}
 	end endgenerate
+	// }}}
 
 	icontrol #(.IUSED(15))
 	pic(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
 		.i_wb_cyc(axil_write_ready),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b000),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_PIC),
 		.i_wb_we(1'b1), .i_wb_data(wskd_data), .i_wb_sel(wskd_strb),
 		.o_wb_stall(pic_stall), .o_wb_ack(pic_ack),.o_wb_data(pic_data),
-		.i_brd_ints(int_vector[14:0]), .o_interrupt(o_interrupt));
+		.i_brd_ints(int_vector[14:0]), .o_interrupt(o_interrupt)
+		// }}}
+	);
 
 	ziptimer #(32,31,0)
 	watchdog(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
-		.i_ce(!i_cmd_halt), .i_wb_cyc(1'b1),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b001),
-		.i_wb_we(1'b1), .i_wb_data(wskd_data), // .i_wb_sel(wskd_strb),
+		.i_ce(!i_cpu_halted), .i_wb_cyc(1'b1),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_WATCHDOG),
+		.i_wb_we(1'b1), .i_wb_data(wskd_data), .i_wb_sel(wskd_strb),
 		.o_wb_stall(wdog_stall),
 		.o_wb_ack(wdog_ack), .o_wb_data(wdog_data),
-		.o_int(o_watchdog_reset));
+		.o_int(o_watchdog_reset)
+		// }}}
+	);
 
+	// APIC
+	// {{{
 	generate if (EXTERNAL_INTERRUPTS > 15)
 	begin : APIC
 
 		icontrol #(.IUSED(15))
-		apic(	.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
+		apic(
+			// {{{
+			.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
 			.i_wb_cyc(axil_write_ready),
-			.i_wb_stb(axil_write_ready && awskd_addr == 3'b000),
+			.i_wb_stb(axil_write_ready && awskd_addr == ADR_APIC),
 			.i_wb_we(1'b1), .i_wb_data(wskd_data),
 				.i_wb_sel(wskd_strb),
 			.o_wb_stall(apic_stall), .o_wb_ack(apic_ack),
 				.o_wb_data(apic_data),
 			.i_brd_ints(int_vector[30:15]),
-			.o_interrupt(o_interrupt));
+			.o_interrupt(o_interrupt)
+			// }}}
+		);
 
 	end else begin
 
@@ -355,61 +400,236 @@ module	axilperiphs #(
 		assign	apic_int   = 0;
 
 	end endgenerate
-
+	// }}}
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Timers
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	ziptimer
 	timer_a(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
-		.i_ce(!i_cmd_halt), .i_wb_cyc(1'b1),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b100),
-		.i_wb_we(1'b1), .i_wb_data(wskd_data), .o_wb_stall(tmra_stall),
-		.o_wb_ack(tmra_ack), .o_wb_data(tmra_data), .o_int(tmra_int));
+		.i_ce(!i_cpu_halted), .i_wb_cyc(1'b1),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_TIMERA),
+		.i_wb_we(1'b1), .i_wb_data(wskd_data), .i_wb_sel(wskd_strb),
+				.o_wb_stall(tmra_stall),
+		.o_wb_ack(tmra_ack), .o_wb_data(tmra_data), .o_int(tmra_int)
+		// }}}
+	);
 
 	ziptimer
 	timer_b(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
-		.i_ce(!i_cmd_halt), .i_wb_cyc(1'b1),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b101),
-		.i_wb_we(1'b1), .i_wb_data(wskd_data), .o_wb_stall(tmrb_stall),
-		.o_wb_ack(tmrb_ack), .o_wb_data(tmrb_data), .o_int(tmrb_int));
+		.i_ce(!i_cpu_halted), .i_wb_cyc(1'b1),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_TIMERB),
+		.i_wb_we(1'b1), .i_wb_data(wskd_data),  .i_wb_sel(wskd_strb),
+				.o_wb_stall(tmrb_stall),
+		.o_wb_ack(tmrb_ack), .o_wb_data(tmrb_data), .o_int(tmrb_int)
+		// }}}
+	);
 
 	ziptimer
 	timer_c(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
-		.i_ce(!i_cmd_halt), .i_wb_cyc(1'b1),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b110),
-		.i_wb_we(1'b1), .i_wb_data(wskd_data), .o_wb_stall(tmrc_stall),
-		.o_wb_ack(tmrc_ack), .o_wb_data(tmrc_data), .o_int(tmrc_int));
+		.i_ce(!i_cpu_halted), .i_wb_cyc(1'b1),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_TIMERC),
+		.i_wb_we(1'b1), .i_wb_data(wskd_data),  .i_wb_sel(wskd_strb),
+				.o_wb_stall(tmrc_stall),
+		.o_wb_ack(tmrc_ack), .o_wb_data(tmrc_data), .o_int(tmrc_int)
+		// }}}
+	);
 
 	zipjiffies
 	jiffies(
+		// {{{
 		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
-		.i_ce(!i_cmd_halt), .i_wb_cyc(1'b1),
-		.i_wb_stb(axil_write_ready && awskd_addr == 3'b111),
-		.i_wb_we(1'b1), .i_wb_data(wskd_data), .o_wb_stall(jif_stall),
-		.o_wb_ack(jif_ack), .o_wb_data(jif_data), .o_int(jif_int));
+		.i_ce(!i_cpu_halted), .i_wb_cyc(1'b1),
+		.i_wb_stb(axil_write_ready && awskd_addr == ADR_JIFFIES),
+		.i_wb_we(1'b1), .i_wb_data(wskd_data), .i_wb_sel(wskd_strb),
+				.o_wb_stall(jif_stall),
+		.o_wb_ack(jif_ack), .o_wb_data(jif_data), .o_int(jif_int)
+		// }}}
+	);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Optional performance counters
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
+	wire	[31:0]	mtask, mopstall, mpfstall, micount;
+	wire	[31:0]	utask, uopstall, upfstall, uicount;
+
+	generate if (OPT_COUNTERS)
+	begin : ACCOUNTING_COUNTERS
+		// {{{
+		reg	[31:0]	r_mtask, r_mopstall, r_mpfstall, r_micount;
+		reg	[31:0]	r_utask, r_uopstall, r_upfstall, r_uicount;
+
+		initial	{ r_mtask, r_mopstall, r_mpfstall, r_micount } = 0;
+		always @(posedge S_AXI_ACLK)
+		if (i_cpu_reset)
+			{ r_mtask, r_mopstall, r_mpfstall, r_micount } <= 0;
+		else begin
+			if (!i_cpu_halted)
+				r_mtask <= r_mtask + 1;
+			if (i_cpu_opstall)
+				r_mopstall <= mopstall + 1;
+			if (i_cpu_pfstall)
+				r_mpfstall <= r_mpfstall + 1;
+			if (i_cpu_icount)
+				r_micount <= r_micount + 1;
+
+			if (axil_write_ready)
+			case(awskd_addr)
+			ADR_MCLOCKS: begin
+				// {{{
+				if(wskd_strb[0]) r_mtask[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_mtask[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_mtask[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_mtask[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_MOPSTALL: begin
+				// {{{
+				if(wskd_strb[0]) r_mopstall[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_mopstall[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_mopstall[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_mopstall[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_MPFSTALL: begin
+				// {{{
+				if(wskd_strb[0]) r_mpfstall[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_mpfstall[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_mpfstall[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_mpfstall[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_MICOUNT: begin
+				// {{{
+				if(wskd_strb[0]) r_micount[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_micount[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_micount[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_micount[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			default: begin end
+			endcase
+		end
+
+		initial	{ r_utask, r_uopstall, r_upfstall, r_uicount } = 0;
+		always @(posedge S_AXI_ACLK)
+		if (i_cpu_reset)
+			{ r_utask, r_uopstall, r_upfstall, r_uicount } <= 0;
+		else begin
+			if (!i_cpu_halted && i_cpu_gie)
+				r_utask <= r_utask + 1;
+			if (i_cpu_opstall && i_cpu_gie)
+				r_uopstall <= r_uopstall + 1;
+			if (i_cpu_pfstall && i_cpu_gie)
+				r_upfstall <= r_upfstall + 1;
+			if (i_cpu_icount && i_cpu_gie)
+				r_uicount <= r_uicount + 1;
+
+			if (axil_write_ready)
+			case(awskd_addr)
+			ADR_UCLOCKS: begin
+				// {{{
+				if(wskd_strb[0]) r_utask[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_utask[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_utask[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_utask[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_UOPSTALL: begin
+				// {{{
+				if(wskd_strb[0]) r_uopstall[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_uopstall[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_uopstall[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_uopstall[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_UPFSTALL: begin
+				// {{{
+				if(wskd_strb[0]) r_upfstall[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_upfstall[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_upfstall[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_upfstall[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			ADR_UICOUNT: begin
+				// {{{
+				if(wskd_strb[0]) r_uicount[ 7: 0]<=wskd_data[ 7: 0];
+				if(wskd_strb[1]) r_uicount[15: 8]<=wskd_data[15: 8];
+				if(wskd_strb[2]) r_uicount[23:16]<=wskd_data[23:16];
+				if(wskd_strb[3]) r_uicount[31:24]<=wskd_data[31:24];
+				end
+				// }}}
+			default: begin end
+			endcase
+		end
+
+		assign	{ mtask, mopstall, mpfstall, micount } = 
+				{ r_mtask, r_mopstall, r_mpfstall, r_micount };
+		assign	{ utask, uopstall, upfstall, uicount } = 
+				{ r_utask, r_uopstall, r_upfstall, r_uicount };
+
+		// }}}
+	end else begin : NO_ACCOUNTING
+	
+		assign	{ mtask, mopstall, mpfstall, micount } = 0;
+		assign	{ utask, uopstall, upfstall, uicount } = 0;
+
+	end endgenerate
+	// }}}
+
+	// axil_read_data
+	// {{{
 	initial	axil_read_data = 0;
 	always @(posedge S_AXI_ACLK)
 	if (OPT_LOWPOWER && !S_AXI_ARESETN)
 		axil_read_data <= 0;
 	else if (!S_AXI_RVALID || S_AXI_RREADY)
 	begin
-		case(arskd_addr)
-		3'b000:	axil_read_data	<= pic_data;
-		3'b001:	axil_read_data	<= wdog_data;
+		axil_read_data	<= 0;
+		case({ (OPT_COUNTERS & arskd_addr[3]), arskd_addr[2:0] })
+		ADR_PIC:	axil_read_data	<= pic_data;
+		ADR_WATCHDOG:	axil_read_data	<= wdog_data;
 		// 3'b10:	axil_read_data	<= watchdog_data;
-		3'b011:	axil_read_data	<= apic_data;
-		3'b100:	axil_read_data	<= tmra_data;
-		3'b101:	axil_read_data	<= tmrb_data;
-		3'b110:	axil_read_data	<= tmrc_data;
-		3'b111:	axil_read_data	<= jif_data;
+		ADR_APIC:	axil_read_data	<= apic_data;
+		ADR_TIMERA:	axil_read_data	<= tmra_data;
+		ADR_TIMERB:	axil_read_data	<= tmrb_data;
+		ADR_TIMERC:	axil_read_data	<= tmrc_data;
+		ADR_JIFFIES:	axil_read_data	<= jif_data;
+		// Supervisor counters
+		ADR_MCLOCKS:	axil_read_data	<= mtask;
+		ADR_MOPSTALL:	axil_read_data	<= mopstall;
+		ADR_MPFSTALL:	axil_read_data	<= mpfstall;
+		ADR_MICOUNT:	axil_read_data	<= micount;
+		// User counters
+		ADR_UCLOCKS:	axil_read_data	<= utask;
+		ADR_UOPSTALL:	axil_read_data	<= uopstall;
+		ADR_UPFSTALL:	axil_read_data	<= upfstall;
+		ADR_UICOUNT:	axil_read_data	<= uicount;
 		default: axil_read_data <= 0;
 		endcase
 
 		if (OPT_LOWPOWER && !axil_read_ready)
 			axil_read_data <= 0;
 	end
+	// }}}
 
+	// apply_wstrb
+	// {{{
 	function [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
 		input	[C_AXI_DATA_WIDTH-1:0]		prior_data;
 		input	[C_AXI_DATA_WIDTH-1:0]		new_data;
@@ -424,6 +644,10 @@ module	axilperiphs #(
 	endfunction
 	// }}}
 
+	// }}}
+
+	// Make Verilator happy
+	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
@@ -435,6 +659,7 @@ module	axilperiphs #(
 			tmra_stall, tmrb_stall, tmrc_stall, jif_stall,
 			tmra_ack, tmrb_ack, tmrc_ack, jif_ack };
 	// Verilator lint_on  UNUSED
+	// }}}
 	// }}}
 `ifdef	FORMAL
 	////////////////////////////////////////////////////////////////////////
@@ -478,7 +703,6 @@ module	axilperiphs #(
 		.i_axi_awvalid(S_AXI_AWVALID),
 		.i_axi_awready(S_AXI_AWREADY),
 		.i_axi_awaddr( S_AXI_AWADDR),
-		.i_axi_awcache(4'h0),
 		.i_axi_awprot( S_AXI_AWPROT),
 		//
 		.i_axi_wvalid(S_AXI_WVALID),
@@ -493,7 +717,6 @@ module	axilperiphs #(
 		.i_axi_arvalid(S_AXI_ARVALID),
 		.i_axi_arready(S_AXI_ARREADY),
 		.i_axi_araddr( S_AXI_ARADDR),
-		.i_axi_arcache(4'h0),
 		.i_axi_arprot( S_AXI_ARPROT),
 		//
 		.i_axi_rvalid(S_AXI_RVALID),
