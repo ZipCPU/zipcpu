@@ -761,16 +761,18 @@ module	axipipe #(
 		2'b10: wide_wstrb
 			= { 2'b11, {(C_AXI_DATA_WIDTH/4-2){1'b0}} } >> i_addr[AXILSB-1:0];
 		2'b11: wide_wstrb
-			= { 1'b0, {(C_AXI_DATA_WIDTH/4-1){1'b0}} } >> i_addr[AXILSB-1:0];
+			= { 1'b1, {(C_AXI_DATA_WIDTH/4-1){1'b0}} } >> i_addr[AXILSB-1:0];
 		endcase
 		// }}}
 	end else begin : LITTLE_ENDIAN_DATA
 		// {{{
 		casez(i_op[2:1])
 		2'b10: wide_wdata
-			= { {(2*C_AXI_DATA_WIDTH-16){1'b0}}, i_data[15:0] } << (8*i_addr[AXILSB-1:0]);
+			= { {(2*C_AXI_DATA_WIDTH-16){1'b0}}, i_data[15:0] }
+					<< (8*i_addr[AXILSB-1:0]);
 		2'b11: wide_wdata
-			= { {(2*C_AXI_DATA_WIDTH-8){1'b0}}, i_data[7:0] } << (8*i_addr[AXILSB-1:0]);
+			= { {(2*C_AXI_DATA_WIDTH-8){1'b0}}, i_data[7:0] }
+					<< (8*i_addr[AXILSB-1:0]);
 		default: wide_wdata
 			= { {(C_AXI_DATA_WIDTH){1'b0}}, i_data }
 					<< (8*i_addr[AXILSB-1:0]);
@@ -952,7 +954,7 @@ module	axipipe #(
 	always @(posedge S_AXI_ACLK)
 	if ((M_AXI_ARVALID && M_AXI_ARREADY) || (M_AXI_WVALID && M_AXI_WREADY))
 		fifo_data[wraddr[LGPIPE-1:0]] <= { M_AXI_ARVALID, ar_oreg,ar_op,
-				misaligned_request, M_AXI_ARADDR[AXILSB-1:0] };
+				misaligned_request, adr_lsb };
 
 	always @(*)
 		fifo_read_data = fifo_data[rdaddr[LGPIPE-1:0]];
@@ -1011,11 +1013,38 @@ module	axipipe #(
 	// wide_return
 	// {{{
 	always @(*)
-	if (fifo_misaligned && !OPT_ALIGNMENT_ERR)
-		wide_return = { M_AXI_RDATA, misdata } >> (8*fifo_lsb);
-	else
-		wide_return = { {(C_AXI_DATA_WIDTH){1'b0}}, M_AXI_RDATA }
+	begin
+		if (SWAP_WSTRB)
+		begin
+			if (fifo_misaligned && !OPT_ALIGNMENT_ERR)
+				wide_return = { misdata, M_AXI_RDATA }
+							<< (8*fifo_lsb);
+			else
+				wide_return = { M_AXI_RDATA, {(DW){1'b0}} }
+							<< (8*fifo_lsb);
+
+			casez(fifo_op[1:0])
+			2'b10: wide_return = { {(16){1'b0}},
+					wide_return[(2*DW)-1:(2*DW)-16],
+					{(2*DW-32){1'b0}} };
+			2'b11: wide_return = { {(24){1'b0}},
+						wide_return[(2*DW)-1:(2*DW)-8],
+					{(2*DW-32){1'b0}} };
+			default: begin end
+			endcase
+
+			wide_return[31:0] = wide_return[(2*DW-1):(2*DW-32)];
+		end else begin
+			if (fifo_misaligned && !OPT_ALIGNMENT_ERR)
+				wide_return = { M_AXI_RDATA, misdata } >> (8*fifo_lsb);
+			else
+				wide_return = { {(C_AXI_DATA_WIDTH){1'b0}}, M_AXI_RDATA }
 					>> (8*fifo_lsb);
+		end
+
+		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
+			wide_return = 0;
+	end
 	// }}}
 
 	// misdata
@@ -1043,6 +1072,7 @@ module	axipipe #(
 		o_result[AW-1:0] <= r_pc;
 	end else if (!OPT_LOWPOWER || M_AXI_RVALID)
 	begin
+
 		o_result <= wide_return[31:0];
 
 		if (OPT_SIGN_EXTEND)
@@ -1050,14 +1080,14 @@ module	axipipe #(
 			// {{{
 			case(fifo_op)
 			2'b10: o_result[31:16] <= {(16){wide_return[15]}};
-			2'b11: o_result[15: 8] <= {( 8){wide_return[ 7]}};
+			2'b11: o_result[31: 8] <= {(24){wide_return[ 7]}};
 			endcase
 			// }}}
 		end else if (fifo_op[1])
 		begin
 			// {{{
 			if (fifo_op[0])
-				o_result[15: 8] <= 0;
+				o_result[31: 8] <= 0;
 			else
 				o_result[31:16] <= 0;
 			// }}}
@@ -1103,7 +1133,7 @@ module	axipipe #(
 			M_AXI_BID, M_AXI_RID, M_AXI_RLAST,
 			// i_addr[31:C_AXI_ADDR_WIDTH],
 			(&i_addr), wide_return[2*C_AXI_DATA_WIDTH-1:32],
-			pending_err, adr_lsb, fifo_read_op,
+			pending_err, fifo_read_op,
 			none_outstanding };
 	// verilator lint_on  UNUSED
 	// }}}
@@ -1637,11 +1667,11 @@ module	axipipe #(
 
 	always @(posedge S_AXI_ACLK)
 	if (f_wrfifo && wraddr == f_first_addr)
-		f_first_data <= { M_AXI_ARVALID, ar_oreg, ar_op, misaligned_request, M_AXI_ARADDR[AXILSB-1:0] };
+		f_first_data <= { M_AXI_ARVALID, ar_oreg, ar_op, misaligned_request, adr_lsb };
 
 	always @(posedge S_AXI_ACLK)
 	if (f_wrfifo && wraddr == f_next_addr)
-		f_next_data <= { M_AXI_ARVALID, ar_oreg, ar_op, misaligned_request, M_AXI_ARADDR[AXILSB-1:0] };
+		f_next_data <= { M_AXI_ARVALID, ar_oreg, ar_op, misaligned_request, adr_lsb };
 
 	// f_fsmfifo
 	// {{{

@@ -52,8 +52,6 @@ module	axilpipe #(
 		// CPU.  Specifically, we have to be able to unroll and re-do
 		// the load instruction on any atomic access failure.  For that
 		// reason, we'll ignore the lock request initially.
-		//
-		// parameter [0:0]	IMPLEMENT_LOCK=1'b1,
 		parameter [0:0]	OPT_ALIGNMENT_ERR = 1'b1,
 		// Verilator lint_off UNUSED
 		// This *should* be used -- need to rewrite so that it is
@@ -121,7 +119,7 @@ module	axilpipe #(
 
 	// Declarations
 	// {{{
-	localparam	AXILLSB = $clog2(C_AXI_ADDR_WIDTH/8);
+	localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8);
 	localparam	LGPIPE = 4;
 	localparam	FIFO_WIDTH = AXILLSB+1+2+5 + 1;
 
@@ -261,7 +259,7 @@ module	axilpipe #(
 	reg	writing;
 
 	always @(posedge S_AXI_ACLK)
-	if (!o_busy)
+	if (i_stb && !o_busy)
 		writing <= i_op[0];
 
 	always @(*)
@@ -389,6 +387,8 @@ module	axilpipe #(
 
 	// Count the number of outstanding beats
 	// {{{
+	// This is the true count.  It is not affected by the number of
+	// items the CPU believes is on the bus or not.
 	initial	beats_outstanding = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
@@ -537,8 +537,9 @@ module	axilpipe #(
 	begin
 		assert(r_flushing == (flushcount > 0));
 		if (!r_flushing)
+		begin
 			assert(!flush_request);
-		else
+		end else
 			assert(flush_request == (M_AXI_AWVALID || M_AXI_WVALID || M_AXI_ARVALID));
 		if (r_flushing && !flush_request)
 		begin
@@ -547,13 +548,15 @@ module	axilpipe #(
 		end
 
 		if (flush_request)
+		begin
 			assert(flushcount == beats_outstanding + 1
 				+ ((misaligned_request
 				|| misaligned_aw_request) ? 1:0));
 		// else if (faxil_rd_outstanding > 0 || M_AXI_ARVALID)
-		else if (r_flushing)
+		end else if (r_flushing)
+		begin
 			assert(beats_outstanding == flushcount);
-		else
+		end else
 			assert(beats_outstanding >= flushcount);
 	end
 `endif
@@ -663,8 +666,8 @@ module	axilpipe #(
 			// }}}
 		end else begin
 			// {{{
-			{ M_AXI_WDATA, next_wdata } <= wide_wdata;
-			{ M_AXI_WSTRB, next_wstrb } <= wide_wstrb;
+			{ next_wdata, M_AXI_WDATA } <= wide_wdata;
+			{ next_wstrb, M_AXI_WSTRB } <= wide_wstrb;
 			// }}}
 		end
 
@@ -790,6 +793,7 @@ module	axilpipe #(
 
 	always @(*)
 		fifo_read_data = fifo_data[rdaddr[LGPIPE-1:0]];
+
 	assign	{ fifo_read_op, fifo_return_reg, fifo_op,
 		fifo_misaligned, fifo_lsb } = fifo_read_data;
 	// }}}
@@ -859,14 +863,14 @@ module	axilpipe #(
 			// {{{
 			case(fifo_op)
 			2'b10: o_result[31:16] <= {(16){wide_return[15]}};
-			2'b11: o_result[15: 8] <= {( 8){wide_return[ 7]}};
+			2'b11: o_result[31: 8] <= {(24){wide_return[ 7]}};
 			endcase
 			// }}}
 		end else if (fifo_op[1])
 		begin
 			// {{{
 			if (fifo_op[0])
-				o_result[15: 8] <= 0;
+				o_result[31: 8] <= 0;
 			else
 				o_result[31:16] <= 0;
 			// }}}

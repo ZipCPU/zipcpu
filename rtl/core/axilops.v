@@ -340,23 +340,38 @@ module	axilops #(
 
 	// shifted_wstrb_*
 	// {{{
-	always @(*)
+	generate if (SWAP_WSTRB)
+	begin : BIG_ENDIAN_WSTRB
+		always @(*)
+			shifted_wstrb_word = { 4'b1111, {(2*DW/8-4){1'b0}} }
+						>> i_addr[AXILSB-1:0];
+
+		always @(*)
+			shifted_wstrb_halfword = { 2'b11, {(2*DW/8-2){1'b0}} }
+						>> i_addr[AXILSB-1:0];
+
+		always @(*)
+			shifted_wstrb_byte = { 1'b1, {(2*DW/8-1){1'b0}} }
+						>> i_addr[AXILSB-1:0];
+	end else begin : NORMAL_SHIFTED_WSTRB
+		always @(*)
 		shifted_wstrb_word = { {(2*DW/8-4){1'b0}},
 						4'b1111} << i_addr[AXILSB-1:0];
 
-	always @(*)
+		always @(*)
 		shifted_wstrb_halfword = { {(2*DW/8-4){1'b0}},
 						4'b0011} << i_addr[AXILSB-1:0];
 
-	always @(*)
+		always @(*)
 		shifted_wstrb_byte = { {(2*DW/8-4){1'b0}},
 						4'b0001} << i_addr[AXILSB-1:0];
+	end endgenerate
 	// }}}
 
 	// Swapping WSTRB bits
 	// {{{
-	generate if (SWAP_WSTRB)
-	begin : SWAPPING_WSTRB
+	generate if (SWAP_ENDIANNESS)
+	begin : SWAPPING_ENDIANNESS
 		// {{{
 		genvar	gw, gb;
 
@@ -393,11 +408,7 @@ module	axilops #(
 	// wdata, wstrb
 	// {{{
 	always @(*)
-	begin
 		swapaddr = i_addr[AXILSB-1:0];
-		if (SWAP_WSTRB)
-			swapaddr[1:0] = 3 - i_addr[1:0];
-	end
 
 	initial	axi_wdata = 0;
 	initial	axi_wstrb = 0;
@@ -418,25 +429,49 @@ module	axilops #(
 	end else if (i_stb)
 	begin
 		// {{{
-		casez(i_op[2:1])
-		2'b10: { next_wdata, axi_wdata }
-			<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
-			    i_data[15:0] } << (8*swapaddr);
-		2'b11: { next_wdata, axi_wdata }
-			<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
-			    i_data[7:0] } << (8*swapaddr);
-		default: { next_wdata, axi_wdata }
-			<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
-			    i_data } << (8*swapaddr);
-		endcase
+		if (SWAP_WSTRB)
+		begin
+			casez(i_op[2:1])
+			2'b10: { axi_wdata, next_wdata }
+				<= { i_data[15:0], {(2*C_AXI_DATA_WIDTH-16){1'b0}} }
+					>> (8*swapaddr);
+			2'b11: { axi_wdata, next_wdata }
+				<= { i_data[7:0], {(2*C_AXI_DATA_WIDTH-8){1'b0}} }
+					>> (8*swapaddr);
+			default: { axi_wdata, next_wdata }
+				<= { i_data, {(2*C_AXI_DATA_WIDTH-32){1'b0}} }
+					>> (8*swapaddr);
+			endcase
+		end else begin
+			casez(i_op[2:1])
+			2'b10: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
+				i_data[15:0] } << (8*swapaddr);
+			2'b11: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-8){1'b0}},
+				i_data[7:0] } << (8*swapaddr);
+			default: { next_wdata, axi_wdata }
+				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
+				i_data } << (8*swapaddr);
+			endcase
+		end
 
 		// next_wstrb, axi_wstrb
 		// {{{
-		casez(i_op[2:1])
-		2'b0?: { next_wstrb, axi_wstrb } <= swapped_wstrb_word;
-		2'b10: { next_wstrb, axi_wstrb } <= swapped_wstrb_halfword;
-		2'b11: { next_wstrb, axi_wstrb } <= swapped_wstrb_byte;
-		endcase
+		if (SWAP_WSTRB)
+		begin
+			casez(i_op[2:1])
+			2'b0?: { axi_wstrb, next_wstrb } <= swapped_wstrb_word;
+			2'b10: { axi_wstrb, next_wstrb } <= swapped_wstrb_halfword;
+			2'b11: { axi_wstrb, next_wstrb } <= swapped_wstrb_byte;
+			endcase
+		end else begin
+			casez(i_op[2:1])
+			2'b0?: { next_wstrb, axi_wstrb } <= swapped_wstrb_word;
+			2'b10: { next_wstrb, axi_wstrb } <= swapped_wstrb_halfword;
+			2'b11: { next_wstrb, axi_wstrb } <= swapped_wstrb_byte;
+			endcase
+		end
 		// }}}
 
 		r_op <= { i_op[2:1] , i_addr[AXILSB-1:0] };
@@ -515,7 +550,9 @@ module	axilops #(
 	// w_misalignment_err
 	// {{{
 	always @(*)
+	begin
 		w_misalignment_err = OPT_ALIGNMENT_ERR && w_misaligned;
+	end
 	// }}}
 
 	// misaligned_[aw_|]request, pending_err, misaligned_response_pending
@@ -592,6 +629,8 @@ module	axilops #(
 		else if (i_stb && !o_err && !i_cpu_reset)
 			r_misaligned_read <= w_misaligned && !i_op[0]
 						&& !w_misalignment_err;
+		else if (M_AXI_RVALID)
+			r_misaligned_read <= (misaligned_response_pending);
 
 		assign	misaligned_read = r_misaligned_read;
 		// }}}
@@ -682,12 +721,35 @@ module	axilops #(
 	// tool knows we want a shift of the full 2*DW width.
 	always @(*)
 	begin
-		if (misaligned_read && !OPT_ALIGNMENT_ERR)
-			pre_result = { endian_swapped_rdata, last_result }
-					>> (8*r_op[AXILSB-1:0]);
-		else
-			pre_result = { {(DW){1'b0}}, endian_swapped_rdata }
+		if (SWAP_WSTRB)
+		begin
+			if (misaligned_read && !OPT_ALIGNMENT_ERR)
+				pre_result={ last_result, endian_swapped_rdata }
+						<< (8*r_op[AXILSB-1:0]);
+			else
+				pre_result = { endian_swapped_rdata, {(DW){1'b0}} }
+						<< (8*r_op[AXILSB-1:0]);
+
+			casez(r_op[AXILSB +: 2])
+			2'b10: pre_result = { 16'h0,
+					pre_result[(2*DW)-1:(2*DW)-16],
+					{(DW){1'b0}} };
+			2'b11: pre_result = { 24'h0,
+					pre_result[(2*DW)-1:(2*DW)-8],
+					{(DW){1'b0}} };
+			default: begin end
+			endcase
+
+			pre_result[31:0] = pre_result[(2*DW-1):(2*DW-32)];
+
+		end else begin
+			if (misaligned_read && !OPT_ALIGNMENT_ERR)
+				pre_result={ endian_swapped_rdata, last_result }
 						>> (8*r_op[AXILSB-1:0]);
+			else
+				pre_result = { {(DW){1'b0}}, endian_swapped_rdata }
+						>> (8*r_op[AXILSB-1:0]);
+		end
 
 		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
 			pre_result = 0;
@@ -710,7 +772,7 @@ module	axilops #(
 		if (OPT_ALIGNMENT_ERR)
 			last_result <= 0;
 
-		o_result <= pre_result;
+		o_result <= pre_result[31:0];
 
 		if (OPT_SIGN_EXTEND)
 		begin
@@ -743,7 +805,7 @@ module	axilops #(
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, i_lock, M_AXI_RRESP[0], M_AXI_BRESP[0],
-			pre_result[2*C_AXI_DATA_WIDTH:32] };
+			pre_result[2*C_AXI_DATA_WIDTH-1:32] };
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
