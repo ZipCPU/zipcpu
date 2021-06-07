@@ -344,8 +344,10 @@ $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 
 .PHONY: $(AXIDCC)
 ## {{{
-$(AXIDCC): $(AXIDCC)_prf/PASS  $(AXIDCC)_prf64/PASS  $(AXIDCC)_cvr/PASS
-$(AXIDCC): $(AXIDCC)_prfs/PASS $(AXIDCC)_prfs64/PASS $(AXIDCC)_cvr/PASS
+$(AXIDCC): $(AXIDCC)_prf/PASS   $(AXIDCC)_prf64/PASS   $(AXIDCC)_cvr/PASS
+$(AXIDCC): $(AXIDCC)_prfs/PASS  $(AXIDCC)_prfs64/PASS
+$(AXIDCC): $(AXIDCC)_prfp/PASS  $(AXIDCC)_prf64p/PASS  $(AXIDCC)_cvrp/PASS
+$(AXIDCC): $(AXIDCC)_prfsp/PASS $(AXIDCC)_prfs64p/PASS
 $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
@@ -356,6 +358,16 @@ $(AXIDCC)_prfs64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfs64
 $(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby cvr
+$(AXIDCC)_prfp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfp
+$(AXIDCC)_prf64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prf64p
+$(AXIDCC)_prfsp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfsp
+$(AXIDCC)_prfs64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs64p
+$(AXIDCC)_cvrp/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby cvrp
 ## }}}
 ## }}}
 
