@@ -806,8 +806,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +// }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/config/zip/zip.c
 --- gcc-10.3.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2021-05-29 15:17:13.445248498 -0400
-@@ -0,0 +1,3417 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2021-06-05 18:43:17.081131754 -0400
+@@ -0,0 +1,3421 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zip.c
@@ -3780,6 +3780,9 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +// }}}
 +
 +// #warning "How do we tell the compiler LDI label is expensive as 2 ops"?
++/*
++ * Does not need to, and should not be, defined here--since the ZipCPU doesn't
++ * use registers as part of its jump targets.
 +static	bool	zip_cannot_modify_jumps_p(void) {
 +	// {{{
 +	// Let's try their suggested approach, keeping us from modifying jumps
@@ -3787,6 +3790,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// to adjust things back to what they need to be if necessary.
 +	return (reload_completed || reload_in_progress);
 +}
++*/
 +// }}}
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -4950,8 +4954,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-z
 +;
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/config/zip/zip.h
 --- gcc-10.3.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2021-05-29 14:45:49.997960171 -0400
-@@ -0,0 +1,4275 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2021-06-05 18:42:49.145374643 -0400
+@@ -0,0 +1,4278 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	gcc/config/zip/zip.h
@@ -8934,11 +8938,14 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 + * ZipCPU --- I don't get what this is for.  
 + * 	Actually, in hind sight, ZipCPU needs this.  Without this, the 
 + * compiler will try to reorder basic blocks, shuffling logic around and so
-+ * fortch, preventing our comparison optimizations from being used.  By setting
++ * forth, preventing our comparison optimizations from being used.  By setting
 + * this function appropriately, we can prevent it from reversing conditions into
 + * conditions we don't support.
++ *
++ * WRONG.  This is only for targets that require a register in order to
++ * perform jumps.  We should not define it here.
 + */
-+#define	TARGET_CANNOT_MODIFY_JUMPS_P	zip_cannot_modify_jumps_p
++// #define	TARGET_CANNOT_MODIFY_JUMPS_P	zip_cannot_modify_jumps_p
 +
 +/* TARGET_BRANCH_TARGET_REGISTER_CLASS ... This target hook returns a register
 + * class for which branch target register optimizations should be applied.  All
