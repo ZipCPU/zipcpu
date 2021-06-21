@@ -2120,7 +2120,7 @@ module	zipcore #(
 		//
 		always @(posedge i_clk)
 		if (i_reset || (i_halt && r_halted && !i_dbg_we))
-			r_clken <= i_mem_busy;
+			r_clken <= i_mem_busy || !i_halt;
 		else if (!i_halt&& (!sleep || i_interrupt || pending_interrupt))
 			r_clken <= 1'b1;
 		else // if (sleep || i_halt)
@@ -2153,7 +2153,11 @@ module	zipcore #(
 			// if (!dcd_valid && !i_pf_illegal) r_clken <= 1'b1;
 		end
 
-		assign	o_clken = r_clken;
+		// Wake up on interrupts, debug write requests, or the raising
+		// of the halt flag if we're not sleeping.
+		assign	o_clken = r_clken || i_dbg_we || i_clear_cache
+					|| i_mem_busy
+					|| (!i_halt && (i_interrupt || !sleep));
 	end endgenerate
 	// }}}
 

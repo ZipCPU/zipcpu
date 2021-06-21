@@ -103,7 +103,7 @@ module	zipaxi #(
 `else
 		localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0,
 `endif
-		// localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
+		localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS,
 		localparam	[0:0]	IMPLEMENT_LOCK=1,
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED),
 		parameter		LGICACHE = 8,
@@ -113,7 +113,12 @@ module	zipaxi #(
 		localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 2),
 		parameter	RESET_DURATION = 10,
 		// localparam [0:0]	WITH_LOCAL_BUS = 1'b0,
-		localparam	AW=ADDRESS_WIDTH-2
+		localparam	AW=ADDRESS_WIDTH-2,
+`ifdef	VERILATOR
+		localparam	[0:0]	OPT_GATE_CLOCK = 1'b1
+`else
+		localparam	[0:0]	OPT_GATE_CLOCK = 1'b0
+`endif
 `ifdef	FORMAL
 		, parameter	F_LGDEPTH=8
 `endif
@@ -181,8 +186,8 @@ module	zipaxi #(
 		output	wire				M_INSN_WLAST,
 		//
 		input	wire				M_INSN_BVALID,
-		input	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_BID,
 		output	wire				M_INSN_BREADY,
+		input	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_BID,
 		input	wire	[1:0]			M_INSN_BRESP,
 		//
 		output	wire				M_INSN_ARVALID,
@@ -287,12 +292,12 @@ module	zipaxi #(
 	wire	[4:0]	dbg_read_reg;
 	reg	[31:0]	dbg_write_data;
 	wire	[31:0]	dbg_read_data;
-	wire		cpu_dbg_stall, cpu_break;
+	wire		cpu_dbg_stall, cpu_break, dbg_write_stall;
 	wire	[2:0]	cpu_dbg_cc;
 	// }}}
 
 	reg	reset_hold;
-	wire	cpu_clken;
+	wire	cpu_clken, cpu_clock, clk_gate;
 
 	// CPU control registers
 	// {{{
@@ -369,8 +374,8 @@ module	zipaxi #(
 	);
 
 	assign	dbg_write_ready = awskd_valid && wskd_valid
-			&& ((wskd_strb==0) || awskd_addr[5] || !cpu_dbg_stall
-				|| !dbg_write_valid)
+			&& ((wskd_strb==0) || awskd_addr[5]
+			   || !dbg_write_stall)
 			&& (!S_DBG_BVALID || S_DBG_BREADY);
 
 	// dbg_write_valid
@@ -379,7 +384,7 @@ module	zipaxi #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		dbg_write_valid <= 1'b0;
-	else if (!dbg_write_valid || !cpu_dbg_stall)
+	else if (!dbg_write_stall)
 	begin
 		dbg_write_valid <= dbg_write_ready && (|wskd_strb) && !awskd_addr[5];
 	end
@@ -388,7 +393,7 @@ module	zipaxi #(
 	// dbg_write_reg
 	// {{{
 	always @(posedge S_AXI_ACLK)
-	if (!dbg_write_valid || !cpu_dbg_stall)
+	if (!dbg_write_stall)
 	begin
 		dbg_write_reg <= awskd_addr[4:0];
 		if (OPT_LOWPOWER && !dbg_write_valid)
@@ -399,7 +404,7 @@ module	zipaxi #(
 	// dbg_write_data
 	// {{{
 	always @(posedge S_AXI_ACLK)
-	if (!dbg_write_valid || !cpu_dbg_stall)
+	if (!dbg_write_stall)
 	begin
 		dbg_write_data <= wskd_data;
 		if (OPT_LOWPOWER && !dbg_write_ready)
@@ -561,8 +566,7 @@ module	zipaxi #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		cmd_halt <= START_HALTED;
-	else if (i_cpu_reset && (!dbg_write_ready
-				&& (!dbg_write_valid || !cpu_dbg_stall)))
+	else if (i_cpu_reset && !dbg_write_ready && !dbg_write_stall)
 		cmd_halt <= START_HALTED;
 	else if (cmd_reset && START_HALTED)
 		cmd_halt <= START_HALTED;
@@ -712,14 +716,14 @@ module	zipaxi #(
 		.OPT_DCACHE(OPT_LGDCACHE != 0),
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
-		.OPT_GATE_CLOCK(1'b0)
+		.OPT_GATE_CLOCK(OPT_GATE_CLOCK)
 `ifdef	FORMAL
 		, .F_LGDEPTH(F_LGDEPTH)
 `endif
 		// }}}
 	) core (
 		// {{{
-		.i_clk(S_AXI_ACLK), .i_reset(cmd_reset),
+		.i_clk(cpu_clock), .i_reset(cmd_reset),
 			.i_interrupt(i_interrupt),
 		// Debug interface
 		// {{{
@@ -766,6 +770,7 @@ module	zipaxi #(
 	assign	o_cmd_reset	= cmd_reset;
 	assign	o_gie		= cpu_dbg_cc[1];
 	assign	o_halted	= !cpu_dbg_stall;
+	assign	dbg_write_stall	= dbg_write_valid&&(cpu_dbg_stall || !clk_gate);
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
@@ -775,6 +780,7 @@ module	zipaxi #(
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
 	assign	dbg_unused = &{ 1'b0, cpu_debug };
+	// Verilator lint_on  UNUSED
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -924,6 +930,31 @@ module	zipaxi #(
 	////////////////////////////////////////////////////////////////////////
 	//
 `ifndef	FORMAL
+	wire	[C_AXI_DATA_WIDTH-1:0]	i_bus_data, o_bus_data;
+	wire [C_AXI_DATA_WIDTH/8-1:0]	o_bus_strb;
+
+	generate if (SWAP_WSTRB && C_AXI_DATA_WIDTH > 32)
+	begin : SWAP_BUS_WORD_ORDER
+		genvar	gk;
+
+		for(gk=0; gk<C_AXI_DATA_WIDTH/32; gk=gk+1)
+		begin
+			assign	i_bus_data[(C_AXI_DATA_WIDTH-32-gk*32) +: 32]
+						= M_DATA_RDATA[gk*32 +: 32];
+			assign	M_DATA_WDATA[gk*32 +: 32]
+				= o_bus_data[(C_AXI_DATA_WIDTH-32-gk*32) +: 32];
+			assign	M_DATA_WSTRB[gk* 4 +:  4]
+				= o_bus_strb[(C_AXI_DATA_WIDTH/8-4-gk*4) +: 4];
+		end
+
+	end else begin : KEEP_BUS_WORD_ORDER
+		// {{{
+		assign	i_bus_data = M_DATA_RDATA;
+		assign	M_DATA_WDATA = o_bus_data;
+		assign	M_DATA_WSTRB = o_bus_strb;
+		// }}}
+	end endgenerate
+
 	generate if (OPT_DCACHE)
 	begin : DATA_CACHE
 
@@ -938,9 +969,9 @@ module	zipaxi #(
 			// .SWAP_ENDIANNESS(SWAP_ENDIANNESS),
 			.SWAP_WSTRB(SWAP_WSTRB),
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
-			.OPT_LOWPOWER(OPT_LOWPOWER)
+			.OPT_LOWPOWER(OPT_LOWPOWER),
 			// .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
-			// .OPT_PIPE(OPT_MEMPIPE),
+			.OPT_PIPE(OPT_MEMPIPE)
 			// .OPT_LOCK(IMPLEMENT_LOCK)
 // `ifdef	FORMAL
 			// Used with OPT_PIPE, not yet enabled
@@ -984,8 +1015,8 @@ module	zipaxi #(
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
-			.M_AXI_WDATA(M_DATA_WDATA),
-			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WDATA(o_bus_data),
+			.M_AXI_WSTRB(o_bus_strb),
 			.M_AXI_WLAST(M_DATA_WLAST),
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
@@ -1010,7 +1041,7 @@ module	zipaxi #(
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
 			.M_AXI_RID(   M_DATA_RID),
-			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RDATA( i_bus_data),
 			.M_AXI_RLAST( M_DATA_RLAST),
 			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
@@ -1070,8 +1101,8 @@ module	zipaxi #(
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
-			.M_AXI_WDATA(M_DATA_WDATA),
-			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WDATA(o_bus_data),
+			.M_AXI_WSTRB(o_bus_strb),
 			.M_AXI_WLAST(M_DATA_WLAST),
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
@@ -1096,7 +1127,7 @@ module	zipaxi #(
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
 			.M_AXI_RID(   M_DATA_RID),
-			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RDATA( i_bus_data),
 			.M_AXI_RLAST( M_DATA_RLAST),
 			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
@@ -1162,8 +1193,8 @@ module	zipaxi #(
 			//
 			.M_AXI_WVALID(M_DATA_WVALID),
 			.M_AXI_WREADY(M_DATA_WREADY),
-			.M_AXI_WDATA(M_DATA_WDATA),
-			.M_AXI_WSTRB(M_DATA_WSTRB),
+			.M_AXI_WDATA(o_bus_data),
+			.M_AXI_WSTRB(o_bus_strb),
 			.M_AXI_WLAST(M_DATA_WLAST),
 			//
 			.M_AXI_BVALID(M_DATA_BVALID),
@@ -1188,7 +1219,7 @@ module	zipaxi #(
 			.M_AXI_RVALID(M_DATA_RVALID),
 			.M_AXI_RREADY(M_DATA_RREADY),
 			.M_AXI_RID(   M_DATA_RID),
-			.M_AXI_RDATA( M_DATA_RDATA),
+			.M_AXI_RDATA( i_bus_data),
 			.M_AXI_RLAST( M_DATA_RLAST),
 			.M_AXI_RRESP( M_DATA_RRESP)
 			// }}}
@@ -1207,6 +1238,42 @@ module	zipaxi #(
 	end endgenerate
 `endif
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Clock gate
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	generate if (OPT_GATE_CLOCK)
+	begin : GATE_CPU_CLOCK
+
+		reg	gatep, gaten;
+
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			gatep <= 1'b1;
+		else
+			gatep <= cpu_clken;
+
+		always @(negedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			gaten <= 1'b1;
+		else
+			gaten <= gatep;
+
+		assign	cpu_clock = S_AXI_ACLK && gaten;
+		assign	clk_gate = gaten;
+
+	end else begin : NO_CLOCK_GATE
+
+		assign	cpu_clock = S_AXI_ACLK;
+		assign	clk_gate = 1'b1;
+
+	end endgenerate
+	// }}}
+
 	// Make Verilator happy
 	// {{{
 	// Verilator lint_off UNUSED
