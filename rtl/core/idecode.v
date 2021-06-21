@@ -60,6 +60,7 @@ module	idecode #(
 		parameter	[0:0]	OPT_LOCK   = (OPT_PIPELINED),
 		parameter	[0:0]	OPT_OPIPE  = (OPT_PIPELINED),
 		parameter	[0:0]	OPT_SIM    = 1'b0,
+		parameter	[0:0]	OPT_SUPPRESS_NULL_BRANCHES = 1'b0,
 		parameter	[0:0]	OPT_NO_USERMODE = 1'b0,
 		localparam		AW = ADDRESS_WIDTH
 		// }}}
@@ -668,7 +669,7 @@ module	idecode #(
 				begin
 					// Add x,PC
 					r_early_branch     <= 1'b1;
-					r_early_branch_stb <= 1'b1;
+					r_early_branch_stb <= (!OPT_SUPPRESS_NULL_BRANCHES) || !w_Iz;
 				end else begin
 					r_early_branch     <= 1'b0;
 					r_early_branch_stb <= 1'b0;
