@@ -228,7 +228,7 @@ module	axidcache #(
 	assign	M_AXI_AWID = AXI_ID;
 	assign	M_AXI_ARID = AXI_ID;
 	assign	M_AXI_AWLEN = 0;	// All writes are one beat only
-	assign	M_AXI_AWSIZE = (SWAP_WSTRB) ? AXILSB[2:0] : 2;	// Write thru cache: All writes are 32-b
+	assign	M_AXI_AWSIZE = 3'b010;	// Write thru cache: All writes are 32-b
 
 	assign	M_AXI_AWBURST = 2'b01;	// INCR addressing only
 	assign	M_AXI_ARBURST = 2'b01;
@@ -284,7 +284,7 @@ module	axidcache #(
 		checklsb = mislsbfn[AXILSB];
 	endfunction
 	// }}}
-	
+
 	// Address decoding
 	//  {{{
 	assign	i_cline = i_addr[LS+AXILSB +: (CS-LS)];	// Cache line
@@ -593,8 +593,8 @@ module	axidcache #(
 
 			if (SWAP_WSTRB)
 			begin
-				axi_araddr[AXILSB-1:0] <= 0;
-				axi_arsize <= AXILSB[2:0];
+				axi_araddr[1:0] <= 0;
+				axi_arsize <= 3'b010;
 			end
 			// }}}
 		end
@@ -648,7 +648,7 @@ module	axidcache #(
 		axi_awaddr <= i_addr;
 
 		if (SWAP_WSTRB)
-			axi_awaddr[AXILSB-1:0] <= 0;
+			axi_awaddr[1:0] <= 0;
 
 		if (!i_pipe_stb || !i_op[0] || misaligned)
 			axi_awaddr <= 0;
@@ -1268,7 +1268,7 @@ module	axidcache #(
 	);
 
 	// ID checking
-	// {{{	
+	// {{{
 	always @(*)
 	begin
 		assume(faxi_rd_checkid == AXI_ID);
@@ -1708,7 +1708,7 @@ module	axidcache #(
 	default: assert(0);
 	endcase
 
-	
+
 
 	// DC_READC checks
 	// {{{
@@ -1718,8 +1718,8 @@ module	axidcache #(
 		assert(read_addr[CS-1:LS] == r_cline);
 		if (M_AXI_ARVALID)
 		begin
-			assert(axi_araddr[AW-1:AXILSB+LS] == { r_ctag, r_cline });	
-			assert(axi_araddr[AXILSB+LS-1:0] == 0);	
+			assert(axi_araddr[AW-1:AXILSB+LS] == { r_ctag, r_cline });
+			assert(axi_araddr[AXILSB+LS-1:0] == 0);
 			assert(axi_araddr[AXILSB +: CS] == read_addr[CS-1:0]);
 			// read_addr <= { i_addr[LGCACHELEN-1:AXILSB+LS], {(LS){1'b0}} };
 			assert(read_addr[LS-1:0] == 0);
