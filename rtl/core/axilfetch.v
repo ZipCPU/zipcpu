@@ -41,9 +41,9 @@ module	axilfetch #(
 		// {{{
 		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 64,
-		parameter	DATA_WIDTH=32,
+		parameter	INSN_WIDTH=32,
 		parameter	FETCH_LIMIT=16,
-		parameter [0:0]	SWAP_ENDIANNESS = 1'b1,
+		parameter [0:0]	SWAP_ENDIANNESS = 1'b0,
 		localparam	AW=C_AXI_ADDR_WIDTH
 		// }}}
 	) (
@@ -58,7 +58,7 @@ module	axilfetch #(
 		input	wire			i_clear_cache,
 		input	wire			i_ready,
 		input	wire	[AW-1:0]	i_pc,	// Ignd unls i_new_pc
-		output	wire [DATA_WIDTH-1:0]	o_insn,	// Insn read from bus
+		output	wire [INSN_WIDTH-1:0]	o_insn,	// Insn read from bus
 		output	reg	[AW-1:0]	o_pc,	// Addr of that insn
 		output	reg			o_valid,	// If valid
 		output	reg			o_illegal,	// Bus error
@@ -81,7 +81,8 @@ module	axilfetch #(
 	// Declarations
 	// {{{
 	localparam	AXILLSB = $clog2(C_AXI_DATA_WIDTH/8);
-	localparam	INSNS_PER_WORD = C_AXI_DATA_WIDTH / DATA_WIDTH;
+	localparam	INSNS_PER_WORD = C_AXI_DATA_WIDTH / INSN_WIDTH;
+	localparam	INSN_LSB = $clog2(INSN_WIDTH/8);
 	localparam	LGDEPTH = $clog2(FETCH_LIMIT)+4;
 	localparam	LGFIFO = $clog2(FETCH_LIMIT);
 	localparam	W = LGDEPTH;
@@ -92,7 +93,7 @@ module	axilfetch #(
 	reg	[W:0]			new_flushcount, outstanding,
 					next_outstanding, flushcount;
 	reg				flushing, flush_request, full_bus;
-	reg	[((AXILLSB>2)?(AXILLSB-3):0):0]	shift;
+	reg	[((AXILLSB>INSN_LSB) ? (AXILLSB-INSN_LSB-1):0):0]	shift;
 	wire				fifo_reset, fifo_wr, fifo_rd;
 	wire				ign_fifo_full, fifo_empty;
 	wire	[LGFIFO:0]		ign_fifo_fill;
@@ -272,21 +273,16 @@ module	axilfetch #(
 		o_pc <= i_pc;
 	else if (o_valid && i_ready && !o_illegal)
 	begin
-		o_pc[AW-1:2] <= o_pc[AW-1:2] + 1;
-		o_pc[1:0] <= 2'b00;
+		o_pc <= 0;
+		o_pc[AW-1:INSN_LSB] <= o_pc[AW-1:INSN_LSB] + 1;
 	end
 	// }}}
 
-	generate if (AXILLSB > 2)
+	generate if (AXILLSB > INSN_LSB)
 	begin : BIG_WORD
 		// {{{
 		always @(*)
-		begin
-			shift = o_pc[AXILLSB-1:2];
-
-			if (FETCH_LIMIT > 0 && o_valid)
-				shift = 0;
-		end
+			shift = o_pc[AXILLSB-1:INSN_LSB];
 		// }}}
 	end else begin : NO_SHIFT
 		// {{{
@@ -300,11 +296,12 @@ module	axilfetch #(
 		// {{{
 		genvar	gw, gb;	// Word count, byte count
 
-		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1) // For each bus word
-		for(gb=0; gb<4; gb=gb+1) // For each bus byte
+		for(gw=0; gw<C_AXI_DATA_WIDTH/INSN_WIDTH; gw=gw+1) // For each bus word
+		for(gb=0; gb<(INSN_WIDTH/8); gb=gb+1) // For each bus byte
 		always @(*)
-			endian_swapped_rdata[gw*32+(3-gb)*8 +: 8]
-				= M_AXI_RDATA[gw*32+gb*8 +: 8];
+			endian_swapped_rdata[gw*INSN_WIDTH
+					+ ((INSN_WIDTH/8)-1-gb)*8 +: 8]
+				= M_AXI_RDATA[gw*INSN_WIDTH+gb*8 +: 8];
 		// }}}
 	end else begin : NO_ENDIAN_SWAP
 		// {{{
@@ -369,12 +366,19 @@ module	axilfetch #(
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
 		// Verilator lint_on  CMPCONST
 
-		sfifo #(.BW(1+C_AXI_DATA_WIDTH), .LGFLEN(LGFIFO))
-		fcache(.i_clk(S_AXI_ACLK), .i_reset(fifo_reset),
+		sfifo #(
+			// {{{
+			.BW(1+C_AXI_DATA_WIDTH), .LGFLEN(LGFIFO)
+			// }}}
+		) fcache(
+			// {{{
+			.i_clk(S_AXI_ACLK), .i_reset(fifo_reset),
 			.i_wr(fifo_wr),
 			.i_data({M_AXI_RRESP[1], endian_swapped_rdata }),
 			.o_full(ign_fifo_full), .o_fill(ign_fifo_fill),
-			.i_rd(fifo_rd),.o_data(fifo_data),.o_empty(fifo_empty));
+			.i_rd(fifo_rd),.o_data(fifo_data),.o_empty(fifo_empty)
+			// }}}
+		);
 		// }}}
 	end endgenerate
 
@@ -391,15 +395,26 @@ module	axilfetch #(
 
 	// out_fill
 	// {{{
+	// == number of instructions in the fifo_data word that have not (yet)
+	//	been accepted by the CPU.
+	// == 0 when no data is available
+	// == INSN_PER_WORD on the first instruction of any word
+	// == 1 on the last instruction of any word
 	initial	out_fill = 0;
 	always @(posedge S_AXI_ACLK)
 	if (fifo_reset)
 		out_fill <= 0;
 	else if (fifo_rd)
-		// Verilator lint_off WIDTH
-		out_fill <= (fifo_empty) ? 0: (INSNS_PER_WORD - shift);
-		// Verilator lint_on  WIDTH
-	else if (i_ready && out_fill > 0)
+	begin
+		if (fifo_empty)
+			out_fill <= 0;
+		else if (o_valid)
+			out_fill <= INSNS_PER_WORD;
+		else
+			// Verilator lint_off WIDTH
+			out_fill <= (INSNS_PER_WORD - shift);
+			// Verilator lint_on  WIDTH
+	end else if (i_ready && out_fill > 0)
 		out_fill <= out_fill - 1;
 	// }}}
 
@@ -407,12 +422,16 @@ module	axilfetch #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (fifo_rd)
-		out_data <= fifo_data[C_AXI_DATA_WIDTH-1:0]>>(DATA_WIDTH*shift);
-	else if (i_ready)
-		out_data <= out_data >> DATA_WIDTH;
+	begin
+		if (o_valid || (INSN_WIDTH == C_AXI_DATA_WIDTH))
+			out_data <= fifo_data[C_AXI_DATA_WIDTH-1:0];
+		else
+		out_data <= fifo_data[C_AXI_DATA_WIDTH-1:0]>>(INSN_WIDTH*shift);
+	end else if (i_ready)
+		out_data <= out_data >> INSN_WIDTH;
 	// }}}
 
-	assign	o_insn = out_data[DATA_WIDTH-1:0];
+	assign	o_insn = out_data[INSN_WIDTH-1:0];
 
 	// o_illegal
 	// {{{
@@ -443,16 +462,20 @@ module	axilfetch #(
 `ifdef	FORMAL
 	// Declarations
 	// {{{
-	localparam	DW=DATA_WIDTH;
+	localparam	DW=INSN_WIDTH;
 	localparam	F_LGDEPTH=LGDEPTH+2;
 	reg	f_past_valid;
 	wire	[(F_LGDEPTH-1):0]	faxil_outstanding;
+	// Verilator lint_off UNUSED
+	wire	[(F_LGDEPTH-1):0]	faxil_awr_outstanding,
+					faxil_wr_outstanding;
+	// Verilator lint_on  UNUSED
 	reg	[(AW-1):0]	f_last_pc;
 	reg			f_last_pc_valid;
 	//
 	reg	[AW-1:0]	fc_pc, f_address;
 	reg			fc_illegal;
-	reg [DATA_WIDTH-1:0]	fc_insn;
+	reg [INSN_WIDTH-1:0]	fc_insn;
 	//}}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -466,7 +489,7 @@ module	axilfetch #(
 	// will return valid results
 	initial	f_past_valid = 1'b0;
 	always @(posedge S_AXI_ACLK)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -549,8 +572,13 @@ module	axilfetch #(
 		// Unused write interface
 		// {{{
 		.i_axi_awvalid(1'b0), .i_axi_awready(1'b1),
+			.i_axi_awaddr( {(AW){1'b0}}),
+			.i_axi_awprot( 3'h0),
 		.i_axi_wvalid(1'b0), .i_axi_wready(1'b1),
+			.i_axi_wdata({(C_AXI_DATA_WIDTH){1'b0}}),
+			.i_axi_wstrb({(C_AXI_DATA_WIDTH/8){1'b0}}),
 		.i_axi_bvalid(1'b0), .i_axi_bready(1'b1),
+			.i_axi_bresp(2'b00),
 		// }}}
 		// Read address channel
 		// {{{
@@ -566,6 +594,8 @@ module	axilfetch #(
 		.i_axi_rdata(M_AXI_RDATA),
 		.i_axi_rresp(M_AXI_RRESP),
 		// }}}
+		.f_axi_awr_outstanding(faxil_awr_outstanding),
+		.f_axi_wr_outstanding(faxil_wr_outstanding),
 		.f_axi_rd_outstanding(faxil_outstanding)
 		// }}}
 	);
@@ -595,11 +625,11 @@ module	axilfetch #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	reg	[W:0]			f_word_count;
-	reg	[AW-1:0]		f_return_addr;
-	reg	[AW-1:0]		f_out_addr, f_subout_addr;
-	reg	[C_AXI_ADDR_WIDTH-1:0]	f_req_addr, f_ret_addr;
-	reg	[W:0]			f_req_offset, f_ret_offset;
+	reg	[W:0]		f_word_count;
+	reg	[AW-1:0]	f_return_addr;
+	reg	[AW-1:0]	f_out_addr, f_subout_addr;
+	reg	[AW-1:0]	f_req_addr, f_ret_addr;
+	reg	[W:0]		f_req_offset, f_ret_offset;
 
 
 	always @(*)
@@ -610,28 +640,29 @@ module	axilfetch #(
 		if (M_AXI_ARVALID && f_req_offset > 0)
 			f_req_offset = f_req_offset - 1;
 
-		f_req_addr = f_out_addr + (f_req_offset << AXILLSB);
-		if (f_req_offset == 0)
-			f_req_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
+		// Verilator lint_off WIDTH
+		f_req_addr = 0;
+		f_req_addr[AW-1:AXILLSB] = f_out_addr[AW-1:AXILLSB]
+				+ f_req_offset;
 
 		///////////////
 
 		f_ret_offset = o_valid ? 1:0;
 		f_ret_offset = f_ret_offset + ign_fifo_fill;
 
-		f_ret_addr = f_out_addr + (f_ret_offset << AXILLSB);
-		if (f_ret_offset == 0)
-			f_ret_addr[AXILLSB-1:0] = o_pc[AXILLSB-1:0];
+		f_ret_addr = 0;
+		f_ret_addr[AW-1:AXILLSB] = f_out_addr[AW-1:AXILLSB] + f_ret_offset;
 	end
 
 	always @(*)
+	if (S_AXI_ARESETN)
+	begin
 		assert(f_req_offset <= f_word_count);
 
-	always @(*)
 		assert(f_req_offset == fill + (o_valid ? 1:0));
 
-	always @(*)
 		assert(f_ret_offset <= f_req_offset);
+	end
 
 	always @(*)
 	if (!i_cpu_reset && !i_new_pc && !i_clear_cache
@@ -639,25 +670,27 @@ module	axilfetch #(
 		assert(M_AXI_ARADDR[AXILLSB-1:0] == 0);
 
 	always @(*)
-	if (!flushing)
-		assert(f_word_count <= FETCH_LIMIT);
-	else
-		assert(f_word_count - flushcount <= FETCH_LIMIT);
+	if (S_AXI_ARESETN)
+	begin
+		if (!flushing)
+		begin
+			assert(f_word_count <= FETCH_LIMIT);
+		end else
+			assert(f_word_count - flushcount <= FETCH_LIMIT);
+	end
 
 	always @(*)
 	if (!i_cpu_reset && !i_new_pc && !i_clear_cache && !flush_request)
 	begin
-		if (!o_illegal)
-			assert(f_req_addr[AXILLSB-1:0] == M_AXI_ARADDR[AXILLSB-1:0]);
-		assert(f_req_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-			== M_AXI_ARADDR[C_AXI_ADDR_WIDTH-1:AXILLSB]);
+	//	if (!o_illegal)
+	//		assert(f_req_addr[AXILLSB-1:0] == M_AXI_ARADDR[AXILLSB-1:0]);
+		assert(f_req_addr[AW-1:AXILLSB] == M_AXI_ARADDR[AW-1:AXILLSB]);
 	end
 
 	always @(*)
 	if (S_AXI_ARESETN && !i_cpu_reset && !i_new_pc && !i_clear_cache
 			&& !flushing && !o_illegal)
-		assert(f_ret_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]
-			== f_return_addr[C_AXI_ADDR_WIDTH-1:AXILLSB]);
+		assert(f_ret_addr[AW-1:AXILLSB] == f_return_addr[AW-1:AXILLSB]);
 
 	always @(*)
 	begin
@@ -684,7 +717,7 @@ module	axilfetch #(
 	begin
 		assert(faxil_outstanding + (M_AXI_ARVALID ? 1:0)<=(1<<LGDEPTH));
 
-		assert(faxil_outstanding == outstanding);
+		assert(faxil_outstanding == { 1'b0, outstanding });
 		assert(flushcount <= outstanding + (M_AXI_ARVALID ? 1:0));
 
 		assert(flushing == (flushcount != 0));
@@ -702,11 +735,19 @@ module	axilfetch #(
 	//
 	//
 
-	ffetch #(.ADDRESS_WIDTH(C_AXI_ADDR_WIDTH-2), .OPT_ALIGNED(1'b0))
-	ffetchi(S_AXI_ACLK, i_cpu_reset,
+	ffetch #(
+		// {{{
+		.ADDRESS_WIDTH(C_AXI_ADDR_WIDTH-INSN_LSB),
+		.OPT_ALIGNED(1'b0)
+		// }}}
+	) ffetchi(
+		// {{{
+		S_AXI_ACLK, i_cpu_reset,
 		i_new_pc, i_clear_cache, i_pc,
 		o_valid, i_ready, o_pc, o_insn, o_illegal,
-		fc_pc, fc_illegal, fc_insn, f_address);
+		fc_pc, fc_illegal, fc_insn, f_address
+		// }}}
+	);
 
 	always @(*)
 	if (!i_cpu_reset && !i_new_pc && !i_clear_cache && !o_illegal)
@@ -721,8 +762,6 @@ module	axilfetch #(
 	//
 	//
 
-	// If we just got a valid instruction from the wishbone, assert that
-	// the instruction is listed as valid on the next instruction cycle
 	always @(posedge S_AXI_ACLK)
 	if ((f_past_valid)&&(!$past(fifo_reset))
 		&&($past(o_valid && !i_ready)))
@@ -743,6 +782,17 @@ module	axilfetch #(
 	always @(*)
 		assert(o_valid == (out_fill >0));
 
+	generate if (AXILLSB != INSN_LSB)
+	begin : OUTFILL_CHK
+		always @(*)
+		if (o_valid && !o_illegal)
+			assert(out_fill == INSNS_PER_WORD - o_pc[AXILLSB-1:INSN_LSB]);
+	end else begin
+		always @(*)
+		if (S_AXI_ARESETN)
+			assert(out_fill <= 1);
+	end endgenerate
+
 	//
 	// Assertions about our return responses
 	// {{{
@@ -755,11 +805,11 @@ module	axilfetch #(
 		// {{{
 		genvar	gw, gb;	// Word count, byte count
 
-		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1) // For each bus word
-		for(gb=0; gb<4; gb=gb+1) // For each bus byte
+		for(gw=0; gw<C_AXI_DATA_WIDTH/INSN_WIDTH; gw=gw+1) // For each bus word
+		for(gb=0; gb<(INSN_WIDTH/8); gb=gb+1) // For each bus byte
 		always @(*)
-			assert(endian_swapped_rdata[gw*32+(3-gb)*8 +: 8]
-				== M_AXI_RDATA[gw*32+gb*8 +: 8]);
+			assert(endian_swapped_rdata[gw*INSN_WIDTH+((INSN_WIDTH/8)-1-gb)*8 +: 8]
+				== M_AXI_RDATA[gw*INSN_WIDTH+gb*8 +: 8]);
 		// }}}
 	end else begin : CHECK_NO_ENDIAN_SWAP
 		// {{{
@@ -781,31 +831,44 @@ module	axilfetch #(
 	(* anyconst *) reg	[AW:0]		const_addr;
 	(* anyconst *) reg	[DW-1:0]	const_insn;
 
-	wire	[DATA_WIDTH-1:0]	f_bus_word, f_out_data;
+	wire	[INSN_WIDTH-1:0]	f_bus_word, f_out_data;
 
 	initial	f_out_addr = 0;
 	always @(posedge S_AXI_ACLK)
 	if (i_new_pc)
-		f_out_addr <= { i_pc[AW-1:AXILLSB], {(AXILLSB){1'b0}} };
+		f_out_addr <= { i_pc[AW-1:INSN_LSB], {(INSN_LSB){1'b0}} };
 	else if (o_valid && i_ready && out_fill == 1)
+	begin
+		f_out_addr <= 0;
 		f_out_addr[AW-1:AXILLSB] <= f_out_addr[AW-1:AXILLSB] + 1;
+	end
 
 	always @(*)
-		f_subout_addr = f_out_addr
-			+ ((INSNS_PER_WORD-out_fill) << $clog2(DATA_WIDTH/8));
+	if (out_fill == 0 || out_fill == INSNS_PER_WORD)
+		f_subout_addr = f_out_addr;
+	else begin
+		f_subout_addr = 0;
+		f_subout_addr[AW-1:AXILLSB] = f_out_addr[AW-1:AXILLSB];
+		f_subout_addr = f_subout_addr
+			+ ((INSNS_PER_WORD-out_fill) << INSN_LSB);
+	end
 
 	always @(*)
-		assert(f_out_addr[AXILLSB-1:0] == 0);
+		assert(f_out_addr[INSN_LSB-1:0] == 0);
+
+	always @(*)
+	if (S_AXI_ARESETN && pending_new_pc)
+		assert(f_out_addr[AW-1:INSN_LSB] == pending_pc[AW-1:INSN_LSB]);
 
 	always @(*)
 	if (o_valid && !o_illegal)
 	begin
 		assert(f_out_addr[AW-1:AXILLSB] == o_pc[AW-1:AXILLSB]);
-		assert(f_subout_addr[AW-1:2] == o_pc[AW-1:2]);
-	end else if (!i_cpu_reset && !i_clear_cache && !pending_new_pc && !i_new_pc && !o_illegal)
+		assert(f_subout_addr[AW-1:INSN_LSB] == o_pc[AW-1:INSN_LSB]);
+	end else if (!i_cpu_reset && !i_clear_cache
+				&& !pending_new_pc && !i_new_pc && !o_illegal)
 	begin
-		assert(f_out_addr[AW-1:AXILLSB] == o_pc[AW-1:AXILLSB]);
-		// assert(f_subout_addr[AW-1:2] == o_pc[AW-1:2]);
+		assert(f_out_addr[AW-1:INSN_LSB] == o_pc[AW-1:INSN_LSB]);
 	end
 
 	always @(*)
@@ -821,19 +884,21 @@ module	axilfetch #(
 	//
 	//
 
-	generate if (DATA_WIDTH == C_AXI_DATA_WIDTH)
+	generate if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 	begin : F_BUSWORD
 		// {{{
 		assign	f_bus_word = endian_swapped_rdata;
 		// }}}
 	end else begin : BUSWORD_SHIFT
 		// {{{
-		reg	[$clog2(INSNS_PER_WORD)-1:0]	shift;
+		reg	[$clog2(INSNS_PER_WORD)-1:0]	bshift;
 
+		// Verilator lint_off WIDTH
 		always @(*)
-			shift = fc_pc[AXILLSB-1:2];
+			bshift = fc_pc[AXILLSB-1:INSN_LSB];
 
-		assign	f_bus_word = endian_swapped_rdata >> (shift * DATA_WIDTH);
+		assign	f_bus_word = endian_swapped_rdata >> (bshift * INSN_WIDTH);
+		// Verilator lint_on  WIDTH
 		// }}}
 	end endgenerate
 
@@ -849,19 +914,21 @@ module	axilfetch #(
 	// Step 2: Assert that any value in our cache meets the contract
 	//
 	//
-	generate if (DATA_WIDTH == C_AXI_DATA_WIDTH)
+	generate if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 	begin : F_OUTDATA
 		// {{{
 		assign	f_out_data = out_data;
 		// }}}
 	end else begin : F_OUTDATA_SHIFT
 		// {{{
-		reg	[$clog2(INSNS_PER_WORD)-1:0]	shift;
+		reg	[$clog2(INSNS_PER_WORD)-1:0]	ashift;
 
+		// Verilator lint_off WIDTH
 		always @(*)
-			shift = (fc_pc - f_subout_addr) >> $clog2(DATA_WIDTH/8);
+			ashift = (fc_pc - f_subout_addr) >> INSN_LSB;
 
-		assign	f_out_data = out_data >> (shift * DATA_WIDTH);
+		assign	f_out_data = out_data >> (ashift * INSN_WIDTH);
+		// Verilator lint_on  WIDTH
 		// }}}
 	end endgenerate
 
@@ -886,27 +953,27 @@ module	axilfetch #(
 				f_cache_check = 1'b0;
 		end
 
-		if (DATA_WIDTH == C_AXI_DATA_WIDTH)
+		if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 		begin : F_CACHEDATA
 
-			assign f_cache_data=DBLFETCH.cache_data[DATA_WIDTH-1:0];
-			assign f_cache_illegal= DBLFETCH.cache_data[DATA_WIDTH];
+			assign f_cache_data=DBLFETCH.cache_data[INSN_WIDTH-1:0];
+			assign f_cache_illegal= DBLFETCH.cache_data[INSN_WIDTH];
 
 		end else begin : F_CACHEDATA_SHIFT
 
-			reg	[$clog2(INSNS_PER_WORD)-1:0]	shift;
+			reg	[$clog2(INSNS_PER_WORD)-1:0]	ashift;
 
 			always @(*)
-				shift = (fc_pc - f_cache_addr) >> $clog2(DATA_WIDTH/8);
+				ashift = (fc_pc - f_cache_addr) >> INSN_LSB;
 
-			assign	f_cache_data = DBLFETCH.cache_data >> (shift * DATA_WIDTH);
+			assign	f_cache_data = DBLFETCH.cache_data >> (ashift * INSN_WIDTH);
 			assign f_cache_illegal= DBLFETCH.cache_data[C_AXI_DATA_WIDTH];
 		end
 
 		always @(*)
 		if (f_cache_check && !o_illegal)
 		begin
-			assert(f_cache_data[DATA_WIDTH-1:0] == fc_insn);
+			assert(f_cache_data[INSN_WIDTH-1:0] == fc_insn);
 			assert(f_cache_illegal == fc_illegal);
 		end
 		// }}}
@@ -944,26 +1011,28 @@ module	axilfetch #(
 				f_cache_check = 1'b0;
 		end
 
-		if (DATA_WIDTH == C_AXI_DATA_WIDTH)
+		if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 		begin : F_CACHEDATA
 
 			always @(*)
 				f_cache_subdata = f_cache_data;
 
 			always @(*)
-				f_fifo_subdata = fifo_data[DATA_WIDTH-1:0];
+				f_fifo_subdata = fifo_data[INSN_WIDTH-1:0];
 
 		end else begin : F_CACHEDATA_SHIFT
 
-			reg	[$clog2(INSNS_PER_WORD)-1:0]	shift;
+			reg	[$clog2(INSNS_PER_WORD)-1:0]	ashift;
+
+			// Verilator lint_off WIDTH
+			always @(*)
+				ashift = (fc_pc - f_cache_addr) >> INSN_LSB;
+			// Verilator lint_on  WIDTH
 
 			always @(*)
-				shift = (fc_pc - f_cache_addr) >> $clog2(DATA_WIDTH/8);
-
+				f_cache_subdata = f_cache_data >> (ashift * INSN_WIDTH);
 			always @(*)
-				f_cache_subdata = f_cache_data >> (shift * DATA_WIDTH);
-			always @(*)
-				f_fifo_subdata = fifo_data >> (shift * DATA_WIDTH);
+				f_fifo_subdata = fifo_data >> (ashift * INSN_WIDTH);
 		end
 
 		always @(*)
@@ -976,7 +1045,7 @@ module	axilfetch #(
 		always @(*)
 		if (f_cache_check && !o_illegal)
 		begin
-			assert(f_cache_subdata[DATA_WIDTH-1:0] == fc_insn);
+			assert(f_cache_subdata[INSN_WIDTH-1:0] == fc_insn);
 			assert(f_cache_illegal == fc_illegal);
 		end
 
@@ -997,7 +1066,7 @@ module	axilfetch #(
 		always @(*)
 		if (f_cache_assume)
 		begin
-			assume(f_fifo_subdata[DATA_WIDTH-1:0] == fc_insn);
+			assume(f_fifo_subdata[INSN_WIDTH-1:0] == fc_insn);
 			assume(fifo_data[C_AXI_DATA_WIDTH] == fc_illegal);
 		end
 		// }}}
@@ -1005,14 +1074,15 @@ module	axilfetch #(
 
 	//
 	// Check the final output word
-	//
+	// This checks all instruction positions within that word
 	always @(*)
-	if ((out_fill > 0) && (fc_pc[AW-1:AXILLSB] == f_out_addr[AW-1:AXILLSB])
-		&&(fc_pc >= f_subout_addr))
+	if ((out_fill > 0)
+		&& (fc_pc[AW-1:AXILLSB] == f_out_addr[AW-1:AXILLSB]))
 	begin
 		if (fc_illegal)
+		begin
 			assert(o_illegal);
-		else if (!o_illegal)
+		end else if (!o_illegal && fc_pc >= f_subout_addr)
 			assert(f_out_data == fc_insn);
 	end
 
@@ -1024,9 +1094,11 @@ module	axilfetch #(
 	if (pending_new_pc)
 		assert(o_pc == pending_pc);
 
+	// Verilator lint_off WIDTH
 	always @(*)
 	if (flush_request)
 		assert(flushcount == faxil_outstanding + 1);
+	// Verilator lint_on  WIDTH
 
 	always @(*)
 	if (flushing)
@@ -1035,7 +1107,7 @@ module	axilfetch #(
 	always @(*)
 	if (flush_request && !i_cpu_reset && !i_new_pc && !i_clear_cache)
 	begin
-		assert(f_out_addr[C_AXI_ADDR_WIDTH-1:AXILLSB] == pending_pc[C_AXI_ADDR_WIDTH-1:AXILLSB]);
+		assert(f_out_addr[AW-1:AXILLSB] == pending_pc[AW-1:AXILLSB]);
 		assert(o_pc == pending_pc);
 	end
 `endif
@@ -1047,8 +1119,10 @@ module	axilfetch #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	reg	[3:0]	cvr_returns;
+	// Verilator lint_off UNDRIVEN
 	(* anyconst *) reg	cvr_always_ready;
+	// Verilator lint_on  UNDRIVEN
+	reg	[3:0]	cvr_returns;
 
 	always @(*)
 	if (cvr_always_ready)
@@ -1067,6 +1141,14 @@ module	axilfetch #(
 		cover(cvr_returns == 4'b0101);
 		cover(cvr_returns == 4'b0110 && cvr_always_ready);
 	end
+	// }}}
+
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused_formal;
+	assign	unused_formal = &{ 1'b0, f_ret_addr[AXILLSB-1:0] };
+	// Verilator lint_on  UNUSED
 	// }}}
 `endif
 // }}}

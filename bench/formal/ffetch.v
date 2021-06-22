@@ -48,8 +48,10 @@ module	ffetch #(
 		parameter	ADDRESS_WIDTH = 30,
 		parameter [0:0]	OPT_ALIGNED  = 1'b0,
 		parameter [0:0]	OPT_CONTRACT = 1'b1,
-		localparam	BUSW = 32, // Number of data lines on the bus
-		localparam	AW=ADDRESS_WIDTH // Shorthand for ADDRESS_WIDTH
+		parameter   INSN_WIDTH = 32, // Number of bits in an instruction
+		parameter [0:0]	F_OPT_ASYNC_RESET = 1'b0,
+		localparam	AW=ADDRESS_WIDTH, // Shorthand for ADDRESS_WIDTH
+		localparam	BW=AW + $clog2(INSN_WIDTH/8)	// Byte addr wid
 		// }}}
 	) (
 		// {{{
@@ -58,20 +60,20 @@ module	ffetch #(
 		// The interface with the rest of the CPU
 		input	wire			cpu_new_pc,
 		input	wire			cpu_clear_cache,
-		input	wire	[(AW+1):0]	cpu_pc,
+		input	wire	[BW-1:0]	cpu_pc,
 		input	wire			pf_valid,
 		input	wire			cpu_ready,
-		input	wire	[(AW+1):0]	pf_pc,
-		input	wire	[(BUSW-1):0]	pf_insn,
+		input	wire	[BW-1:0]	pf_pc,
+		input	wire	[(INSN_WIDTH-1):0]	pf_insn,
 		//
 		// o_illegal will be true if this instruction was the result of
 		// a bus error (This is also part of the CPU interface)
 		input	wire			pf_illegal,
 		//
-		output	wire	[(AW+1):0]	fc_pc,
+		output	wire	[BW-1:0]	fc_pc,
 		output	wire			fc_illegal,
-		output	wire	[BUSW-1:0]	fc_insn,
-		output	reg	[(AW+1):0]	f_address
+		output	wire	[INSN_WIDTH-1:0]	fc_insn,
+		output	reg	[BW-1:0]	f_address
 		// }}}
 	);
 
@@ -84,16 +86,17 @@ module	ffetch #(
 `define	CPU_ASSUME	assert
 `define	CPU_ASSERT	assume
 `endif
-	reg	[(AW+1):0]	f_next_address;
+	localparam	INSN_LSB = $clog2(INSN_WIDTH/8);
+	reg	[BW-1:0]	f_next_address;
 	reg		f_past_valid;
 
 	reg		need_new_pc, past_stalled, past_illegal;
-	reg	[31:0]	past_insn;
+	reg	[INSN_WIDTH-1:0]	past_insn;
 
 	// Verilator lint_off UNDRIVEN
-	(* anyconst *)	reg	[(AW+1):0]	r_fc_pc;
+	(* anyconst *)	reg	[BW-1:0]	r_fc_pc;
 	(* anyconst *)	reg			r_fc_illegal;
-	(* anyconst *)	reg	[BUSW-1:0]	r_fc_insn;
+	(* anyconst *)	reg	[INSN_WIDTH-1:0]	r_fc_insn;
 	// Verilator lint_on  UNDRIVEN
 
 	assign	fc_pc		= r_fc_pc;
@@ -108,14 +111,16 @@ module	ffetch #(
 		f_address <= cpu_pc;
 	else if (pf_valid && cpu_ready)
 	begin
-		f_address[AW+1:2] <= f_address[AW+1:2] + 1'b1;
-		f_address[1:0] <= 0;
+		f_address[BW-1:INSN_LSB] <= f_address[BW-1:INSN_LSB] + 1'b1;
+		if (INSN_LSB > 0)
+			f_address[INSN_LSB-1:0] <= 0;
 	end
 
 	always @(*)
 	begin
-		f_next_address = f_address + 4;
-		f_next_address[1:0] = 2'b00;
+		f_next_address = f_address + (1<<INSN_LSB);
+		if (INSN_LSB > 0)
+			f_next_address[INSN_LSB-1:0] <= 0;
 	end
 	// }}}
 
@@ -191,29 +196,36 @@ module	ffetch #(
 		past_insn <= pf_insn;
 
 	always @(*)
-	if (need_new_pc)
+	if (!F_OPT_ASYNC_RESET || !i_reset)
 	begin
-		`CPU_ASSERT(i_reset || cpu_clear_cache || cpu_new_pc);
-		`CPU_ASSUME(!pf_valid);
-		`CPU_ASSUME(!pf_illegal);
-	end else if (past_stalled)
-	begin
-		`CPU_ASSUME(past_illegal == pf_illegal);
-		`CPU_ASSUME(pf_illegal || (past_insn    == pf_insn));
-		if (!cpu_new_pc)
-			`CPU_ASSERT(cpu_pc[AW+1:2]== f_next_address[AW+1:2]);
-	end else if (!cpu_new_pc && !i_reset && !cpu_clear_cache)
-	begin
-		`CPU_ASSERT(cpu_pc[AW+1:2]== f_next_address[AW+1:2]);
+		if (need_new_pc)
+		begin
+			`CPU_ASSERT(i_reset || cpu_clear_cache || cpu_new_pc);
+			`CPU_ASSUME(!pf_valid);
+			`CPU_ASSUME(!pf_illegal);
+		end else if (past_stalled)
+		begin
+			`CPU_ASSUME(past_illegal == pf_illegal);
+			`CPU_ASSUME(pf_illegal || (past_insn == pf_insn));
+			if (!cpu_new_pc)
+				`CPU_ASSERT(cpu_pc[BW-1:INSN_LSB]== f_next_address[BW-1:INSN_LSB]);
+		end else if (!cpu_new_pc && !i_reset && !cpu_clear_cache)
+		begin
+			`CPU_ASSERT(cpu_pc[BW-1:INSN_LSB]== f_next_address[BW-1:INSN_LSB]);
+		end
 	end
 
 	always @(posedge i_clk)
-	if (!f_past_valid || $past(i_reset || cpu_clear_cache))
+	if (!f_past_valid || $past(i_reset || cpu_clear_cache)
+			|| (F_OPT_ASYNC_RESET && i_reset))
 	begin
-		assert(need_new_pc);
-		`CPU_ASSERT(cpu_new_pc || i_reset || cpu_clear_cache);
-		`CPU_ASSUME(!pf_valid);
-		`CPU_ASSUME(!pf_illegal);
+		if (!F_OPT_ASYNC_RESET || !i_reset)
+		begin
+			assert(need_new_pc);
+			`CPU_ASSERT(cpu_new_pc || i_reset || cpu_clear_cache);
+			`CPU_ASSUME(!pf_valid);
+			`CPU_ASSUME(!pf_illegal);
+		end
 	end else if (!$past(cpu_new_pc) && $past(pf_valid && !cpu_ready))
 	begin
 		//
@@ -265,7 +277,7 @@ module	ffetch #(
 	generate if (OPT_CONTRACT)
 	begin : CHECK_CONTRACT
 		always @(*)
-		if (pf_valid && fc_pc[AW+1:2] == f_address[AW+1:2])
+		if (pf_valid && fc_pc[BW-1:INSN_LSB] == f_address[BW-1:INSN_LSB])
 		begin
 			if (fc_illegal)
 			begin
@@ -276,7 +288,7 @@ module	ffetch #(
 
 		always @(posedge i_clk)
 		if (f_past_valid && !$past(pf_illegal) && pf_valid
-				&& fc_pc[AW+1:2] == f_address[AW+1:2])
+				&& fc_pc[BW-1:INSN_LSB] == f_address[BW-1:INSN_LSB])
 			`CPU_ASSUME(fc_illegal == pf_illegal);
 
 	end endgenerate

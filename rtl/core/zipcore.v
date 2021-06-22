@@ -353,6 +353,8 @@ module	zipcore #(
 
 	reg		pfpcset;
 	reg	[2:0]	pfpcsrc;
+
+	wire		w_clken;
 	// }}}
 
 	// }}}
@@ -2109,6 +2111,7 @@ module	zipcore #(
 	generate if (!OPT_GATE_CLOCK)
 	begin : NO_CLOCK_GATE
 
+		assign	w_clken = 1'b1;
 		assign	o_clken = 1'b1;
 
 	end else begin : GEN_CLOCK_GATE
@@ -2152,6 +2155,8 @@ module	zipcore #(
 			// if (!op_valid  && !dcd_illegal)  r_clken <= 1'b1;
 			// if (!dcd_valid && !i_pf_illegal) r_clken <= 1'b1;
 		end
+
+		assign	w_clken = r_clken;
 
 		// Wake up on interrupts, debug write requests, or the raising
 		// of the halt flag if we're not sleeping.
@@ -4605,9 +4610,9 @@ module	zipcore #(
 	else if (!OPT_GATE_CLOCK)
 	begin
 		assert(o_clken);
-	end else if ($past(i_reset && !i_mem_busy))
+	end else if ($past(i_reset && !i_mem_busy && i_halt))
 	begin
-		assert(!o_clken);
+		assert(!w_clken);
 	end else if (i_mem_busy || div_busy || alu_busy || fpu_busy)
 	begin
 		assert(o_clken);
@@ -4618,6 +4623,17 @@ module	zipcore #(
 	begin
 		assert(o_clken);
 	end
+
+	always @(posedge i_clk)
+	if (!OPT_GATE_CLOCK)
+	begin
+		assert(o_clken);
+	end else if (i_dbg_we || i_clear_cache || i_mem_busy)
+	begin
+		assert(o_clken);
+	end else if (!i_halt && (i_interrupt || !sleep))
+		assert(o_clken);
+
 
 	always @(posedge i_clk)
 	if (!i_reset && sleep)

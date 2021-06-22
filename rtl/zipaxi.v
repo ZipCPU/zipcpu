@@ -933,7 +933,7 @@ module	zipaxi #(
 	wire	[C_AXI_DATA_WIDTH-1:0]	i_bus_data, o_bus_data;
 	wire [C_AXI_DATA_WIDTH/8-1:0]	o_bus_strb;
 
-	generate if (SWAP_WSTRB && C_AXI_DATA_WIDTH > 32)
+	generate if (SWAP_WSTRB && C_AXI_DATA_WIDTH > 32 && !OPT_DCACHE)
 	begin : SWAP_BUS_WORD_ORDER
 		genvar	gk;
 

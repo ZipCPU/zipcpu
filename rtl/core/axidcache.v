@@ -215,6 +215,7 @@ module	axidcache #(
 	reg	[AW-1:0]	axi_awaddr;
 	reg	[DW-1:0]	axi_wdata;
 	reg	[DW/8-1:0]	axi_wstrb;
+	wire	[DW-1:0]	axi_rdata;
 
 	reg			axi_arvalid;
 	reg	[AW-1:0]	axi_araddr;
@@ -256,16 +257,6 @@ module	axidcache #(
 	always @(*)
 	begin
 		misaligned = checklsb(i_op[2:1], i_addr[AXILSB-1:0]);
-		/*
-		mislsb = { 1'b0, i_addr[AXILSB-1:0] };
-		case(i_op[2:1])
-		2'b10:		mislsb = mislsb + 1;
-		2'b11:		mislsb = mislsb + 0;
-		default:	mislsb = mislsb + 3;
-		endcase
-
-		misaligned = mislsb[AXILSB];
-		*/
 	end
 
 	function checklsb;
@@ -275,13 +266,15 @@ module	axidcache #(
 		reg [AXILSB:0]	mislsbfn;
 
 		mislsbfn = { 1'b0, addr };
+		mislsbfn[2] = 0;
 		case(op[1:0])
 		2'b10:		mislsbfn = mislsbfn + 1;
 		2'b11:		mislsbfn = mislsbfn + 0;
 		default:	mislsbfn = mislsbfn + 3;
 		endcase
 
-		checklsb = mislsbfn[AXILSB];
+		// checklsb = mislsbfn[AXILSB];
+		checklsb = mislsbfn[2];
 	endfunction
 	// }}}
 
@@ -593,6 +586,7 @@ module	axidcache #(
 
 			if (SWAP_WSTRB)
 			begin
+				axi_araddr[AXILSB-1:0] <= ~i_addr[AXILSB-1:0];
 				axi_araddr[1:0] <= 0;
 				axi_arsize <= 3'b010;
 			end
@@ -648,9 +642,12 @@ module	axidcache #(
 		axi_awaddr <= i_addr;
 
 		if (SWAP_WSTRB)
+		begin
+			// axi_awaddr[AXILSB-1:0] <= ~i_addr[AXILSB-1:0];
 			axi_awaddr[1:0] <= 0;
+		end
 
-		if (!i_pipe_stb || !i_op[0] || misaligned)
+		if (OPT_LOWPOWER && (!i_pipe_stb || !i_op[0] || misaligned))
 			axi_awaddr <= 0;
 	end
 
@@ -769,13 +766,36 @@ module	axidcache #(
 		// }}}
 	end
 
-	assign	M_AXI_WDATA = axi_wdata;
-	assign	M_AXI_WSTRB = axi_wstrb;
+	genvar	gk;
+	generate if (!SWAP_WSTRB)
+	begin
+		assign	M_AXI_WDATA = axi_wdata;
+		assign	M_AXI_WSTRB = axi_wstrb;
+
+		assign	axi_rdata   = M_AXI_RDATA;
+	end else for(gk=0; gk<C_AXI_DATA_WIDTH/32; gk=gk+1)
+	begin
+		assign	M_AXI_WDATA[32*gk +: 32] = axi_wdata[C_AXI_DATA_WIDTH - (gk+1)*32 +: 32];
+		assign	M_AXI_WSTRB[ 4*gk +:  4] = axi_wstrb[C_AXI_DATA_WIDTH/8 - (gk+1)*4 +: 4];
+
+		assign	axi_rdata[32*gk +: 32] = M_AXI_RDATA[C_AXI_DATA_WIDTH - (gk+1)*32 +: 32];
+	end endgenerate
 	// }}}
 	// }}}
 
 	// Writes take a clock to go to the cache
 	// {{{
+	reg	[AW-1:0]	rev_addr;
+	always @(*)
+	begin
+		rev_addr = i_addr;
+		if (SWAP_WSTRB && C_AXI_DATA_WIDTH != 32)
+		begin
+			rev_addr[AXILSB-1:0] = ~i_addr[AXILSB-1:0];
+			rev_addr[1:0] = i_addr[1:0];
+		end
+	end
+
 	always @(posedge S_AXI_ACLK)
 	begin
 		wcache_strb <= 0;
@@ -791,7 +811,7 @@ module	axidcache #(
 					<= read_addr[LS-1:0] + 1;
 			read_addr[CS-1:LS] <= r_cline;
 			wcache_addr <= read_addr;
-			wcache_data <= M_AXI_RDATA;
+			wcache_data <= axi_rdata;
 			wcache_strb <= -1;
 			if (!M_AXI_RVALID || flushing || i_cpu_reset
 				|| M_AXI_RRESP[1])
@@ -959,7 +979,7 @@ module	axidcache #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_pipe_stb)
-		req_data <= { i_op[2:1], i_addr[AXILSB-1:0] };
+		req_data <= { i_op[2:1], rev_addr[AXILSB-1:0] };
 
 	assign	req_lsb = req_data[AXILSB-1:0];
 	assign	req_op  = req_data[AXILSB +: 2];
@@ -1009,7 +1029,7 @@ module	axidcache #(
 	if (r_svalid)
 		pre_data = cached_iword;
 	else if (state == DC_READS)
-		pre_data = M_AXI_RDATA;
+		pre_data = axi_rdata;
 	else
 		pre_data = cached_rword;
 
@@ -1064,7 +1084,8 @@ module	axidcache #(
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, r_addr, M_AXI_RRESP[0],
-				M_AXI_BRESP[0], i_lock, shifted_data };
+				M_AXI_BRESP[0], i_lock, shifted_data,
+				rev_addr[C_AXI_ADDR_WIDTH-1:AXILSB] };
 	// Verilator lint_on UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
@@ -1380,7 +1401,7 @@ module	axidcache #(
 			assert(!faxi_rd_cklockd);
 			if (SWAP_WSTRB)
 			begin
-				assert(faxi_rd_cksize == AXILSB[2:0]);
+				assert(faxi_rd_cksize == 3'b010);
 			end else case(req_size)
 			2'b10: assert(faxi_rd_cksize  == 3'd1);
 			2'b11: assert(faxi_rd_cksize  == 3'd0);
@@ -1754,6 +1775,7 @@ module	axidcache #(
 	(* anyconst *)	reg	[AW-1:0]	f_const_addr;
 	(* anyconst *)	reg			f_const_err;
 			reg	[DW-1:0]	f_mem_data;
+			wire	[DW-1:0]	f_word_swapped_mem_data;
 	wire	[TW-1:0]	f_const_tag;
 	wire	[CS-LS-1:0]	f_const_line;
 	wire	[LS-1:0]	f_const_caddr;
@@ -1803,7 +1825,7 @@ module	axidcache #(
 	begin
 		if (i_pipe_stb)
 		begin
-			f_request_addr <= i_addr;
+			f_request_addr <= rev_addr;
 			f_simple_return = (f_const_addr[AW-1:AXILSB]
 							== i_addr[AW-1:AXILSB]);
 			if (misaligned || address_is_cachable || i_op[0])
@@ -1841,7 +1863,7 @@ module	axidcache #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (i_pipe_stb)
-		f_op <= { i_op[2:1], i_addr[AXILSB-1:0] };
+		f_op <= { i_op[2:1], rev_addr[AXILSB-1:0] };
 
 	always @(*)
 	if (cpu_outstanding > 0)
@@ -1880,6 +1902,15 @@ module	axidcache #(
 		if (M_AXI_WSTRB[ik])
 			f_mem_data[ik*8 +: 8] <= M_AXI_WDATA[ik*8 +: 8];
 	end
+
+	generate if (!SWAP_WSTRB)
+	begin
+		assign	f_word_swapped_mem_data = f_mem_data;
+
+	end else for(gk=0; gk<C_AXI_DATA_WIDTH/32; gk=gk+1)
+	begin
+		assign	f_word_swapped_mem_data[32*gk +: 32] = f_mem_data[C_AXI_DATA_WIDTH - (gk+1)*32 +: 32];
+	end endgenerate
 	// }}}
 
 	// Property #1: Assume a known return
@@ -1918,7 +1949,7 @@ module	axidcache #(
 	always @(*)
 	if (SWAP_WSTRB)
 	begin
-		f_wide_return = f_mem_data << (8*f_op[AXILSB-1:0]);
+		f_wide_return = f_word_swapped_mem_data << (8*f_op[AXILSB-1:0]);
 		casez(f_op[AXILSB +: 2])
 		2'b0?:	f_wide_return[31:0] = f_wide_return[DW-1:DW-32];
 		2'b10:	f_wide_return[31:0] = { 16'h0, f_wide_return[DW-1:DW-16] };
@@ -1968,7 +1999,7 @@ module	axidcache #(
 	if (S_AXI_ARESETN && !OPT_PIPE && cache_valid[f_const_line]
 			&& f_special_tag == f_const_tag)
 	begin
-		assert(f_special_cached_data == f_mem_data);
+		assert(f_special_cached_data == f_word_swapped_mem_data);
 		assert(!f_const_err);
 	end
 
@@ -1991,7 +2022,7 @@ module	axidcache #(
 		if (f_const_err)
 			assert(!good_cache_read && !r_rd_pending);
 		else if (!flushing)
-			assert(f_special_cached_data == f_mem_data);
+			assert(f_special_cached_data == f_word_swapped_mem_data);
 	end
 	// }}}
 
