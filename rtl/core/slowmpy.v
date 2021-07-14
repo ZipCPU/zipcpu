@@ -47,6 +47,7 @@ module	slowmpy #(
 		parameter			LGNA = 6,
 		parameter	[LGNA:0]	NA = 33,
 		parameter	[0:0]		OPT_SIGNED = 1'b1,
+		parameter	[0:0]		OPT_LOWPOWER = 1'b0,
 		localparam	NB = NA // Must be = NA for OPT_SIGNED to work
 		// }}}
 	) (
@@ -97,14 +98,14 @@ module	slowmpy #(
 		o_done <= 0;
 		o_busy <= 0;
 		// }}}
-	end else if ((!o_busy)&&(i_stb))
+	end else if (!o_busy)
 	begin
 		// {{{
 		o_done <= 0;
-		o_busy <= 1;
-		aux    <= i_aux;
+		o_busy <= i_stb;
+		aux    <= (!OPT_LOWPOWER || i_stb) ? i_aux : 0;
 		// }}}
-	end else if ((o_busy)&&(almost_done))
+	end else if (almost_done)
 	begin
 		// {{{
 		o_done <= 1;
@@ -115,6 +116,7 @@ module	slowmpy #(
 	// }}}
 
 	assign	pwire = (p_b[0] ? p_a : 0);
+
 	// count, partial, p_a, p_b
 	// {{{
 	always @(posedge i_clk)
@@ -124,6 +126,12 @@ module	slowmpy #(
 		partial <= 0;
 		p_a <= i_a;
 		p_b <= i_b;
+
+		if (OPT_LOWPOWER && !i_stb)
+		begin
+			p_a <= 0;
+			p_b <= 0;
+		end
 	end else begin
 		p_b <= (p_b >> 1);
 		// partial[NA+NB-1:NB] <= partial[NA+NB
