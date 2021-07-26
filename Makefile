@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	This is a grand makefile for the entire project.  It will
@@ -29,9 +29,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2015-2017, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2015-2021, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -53,7 +53,7 @@
 ##
 ################################################################################
 ##
-##
+## }}}
 .PHONY: all
 all: rtl sw sim
 
@@ -61,21 +61,28 @@ MAKE := make	# Was `which make`
 SUBMAKE := $(MAKE) --no-print-directory -C
 
 .PHONY: doc
+## {{{
 doc:
 	@echo "Building docs"; cd doc;
 	+@$(SUBMAKE) doc/
+## }}}
 
 .PHONY: rtl
+## {{{
 rtl:
 	@echo "Building rtl for Verilator";
 	+@$(SUBMAKE) rtl/
+## }}}
 
 .PHONY: sw
+## {{{
 sw:
 	@echo "Building toolchain";
 	+@$(SUBMAKE) sw/
+## }}}
 
-.PHONY: sim
+.PHONY: sim cppsim vsim
+## {{{
 sim:	cppsim vsim
 
 cppsim:
@@ -85,22 +92,30 @@ cppsim:
 vsim: rtl
 	@echo "Building Verilator simulator";
 	+@$(SUBMAKE) sim/verilator
+## }}}
 
+.PHONY: clean
+## {{{
 clean:
-	+@$(SUBMAKE) --directory=rtl
-	+@$(SUBMAKE) --directory=sw
-	+@$(SUBMAKE) --directory=sim/cpp
-	+@$(SUBMAKE) --directory=sim/verilator
-	+@$(SUBMAKE) --directory=bench/asm
-	+@$(SUBMAKE) --directory=bench/cpp
+	+@$(SUBMAKE) rtl clean
+	+@$(SUBMAKE) sw clean
+	+@$(SUBMAKE) sim/cpp clean
+	+@$(SUBMAKE) sim/verilator clean
+	+@$(SUBMAKE) bench/asm clean
+	+@$(SUBMAKE) bench/cpp clean
+## }}}
 
 .PHONY: bench
+## {{{
 bench: rtl sw
 	@echo "Building in bench/asm"; $(SUBMAKE) bench/asm
+## }}}
 
 .PHONY: test
+## {{{
 test: bench sim
 	@echo "Running simulation tests"; $(SUBMAKE) sim/verilator test
+## }}}
 
 # .PHONY: dhrystone
 # dhrystone: sw bench

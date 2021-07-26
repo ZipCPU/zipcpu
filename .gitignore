@@ -19,12 +19,6 @@ svn-commit*
 tags
 cpudefs.h
 legal.txt
-build-gas
-build-gcc
-install
-binutils-2.25
-gcc-5.3.0-zip
-gcc-6.2.0-zip
 bitrev.v
 flashcache.v
 oldtimer.v
