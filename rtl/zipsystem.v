@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipsystem.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This portion of the ZIP CPU implements a number of soft
@@ -62,9 +62,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -86,9 +86,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
+// }}}
 `include "cpudefs.v"
 //
 `define	RESET_BIT	6
@@ -211,18 +210,17 @@ module	zipsystem(i_clk, i_reset,
 `endif
 			IMPLEMENT_LOCK=1;
 	parameter	RESET_DURATION = 0;
-	localparam	// Derived parameters
-			PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-			PAW=ADDRESS_WIDTH,
+	// Derived parameters
+	// {{{
+	localparam PAW=ADDRESS_WIDTH;
 `ifdef	OPT_MMU
+	localparam	PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH;
 			VIRTUAL_ADDRESS_WIDTH=30,
+			LGTLBSZ = 6;
+	// localparam	VAW=VIRTUAL_ADDRESS_WIDTH;	// UNUSED abbreviation
 `else
-			VIRTUAL_ADDRESS_WIDTH=PAW,
+	localparam	VIRTUAL_ADDRESS_WIDTH=PAW;
 `endif
-			LGTLBSZ = 6,
-			VAW=VIRTUAL_ADDRESS_WIDTH;
-
-	localparam	AW=ADDRESS_WIDTH;
 	input	wire	i_clk, i_reset;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;

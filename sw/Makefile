@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	This makefile attempts to build the ZipCPU toolchain.  This
@@ -45,9 +45,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2015-2020, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2015-2021, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -62,14 +62,14 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
-##
 ##
 ################################################################################
 ##
-##
+## }}}
 .PHONY: all basic-install install build
 install: basic-install
 all: basic-install binutils-pdf-install gcc-pdf-install
@@ -78,8 +78,8 @@ build: gas gcc-all nlib
 CC: gcc
 
 BINUTILSD:=binutils-2.27
-GCCD:=gcc-6.2.0
-NLIBD:=newlib-2.5.0
+GCCD:=gcc-10.3.0
+NLIBD:=newlib-4.1.0
 export INSTALLD:=$(shell pwd)/install
 export PATH:=$(PATH):$(INSTALLD)/cross-tools/bin
 PDFD=$(INSTALLD)/usr/doc
@@ -91,6 +91,15 @@ TARGETGCC:=$(INSTALL)/cross-tools/bin/zip-gcc
 SUBMAKE:=$(MAKE) --no-print-directory
 ZIPINCD=$(INSTALLD)/cross-tools/zip/include
 
+################################################################################
+##
+## Bin-utils
+## {{{
+################################################################################
+##
+
+## Build binutils
+## {{{
 $(BINUTILSD)-zip/nonce.txt: $(BINUTILSD).tar.bz2 gas-zippatch.patch
 	rm -rf $(BINUTILSD)-zip/
 	tar -xjf ./$(BINUTILSD).tar.bz2 --transform s,$(BINUTILSD),$(BINUTILSD)-zip,
@@ -106,19 +115,28 @@ $(BUILDGASD)/nonce.txt: $(BINUTILSD)-zip/nonce.txt
 binutils: $(BUILDGASD)/nonce.txt
 	$(SUBMAKE) --directory=$(BUILDGASD)
 	@echo "Binutils package build complete"
+## }}}
 
+## Install binutils
+## {{{
 .PHONY: binutils-install
 binutils-install: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) install
 	cp ../bench/zipsim.ld install/cross-tools/zip/lib/ldscripts
 	bash -c "if [[ ! -f $(BUILDGASD)/install-nonce.txt ]]; then touch $(BUILDGASD)/install-nonce.txt; fi"
 	@echo "Binutils installed"
+## }}}
 
+## Build binutils documentation
+## {{{
 .PHONY: binutils-pdf
 binutils-pdf: binutils
 	$(SUBMAKE) --directory=$(BUILDGASD) pdf
 	@echo "Binutils pdfs made"
+## }}}
 
+## Build a documentation directory
+## {{{
 .PHONY: pdfd
 pdfd:
 	$(mk-pdfd)
@@ -126,11 +144,15 @@ pdfd:
 define mk-pdfd
 	@bash -c "if [[ ! -d $(PDFD) ]]; then mkdir -p $(PDFD); fi"
 endef
+## }}}
 
+## Install binutils documentation
+## {{{
 .PHONY: binutils-pdf-install
 binutils-pdf-install: binutils-pdf pdfd
 	find $(BUILDGASD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 	@echo "Binutils pdfs installed"
+## }}}
 
 .PHONY: gas
 gas: binutils
@@ -145,17 +167,22 @@ $(BUILDGASD)/install-nonce.txt: binutils-install
 # file.
 gas-check: binutils-install
 	+$(SUBMAKE) --directory=$(BUILDGASD) check RUNTESTFLAGS="--target_board=zip-sim"
-#
-#
+## }}}
+################################################################################
+##
+## GCC
+## {{{
+################################################################################
+##
+##
+
 # Now let's try the same thing for GCC
 #
 #
 $(GCCD)-zip/nonce.txt: $(BUILDGASD)/install-nonce.txt
-$(GCCD)-zip/nonce.txt: $(GCCD).tar.bz2 gcc-zippatch.patch
+$(GCCD)-zip/nonce.txt: gcc-zippatch.patch
 	rm -rf $(GCCD)-zip/
-	tar -xjf ./$(GCCD).tar.bz2 --transform s,$(GCCD),$(GCCD)-zip,
-	-bash -c "cd $(GCCD)-zip; patch -p1 <../gcc-zippatch.patch"
-	rm -rf $(BUILDGCCD)
+	-bash gcc-script.sh
 	touch $(GCCD)-zip/nonce.txt
 
 $(GCCD)-zip/gcc/config/zip/genzipops.c: $(GCCD)-zip/nonce.txt
@@ -203,11 +230,12 @@ $(INSTALLD)/cross-tools/bin/zip-cc: zip-gcc-install
 # GCC proper.
 #
 #
-.PHONY: gcc
+.PHONY: gcc gcc-all
 gcc: $(BUILDGASD)/install-nonce.txt
 gcc: $(BUILDNLIB)/install-nonce.txt
 gcc: $(BUILDGCCD)/nonce.txt
 	+$(SUBMAKE) --directory=$(BUILDGCCD)
+gcc-all: gcc
 
 .PHONY: gcc-install
 gcc-install: gcc
@@ -222,18 +250,23 @@ gcc-pdf: $(BUILDGCCD)/nonce.txt
 gcc-pdf-install: gcc-pdf $(PDFD)/
 	find $(BUILDGCCD) -name "*.pdf" -exec cp \{\} $(PDFD)/ \;
 	@echo "GCC documentation/pdfs installed"
+## }}}
+################################################################################
+##
+## Newlib
+## {{{
+################################################################################
+##
+##
 
-#
 #
 # And repeat for newlib
 #
 #
 $(NLIBD)-zip/nonce.txt: $(BUILDGCCD)/install-nonce.txt
-$(NLIBD)-zip/nonce.txt: $(NLIBD).tar.gz nlib-zippatch.patch
+$(NLIBD)-zip/nonce.txt: nlib-zippatch.patch
 	rm -rf $(NLIBD)-zip/
-	tar -xzf ./$(NLIBD).tar.gz --transform s,$(NLIBD),$(NLIBD)-zip,
-	-bash -c "cd $(NLIBD)-zip; patch -p1 <../nlib-zippatch.patch"
-	rm -rf $(BUILDNLIB)
+	-bash nlib-script.sh
 	touch $(NLIBD)-zip/nonce.txt
 
 $(BUILDNLIB)/nonce.txt: $(NLIBD)-zip/nonce.txt $(BUILDGASD)/nonce.txt
@@ -259,7 +292,7 @@ newlib-install: newlib
 nlib: newlib
 nlib-install: newlib-install
 $(BUILDNLIB)/install-nonce.txt: newlib-install
-
+## }}}
 #
 #
 # Finally, can we build and install zasm?

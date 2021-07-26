@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipbones.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	In the spirit of keeping the Zip CPU small, this implements a
@@ -12,9 +12,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -36,7 +36,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 `default_nettype	none
 //
 `include "cpudefs.v"
@@ -76,11 +76,13 @@ module	zipbones(i_clk, i_reset,
 			LGICACHE=`LGICACHE_DEFAULT,
 			LGDCACHE=`LGDCACHE_DEFAULT;
 	parameter [0:0]	START_HALTED=0;
-	parameter	EXTERNAL_INTERRUPTS=1,
+	// Verilator lint_off UNUSED
+	parameter	EXTERNAL_INTERRUPTS=1;
+	// Verilator lint_on  UNUSED
 `ifdef	OPT_MULTIPLY
-			IMPLEMENT_MPY = `OPT_MULTIPLY;
+	parameter 	IMPLEMENT_MPY = `OPT_MULTIPLY;
 `else
-			IMPLEMENT_MPY = 0;
+	parameter 	IMPLEMENT_MPY = 0;
 `endif
 	parameter [0:0]
 `ifdef	OPT_DIVIDE
@@ -95,17 +97,15 @@ module	zipbones(i_clk, i_reset,
 `endif
 			IMPLEMENT_LOCK=1;
 	localparam	// Derived parameters
-			PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 			PAW=ADDRESS_WIDTH,
 `ifdef	OPT_MMU
 			VIRTUAL_ADDRESS_WIDTH=30,
 `else
 			VIRTUAL_ADDRESS_WIDTH=PAW,
 `endif
-			LGTLBSZ = 6,
 			VAW=VIRTUAL_ADDRESS_WIDTH;
 
-	localparam	AW=ADDRESS_WIDTH;
+	// localparam	AW=ADDRESS_WIDTH;
 	input	wire	i_clk, i_reset;
 	// Wishbone master
 	output	wire		o_wb_cyc, o_wb_stb, o_wb_we;
@@ -221,7 +221,11 @@ module	zipbones(i_clk, i_reset,
 	wire	[31:0]	cpu_dbg_data;
 	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(dbg_addr));
 	zipcpu	#(.RESET_ADDRESS(RESET_ADDRESS),
-			.ADDRESS_WIDTH(ADDRESS_WIDTH),
+			.ADDRESS_WIDTH(VAW),
+			.IMPLEMENT_MPY(IMPLEMENT_MPY),
+			.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
+			.IMPLEMENT_FPU(IMPLEMENT_FPU),
+			.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
 			.LGICACHE(LGICACHE),
 			.OPT_LGDCACHE(LGDCACHE),
 			.WITH_LOCAL_BUS(0))

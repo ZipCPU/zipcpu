@@ -199,7 +199,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 	localparam	AW=ADDRESS_WIDTH;
 	localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
+`ifdef	FORMAL
 	parameter	F_LGDEPTH=8;
+`endif
 
 	//}}}
 	// I/O declarations

@@ -1,24 +1,39 @@
-diff -Naur '--exclude=*.swp' newlib-2.5.0/config.sub newlib-2.5.0-zip/config.sub
---- newlib-2.5.0/config.sub	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/config.sub	2017-01-16 12:10:48.294312482 -0500
-@@ -355,6 +355,14 @@
- 	xscaleel)
- 		basic_machine=armel-unknown
- 		;;
-+	zip-*-linux*)
-+		basic_machine=zip
-+		os=-linux
-+		;;
-+	zip*)
-+		basic_machine=zip-unknown
-+		os=-none
-+		;;
+diff -Naur '--exclude=*.swp' newlib-4.1.0/config.sub newlib-4.1.0-zip/config.sub
+--- newlib-4.1.0/config.sub	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/config.sub	2021-05-10 15:44:32.152966105 -0400
+@@ -632,6 +632,10 @@
+ 				basic_machine=ymp-cray
+ 				os=unicos
+ 				;;
++			zip*)
++				basic_machine=zip
++				os=none
++				;;
+ 			*)
+ 				basic_machine=$1
+ 				os=
+@@ -1248,7 +1252,7 @@
+ 			| x86 | x86_64 | xc16x | xgate | xps100 \
+ 			| xstormy16 | xtensa* \
+ 			| ymp \
+-			| z8k | z80)
++			| z8k | z80 | zip*)
+ 				;;
  
- 	# We use `pc' rather than `unknown'
- 	# because (1) that's what they normally are, and
-diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
---- newlib-2.5.0/configure	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/configure	2017-01-25 16:27:07.029658533 -0500
+ 			*)
+@@ -1511,6 +1515,9 @@
+ 		;;
+ 	*-eabi)
+ 		;;
++	zip*)
++		os=none
++		;;
+ 	*)
+ 		echo Invalid configuration \`"$1"\': system \`"$os"\' not recognized 1>&2
+ 		exit 1
+diff -Naur '--exclude=*.swp' newlib-4.1.0/configure newlib-4.1.0-zip/configure
+--- newlib-4.1.0/configure	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/configure	2021-05-10 15:15:37.376300595 -0400
 @@ -3549,6 +3549,9 @@
    ft32-*-*)
      noconfigdirs="$noconfigdirs ${libgcj}"
@@ -39,17 +54,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
      esac
  fi
  
-@@ -3970,6 +3976,9 @@
-   vax-*-*)
-     noconfigdirs="$noconfigdirs target-newlib target-libgloss"
-     ;;
-+  zip*)
-+    noconfigdirs="$noconfigdirs target-libffi target-boehm-gc gdb gprof"
-+    ;;
- esac
- 
- # If we aren't building newlib, then don't build libgloss, since libgloss
-@@ -4723,13 +4732,13 @@
+@@ -4723,13 +4729,13 @@
    CFLAGS=$ac_save_CFLAGS
  elif test $ac_cv_prog_cc_g = yes; then
    if test "$GCC" = yes; then
@@ -65,7 +70,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
    else
      CFLAGS=
    fi
-@@ -5071,13 +5080,13 @@
+@@ -5071,13 +5077,13 @@
    CXXFLAGS=$ac_save_CXXFLAGS
  elif test $ac_cv_prog_cxx_g = yes; then
    if test "$GXX" = yes; then
@@ -81,7 +86,12 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
    else
      CXXFLAGS=
    fi
-@@ -6777,7 +6786,7 @@
+@@ -6773,16 +6779,16 @@
+ # might be empty or "-g".  We don't require a C++ compiler, so CXXFLAGS
+ # might also be empty (or "-g", if a non-GCC C++ compiler is in the path).
+ # We want to ensure that TARGET libraries (which we know are built with
+-# gcc) are built with "-O2 -g", so include those options when setting
++# gcc) are built with "-O3 -g", so include those options when setting
  # CFLAGS_FOR_TARGET and CXXFLAGS_FOR_TARGET.
  if test "x$CFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
@@ -90,7 +100,14 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
    else
      CFLAGS_FOR_TARGET=$CFLAGS
      case " $CFLAGS " in
-@@ -6794,7 +6803,7 @@
+-      *" -O2 "*) ;;
+-      *) CFLAGS_FOR_TARGET="-O2 $CFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CFLAGS_FOR_TARGET="-O3 $CFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -6794,12 +6800,12 @@
  
  if test "x$CXXFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
@@ -99,15 +116,25 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure newlib-2.5.0-zip/configure
    else
      CXXFLAGS_FOR_TARGET=$CXXFLAGS
      case " $CXXFLAGS " in
-diff -Naur '--exclude=*.swp' newlib-2.5.0/configure.ac newlib-2.5.0-zip/configure.ac
---- newlib-2.5.0/configure.ac	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/configure.ac	2017-01-25 16:27:52.713416459 -0500
-@@ -1,4 +1,4 @@
--#   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
-+3   Copyright (C) 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999, 2000,
- #   2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012,
- #   2014, 2015, 2016 Free Software Foundation, Inc.
- #
+-      *" -O2 "*) ;;
+-      *) CXXFLAGS_FOR_TARGET="-O2 $CXXFLAGS_FOR_TARGET" ;;
++      *" -O3 "*) ;;
++      *) CXXFLAGS_FOR_TARGET="-O3 $CXXFLAGS_FOR_TARGET" ;;
+     esac
+     case " $CXXFLAGS " in
+       *" -g "* | *" -g3 "*) ;;
+@@ -6972,7 +6978,7 @@
+     ;;
+ esac
+ 
+-# If --enable-target-optspace always use -Os instead of -O2 to build
++# If --enable-target-optspace always use -Os instead of -O3 to build
+ # the target libraries, similarly if it is not specified, use -Os
+ # on selected platforms.
+ ospace_frag=/dev/null
+diff -Naur '--exclude=*.swp' newlib-4.1.0/configure.ac newlib-4.1.0-zip/configure.ac
+--- newlib-4.1.0/configure.ac	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/configure.ac	2021-05-10 15:17:40.756623894 -0400
 @@ -2377,16 +2377,16 @@
  # might be empty or "-g".  We don't require a C++ compiler, so CXXFLAGS
  # might also be empty (or "-g", if a non-GCC C++ compiler is in the path).
@@ -118,7 +145,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure.ac newlib-2.5.0-zip/configur
  if test "x$CFLAGS_FOR_TARGET" = x; then
    if test "x${is_cross_compiler}" = xyes; then
 -    CFLAGS_FOR_TARGET="-g -O2"
-+    CFLAGS_FOR_TARGET="-g -O3"
++    CFLAGS_FOR_TARGET="-O3"
    else
      CFLAGS_FOR_TARGET=$CFLAGS
      case " $CFLAGS " in
@@ -154,34 +181,33 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/configure.ac newlib-2.5.0-zip/configur
  # the target libraries, similarly if it is not specified, use -Os
  # on selected platforms.
  ospace_frag=/dev/null
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/configure newlib-2.5.0-zip/libgloss/configure
---- newlib-2.5.0/libgloss/configure	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/configure	2017-01-11 11:12:49.779795431 -0500
-@@ -709,6 +709,7 @@
- tic6x
- iq2000
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/configure newlib-4.1.0-zip/libgloss/configure
+--- newlib-4.1.0/libgloss/configure	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/configure	2021-05-10 15:18:32.952760244 -0400
+@@ -713,6 +713,7 @@
  or1k
+ pru
+ nios2
 +zip
  libnosys'
  
  # Initialize some variables set by options.
-@@ -2579,7 +2580,9 @@
+@@ -2601,6 +2602,9 @@
+ 	subdirs="$subdirs nios2"
+ 
  	;;
-   or1k-*-* | or1knd-*-* )
- 	subdirs="$subdirs or1k"
--
-+	;;
 +  zip*)
 +	subdirs="$subdirs zip"
- 	;;
++	;;
  esac
  
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/configure.in newlib-2.5.0-zip/libgloss/configure.in
---- newlib-2.5.0/libgloss/configure.in	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/configure.in	2017-01-11 11:13:26.073974219 -0500
-@@ -173,6 +173,9 @@
-   or1k-*-* | or1knd-*-* )
- 	AC_CONFIG_SUBDIRS([or1k])
+ 
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/configure.in newlib-4.1.0-zip/libgloss/configure.in
+--- newlib-4.1.0/libgloss/configure.in	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/configure.in	2021-05-10 15:19:02.716837886 -0400
+@@ -185,6 +185,9 @@
+   nios2-*-*)
+ 	AC_CONFIG_SUBDIRS([nios2])
  	;;
 +  zip*)
 +	AC_CONFIG_SUBDIRS([zip])
@@ -189,10 +215,10 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/configure.in newlib-2.5.0-zip
  esac
  
  dnl For now, don't bother configuring testsuite
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-2.5.0-zip/libgloss/libnosys/configure.in
---- newlib-2.5.0/libgloss/libnosys/configure.in	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/libnosys/configure.in	2017-01-13 12:27:41.898876845 -0500
-@@ -81,6 +81,8 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/libnosys/configure.in newlib-4.1.0-zip/libgloss/libnosys/configure.in
+--- newlib-4.1.0/libgloss/libnosys/configure.in	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/libnosys/configure.in	2021-05-10 15:20:16.921031109 -0400
+@@ -85,6 +85,8 @@
  	;;
    z8k-*-*)
  	;;
@@ -201,9 +227,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/libnosys/configure.in newlib-
    *)
  	AC_DEFINE(MISSING_SYSCALL_NAMES)
  	;;
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/libgloss/zip/board.h
---- newlib-2.5.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/board.h	2020-01-23 16:48:05.857847906 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/board.h newlib-4.1.0-zip/libgloss/zip/board.h
+--- newlib-4.1.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/board.h	2020-01-23 16:48:05.857847906 -0500
 @@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -424,9 +450,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/board.h newlib-2.5.0-zip/
 +#define	SYSPIC_UARTTXF	SYSPIC(8)
 +#define	SYSPIC_UARTRXF	SYSPIC(9)
 +#endif	// BOARD_H
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h
---- newlib-2.5.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/boards/zipbasic.h	2020-01-23 16:48:05.857847906 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/boards/zipbasic.h newlib-4.1.0-zip/libgloss/zip/boards/zipbasic.h
+--- newlib-4.1.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/boards/zipbasic.h	2020-01-23 16:48:05.857847906 -0500
 @@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -647,9 +673,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/boards/zipbasic.h newlib-
 +#define	SYSPIC_UARTTXF	SYSPIC(8)
 +#define	SYSPIC_UARTRXF	SYSPIC(9)
 +#endif	// BOARD_H
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0-zip/libgloss/zip/bootloader.h
---- newlib-2.5.0/libgloss/zip/bootloader.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/bootloader.h	2020-01-23 16:12:26.345174449 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/bootloader.h newlib-4.1.0-zip/libgloss/zip/bootloader.h
+--- newlib-4.1.0/libgloss/zip/bootloader.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/bootloader.h	2020-01-23 16:12:26.345174449 -0500
 @@ -0,0 +1,52 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -703,9 +729,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/bootloader.h newlib-2.5.0
 +		_bss_image_end[1];
 +
 +#endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure newlib-2.5.0-zip/libgloss/zip/configure
---- newlib-2.5.0/libgloss/zip/configure	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/configure	2017-01-26 07:40:47.545551439 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/configure newlib-4.1.0-zip/libgloss/zip/configure
+--- newlib-4.1.0/libgloss/zip/configure	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/configure	2017-01-26 07:40:47.545551439 -0500
 @@ -0,0 +1,3892 @@
 +#! /bin/sh
 +# Guess values for system-dependent variables and create Makefiles.
@@ -4599,9 +4625,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure newlib-2.5.0-zi
 +  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 +$as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 +fi
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0-zip/libgloss/zip/configure.in
---- newlib-2.5.0/libgloss/zip/configure.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/configure.in	2017-01-13 12:13:39.668316626 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/configure.in newlib-4.1.0-zip/libgloss/zip/configure.in
+--- newlib-4.1.0/libgloss/zip/configure.in	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/configure.in	2017-01-13 12:13:39.668316626 -0500
 @@ -0,0 +1,200 @@
 +# Copyright (c) 1995, 1996 Cygnus Support
 +#
@@ -4803,9 +4829,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/configure.in newlib-2.5.0
 +AC_OUTPUT
 +
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/libgloss/zip/crt0.c
---- newlib-2.5.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/crt0.c	2020-01-23 16:14:39.972214354 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/crt0.c newlib-4.1.0-zip/libgloss/zip/crt0.c
+--- newlib-4.1.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/crt0.c	2020-01-23 16:14:39.972214354 -0500
 @@ -0,0 +1,349 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5156,9 +5182,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/crt0.c newlib-2.5.0-zip/l
 +}
 +#endif
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-zip/libgloss/zip/Makefile.in
---- newlib-2.5.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/Makefile.in	2017-02-21 16:51:32.166122654 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/Makefile.in newlib-4.1.0-zip/libgloss/zip/Makefile.in
+--- newlib-4.1.0/libgloss/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/Makefile.in	2017-02-21 16:51:32.166122654 -0500
 @@ -0,0 +1,116 @@
 +# Copyright (c) 1998 Cygnus Support
 +#
@@ -5276,9 +5302,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/Makefile.in newlib-2.5.0-
 +
 +config.status: configure
 +	$(SHELL) config.status --recheck
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-zip/libgloss/zip/syscalls.c
---- newlib-2.5.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/syscalls.c	2020-01-23 16:17:08.043153235 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/syscalls.c newlib-4.1.0-zip/libgloss/zip/syscalls.c
+--- newlib-4.1.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/syscalls.c	2020-01-23 16:17:08.043153235 -0500
 @@ -0,0 +1,382 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5662,9 +5688,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/syscalls.c newlib-2.5.0-z
 +	return	prev;
 +}
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/libgloss/zip/udiv.c
---- newlib-2.5.0/libgloss/zip/udiv.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/udiv.c	2020-01-23 16:19:22.566189481 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/udiv.c newlib-4.1.0-zip/libgloss/zip/udiv.c
+--- newlib-4.1.0/libgloss/zip/udiv.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/udiv.c	2020-01-23 16:19:22.566189481 -0500
 @@ -0,0 +1,227 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5893,9 +5919,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/udiv.c newlib-2.5.0-zip/l
 +		r = -r;
 +	return r;
 +}
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/libgloss/zip/umod.c
---- newlib-2.5.0/libgloss/zip/umod.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/umod.c	2020-01-23 16:19:36.590089025 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/umod.c newlib-4.1.0-zip/libgloss/zip/umod.c
+--- newlib-4.1.0/libgloss/zip/umod.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/umod.c	2020-01-23 16:19:36.590089025 -0500
 @@ -0,0 +1,62 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5959,9 +5985,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/umod.c newlib-2.5.0-zip/l
 +	return r;
 +}
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip/libgloss/zip/zipcpu.c
---- newlib-2.5.0/libgloss/zip/zipcpu.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipcpu.c	2020-01-23 16:02:47.081352607 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.c newlib-4.1.0-zip/libgloss/zip/zipcpu.c
+--- newlib-4.1.0/libgloss/zip/zipcpu.c	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipcpu.c	2020-01-23 16:02:47.081352607 -0500
 @@ -0,0 +1,79 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6042,9 +6068,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.c newlib-2.5.0-zip
 +#endif
 +
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip/libgloss/zip/zipcpu.h
---- newlib-2.5.0/libgloss/zip/zipcpu.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipcpu.h	2020-01-23 16:19:54.373961640 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.h newlib-4.1.0-zip/libgloss/zip/zipcpu.h
+--- newlib-4.1.0/libgloss/zip/zipcpu.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipcpu.h	2020-01-23 16:19:54.373961640 -0500
 @@ -0,0 +1,89 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6135,9 +6161,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipcpu.h newlib-2.5.0-zip
 +#define	ASMFNSTR(A)	"\t.section\t.text\n\t.global\t" A "\n\t.type\t" A ",@function\n" A ":\n"
 +
 +#endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip/libgloss/zip/zipsys.h
---- newlib-2.5.0/libgloss/zip/zipsys.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/libgloss/zip/zipsys.h	2020-01-23 16:20:04.665887921 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipsys.h newlib-4.1.0-zip/libgloss/zip/zipsys.h
+--- newlib-4.1.0/libgloss/zip/zipsys.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipsys.h	2020-01-23 16:20:04.665887921 -0500
 @@ -0,0 +1,135 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -6274,15 +6300,15 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/libgloss/zip/zipsys.h newlib-2.5.0-zip
 +#endif
 +
 +#endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/Makefile.in newlib-2.5.0-zip/Makefile.in
---- newlib-2.5.0/Makefile.in	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/Makefile.in	2017-01-25 16:25:56.402031673 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/Makefile.in newlib-4.1.0-zip/Makefile.in
+--- newlib-4.1.0/Makefile.in	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/Makefile.in	2021-05-10 15:20:38.501089399 -0400
 @@ -364,7 +364,7 @@
  
  # Flags to pass to stage2 and later makes.  They are defined
  # here so that they can be overridden by Makefile fragments.
 -BOOT_CFLAGS= -g -O2
-+BOOT_CFLAGS=-O3
++BOOT_CFLAGS= -O3
  BOOT_LDFLAGS=
  BOOT_ADAFLAGS= -gnatpg
  
@@ -6295,22 +6321,21 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/Makefile.in newlib-2.5.0-zip/Makefile.
  
  FLAGS_FOR_TARGET = @FLAGS_FOR_TARGET@
  SYSROOT_CFLAGS_FOR_TARGET = @SYSROOT_CFLAGS_FOR_TARGET@
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/acconfig.h newlib-2.5.0-zip/newlib/acconfig.h
---- newlib-2.5.0/newlib/acconfig.h	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/acconfig.h	2017-01-11 21:52:21.443297363 -0500
-@@ -56,7 +56,7 @@
- #undef  _HAVE_CC_INHIBIT_LOOP_TO_LIBCALL
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/acconfig.h newlib-4.1.0-zip/newlib/acconfig.h
+--- newlib-4.1.0/newlib/acconfig.h	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/acconfig.h	2021-05-10 15:21:07.109169112 -0400
+@@ -60,6 +60,7 @@
  
  /* Define if the platform long double type is equal to double.  */
--#undef  _LDBL_EQ_DBL
-+#define  _LDBL_EQ_DBL
+ #undef  _LDBL_EQ_DBL
++#define _LDBL_EQ_DBL
   
  /* Define if ivo supported in streamio.  */
  #undef _FVWRITE_IN_STREAMIO
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip/newlib/configure.host
---- newlib-2.5.0/newlib/configure.host	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/configure.host	2018-03-22 19:19:26.894978411 -0400
-@@ -310,6 +310,9 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/configure.host newlib-4.1.0-zip/newlib/configure.host
+--- newlib-4.1.0/newlib/configure.host	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/configure.host	2021-05-29 12:09:48.019833233 -0400
+@@ -370,6 +370,9 @@
    z8k)
  	machine_dir=z8k
  	;;
@@ -6320,19 +6345,17 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    spu)
  	stdio_dir=
  	libm_machine_dir=spu
-@@ -565,6 +568,11 @@
+@@ -633,6 +636,9 @@
    z8k-*-coff)
  	sys_dir=z8ksim
  	;;
 +  zip*)
-+#	sys_dir=zip	# But ... I don't have a directory in newlib/libc/sys
 +	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED "
-+#        have_crt0="yes"
 +	;;
  esac
  
  # Host specific flag settings -- usually for features that are not
-@@ -851,6 +859,9 @@
+@@ -929,6 +935,9 @@
    z8k-*-*)
  	syscall_dir=syscalls
  	;;
@@ -6342,41 +6365,41 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/configure.host newlib-2.5.0-zip
    *)
  	newlib_cflags="${newlib_cflags} -DMISSING_SYSCALL_NAMES"
  	syscall_dir=
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/include/machine/setjmp.h newlib-2.5.0-zip/newlib/libc/include/machine/setjmp.h
---- newlib-2.5.0/newlib/libc/include/machine/setjmp.h	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/include/machine/setjmp.h	2017-02-06 17:42:10.748982467 -0500
-@@ -349,6 +349,11 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/include/machine/setjmp.h newlib-4.1.0-zip/newlib/libc/include/machine/setjmp.h
+--- newlib-4.1.0/newlib/libc/include/machine/setjmp.h	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/include/machine/setjmp.h	2021-05-10 15:24:04.025659719 -0400
+@@ -9,6 +9,11 @@
  #define _JBTYPE unsigned long
  #endif
  
-+#ifdef __ZIPCPU__
-+#define _JBLEN 10
-+#define _JBTYPE unsigned int
++#ifdef	__ZIPCPU__
++#define	_JBLEN 10
++#define	_JBTYPE	unsigned int
 +#endif
 +
- #ifdef __RX__
- #define _JBLEN 0x44
- #endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/include/sys/config.h newlib-2.5.0-zip/newlib/libc/include/sys/config.h
---- newlib-2.5.0/newlib/libc/include/sys/config.h	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/include/sys/config.h	2017-01-12 14:45:33.624732766 -0500
-@@ -216,7 +216,11 @@
+ #if defined(__arm__) || defined(__thumb__)
+ /*
+  * All callee preserved registers:
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/include/sys/config.h newlib-4.1.0-zip/newlib/libc/include/sys/config.h
+--- newlib-4.1.0/newlib/libc/include/sys/config.h	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/include/sys/config.h	2021-05-10 15:50:14.245860263 -0400
+@@ -221,7 +221,11 @@
  /* End of block that should be kept in sync with GCC's limits.h.  */
  
  #ifndef _POINTER_INT
 -#define _POINTER_INT long
++// #define _POINTER_INT long
 +typedef	int	__attribute__((mode(pointer)))	_POINTER_INT;
-+#define _POINTER_INT _POINTER_INT
++#define	_POINTER_INT	_POINTER_INT
 +typedef	unsigned int	__attribute__((mode(pointer)))	POINTER_UINT;
 +#define	POINTER_UINT	POINTER_UINT
-+// #define _POINTER_INT long
  #endif
  
  #ifdef __frv__
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/configure newlib-2.5.0-zip/newlib/libc/machine/configure
---- newlib-2.5.0/newlib/libc/machine/configure	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/configure	2017-01-13 18:05:52.580953443 -0500
-@@ -837,7 +837,8 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/configure newlib-4.1.0-zip/newlib/libc/machine/configure
+--- newlib-4.1.0/newlib/libc/machine/configure	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/configure	2021-05-10 15:26:01.133982309 -0400
+@@ -843,7 +843,8 @@
  x86_64
  xc16x
  xstormy16
@@ -6386,7 +6409,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/configure newlib-2
  
  # Initialize some variables set by options.
  ac_init_help=
-@@ -11939,6 +11940,8 @@
+@@ -11972,6 +11973,8 @@
   ;;
  	z8k) subdirs="$subdirs z8k"
   ;;
@@ -6395,20 +6418,20 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/configure newlib-2
    esac;
  fi
  
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/configure.in newlib-2.5.0-zip/newlib/libc/machine/configure.in
---- newlib-2.5.0/newlib/libc/machine/configure.in	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/configure.in	2017-01-13 08:03:54.564740952 -0500
-@@ -77,6 +77,7 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/configure.in newlib-4.1.0-zip/newlib/libc/machine/configure.in
+--- newlib-4.1.0/newlib/libc/machine/configure.in	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/configure.in	2021-05-10 15:26:23.322043239 -0400
+@@ -82,6 +82,7 @@
  	xc16x) AC_CONFIG_SUBDIRS(xc16x) ;;
  	xstormy16) AC_CONFIG_SUBDIRS(xstormy16) ;;
  	z8k) AC_CONFIG_SUBDIRS(z8k) ;;
-+	zip) AC_CONFIG_SUBDIRS(zip) ;;
++	zip*) AC_CONFIG_SUBDIRS(zip) ;;
    esac;
  fi
  
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/configure newlib-2.5.0-zip/newlib/libc/machine/zip/configure
---- newlib-2.5.0/newlib/libc/machine/zip/configure	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/configure	2017-01-13 18:03:21.075858391 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/configure newlib-4.1.0-zip/newlib/libc/machine/zip/configure
+--- newlib-4.1.0/newlib/libc/machine/zip/configure	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/configure	2017-01-13 18:03:21.075858391 -0500
 @@ -0,0 +1,4748 @@
 +#! /bin/sh
 +# Guess values for system-dependent variables and create Makefiles.
@@ -11158,9 +11181,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/configure newl
 +$as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 +fi
 +
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/configure.in newlib-2.5.0-zip/newlib/libc/machine/zip/configure.in
---- newlib-2.5.0/newlib/libc/machine/zip/configure.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/configure.in	2017-01-13 09:07:32.069910859 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/configure.in newlib-4.1.0-zip/newlib/libc/machine/zip/configure.in
+--- newlib-4.1.0/newlib/libc/machine/zip/configure.in	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/configure.in	2017-01-13 09:07:32.069910859 -0500
 @@ -0,0 +1,14 @@
 +dnl This is the newlib/libc/machine/or1k configure.in file.
 +dnl Process this file with autoconf to produce a configure script.
@@ -11176,9 +11199,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/configure.in n
 +
 +AC_CONFIG_FILES([Makefile])
 +AC_OUTPUT
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h newlib-2.5.0-zip/newlib/libc/machine/zip/ieeefp.h
---- newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/ieeefp.h	2020-01-23 16:07:26.331337305 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h newlib-4.1.0-zip/newlib/libc/machine/zip/ieeefp.h
+--- newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/ieeefp.h	2020-01-23 16:07:26.331337305 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -11225,9 +11248,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/ieeefp.h newli
 +#endif
 +
 +#endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/Makefile.am newlib-2.5.0-zip/newlib/libc/machine/zip/Makefile.am
---- newlib-2.5.0/newlib/libc/machine/zip/Makefile.am	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/Makefile.am	2017-01-13 09:10:39.033134510 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/Makefile.am newlib-4.1.0-zip/newlib/libc/machine/zip/Makefile.am
+--- newlib-4.1.0/newlib/libc/machine/zip/Makefile.am	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/Makefile.am	2017-01-13 09:10:39.033134510 -0500
 @@ -0,0 +1,16 @@
 +## Process this file with automake to generate Makefile.in
 +
@@ -11245,9 +11268,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/Makefile.am ne
 +
 +ACLOCAL_AMFLAGS = -I ../../.. -I ../../../..
 +CONFIG_STATUS_DEPENDENCIES = $(newlib_basedir)/configure.host
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/Makefile.in newlib-2.5.0-zip/newlib/libc/machine/zip/Makefile.in
---- newlib-2.5.0/newlib/libc/machine/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/Makefile.in	2017-01-13 09:11:20.927649493 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/Makefile.in newlib-4.1.0-zip/newlib/libc/machine/zip/Makefile.in
+--- newlib-4.1.0/newlib/libc/machine/zip/Makefile.in	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/Makefile.in	2017-01-13 09:11:20.927649493 -0500
 @@ -0,0 +1,440 @@
 +# Makefile.in generated by automake 1.11.6 from Makefile.am.
 +# @configure_input@
@@ -11689,9 +11712,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/Makefile.in ne
 +# Tell versions [3.59,3.63) of GNU make to not export all variables.
 +# Otherwise a system limit (for SysV at least) may be exceeded.
 +.NOEXPORT:
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.h newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.h
---- newlib-2.5.0/newlib/libc/machine/zip/setjmp.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.h	2017-01-13 09:43:25.179164867 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.h newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.h
+--- newlib-4.1.0/newlib/libc/machine/zip/setjmp.h	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.h	2017-01-13 09:43:25.179164867 -0500
 @@ -0,0 +1,9 @@
 +#ifdef	__ZIPCPU__
 +
@@ -11702,9 +11725,9 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.h newli
 +typedef	_JBTYPE	jmp_buf[_JBLEN];
 +
 +#endif
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S
---- newlib-2.5.0/newlib/libc/machine/zip/setjmp.S	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/machine/zip/setjmp.S	2020-01-23 16:07:31.563299567 -0500
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.S newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.S
+--- newlib-4.1.0/newlib/libc/machine/zip/setjmp.S	1969-12-31 19:00:00.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.S	2020-01-23 16:07:31.563299567 -0500
 @@ -0,0 +1,68 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -11774,21 +11797,20 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/machine/zip/setjmp.S newli
 +	LW	36(r1),sp
 +	LDI	1,R1
 +	RETN
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c
---- newlib-2.5.0/newlib/libc/stdlib/mallocr.c	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/stdlib/mallocr.c	2017-01-12 15:02:26.321526300 -0500
-@@ -303,7 +303,10 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/stdlib/mallocr.c newlib-4.1.0-zip/newlib/libc/stdlib/mallocr.c
+--- newlib-4.1.0/newlib/libc/stdlib/mallocr.c	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/stdlib/mallocr.c	2021-05-10 15:49:31.601749361 -0400
+@@ -303,7 +303,9 @@
  
  #include <reent.h>
  
 +#ifndef	POINTER_UINT
  #define POINTER_UINT unsigned _POINTER_INT
 +#endif
-+
  #define SEPARATE_OBJECTS
  #define HAVE_MMAP 0
  #define MORECORE(size) _sbrk_r(reent_ptr, (size))
-@@ -1419,7 +1422,7 @@
+@@ -1419,7 +1421,7 @@
  
  /* Check if m has acceptable alignment */
  
@@ -11797,7 +11819,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.
  
  
  
-@@ -3064,7 +3067,7 @@
+@@ -3069,7 +3071,7 @@
  
    p = mem2chunk(m);
  
@@ -11806,7 +11828,7 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.
    {
  #if HAVE_MMAP
      if(chunk_is_mmapped(p))
-@@ -3085,7 +3088,7 @@
+@@ -3090,7 +3092,7 @@
        this is always possible.
      */
  
@@ -11815,20 +11837,20 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/stdlib/mallocr.c newlib-2.
      if ((long)(brk - (char*)(p)) < (long)MINSIZE) brk = brk + alignment;
  
      newp = (mchunkptr)brk;
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/xdr/xdr_mem.c newlib-2.5.0-zip/newlib/libc/xdr/xdr_mem.c
---- newlib-2.5.0/newlib/libc/xdr/xdr_mem.c	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/xdr/xdr_mem.c	2017-01-12 15:11:22.933739845 -0500
-@@ -108,7 +108,7 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/xdr/xdr_mem.c newlib-4.1.0-zip/newlib/libc/xdr/xdr_mem.c
+--- newlib-4.1.0/newlib/libc/xdr/xdr_mem.c	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/xdr/xdr_mem.c	2021-05-10 15:29:51.410611819 -0400
+@@ -107,7 +107,7 @@
  	enum xdr_op op)
  {
    xdrs->x_op = op;
 -  xdrs->x_ops = ((unsigned long)addr & (sizeof (int32_t) - 1))
-+  xdrs->x_ops = ((POINTER_UINT)addr & (sizeof (int32_t) - 1))
++  xdrs->x_ops = ((POINTER_UINT long)addr & (sizeof (int32_t) - 1))
      ? (struct xdr_ops *)&xdrmem_ops_unaligned
      : (struct xdr_ops *)&xdrmem_ops_aligned;
    xdrs->x_private = xdrs->x_base = addr;
-@@ -212,7 +212,7 @@
-         XDR * xdrs)
+@@ -203,7 +203,7 @@
+ xdrmem_getpos (XDR * xdrs)
  {
    /* XXX w/64-bit pointers, u_int not enough! */
 -  return (u_int) ((u_long) xdrs->x_private - (u_long) xdrs->x_base);
@@ -11836,10 +11858,10 @@ diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/xdr/xdr_mem.c newlib-2.5.0
  }
  
  static bool_t
-diff -Naur '--exclude=*.swp' newlib-2.5.0/newlib/libc/xdr/xdr_sizeof.c newlib-2.5.0-zip/newlib/libc/xdr/xdr_sizeof.c
---- newlib-2.5.0/newlib/libc/xdr/xdr_sizeof.c	2016-12-22 21:33:54.000000000 -0500
-+++ newlib-2.5.0-zip/newlib/libc/xdr/xdr_sizeof.c	2017-01-12 15:10:25.306280391 -0500
-@@ -88,7 +88,7 @@
+diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/xdr/xdr_sizeof.c newlib-4.1.0-zip/newlib/libc/xdr/xdr_sizeof.c
+--- newlib-4.1.0/newlib/libc/xdr/xdr_sizeof.c	2020-12-18 18:50:49.000000000 -0500
++++ newlib-4.1.0-zip/newlib/libc/xdr/xdr_sizeof.c	2021-05-10 15:30:06.254652185 -0400
+@@ -83,7 +83,7 @@
      return NULL;
    if (xdrs->x_op != XDR_ENCODE)
      return NULL;

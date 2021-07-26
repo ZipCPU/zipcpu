@@ -99,11 +99,13 @@ module	wbdblpriarb(i_clk, i_reset,
 	parameter	[0:0]		OPT_ZERO_ON_IDLE = 1'b0;
 	//
 	//
+`ifdef	FORMAL
 	parameter			F_LGDEPTH = 3;
 	//
 	//
 	parameter	F_MAX_STALL = 0;
 	parameter	F_MAX_ACK_DELAY=0;
+`endif
 	//
 	// Wishbone doesn't use an i_ce signal.  While it could, they dislike
 	// what it would (might) do to the synchronous reset signal, i_reset.

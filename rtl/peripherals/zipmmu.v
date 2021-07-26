@@ -566,7 +566,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// Second clock: know which buffer entry this belong in.
 	// If we don't already know, then the pipeline must be stalled for a
 	// while ...
-	genvar k, s;
+	genvar k;
 	generate
 	for(k=0; k<TBL_SIZE; k = k + 1)
 		assign r_tlb_match[k] =

@@ -2,27 +2,48 @@
 *.smt2
 *.yslog
 *.blif
-zipcpu
 old
+
+## Wrappers
+zipaxi_*/
+zipbones_*/
+zipaxil_*/
+
+## Core
+zipcore_*/
 zipcpu_*/
+
+## Fetch
+axilfetch_*/
+axiicache_*/
+dblfetch_*/
+pfcache_*/
+prefetch
+
+## Memory
 dcache_*/
-div
+axiops_*/
+axilops_*/
+axilpipe_*/
+axidcache_*/
+axipipe_*/
 memops_*/
-idecode_*/
 pipemem_*/
-wbdmac
+
+## Peripherals
+axilperiphs_*/
 zipcounter
 ziptimer
 zipjiffies
-icontrol_prf
-icontrol_cvr
+icontrol_*/
+wbdmac
 wbwatchdog
+
+## Other
+div
+idecode_*/
 busdelay
 cpuops
-dblfetch_*/
-pfcache_prf
-pfcache_cvr
-prefetch
 wbdblpriarb
 wbpriarbiter
 zipmmu

@@ -102,9 +102,11 @@ module	dcache(i_clk, i_reset, i_clear, i_pipe_stb, i_lock,
 	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
 	localparam	CS = LGCACHELEN; // Number of bits in a cache address
 	localparam	LS = CS-LGNLINES; // Bits to spec position w/in cline
+`ifdef	FORMAL
 	parameter	F_LGDEPTH=1 + (((!OPT_PIPE)||(LS > OPT_FIFO_DEPTH))
 					? LS : OPT_FIFO_DEPTH);
-	localparam	LGAUX = 3; // log_2 of the maximum number of piped data
+`endif
+	// localparam	LGAUX = 3; // log_2 of the maximum number of piped data
 	localparam	DW = 32; // Bus data width
 	localparam	DP = OPT_FIFO_DEPTH;
 	//
