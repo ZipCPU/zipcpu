@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipcpu_tb.cpp
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A bench simulator for the CPU.  Eventually, you should be
@@ -14,9 +14,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2018, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -31,14 +31,14 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
@@ -57,12 +57,24 @@
 #include "verilated_cov.h"
 #endif
 
+// ZipBones includes
 #ifdef	ZIPBONES
 #include "Vzipbones.h"
+#ifdef	ROOT_VERILATOR
+#include "Vzipbones___024root.h"
+#endif
+
 #define	SIMCLASS	Vzipbones
 #else
+
+// ZipSystem includes
 #define	ZIPSYSTEM
 #include "Vzipsystem.h"
+
+#ifdef	ROOT_VERILATOR
+#include "Vzipsystem___024root.h"
+#endif
+
 #define	SIMCLASS	Vzipsystem
 #endif
 
@@ -104,9 +116,24 @@
 // or
 //	zipbones__DOT__...
 
-#ifdef	NEW_VERILATOR
+#ifdef	ROOT_VERILATOR
+
+  #ifdef ZIPBONES
+     #ifdef	VM_COVERAGE
+      #define	VVAR(A)	rootp->zipbones__DOT____Vtogcov_ ## A
+     #else
+      #define	VVAR(A)	rootp->zipbones__DOT_ ## A
+     #endif // VM_COVERAGE
+   #else // Not ZIPBONES, but still under ROOT_VERILATOR
+     #ifdef	VM_COVERAGE
+      #define	VVAR(A)	rootp->zipsystem__DOT____Vtogcov_ ## A
+     #else
+      #define	VVAR(A)	rootp->zipsystem__DOT_ ## A
+     #endif // VM_COVERAGE
+   #endif // ZIPBONES
+
+#elif	defined(NEW_VERILATOR)
 #ifdef	ZIPBONES
-#define	VVAR(A)	zipbones__DOT_ ## A
  #ifdef	VM_COVERAGE
   #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
  #else
@@ -277,8 +304,13 @@
 #define	op_break	VVAR(_thecpu__DOT__r_op_break)
 #define	op_F		VVAR(_thecpu__DOT__op_F)
 //
-#define	regset		VVAR(_thecpu__DOT__regset)
-#define	cpu_regs	regset
+#ifdef	ROOT_VERILATOR
+  #define	regset		VVAR(_thecpu__DOT__regset.m_storage)
+  #define	cpu_regs	VVAR(_thecpu__DOT__regset.m_storage)
+#else
+  #define	regset		VVAR(_thecpu__DOT__regset)
+  #define	cpu_regs	VVAR(_thecpu__DOT__regset)
+#endif
 
 
 #ifdef	OPT_CIS
@@ -1066,7 +1098,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				get_alu_pc(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
@@ -1083,7 +1115,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				get_alu_pc(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
@@ -1450,7 +1482,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				get_alu_pc(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
@@ -1467,7 +1499,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				get_alu_pc(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
@@ -1719,7 +1751,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				get_alu_pc(),
 #ifdef	OPT_CIS
 				m_core->alu_phase,
 #else
@@ -1750,10 +1782,10 @@ public:
 				m_core->wr_gpreg_vl,
 				m_core->wr_spreg_vl,
 				(m_core->alu_pc_valid)?"PCV":"   ",
-				alu_pc());
+				get_alu_pc());
 
 			fprintf(m_dbgfp, "ALU-PC: %08x %s %s\n",
-				alu_pc(),
+				get_alu_pc(),
 				(m_core->alu_pc_valid)?"VALID":"",
 				(m_core->alu_gie)?"ALU-GIE":"");
 		}
@@ -1800,7 +1832,7 @@ public:
 			unsigned long iticks = m_tickcount - m_last_instruction_tickcount;
 			if (m_profile_fp) {
 				unsigned buf[2];
-				buf[0] = alu_pc();
+				buf[0] = get_alu_pc();
 				buf[1] = iticks;
 				fwrite(buf, sizeof(unsigned), 2, m_profile_fp);
 			}
@@ -1830,7 +1862,7 @@ public:
 		return (m_core->dcdB);
 	}
 
-	bool	op_valid(void) {
+	bool	get_op_valid(void) {
 		return (m_core->op_valid !=0);
 	}
 
@@ -1844,11 +1876,11 @@ public:
 	}
 
 	bool	mem_stalled(void) {
-		bool	a, b, c, d, wr_write_cc, wr_write_pc, op_gie;
+		bool	a, b, c, d, wr_write_cc, wr_write_pc, opn_gie;
 
 		wr_write_cc=((m_core->wr_reg_id&0x0f)==0x0e);
 		wr_write_pc=((m_core->wr_reg_id&0x0f)==0x0f);
-		op_gie = m_core->op_gie;
+		opn_gie = m_core->op_gie;
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
 		//a = m_core->v__DOT__thecpu__DOT__mem_pipe_stalled;
@@ -1860,13 +1892,13 @@ public:
 #endif
 		d = ((wr_write_pc)||(wr_write_cc));
 		c = ((m_core->wr_reg_ce)
-			&&(((m_core->wr_reg_id&0x010)?true:false)==op_gie)
+			&&(((m_core->wr_reg_id&0x010)?true:false)==opn_gie)
 			&&d);
 		d =(m_core->op_valid_mem)&&((a)||(b)||(c));
 		return ((!m_core->master_ce)||(d));
 	}
 
-	unsigned	alu_pc(void) {
+	unsigned	get_alu_pc(void) {
 		/*
 		unsigned	r = op_pc();
 		if (m_core->op_valid)

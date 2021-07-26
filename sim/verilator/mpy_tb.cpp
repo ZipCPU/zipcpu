@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	mpy_tb.cpp
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Bench testing for the multiply ALU instructions used within the
@@ -13,9 +13,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -30,14 +30,14 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <signal.h>
 #include <time.h>
 #include <unistd.h>
@@ -50,7 +50,11 @@
 #include "verilated.h"
 #include "Vcpuops.h"
 
-#ifdef	NEW_VERILATOR
+#ifdef	ROOT_VERILATOR
+#include "Vcpuops___024root.h"
+
+#define	VVAR(A)	rootp->cpuops__DOT_ ## A
+#elif	defined(NEW_VERILATOR)
 #define	VVAR(A)	cpuops__DOT_ ## A
 #else
 #define	VVAR(A)	v__DOT_ ## A

@@ -192,20 +192,20 @@ zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
 	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
 
-div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
+div_tb: $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
 
-mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
+mpy_tb: $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
 
-zipmmu_tb: zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
+zipmmu_tb: $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
 
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
 pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
 
-pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
+pdump: $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
 	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
 
