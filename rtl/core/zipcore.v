@@ -4616,7 +4616,7 @@ module	zipcore #(
 	end else if (i_mem_busy || div_busy || alu_busy || fpu_busy)
 	begin
 		assert(o_clken);
-	end else if ($past(i_interrupt && !i_halt))
+	end else if ($past((i_interrupt || pending_interrupt) && !i_halt))
 	begin
 		assert(o_clken);
 	end else if (!sleep && !r_halted)
