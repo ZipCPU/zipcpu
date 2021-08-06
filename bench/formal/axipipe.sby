@@ -17,7 +17,7 @@ bmcu64  bmc opt_realignemnt bus64 opt_lock
 
 [options]
 prf: mode prove
-prfu: depth 17
+prf: depth 10
 bmc: mode bmc
 # bmc:  depth 13
 bmcu: depth 40

@@ -401,10 +401,17 @@ module	axiops #(
 	else if (!M_AXI_BREADY && !M_AXI_RREADY && (!OPT_LOWPOWER || i_stb))
 	begin
 		casez(i_op[2:1])
-		2'b0?: awsize <= 3'b010;
-		2'b10: awsize <= 3'b001;
-		2'b11: awsize <= 3'b000;
-		// default: begin end
+		2'b0?: begin
+			awsize <= 3'b010;	// Word
+			if ((|i_addr[1:0]) && !w_misaligned)
+				awsize <= AXILSB[2:0];
+			end
+		2'b10: begin
+			awsize <= 3'b001;	// Half-word
+			if (i_addr[0] && !w_misaligned)
+				awsize <= AXILSB[2:0];
+			end
+		2'b11: awsize <= 3'b000;	// Byte
 		endcase
 
 		if (SWAP_WSTRB)
@@ -1620,7 +1627,7 @@ module	axiops #(
 		assert(!r_lock);
 
 	always @(posedge S_AXI_ACLK)
-	if (S_AXI_ARESETN && $past(S_AXI_ARESETN)
+	if (S_AXI_ARESETN && $past(S_AXI_ARESETN) && !$past(i_cpu_reset)
 			&& $past(M_AXI_BVALID && r_lock))
 	begin
 		if ($past(M_AXI_BRESP == OKAY))
@@ -1729,10 +1736,12 @@ module	axiops #(
 		assume(i_addr == f_exlock_addr);
 		assume(faxi_ex_state == 2'b10);
 
-		casez(i_op[2:1])
-		2'b0?: assume(f_exlock_size == 3'b010);
-		2'b10: assume(f_exlock_size == 3'b001);
-		2'b11: assume(f_exlock_size == 3'b000);
+		if (SWAP_WSTRB)
+			assert(f_exlock_size == DSZ);
+		else casez(i_op[2:1])
+		2'b0?: assume(f_exlock_size == 3'b010);	// Word
+		2'b10: assume(f_exlock_size == 3'b001);	// Half-word
+		2'b11: assume(f_exlock_size == 3'b000);	// Byte
 		endcase
 	end
 
@@ -1749,26 +1758,27 @@ module	axiops #(
 	if (i_stb && i_lock)
 		assume(!i_cpu_reset);
 
-always @(*)
-assume(S_AXI_ARESETN != i_cpu_reset);
+	always @(posedge i_clk)
+	if ($past(i_cpu_reset))
+		assume((faxi_ex_state == 2'b00) || (faxi_ex_state == 2'b01));
 	// }}}
 `endif
 // }}}
 endmodule
-// yosys -p 'read -sv axiops.v ; synth_xiling -flatten -top axiops'
+// yosys -p 'read -sv axiops.v ; synth_xilinx -flatten -top axiops'
 //
 // Usage (from yosys):
-//			(!ZOI)		(ZOI)
-//	Cells		 877		1029
-//	  FDRE,FDSE	 216		 209
-//	  LUT1		   5		   2
-//	  LUT2		  33		  42
-//	  LUT3		  84		  11
-//	  LUT4		  45		  30
-//	  LUT5		  54		  92
-//	  LUT6		  35		 158
-//	  MUX7		  29		  34
-//	  MUX8		   8
-//	Estimated LCs:	 218		 292
+//			(!LOWPOWER)	LOWPOWER,AW=DW=32,LOCK,!ALGNERR
+//	Cells		 932		1076
+//	  FDRE,FDSE	 216		 217
+//	  LUT1		   6		   4
+//	  LUT2		  53		  32
+//	  LUT3		  57		  38
+//	  LUT4		  54		  76
+//	  LUT5		  67		  92
+//	  LUT6		  70		 123
+//	  MUX7		  25		  37
+//	  MUX8		   5		   1
+//	Estimated LCs:	 248		 329
 //
 //

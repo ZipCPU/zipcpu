@@ -2,7 +2,7 @@
 ################################################################################
 ##
 ## Filename:	vversion.sh
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	To determine whether or not the verilator prefix for internal
@@ -14,11 +14,11 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2017, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2017-2021, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
-## modify it under the terms of  the GNU General Public License as published
+## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
 ## your option) any later version.
 ##
@@ -31,15 +31,15 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
-##
 ##
 ################################################################################
 ##
-##
-if [[ -x ${VERILATOR_ROOT}/bin/verilator ]];
+## }}}
+if [[ x${VERILATOR_ROOT} != "x" && -x ${VERILATOR_ROOT}/bin/verilator ]];
 then
   export VERILATOR=${VERILATOR_ROOT}/bin/verilator
 fi
@@ -58,7 +58,19 @@ VVER=`echo ${VVERLINE} | cut -d " " -f 2`
 LATER=`echo $VVER \>= 3.9 | bc`
 if [[ $LATER > 0 ]];
 then
-  echo "-DNEW_VERILATOR"
+  RLATER=`echo $VVER \>= 4.2 | bc`
+  if [[ $RLATER > 0 ]];
+  then
+    ## I'm not quite certain when Verilator started requiring a further
+    ## subreference through rootp-> and including the Vdesgin___024root.h
+    ## include file.  My best guess is that it is Verilator 4.2, but I don't
+    ## know that for certain.  What I do know is that on the development
+    ## verrsion 4.211, it requires different semantics to peek at register
+    ## names.  This is our attempt to capture that dependency.
+    echo "-DROOT_VERILATOR"
+  else
+    echo "-DNEW_VERILATOR"
+  fi
 else
   echo "-DOLD_VERILATOR"
 fi

@@ -1,12 +1,10 @@
 [*]
-[*] GTKWave Analyzer v3.3.108 (w)1999-2020 BSI
-[*] Tue Mar 16 00:30:57 2021
+[*] GTKWave Analyzer v3.3.103 (w)1999-2019 BSI
+[*] Thu Aug  5 23:01:05 2021
 [*]
-[dumpfile_mtime] "Tue Mar 16 00:30:42 2021"
-[dumpfile_size] 36533
 [timestart] 0
 [size] 1686 895
-[pos] -1 -1
+[pos] 2763 -593
 *-4.895500 26 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [sst_width] 348
 [signals_width] 246
@@ -18,12 +16,11 @@ axiops.S_AXI_ARESETN
 axiops.i_cpu_reset
 @200
 -
-@c00201
+@800200
 -CPU
 @28
 axiops.i_stb
 @22
-axiops.i_addr[29:0]
 axiops.i_data[31:0]
 @28
 [color] 2
@@ -31,7 +28,6 @@ axiops.i_lock
 axiops.i_op[2:0]
 @22
 axiops.i_oreg[4:0]
-axiops.i_restart_pc[29:0]
 @200
 -
 @28
@@ -42,7 +38,7 @@ axiops.o_err
 @22
 axiops.o_result[31:0]
 axiops.o_wreg[4:0]
-@1401201
+@1000200
 -CPU
 @200
 -
@@ -56,80 +52,147 @@ axiops.misaligned_request
 axiops.misaligned_response_pending
 @22
 axiops.faxi_wr_pending[8:0]
-@c00200
+@800201
 -AXI Write
-@28
+@29
+[color] 2
 axiops.M_AXI_AWVALID
+[color] 3
 axiops.M_AXI_AWREADY
+[color] 2
 axiops.M_AXI_AWID
-@22
-axiops.M_AXI_AWADDR[29:0]
+@23
+[color] 2
 axiops.M_AXI_AWLEN[7:0]
-@28
+@29
+[color] 2
 axiops.M_AXI_AWBURST[1:0]
+[color] 2
 axiops.M_AXI_AWSIZE[2:0]
+[color] 2
 axiops.M_AXI_AWLOCK
-@22
+@23
+[color] 2
 axiops.M_AXI_AWCACHE[3:0]
-@28
+@29
+[color] 2
 axiops.M_AXI_AWPROT[2:0]
-@22
+@23
+[color] 2
 axiops.M_AXI_AWQOS[3:0]
-@200
+@201
 -
-@28
+@29
+[color] 2
 axiops.M_AXI_WVALID
+[color] 3
 axiops.M_AXI_WREADY
-@22
+@23
+[color] 2
 axiops.M_AXI_WDATA[31:0]
+[color] 2
 axiops.M_AXI_WSTRB[3:0]
-@28
+@29
+[color] 2
 axiops.M_AXI_WLAST
-@200
+@201
 -
-@28
+@29
+[color] 3
 axiops.M_AXI_BVALID
+[color] 2
 axiops.M_AXI_BREADY
+[color] 3
 axiops.M_AXI_BID
+[color] 3
 axiops.M_AXI_BRESP[1:0]
-@1401200
+@1000201
 -AXI Write
-@22
+@c00022
 axiops.next_wdata[31:0]
+@28
+(0)axiops.next_wdata[31:0]
+(1)axiops.next_wdata[31:0]
+(2)axiops.next_wdata[31:0]
+(3)axiops.next_wdata[31:0]
+(4)axiops.next_wdata[31:0]
+(5)axiops.next_wdata[31:0]
+(6)axiops.next_wdata[31:0]
+(7)axiops.next_wdata[31:0]
+(8)axiops.next_wdata[31:0]
+(9)axiops.next_wdata[31:0]
+(10)axiops.next_wdata[31:0]
+(11)axiops.next_wdata[31:0]
+(12)axiops.next_wdata[31:0]
+(13)axiops.next_wdata[31:0]
+(14)axiops.next_wdata[31:0]
+(15)axiops.next_wdata[31:0]
+(16)axiops.next_wdata[31:0]
+(17)axiops.next_wdata[31:0]
+(18)axiops.next_wdata[31:0]
+(19)axiops.next_wdata[31:0]
+(20)axiops.next_wdata[31:0]
+(21)axiops.next_wdata[31:0]
+(22)axiops.next_wdata[31:0]
+(23)axiops.next_wdata[31:0]
+(24)axiops.next_wdata[31:0]
+(25)axiops.next_wdata[31:0]
+(26)axiops.next_wdata[31:0]
+(27)axiops.next_wdata[31:0]
+(28)axiops.next_wdata[31:0]
+(29)axiops.next_wdata[31:0]
+(30)axiops.next_wdata[31:0]
+(31)axiops.next_wdata[31:0]
+@1401200
+-group_end
+@22
 axiops.next_wstrb[3:0]
 @28
 axiops.swapaddr[1:0]
-@800200
+@c00200
 -AXI Read
 @28
+[color] 2
 axiops.M_AXI_ARVALID
+[color] 3
 axiops.M_AXI_ARREADY
+[color] 2
 axiops.M_AXI_ARID
 @22
-axiops.M_AXI_ARADDR[29:0]
+[color] 2
 axiops.M_AXI_ARLEN[7:0]
 @28
+[color] 2
 axiops.M_AXI_ARSIZE[2:0]
+[color] 2
 axiops.M_AXI_ARBURST[1:0]
+[color] 2
 axiops.M_AXI_ARLOCK
 @22
+[color] 2
 axiops.M_AXI_ARCACHE[3:0]
 @28
+[color] 2
 axiops.M_AXI_ARPROT[2:0]
 @22
+[color] 2
 axiops.M_AXI_ARQOS[3:0]
 @200
 -
 @28
+[color] 3
 axiops.M_AXI_RVALID
+[color] 2
 axiops.M_AXI_RREADY
+[color] 3
 axiops.M_AXI_RID
 @22
+[color] 3
 axiops.M_AXI_RDATA[31:0]
 @28
-axiops.M_AXI_RLAST[1:0]
+[color] 3
 axiops.M_AXI_RRESP[1:0]
-@1000200
+@1401200
 -AXI Read
 [pattern_trace] 1
 [pattern_trace] 0
