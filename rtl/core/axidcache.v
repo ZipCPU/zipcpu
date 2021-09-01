@@ -1326,8 +1326,9 @@ module	axidcache #(
 	if (S_AXI_ARESETN)
 	begin
 		if (state == DC_READC)
+		begin
 			assert(faxi_rd_nbursts == (M_AXI_ARVALID ? 0:1));
-		else if (state == DC_READS)
+		end else if (state == DC_READS)
 		begin
 			assert(faxi_rd_nbursts == faxi_rd_outstanding);
 			if (!OPT_PIPE)
@@ -1883,12 +1884,15 @@ module	axidcache #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (flushing)
+	begin
 		assert(!f_simple_return);
-	else if (state != DC_READS)
+	end else if (state != DC_READS)
+	begin
 		assert(!f_simple_return);
-	else if (f_simple_return)
+	end else if (f_simple_return)
+	begin
 		assert(f_request_addr[AW-1:AXILSB]== f_const_addr[AW-1:AXILSB]);
-	else
+	end else
 		assert(f_request_addr[AW-1:AXILSB]!= f_const_addr[AW-1:AXILSB]);
 	// }}}
 
@@ -1938,8 +1942,9 @@ module	axidcache #(
 	if (state == DC_READC && f_this_line)
 	begin
 		if (!f_const_err)
+		begin
 			assert(good_cache_read);
-		else if (read_addr[LS-1:0] > f_const_addr[LS+AXILSB-1:AXILSB])
+		end else if (read_addr[LS-1:0] > f_const_addr[LS+AXILSB-1:AXILSB])
 			assert(flushing);
 	end
 	// }}}
@@ -2020,8 +2025,9 @@ module	axidcache #(
 	begin
 		// The cache read is in progress.  Verify any partial results
 		if (f_const_err)
+		begin
 			assert(!good_cache_read && !r_rd_pending);
-		else if (!flushing)
+		end else if (!flushing)
 			assert(f_special_cached_data == f_word_swapped_mem_data);
 	end
 	// }}}

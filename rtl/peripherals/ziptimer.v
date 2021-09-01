@@ -324,8 +324,9 @@ module	ziptimer #(
 	end else if ($past(wb_write))
 	begin
 		if (!$past(i_wb_data[BW-1]))
+		begin
 			assert(!auto_reload);
-		else
+		end else
 			assert(auto_reload == $past(|i_wb_data[VW-1:0]));
 	end else
 		assert($stable(auto_reload));

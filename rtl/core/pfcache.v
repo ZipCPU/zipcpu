@@ -820,8 +820,9 @@ module	pfcache #(
 	always @(*)
 	if ((valid_mask[f_const_addr[CW+1:LS+2]])
 			&&(cache_tags[f_const_addr[(CW+1):LS+2]]==f_const_addr[AW+1:CW+2]))
+	begin
 		assert(f_const_insn == cache[f_const_addr[CW+1:2]]);
-	else if ((o_wb_cyc)&&(o_wb_addr[AW-1:LS] == f_const_addr[AW+1:LS+2])
+	end else if ((o_wb_cyc)&&(o_wb_addr[AW-1:LS] == f_const_addr[AW+1:LS+2])
 				&&(f_nacks > f_const_addr[LS+1:2]))
 	begin
 		assert(f_const_insn == cache[f_const_addr[CW+1:2]]);
@@ -843,8 +844,9 @@ module	pfcache #(
 	if ((f_this_line)&&(o_wb_cyc))
 	begin
 		if (f_const_illegal)
+		begin
 			assume(!i_wb_ack);
-		else
+		end else
 			assume(!i_wb_err);
 
 		if ((f_this_ack)&&(i_wb_ack))

@@ -1439,8 +1439,9 @@ module	axipipe #(
 		begin
 			assert(M_AXI_WVALID);
 			if (!misaligned_aw_request && misaligned_request)
+			begin
 				assert(faxi_wr_pending == 1);
-			else
+			end else
 				assert(faxi_wr_pending == 0);
 		end
 
@@ -1498,8 +1499,9 @@ module	axipipe #(
 		&&(!$past(o_busy))&&($past(!i_cpu_reset)))
 	begin
 		if (OPT_LOCK && $past(w_misalignment_err))
+		begin
 			`ASSERT(o_err && !o_busy);
-		else
+		end else
 			`ASSERT(o_busy || (OPT_ALIGNMENT_ERR && o_err));
 	end
 

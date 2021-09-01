@@ -96,21 +96,20 @@ module skidbuffer #(
 		// {{{
 		input	wire			i_clk, i_reset,
 		input	wire			i_valid,
-		output	reg			o_ready,
+		output	wire			o_ready,
 		input	wire	[DW-1:0]	i_data,
-		output	reg			o_valid,
+		output	wire			o_valid,
 		input	wire			i_ready,
 		output	reg	[DW-1:0]	o_data
 		// }}}
 	);
 
-	reg	[DW-1:0]	r_data;
+	wire	[DW-1:0]	w_data;
 
 	generate if (OPT_PASSTHROUGH)
 	begin : PASSTHROUGH
 		// {{{
-		always @(*)
-			{ o_valid, o_ready } = { i_valid, i_ready };
+		assign	{ o_valid, o_ready } = { i_valid, i_ready };
 
 		always @(*)
 		if (!i_valid && OPT_LOWPOWER)
@@ -118,13 +117,13 @@ module skidbuffer #(
 		else
 			o_data = i_data;
 
-		always @(*)
-			r_data = 0;
+		assign	w_data = 0;
 		// }}}
 	end else begin : LOGIC
 		// We'll start with skid buffer itself
 		// {{{
 		reg			r_valid;
+		reg	[DW-1:0]	r_data;
 
 		// r_valid
 		// {{{
@@ -149,12 +148,13 @@ module skidbuffer #(
 			r_data <= 0;
 		else if ((!OPT_LOWPOWER || !OPT_OUTREG || i_valid) && o_ready)
 			r_data <= i_data;
+
+		assign	w_data = r_data;
 		// }}}
 
 		// o_ready
 		// {{{
-		always @(*)
-			o_ready = !r_valid;
+		assign o_ready = !r_valid;
 		// }}}
 
 		//
@@ -166,8 +166,7 @@ module skidbuffer #(
 			// {{{
 			// o_valid
 			// {{{
-			always @(*)
-				o_valid = !i_reset && (i_valid || r_valid);
+			assign	o_valid = !i_reset && (i_valid || r_valid);
 			// }}}
 
 			// o_data
@@ -186,12 +185,16 @@ module skidbuffer #(
 			// {{{
 			// o_valid
 			// {{{
-			initial if (OPT_INITIAL) o_valid = 0;
+			reg	ro_valid;
+
+			initial if (OPT_INITIAL) ro_valid = 0;
 			always @(posedge i_clk)
 			if (i_reset)
-				o_valid <= 0;
+				ro_valid <= 0;
 			else if (!o_valid || i_ready)
-				o_valid <= (i_valid || r_valid);
+				ro_valid <= (i_valid || r_valid);
+
+			assign	o_valid = ro_valid;
 			// }}}
 
 			// o_data
@@ -322,13 +325,13 @@ module skidbuffer #(
 		always @(posedge i_clk)
 		if (f_past_valid && !$past(i_reset) && $past(i_valid && o_ready
 			&& (!OPT_OUTREG || o_valid) && !i_ready))
-			assert(!o_ready && r_data == $past(i_data));
+			assert(!o_ready && w_data == $past(i_data));
 `else
 		assert property (@(posedge i_clk)
 			disable iff (i_reset)
 			(i_valid && o_ready
 				&& (!OPT_OUTREG || o_valid) && !i_ready)
-				|=> (!o_ready && r_data == $past(i_data)));
+				|=> (!o_ready && w_data == $past(i_data)));
 `endif
 		// }}}
 
@@ -369,7 +372,7 @@ module skidbuffer #(
 			assert(o_ready);
 		// }}}
 
-		// If OPT_LOWPOWER is set, o_data and r_data both need to be
+		// If OPT_LOWPOWER is set, o_data and w_data both need to be
 		// zero any time !o_valid or !r_valid respectively
 		// {{{
 		if (OPT_LOWPOWER)
@@ -380,7 +383,7 @@ module skidbuffer #(
 
 			always @(*)
 			if (o_ready)
-				assert(r_data == 0);
+				assert(w_data == 0);
 
 		end
 		// }}}
@@ -474,12 +477,7 @@ module skidbuffer #(
 `endif
 	end endgenerate
 `endif	// SKIDBUFFER
-
-
 	// }}}
 `endif
 // }}}
 endmodule
-`ifndef	YOSYS
-`default_nettype wire
-`endif

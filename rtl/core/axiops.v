@@ -1426,8 +1426,9 @@ module	axiops #(
 	if (f_past_valid)
 	begin
 		if ($past(i_cpu_reset || r_flushing || o_err))
+		begin
 			`ASSERT(!o_err);
-		else if ($past(M_AXI_BVALID && M_AXI_BRESP[1]))
+		end else if ($past(M_AXI_BVALID && M_AXI_BRESP[1]))
 		begin
 			if ($past(misaligned_response_pending))
 			begin
@@ -1737,8 +1738,9 @@ module	axiops #(
 		assume(faxi_ex_state == 2'b10);
 
 		if (SWAP_WSTRB)
+		begin
 			assert(f_exlock_size == DSZ);
-		else casez(i_op[2:1])
+		end else casez(i_op[2:1])
 		2'b0?: assume(f_exlock_size == 3'b010);	// Word
 		2'b10: assume(f_exlock_size == 3'b001);	// Half-word
 		2'b11: assume(f_exlock_size == 3'b000);	// Byte

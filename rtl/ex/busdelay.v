@@ -463,11 +463,13 @@ module	busdelay #(
 	if ((DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset) && i_wb_cyc && !o_wb_err))
 	begin
 		if (!$past(i_wb_cyc))
+		begin
 			assert((!f_pending[STB_BIT])
 				&&(!f_wpending[STB_BIT]));
-		else if (($past(f_dly_busy))&&($past(f_wb_busy)))
+		end else if (($past(f_dly_busy))&&($past(f_wb_busy)))
+		begin
 			assert(f_pending == f_wpending);
-		else if(($past(f_dly_busy))&&($past(f_pending[STB_BIT])))
+		end else if(($past(f_dly_busy))&&($past(f_pending[STB_BIT])))
 			assert(f_pending == f_wpending);
 	end
 
@@ -503,8 +505,9 @@ module	busdelay #(
 			&&($past(f_pending[STB_BIT])))
 	begin
 		if ($past(i_dly_err))
+		begin
 			assert(!o_dly_stb);
-		else
+		end else
 			assert(o_dly_stb);
 	end
 	// }}}

@@ -1112,22 +1112,26 @@ module	axilops #(
 	if (f_past_valid)
 	begin
 		if ($past(i_cpu_reset || r_flushing || o_err))
+		begin
 			`ASSERT(!o_err);
-		else if ($past(M_AXI_BVALID && M_AXI_BRESP[1]))
+		end else if ($past(M_AXI_BVALID && M_AXI_BRESP[1]))
 		begin
 			if ($past(misaligned_response_pending))
+			begin
 				`ASSERT((!o_err && pending_err) || r_flushing);
-			else
+			end else
 				`ASSERT(o_err);
 		end else if ($past(M_AXI_RVALID && M_AXI_RRESP[1]))
 		begin
 			if ($past(misaligned_response_pending))
+			begin
 				`ASSERT((!o_err && pending_err) || r_flushing);
-			else
+			end else
 				`ASSERT(o_err);
 		end else if (OPT_ALIGNMENT_ERR && $past(i_stb && w_misaligned))
+		begin
 			`ASSERT(o_err);
-		else if (!$past(pending_err))
+		end else if (!$past(pending_err))
 			`ASSERT(!o_err);
 		//else if ($past(misaligned))
 			//`ASSERT(o_err);
@@ -1255,8 +1259,9 @@ module	axilops #(
 
 	always @(*)
 	if (f_pc)
+	begin
 		assert(o_wreg[3:1] == 3'h7 || (OPT_LOWPOWER && o_err));
-	else if (o_rdbusy)
+	end else if (o_rdbusy)
 		assert(o_wreg[3:1] != 3'h7);
 
 	always @(*)

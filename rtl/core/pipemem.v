@@ -578,9 +578,10 @@ module	pipemem #(
 		&&(i_pipe_stb))
 	begin
 		if (o_wb_cyc_lcl)
+		begin
 			// `ASSUME(i_addr[31:24] == 8'hff);
 			assume(i_addr[31:24] == 8'hff);
-		else
+		end else
 			assume(i_addr[31:24] != 8'hff);
 	end
 `endif

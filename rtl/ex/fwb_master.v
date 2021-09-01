@@ -5,9 +5,9 @@
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This file describes the rules of a wishbone interaction from the
-//		perspective of a wishbone master.  These formal rules may be used
-//	with yosys-smtbmc to *prove* that the master properly handles outgoing
-//	transactions and incoming responses.
+//		perspective of a wishbone master.  These formal rules may be
+//	used with SymbiYosys to *prove* that the master properly handles
+//	outgoing transactions and incoming responses.
 //
 //	This module contains no functional logic.  It is intended for formal
 //	verification only.  The outputs returned, the number of requests that

@@ -517,8 +517,9 @@ module	div #(
 		&&($past(r_divisor[2*BW-2:BW])==0))
 	begin
 		if ($past(r_divisor) == 0)
+		begin
 			assert(o_err);
-		else if ($past(pre_sign))
+		end else if ($past(pre_sign))
 		begin
 			if ($past(r_dividend[BW-1]))
 				assert(r_dividend == -$past(r_dividend));
@@ -530,8 +531,9 @@ module	div #(
 			end
 		end else begin
 			if (o_quotient[0])
+			begin
 				assert(r_dividend == $past(diff));
-			else
+			end else
 				assert(r_dividend == $past(r_dividend));
 
 			// r_divisor should shift down on every step
@@ -539,8 +541,9 @@ module	div #(
 			assert(r_divisor[2*BW-3:0]==$past(r_divisor[2*BW-2:1]));
 		end
 		if ($past(r_dividend) >= $past(r_divisor[BW-1:0]))
+		begin
 			assert(o_quotient[0]);
-		else
+		end else
 			assert(!o_quotient[0]);
 	end
 	*/
