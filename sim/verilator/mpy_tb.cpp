@@ -51,7 +51,11 @@
 #include "verilated.h"
 #include "Vcpuops.h"
 
-#ifdef	NEW_VERILATOR
+#ifdef	ROOT_VERILATOR
+#include "Vcpuops___024root.h"
+
+#define	VVAR(A)	rootp->cpuops__DOT_ ## A
+#elif	defined(NEW_VERILATOR)
 #define	VVAR(A)	cpuops__DOT_ ## A
 #else
 #define	VVAR(A)	v__DOT_ ## A

@@ -47,38 +47,52 @@ module	zipbones #(
 		parameter	RESET_ADDRESS=32'h1000_0000,
 				ADDRESS_WIDTH=30,
 		// CPU options
+		// LGICACHE
 		// {{{
 `ifdef	OPT_TRADITIONAL_PFCACHE
 				LGICACHE = 8,
 `else
 				LGICACHE = 0,
 `endif
+		// }}}
+		// OPT_DCACHE
+		// {{{
 `ifdef	OPT_DCACHE
 				// Set to zero for no data cache
 				LGDCACHE = 10,
 `else
 				LGDCACHE = 0,
 `endif
+		// }}}
 		parameter [0:0]	START_HALTED=0,
 		parameter
+		// OPT_MPY
+		// {{{
 `ifdef	OPT_MULTIPLY
 				OPT_MPY = `OPT_MULTIPLY,
 `else
 				OPT_MPY = 0,
 `endif
+		// }}}
+		// OPT_DIV
+		// {{{
 `ifdef	OPT_DIVIDE
 		parameter [0:0]	OPT_DIV=1,
 `else
 		parameter [0:0]	OPT_DIV=0,
 `endif
+		// }}}
+		// OPT_FPU
+		// {{{
 `ifdef	OPT_IMPLEMENT_FPU
 		parameter [0:0]	OPT_FPU = 1,
 `else
 		parameter [0:0]	OPT_FPU = 0,
 `endif
-		parameter [0:0]	OPT_LOCK = 1,
-		parameter	RESET_DURATION = 10,
 		// }}}
+		parameter [0:0]	OPT_LOCK=1,
+		parameter [0:0]	OPT_LOWPOWER=0,
+		parameter	RESET_DURATION = 10,
 		// Short-cut names
 		// {{{
 		localparam	// Derived parameters
@@ -91,6 +105,7 @@ module	zipbones #(
 `endif
 				// LGTLBSZ = 6,
 				// VAW=VIRTUAL_ADDRESS_WIDTH,
+
 		// localparam	AW=ADDRESS_WIDTH,
 		localparam	DW=32,	// Bus data width
 		// }}}
@@ -212,7 +227,7 @@ module	zipbones #(
 	begin : INITIAL_RESET_HOLD
 		// {{{
 		reg	[$clog2(RESET_DURATION)-1:0]	reset_counter;
-		reg					hold;
+		reg					r_reset_hold;
 
 		initial	reset_counter = RESET_DURATION;
 		always @(posedge i_clk)
@@ -221,14 +236,14 @@ module	zipbones #(
 		else if (reset_counter > 0)
 			reset_counter <= reset_counter - 1;
 
-		initial	hold = 1;
+		initial	r_reset_hold = 1;
 		always @(posedge i_clk)
 		if (i_reset)
-			hold <= 1;
+			r_reset_hold <= 1;
 		else
-			hold <= (reset_counter > 1);
+			r_reset_hold <= (reset_counter > 1);
 
-		assign	reset_hold = hold;
+		assign	reset_hold = r_reset_hold;
 `ifdef	FORMAL
 		always @(*)
 			assert(reset_hold == (reset_counter != 0));
@@ -239,6 +254,7 @@ module	zipbones #(
 		assign reset_hold = 0;
 
 	end endgenerate
+	// }}}
 
 	// cmd_reset
 	// {{{
@@ -335,6 +351,8 @@ module	zipbones #(
 
 	assign	cpu_reset = (cmd_reset);
 
+	// cpu_status
+	// {{{
 	assign	cpu_halt = (cmd_halt);
 	// Values:
 	//	0x10000 -> External interrupt is high
@@ -357,10 +375,11 @@ module	zipbones #(
 
 	initial	cmd_write = 0;
 	always @(posedge i_clk)
-	if (i_reset || cpu_reset)
+	if (i_reset)
 		cmd_write <= 1'b0;
 	else if (!cmd_write || !cpu_dbg_stall)
-		cmd_write <= dbg_stb && dbg_we && !dbg_addr[5] && (|i_dbg_sel);
+		cmd_write <= dbg_stb && dbg_we && (|i_dbg_sel)
+			&& !dbg_addr[5];
 
 	always @(posedge i_clk)
 	if ((!cmd_write || !cpu_dbg_stall)&&(dbg_stb && dbg_we && !dbg_addr[5]))
@@ -380,9 +399,9 @@ module	zipbones #(
 	(* anyseq *) reg [31:0]	f_cpu_dbg_data;
 
 	assign	cpu_dbg_stall = f_cpu_stall;
-	assign	cpu_break = f_cpu_break;
-	assign	cpu_dbg_cc = f_cpu_dbg_cc;
-	assign	cpu_dbg_data = f_cpu_dbg_data;
+	assign	cpu_break     = f_cpu_break;
+	assign	cpu_dbg_cc    = f_cpu_dbg_cc;
+	assign	cpu_dbg_data  = f_cpu_dbg_data;
 
 	fdebug #(
 		// {{{
@@ -415,27 +434,41 @@ module	zipbones #(
 		.IMPLEMENT_DIVIDE(OPT_DIV),
 		.IMPLEMENT_FPU(OPT_FPU),
 		.IMPLEMENT_LOCK(OPT_LOCK),
+`ifdef	VERILATOR
+		.OPT_SIM(1'b1),
+`else
+		.OPT_SIM(1'b0),
+`endif
 		.WITH_LOCAL_BUS(0)
 		// }}}
 	) thecpu(
 		// {{{
 		.i_clk(i_clk), .i_reset(cpu_reset), .i_interrupt(i_ext_int),
 			.o_cpu_clken(cpu_clken),
+		// Debug interface
+		// {{{
 		.i_halt(cpu_halt), .i_clear_cache(cmd_clear_cache),
 				.i_dbg_wreg(cmd_waddr), .i_dbg_we(cmd_write),
 				.i_dbg_data(cmd_wdata),
 				.i_dbg_rreg(dbg_addr[4:0]),
-			.o_dbg_stall(cpu_dbg_stall), .o_dbg_reg(cpu_dbg_data),
-				.o_dbg_cc(cpu_dbg_cc), .o_break(cpu_break),
+			.o_dbg_stall(cpu_dbg_stall),
+			.o_dbg_reg(cpu_dbg_data),
+			.o_dbg_cc(cpu_dbg_cc),
+			.o_break(cpu_break),
+		// }}}
+		// Wishbone bus interface
+		// {{{
 			.o_wb_gbl_cyc(o_wb_cyc), .o_wb_gbl_stb(o_wb_stb),
 				.o_wb_lcl_cyc(cpu_lcl_cyc),
 				.o_wb_lcl_stb(cpu_lcl_stb),
 				.o_wb_we(o_wb_we), .o_wb_addr(o_wb_addr),
 				.o_wb_data(o_wb_data), .o_wb_sel(o_wb_sel),
+				// Return values from the Wishbone bus
 				.i_wb_stall(i_wb_stall),
 				.i_wb_ack(i_wb_ack),
 				.i_wb_data(i_wb_data),
 				.i_wb_err((i_wb_err)||(cpu_lcl_cyc)),
+		// }}}
 			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
 				.o_i_count(cpu_i_count)
 `ifdef	DEBUG_SCOPE
@@ -445,9 +478,13 @@ module	zipbones #(
 	);
 `endif
 	// }}}
-
+	////////////////////////////////////////////////////////////////////////
+	//
 	// Return debug response values
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	// assign	dbg_odata = (dbg_addr[5])?cpu_status :cpu_dbg_data;
 
 	always @(posedge i_clk)
@@ -471,12 +508,15 @@ module	zipbones #(
 		dbg_ack <= dbg_pre_ack;
 
 	always @(posedge i_clk)
-	if (dbg_pre_addr)
-		dbg_odata <= dbg_cpu_status;
-	else
-		dbg_odata <= cpu_dbg_data;
+	if (!OPT_LOWPOWER || dbg_pre_ack)
+	begin
+		if (dbg_pre_addr)
+			dbg_odata <= dbg_cpu_status;
+		else
+			dbg_odata <= cpu_dbg_data;
+	end
 
-	assign	dbg_stall= (!cmd_write || !cpu_dbg_stall) && dbg_we && !dbg_addr[5];
+	assign	dbg_stall= reset_hold || ((cmd_write && cpu_dbg_stall) && dbg_we && !dbg_addr[5]);
 	// }}}
 	// }}}
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);

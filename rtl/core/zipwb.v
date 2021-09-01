@@ -144,7 +144,11 @@ module	zipwb #(
 `else
 		parameter		OPT_LGDCACHE = 0,
 `endif
-
+`ifdef	VERILATOR
+		parameter [0:0]		OPT_SIM = 1'b1,
+`else
+		parameter [0:0]		OPT_SIM = 1'b0,
+`endif
 		parameter [0:0]	WITH_LOCAL_BUS = 1'b1,
 		localparam	AW=ADDRESS_WIDTH
 `ifdef	FORMAL
@@ -263,9 +267,10 @@ module	zipwb #(
 		.IMPLEMENT_FPU(IMPLEMENT_FPU),
 		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
 		.OPT_CIS(OPT_CIS),
-		.OPT_NO_USERMODE(OPT_NO_USERMODE),
+		.OPT_SIM(OPT_SIM),
 		.OPT_PIPELINED(OPT_PIPELINED),
 		.OPT_PIPELINED_BUS_ACCESS(OPT_MEMPIPE),
+		.OPT_NO_USERMODE(OPT_NO_USERMODE),
 		.IMPLEMENT_LOCK(IMPLEMENT_LOCK)
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;

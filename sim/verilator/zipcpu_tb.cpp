@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -77,19 +77,22 @@
 #include "memsim.h"
 #include "zopcodes.h"
 
-#define	CMD_REG		0
-#define	CMD_DATA	4
+			// if (v & CPU_BREAK)
+			// if (v & CPU_INT)
+
+#define	CMD_REG		0x80
+#define	CMD_SREG(A)	(A<<2)
 #define	CMD_GO		0
 #define	CMD_GIE		(1<<13)
 #define	CMD_SLEEP	(1<<12)
 #define	CMD_CLEAR_CACHE	(1<<11)
 #define	CMD_HALT	(1<<10)
-#define	CMD_STALL	(1<<9)
+#define	CMD_HALTED	(1<<9)
+#define	CMD_STEP	(1<<8)
 #define	CMD_INT		(1<<7)
 #define	CMD_RESET	(1<<6)
-#define	CMD_STEP	((1<<8)|CMD_HALT)
 #define	CPU_HALT	CMD_HALT
-#define	CPU_sPC		15
+#define	CPU_sPC		(15<<2)
 
 #define	KEY_ESCAPE	27
 #define	KEY_RETURN	10
@@ -105,23 +108,34 @@
 // or
 //	zipbones__DOT__...
 
-#ifdef	NEW_VERILATOR
-#ifdef	ZIPBONES
-#define	VVAR(A)	zipbones__DOT_ ## A
- #ifdef	VM_COVERAGE
-  #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
- #else
+#ifdef	ROOT_VERILATOR
+
+  #ifdef	ZIPBONES
+    #include "Vzipbones___024root.h"
+    #define VVAR(A) rootp->zipbones__DOT_ ##A
+  #else
+    #include "Vzipsystem___024root.h"
+    #define VVAR(A) rootp->zipsystem__DOT_ ##A
+  #endif
+
+#elif	defined(NEW_VERILATOR)
+
+  #ifdef	ZIPBONES
   #define	VVAR(A)	zipbones__DOT_ ## A
- #endif // VM_COVERAGE
-#else // Not ZIPBONES, but still under NEW_VERILATOR
- #ifdef	VM_COVERAGE
-  #define	VVAR(A)	zipsystem__DOT____Vtogcov_ ## A
- #else
-  #define	VVAR(A)	zipsystem__DOT_ ## A
- #endif // VM_COVERAGE
-#endif
+   #ifdef	VM_COVERAGE
+    #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
+   #else
+    #define	VVAR(A)	zipbones__DOT_ ## A
+   #endif // VM_COVERAGE
+  #else // Not ZIPBONES, but still under NEW_VERILATOR
+   #ifdef	VM_COVERAGE
+    #define	VVAR(A)	zipsystem__DOT____Vtogcov_ ## A
+   #else
+    #define	VVAR(A)	zipsystem__DOT_ ## A
+   #endif // VM_COVERAGE
+  #endif
 #else // OLD_VERILATOR used the v__DOT_ prefix
-#define	VVAR(A)	v__DOT_ ## A
+  #define	VVAR(A)	v__DOT_ ## A
 #endif
 
 #define	CPUVAR(A)	VVAR(_thecpu__DOT__core__DOT_ ##A)
@@ -144,14 +158,10 @@
   #define	MEMVAR(A) VVAR(_thecpu__DOT__BARE_MEM__DOT__domem__DOT_ ## A)
 #endif
 
-#ifdef	ZIPBONES
 #define	cpu_halt	VVAR(_cmd_halt)
-#else
-#define	cpu_halt	VVAR(_cpu_halt)
-#endif
 #define	cmd_reset	VVAR(_cmd_reset)
 #define	cmd_step	VVAR(_cmd_step)
-#define	cmd_addr	VVAR(_cmd_addr)
+// #define	cmd_addr	VVAR(_cmd_addr)
 
 #ifdef	OPT_SINGLE_FETCH
 #define	early_branch	CPUVAR(_instruction_decoder__DOT__GEN_EARLY_BRANCH_LOGIC__DOT__r_early_branch)
@@ -232,6 +242,7 @@
 #define	master_stall	CPUVAR(_master_stall)
 // ALU
 #define	alu_ce		CPUVAR(_alu_ce)
+#define	adf_ce_unconditional		CPUVAR(_adf_ce_unconditional)
 #define	alu_valid	CPUVAR(_alu_valid)
 // #define	alu_stall	CPUVAR(_alu_stall)
 #define	alu_wF		CPUVAR(_alu_wF)
@@ -291,7 +302,7 @@
 #define	op_break	CPUVAR(_r_op_break)
 #define	op_F		CPUVAR(_op_F)
 //
-#define	regset		CPUVAR(_regset)
+#define	regset		CPUVAR(_regset.m_storage)
 #define	cpu_regs	regset
 
 
@@ -350,19 +361,19 @@
 #define	watchdog	VVAR(_watchdog__DOT__r_value)
 #define	wdbus_data	VVAR(_r_wdbus_data)
 #define	int_state	VVAR(_MAIN_PIC__DOT__pic__DOT__r_int_state)
-#define	alt_int_state	VVAR(_ALT_PIC__DOT__ctri__DOT__r_int_state)
+#define	alt_int_state	VVAR(_PIC_WITH_ACCOUNTING__DOT__ALT_PIC__DOT__ctri__DOT__r_int_state)
 #define	timer_a		VVAR(_timer_a__DOT__r_value)
 #define	timer_b		VVAR(_timer_b__DOT__r_value)
 #define	timer_c		VVAR(_timer_c__DOT__r_value)
 #define	jiffies		VVAR(_jiffies__DOT__r_counter)
-#define	utc_data	VVAR(_utc_data)
-#define	uoc_data	VVAR(_uoc_data)
-#define	upc_data	VVAR(_upc_data)
-#define	uic_data	VVAR(_uic_data)
-#define	mtc_data	VVAR(_mtc_data)
-#define	moc_data	VVAR(_moc_data)
-#define	mpc_data	VVAR(_mpc_data)
-#define	mic_data	VVAR(_mic_data)
+#define	utc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__utc_data)
+#define	uoc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__uoc_data)
+#define	upc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__upc_data)
+#define	uic_data	VVAR(_ACCOUNTING_COUNTERS__DOT__uic_data)
+#define	mtc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__mtc_data)
+#define	moc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__moc_data)
+#define	mpc_data	VVAR(_ACCOUNTING_COUNTERS__DOT__mpc_data)
+#define	mic_data	VVAR(_ACCOUNTING_COUNTERS__DOT__mic_data)
 
 #define	r_wb_cyc_gbl	MEMVAR(_r_wb_cyc_gbl)
 #define	r_wb_cyc_lcl	MEMVAR(_r_wb_cyc_lcl)
@@ -383,17 +394,17 @@
 #define	op_A_mem	VVAR(_thecpu__DOT__core__DOT__op_A_mem)
 #define	op_B_mem	VVAR(_thecpu__DOT__core__DOT__op_B_mem)
 #ifdef	OPT_PIPELINED
-#define	op_opn		VVAR(_thecpu__DOT__core__DOT__r_op_opn)
+#define	op_opn		VVAR(_thecpu__DOT__core__DOT__FWD_OPERATION__DOT__r_op_opn)
 #else
 #define	op_opn		dcd_opn
 #endif
-#define	alu_result	VVAR(_thecpu__DOT__core__DOT__alu_result)
-#define	alu_busy	VVAR(_thecpu__DOT__core__DOT__doalu__DOT__r_busy)
-#define	alu_reg		VVAR(_thecpu__DOT__core__DOT__alu_reg)
-#define	switch_to_interrupt	VVAR(_thecpu__DOT__core__DOT__w_switch_to_interrupt)
-#define	release_from_interrupt	VVAR(_thecpu__DOT__core__DOT__w_release_from_interrupt)
-#define	break_en	VVAR(_thecpu__DOT__core__DOT__break_en)
-#define	dcd_break	VVAR(_thecpu__DOT__core__DOT__dcd_break)
+#define	alu_result	CPUVAR(_alu_result)
+#define	alu_busy	CPUVAR(_doalu__DOT__r_busy)
+#define	alu_reg		CPUVAR(_alu_reg)
+#define	switch_to_interrupt	CPUVAR(_w_switch_to_interrupt)
+#define	release_from_interrupt	CPUVAR(_w_release_from_interrupt)
+#define	break_en	CPUVAR(_break_en)
+#define	dcd_break	CPUVAR(_dcd_break)
 
 /*
 // We are just a raw CPU with memory.  There is no flash.
@@ -800,11 +811,11 @@ public:
 		mvprintw(ln, 40, "%s %s",
 			(m_core->cpu_halt)? "CPU-HALT": "        ",
 			(m_core->cmd_reset)?"CPU-RESET":"         "); ln++;
-		mvprintw(ln, 40, "%s %s %s 0x%02x %s %s",
+		mvprintw(ln, 40, "%s %s %s %s %s",
 			(m_core->cpu_halt)? "HALT": "    ",
 			(m_core->cmd_reset)?"RESET":"     ",
 			(m_core->cmd_step)? "STEP" :"    ",
-			(m_core->cmd_addr)&0x3f,
+			// (m_core->cmd_addr)&0x3f,
 			(m_core->master_ce)? "*CE*" :"(ce)",
 			(m_core->cmd_reset)? "*RST*" :"(rst)");
 		if (m_core->r_gie)
@@ -1064,6 +1075,7 @@ public:
 
 
 		showins(ln, "I ",
+			// {{{
 #ifdef	OPT_PIPELINED
 			!m_core->dcd_stalled,
 #else
@@ -1076,8 +1088,9 @@ public:
 			(m_core->pf_instruction_pc),
 			true); ln++;
 			// m_core->pf_pc); ln++;
-
+		// }}}
 		showins(ln, "Dc",
+			// {{{
 			m_core->dcd_ce, m_core->dcd_valid,
 			m_core->dcd_gie,
 #ifdef	OPT_PIPELINED
@@ -1098,8 +1111,9 @@ public:
 			mvprintw(ln-1,10,"I");
 		else if (m_core->dcd_M)
 			mvprintw(ln-1,10,"M");
-
+		// }}}
 		showins(ln, "Op",
+			// {{{
 			m_core->op_ce,
 			m_core->op_valid,
 			m_core->op_gie,
@@ -1121,9 +1135,10 @@ public:
 			mvprintw(ln-1,10,"M");
 		else if (m_core->op_valid_alu)
 			mvprintw(ln-1,10,"A");
-
+		// }}}
 		if (m_core->op_valid_mem) {
 			showins(ln, "Mm",
+				// {{{
 				m_core->mem_ce,
 				m_core->mem_pc_valid,
 				m_core->alu_gie,
@@ -1132,15 +1147,17 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				alu_pcf(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
 				false
 #endif
 			);
+			// }}}
 		} else {
 			showins(ln, "Al",
+				// {{{
 				m_core->alu_ce,
 				m_core->alu_pc_valid,
 				m_core->alu_gie,
@@ -1149,14 +1166,18 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				alu_pcf(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
 				false
 #endif
 			);
+			// }}}
 		} ln++;
+
+		// Write-back
+		// {{{
 		if (m_core->wr_reg_ce)
 			mvprintw(ln-1,10,"W");
 		else if (m_core->alu_valid)
@@ -1165,6 +1186,7 @@ public:
 			mvprintw(ln-1,10,"v");
 		else if (m_core->alu_illegal)
 			mvprintw(ln-1,10,"I");
+		// }}}
 		// else if (m_core->v__DOT__thecpu__DOT__alu_illegal_op)
 			// mvprintw(ln-1,10,"i");
 
@@ -1228,40 +1250,12 @@ public:
 
 	unsigned int	cmd_read(unsigned int a) {
 		// {{{
-		int	errcount = 0;
 		if (m_dbgfp) {
 			dbg_flag= true;
 			fprintf(m_dbgfp, "CMD-READ(%d)\n", a);
 		}
-		wb_write(CMD_REG, CMD_HALT|(a&0x3f));
-		while(((wb_read(CMD_REG) & CMD_STALL) == 0)&&(errcount<MAXERR))
-			errcount++;
-		if (errcount >= MAXERR) {
-			endwin();
 
-			printf("ERR: errcount >= MAXERR on wb_read(a=%x)\n", a);
-			// printf("Clear-Pipeline = %d\n", m_core->v__DOT__thecpu__DOT__clear_pipeline);
-#define	r_halted	CPUVAR(_r_halted)
-			printf("cpu-dbg-stall  = %d\n", m_core->r_halted);
-			printf("pf_cyc         = %d\n", m_core->pf_cyc);
-			printf("mem_cyc_gbl    = %d\n", (m_core->r_wb_cyc_gbl));
-			printf("mem_cyc_lcl    = %d\n", m_core->r_wb_cyc_lcl);
-			printf("op_valid       = %d\n", m_core->op_valid);
-			printf("dcd_valid      = %d\n", m_core->dcd_valid);
-			printf("dcd_ce         = %d\n", m_core->dcd_ce);
-#ifdef	OPT_PIPELINED
-			printf("dcd_stalled    = %d\n", m_core->dcd_stalled);
-#endif
-			printf("pf_valid       = %d\n", m_core->pf_valid);
-// #ifdef	OPT_EARLY_BRANCHING
-			// printf("dcd_early_branch=%d\n", m_core->v__DOT__thecpu__DOT__instruction_decoder__DOT__genblk1__DOT__r_early_branch);
-// #endif
-
-			exit(-2);
-		}
-
-		assert(errcount < MAXERR);
-		unsigned int v = wb_read(CMD_DATA);
+		unsigned int v = wb_read(CMD_SREG(a));
 
 		if (dbg_flag)
 			fprintf(m_dbgfp, "CMD-READ(%d) = 0x%08x\n", a, v);
@@ -1275,13 +1269,9 @@ public:
 		int	errcount = 0;
 		if ((a&0x0f)==0x0f)
 			dbg_flag = true;
-		wb_write(CMD_REG, CMD_HALT|(a&0x3f));
-		while(((wb_read(CMD_REG) & CMD_STALL) == 0)&&(errcount < MAXERR))
-			errcount++;
-		assert(errcount < MAXERR);
 		if (dbg_flag)
 			fprintf(m_dbgfp, "CMD-WRITE(%d) <= 0x%08x\n", a, v);
-		wb_write(CMD_DATA, v);
+		wb_write(CMD_SREG(a), v);
 		// }}}
 	}
 
@@ -1308,20 +1298,22 @@ public:
 		mvprintw(ln,0, "Peripherals-RS");
 		mvprintw(ln,40,"%-40s", "CPU State: ");
 		{
+			// {{{
 			unsigned int v = wb_read(CMD_REG);
 			mvprintw(ln,51, "");
 			if (v & 0x010000)
 				printw("EXT-INT ");
-			if ((v & 0x003000) == 0x03000)
+			if ((v & CMD_HALTED) == CMD_HALTED)
 				printw("Halted ");
-			else if (v & 0x001000)
+			else if (v & CMD_SLEEP)
 				printw("Sleeping ");
-			else if (v & 0x002000)
+			else if (v & CMD_GIE)
 				printw("User Mod ");
-			if (v & 0x008000)
-				printw("Break-Enabled ");
-			if (v & 0x000080)
-				printw("PIC Enabled ");
+			// if (v & CPU_BREAK)
+			//	printw("Break-Enabled ");
+			// if (v & CMD_INT)
+			//	printw("PIC Enabled ");
+			// }}}
 		} ln++;
 #ifdef	ZIPSYSTEM
 		showval(ln, 0, "PIC ", m_state.m_p[0], (m_cursor==0));
@@ -1361,6 +1353,7 @@ public:
 		else
 			attron(A_BOLD);
 		mvprintw(ln, 0, "Supervisor Registers");
+		// {{{
 		ln++;
 
 		dispreg(ln, 0, "sR0 ", m_state.m_sR[ 0], (m_cursor==12));
@@ -1404,12 +1397,14 @@ public:
 		}
 		dispreg(ln,60, "sPC ", cmd_read(15), (m_cursor==27));
 		ln++;
+		// }}}
 
 		if (gie)
 			attron(A_BOLD);
 		else
 			attroff(A_BOLD);
 		mvprintw(ln, 0, "User Registers");
+		// {{{
 		mvprintw(ln, 42, "DCDR=%02x %s",
 			m_core->dcdR, (m_core->dcd_wR)?"W":" ");
 		mvprintw(ln, 62, "OPR =%02x %s%s",
@@ -1464,6 +1459,7 @@ public:
 		ln+=3;
 
 		showins(ln, "I ",
+			// {{{
 #ifdef	OPT_PIPELINED
 			!m_core->dcd_stalled,
 #else
@@ -1475,8 +1471,9 @@ public:
 			m_core->pf_instruction_pc,
 			true); ln++;
 			// m_core->pf_pc); ln++;
-
+			// }}}
 		showins(ln, "Dc",
+			// {{{
 			m_core->dcd_ce, m_core->dcd_valid,
 			m_core->dcd_gie,
 #ifdef	OPT_PIPELINED
@@ -1493,8 +1490,9 @@ public:
 			false
 #endif
 			); ln++;
-
+			// }}}
 		showins(ln, "Op",
+			// {{{
 			m_core->op_ce,
 			m_core->op_valid,
 			m_core->op_gie,
@@ -1511,9 +1509,10 @@ public:
 			false
 #endif
 			); ln++;
-
+			// }}}
 		if (m_core->op_valid_mem) {
 			showins(ln, "Mm",
+				// {{{
 				m_core->mem_ce,
 				m_core->mem_pc_valid,
 				m_core->alu_gie,
@@ -1522,15 +1521,17 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				alu_pcf(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
 				false
 #endif
 			);
+			// }}}
 		} else {
 			showins(ln, "Al",
+				// {{{
 				m_core->alu_ce,
 				m_core->alu_pc_valid,
 				m_core->alu_gie,
@@ -1539,13 +1540,14 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				alu_pcf(),
 #ifdef	OPT_CIS
 				m_core->alu_phase
 #else
 				false
 #endif
 			);
+			// }}}
 		} ln++;
 		// }}}
 	}
@@ -1601,7 +1603,7 @@ public:
 				(m_core->o_dbg_stall)?"STALL":"     ",
 				(m_core->o_dbg_data),
 				(m_core->cpu_halt)?"CPU-HALT ":"",
-				(m_core->r_halted)?"CPU-DBG_STALL":"",
+				"", // (m_core->r_halted)?"CPU-DBG_STALL":"",
 				(m_core->dcd_valid)?"DCDV ":"",
 				(m_core->op_valid)?"OPV ":"",
 				(m_core->pf_cyc)?"PCYC ":"",
@@ -1651,24 +1653,27 @@ public:
 		// Interrupt debugging
 		// {{{
 		if ((m_dbgfp)&&(!gie)&&(m_core->release_from_interrupt)) {
-			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d\n",
+			// {{{
+			fprintf(m_dbgfp, "RELEASE: int=%d, %d/%02x[%08x] ce=%d %d,%d,%d\n",
 				m_core->cpu_interrupt,
 				m_core->wr_reg_ce,
 				m_core->wr_reg_id,
 				m_core->wr_spreg_vl,
-				m_core->cmd_addr<<2,
-				m_core->dbg_idata,
+				// m_core->cmd_addr<<2,
+				// m_core->dbg_idata,
 				m_core->master_ce,
 				m_core->alu_wR,
 				m_core->alu_valid,
 				m_core->mem_valid);
+			// }}}
 		} else if ((m_dbgfp)&&(gie)&&(m_core->switch_to_interrupt)) {
-			fprintf(m_dbgfp, "SWITCH: %d/%02x[%08x] ?/%02x[0x%08x], ce=%d %d,%d,%d, F%02x,%02x\n",
+			// {{{
+			fprintf(m_dbgfp, "SWITCH: %d/%02x[%08x] ce=%d %d,%d,%d, F%02x,%02x\n",
 				m_core->wr_reg_ce,
 				m_core->wr_reg_id,
 				m_core->wr_spreg_vl,
-				m_core->cmd_addr<<2,
-				m_core->dbg_idata,
+				// m_core->cmd_addr<<2,
+				// m_core->dbg_idata,
 				m_core->master_ce,
 				m_core->alu_wR,
 				m_core->alu_valid,
@@ -1690,6 +1695,8 @@ public:
 				m_core->dcd_break,
 				m_core->op_break,
 				m_core->alu_illegal);
+
+			// }}}
 		}
 		// }}}
 
@@ -1712,19 +1719,21 @@ public:
 		TESTB<SIMCLASS>::tick();
 
 		if ((m_core->cpu_sim)
-			&&(m_core->op_valid)
-			&&(m_core->alu_ce)
+			&&(m_core->op_valid_alu)
+			&&(m_core->adf_ce_unconditional)
 			&&(!m_core->new_pc)) {
 			execsim(m_core->cpu_sim_immv);
 		}
 
 		if ((m_dbgfp)&&(gie != m_core->r_gie)) {
+			// {{{
 			fprintf(m_dbgfp, "SWITCH FROM %s to %s: sPC = 0x%08x uPC = 0x%08x pf_pc = 0x%08x\n",
 				(gie)?"User":"Supervisor",
 				(gie)?"Supervisor":"User",
 				m_core->cpu_ipc,
 				m_core->cpu_upc,
 				m_core->pf_pc);
+			// }}}
 		} if (m_dbgfp) {
 			// {{{
 			// Prefetch instruction feedback
@@ -1814,7 +1823,7 @@ public:
 #else
 				0,
 #endif
-				alu_pc(),
+				alu_pcf(),
 #ifdef	OPT_CIS
 				m_core->alu_phase,
 #else
@@ -1848,10 +1857,10 @@ public:
 				m_core->wr_gpreg_vl,
 				m_core->wr_spreg_vl,
 				(m_core->alu_pc_valid)?"PCV":"   ",
-				alu_pc());
+				alu_pcf());
 
 			fprintf(m_dbgfp, "ALU-PC: %08x %s %s\n",
-				alu_pc(),
+				alu_pcf(),
 				(m_core->alu_pc_valid)?"VALID":"",
 				(m_core->alu_gie)?"ALU-GIE":"");
 		}
@@ -1861,21 +1870,21 @@ public:
 		// DMA info
 		// {{{
 #ifdef	ZIPSYSTEM
-#define	dma_state	VVAR(_dma_controller__DOT__dma_state)
+#define	dma_state	VVAR(_DMA__DOT__dma_controller__DOT__dma_state)
 #define	dc_cyc		VVAR(_dc_cyc)
 #define	dc_stb		VVAR(_dc_stb)
 #define	dc_ack		VVAR(_dc_ack)
 #define	dc_err		VVAR(_dc_err)
 #define	dc_addr		VVAR(_dc_addr)
 #define	dc_data		VVAR(_dc_data)
-#define	dma_last_read_req	VVAR(_dma_controller__DOT__last_read_request)
-#define	dma_last_read_ack	VVAR(_dma_controller__DOT__last_read_ack)
-#define	dma_nracks		VVAR(_dma_controller__DOT__nracks)
-#define	dma_nread		VVAR(_dma_controller__DOT__nread)
-#define	dma_last_write_req	VVAR(_dma_controller__DOT__last_write_request)
-#define	dma_last_write_ack	VVAR(_dma_controller__DOT__last_write_ack)
-#define	dma_nwacks		VVAR(_dma_controller__DOT__nwacks)
-#define	dma_nwritten		VVAR(_dma_controller__DOT__nwritten)
+#define	dma_last_read_req	VVAR(_DMA__DOT__dma_controller__DOT__last_read_request)
+#define	dma_last_read_ack	VVAR(_DMA__DOT__dma_controller__DOT__last_read_ack)
+#define	dma_nracks		VVAR(_DMA__DOT__dma_controller__DOT__nracks)
+#define	dma_nread		VVAR(_DMA__DOT__dma_controller__DOT__nread)
+#define	dma_last_write_req	VVAR(_DMA__DOT__dma_controller__DOT__last_write_request)
+#define	dma_last_write_ack	VVAR(_DMA__DOT__dma_controller__DOT__last_write_ack)
+#define	dma_nwacks		VVAR(_DMA__DOT__dma_controller__DOT__nwacks)
+#define	dma_nwritten		VVAR(_DMA__DOT__dma_controller__DOT__nwritten)
 		if (m_core->dma_state) {
 			fprintf(m_dbgfp, "DMA[%d]%s%s%s%s@%08x,%08x [%d%d/%4d/%4d] -> [%d%d/%04d/%04d]\n",
 				m_core->dma_state,
@@ -1904,13 +1913,14 @@ public:
 			unsigned long iticks = m_tickcount - m_last_instruction_tickcount;
 			if (m_profile_fp) {
 				unsigned buf[2];
-				buf[0] = alu_pc();
+				buf[0] = alu_pcf();
 				buf[1] = iticks;
 				fwrite(buf, sizeof(unsigned), 2, m_profile_fp);
 			}
 			m_last_instruction_tickcount = m_tickcount;
 			// }}}
 		}
+		// }}}
 		// }}}
 	}
 
@@ -1938,7 +1948,7 @@ public:
 		return (m_core->dcdB & 0x1f);
 	}
 
-	bool	op_valid(void) {
+	bool	op_valid_fn(void) {
 		return (m_core->op_valid !=0);
 	}
 
@@ -1955,11 +1965,11 @@ public:
 
 	bool	mem_stalled(void) {
 		// {{{
-		bool	a, b, c, d, wr_write_cc, wr_write_pc, op_gie;
+		bool	a, b, c, d, wr_write_cc, wr_write_pc, op_gieb;
 
 		wr_write_cc=((m_core->wr_reg_id&0x0f)==0x0e);
 		wr_write_pc=((m_core->wr_reg_id&0x0f)==0x0f);
-		op_gie = m_core->op_gie;
+		op_gieb = m_core->op_gie;
 
 #ifdef	OPT_PIPELINED_BUS_ACCESS
 		//a = m_core->v__DOT__thecpu__DOT__mem_pipe_stalled;
@@ -1971,14 +1981,14 @@ public:
 #endif
 		d = ((wr_write_pc)||(wr_write_cc));
 		c = ((m_core->wr_reg_ce)
-			&&(((m_core->wr_reg_id&0x010)?true:false)==op_gie)
+			&&(((m_core->wr_reg_id&0x010)?true:false)==op_gieb)
 			&&d);
 		d =(m_core->op_valid_mem)&&((a)||(b)||(c));
 		return ((!m_core->master_ce)||(d));
 		// }}}
 	}
 
-	unsigned	alu_pc(void) {
+	unsigned	alu_pcf(void) {
 		// {{{
 		/*
 		unsigned	r = op_pc();
@@ -2044,7 +2054,7 @@ public:
 		m_core->i_dbg_cyc = 1;
 		m_core->i_dbg_stb = 1;
 		m_core->i_dbg_we  = 1;
-		m_core->i_dbg_addr = (a>>2) & 1;
+		m_core->i_dbg_addr = (a>>2);
 		m_core->i_dbg_data = v;
 
 		while((errcount++ < 100)&&(m_core->o_dbg_stall))
@@ -2079,7 +2089,7 @@ public:
 		m_core->i_dbg_cyc = 1;
 		m_core->i_dbg_stb = 1;
 		m_core->i_dbg_we  = 0;
-		m_core->i_dbg_addr = (a>>2) & 1;
+		m_core->i_dbg_addr = (a>>2);
 
 		while((errcount++<100)&&(m_core->o_dbg_stall))
 			tick();
@@ -2152,16 +2162,8 @@ public:
 		// {{{
 		if (m_dbgfp)
 			fprintf(m_dbgfp, "JUMP_TO(%08x) ... Setting PC to %08x\n", address, address & -4);
-#ifdef	OPT_SINGLE_FETCH
-		m_core->new_pc = 1;
-		m_core->pf_pc = address;
-#else
-		m_core->pf_pc = address & -4;
-#define	pf_request_address	VVAR(_thecpu__DOT__pf_request_address)
-		m_core->pf_request_address = address;
-#endif
-		// m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
-		m_core->new_pc = 1;
+		wb_write(CMD_REG, CMD_HALT);
+		wb_write(CPU_sPC, address & -4);
 		// }}}
 	}
 
@@ -2278,6 +2280,10 @@ public:
 		int		rbase;
 		rbase = (m_core->r_gie)?16:0;
 
+		if ((dbg_flag)&&(m_dbgfp)) {
+			fprintf(m_dbgfp, "EXECSIM(0x%05x)\n", imm);
+		}
+
 		fflush(stdout);
 		if ((imm & 0x03fffff)==0)
 			// Ignore a NOOP
@@ -2285,44 +2291,65 @@ public:
 		// fprintf(stderr, "SIM-INSN(0x%08x)\n", imm);
 		if ((imm & 0x0fffff)==0x00100) {
 			// SIM Exit(0)
+			// {{{
 			m_rcode = 0;
 			m_exit = true;
+			if ((dbg_flag)&&(m_dbgfp))
+				fprintf(m_dbgfp, "\tEXECSIM: SIM Exit(0)\n");
+			// }}}
 		} else if ((imm & 0x0ffff0)==0x00310) {
 			// SIM Exit(User-Reg)
+			// {{{
 			int	rcode;
 			rcode = regp[(imm&0x0f)+16] & 0x0ff;
 			m_rcode = rcode;
 			m_exit = true;
+			if ((dbg_flag)&&(m_dbgfp))
+				fprintf(m_dbgfp, "\tEXECSIM: SIM Exit(%d)\n", m_rcode);
+			// }}}
 		} else if ((imm & 0x0ffff0)==0x00300) {
 			// SIM Exit(Reg)
+			// {{{
 			int	rcode;
 			rcode = regp[(imm&0x0f)+rbase] & 0x0ff;
 			m_rcode = rcode;
 			m_exit = true;
+			if ((dbg_flag)&&(m_dbgfp))
+				fprintf(m_dbgfp, "\tEXECSIM: SIM Exit(%d)\n", m_rcode);
+			// }}}
 		} else if ((imm & 0x0fff00)==0x00100) {
 			// SIM Exit(Imm)
+			// {{{
 			int	rcode;
 			rcode = imm & 0x0ff;
 			m_exit = true;
 			m_rcode = rcode;
+			if ((dbg_flag)&&(m_dbgfp))
+				fprintf(m_dbgfp, "\tEXECSIM: SIM Exit(%d)\n", m_rcode);
+			// }}}
 		} else if ((imm & 0x0fffff)==0x002ff) {
-			// Full/unconditional dump
-			if (m_console) {
+			// Full/unconditional dump -- Now handled internally
+			// {{{
+			if (0 && m_console) {
 				printf("SIM-DUMP\n");
 				dump(regp);
 			}
+			// }}}
 		} else if ((imm & 0x0ffff0)==0x00200) {
-			// Dump a register
-			if (m_console) {
+			// Dump a register -- Now handled internally
+			// {{{
+			if (0 && m_console) {
 				int rid = (imm&0x0f)+rbase;
 				//printf("%8lu @%08x R[%2d] = 0x%08x\n",
 				//	m_time_ps/1000,
 				//	m_core->cpu_ipc, rid, regp[rid]);
 				printf("R[%2d] = 0x%08x\n", rid&0x0f,regp[rid]);
 			}
+			// }}}
 		} else if ((imm & 0x0ffff0)==0x00210) {
-			// Dump a user register
-			if (m_console) {
+			// Dump a user register -- Now handled internally
+			// {{{
+			if (0 && m_console) {
 				int rid = (imm&0x0f);
 				/*
 				printf("%8lu @%08x uR[%2d] = 0x%08x\n",
@@ -2332,23 +2359,31 @@ public:
 				printf("uR[%2d] = 0x%08x\n",
 					rid, regp[rid+16]);
 			}
+			// }}}
 		} else if ((imm & 0x0ffff0)==0x00230) {
-			// SOUT[User Reg]
-			if (m_console) {
+			// SOUT[User Reg] -- Handled internally
+			// {{{
+			if (0 && m_console) {
 				int rid = (imm&0x0f)+16;
 				printf("%c", regp[rid]&0x0ff);
 			}
+			// }}}
 		} else if ((imm & 0x0fffe0)==0x00220) {
-			// SOUT[User Reg]
-			if (m_console) {
+			// SOUT[User Reg] -- Handled internally
+			// {{{
+			if (0 && m_console) {
 				int rid = (imm&0x0f)+rbase;
 				printf("%c", regp[rid]&0x0ff);
 			}
+			// }}}
 		} else if ((imm & 0x0fff00)==0x00400) {
-			if (m_console) {
+			// SOUT[User Reg] -- Handled internally
+			// {{{
+			if (0 && m_console) {
 				// SOUT[Imm]
 				printf("%c", imm&0x0ff);
 			}
+			// }}}
 		} else { // if ((insn & 0x0f7c00000)==0x77800000)
 			if (m_console) {
 				uint32_t	immv = imm & 0x03fffff;
@@ -2438,57 +2473,12 @@ void	get_value(ZIPCPU_TB *tb) {
 	if (pos > 0) {
 		int	v;
 		v = strtoul(str, NULL, 16);
-		if (!tb->halted()) {
-			switch(ra) {
-			case 15:
-				tb->m_core->cpu_ipc = v;
-				if (!tb->m_core->r_gie) {
-					tb->jump_to(v);
-					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
-					tb->m_core->alu_pc_valid = 0;
-#ifdef	OPT_PIPELINED
-					// tb->m_core->v__DOT__thecpu__DOT__dcd_ce = 0;
-					tb->m_core->dcd_valid = 0;
-#endif
-					tb->m_core->op_valid = 0;
-				}
-				break;
-			case 31:
-				tb->m_core->cpu_upc = v;
-				if (tb->m_core->r_gie) {
-					tb->jump_to(v);
-					// tb->m_core->v__DOT__thecpu__DOT__clear_pipeline = 1;
-					tb->m_core->alu_pc_valid = 0;
-#ifdef	OPT_PIPELINED
-					tb->m_core->dcd_valid = 0;
-#endif
-					tb->m_core->op_valid = 0;
-				}
-				break;
-#ifdef	ZIPSYSTEM
-			case 32: tb->m_core->pic_data = v; break;
-			case 33: tb->m_core->watchdog = v; break;
-			// case 34: tb->m_core->v__DOT__manualcache__DOT__cache_base = v; break;
-			case 35: tb->m_core->int_state = v; break;
-			case 36: tb->m_core->timer_a   = v; break;
-			case 37: tb->m_core->timer_b   = v; break;
-			case 38: tb->m_core->timer_c   = v; break;
-			case 39: tb->m_core->jiffies   = v; break;
-			case 44: tb->m_core->utc_data  = v; break;
-			case 45: tb->m_core->uoc_data  = v; break;
-			case 46: tb->m_core->upc_data  = v; break;
-			case 47: tb->m_core->uic_data  = v; break;
-#else
-			case 32: case 33: case 34: case 35:
-			case 36: case 37: case 38: case 39:
-			case 40: case 41: case 42: case 43:
-			case 44: case 45: case 46: case 47:
-				break;
-#endif
-			default:
-				tb->m_core->regset[ra] = v;
-				break;
-			}
+		if (!tb->halted()) { // Set the register
+			// {{{
+			tb->m_core->cpu_halt = 1;
+			tb->wb_write(ra, v);
+			tb->wb_write(CMD_REG, 0);
+			// }}}
 		} else
 			tb->cmd_write(ra, v);
 	}
@@ -2569,7 +2559,7 @@ int	main(int argc, char **argv) {
 			ELFSECTION **secpp = NULL, *secp;
 
 			elfread(argv[argn], entry, secpp);
-
+entry += 4;
 			for(int i=0; secpp[i]->m_len; i++) {
 				const char *data;
 
@@ -2596,10 +2586,10 @@ int	main(int argc, char **argv) {
 		printf("Running in non-interactive mode\n");
 		tb->m_console = true;
 		tb->reset();
-		tb->m_core->cpu_halt = 1;
-		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|15);
-		tb->wb_write(CMD_DATA, entry);
-		tb->wb_write(CMD_REG, 15);
+		// tb->m_core->cpu_halt = 1;
+		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET);
+		tb->wb_write(CPU_sPC, entry);
+		tb->wb_write(CMD_REG, 0);	// Release from halt and reset
 		tb->m_bomb = false;
 		while(!done) {
 			tb->tick();
@@ -2622,9 +2612,9 @@ int	main(int argc, char **argv) {
 		printf("Running in non-interactive mode, via step commands\n");
 		tb->m_console = true;
 		tb->reset();
-		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET|CPU_sPC);
-		tb->wb_write(CMD_DATA, entry);
-		tb->wb_write(CMD_REG, CPU_sPC);
+		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET);
+		tb->wb_write(CPU_sPC, entry);
+		tb->wb_write(CMD_REG, 0);	// Release from reset
 		tb->m_bomb = false;
 		while(!done) {
 			tb->wb_write(CMD_REG, CMD_STEP);
@@ -2644,29 +2634,10 @@ int	main(int argc, char **argv) {
 		noecho();
 		keypad(stdscr, true);
 
-		// tb->reset();
-		// for(int i=0; i<2; i++)
-			// tb->tick();
-		tb->m_core->cmd_reset = 1;
-		tb->m_core->cpu_halt = 1;
-		tb->tick();
-
-		tb->m_core->cmd_reset = 0;
-		tb->m_core->cpu_halt = 0;
-		tb->tick();
-		tb->jump_to(entry);
-		tb->tick();
-		tb->jump_to(entry);
-		tb->tick();
-		tb->jump_to(entry);
-
-
-		// For debugging purposes: do we wish to skip some number of
-		// instructions to fast forward to a time of interest??
-		for(int i=0; i<0; i++) {
-			tb->m_core->cpu_halt = 0;
-			tb->tick();
-		}
+		tb->reset();
+		tb->wb_write(CMD_REG, CMD_HALT|CMD_RESET);
+		tb->wb_write(CPU_sPC, entry);
+		tb->wb_write(CMD_REG, 0);	// Release from reset
 
 		int	chv = 'q';
 

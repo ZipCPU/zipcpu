@@ -56,6 +56,7 @@ module	zipcore #(
 `endif
 		parameter [0:0]	OPT_EARLY_BRANCHING = 1,
 		parameter [0:0]	OPT_CIS = 1'b1,
+		parameter [0:0]	OPT_SIM = 1'b0,
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 		parameter	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED),
 		parameter	[0:0]	IMPLEMENT_LOCK=1,
@@ -277,14 +278,10 @@ module	zipcore #(
 	wire	op_break;
 	wire	op_lock;
 
-`ifdef	VERILATOR
-	reg		op_sim		/* verilator public_flat */;
-	reg	[22:0]	op_sim_immv	/* verilator public_flat */;
-	reg		alu_sim		/* verilator public_flat */;
-	reg	[22:0]	alu_sim_immv	/* verilator public_flat */;
-`else
-	wire	op_sim = 1'b0;
-`endif
+	wire		op_sim		/* verilator public_flat */;
+	wire	[22:0]	op_sim_immv	/* verilator public_flat */;
+	wire		alu_sim		/* verilator public_flat */;
+	wire	[22:0]	alu_sim_immv	/* verilator public_flat */;
 	// }}}
 
 
@@ -443,7 +440,7 @@ module	zipcore #(
 
 		assign	op_stall = (op_valid)&&(
 		// {{{
-			// Only stall if we're loaded w/validins and the
+			// Only stall if we're loaded w/valid insns and the
 			// next stage is accepting our instruction
 			(!adf_ce_unconditional)&&(!mem_ce)
 			)
@@ -644,11 +641,7 @@ module	zipcore #(
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_OPIPE(OPT_PIPELINED_BUS_ACCESS),
 		.OPT_NO_USERMODE(OPT_NO_USERMODE),
-`ifdef	VERILATOR
-		.OPT_SIM(1'b1),
-`else
-		.OPT_SIM(1'b0),
-`endif
+		.OPT_SIM(OPT_SIM),
 		.OPT_CIS(OPT_CIS)
 		// }}}
 	) instruction_decoder(
@@ -1183,38 +1176,38 @@ module	zipcore #(
 	end endgenerate
 	// }}}
 
-	// op_sim, op_sim_immv, alu_sim, alu_sim_immv
+	// op_sim, op_sim_immv
 	// {{{
-`ifdef	VERILATOR
-	always @(posedge i_clk)
-	if (op_ce)
-	begin
-		op_sim      <= dcd_sim;
-		op_sim_immv <= dcd_sim_immv;
-	end else if (adf_ce_unconditional)
-		op_sim <= 1'b0;
+	generate if (OPT_SIM)
+	begin : OP_SIM
+		//
+		// Only execute this if OPT_SIM is true--that is, if we
+		// are running from a simulated environment.
+		//
+		reg		r_op_sim;
+		reg	[22:0]	r_op_sim_immv;
 
-	//
-	// We need an extra ALU sim stage.
-	//
-	// It's not quite true that all instructions leaving the OP stage
-	// are committed.  ALU instructions aren't committed until the next
-	// cycle.  That way they don't need to wait to determine if a branch
-	// was taken or not.
-	always @(posedge i_clk)
-	begin
-		if (adf_ce_unconditional)
-			alu_sim <= op_sim && op_valid_alu;
-		else
-			alu_sim <= 1'b0;
+		always @(posedge i_clk)
+		if (op_ce)
+		begin
+			r_op_sim      <= dcd_sim;
+			r_op_sim_immv <= dcd_sim_immv;
+		end else if (adf_ce_unconditional)
+			r_op_sim <= 1'b0;
 
-		if (adf_ce_unconditional)
-			alu_sim_immv <= op_sim_immv;
+		assign	op_sim = r_op_sim;
+		assign	op_sim_immv = r_op_sim_immv;
 
-		if (i_reset || clear_pipeline)
-			alu_sim <= 1'b0;
-	end
-`endif
+	end else begin : NO_OP_SIM
+
+		assign	op_sim = 0;
+		assign	op_sim_immv = 0;
+
+		// Verilator lint_off UNUSED
+		wire	op_sim_unused;
+		assign	op_sim_unused = &{ 1'b0, dcd_sim, dcd_sim_immv };
+		// Verilator lint_on  UNUSED
+	end endgenerate
 	// }}}
 
 	// op_pc
@@ -1803,6 +1796,169 @@ module	zipcore #(
 	assign	o_mem_addr = op_Bv;
 	assign	o_mem_reg  = op_R;
 
+	// }}}
+
+	// Sim instructions, alu_sim, alu_sim_immv
+	generate if (OPT_SIM)
+	begin : ALU_SIM
+		reg		r_alu_sim;
+		reg	[22:0]	r_alu_sim_immv;
+
+		initial	r_alu_sim = 1'b0;
+		always @(posedge i_clk)
+		begin
+			if (!i_reset && !clear_pipeline && adf_ce_unconditional
+					&& op_sim && op_valid_alu)
+			begin
+			// Execute simulation only instructions
+			// {{{
+			if ((op_sim_immv[19:10] == 10'h0)&&(op_sim_immv[8]))
+			begin // [N/S]EXIT
+				// {{{
+				// $finish;
+
+				// if (op_sim_immv[19:4] == 16'h0031)
+					// Exit(User reg), code cpu_wr_gpreg
+					// Verilog offers no support for this.
+					// Veri1ator might, but it isn't
+					// standard.
+				// if (op_sim_immv[19:4] == 16'h0030)
+					// Exit(Normal reg), code cpu_wr_gpreg
+					// $finish;
+				// if (op_sim_immv[19:8] == 12'h001)
+					// Exit(Immediate), code cpu_wr_gpreg
+					// $finish;
+				// }}}
+			end
+
+			if (op_sim_immv[19:0] == 20'h2ff)
+			begin
+				// DUMP all registers
+				// {{{
+				if (!op_gie)
+				begin
+				$write("sR0 : %08x ", regset[0]);
+				$write("sR1 : %08x ", regset[1]);
+				$write("sR2 : %08x ", regset[2]);
+				$write("sR3 : %08x\n",regset[3]);
+
+				$write("sR4 : %08x ", regset[4]);
+				$write("sR5 : %08x ", regset[5]);
+				$write("sR6 : %08x ", regset[6]);
+				$write("sR7 : %08x\n",regset[7]);
+
+				$write("sR8 : %08x ", regset[8]);
+				$write("sR9 : %08x ", regset[9]);
+				$write("sR10: %08x ", regset[10]);
+				$write("sR11: %08x\n",regset[11]);
+
+				$write("sR12: %08x ", regset[12]);
+				$write("sSP : %08x ", regset[13]);
+				$write("sCC : %08x ", w_iflags);
+				$write("sPC : %08x\n", (!op_gie) ? op_pc : ipc);
+				$write("\n", (!op_gie) ? op_pc : ipc);
+				end
+
+				$write("uR0 : %08x ", regset[16]);
+				$write("uR1 : %08x ", regset[17]);
+				$write("uR2 : %08x ", regset[18]);
+				$write("uR3 : %08x\n",regset[19]);
+
+				$write("uR4 : %08x ", regset[20]);
+				$write("uR5 : %08x ", regset[21]);
+				$write("uR6 : %08x ", regset[22]);
+				$write("uR7 : %08x\n",regset[23]);
+
+				$write("uR8 : %08x ", regset[24]);
+				$write("uR9 : %08x ", regset[25]);
+				$write("uR10: %08x ", regset[26]);
+				$write("uR11: %08x\n",regset[27]);
+
+				$write("uR12: %08x ", regset[28]);
+				$write("uSP : %08x ", regset[29]);
+				$write("uCC : %08x ", w_uflags);
+				$write("uPC : %08x\n", (op_gie) ? op_pc : upc);
+				// }}}
+			end
+
+			if (op_sim_immv[19:4] == 16'h0020)
+			begin
+				// Dump a register
+				// {{{
+				$write("@%08x ", op_pc);
+				$write("%c", (op_gie) ? "s":"u");
+				$write("R[%2d] = 0x", op_sim_immv[3:0]);
+				// Dump a register
+				if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
+					$display("%08x", wr_gpreg_vl);
+				else
+					$display("%08x", regset[{ op_gie,
+							op_sim_immv[3:0]}]);
+				// }}}
+			end
+			if (op_sim_immv[19:4] == 16'h0021)
+			begin
+				// Dump a user register
+				// {{{
+				$write("@%08x u", op_pc);
+				$write("R[%2d] = 0x", op_sim_immv[3:0]);
+				if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
+					$display("%08x\n", wr_gpreg_vl);
+				else
+					$display("%08x\n", regset[{ 1'b1,
+							op_sim_immv[3:0]}]);
+				// }}}
+			end
+			if (op_sim_immv[19:4] == 16'h0023)
+			begin
+				// SOUT(user register)
+				// {{{
+				if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
+					$write("%c", wr_gpreg_vl[7:0]);
+				else
+					$write("%c", regset[{ 1'b1, op_sim_immv[3:0]}][7:0]);
+				// }}}
+			end
+			if (op_sim_immv[19:4] == 16'h0022)
+			begin
+				// SOUT(register)
+				// {{{
+				if (wr_reg_ce && wr_reg_id == { gie, op_sim_immv[3:0] })
+					$write("%c", wr_gpreg_vl[7:0]);
+				else
+					$write("%c", regset[{ gie, op_sim_immv[3:0]}][7:0]);
+				// }}}
+			end
+
+			if (op_sim_immv[19:8] == 12'h004)
+			begin
+				// SOUT(Immediate)
+				// {{{
+				$write("%c", op_sim_immv[7:0]);
+				// }}}
+			end
+
+			// ELSE unrecognized SIM instruction
+
+			// Set alu_sim either way
+			r_alu_sim <= 1'b1;
+			// }}}
+			end else
+				r_alu_sim <= 1'b0;
+
+			if (adf_ce_unconditional)
+				r_alu_sim_immv <= op_sim_immv;
+		end
+
+		assign	alu_sim      = r_alu_sim;
+		assign	alu_sim_immv = r_alu_sim_immv;
+
+	end else begin : NO_ALU_SIM
+
+		assign	alu_sim = 0;
+		assign	alu_sim_immv = 0;
+
+	end endgenerate
 	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -2831,10 +2987,7 @@ module	zipcore #(
 				(i_pf_valid)&&(!i_mem_busy)&&(!alu_busy)
 					&&(!div_busy)&&(!fpu_busy)
 				// Operations must either be valid, or illegal
-				&&((op_valid)||(dcd_illegal))
-				// Decode stage must be either valid, in reset,
-				// or producing an illelgal instruction
-				&&((dcd_valid)||(i_pf_illegal)));
+				&&((dcd_valid)||(dcd_illegal)));
 		// }}}
 	end else begin
 		// {{{
@@ -2966,7 +3119,7 @@ module	zipcore #(
 		dcd_rA, dcd_pipe, dcd_zI,
 		dcd_A_stall, dcd_B_stall, dcd_F_stall,
 		op_Rcc, op_pipe, op_lock, i_mem_pipe_stalled, prelock_stall,
-		dcd_F };
+		dcd_F, w_clken };
 	generate if (AW+2 < 32)
 	begin
 		wire	[31:(AW+2)] generic_ignore;

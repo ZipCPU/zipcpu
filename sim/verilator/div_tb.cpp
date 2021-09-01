@@ -48,7 +48,11 @@
 #include "verilated.h"
 #include "Vdiv.h"
 
-#ifdef	NEW_VERILATOR
+#ifdef	ROOT_VERILATOR
+#include "Vdiv___024root.h"
+
+#define	VVAR(A)	rootp->div__DOT_ ## A
+#elif	defined(NEW_VERILATOR)
 #define	VVAR(A)	div__DOT_ ## A
 #else
 #define	VVAR(A)	v__DOT_ ## A

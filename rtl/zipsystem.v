@@ -79,11 +79,10 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
-// License:	GPL, v3, as defined and found on www.gnu.org,
 // }}}
-//		http://www.gnu.org/licenses/gpl.html
+// License:	GPL, v3, as defined and found on www.gnu.org,
 // {{{
+//		http://www.gnu.org/licenses/gpl.html
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -126,6 +125,8 @@ module	zipsystem #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
 				ADDRESS_WIDTH=30,
+		localparam	DW=32,
+		// CPU options
 		// LGICACHE
 		// {{{
 `ifdef	OPT_TRADITIONAL_PFCACHE
@@ -164,9 +165,9 @@ module	zipsystem #(
 		// OPT_FPU
 		// {{{
 `ifdef	OPT_IMPLEMENT_FPU
-		parameter [0:0]	OPT_FPU=1,
+		parameter [0:0]	OPT_FPU = 1,
 `else
-		parameter [0:0]	OPT_FPU=0,
+		parameter [0:0]	OPT_FPU = 0,
 `endif
 		// }}}
 		parameter [0:0]	OPT_LOCK=1,
@@ -271,8 +272,8 @@ module	zipsystem #(
 		// {{{
 		output	wire		o_wb_cyc, o_wb_stb, o_wb_we,
 		output	wire	[(PAW-1):0]	o_wb_addr,
-		output	wire	[31:0]	o_wb_data,
-		output	wire	[3:0]	o_wb_sel,
+		output	wire [DW-1:0]	o_wb_data,
+		output	wire [DW/8-1:0]	o_wb_sel,
 		input	wire		i_wb_stall, i_wb_ack,
 		input	wire	[31:0]	i_wb_data,
 		input	wire		i_wb_err,
@@ -285,11 +286,11 @@ module	zipsystem #(
 		// {{{
 		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
 		input	wire	[6:0]	i_dbg_addr,
-		input	wire	[31:0]	i_dbg_data,
-		input	wire	[3:0]	i_dbg_sel,
+		input	wire [DW-1:0]	i_dbg_data,
+		input	wire [DW/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire	[31:0]	o_dbg_data
+		output	wire [DW-1:0]	o_dbg_data
 		// }}}
 `ifdef	DEBUG_SCOPE
 		, output wire	[31:0]	o_cpu_debug
@@ -335,8 +336,12 @@ module	zipsystem #(
 	wire		no_dbg_err;
 
 	wire		cpu_break, dbg_cmd_write;
-	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_pf_cache,
-			reset_hold, cpu_halt;
+	reg		cmd_reset, cmd_step, cmd_clear_cache;
+	reg		cmd_write;
+	reg	[4:0]	cmd_waddr;
+	reg	[31:0]	cmd_wdata;
+	wire		reset_hold;
+	reg		cmd_halt;
 	wire	[2:0]	cpu_dbg_cc;
 
 	wire		cpu_reset;
@@ -418,8 +423,7 @@ module	zipsystem #(
 	// {{{
 	assign	main_int_vector[5:0] = { ctri_int, tma_int, tmb_int, tmc_int,
 					jif_int, dmac_int };
-	generate
-	if (EXTERNAL_INTERRUPTS < 9)
+	generate if (EXTERNAL_INTERRUPTS < 9)
 		assign	main_int_vector[14:6] = { {(9-EXTERNAL_INTERRUPTS){1'b0}},
 					i_ext_int };
 	else
@@ -545,12 +549,13 @@ module	zipsystem #(
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)
 					&&(dbg_addr[6:5] == DBG_ADDR_CTRL);
 	//
-	// cmd_halt, reset_hold: Always start us off with an initial reset
+	// reset_hold: Always start us off with an initial reset
 	// {{{
 	generate if (RESET_DURATION > 0)
 	begin : INITIAL_RESET_HOLD
-
+		// {{{
 		reg	[$clog2(RESET_DURATION)-1:0]	reset_counter;
+		reg					r_reset_hold;
 
 		initial	reset_counter = RESET_DURATION;
 		always @(posedge i_clk)
@@ -559,64 +564,105 @@ module	zipsystem #(
 		else if (reset_counter > 0)
 			reset_counter <= reset_counter - 1;
 
-		initial	reset_hold = 1;
+		initial	r_reset_hold = 1;
 		always @(posedge i_clk)
 		if (i_reset)
-			reset_hold <= 1;
+			r_reset_hold <= 1;
 		else
-			reset_hold <= (reset_counter != 0);
+			r_reset_hold <= (reset_counter > 1);
 
-		initial	cmd_halt  = START_HALTED;
-		always @(posedge i_clk)
-		if (i_reset)
-			cmd_halt <= START_HALTED;
-		else if (dbg_cmd_write)
-			cmd_halt <= ((dbg_idata[HALT_BIT])&&(!dbg_idata[STEP_BIT]));
-
+		assign	reset_hold = r_reset_hold;
+`ifdef	FORMAL
+		always @(*)
+			assert(reset_hold == (reset_counter != 0));
+`endif
+		// }}}
 	end else begin
 
-		always @(*)
-			reset_hold = 0;
-
-		always @(*)
-			cmd_halt = START_HALTED;
+		assign reset_hold = 0;
 
 	end endgenerate
 	// }}}
 
 	// cmd_reset
 	// {{{
+	// Always start us off with an initial reset
 	initial	cmd_reset = 1'b1;
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_reset <= 1'b1;
+	else if (reset_hold || wdt_reset)
+		cmd_reset <= 1'b1;
+	else if (cpu_break && !START_HALTED)
+		cmd_reset <= 1'b1;
 	else
-		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[RESET_BIT]))
-			||(wdt_reset) || reset_hold;
+		cmd_reset <= ((dbg_cmd_write)&&(dbg_idata[RESET_BIT]));
+	// }}}
 	// }}}
 
-	// cpu_halt
+	// cmd_halt
 	// {{{
-	initial	cpu_halt  = START_HALTED;
+	initial	cmd_halt  = START_HALTED;
 	always @(posedge i_clk)
 	if (i_reset)
-		cpu_halt <= START_HALTED;
-	else if (cmd_reset)
-		cpu_halt <= cmd_halt;
-	else if (dbg_cmd_write)
-		cpu_halt <= ((dbg_idata[HALT_BIT])&&(!dbg_idata[STEP_BIT]));
-	else if ((cmd_step)||(cpu_break))
-		cpu_halt  <= 1'b1;
+		cmd_halt <= START_HALTED;
+	else if (cmd_reset && START_HALTED)
+		cmd_halt <= START_HALTED;
+	else begin
+		// {{{
+		// When shall we release from a halt?  Only if we have come to
+		// a full and complete stop.  Even then, we only release if we
+		// aren't being given a command to step the CPU.
+		//
+		if (!cmd_write && !cpu_dbg_stall && dbg_cmd_write
+			&& (!dbg_idata[HALT_BIT] || dbg_idata[STEP_BIT]))
+			cmd_halt <= 1'b0;
+
+		// Reasons to halt
+
+		// 1. Halt on any unhandled CPU exception.  The cause of the
+		//	exception must be cured before we can (re)start.
+		//	If the CPU is configured to start immediately on power
+		//	up, we leave it to reset on any exception instead.
+		if (cpu_break && START_HALTED)
+			cmd_halt <= 1'b1;
+
+		// 2. Halt on any user request to halt.  (Only valid if the
+		//	STEP bit isn't also set)
+		if (dbg_cmd_write && dbg_idata[HALT_BIT]
+						&& !dbg_idata[STEP_BIT])
+			cmd_halt <= 1'b1;
+
+		// 3. Halt on any user request to write to a CPU register
+		if (i_dbg_stb && dbg_we && !dbg_addr[5])
+			cmd_halt <= 1'b1;
+
+		// 4. Halt following any step command
+		if (cmd_step)
+			cmd_halt <= 1'b1;
+
+		// 4. Halt following any clear cache
+		if (cmd_clear_cache)
+			cmd_halt <= 1'b1;
+
+		// 5. Halt on any clear cache bit--independent of any step bit
+		if (dbg_cmd_write && dbg_idata[CLEAR_CACHE_BIT])
+			cmd_halt <= 1'b1;
+		// }}}
+	end
 	// }}}
 
-	// cmd_clear_pf_cache
+	// cmd_clear_cache
 	// {{{
-	initial	cmd_clear_pf_cache = 1'b1;
+	initial	cmd_clear_cache = 1'b0;
 	always @(posedge i_clk)
-	if (i_reset)
-		cmd_clear_pf_cache <= 1'b1;
-	else
-		cmd_clear_pf_cache <= (dbg_cmd_write)&&(dbg_idata[CLEAR_CACHE_BIT]);
+	if (i_reset || cpu_reset)
+		cmd_clear_cache <= 1'b0;
+	else if (dbg_cmd_write && dbg_idata[CLEAR_CACHE_BIT]
+			&& dbg_idata[HALT_BIT])
+		cmd_clear_cache <= 1'b1;
+	else if (cmd_halt && !cpu_dbg_stall)
+		cmd_clear_cache <= 1'b0;
 	// }}}
 
 	// cmd_step
@@ -625,8 +671,10 @@ module	zipsystem #(
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_step <= 1'b0;
-	else
-		cmd_step <= (dbg_cmd_write)&&(dbg_idata[STEP_BIT]);
+	else if (dbg_cmd_write && dbg_idata[STEP_BIT])
+		cmd_step <= 1'b1;
+	else if (!cpu_dbg_stall)
+		cmd_step <= 1'b0;
 	// }}}
 
 	assign	cpu_reset = (cmd_reset);
@@ -665,6 +713,21 @@ module	zipsystem #(
 	// }}}
 
 	assign	cpu_gie = cpu_dbg_cc[1];
+
+	initial	cmd_write = 0;
+	always @(posedge i_clk)
+	if (i_reset || cpu_reset)
+		cmd_write <= 1'b0;
+	else if (!cmd_write || !cpu_dbg_stall)
+		cmd_write <= dbg_stb && dbg_we && (|i_dbg_sel)
+			&& (dbg_addr[6:5] == DBG_ADDR_CPU);
+
+	always @(posedge i_clk)
+	if ((!cmd_write || !cpu_dbg_stall)&&(dbg_stb && dbg_we && !dbg_addr[5]))
+	begin
+		cmd_waddr <= dbg_addr[4:0];
+		cmd_wdata <= dbg_idata;
+	end
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -762,7 +825,7 @@ module	zipsystem #(
 		zipcounter
 		mtask_ctr(
 			// {{{
-			i_clk, 1'b0, (!cpu_halt), sys_cyc,
+			i_clk, 1'b0, (!cmd_halt), sys_cyc,
 			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b000),
 				sys_we, sys_data,
 			mtc_stall, mtc_ack, mtc_data, mtc_int
@@ -812,7 +875,7 @@ module	zipsystem #(
 		zipcounter
 		utask_ctr(
 			// {{{
-			i_clk,1'b0, (!cpu_halt)&&(cpu_gie), sys_cyc,
+			i_clk,1'b0, (!cmd_halt)&&(cpu_gie), sys_cyc,
 			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b100),
 				sys_we, sys_data,
 			utc_stall, utc_ack, utc_data, utc_int
@@ -1153,13 +1216,18 @@ module	zipsystem #(
 		// }}}
 	) fdbg (
 		// {{{
-		.i_clk(i_clk), .i_reset(i_reset), .i_cpu_reset(cpu_reset),
-		.i_halt(cpu_halted), .i_halted(f_cpu_halted),
+		.i_clk(i_clk),
+		.i_reset(i_reset),
+		.i_cpu_reset(cpu_reset),
+		.i_halt(cmd_halt),
+		.i_halted(f_cpu_halted),
 		.i_clear_cache(cmd_clear_cache),
-		//
-		.i_dbg_we(cpu_dbg_we), .i_dbg_reg(dbg_addr[4:0]),
-		.i_dbg_data(dbg_idata), .i_dbg_stall(cpu_dbg_stall),
-		.i_dbg_break(cpu_break), .i_dbg_cc(cpu_dbg_cc)
+		.i_dbg_we(cmd_write),
+		.i_dbg_reg(cmd_waddr),
+		.i_dbg_data(cmd_wdata),
+		.i_dbg_stall(cpu_dbg_stall),
+		.i_dbg_break(cpu_break),
+		.i_dbg_cc(cpu_dbg_cc)
 		// }}}
 	);
 
@@ -1177,6 +1245,11 @@ module	zipsystem #(
 		.IMPLEMENT_DIVIDE(OPT_DIV),
 		.IMPLEMENT_FPU(OPT_FPU),
 		.IMPLEMENT_LOCK(OPT_LOCK),
+`ifdef	VERILATOR
+		.OPT_SIM(1'b1),
+`else
+		.OPT_SIM(1'b0),
+`endif
 		.WITH_LOCAL_BUS(1'b1)
 		// }}}
 	) thecpu(
@@ -1185,28 +1258,30 @@ module	zipsystem #(
 			.o_cpu_clken(cpu_clken),
 		// Debug interface
 		// {{{
-		.i_halt(cpu_halt), .i_clear_cache(cmd_clear_pf_cache),
-			.i_dbg_wreg(dbg_addr[4:0]), .i_dbg_we(cpu_dbg_we),
-			.i_dbg_data(dbg_idata),
-			.i_dbg_rreg(dbg_addr[4:0]),
+		.i_halt(cmd_halt), .i_clear_cache(cmd_clear_cache),
+				.i_dbg_wreg(cmd_waddr), .i_dbg_we(cmd_write),
+				.i_dbg_data(cmd_wdata),
+				.i_dbg_rreg(dbg_addr[4:0]),
 			.o_dbg_stall(cpu_dbg_stall),
-			.o_dbg_reg(cpu_dbg_data), .o_dbg_cc(cpu_dbg_cc),
+			.o_dbg_reg(cpu_dbg_data),
+			.o_dbg_cc(cpu_dbg_cc),
 			.o_break(cpu_break),
 		// }}}
 		// Wishbone bus interface
 		// {{{
 		.o_wb_gbl_cyc(cpu_gbl_cyc), .o_wb_gbl_stb(cpu_gbl_stb),
-		.o_wb_lcl_cyc(cpu_lcl_cyc), .o_wb_lcl_stb(cpu_lcl_stb),
-			.o_wb_we(cpu_we), .o_wb_addr(cpu_addr),
-			.o_wb_data(cpu_data), .o_wb_sel(cpu_sel),
-			// Return values from the Wishbone bus
-			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
-			.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
+				.o_wb_lcl_cyc(cpu_lcl_cyc),
+				.o_wb_lcl_stb(cpu_lcl_stb),
+				.o_wb_we(cpu_we), .o_wb_addr(cpu_addr),
+				.o_wb_data(cpu_data), .o_wb_sel(cpu_sel),
+				// Return values from the Wishbone bus
+				.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
+				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
 		// }}}
-		.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
-		.o_i_count(cpu_i_count)
+			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
+				.o_i_count(cpu_i_count)
 `ifdef	DEBUG_SCOPE
-		, o_cpu_debug
+			, o_cpu_debug
 `endif
 		// }}}
 	);
@@ -1582,8 +1657,11 @@ module	zipsystem #(
 	);
 
 	fwb_slave #(
+		// {{{
 		.AW(32), .DW(32), .F_LGDEPTH(3)
+		// }}}
 	) fwb_cpu (
+		// {{{
 		.i_clk(i_clk), .i_reset(cpu_reset),
 		//
 		.i_wb_cyc(i_dbg_cyc), .i_wb_stb(i_dbg_stb),
@@ -1593,7 +1671,8 @@ module	zipsystem #(
 		.i_wb_idata(o_dbg_data), .i_wb_err(1'b0),
 		.f_nreqs(fdbg_nreqs), .f_nacks(fdbg_nacks),
 			.f_outstanding(fdbg_outstanding)
-		// };
+		// }}}
+	);
 
 	fwb_master #(
 	) fsys (
@@ -1601,4 +1680,5 @@ module	zipsystem #(
 	);
 
 `endif
+// }}}
 endmodule
