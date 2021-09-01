@@ -181,8 +181,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/compare-elim.c gcc-10.3.0-zip/gcc/co
  	  x = XEXP (x, 0);
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zip/gcc/config/zip/genzipops.c
 --- gcc-10.3.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2021-06-19 22:35:47.054281782 -0400
-@@ -0,0 +1,674 @@
++++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2021-07-26 09:31:43.128337465 -0400
+@@ -0,0 +1,702 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	genzipops.c
@@ -313,10 +313,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +
 +// genzip_condop -- generate a conditional operation definition
 +// {{{
-+void	genzip_condop(FILE *fp, const char *md_opname,
++void	genzip_condop_off(FILE *fp, const char *md_opname,
 +		const char *rtxstr, const char *insn_cond,
 +		const char *zip_op,
-+		const char *rtx_cond, const char *zip_cond, bool offset=false) {
++		const char *rtx_cond, const char *zip_cond, int offset) {
 +	char	defineinsn[2048], *ptr;
 +
 +	// First definition via if-then-else
@@ -341,10 +341,11 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +		"\t\"%s\"\t; Condition\n", insn_cond);
 +
 +	strcat(defineinsn, "\t{\n"
-+		"\t\tif (REGNO(operands[0])!=REGNO(operands[1])) {\n"
++		"\t\tif (REGNO(operands[0])!=REGNO(operands[1])) {\n");
++	if (offset) {
++		sprintf(&defineinsn[strlen(defineinsn)],
 +		"\t\t\tif (REG_P(operands[2]))\n"
 +		"\t\t\t\tgcc_assert(REGNO(operands[0])!=REGNO(operands[2]));\n");
-+	if (offset) {
 +		sprintf(&defineinsn[strlen(defineinsn)],
 +			"\t\t\treturn \"MOV.%s\\t%%1,%%0\\n\"\n"
 +			"\t\t\t\t\"\\t%s.%s\\t%%3+%%2,%%0\\t; %s_%s\";\n"
@@ -354,12 +355,29 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +		zip_cond, zip_op, zip_cond, md_opname, rtx_cond,
 +		zip_op, zip_cond, md_opname, rtx_cond);
 +	} else {
++		if (strcmp(zip_op, "SUB") == 0 || strcmp(zip_op, "DIVS") == 0
++			|| strcmp(zip_op, "DIVU") == 0
++			|| strcmp(zip_op, "LSR") == 0
++			|| strcmp(zip_op, "LSL") == 0
++			|| strcmp(zip_op, "ASR") == 0)
++			sprintf(&defineinsn[strlen(defineinsn)],
++				"\t\t\tif (REG_P(operands[2]))\n"
++				"\t\t\t\tgcc_assert(REGNO(operands[0])!=REGNO(operands[2]));\n"
++				"\t\t\treturn \"MOV.%s\\t%%1,%%0\\n\\t%s.%s\\t%%2,%%0\\t; %s_%s (mov-first)\";\n"
++				"\t\t} else\n",
++				zip_cond, zip_op, zip_cond, md_opname, rtx_cond);
++		else
++			sprintf(&defineinsn[strlen(defineinsn)],
++				"\t\t\tif (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2]))\n"
++				"\t\t\t\treturn \"%s.%s\\t%%1,%%0\\t; %s_%s (swapped)\";\n"
++				"\t\t\telse\n"
++				"\t\t\t\treturn \"MOV.%s\\t%%1,%%0\\n\\t%s.%s\\t%%2,%%0\\t; %s_%s (pre-move)\";\n"
++				"\t\t} else\n",
++				zip_op, zip_cond, md_opname, rtx_cond,
++				zip_cond, zip_op, zip_cond, md_opname, rtx_cond);
 +		sprintf(&defineinsn[strlen(defineinsn)],
-+			"\t\t\treturn \"MOV.%s\\t%%1,%%0\\n\\t%s.%s\\t%%2,%%0\\t; %s_%s\";\n"
-+			"\t\t} else\n"
-+			"\t\t\treturn \"%s.%s\\t%%2,%%0\t; %s_%s\";\n"
++			"\t\t\treturn \"%s.%s\\t%%2,%%0\t; %s_%s (primary)\";\n"
 +			"\t}\n",
-+		zip_cond, zip_op, zip_cond, md_opname, rtx_cond,
 +		zip_op, zip_cond, md_opname, rtx_cond);
 +	}
 +
@@ -421,6 +439,16 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +	fputs(defineinsn, fp);
 +	// }}}
 +}
++
++void	genzip_condop(FILE *fp, const char *md_opname,
++		const char *rtxstr, const char *insn_cond,
++		const char *zip_op,
++		const char *rtx_cond, const char *zip_cond) {
++
++	genzip_condop_off(fp, md_opname, rtxstr, insn_cond,
++		zip_op, rtx_cond, zip_cond, 0);
++}
++
 +// }}}
 +
 +// genzipop_long
@@ -547,12 +575,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +
 +	fputs(defineinsn, fp);
 +
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "eq", "Z", true);
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "ne", "NZ", true);
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "lt", "LT", true);
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "ge", "GE", true);
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "ltu", "C", true);
-+	genzip_condop(fp, md_opname, insn_rtx, insn_cond, zip_op, "geu", "NC", true);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "eq", "Z", 1);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "ne", "NZ", 1);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "lt", "LT", 1);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "ge", "GE", 1);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "ltu", "C", 1);
++	genzip_condop_off(fp, md_opname, insn_rtx, insn_cond, zip_op, "geu", "NC", 1);
 +}
 +// }}}
 +
@@ -4389,7 +4417,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zipdbg.h gcc-10.3.0-zip/g
 +#endif
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/gcc/config/zip/zip-di.md
 --- gcc-10.3.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2021-06-19 16:37:47.802976063 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2021-06-25 08:20:50.608948424 -0400
 @@ -0,0 +1,586 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -4482,11 +4510,11 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +				hazard = 1;
 +
 +			if (hazard && ZIP_BIGENDIAN)
-+				return	"LW 4+%1,%L0\t; Load:DI\n\tLW %1,%H0";
++				return	"LW 4+%1,%L0\t; Load:DI, hazard\n\tLW %1,%H0";
 +			else if (ZIP_BIGENDIAN)
 +				return	"LW %1,%H0\t; Load:DI\n\tLW 4+%1,%L0";
 +			else if (hazard)
-+				return	"LW 4+%1,%H0\t; Load:DI\n\tLW %1,%L0";
++				return	"LW 4+%1,%H0\t; Load:DI, hazard\n\tLW %1,%L0";
 +			else
 +				return	"LW %1,%L0\t; Load:DI\n\tLW 4+%1,%H0";
 +		// }}}
@@ -9402,8 +9430,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc/config/zip/zip.md
 --- gcc-10.3.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2021-06-19 22:29:38.665044474 -0400
-@@ -0,0 +1,2151 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2021-08-07 17:47:19.667609015 -0400
+@@ -0,0 +1,2320 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -9536,7 +9564,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	(match_code "reg")
 +{
 +	return zip_const_address_operand(op);
-+	return (REG_P(op))&&(REGNO(op) == 14);
++	return (REG_P(op))&&(REGNO(op) == zip_CC);
 +})
 +
 +(define_predicate "zip_const0_operand"
@@ -9974,51 +10002,171 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		(set_attr "cost" "2")])
 +; }}}
 +;;
-+;; AND
-+;; iOR
-+;; XOR
 +;;
-+;(define_insn "addvsi4"
++; (define_insn "addvsi4"
 +; {{{
-+	;[(set (match_operand:SI 0 "register_operand" "=r")
-+		;(plus:SI (match_operand:SI 1 "register_operand" "%r")
-+			;(match_operand:SI 2 "general_operand" "rO")))
-+	;(set (pc) (if_then_else (eq (reg:CC CC_REG) (const_int 0))
-+			;(label_ref (match_operand 3))
-+			;(pc)))]
-+	;""
-+	;"MOV	%1,%0
-+	;ADD	%2,%0
-+	;BV	%3"
-+	;[(set_attr "predicable" "no") (set_attr "ccresult" "set")])
++;	[(set (match_operand:SI 0 "register_operand" "=r,?r")
++;		(plus:SI (match_operand:SI 1 "register_operand" "0,r")
++;			(match_operand:SI 2 "zip_opb_single_operand_p" "rO,r")))
++;	(set (pc) (if_then_else
++;			(ne:DI	(sign_extend:DI
++;					(plus:SI (match_dup 1) (match_dup 2)))
++;				(plus:DI (sign_extend:DI (match_dup 1))
++;					(sign_extend:DI (match_dup 2))))
++;			(label_ref (match_operand 3))
++;			(pc)))
++;	(clobber (reg:CC CC_REG))]
++;	"(0)"
++;	{
++;		if (REGNO(operands[0]) != REGNO(operands[1])) {
++;			if (REG_P(operands[2]) && REGNO(operands[2]) == REGNO(operands[0]))
++;				return "ADD\t%1,%0\n\tBV\t%3";
++;			else
++;				return "MOV\t%1,%0\n\tADD\t%2,%0\n\tBV\t%3";
++;		} else
++;			return "ADD\t%2,%0\n\tBV\t%3";
++;	}
++;	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++;				(set_attr "cost" "6")])
 +	; }}}
-+;;(define_insn "subvsi4"
-+;; {{{
++;(define_insn "subvsi4"
++; {{{
++;	[(set (match_operand:SI 0 "register_operand" "=r")
++;		(minus:SI (match_operand:SI 1 "register_operand" "0")
++;			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++;	(set (pc) (if_then_else
++;			(ne:DI (sign_extend:DI
++;				(minus:SI (match_dup 1) (match_dup 2)))
++;			(minus:DI (sign_extend:DI (match_dup 1))
++;				(sign_extend:DI (match_dup 2))))
++;			(label_ref (match_operand 3))
++;			(pc)))
++;	(clobber (reg:CC CC_REG))]
++;	""
++;	{
++;		if (REGNO(operands[0]) != REGNO(operands[1])) {
++;			if (REG_P(operands[2]))
++;				gcc_assert(REGNO(operands[2]) != REGNO(operands[0]));
++;			return "MOV\t%1,%0\n\tSUB\t%2,%0\n\tBV\t%3";
++;		} else
++;			return "SUB\t%2,%0\n\tBV\t%3";
++;	}
++;	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++;				(set_attr "cost" "6")])
++;	; }}} {{{
 +;;	MOV	%1,%0
 +;;	SUB	%2,%0
 +;;	BV	%3
 +;; }}}
-+;;(mulvsi4)
-+;;(define_insn "uaddvsi4"
-+;; {{{
-+;;	ADD	%2,%0
-+;;	BC	%3
-+;; }}}
-+;;(define_insn "usubvsi4"
-+;; {{{
++(define_insn "mulvsi4"
++; {{{
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (pc) (if_then_else
++			(ne:DI (sign_extend:DI
++				(minus:SI (match_dup 1) (match_dup 2)))
++			(mult:DI (sign_extend:DI (match_dup 1))
++				(sign_extend:DI (match_dup 2))))
++			(label_ref (match_operand 3))
++			(pc)))
++	(clobber (reg:CC CC_REG))]
++	"(0)"
++	{
++		if (REGNO(operands[0]) != REGNO(operands[1])) {
++			if (REG_P(operands[2]))
++				gcc_assert(REGNO(operands[2]) != REGNO(operands[0]));
++			return "MOV\t%1,%0\n\tMPY\t%2,%0\n\tBV\t%3";
++		} else
++			return "MPY\t%2,%0\n\tBV\t%3";
++	}
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++				(set_attr "cost" "9")])
++	; }}}
++;(define_insn "uaddvsi4"
++; {{{
++;	[(set (match_operand:SI 0 "register_operand" "=r,?r")
++;		(plus:SI (match_operand:SI 1 "register_operand" "0,r")
++;			(match_operand:SI 2 "general_operand" "rO,r")))
++;	(set (pc) (if_then_else
++;			(ne:DI (zero_extend:DI
++;				(plus:SI (match_dup 1) (match_dup 2)))
++;			(plus:DI (zero_extend:DI (match_dup 1))
++;				(zero_extend:DI (match_dup 2))))
++;			(label_ref (match_operand 3))
++;			(pc)))
++;	(clobber (reg:CC CC_REG))]
++;	""
++;	{
++;		if (REGNO(operands[0]) != REGNO(operands[1])) {
++;			if (REG_P(operands[2]) && REGNO(operands[2]) == REGNO(operands[0]))
++;				return "ADD\t%1,%0\n\tBC\t%3";
++;			else
++;				return "MOV\t%1,%0\n\tADD\t%2,%0\n\tBC\t%3";
++;		} else
++;			return "ADD\t%2,%0\n\tBC\t%3";
++;	}
++;	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++;				(set_attr "cost" "6")])
++;	; }}}
++; (define_insn "usubvsi4"
++; {{{
++;	[(set (match_operand:SI 0 "register_operand" "=r")
++;		(minus:SI (match_operand:SI 1 "register_operand" "0")
++;			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++;	(set (pc) (if_then_else
++;			(ne:DI (zero_extend:DI
++;				(minus:SI (match_dup 1) (match_dup 2)))
++;			(minus:DI (zero_extend:DI (match_dup 1))
++;				(zero_extend:DI (match_dup 2))))
++;			(label_ref (match_operand 3))
++;			(pc)))
++;	(clobber (reg:CC CC_REG))]
++;	""
++;	{
++;		if (REGNO(operands[0]) != REGNO(operands[1])) {
++;			if (REG_P(operands[2]))
++;				gcc_assert(REGNO(operands[2]) != REGNO(operands[0]));
++;			return "MOV\t%1,%0\n\tSUB\t%2,%0\n\tBV\t%3";
++;		} else
++;			return "SUB\t%2,%0\n\tBV\t%3";
++;	}
++;	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++;				(set_attr "cost" "6")])
++;	; }}} {{{
 +;;	MOV	%1,%0
 +;;	SUB	%2,%0
-+;;	BC	%3
++;;	BV	%3
 +;; }}}
++(define_insn "umulvsi4"
++; {{{
++	[(set (match_operand:SI 0 "register_operand" "=r")
++		(mult:SI (match_operand:SI 1 "register_operand" "0")
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
++	(set (pc) (if_then_else
++			(ne:DI (zero_extend:DI
++				(minus:SI (match_dup 1) (match_dup 2)))
++			(mult:DI (zero_extend:DI (match_dup 1))
++				(zero_extend:DI (match_dup 2))))
++			(label_ref (match_operand 3))
++			(pc)))
++	(clobber (reg:CC CC_REG))]
++	"(0)"
++	{
++		if (REGNO(operands[0]) != REGNO(operands[1])) {
++			if (REG_P(operands[2]))
++				gcc_assert(REGNO(operands[2]) != REGNO(operands[0]));
++			return "MOV\t%1,%0\n\tMPY\t%2,%0\n\tBC\t%3";
++		} else
++			return "MPY\t%2,%0\n\tBC\t%3";
++	}
++	[(set_attr "predicable" "no") (set_attr "ccresult" "set")
++				(set_attr "cost" "9")])
++	; }}}
 +;;
-+;; (define_insn "umulvsi4"
-+;; {{{
-+;;	... ???)
-+;; }}}
-+;
-+;
-+; Others:  NEG, TEST, POPC, NOT
-+;
++;;
++;; Others:  NEG, TEST, POPC, NOT
++;;
 +(define_insn "negsi2"
 +; {{{
 +	[(set (match_operand:SI 0 "register_operand" "=r")
@@ -10036,7 +10184,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	""
 +	"TEST\t%0\n\tNEG.LT\t%0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
-+		(set_attr "cost" "2")])
++		(set_attr "cost" "3")])
 +; }}}
 +(define_insn_and_split "one_cmplsi2"
 +; {{{
@@ -10180,23 +10328,49 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		(if_then_else:SI (match_operand 1 "comparison_operator")
 +			(match_operand:SI 2 "general_operand" "")
 +			(match_operand:SI 3 "general_operand" "")))]
-+	""
++	"(0)"
 +	{
-+	//; extern void zip_debug_rtx_pfx(const char *, const_rtx);
-+	//; fprintf(stderr, "MOVSICC\n");
-+	//; zip_debug_rtx_pfx("- DST: ", operands[0]);
-+	//; zip_debug_rtx_pfx("- CMP: ", operands[1]);
-+	//; zip_debug_rtx_pfx("- NEW: ", operands[2]);
-+	//; zip_debug_rtx_pfx("- DEF: ", operands[3]);
++	int	changed = 0;
++	extern void zip_debug_rtx_pfx(const char *, const_rtx);
++	fprintf(stderr, "MOVSICC\n");
++	zip_debug_rtx_pfx("- DST: ", operands[0]); // The destination
++	zip_debug_rtx_pfx("- CMP: ", operands[1]); // The comparison
++	zip_debug_rtx_pfx("- NEW: ", operands[2]); // If true, set as this
++	zip_debug_rtx_pfx("- DEF: ", operands[3]); // The default value
 +
-+	if (!REG_P(operands[2]))
-+		operands[2] = force_reg(SImode, operands[2]);
++	if ((REG_P(operands[2]) && REG_P(operands[0])
++		&& (REGNO(operands[2]) == REGNO(operands[0])))
++		|| (operands[2] == operands[0])) {
++		//; {{{
++		//; Moving from [3] to [0] is the default, not from [2] to [0]
++		//; If [2] and [0] are the same, this is a problem.  Indeed,
++		//; we have no way to move [3] into [0] without a separate
++		//; instruction.  Thus if [2] and [0] start out the same, then
++		//; we'll need to swap [2] and [3] and therefore the condition
++		//; as well.
++		//;
++		//; Swap operands and conditions
++fprintf(stderr, "MOVSICC -- SWAP\n");
++		//; Swap the condition
++		operands[1]->code = reverse_condition(GET_CODE(operands[1]));
 +
-+	if ((!REG_P(operands[3]))||(REGNO(operands[0]) != REGNO(operands[3])))
-+		emit_insn(gen_movsi(operands[0], operands[3]));
-+	operands[3] = operands[0];
++		//; Swap the operands
++		rtx tmp;
++		/*
++		tmp         = operands[2];
++		operands[2] = copy_rtx(operands[3]);
++		operands[3] = copy_rtx(tmp);
++		*/
++		tmp         = operands[2];
++		operands[2] = operands[3];
++		operands[3] = tmp;
 +
++		changed = 1;
++		//; }}}
++	}
 +
++	//; Emit the comparison instruction
++	//; {{{
 +	rtx_code	ccode = GET_CODE(operands[1]);
 +	rtx	cmpop0 = copy_rtx(XEXP(operands[1], 0));
 +	rtx	cmpop1 = copy_rtx(XEXP(operands[1], 1));
@@ -10213,9 +10387,32 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		zip_canonicalize_comparison((int *)&ccode, &cmpop0, &cmpop1, true);
 +		emit_insn(gen_cmpsi(cmpop0, cmpop1));
 +	}
++	//; }}}
++
++	if (operands[3] != operands[0]) {
++		//; {{{
++		//; If op[3] and [0] aren't the same, then we'll need to move
++		//; op [3] into zero before the conditional move, but after
++		//; the comparison that might've otherwise used op[0] or op[3]
++fprintf(stderr, "MOVSICC -- MOVE-TO-OP[0]\n");
++		emit_insn(gen_movsi(operands[0], operands[3]));
++		operands[3] = operands[0];
++
++		changed = 1;
++		//; }}}
++	}
 +
 +	operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
-+			gen_rtx_REG(CCmode, 14), const0_rtx);
++			gen_rtx_REG(CCmode, zip_CC), const0_rtx);
++
++	if (changed) {
++	fprintf(stderr, "MOVSICC - TRANSFORMED\n");
++	zip_debug_rtx_pfx("- DST: ", operands[0]); // The destination
++	zip_debug_rtx_pfx("- CMP: ", operands[1]); // The comparison
++	zip_debug_rtx_pfx("- NEW: ", operands[2]); // If true, set as this
++	zip_debug_rtx_pfx("- DEF: ", operands[3]); // The default value
++	}
++
 +	})
 +; }}}
 +;
@@ -10249,7 +10446,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		emit_insn(gen_cmpsi(cmpop0, cmpop1));
 +
 +		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
-+			gen_rtx_REG(CCmode, 14), const0_rtx);
++			gen_rtx_REG(CCmode, zip_CC), const0_rtx);
 +	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +; }}}
@@ -10279,7 +10476,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		emit_insn(gen_cmpsi(cmpop0, cmpop1));
 +
 +		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
-+			gen_rtx_REG(CCmode, 14), const0_rtx);
++			gen_rtx_REG(CCmode, zip_CC), const0_rtx);
 +	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")])
 +; }}}
@@ -10311,7 +10508,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		emit_insn(gen_cmpsi(cmpop0, cmpop1));
 +
 +		operands[1] = gen_rtx_fmt_ee(ccode, VOIDmode,
-+			gen_rtx_REG(CCmode, 14), const0_rtx);
++			gen_rtx_REG(CCmode, zip_CC), const0_rtx);
 +
 +		if (REGNO(operands[0]) != REGNO(operands[2]))
 +			emit_insn(gen_movsicc(operands[0], operands[1], operands[2], operands[0]));
