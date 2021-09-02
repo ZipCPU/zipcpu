@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename: 	testb.h
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A wrapper for a common interface to a clocked FPGA core
@@ -11,9 +11,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015,2017, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -28,14 +28,14 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #ifndef	TESTB_H
 #define	TESTB_H
 
@@ -44,6 +44,14 @@
 #include <verilated_vcd_c.h>
 
 #define	TBASSERT(TB,A) do { if (!(A)) { (TB).closetrace(); } assert(A); } while(0);
+
+#ifdef	AXI_ACLK
+#define	CLOCK	S_AXI_ACLK
+#define	RESET	S_AXI_ARESETN
+#else
+#define	CLOCK	i_clk
+#define	RESET	i_reset
+#endif
 
 template <class VA>	class TESTB {
 public:
@@ -54,7 +62,7 @@ public:
 	TESTB(void) : m_trace(NULL), m_tickcount(0l) {
 		m_core = new VA;
 		Verilated::traceEverOn(true);
-		m_core->i_clk = 0;
+		m_core->CLOCK = 0;
 		eval(); // Get our initial values set properly.
 	}
 	virtual ~TESTB(void) {
@@ -93,10 +101,10 @@ public:
 		// before the top of the clock.
 		eval();
 		if (m_trace) m_trace->dump((vluint64_t)(10*m_tickcount-2));
-		m_core->i_clk = 1;
+		m_core->CLOCK = 1;
 		eval();
 		if (m_trace) m_trace->dump((vluint64_t)(10*m_tickcount));
-		m_core->i_clk = 0;
+		m_core->CLOCK = 0;
 		eval();
 		if (m_trace) {
 			m_trace->dump((vluint64_t)(10*m_tickcount+5));
@@ -105,10 +113,15 @@ public:
 	}
 
 	virtual	void	reset(void) {
+#ifdef	AXI_ACLK
+		m_core->RESET = 0;
+		tick();
+		m_core->RESET = 1;
+#else
 		m_core->i_reset = 1;
 		tick();
 		m_core->i_reset = 0;
-		// printf("RESET\n");
+#endif
 	}
 
 	unsigned long	tickcount(void) {

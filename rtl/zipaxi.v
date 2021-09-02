@@ -725,6 +725,7 @@ module	zipaxi #(
 		// {{{
 		.i_clk(cpu_clock), .i_reset(cmd_reset),
 			.i_interrupt(i_interrupt),
+		.o_clken(cpu_clken),
 		// Debug interface
 		// {{{
 		.i_halt(cmd_halt), .i_clear_cache(cmd_clear_cache),
@@ -762,7 +763,6 @@ module	zipaxi #(
 		// Accounting/CPU usage interface
 		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
 		.o_i_count(o_i_count),
-		.o_clken(cpu_clken),
 		.o_debug(cpu_debug)
 		// }}}
 	);
@@ -1285,7 +1285,7 @@ module	zipaxi #(
 			M_INSN_AWREADY, M_INSN_WREADY,
 			M_INSN_BVALID, M_INSN_BID, M_INSN_BRESP,
 			mem_lock_pc
-		 };
+		};
 	// Verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

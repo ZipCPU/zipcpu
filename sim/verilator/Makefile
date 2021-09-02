@@ -149,7 +149,7 @@ ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
 SOURCES := $(ZLIBSRCS) pdump.cpp zipcpu_tb.cpp memsim.cpp
 ZDSMSRCS:= zopcodes.cpp
 ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZLIBSRCS) $(ZDSMSRCS)))
-SIMSRCS := memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
+SIMSRCS := memsim.cpp axilmemsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
@@ -221,6 +221,10 @@ pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
 	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
 
 .PHONY: stest
+atest: zipsys_tb
+	./zipsys_tb -a $(TESTF)
+
+.PHONY: stest
 stest: zipsys_tb
 	./zipsys_tb -s $(TESTF)
 
@@ -228,17 +232,32 @@ stest: zipsys_tb
 itest: zipsys_tb
 	./zipsys_tb $(TESTF)
 
+.PHONY: atestaxil
+atestaxil: zipaxil_tb
+	./zipaxil_tb -a $(TESTF)
+
+.PHONY: stestaxil
+stestaxil: zipaxil_tb
+	./zipaxil_tb -s $(TESTF)
+
+.PHONY: itestaxil
+itestaxil: zipaxil_tb
+	./zipaxil_tb $(TESTF)
+
+.PHONY: atestb
+atestb: zipbones_tb
+	./zipbones_tb -a $(TESTF)
+
 .PHONY: stestb
-stestb: zipsys_tb
+stestb: zipbones_tb
 	./zipbones_tb -s $(TESTF)
 
 .PHONY: itestb
-itestb: zipsys_tb
+itestb: zipbones_tb
 	./zipbones_tb $(TESTF)
 
 .PHONY: test
-test: zipsys_tb stest stestb
-	./zipsys_tb -a $(TESTF)
+test: zipsys_tb atest stest atestb stestb atestaxil stestaxil
 
 .PHONY: dhrystone
 dhrystone: zipsys_tb
