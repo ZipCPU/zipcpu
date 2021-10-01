@@ -14,7 +14,7 @@
 // Copyright (C) 2015-2021, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -1741,7 +1741,7 @@ module	zipcore #(
 		// {{{
 		initial	r_prelock_primed = 1'b0;
 		always @(posedge i_clk)
-		if (OPT_PIPELINED)
+		if (!OPT_PIPELINED)
 			r_prelock_primed <= 1'b1;
 		else if (clear_pipeline)
 			r_prelock_primed <= 1'b0;
