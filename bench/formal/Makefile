@@ -516,6 +516,7 @@ $(CPU): $(CPU)_piped/PASS     $(CPU)_nopipe/PASS
 $(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS
 $(CPU): $(CPU)_pipedlp/PASS   $(CPU)_lowlogiclp/PASS   $(CPU)_nopipelp/PASS
 $(CPU): $(CPU)_pipedlpck/PASS $(CPU)_lowlogiclpck/PASS
+$(CPU): $(CPU)_cvr/PASS
 CPUDEPS:= $(CPU).sby $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v		\
 	$(RTL)/core/idecode.v $(RTL)/ex/wbdblpriarb.v			\
 	$(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v			\
@@ -540,6 +541,8 @@ $(CPU)_pipedlpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby pipedlpck
 $(CPU)_lowlogiclpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogiclpck
+$(CPU)_cvr/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby cvr
 ## }}}
 ## }}}
 

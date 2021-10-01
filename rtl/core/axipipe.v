@@ -1944,15 +1944,23 @@ module	axipipe #(
 	always @(*)
 	if (M_AXI_WVALID || M_AXI_ARVALID)
 	begin
-		assert(cpu_last_reg == { fifo_gie, ar_oreg });
+		if (cpu_axi_write_cycle)
+		begin
+			assert(cpu_last_reg == { fifo_gie, 4'hf });
+		end else if (!r_flushing)
+			assert(cpu_last_reg == { fifo_gie, ar_oreg });
 	end else if (!f_clrfifo && f_fifo_fill > 0)
 	begin
-		if (f_first_in_fifo && f_first_addr == f_last_written)
+		if (cpu_axi_write_cycle)
+		begin
+			assert(cpu_last_reg == { fifo_gie, 4'hf });
+		end else if (f_first_in_fifo && f_first_addr == f_last_written)
 		begin
 			assert(f_first_return_reg == cpu_last_reg);
 		end
 
-		if (f_next_in_fifo && f_next_addr == f_last_written)
+		if (!cpu_axi_write_cycle && f_next_in_fifo
+					&& f_next_addr == f_last_written)
 		begin
 			assert(f_next_return_reg == cpu_last_reg);
 		end

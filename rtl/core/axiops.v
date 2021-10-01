@@ -222,7 +222,7 @@ module	axiops #(
 					swapped_wstrb_byte;
 	reg	[DW-1:0]		axi_wdata;
 	reg	[DW/8-1:0]		axi_wstrb;
-	reg				r_lock;
+	reg				axlock;
 	reg	[AXILSB-1:0]		swapaddr;
 	wire	[DW-1:0]		endian_swapped_rdata;
 	reg	[2*DW-1:0]		pre_result;
@@ -287,33 +287,38 @@ module	axiops #(
 	end
 	// }}}
 
-	// r_lock
+	// axlock
 	// {{{
-	initial	r_lock = 1'b0;
+	initial	axlock = 1'b0;
 	always @(posedge i_clk)
 	if (!OPT_LOCK || (!S_AXI_ARESETN && OPT_LOWPOWER))
 	begin
 		// {{{
-		r_lock <= 1'b0;
+		axlock <= 1'b0;
 		// }}}
 	end else if (M_AXI_BREADY || M_AXI_RREADY)
 	begin // Something is outstanding
 		// {{{
 		if (OPT_LOWPOWER && (M_AXI_BVALID || M_AXI_RVALID))
-			r_lock <= 1'b0;
+			axlock <= axlock && i_lock && M_AXI_RVALID;
 		// }}}
 	end else begin // New memory operation
 		// {{{
 		// Initiate a request
-		r_lock <= i_lock && i_stb;
+		if (!OPT_LOWPOWER)
+			axlock <= i_lock;
+		else begin
+			if (i_stb)
+				axlock <= i_lock;
 
-		if (OPT_LOWPOWER && (i_cpu_reset || o_err || w_misaligned))
-			r_lock <= 1'b0;
+			if (i_cpu_reset || o_err || w_misaligned)
+				axlock <= 1'b0;
+		end
 		// }}}
 	end
 
-	assign	M_AXI_AWLOCK = r_lock;
-	assign	M_AXI_ARLOCK = r_lock;
+	assign	M_AXI_AWLOCK = axlock;
+	assign	M_AXI_ARLOCK = axlock;
 	// }}}
 
 	// r_flushing
@@ -392,34 +397,34 @@ module	axiops #(
 
 	// M_AXI_AxSIZE
 	// {{{
-	reg	[2:0]	awsize;
+	reg	[2:0]	axsize;
 
-	initial	awsize = DSZ;
+	initial	axsize = DSZ;
 	always @(posedge i_clk)
 	if (!S_AXI_ARESETN)
-		awsize <= DSZ;
+		axsize <= DSZ;
 	else if (!M_AXI_BREADY && !M_AXI_RREADY && (!OPT_LOWPOWER || i_stb))
 	begin
 		casez(i_op[2:1])
 		2'b0?: begin
-			awsize <= 3'b010;	// Word
+			axsize <= 3'b010;	// Word
 			if ((|i_addr[1:0]) && !w_misaligned)
-				awsize <= AXILSB[2:0];
+				axsize <= AXILSB[2:0];
 			end
 		2'b10: begin
-			awsize <= 3'b001;	// Half-word
+			axsize <= 3'b001;	// Half-word
 			if (i_addr[0] && !w_misaligned)
-				awsize <= AXILSB[2:0];
+				axsize <= AXILSB[2:0];
 			end
-		2'b11: awsize <= 3'b000;	// Byte
+		2'b11: axsize <= 3'b000;	// Byte
 		endcase
 
 		if (SWAP_WSTRB)
-			awsize <= DSZ;
+			axsize <= DSZ;
 	end
 
-	assign	M_AXI_AWSIZE = awsize;
-	assign	M_AXI_ARSIZE  = M_AXI_AWSIZE;
+	assign	M_AXI_AWSIZE = axsize;
+	assign	M_AXI_ARSIZE = axsize;
 	// }}}
 
 	// AxOTHER
@@ -775,7 +780,7 @@ module	axiops #(
 	always @(posedge i_clk)
 	if (i_cpu_reset || r_flushing)
 		o_valid <= 1'b0;
-	else if (r_lock)
+	else if (axlock)
 		o_valid <= (M_AXI_RVALID && M_AXI_RRESP == EXOKAY)
 				|| (M_AXI_BVALID && M_AXI_BRESP == OKAY);
 	else
@@ -791,7 +796,7 @@ module	axiops #(
 		o_err <= 1'b0;
 	else if (i_stb && w_misalignment_err)
 		o_err <= 1'b1;
-	else if (r_lock)
+	else if (axlock)
 	begin
 		o_err <= (M_AXI_BVALID && M_AXI_BRESP[1])
 			 || (M_AXI_RVALID && M_AXI_RRESP != EXOKAY);
@@ -809,7 +814,7 @@ module	axiops #(
 	always @(*)
 	begin
 		o_busy   = M_AXI_BREADY || M_AXI_RREADY;
-		o_rdbusy = (M_AXI_BREADY && r_lock) || M_AXI_RREADY;
+		o_rdbusy = (M_AXI_BREADY && axlock) || M_AXI_RREADY;
 		if (r_flushing)
 			o_rdbusy = 1'b0;
 	end
@@ -900,7 +905,7 @@ module	axiops #(
 	else begin
 		// {{{
 		if (OPT_LOCK && M_AXI_BVALID && (!OPT_LOWPOWER
-					|| (r_lock && M_AXI_BRESP == OKAY)))
+					|| (axlock && M_AXI_BRESP == OKAY)))
 		begin
 			o_result <= 0;
 			o_result[AW-1:0] <= r_pc;
@@ -940,7 +945,7 @@ module	axiops #(
 
 			if (OPT_LOWPOWER && (M_AXI_RRESP[1] || pending_err
 					|| misaligned_response_pending
-					|| (r_lock && !M_AXI_RRESP[0])))
+					|| (axlock && !M_AXI_RRESP[0])))
 				o_result <= 0;
 			// }}}
 		end
@@ -1171,7 +1176,7 @@ module	axiops #(
 			assert(faxi_wr_burst == M_AXI_AWBURST);
 			// assert(faxi_wr_size  == M_AXI_AWSIZE);
 			assert(faxi_wr_len   == M_AXI_AWLEN);	// == 0
-			assert(faxi_wr_lockd == r_lock);
+			assert(faxi_wr_lockd == axlock);
 		end
 
 		if (faxi_rd_ckvalid)
@@ -1179,7 +1184,7 @@ module	axiops #(
 			assert(faxi_rd_ckburst == M_AXI_ARBURST);
 			// assert(faxi_rd_cksize  == M_AXI_ARSIZE);
 			assert(faxi_rd_ckarlen == M_AXI_ARLEN);	// == 0
-			assert(faxi_rd_cklockd == r_lock);
+			assert(faxi_rd_cklockd == axlock);
 		end
 
 		if (misaligned_request)
@@ -1436,7 +1441,7 @@ module	axiops #(
 			end else
 				`ASSERT(o_err);
 		end else if ($past(M_AXI_RVALID && M_AXI_RRESP[1]
-				|| (M_AXI_RVALID && r_lock && M_AXI_RRESP != EXOKAY)))
+				|| (M_AXI_RVALID && axlock && M_AXI_RRESP != EXOKAY)))
 		begin
 			if ($past(misaligned_response_pending))
 			begin
@@ -1455,7 +1460,7 @@ module	axiops #(
 	always @(*)
 	if (misaligned_response_pending || misaligned_aw_request
 				|| misaligned_read || misaligned_request)
-		assert(!r_lock);
+		assert(!axlock);
 
 	always @(*)
 	if (o_busy && misaligned_response_pending)
@@ -1470,7 +1475,7 @@ module	axiops #(
 	end
 
 	always @(*)
-	if (r_lock && M_AXI_BREADY)
+	if (axlock && M_AXI_BREADY)
 		assert(o_wreg[3:0] == 4'hf);
 
 	// }}}
@@ -1586,16 +1591,16 @@ module	axiops #(
 	if (o_rdbusy && M_AXI_BREADY)
 	begin
 		assert(f_exwrite_cycle);
-		assert(r_lock);
+		assert(axlock);
 	end else if (M_AXI_RREADY)
 		assert(!f_exwrite_cycle);
 
 	always @(*)
-	if (M_AXI_BREADY && (M_AXI_AWLOCK || f_exwrite_cycle || r_lock))
+	if (M_AXI_BREADY && (M_AXI_AWLOCK || f_exwrite_cycle || axlock))
 	begin
 		assert(!pending_err);
 		assert(!misaligned_response_pending);
-		assert(M_AXI_AWLOCK && f_exwrite_cycle && r_lock);
+		assert(M_AXI_AWLOCK && f_exwrite_cycle && axlock);
 		if (f_active_lock)
 			assert((M_AXI_AWVALID || M_AXI_WVALID) || faxi_ex_state == 2'b11);
 	end else
@@ -1606,7 +1611,7 @@ module	axiops #(
 		assert(f_last_reg == o_wreg);
 
 	always @(*)
-	if (f_pc || (r_lock && M_AXI_BREADY))
+	if (f_pc || (axlock && M_AXI_BREADY))
 	begin
 		assert(o_wreg[3:1] == 3'h7);
 	end else if (o_rdbusy)
@@ -1625,11 +1630,11 @@ module	axiops #(
 
 	always @(*)
 	if (!OPT_LOCK)
-		assert(!r_lock);
+		assert(!axlock);
 
 	always @(posedge S_AXI_ACLK)
 	if (S_AXI_ARESETN && $past(S_AXI_ARESETN) && !$past(i_cpu_reset)
-			&& $past(M_AXI_BVALID && r_lock))
+			&& $past(M_AXI_BVALID && axlock))
 	begin
 		if ($past(M_AXI_BRESP == OKAY))
 		begin
@@ -1694,10 +1699,10 @@ module	axiops #(
 	begin : COVER_LOCK
 
 		always @(posedge i_clk)
-			cover(r_lock);
+			cover(axlock);
 
 		always @(posedge i_clk)
-			cover(o_valid && $past(r_lock && M_AXI_RVALID));
+			cover(o_valid && $past(axlock && M_AXI_RVALID));
 
 		always @(posedge i_clk)
 			cover(!o_valid && !o_err && faxi_ex_state == 2'b10);
@@ -1715,10 +1720,10 @@ module	axiops #(
 		always @(posedge i_clk)
 			cover(M_AXI_AWVALID && M_AXI_AWLOCK);
 		always @(posedge i_clk)
-			cover(M_AXI_BVALID && r_lock);
+			cover(M_AXI_BVALID && axlock);
 
 		always @(posedge i_clk)
-			cover(o_valid && $past(r_lock && M_AXI_BVALID));
+			cover(o_valid && $past(axlock && M_AXI_BVALID));
 
 	end endgenerate
 

@@ -120,7 +120,7 @@ module	fdebug #(
 		assume(i_reset);
 
 	always @(posedge i_clk)
-	if (!f_past_valid || $past(i_reset))
+	if (!f_past_valid || $past(i_reset && !i_cpu_reset))
 		`CPU_ASSUME(i_cpu_reset);
 
 	// Stall checking
@@ -186,8 +186,7 @@ module	fdebug #(
 
 	// The CPU will always come to a halt on a break
 	always @(posedge i_clk)
-	if (f_past_valid && !$past(i_reset || i_cpu_reset)
-			&& $past(i_dbg_break))
+	if (f_past_valid && $past(!i_reset && !i_cpu_reset && i_dbg_break))
 		`CPU_ASSUME(i_halt || i_reset || i_cpu_reset);
 	////////////////////////////////////////////////////////////////////////
 	//

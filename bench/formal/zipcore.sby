@@ -1,24 +1,28 @@
 [tasks]
-piped		pipelined mpy div cis pipelined earlybranching
-nopipe		nopipe            cis
-lowlogic	nopipe		
-ice40		nopipe    mpy div cis nobkram
+piped		prf lock pipelined mpy div cis pipelined earlybranching
+nopipe		prf lock nopipe            cis
+lowlogic	prf lock nopipe		
+ice40		prf lock nopipe    mpy div cis nobkram
 
-pipedlp		pipelined mpy div cis pipelined earlybranching opt_lowpower
-nopipelp	nopipe            cis opt_lowpower
-lowlogiclp	nopipe opt_lowpower
+pipedlp		piped prf lock pipelined mpy div cis earlybranching opt_lowpower
+nopipelp	nopipe prf lock nopipe            cis opt_lowpower
+lowlogiclp	lowlogic prf lock nopipe opt_lowpower
 
-pipedlpck	pipelined mpy div cis pipelined earlybranching opt_lowpower opt_ckgate
-lowlogiclpck	nopipe opt_lowpower opt_ckgate
+pipedlpck	piped prf lock pipelined mpy div cis earlybranching opt_lowpower opt_ckgate
+lowlogiclpck	lowlogic prf lock nopipe opt_lowpower opt_ckgate
+
+cvr		    lock pipelined mpy div cis earlybranching opt_lock
 
 [options]
-mode prove
+prf: mode prove
+cvr: mode cover
 depth 18
 piped:    depth  5
 nopipe:   depth  4
 nopipe:   depth  4
 lowlogic: depth  4
 ice40:    depth  5
+cvr: depth 35
 
 [engines]
 smtbmc boolector
@@ -42,7 +46,8 @@ read -formal zipcore.v
 --pycode-begin--
 cmd = "hierarchy -top zipcore"
 cmd += " -chparam IMPLEMENT_FPU 0"
-cmd += " -chparam IMPLEMENT_MPY %d"    % ( 1 if "mpy"            in tags else 0)
+cmd += " -chparam IMPLEMENT_LOCK %d"   % ( 1 if "lock"           in tags else 0)
+cmd += " -chparam IMPLEMENT_MPY  %d"   % ( 1 if "mpy"            in tags else 0)
 cmd += " -chparam IMPLEMENT_DIVIDE %d" % ( 1 if "div"            in tags else 0)
 cmd += " -chparam OPT_CIS          %d" % ( 1 if "cis"            in tags else 0)
 cmd += " -chparam OPT_PIPELINED    %d" % ( 1 if "pipelined"      in tags else 0)

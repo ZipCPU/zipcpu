@@ -474,11 +474,22 @@ module	fmem #(
 	// track the last register that will be returned to the CPU.
 	always @(posedge i_clk)
 	if (i_stb && !i_pipe_stalled)
+	begin
 		f_last_reg <= i_oreg;
+		if (IMPLEMENT_LOCK && f_check_axi_lock && i_op[0] && i_lock)
+			f_last_reg[3:0] <= 4'hf;
+	end
 
 	always @(*)
 	if (f_outstanding == 1 && i_valid && !f_axi_write_cycle)
 		`CPU_ASSUME(f_last_reg == i_wreg);
+
+	always @(*)
+	if (f_axi_write_cycle)
+	begin
+		`CPU_ASSUME(f_last_reg[3:0] == 4'hf);
+		assert(f_outstanding == 1);
+	end
 	// }}}
 
 	//
@@ -530,8 +541,13 @@ module	fmem #(
 	// registers (either CC, or PC), it will not issue another read request
 	// until this request has completed.
 	always @(*)
-	if (f_pc)
+	if (f_pc && f_read_cycle)
 		`CPU_ASSERT(!i_stb);
+
+	always @(*)
+	if (f_pc && !f_read_cycle && f_axi_write_cycle
+			&& f_outstanding > ((i_done || i_err) ? 1:0))
+		`CPU_ASSUME(i_pipe_stalled);
 
 	always @(*)
 	if (f_last_reg[3:1] != 3'h7)
@@ -546,6 +562,7 @@ module	fmem #(
 		`CPU_ASSUME(f_read_cycle || f_axi_write_cycle);
 		if (f_axi_write_cycle)
 		begin
+			assert(f_check_axi_lock);
 			`CPU_ASSUME(f_outstanding == 1);
 		end else begin
 			if (f_outstanding > 1 && !i_err)
@@ -587,7 +604,7 @@ module	fmem #(
 	//
 
 	always @(*)
-	if (!OPT_AXI_LOCK || !IMPLEMENT_LOCK)
+	if (OPT_AXI_LOCK == 0 || !IMPLEMENT_LOCK)
 	begin
 		assume(f_check_axi_lock == 1'b0);
 	end else if (OPT_AXI_LOCK == 1)

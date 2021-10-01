@@ -413,7 +413,8 @@ module	zipwb #(
 		) mem(i_clk, i_reset, clear_dcache,
 			/// {{{
 			// CPU interface
-			mem_ce, bus_lock, mem_op, mem_cpu_addr, mem_wdata, mem_reg,
+			mem_ce, bus_lock && OPT_PIPELINED,
+			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
 			mem_busy, mem_rdbusy, mem_pipe_stalled,
 			mem_valid, mem_bus_err, mem_wreg, mem_result,
 			// Wishbone interface
@@ -439,7 +440,8 @@ module	zipwb #(
 		) domem(i_clk, i_reset,
 			/// {{{
 			// CPU interface
-			mem_ce, bus_lock, mem_op, mem_cpu_addr, mem_wdata, mem_reg,
+			mem_ce, bus_lock && OPT_PIPELINED,
+			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
 			mem_busy, mem_rdbusy, mem_pipe_stalled,
 			mem_valid, mem_bus_err, mem_wreg, mem_result,
 			// Wishbone interface
@@ -463,7 +465,8 @@ module	zipwb #(
 		) domem(i_clk, i_reset,
 			/// {{{
 			// CPU interface
-			mem_ce, bus_lock, mem_op, mem_cpu_addr, mem_wdata, mem_reg,
+			mem_ce, bus_lock && OPT_PIPELINED,
+			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
 			mem_busy, mem_rdbusy,
 			mem_valid, mem_bus_err, mem_wreg, mem_result,
 			// Wishbone interface
