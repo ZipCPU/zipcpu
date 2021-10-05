@@ -1717,11 +1717,9 @@ module	zipcore #(
 
 	// Bus lock logic
 	// {{{
-	generate
-	if (OPT_LOCK)
+	generate if (OPT_LOCK)
 	begin : BUSLOCK
 		reg		r_prelock_stall;
-		reg		r_prelock_primed;
 		reg	[1:0]	r_bus_lock;
 		reg [AW+1:0]	r_lock_pc;
 
@@ -1737,25 +1735,11 @@ module	zipcore #(
 			r_prelock_stall <= 1'b0;
 		// }}}
 
-		// r_prelock_primed
-		// {{{
-		initial	r_prelock_primed = 1'b0;
-		always @(posedge i_clk)
-		if (!OPT_PIPELINED)
-			r_prelock_primed <= 1'b1;
-		else if (clear_pipeline)
-			r_prelock_primed <= 1'b0;
-		else if (r_prelock_stall)
-			r_prelock_primed <= 1'b1;
-		else if ((adf_ce_unconditional)||(mem_ce))
-			r_prelock_primed <= 1'b0;
-		// }}}
-
 		// r_lock_pc
 		// {{{
 		always @(posedge i_clk)
 		if (op_valid && op_ce && op_lock)
-			r_lock_pc <= op_pc;
+			r_lock_pc <= op_pc-4;
 `ifdef	FORMAL
 		always @(posedge i_clk)
 			cover(op_valid && op_ce && op_lock);
@@ -1775,12 +1759,8 @@ module	zipcore #(
 		begin
 			if (r_bus_lock != 2'b00)
 				r_bus_lock <= r_bus_lock - 1;
-			else if (!OPT_PIPELINED)
-			begin
-				if ((op_valid)&&(op_lock)&&(op_ce))
-					r_bus_lock <= 2'b10;
-			end else if (r_prelock_primed)
-				r_bus_lock <= 2'b10;
+			else if ((op_valid)&&(op_lock)&&(op_ce))
+				r_bus_lock <= 2'b11;
 		end
 		// }}}
 
@@ -2360,7 +2340,7 @@ module	zipcore #(
 			if (adf_ce_unconditional && op_illegal)
 				r_pending_interrupt <= 1'b1;
 
-			if ((adf_ce_unconditional || mem_ce) && step)
+			if ((adf_ce_unconditional || mem_ce) && step && !op_lock && !o_bus_lock)
 				r_pending_interrupt <= 1'b1;
 		end
 
