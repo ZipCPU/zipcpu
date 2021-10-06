@@ -9430,8 +9430,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc/config/zip/zip.md
 --- gcc-10.3.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2021-08-07 17:47:19.667609015 -0400
-@@ -0,0 +1,2320 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2021-10-06 10:04:30.860742559 -0400
+@@ -0,0 +1,2321 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -9521,7 +9521,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	(UNSPEC_GETUCC		 8)
 +	(UNSPEC_GETCC		 9)
 +	(UNSPEC_LDILO		10)
-+	; (UNSPEC_RAW_CALL	11)
++	(UNSPEC_LOCK		11)
++	; (UNSPEC_RAW_CALL	12)
 +	])
 +; }}}
 +;
@@ -19167,8 +19168,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-10.3.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2021-06-19 16:31:35.965615413 -0400
-@@ -0,0 +1,510 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2021-10-06 11:01:22.041895757 -0400
+@@ -0,0 +1,590 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-sync.md
@@ -19217,94 +19218,82 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +;
 +; atomic_addsi
 +; {{{
-+(define_insn "atomic_addsi"
-+	[(set (match_operand:SI 0 "memory_operand" "+Q")
-+		(plus:SI (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++(define_insn "atomic_add<mode>"
++	[(set (match_operand:ZI 0 "memory_operand" "+Q")
++		(unspec_volatile:ZI [
++		(plus:ZI (match_dup 0)
++			(match_operand:ZI 1 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
 +	(match_operand 2 "const_int_operand" "")	; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 3 "=&r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tADD %1,%3\n\tSW %3,%0"
++	"LOCK\n\tL<sz> %0,%3\n\tADD %1,%3\n\tS<sz> %3,%0"
 +	[(set_attr "predicable" "no") (set_attr "cost" "4")])
 +; }}}
 +;
 +; atomic_subsi
 +; {{{
-+(define_insn "atomic_subsi"
-+	[(set (match_operand:SI 0 "memory_operand" "+Q")
-+		(minus:SI (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++(define_insn "atomic_sub<mode>"
++	[(set (match_operand:ZI 0 "memory_operand" "+Q")
++		(unspec_volatile:ZI [
++		(minus:ZI (match_dup 0)
++			(match_operand:ZI 1 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
 +	(match_operand 2 "const_int_operand" "")	; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 3 "=&r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tSUB %1,%3\n\tSW %3,%0"
++	"LOCK\n\tL<sz> %0,%3\n\tSUB %1,%3\n\tS<sz> %3,%0"
 +	[(set_attr "predicable" "no") (set_attr "cost" "4")])
 +; }}}
 +;
 +; atomic_iorsi
 +; {{{
-+(define_insn "atomic_iorsi"
-+	[(set (match_operand:SI 0 "memory_operand" "+Q")
++(define_insn "atomic_ior<mode>"
++	[(set (match_operand:ZI 0 "memory_operand" "+Q")
++		(unspec_volatile:ZI [
 +		(ior:SI (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
++			(match_operand:ZI 1 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
 +	(match_operand 2 "const_int_operand" "")	; Memory model used
-+	(clobber (match_scratch:SI 3 "=r"))	; Scratch register
++	(clobber (match_scratch:SI 3 "=&r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%3\n\tOR %1,%3\n\tSW %3,%0"
++	"LOCK\n\tL<sz> %0,%3\n\tOR %1,%3\n\tS<sz> %3,%0"
 +	[(set_attr "predicable" "no") (set_attr "cost" "4")])
 +; }}}
 +;
 +; atomic_andsi
 +; {{{
-+(define_expand "atomic_andsi"
-+	[(match_operand:SI 0 "memory_operand" "+Q")
-+	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
-+	(match_operand 2 "" "")			; Memory model used
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_ATOMIC)"
-+	{
-+		emit_insn(gen_reissue_atomic_andsi(operands[0], operands[1]));
-+		DONE;
-+	})
-+;
-+(define_insn "reissue_atomic_andsi"
-+	[(set (match_operand:SI 0 "memory_operand" "+Q")
++(define_insn "atomic_and<mode>"
++	[(set (match_operand:ZI 0 "memory_operand" "+Q")
++		(unspec_volatile:ZI [
 +		(and:SI (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
++			(match_operand:ZI 1 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
++	(match_operand:SI 2 "const_int_operand" "")	; Memory model used
++	(clobber (match_scratch:SI 3 "=&r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%2\n\tAND %1,%2\n\tSW %2,%0"
++	"LOCK\n\tL<sz> %0,%3\n\tAND %1,%3\n\tS<sz> %3,%0"
 +	[(set_attr "predicable" "no") (set_attr "cost" "4")])
 +; }}}
 +;
 +; atomic_xorsi
 +; {{{
-+(define_expand "atomic_xorsi"
-+	[(match_operand:SI 0 "memory_operand" "+Q")
-+	(match_operand:SI 1 "zip_opb_single_operand_p" "rO")
-+	(match_operand 2 "" "")			; Memory model used
++(define_insn "atomic_xor<mode>"
++	[(set (match_operand:ZI 0 "memory_operand" "+Q")
++		(unspec_volatile:ZI [
++		(xor:ZI (match_dup 0)
++			(match_operand:ZI 1 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
++	(match_operand:SI 2 "const_int_operand" "")	; Memory model used
++	(clobber (match_scratch:SI 3 "=&r"))	; Scratch register
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
-+	{
-+		emit_insn(gen_reissue_atomic_xorsi(operands[0], operands[1]));
-+		DONE;
-+	})
-+;
-+(define_insn "reissue_atomic_xorsi"
-+; {{{
-+	[(set (match_operand:SI 0 "memory_operand" "+Q")
-+		(xor:SI (match_dup 0)
-+			(match_operand:SI 1 "zip_opb_single_operand_p" "rO")))
-+	(clobber (match_scratch:SI 2 "=r"))	; Scratch register
-+	(clobber (reg:CC CC_REG))]
-+	"(ZIP_ATOMIC)"
-+	"LOCK\n\tLW %0,%2\n\tXOR %1,%2\n\tSW %2,%0"
++	"LOCK\n\tL<sz> %0,%3\n\tXOR %1,%3\n\tS<sz> %3,%0"
 +	[(set_attr "predicable" "no") (set_attr "cost" "4")])
-+; }}}
 +; }}}
 +;
 +; Given how the ZipCPU is put together, all SI LODs and STOs are atomic.  DI
@@ -19313,7 +19302,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +; or store instruction.  Hence we don't need anything but the DI load and
 +; stores.
 +;
-+; atomic_loaddi -- Offers no protection under AXI
++; atomic_loaddi -- Offers only interrupt protection under AXI
 +; {{{
 +(define_insn "atomic_loaddi"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
@@ -19322,14 +19311,14 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
 +	{
 +		if (ZIP_BIGENDIAN)
-+			return "LOCK\n\tLW %1,%H0\t; Atomic Load:DI\n\tLW 4+%1,%L0";
++			return "LOCK\t; Atomic load (big-endian)\n\tLW %1,%H0\t; Atomic Load:DI\n\tLW 4+%1,%L0";
 +		else
-+			return "LOCK\n\tLW %1,%L0\t; Atomic Load:DI\n\tLW 4+%1,%H0";
++			return "LOCK\t; Atomic load (little-endian)\n\tLW %1,%L0\t; Atomic Load:DI\n\tLW 4+%1,%H0";
 +	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged") (set_attr "cost" "3")])
 +; }}}
 +;
-+; atomic_storedi -- Offers no protection under AXI
++; atomic_storedi -- Offers only interrupt protection under AXI
 +; {{{
 +(define_insn "atomic_storedi"
 +	[(set (match_operand:DI 0 "memory_operand" "=Q")
@@ -19338,9 +19327,9 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +	"(ZIP_HAS_DI)&&(ZIP_ATOMIC)"
 +	{
 +		if (ZIP_BIGENDIAN)
-+			return "LOCK\n\tSW %H1,%0\t; Atomic Store:DI\n\tSW %L1,4+%0";
++			return "LOCK\t; Atomic store (big-endian)\n\tSW %H1,%0\t; Atomic Store:DI\n\tSW %L1,4+%0";
 +		else
-+			return "LOCK\n\tSW %L1,%0\t; Atomic Store:DI\n\tSW %H1,4+%0";
++			return "LOCK\t; Atomic store (little-endian)\n\tSW %L1,%0\t; Atomic Store:DI\n\tSW %H1,4+%0";
 +	}
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unchanged")
 +		(set_attr "cost" "3")])
@@ -19352,10 +19341,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +; atomic_exchangesi
 +; {{{
 +(define_insn "atomic_exchangesi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
 +			(match_operand:SI 1 "memory_operand" "+Q"))
 +		(set (match_dup 1) (match_operand:SI 2 "register_operand" "r"))
-+	(match_operand 3 "const_int_operand" "")]
++	(match_operand 3 "const_int_operand" "")]	; // Memory model used
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tSW %2,%1"
 +	[(set_attr "predicable" "no")
@@ -19368,52 +19357,95 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +;
 +; atomic_add_fetchsi
 +; {{{
-+;
 +(define_expand "atomic_add_fetchsi"
-+	[(match_operand:SI 0 "register_operand" "=r")
++	[(match_operand:SI 0 "register_operand" "=&r")
 +	(match_operand:SI 1 "memory_operand" "+Q")
 +	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
 +	(match_operand 3 "const_int_operand" "")	;// Memory model used
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	{
++		extern void zip_debug_rtx_pfx(const char *, const_rtx);
++		fprintf(stderr, "ATOMIC-FETCH-ADD\n");
++		zip_debug_rtx_pfx("- DST: ", operands[0]);
++		zip_debug_rtx_pfx("- MEM: ", operands[1]);
++		zip_debug_rtx_pfx("- OP : ", operands[2]);
++		zip_debug_rtx_pfx("- MDL: ", operands[3]);
++
++		if (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2])) {
++fprintf(stderr, "SCRATCH, OP1\n");
++			if (can_create_pseudo_p()) {
++				rtx scratch = gen_reg_rtx(SImode);
++				emit_insn(gen_movsi(scratch, operands[2]));
++				operands[2] = scratch;
++			}
++		} else if (GET_CODE(operands[2]) == PLUS
++			&& REG_P(XEXP(operands[2], 0))
++			&& REGNO(operands[0]) == REGNO(XEXP(operands[2],0))) {
++
++fprintf(stderr, "SCRATCH, OP2\n");
++			if (can_create_pseudo_p()) {
++				rtx scratch = gen_reg_rtx(SImode);
++
++				emit_insn(gen_movsi(scratch, XEXP(operands[2],0)));
++				emit_insn(gen_addsi3(scratch, scratch, XEXP(operands[2],1)));
++				operands[2] = scratch;
++			}
++		}
 +		emit_insn(gen_reissue_atomic_add_fetchsi(operands[0],
 +			operands[1], operands[2]));
 +		DONE;
 +	})
 +;
 +(define_insn "reissue_atomic_add_fetchsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
++		(unspec_volatile:SI [
 +		(plus:SI (match_operand:SI 1 "memory_operand" "+Q")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (match_dup 1) (plus:SI (match_dup 1) (match_dup 2)))
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
++	(set (match_dup 1) (unspec_volatile:SI [
++		(plus:SI (match_dup 1) (match_dup 2))] UNSPEC_LOCK))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tADD %2,%0\n\tSW %0,%1"
-+	[(set_attr "predicable" "no")
-+		(set_attr "cost" "4")])
++	[(set_attr "predicable" "no") (set_attr "cost" "4")])
 +; }}}
 +;
 +; atomic_sub_fetchsi
 +; {{{
 +(define_expand "atomic_sub_fetchsi"
-+	[(match_operand:SI 0 "register_operand" "=r")
++	[(match_operand:SI 0 "register_operand" "=&r")
 +	(match_operand:SI 1 "memory_operand" "+Q")
 +	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
 +	(match_operand 3 "const_int_operand" "")
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	{
++		if (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2])) {
++			rtx scratch = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi(scratch, operands[2]));
++			operands[2] = scratch;
++		} else if (GET_CODE(operands[2]) == PLUS
++			&& REG_P(XEXP(operands[2], 0))
++			&& REGNO(operands[0]) == REGNO(XEXP(operands[2],0))) {
++
++			rtx scratch = gen_reg_rtx(SImode);
++
++			emit_insn(gen_movsi(scratch, XEXP(operands[2],0)));
++			emit_insn(gen_addsi3(scratch, scratch, XEXP(operands[2],1)));
++			operands[2] = scratch;
++		}
 +		emit_insn(gen_reissue_atomic_sub_fetchsi(
 +			operands[0], operands[1], operands[2]));
 +		DONE;
 +	})
 +;
 +(define_insn "reissue_atomic_sub_fetchsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
 +		(minus:SI (match_operand:SI 1 "memory_operand" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (match_dup 1) (minus:SI (match_dup 1) (match_dup 2)))
++	(set (match_dup 1) (unspec_volatile:SI [
++			(minus:SI (match_dup 1) (match_dup 2))] UNSPEC_LOCK))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tSUB %2,%0\n\tSW %0,%1"
@@ -19424,23 +19456,38 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +; atomic_or_fetchsi
 +; {{{
 +(define_expand "atomic_or_fetchsi"
-+	[(match_operand:SI 0 "register_operand" "=r")
++	[(match_operand:SI 0 "register_operand" "=&r")
 +	(match_operand:SI 1 "memory_operand" "+Q")
 +	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
 +	(match_operand 3 "const_int_operand" "")
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	{
++		if (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2])) {
++			rtx scratch = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi(scratch, operands[2]));
++			operands[2] = scratch;
++		} else if (GET_CODE(operands[2]) == PLUS
++			&& REG_P(XEXP(operands[2], 0))
++			&& REGNO(operands[0]) == REGNO(XEXP(operands[2],0))) {
++
++			rtx scratch = gen_reg_rtx(SImode);
++
++			emit_insn(gen_movsi(scratch, XEXP(operands[2],0)));
++			emit_insn(gen_addsi3(scratch, scratch, XEXP(operands[2],1)));
++			operands[2] = scratch;
++		}
 +		emit_insn(gen_reissue_atomic_or_fetchsi(
 +			operands[0], operands[1], operands[2]));
 +		DONE;
 +	})
 +;
 +(define_insn "reissue_atomic_or_fetchsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
 +		(ior:SI (match_operand:SI 1 "memory_operand" "+Q")
 +			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (match_dup 1) (ior:SI (match_dup 1) (match_dup 2)))
++	(set (match_dup 1) (unspec_volatile:SI [
++		(ior:SI (match_dup 1) (match_dup 2))] UNSPEC_LOCK))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tOR %2,%0\n\tSW %0,%1"
@@ -19458,16 +19505,33 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	{
++		if (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2])) {
++			rtx scratch = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi(scratch, operands[2]));
++			operands[2] = scratch;
++		} else if (GET_CODE(operands[2]) == PLUS
++			&& REG_P(XEXP(operands[2], 0))
++			&& REGNO(operands[0]) == REGNO(XEXP(operands[2],0))) {
++
++			rtx scratch = gen_reg_rtx(SImode);
++
++			emit_insn(gen_movsi(scratch, XEXP(operands[2],0)));
++			emit_insn(gen_addsi3(scratch, scratch, XEXP(operands[2],1)));
++			operands[2] = scratch;
++		}
 +		emit_insn(gen_reissue_atomic_and_fetchsi(
 +			operands[0], operands[1], operands[2]));
 +		DONE;
 +	})
 +;
 +(define_insn "reissue_atomic_and_fetchsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
++		(unspec_volatile:SI [
 +		(and:SI (match_operand:SI 1 "memory_operand" "+Q")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (match_dup 1) (and:SI (match_dup 1) (match_dup 2)))
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
++	(set (match_dup 1) (unspec_volatile:SI [
++		(and:SI (match_dup 1) (match_dup 2))] UNSPEC_LOCK))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tAND %2,%0\n\tSW %0,%1"
@@ -19478,23 +19542,40 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +; atomic_xor_fetchsi
 +; {{{
 +(define_expand "atomic_xor_fetchsi"
-+	[(match_operand:SI 0 "register_operand" "=r")
++	[(match_operand:SI 0 "register_operand" "=&r")
 +	(match_operand:SI 1 "memory_operand" "+Q")
 +	(match_operand:SI 2 "zip_opb_single_operand_p" "rO")
 +	(match_operand 3 "const_int_operand" "")			;// Memory model
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	{
++		if (REG_P(operands[2]) && REGNO(operands[0]) == REGNO(operands[2])) {
++			rtx scratch = gen_reg_rtx(SImode);
++			emit_insn(gen_movsi(scratch, operands[2]));
++			operands[2] = scratch;
++		} else if (GET_CODE(operands[2]) == PLUS
++			&& REG_P(XEXP(operands[2], 0))
++			&& REGNO(operands[0]) == REGNO(XEXP(operands[2],0))) {
++
++			rtx scratch = gen_reg_rtx(SImode);
++
++			emit_insn(gen_movsi(scratch, XEXP(operands[2],0)));
++			emit_insn(gen_addsi3(scratch, scratch, XEXP(operands[2],1)));
++			operands[2] = scratch;
++		}
 +		emit_insn(gen_reissue_atomic_xor_fetchsi(
 +			operands[0], operands[1], operands[2]));
 +		DONE;
 +	})
 +;
 +(define_insn "reissue_atomic_xor_fetchsi"
-+	[(set (match_operand:SI 0 "register_operand" "=r")
++	[(set (match_operand:SI 0 "register_operand" "=&r")
++		(unspec_volatile:SI [
 +		(xor:SI (match_operand:SI 1 "memory_operand" "+Q")
-+			(match_operand:SI 2 "zip_opb_single_operand_p" "rO")))
-+	(set (match_dup 1) (xor:SI (match_dup 1) (match_dup 2)))
++			(match_operand:SI 2 "zip_opb_single_operand_p" "rO"))]
++		UNSPEC_LOCK))
++	(set (match_dup 1) (unspec_volatile:SI [
++			(xor:SI (match_dup 1) (match_dup 2))] UNSPEC_LOCK))
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_ATOMIC)"
 +	"LOCK\n\tLW %1,%0\n\tXOR %2,%0\n\tSW %0,%1"
@@ -19663,14 +19744,14 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +	(set (match_dup 2) (if_then_else:SI
 +			(eq (match_dup 2) (match_dup 3))
 +				(match_operand:SI 4 "register_operand" "r")
-+				(match_dup 0)))]
++				(match_dup 2)))]
 +	"(ZIP_ATOMIC)"
-+	"CLR %0
++	"CLR %0\t\t; Atomic compare and swap
 +	LOCK
 +	LW %2,%1
 +	CMP %3,%1
-+	SW %4,%2
-+	LDI.Z 1,%0"
++	SW.Z %4,%2
++	LDILO.Z 1,%0"
 +	[(set_attr "predicable" "no")
 +		(set_attr "cost" "5")])
 +; }}}
