@@ -686,13 +686,13 @@ module	zipsystem #(
 	//	0x0_4000 -> Supervisor bus error
 	//	0x0_2000 -> cc.gie
 	//	0x0_1000 -> cc.sleep
-	//	0x0_0800 -> cmd_clear_pf_cache
-	//	0x0_0400 -> [HALT request, cmd_halt]
+	//	0x0_0800 -> cmd_clear_cache	(auto clearing)
+	//	0x0_0400 -> cmd_halt (HALT request)
 	//	0x0_0200 -> [CPU is halted]
-	//	0x0_0100 -> [UNUSED -- was cmd_step]
+	//	0x0_0100 -> cmd_step	(auto clearing)
 	//
 	//	0x0_0080 -> PIC interrrupt pending
-	//	0x0_0040 -> reset
+	//	0x0_0040 -> reset	(auto clearing)
 	//	0x0_003f -> [UNUSED -- was cmd_addr mask]
 	//	Other external interrupts follow
 	generate
@@ -1285,7 +1285,7 @@ module	zipsystem #(
 			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
 				.o_i_count(cpu_i_count)
 `ifdef	DEBUG_SCOPE
-			, o_cpu_debug
+			, .o_debug(o_cpu_debug)
 `endif
 		// }}}
 	);
