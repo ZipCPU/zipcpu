@@ -1093,6 +1093,11 @@ module	zipcore #(
 		r_op_break <= (dcd_break)&&(!dcd_illegal);
 
 	assign	op_break = r_op_break;
+`ifdef	FORMAL
+	always @(*)
+	if (op_break)
+		assert(op_valid || clear_pipeline);
+`endif
 	// }}}
 
 	// op_lock
@@ -1729,9 +1734,11 @@ module	zipcore #(
 		always @(posedge i_clk)
 		if (!OPT_PIPELINED || clear_pipeline)
 			r_prelock_stall <= 1'b0;
-		else if ((op_valid)&&(op_lock)&&(op_ce))
+		else if (op_valid && op_lock && r_bus_lock == 2'b00
+						&& adf_ce_unconditional)
 			r_prelock_stall <= 1'b1;
-		else if ((op_valid)&&(dcd_valid)&&(i_pf_valid))
+		else if (op_valid && dcd_valid
+					&& (i_pf_valid || dcd_early_branch))
 			r_prelock_stall <= 1'b0;
 		// }}}
 
@@ -1759,7 +1766,7 @@ module	zipcore #(
 		begin
 			if (r_bus_lock != 2'b00)
 				r_bus_lock <= r_bus_lock - 1;
-			else if ((op_valid)&&(op_lock)&&(op_ce))
+			else if (op_lock)
 				r_bus_lock <= 2'b11;
 		end
 		// }}}
@@ -1767,6 +1774,48 @@ module	zipcore #(
 		assign	prelock_stall = OPT_PIPELINED && r_prelock_stall;
 		assign	o_bus_lock    = |r_bus_lock;
 		assign	o_mem_lock_pc = r_lock_pc;
+`ifdef	FORMAL
+		// {{{
+		if (OPT_PIPELINED)
+		begin
+			(* anyconst *) reg r_nojump_lock;
+
+			always @(*)
+			if (r_nojump_lock && (r_prelock_stall || r_bus_lock))
+			begin
+				assume(!dcd_early_branch);
+				assume(!dcd_ljmp);
+			end
+
+			always @(*)
+			if (!clear_pipeline) case(r_bus_lock)
+			2'b11: if (!prelock_stall && r_nojump_lock)
+				begin
+				assert(op_valid && dcd_valid && i_pf_valid);
+				end
+			2'b10:	begin
+				assert(!prelock_stall);
+				if (r_nojump_lock)
+				begin
+					assert(dcd_valid);
+					assert(op_valid + dcd_valid + i_pf_valid >= 2'b10);
+				end end
+			2'b01: begin
+				assert(!prelock_stall);
+				if (r_nojump_lock && !dcd_illegal)
+				begin
+					assert(op_valid || dcd_valid
+							|| i_pf_valid);
+				end end
+			2'b00: assert(!prelock_stall);
+			endcase
+		end else begin
+
+			always @(*)
+				assert(!prelock_stall);
+		end
+		// }}}
+`endif
 	end else begin
 		// {{{
 		assign	prelock_stall = 1'b0;
@@ -1879,7 +1928,7 @@ module	zipcore #(
 				$write("%c", (op_gie) ? "s":"u");
 				$write("R[%2d] = 0x", op_sim_immv[3:0]);
 				// Dump a register
-				if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
+				if (wr_reg_ce && wr_reg_id == { op_gie, op_sim_immv[3:0] })
 					$display("%08x", wr_gpreg_vl);
 				else
 					$display("%08x", regset[{ op_gie,
@@ -3520,9 +3569,10 @@ module	zipcore #(
 		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
 		`ASSERT(adf_ce_unconditional | mem_ce);
 
-	always @(posedge i_clk)
-	if (f_past_valid&& $past(op_valid && dcd_valid && i_pf_valid && !op_ce))
-		`ASSERT(!prelock_stall);
+	// always @(posedge i_clk)
+	// if (f_past_valid&& $past(op_valid && dcd_valid && i_pf_valid
+	//			&& !op_ce))
+	//	`ASSERT(!prelock_stall);
 
 	//
 	// Make sure that, following an op_ce && op_valid, op_valid is only
