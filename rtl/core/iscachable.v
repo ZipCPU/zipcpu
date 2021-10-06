@@ -31,16 +31,15 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
 // }}}
 module	iscachable #(
 		// {{{
-		parameter	ADDRESS_WIDTH=30,
+		parameter	ADDRESS_WIDTH=32,
 		localparam	AW = ADDRESS_WIDTH, // Just for ease of notation below
 		parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0,
-		parameter [AW-1:0] 	BKRAM_ADDR = 30'h4000000,
-					BKRAM_MASK = 30'h4000000,
+		parameter [AW-1:0] 	BKRAM_ADDR = 32'h10000000,
+					BKRAM_MASK = 32'h10000000,
 		parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0
 		// }}}
 	) (

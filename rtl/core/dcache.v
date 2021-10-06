@@ -229,7 +229,7 @@ module	dcache #(
 
 	// Cachability checking
 	// {{{
-	iscachable chkaddress(i_addr[AW+1:2], raw_cachable_address);
+	iscachable chkaddress(i_addr[AW+1:0], raw_cachable_address);
 	// }}}
 
 	// r_* values
@@ -1896,8 +1896,8 @@ module	dcache #(
 	endcase
 	// }}}
 
-	iscachable #(.ADDRESS_WIDTH(AW))
-		f_chkwb_addr(o_wb_addr, f_wb_cachable);
+	iscachable #(.ADDRESS_WIDTH(AW+2))
+		f_chkwb_addr({ o_wb_addr, 2'b00 }, f_wb_cachable);
 
 
 	always @(*)
@@ -2241,12 +2241,12 @@ module	dcache #(
 
 	wire	f_cachable_last_tag, f_cachable_r_addr;
 
-	iscachable #(.ADDRESS_WIDTH(AW))
-		fccheck_last_tag({last_tag, {(LS){1'b0}} },
+	iscachable #(.ADDRESS_WIDTH(AW+2))
+		fccheck_last_tag({last_tag, {(LS+2){1'b0}} },
 				f_cachable_last_tag);
 
-	iscachable #(.ADDRESS_WIDTH(AW))
-		fccheck_r_cachable(r_addr, f_cachable_r_addr);
+	iscachable #(.ADDRESS_WIDTH(AW+2))
+		fccheck_r_cachable({ r_addr, 2'b00 }, f_cachable_r_addr);
 
 	always @(*)
 	if ((r_cachable)&&(r_rd_pending))

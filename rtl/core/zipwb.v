@@ -167,8 +167,8 @@ module	zipwb #(
 		input	wire	[4:0]	i_dbg_rreg,
 		// Debug interface -- outputs
 		output	wire		o_dbg_stall,
-		output	reg	[31:0]	o_dbg_reg,
-		output	reg	[2:0]	o_dbg_cc,
+		output	wire	[31:0]	o_dbg_reg,
+		output	wire	[2:0]	o_dbg_cc,
 		output	wire		o_break,
 		// CPU interface to the wishbone bus
 		// Wishbone interface -- outputs
@@ -187,7 +187,7 @@ module	zipwb #(
 		output	wire		o_i_count
 		//
 `ifdef	DEBUG_SCOPE
-		, output reg	[31:0]	o_debug
+		, output wire	[31:0]	o_debug
 `endif
 	// }}}
 	);
@@ -334,6 +334,7 @@ module	zipwb #(
 	// Verilator lint_off UNUSED
 	wire	dbg_unused;
 	assign	dbg_unused = &{ 1'b0, cpu_debug };
+	// Verilator lint_on  UNUSED
 `endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -511,7 +512,7 @@ module	zipwb #(
 			// (mem_data and mem_sel) can be shared with the memory
 			// in order to ease timing and LUT usage.
 			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, mem_sel,
+				pf_addr, mem_data, 4'hf,
 				pf_stall, pf_ack, pf_err,
 			// Common wires, in and out, of the arbiter
 			o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
@@ -529,7 +530,7 @@ module	zipwb #(
 			// Prefetch access to the arbiter, priority position
 			//
 			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, mem_sel,
+				pf_addr, mem_data, 4'hf,
 				pf_stall, pf_ack, pf_err,
 			// Memory access to the arbiter
 			mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
