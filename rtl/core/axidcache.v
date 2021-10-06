@@ -328,7 +328,7 @@ module	axidcache #(
 	// also means the address map is changing and therefore what is and
 	// isn't cachable.  etc.
 	iscachable chkaddress(
-		i_addr[AW-1:2], address_is_cachable
+		i_addr[AW-1:0], address_is_cachable
 	);
 	// }}}
 
