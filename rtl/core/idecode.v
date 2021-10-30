@@ -59,6 +59,7 @@ module	idecode #(
 		parameter	[0:0]	OPT_SIM    = 1'b0,
 		parameter	[0:0]	OPT_SUPPRESS_NULL_BRANCHES = 1'b0,
 		parameter	[0:0]	OPT_NO_USERMODE = 1'b0,
+		parameter	[0:0]	OPT_LOWPOWER = 1'b0,
 		localparam		AW = ADDRESS_WIDTH
 		// }}}
 	) (
@@ -89,7 +90,8 @@ module	idecode #(
 		output	reg	[22:0]	o_sim_immv /* verilator public_flat */
 `ifdef	FORMAL
 		, output	reg	[31:0]	f_insn_word,
-		output	reg		f_insn_gie
+		output	reg		f_insn_gie,
+		output	wire		f_insn_is_pipeable
 `endif
 		// }}}
 	);
@@ -125,8 +127,7 @@ module	idecode #(
 	wire		w_Iz;
 
 	reg	[1:0]	w_immsrc;
-	reg	r_valid, r_insn_is_pipeable;
-
+	reg		r_valid, insn_is_pipeable;
 	// }}}
 
 	assign	pf_valid = (i_pf_valid)&&(!o_early_branch_stb);
@@ -685,24 +686,38 @@ module	idecode #(
 
 		initial	r_branch_pc = 0;
 		always @(posedge i_clk)
-		if (i_ce)
+		if (OPT_LOWPOWER && i_reset)
+			r_branch_pc <= 0;
+		else if (i_ce)
 		begin
 			if (r_ljmp)
 				r_branch_pc <= { iword[(AW+1):2],
 						2'b00 };
-			else begin
-			// Add x,PC
-			r_branch_pc[AW+1:2] <= i_pc[AW+1:2]
-				+ {{(AW-15){iword[17]}},iword[16:2]}
-				+ {{(AW-1){1'b0}},1'b1};
-			r_branch_pc[1:0] <= 2'b00;
-			end
+			else if (!OPT_LOWPOWER
+				|| (!iword[CISBIT]&&(iword[30:27]==CPU_PC_REG)
+					&&w_cond[3]&& w_add && !iword[IMMSEL]))
+			begin
+				// Add x,PC
+				r_branch_pc[AW+1:2] <= i_pc[AW+1:2]
+					+ {{(AW-15){iword[17]}},iword[16:2]}
+					+ {{(AW-1){1'b0}},1'b1};
+				r_branch_pc[1:0] <= 2'b00;
+			end else if (OPT_LOWPOWER)
+				r_branch_pc <= 0;
+
+			if (OPT_LOWPOWER && !pf_valid)
+				r_branch_pc <= 0;
 		end
 
 		assign	w_ljmp_dly         = r_ljmp;
 		assign	o_early_branch     = r_early_branch;
 		assign	o_early_branch_stb = r_early_branch_stb;
 		assign	o_branch_pc        = r_branch_pc;
+`ifdef	FORMAL
+		always @(*)
+		if (OPT_LOWPOWER && !r_early_branch)
+			assert(r_branch_pc == 0);
+`endif
 		// }}}
 	end else begin : NO_EARLY_BRANCHING
 		// {{{
@@ -735,7 +750,7 @@ module	idecode #(
 	generate if (OPT_OPIPE)
 	begin : GEN_OPIPE
 		// {{{
-		reg	r_pipe;
+		reg	r_pipe, r_insn_is_pipeable;
 
 		// Pipeline logic is too extreme for a single clock.
 		// Let's break it into two clocks, using r_insn_is_pipeable
@@ -775,6 +790,7 @@ module	idecode #(
 		end // else
 			// The pipeline is stalled
 
+		assign	insn_is_pipeable = r_insn_is_pipeable;
 
 		initial	r_pipe = 1'b0;
 		always @(posedge i_clk)
@@ -811,13 +827,12 @@ module	idecode #(
 		// }}}
 	end else begin
 		// {{{
-		assign o_pipe = 1'b0;
-		always @(*)
-			r_insn_is_pipeable = 1'b0;
+		assign	o_pipe = 1'b0;
+		assign	insn_is_pipeable = 1'b0;
 
 		// verilator lint_off UNUSED
 		wire	unused_pipable;
-		assign	unused_pipable = r_insn_is_pipeable;
+		assign	unused_pipable = insn_is_pipeable;
 		// verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
@@ -887,6 +902,8 @@ module	idecode #(
 	always @(posedge i_clk)
 	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
 		f_insn_word <= i_instruction;
+
+	assign	f_insn_is_pipeable = insn_is_pipeable;
 
 	always @(posedge i_clk)
 	if ((i_ce)&&(i_pf_valid)&&(!o_phase))
@@ -2027,26 +2044,36 @@ module	idecode #(
 	wire	[22:0]	fc_sim_immv;
 
 	f_idecode #(
+		// {{{
 		.OPT_MPY(OPT_MPY),
 		.OPT_DIVIDE(OPT_DIVIDE),
 		.OPT_FPU(OPT_FPU),
 		.OPT_CIS(OPT_CIS),
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_OPIPE(OPT_OPIPE),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.OPT_SIM(OPT_SIM)
-		) formal_decoder(
-			f_insn_word, o_phase, f_insn_gie,
-		fc_illegal,
-		fc_dcdR, fc_dcdA,fc_dcdB, fc_I, fc_cond, fc_wF, fc_op,
-		fc_ALU, fc_M, fc_DV, fc_FP, fc_break, fc_lock,
-		fc_wR, fc_rA, fc_rB, fc_prepipe, fc_sim, fc_sim_immv);
+		// }}}
+	) formal_decoder(
+		// {{{
+		.i_instruction(f_insn_word), .i_phase(o_phase),
+			.i_gie(f_insn_gie),
+		.o_illegal(fc_illegal),
+		.o_dcdR(fc_dcdR), .o_dcdA(fc_dcdA), .o_dcdB(fc_dcdB),
+		.o_I(fc_I), .o_cond(fc_cond), .o_wF(fc_wF), .o_op(fc_op),
+		.o_ALU(fc_ALU), .o_M(fc_M), .o_DV(fc_DV), .o_FP(fc_FP),
+		.o_break(fc_break), .o_lock(fc_lock),
+		.o_wR(fc_wR), .o_rA(fc_rA), .o_rB(fc_rB),
+		.o_prepipe(fc_prepipe), .o_sim(fc_sim), .o_sim_immv(fc_sim_immv)
+		// }}}
+	);
 
 	always @(posedge i_clk)
-	if ((o_valid)&&(fc_illegal))
+	if (o_valid && fc_illegal)
 		assert(o_illegal);
 
 	always @(posedge i_clk)
-	if ((o_valid)&&(!o_illegal))
+	if (o_valid && !o_illegal)
 	begin
 		if (i_reset)
 		begin
@@ -2074,9 +2101,9 @@ module	idecode #(
 		`ASSERT(fc_rB  == o_rB);
 		`ASSERT(fc_sim  == o_sim);
 		`ASSERT(fc_sim_immv  == o_sim_immv);
-		`ASSERT(fc_prepipe == r_insn_is_pipeable);
+		`ASSERT(fc_prepipe == insn_is_pipeable);
 	end else
-		`ASSERT((i_reset)||(!r_insn_is_pipeable));
+		`ASSERT((i_reset)||(!insn_is_pipeable));
 
 	always @(*)
 	if (o_phase)
@@ -2093,7 +2120,7 @@ module	idecode #(
 
 	always @(posedge i_clk)
 	if ((!o_valid)||(o_illegal))
-		`ASSERT(!r_insn_is_pipeable);
+		`ASSERT(!insn_is_pipeable);
 
 	generate if ((OPT_CIS)&&(OPT_EARLY_BRANCHING))
 	begin
