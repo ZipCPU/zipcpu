@@ -103,6 +103,9 @@
 module	abs_div #(
 		// {{{
 		parameter		BW=32, LGBW = 5,
+		// Verilator lint_off UNUSED
+		parameter	[0:0]	OPT_LOWPOWER = 1'b0,
+		// Verilator lint_on  UNUSED
 		parameter	[4:0]	MAXDELAY = 3
 		// }}}
 	) (

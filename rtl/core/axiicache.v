@@ -78,6 +78,7 @@ module	axiicache #(
 		parameter	C_AXI_ID_WIDTH = 1,
 		parameter	C_AXI_ADDR_WIDTH = 32,
 		parameter	C_AXI_DATA_WIDTH = 32,
+		parameter [0:0]	OPT_LOWPOWER = 1'b0,
 		//
 		// SWAP_ENDIANNESS
 		parameter [0:0]	SWAP_ENDIANNESS = 1'b0,
@@ -330,6 +331,9 @@ module	axiicache #(
 	begin
 		axi_araddr <= last_pc;
 		axi_araddr[LSB-1:0] <= 0;
+
+		if (OPT_LOWPOWER && !start_read)
+			axi_araddr <= 0;
 	end
 	// }}}
 

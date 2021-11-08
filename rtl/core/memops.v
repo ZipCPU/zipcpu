@@ -48,13 +48,15 @@
 module	memops #(
 		// {{{
 		parameter	ADDRESS_WIDTH=30,
-		parameter [0:0]	IMPLEMENT_LOCK=1'b1,
+		parameter [0:0]	OPT_LOCK=1'b1,
 				WITH_LOCAL_BUS=1'b1,
 				OPT_ALIGNMENT_ERR=1'b1,
 				OPT_LOWPOWER=1'b0,
 				OPT_LITTLE_ENDIAN = 1'b0,
-		localparam	AW=ADDRESS_WIDTH,
-		parameter	F_LGDEPTH = 2
+		localparam	AW=ADDRESS_WIDTH
+`ifdef	FORMAL
+		, parameter	F_LGDEPTH = 2
+`endif
 		// }}}
 	) (
 		// {{{
@@ -321,7 +323,7 @@ module	memops #(
 	// lock_gbl and lock_lcl
 	// {{{
 	generate
-	if (IMPLEMENT_LOCK != 0)
+	if (OPT_LOCK)
 	begin
 		// {{{
 		initial	lock_gbl = 1'b0;
@@ -430,19 +432,20 @@ module	memops #(
 	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
 
-`ifdef	MEMOPS
-`define	MASTER	fwb_master
-`else
-`define	MASTER	fwb_counter
-`endif
-
-	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
-			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
-		f_wb(i_clk, i_reset,
-			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
-			f_nreqs, f_nacks, f_outstanding);
+	fwb_master #(
+		// {{{
+		.AW(AW), .F_LGDEPTH(F_LGDEPTH),
+		.F_OPT_RMW_BUS_OPTION(OPT_LOCK),
+		.F_OPT_DISCONTINUOUS(OPT_LOCK)
+		// }}}
+	) f_wb(
+		// {{{
+		i_clk, i_reset,
+		f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
+		i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+		f_nreqs, f_nacks, f_outstanding
+		// }}}
+	);
 
 
 	// Rule: Only one of the two CYC's may be valid, never both
@@ -495,7 +498,7 @@ module	memops #(
 	always @(posedge i_clk)
 	if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
 	begin
-		if (IMPLEMENT_LOCK)
+		if (OPT_LOCK)
 		begin
 			`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
 		end else
@@ -530,7 +533,7 @@ module	memops #(
 	fmem #(
 		// {{{
 		.F_LGDEPTH(F_LGDEPTH),
-		.IMPLEMENT_LOCK(IMPLEMENT_LOCK),
+		.OPT_LOCK(OPT_LOCK),
 		.OPT_MAXDEPTH(1)
 		// }}}
 	) fmemi(
@@ -740,7 +743,7 @@ module	memops #(
 //		`ASSUME(!i_stb);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+	if ((f_past_valid)&&(OPT_LOCK)
 			&&(!$past(i_reset))&&(!$past(i_wb_err))
 			&&(!$past(misaligned))
 			&&(!$past(lcl_stb))
@@ -748,7 +751,7 @@ module	memops #(
 		assert(lock_gbl);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+	if ((f_past_valid)&&(OPT_LOCK)
 			&&(!$past(i_reset))&&(!$past(i_wb_err))
 			&&(!$past(misaligned))
 			&&(!$past(lcl_stb))
@@ -757,7 +760,7 @@ module	memops #(
 		assert(o_wb_cyc_gbl);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+	if ((f_past_valid)&&(OPT_LOCK)
 			&&(!$past(i_reset))&&(!$past(i_wb_err))
 			&&(!$past(misaligned))
 			&&(!$past(gbl_stb))

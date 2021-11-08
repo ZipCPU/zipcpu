@@ -358,6 +358,7 @@ $(AXIDCC): $(AXIDCC)_prf/PASS   $(AXIDCC)_prf64/PASS   $(AXIDCC)_cvr/PASS
 $(AXIDCC): $(AXIDCC)_prfs/PASS  $(AXIDCC)_prfs64/PASS
 $(AXIDCC): $(AXIDCC)_prfp/PASS  $(AXIDCC)_prf64p/PASS  $(AXIDCC)_cvrp/PASS
 $(AXIDCC): $(AXIDCC)_prfsp/PASS $(AXIDCC)_prfs64p/PASS
+$(AXIDCC): $(AXIDCC)_prflp/PASS $(AXIDCC)_prfplp/PASS
 $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
@@ -374,6 +375,10 @@ $(AXIDCC)_prf64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf64p
 $(AXIDCC)_prfsp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfsp
+$(AXIDCC)_prflp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prflp
+$(AXIDCC)_prfplp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfplp
 $(AXIDCC)_prfs64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfs64p
 $(AXIDCC)_cvrp/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
@@ -506,8 +511,11 @@ $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
 .PHONY: $(DIV)
 ## {{{
 $(DIV) : $(DIV)_prf/PASS
+$(DIV) : $(DIV)_prflp/PASS
 $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
 	sby -f $(DIV).sby prf
+$(DIV)_prflp/PASS: $(DIV).sby $(RTL)/core/div.v
+	sby -f $(DIV).sby prflp
 ## }}}
 
 .PHONY: $(CPU)
@@ -516,6 +524,8 @@ $(CPU): $(CPU)_piped/PASS     $(CPU)_nopipe/PASS
 $(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS
 $(CPU): $(CPU)_pipedlp/PASS   $(CPU)_lowlogiclp/PASS   $(CPU)_nopipelp/PASS
 $(CPU): $(CPU)_pipedlpck/PASS $(CPU)_lowlogiclpck/PASS
+$(CPU): $(CPU)_pipedckh/PASS  $(CPU)_lowlogiclpckh/PASS
+$(CPU): $(CPU)_pipedlpckh/PASS
 $(CPU): $(CPU)_cvr/PASS
 CPUDEPS:= $(CPU).sby $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v		\
 	$(RTL)/core/idecode.v $(RTL)/ex/wbdblpriarb.v			\
@@ -537,10 +547,16 @@ $(CPU)_nopipelp/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby nopipelp
 $(CPU)_lowlogiclp/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogiclp
+$(CPU)_pipedckh/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby pipedckh
 $(CPU)_pipedlpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby pipedlpck
+$(CPU)_pipedlpckh/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby pipedlpckh
 $(CPU)_lowlogiclpck/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogiclpck
+$(CPU)_lowlogiclpckh/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby lowlogiclpckh
 $(CPU)_cvr/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby cvr
 ## }}}

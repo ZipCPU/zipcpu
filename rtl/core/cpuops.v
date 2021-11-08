@@ -37,13 +37,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 `default_nettype	none
-//
-`include "cpudefs.v"
 // }}}
 module	cpuops #(
 		// {{{
-		parameter		IMPLEMENT_MPY = `OPT_MULTIPLY,
-		parameter	[0:0]	OPT_SHIFTS = 1'b1
+		parameter		OPT_MPY = 0,
+		parameter	[0:0]	OPT_SHIFTS = 1'b1,
+		parameter	[0:0]	OPT_LOWPOWER = 1'b1
 		// }}}
 	) (
 		// {{{
@@ -126,8 +125,14 @@ module	cpuops #(
 			||((i_op==4'h2)&&(i_a[31] == i_b[31]))); // ADD
 	// }}}
 
-	// Multiply
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Multiply handling
 	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	// A 4-way multiplexer can be done in one 6-LUT.
 	// A 16-way multiplexer can therefore be done in 4x 6-LUT's with
 	//	the Xilinx multiplexer fabric that follows.
@@ -136,18 +141,26 @@ module	cpuops #(
 
 	assign	this_is_a_multiply_op = (i_stb)&&((i_op[3:1]==3'h5)||(i_op[3:0]==4'hc));
 
-	//
-	// Pull in the multiply logic from elsewhere
-	//
 `ifdef	FORMAL
 `define	MPYOP	abs_mpy
 `else
 `define	MPYOP	mpyop
 `endif
-	`MPYOP #(.IMPLEMENT_MPY(IMPLEMENT_MPY)) thempy(i_clk, i_reset, this_is_a_multiply_op, i_op[1:0],
-		i_a, i_b, mpydone, mpybusy, mpy_result, mpyhi);
+	`MPYOP #(
+		// {{{
+		.OPT_MPY(OPT_MPY),
+		.OPT_LOWPOWER(OPT_LOWPOWER)
+		// }}}
+	) thempy(
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_stb(this_is_a_multiply_op), .i_op(i_op[1:0]),
+		.i_a(i_a), .i_b(i_b), .o_valid(mpydone),
+		.o_busy(mpybusy), .o_result(mpy_result), .o_hi(mpyhi)
+		// }}}
+	);
 	// }}}
-
+	////////////////////////////////////////////////////////////////////////
 	//
 	// The master ALU case statement
 	// {{{
@@ -172,7 +185,7 @@ module	cpuops #(
 		4'b1100:   o_c   <= mpy_result[31:0];	// MPY
 		default:   o_c   <= i_b;		// MOV, LDI
 		endcase
-	end else // if (mpydone)
+	end else if (!OPT_LOWPOWER || mpydone)
 		// set the output based upon the multiply result
 		o_c <= (mpyhi)?mpy_result[63:32]:mpy_result[31:0];
 	// }}}
@@ -183,12 +196,12 @@ module	cpuops #(
 	always @(posedge i_clk)
 	if (i_reset)
 		r_busy <= 1'b0;
-	else if (IMPLEMENT_MPY > 1)
+	else if (OPT_MPY > 1)
 		r_busy <= ((i_stb)&&(this_is_a_multiply_op))||mpybusy;
 	else
 		r_busy <= 1'b0;
 
-	assign	o_busy = (r_busy); // ||((IMPLEMENT_MPY>1)&&(this_is_a_multiply_op));
+	assign	o_busy = (r_busy); // ||((OPT_MPY>1)&&(this_is_a_multiply_op));
 	// }}}
 
 	// Flags assignment and determination
@@ -207,7 +220,7 @@ module	cpuops #(
 	always @(posedge i_clk)
 	if (i_reset)
 		o_valid <= 1'b0;
-	else if (IMPLEMENT_MPY <= 1)
+	else if (OPT_MPY <= 1)
 		o_valid <= (i_stb);
 	else
 		o_valid <=((i_stb)&&(!this_is_a_multiply_op))||(mpydone);

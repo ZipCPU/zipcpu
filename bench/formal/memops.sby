@@ -24,7 +24,7 @@ read -formal fmem.v
 read -formal fwb_master.v
 --pycode-begin--
 cmd  = "hierarchy -top memops"
-cmd += " -chparam IMPLEMENT_LOCK %d"    % (1 if "opt_lock"     in tags else 0)
+cmd += " -chparam OPT_LOCK %d"    % (1 if "opt_lock"     in tags else 0)
 cmd += " -chparam WITH_LOCAL_BUS %d"    % (1 if "opt_local"    in tags else 0)
 cmd += " -chparam OPT_LOWPOWER %d"      % (1 if "opt_lowpower" in tags else 0)
 cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "opt_aligned" in tags else 0)

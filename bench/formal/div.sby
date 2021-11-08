@@ -1,5 +1,6 @@
 [tasks]
 prf
+prflp prf opt_lowpower
 
 [options]
 prf: mode prove
@@ -10,6 +11,7 @@ smtbmc
 
 [script]
 read -formal -DDIV div.v
+opt_lowpower: hierarchy -top div -chparam OPT_LOWPOWER 1
 prep -top div
 
 [files]

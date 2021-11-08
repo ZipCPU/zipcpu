@@ -97,59 +97,30 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-`include "cpudefs.v"
-//
 // }}}
 module	zipwb #(
 		// {{{
 		parameter [31:0] RESET_ADDRESS=32'h010_0000,
 		parameter	ADDRESS_WIDTH=30,
-				LGICACHE=12,
-`ifdef	OPT_MULTIPLY
-		parameter	IMPLEMENT_MPY = `OPT_MULTIPLY,
-`else
-		parameter	IMPLEMENT_MPY = 0,
-`endif
-`ifdef	OPT_DIVIDE
-		parameter [0:0]	IMPLEMENT_DIVIDE = 1,
-`else
-		parameter [0:0]	IMPLEMENT_DIVIDE = 0,
-`endif
-`ifdef	OPT_IMPLEMENT_FPU
-		parameter [0:0]	IMPLEMENT_FPU = 1,
-`else
+				OPT_LGICACHE=12,
+		parameter	OPT_MPY = 3,
+		parameter [0:0]	OPT_DIV = 1,
+		parameter [0:0]	OPT_SHIFTS = 1,
 		parameter [0:0]	IMPLEMENT_FPU = 0,
-`endif
-`ifdef	OPT_EARLY_BRANCHING
-		parameter [0:0]	EARLY_BRANCHING = 1,
-`else
-		parameter [0:0]	EARLY_BRANCHING = 0,
-`endif
-`ifdef	OPT_CIS
+		parameter [0:0]	OPT_EARLY_BRANCHING = 1,
 		parameter [0:0]	OPT_CIS = 1'b1,
-`else
-		parameter [0:0]	OPT_CIS = 1'b0,
-`endif
-`ifdef	OPT_PIPELINED
+		parameter [0:0]	OPT_DISTRIBUTED_REGS = 1'b1,
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
-`else
-		parameter	[0:0]	OPT_PIPELINED = 1'b0,
-`endif
-		parameter	[0:0]	IMPLEMENT_LOCK=1,
-`ifdef	OPT_DCACHE
+		parameter	[0:0]	OPT_START_HALTED=1,
+		parameter	[0:0]	OPT_LOCK=1,
 		parameter		OPT_LGDCACHE = 10,
-`else
-		parameter		OPT_LGDCACHE = 0,
-`endif
-`ifdef	VERILATOR
-		parameter [0:0]		OPT_SIM = 1'b1,
-`else
-		parameter [0:0]		OPT_SIM = 1'b0,
-`endif
-		parameter [0:0]	WITH_LOCAL_BUS = 1'b1,
+		parameter	[0:0]	OPT_SIM = 1'b1,
+		parameter	[0:0]	OPT_CLKGATE = 1'b0,
+		parameter	[0:0]	WITH_LOCAL_BUS = 1'b1,
+		parameter	[0:0]	OPT_DBGPORT = 1'b1,
+		parameter	[0:0]	OPT_TRACE_PORT = 1'b0,
+		parameter	[0:0]	OPT_USERMODE = 1'b1,
 		localparam	AW=ADDRESS_WIDTH
 `ifdef	FORMAL
 		, parameter	F_LGDEPTH=8
@@ -184,38 +155,17 @@ module	zipwb #(
 		// Accounting outputs ... to help us count stalls and usage
 		output	wire		o_op_stall,
 		output	wire		o_pf_stall,
-		output	wire		o_i_count
+		output	wire		o_i_count,
 		//
-`ifdef	DEBUG_SCOPE
-		, output wire	[31:0]	o_debug
-`endif
+		output	wire	[31:0]	o_debug
 	// }}}
 	);
 
 	// Declarations
 	// {{{
-	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 0);
-`ifdef	OPT_PIPELINED_BUS_ACCESS
+	localparam	[0:0]	OPT_DCACHE = (OPT_LGDCACHE > 2);
 	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = (OPT_PIPELINED);
-`else
-	localparam	[0:0]	OPT_PIPELINED_BUS_ACCESS = 1'b0;
-`endif
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
-	localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
-`ifdef	OPT_NO_USERMODE
-	localparam	[0:0]	OPT_NO_USERMODE = 1'b1;
-`else
-	localparam	[0:0]	OPT_NO_USERMODE = 1'b0;
-`endif
-`ifdef	OPT_SINGLE_FETCH
-	localparam FETCH_LIMIT = (LGICACHE > 0) ? 4 : 1;
-`else
-`ifdef	OPT_DOUBLE_FETCH
-	localparam FETCH_LIMIT = (LGICACHE > 0) ? 4 : 2;
-`else
-	localparam FETCH_LIMIT = 4;
-`endif	// OPT_DOUBLE_FETCH
-`endif	// OPT_SINGLE_FETCH
 
 	wire	[31:0]	cpu_debug;
 
@@ -262,17 +212,22 @@ module	zipwb #(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
-		.IMPLEMENT_MPY(IMPLEMENT_MPY),
-		.IMPLEMENT_DIVIDE(IMPLEMENT_DIVIDE),
+		.OPT_MPY(OPT_MPY),
+		.OPT_DIV(OPT_DIV),
+		.OPT_SHIFTS(OPT_SHIFTS),
 		.IMPLEMENT_FPU(IMPLEMENT_FPU),
-		.OPT_EARLY_BRANCHING(EARLY_BRANCHING),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+		.OPT_START_HALTED(OPT_START_HALTED),
 		.OPT_CIS(OPT_CIS),
 		.OPT_SIM(OPT_SIM),
+		.OPT_CLKGATE(OPT_CLKGATE),
 		.OPT_PIPELINED(OPT_PIPELINED),
 		.OPT_PIPELINED_BUS_ACCESS(OPT_MEMPIPE),
-		.OPT_NO_USERMODE(OPT_NO_USERMODE),
-		.IMPLEMENT_LOCK(IMPLEMENT_LOCK)
-		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
+		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
+		.OPT_USERMODE(OPT_USERMODE),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_DBGPORT(OPT_DBGPORT),
+		.OPT_TRACE_PORT(OPT_TRACE_PORT)
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		// localparam	AW=ADDRESS_WIDTH;
 		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
@@ -328,14 +283,7 @@ module	zipwb #(
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
-`ifdef	DEBUG_SCOPE
 	assign	o_debug = cpu_debug;
-`else
-	// Verilator lint_off UNUSED
-	wire	dbg_unused;
-	assign	dbg_unused = &{ 1'b0, cpu_debug };
-	// Verilator lint_on  UNUSED
-`endif
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -343,7 +291,7 @@ module	zipwb #(
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
-	generate if (FETCH_LIMIT <= 1)
+	generate if (OPT_LGICACHE <= 1)
 	begin : SINGLE_FETCH
 
 		prefetch	#(ADDRESS_WIDTH)
@@ -358,7 +306,7 @@ module	zipwb #(
 				pf_cyc, pf_stb, pf_we, pf_addr, pf_data,
 				pf_stall, pf_ack, pf_err, i_wb_data);
 		// }}}
-	end else if (FETCH_LIMIT == 2 || LGICACHE == 0)
+	end else if (OPT_LGICACHE <= 2)
 	begin : DBLFETCH
 
 		dblfetch #(ADDRESS_WIDTH)
@@ -375,7 +323,7 @@ module	zipwb #(
 		// }}}
 	end else begin : PFCACHE
 
-		pfcache #(LGICACHE, ADDRESS_WIDTH)
+		pfcache #(OPT_LGICACHE, ADDRESS_WIDTH)
 		// {{{
 		pf(i_clk, i_reset,
 			// CPU signals
@@ -425,13 +373,13 @@ module	zipwb #(
 				mem_stall, mem_ack, mem_err, i_wb_data
 			/// }}}
 		);
-	end else if (OPT_PIPELINED_BUS_ACCESS)
+	end else if (OPT_MEMPIPE)
 	begin : PIPELINED_MEM
 
 		pipemem	#(
 			// {{{
 			.ADDRESS_WIDTH(AW),
-			.IMPLEMENT_LOCK(OPT_LOCK),
+			.OPT_LOCK(OPT_LOCK),
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
 `ifdef	FORMAL
 			, .OPT_MAXDEPTH(4'h3),
@@ -451,13 +399,13 @@ module	zipwb #(
 				mem_we, mem_bus_addr, mem_data, mem_sel,
 				mem_stall, mem_ack, mem_err, i_wb_data
 			// }}}
-			);
+		);
 	end else begin : BARE_MEM
 
 		memops	#(
 			// {{{
 			.ADDRESS_WIDTH(AW),
-			.IMPLEMENT_LOCK(OPT_LOCK),
+			.OPT_LOCK(OPT_LOCK),
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
 `ifdef	FORMAL
 			, .F_LGDEPTH(F_LGDEPTH)

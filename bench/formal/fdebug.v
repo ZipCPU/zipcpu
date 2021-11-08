@@ -80,7 +80,8 @@ module	fdebug #(
 		//	1. Address valid, 2. (wait state), 3. Data available
 		// Set OPT_DISTRIBUTED_RAM to 1'b0 if such a wait state is
 		// required.
-		parameter [0:0]	OPT_DISTRIBUTED_RAM = 1'b1
+		parameter [0:0]	OPT_DISTRIBUTED_RAM = 1'b1,
+		parameter [0:0]	OPT_START_HALTED = 1'b1
 		// }}}
 	) (
 		// {{{
@@ -205,7 +206,10 @@ module	fdebug #(
 	// A halted CPU won't restart without being released
 	// {{{
 	always @(posedge i_clk)
-	if (f_past_valid && $past(i_halt && i_halted))
+	if (!f_past_valid || $past(i_reset))
+	begin
+		`CPU_ASSERT(i_halted == OPT_START_HALTED);
+	end else if (f_past_valid && $past(i_halt && i_halted))
 		`CPU_ASSERT(i_halted);
 	// }}}
 

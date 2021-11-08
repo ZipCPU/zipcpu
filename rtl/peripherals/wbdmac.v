@@ -115,15 +115,7 @@
 module wbdmac #(
 		// {{{
 		parameter	ADDRESS_WIDTH=30, LGMEMLEN = 10, DW=32,
-		localparam	LGDV=5,
-		localparam	AW=ADDRESS_WIDTH,
-		localparam [2:0]	DMA_IDLE	= 3'b000,
-		localparam [2:0]	DMA_WAIT	= 3'b001,
-		localparam [2:0]	DMA_READ_REQ	= 3'b010,
-		localparam [2:0]	DMA_READ_ACK	= 3'b011,
-		localparam [2:0]	DMA_PRE_WRITE	= 3'b100,
-		localparam [2:0]	DMA_WRITE_REQ	= 3'b101,
-		localparam [2:0]	DMA_WRITE_ACK	= 3'b110
+		localparam	AW=ADDRESS_WIDTH
 		// }}}
 	) (
 		// {{{
@@ -158,7 +150,16 @@ module wbdmac #(
 
 	// Local declarations
 	// {{{
-	wire	s_cyc, s_stb, s_we;
+	localparam	LGDV=5;
+	localparam [2:0]	DMA_IDLE	= 3'b000,
+				DMA_WAIT	= 3'b001,
+				DMA_READ_REQ	= 3'b010,
+				DMA_READ_ACK	= 3'b011,
+				DMA_PRE_WRITE	= 3'b100,
+				DMA_WRITE_REQ	= 3'b101,
+				DMA_WRITE_ACK	= 3'b110;
+
+	wire		s_cyc, s_stb, s_we;
 	wire	[1:0]	s_addr;
 	wire	[31:0]	s_data;
 
@@ -582,13 +583,15 @@ module wbdmac #(
 	// o_mwb_data
 	// {{{
 	always @(posedge i_clk)
-	if (i_reset)
-		o_mwb_data <= 0;
-	else if ((dma_state != DMA_WRITE_REQ)||(!i_mwb_stall))
+	// if (i_reset)
+	//	o_mwb_data <= 0;
+	// else
+	if ((dma_state != DMA_WRITE_REQ)||(!i_mwb_stall))
 		o_mwb_data <= dma_mem[rdaddr];
+
 	always @(posedge i_clk)
-		if((dma_state == DMA_READ_REQ)||(dma_state == DMA_READ_ACK))
-			dma_mem[nread[(LGMEMLEN-1):0]] <= i_mwb_data;
+	if((dma_state == DMA_READ_REQ)||(dma_state == DMA_READ_ACK))
+		dma_mem[nread[(LGMEMLEN-1):0]] <= i_mwb_data;
 	// }}}
 
 	// o_swb_data

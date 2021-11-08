@@ -660,7 +660,6 @@ module	axilperiphs #(
 			tmra_ack, tmrb_ack, tmrc_ack, jif_ack };
 	// Verilator lint_on  UNUSED
 	// }}}
-	// }}}
 `ifdef	FORMAL
 	////////////////////////////////////////////////////////////////////////
 	//

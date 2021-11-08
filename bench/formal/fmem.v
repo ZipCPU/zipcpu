@@ -119,13 +119,13 @@
 // }}}
 module	fmem #(
 		// {{{
-		// IMPLEMENT_LOCK
+		// OPT_LOCK
 		// {{{
 		// If false, forces the i_lock parameter to be zero and
 		// guarantees no bus locking.  Can be set to 1'b1 to test both
 		// with and without bus locking.
 		// }}}
-		parameter [0:0]	IMPLEMENT_LOCK = 1'b0,
+		parameter [0:0]	OPT_LOCK = 1'b0,
 		// F_LGDEPTH
 		// {{{
 		// This is the number of bits required to hold our internal
@@ -319,11 +319,11 @@ module	fmem #(
 	// }}}
 
 	always @(*)
-	if (!IMPLEMENT_LOCK)
+	if (!OPT_LOCK)
 		`CPU_ASSERT(!i_stb || !i_lock);
 
 	always @(posedge i_clk)
-	if (IMPLEMENT_LOCK && f_past_valid && !$past(i_cpu_reset))
+	if (OPT_LOCK && f_past_valid && !$past(i_cpu_reset))
 	begin
 	//	if ($past(!i_lock && (!i_stb || i_busy)))
 	//		`CPU_ASSERT(!i_lock);
@@ -476,7 +476,7 @@ module	fmem #(
 	if (i_stb && !i_pipe_stalled)
 	begin
 		f_last_reg <= i_oreg;
-		if (IMPLEMENT_LOCK && f_check_axi_lock && i_op[0] && i_lock)
+		if (OPT_LOCK && f_check_axi_lock && i_op[0] && i_lock)
 			f_last_reg[3:0] <= 4'hf;
 	end
 
@@ -604,7 +604,7 @@ module	fmem #(
 	//
 
 	always @(*)
-	if (OPT_AXI_LOCK == 0 || !IMPLEMENT_LOCK)
+	if (OPT_AXI_LOCK == 0 || !OPT_LOCK)
 	begin
 		assume(f_check_axi_lock == 1'b0);
 	end else if (OPT_AXI_LOCK == 1)

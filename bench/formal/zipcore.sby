@@ -9,7 +9,10 @@ nopipelp	nopipe prf lock nopipe            cis opt_lowpower
 lowlogiclp	lowlogic prf lock nopipe opt_lowpower
 
 pipedlpck	piped prf lock pipelined mpy div cis earlybranching opt_lowpower opt_ckgate
+pipedlpckh	piped prf lock pipelined mpy div cis earlybranching opt_lowpower opt_halted opt_ckgate
+pipedckh	piped prf lock pipelined mpy div cis earlybranching opt_halted opt_ckgate
 lowlogiclpck	lowlogic prf lock nopipe opt_lowpower opt_ckgate
+lowlogiclpckh	lowlogic prf lock nopipe opt_lowpower opt_ckgate opt_halted
 
 cvr		    lock pipelined mpy div cis earlybranching opt_lock
 
@@ -19,7 +22,6 @@ cvr: mode cover
 depth 18
 piped:    depth  5
 nopipe:   depth  4
-nopipe:   depth  4
 lowlogic: depth  4
 ice40:    depth  5
 cvr: depth 35
@@ -28,7 +30,6 @@ cvr: depth 35
 smtbmc boolector
 
 [script]
-nobkram: read -define NO_DISTRIBUTED_RAM
 read -define -DZIPCPU
 #
 read -formal -D ZIPCPU cpuops.v
@@ -46,14 +47,16 @@ read -formal zipcore.v
 --pycode-begin--
 cmd = "hierarchy -top zipcore"
 cmd += " -chparam IMPLEMENT_FPU 0"
-cmd += " -chparam IMPLEMENT_LOCK %d"   % ( 1 if "lock"           in tags else 0)
-cmd += " -chparam IMPLEMENT_MPY  %d"   % ( 1 if "mpy"            in tags else 0)
-cmd += " -chparam IMPLEMENT_DIVIDE %d" % ( 1 if "div"            in tags else 0)
+cmd += " -chparam OPT_LOCK       %d"   % ( 1 if "lock"           in tags else 0)
+cmd += " -chparam OPT_MPY        %d"   % ( 1 if "mpy"            in tags else 0)
+cmd += " -chparam OPT_DIV        %d" % ( 1 if "div"            in tags else 0)
 cmd += " -chparam OPT_CIS          %d" % ( 1 if "cis"            in tags else 0)
 cmd += " -chparam OPT_PIPELINED    %d" % ( 1 if "pipelined"      in tags else 0)
 cmd += " -chparam OPT_EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags else 0)
 cmd += " -chparam OPT_LOWPOWER    %d" % ( 1 if "opt_lowpower" in tags else 0)
-cmd += " -chparam OPT_GATE_CLOCK  %d" % ( 1 if "opt_ckgate"   in tags else 0)
+cmd += " -chparam OPT_CLKGATE     %d" % ( 1 if "opt_ckgate"   in tags else 0)
+cmd += " -chparam OPT_START_HALTED %d" % (1 if "opt_halted"   in tags else 0)
+cmd += " -chparam OPT_DISTRIBUTED_REGS %d" % (0 if "nobkram"  in tags else 1)
 output(cmd)
 --pycode-end--
 

@@ -97,7 +97,8 @@
 `default_nettype	none
 // }}}
 module	div #(
-		parameter		BW=32, LGBW = 5
+		parameter		BW=32, LGBW = 5,
+		parameter [0:0]	OPT_LOWPOWER = 1'b0
 	) (
 		// {{{
 		input	wire		i_clk, i_reset,
@@ -297,7 +298,7 @@ module	div #(
 		r_dividend <= { r_dividend[2*BW-3:0], 1'b0 };
 		if (!diff[BW])
 			r_dividend[2*BW-2:BW] <= diff[(BW-2):0];
-	end else if (!r_busy)
+	end else if (!r_busy && (!OPT_LOWPOWER || i_wr))
 		// Once we are done, and r_busy is no longer high, we'll
 		// always accept new values into our dividend.  This
 		// guarantees that, when i_wr is set, the new value
@@ -315,7 +316,7 @@ module	div #(
 	begin
 		if (r_divisor[BW-1])
 			r_divisor <= -r_divisor;
-	end else if (!r_busy)
+	end else if (!r_busy && (!OPT_LOWPOWER || i_wr))
 		r_divisor <= i_denominator;
 	// }}}
 
@@ -432,6 +433,10 @@ module	div #(
 	always @(*)
 	if (o_busy)
 		`ASSUME(!i_wr);
+
+	always @(*)
+	if (r_busy)
+		assert(o_busy);
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(o_busy))&&(!o_busy))

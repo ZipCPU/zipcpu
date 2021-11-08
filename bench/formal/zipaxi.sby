@@ -16,6 +16,7 @@ read -formal fdebug.v
 read -formal skidbuffer.v
 # read -formal axilfetch.v
 read -formal faxil_slave.v
+hierarchy -top zipaxi -chparam OPT_CLKGATE 0
 prep -top zipaxi
 
 [files]

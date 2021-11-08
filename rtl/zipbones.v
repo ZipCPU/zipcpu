@@ -37,66 +37,56 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 `default_nettype	none
-//
-`include "cpudefs.v"
-//
 // }}}
 module	zipbones #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
-				ADDRESS_WIDTH=30,
+				ADDRESS_WIDTH=32,
 		// CPU options
-		// LGICACHE
+		// OPT_LGICACHE
 		// {{{
-`ifdef	OPT_TRADITIONAL_PFCACHE
-				LGICACHE = 8,
-`else
-				LGICACHE = 0,
-`endif
+		parameter	OPT_LGICACHE = 2,
 		// }}}
-		// OPT_DCACHE
+		// OPT_LGDCACHE
 		// {{{
-`ifdef	OPT_DCACHE
-				// Set to zero for no data cache
-				LGDCACHE = 10,
-`else
-				LGDCACHE = 0,
-`endif
+		// Set to zero for no data cache
+		parameter	OPT_LGDCACHE = 0,
 		// }}}
+		parameter [0:0]	OPT_PIPELINED=1,
+		parameter [0:0]	OPT_EARLY_BRANCHING=1,
+		parameter [0:0]	OPT_DISTRIBUTED_REGS=1,
 		parameter [0:0]	START_HALTED=0,
-		parameter
 		// OPT_MPY
 		// {{{
-`ifdef	OPT_MULTIPLY
-				OPT_MPY = `OPT_MULTIPLY,
-`else
-				OPT_MPY = 0,
-`endif
+		parameter	OPT_MPY = 3,
 		// }}}
 		// OPT_DIV
 		// {{{
-`ifdef	OPT_DIVIDE
 		parameter [0:0]	OPT_DIV=1,
-`else
-		parameter [0:0]	OPT_DIV=0,
-`endif
 		// }}}
+		parameter [0:0]	OPT_SHIFTS=1,
 		// OPT_FPU
 		// {{{
-`ifdef	OPT_IMPLEMENT_FPU
-		parameter [0:0]	OPT_FPU = 1,
-`else
 		parameter [0:0]	OPT_FPU = 0,
-`endif
 		// }}}
+		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
+`ifdef	VERILATOR
+		parameter [0:0]	OPT_SIM=1,
+`else
+		parameter [0:0]	OPT_SIM=0,
+`endif
 		parameter [0:0]	OPT_LOWPOWER=0,
+		parameter [0:0]	OPT_USERMODE=1,
+		parameter [0:0]	OPT_DBGPORT=1,
+		parameter [0:0]	OPT_TRACE_PORT=0,
+		parameter [0:0]	OPT_CLKGATE=0,
 		parameter	RESET_DURATION = 10,
 		// Short-cut names
 		// {{{
 		localparam	// Derived parameters
 				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-				PAW=ADDRESS_WIDTH,
+				PAW=ADDRESS_WIDTH-2,
 `ifdef	OPT_MMU
 				// VIRTUAL_ADDRESS_WIDTH=30,
 `else
@@ -153,17 +143,15 @@ module	zipbones #(
 		input	wire [DW/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire [DW-1:0]	o_dbg_data
+		output	wire [DW-1:0]	o_dbg_data,
 		// }}}
-`ifdef	DEBUG_SCOPE
-		, output wire	[31:0]	o_cpu_debug
-`endif
+		output wire	[31:0]	o_cpu_debug
 		// }}}
 	);
 
 	// Declarations
 	// {{{
-	wire		cpu_clken;
+	wire		cpu_clken, cpu_clock, clk_gate;
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
 	wire	[5:0]	dbg_addr;
 	wire	[31:0]	dbg_idata;
@@ -404,6 +392,7 @@ module	zipbones #(
 
 	fdebug #(
 		// {{{
+		.OPT_START_HALTED(START_HALTED),
 		.OPT_DISTRIBUTED_RAM(1'b1)
 		// }}}
 	) fdbg (
@@ -426,23 +415,29 @@ module	zipbones #(
 	zipwb	#(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
-		.ADDRESS_WIDTH(ADDRESS_WIDTH),
-		.LGICACHE(LGICACHE),
-		.OPT_LGDCACHE(LGDCACHE),
-		.IMPLEMENT_MPY(OPT_MPY),
-		.IMPLEMENT_DIVIDE(OPT_DIV),
+		.ADDRESS_WIDTH(ADDRESS_WIDTH-2),
+		.OPT_START_HALTED(START_HALTED),
+		.OPT_LGICACHE(OPT_LGICACHE),
+		.OPT_LGDCACHE(OPT_LGDCACHE),
+		.OPT_PIPELINED(OPT_PIPELINED),
+		.OPT_MPY(OPT_MPY),
+		.OPT_DIV(OPT_DIV),
+		.OPT_SHIFTS(OPT_SHIFTS),
 		.IMPLEMENT_FPU(OPT_FPU),
-		.IMPLEMENT_LOCK(OPT_LOCK),
-`ifdef	VERILATOR
-		.OPT_SIM(1'b1),
-`else
-		.OPT_SIM(1'b0),
-`endif
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+		.OPT_CIS(OPT_CIS),
+		.OPT_SIM(OPT_SIM),
+		.OPT_DBGPORT(OPT_DBGPORT),
+		.OPT_TRACE_PORT(OPT_TRACE_PORT),
+		.OPT_CLKGATE(OPT_CLKGATE),
+		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
+		.OPT_USERMODE(OPT_USERMODE),
 		.WITH_LOCAL_BUS(0)
 		// }}}
 	) thecpu(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_interrupt(i_ext_int),
+		.i_clk(cpu_clock), .i_reset(cpu_reset), .i_interrupt(i_ext_int),
 			.o_cpu_clken(cpu_clken),
 		// Debug interface
 		// {{{
@@ -469,10 +464,7 @@ module	zipbones #(
 				.i_wb_err((i_wb_err)||(cpu_lcl_cyc)),
 		// }}}
 			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
-				.o_i_count(cpu_i_count)
-`ifdef	DEBUG_SCOPE
-			, .o_debug(o_cpu_debug)
-`endif
+				.o_i_count(cpu_i_count), .o_debug(o_cpu_debug)
 		// }}}
 	);
 `endif
@@ -515,9 +507,55 @@ module	zipbones #(
 			dbg_odata <= cpu_dbg_data;
 	end
 
-	assign	dbg_stall= reset_hold || ((cmd_write && cpu_dbg_stall) && dbg_we && !dbg_addr[5]);
+	assign	dbg_stall= reset_hold || ((cmd_write && (cpu_dbg_stall || !clk_gate)) && dbg_we && !dbg_addr[5]);
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Clock gate
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	generate if (OPT_CLKGATE)
+	begin : GATE_CPU_CLOCK
+		// {{{
+		reg	gatep, r_gated;
+		reg	gaten /* verilator clock_enable */;
+
+		initial	gatep = 1'b1;
+		always @(posedge i_clk)
+		if (i_reset)
+			gatep <= 1'b1;
+		else
+			gatep <= cpu_clken;
+
+		initial	gaten = 1'b1;
+		always @(negedge i_clk)
+		if (i_reset)
+			gaten <= 1'b1;
+		else
+			gaten <= gatep;
+
+		initial	r_gated = 1'b1;
+		always @(posedge i_clk)
+		if (i_reset)
+			r_gated <= 1'b1;
+		else
+			r_gated <= gatep;
+
+
+		assign	cpu_clock = i_clk && gaten;
+		assign	clk_gate  = r_gated;
+		// }}}
+	end else begin : NO_CLOCK_GATE
+
+		assign	cpu_clock = i_clk;
+		assign	clk_gate = 1'b1;
+
+	end endgenerate
 	// }}}
+
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
 
 	// Make Verilator happy

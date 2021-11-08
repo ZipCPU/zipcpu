@@ -2089,7 +2089,7 @@ module	axipipe #(
 	fmem #(
 		// {{{
 		.F_LGDEPTH(LGPIPE+1),
-		.IMPLEMENT_LOCK(OPT_LOCK),
+		.OPT_LOCK(OPT_LOCK),
 		.OPT_AXI_LOCK(OPT_LOCK),
 		.OPT_MAXDEPTH(FMEM_OPT_MAXDEPTH[LGPIPE:0])
 		// }}}

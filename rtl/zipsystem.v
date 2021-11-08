@@ -88,7 +88,6 @@
 //
 `default_nettype	none
 // }}}
-`include "cpudefs.v"
 //
 // Debug address space:
 // {{{
@@ -123,69 +122,57 @@
 module	zipsystem #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
-				ADDRESS_WIDTH=30,
+				ADDRESS_WIDTH=32,
 		localparam	DW=32,
 		// CPU options
-		// LGICACHE
 		// {{{
-`ifdef	OPT_TRADITIONAL_PFCACHE
-		parameter	LGICACHE=10,
-`else
-		parameter	LGICACHE=0,
-`endif
+		parameter [0:0]	OPT_PIPELINED=1,
+		parameter [0:0]	OPT_EARLY_BRANCHING=OPT_PIPELINED,
+		// OPT_LGICACHE
+		// {{{
+		parameter	OPT_LGICACHE=10,
 		// }}}
-		// OPT_DCACHE
+		// OPT_LGDCACHE
 		// {{{
-`ifdef	OPT_DCACHE
-				// Set to zero for no data cache
-				LGDCACHE=10,
-`else
-				LGDCACHE=0,
-`endif
+		// Set to zero for no data cache
+		parameter	OPT_LGDCACHE=10,
 		// }}}
 		parameter [0:0]	START_HALTED=1,
+		parameter [0:0]	OPT_DISTRIBUTED_REGS=1,
 		parameter	EXTERNAL_INTERRUPTS=1,
 		// OPT_MPY
 		// {{{
-`ifdef	OPT_MULTIPLY
-				OPT_MPY = `OPT_MULTIPLY,
-`else
-				OPT_MPY = 0,
-`endif
+		parameter	OPT_MPY = 3,
 		// }}}
 		// OPT_DIV
 		// {{{
-`ifdef	OPT_DIVIDE
 		parameter [0:0]	OPT_DIV=1,
-`else
-		parameter [0:0]	OPT_DIV=0,
-`endif
+		// }}}
+		// OPT_SHIFTS
+		// {{{
+		parameter [0:0]	OPT_SHIFTS = 1,
 		// }}}
 		// OPT_FPU
 		// {{{
-`ifdef	OPT_IMPLEMENT_FPU
-		parameter [0:0]	OPT_FPU = 1,
-`else
 		parameter [0:0]	OPT_FPU = 0,
-`endif
 		// }}}
+		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
+		parameter [0:0]	OPT_USERMODE=1,
+		parameter [0:0]	OPT_DBGPORT=0,
+		parameter [0:0]	OPT_TRACE_PORT=0,
+		parameter [0:0]	OPT_LOWPOWER=0,
+		// }}}
+		// Local bus options
+		// {{{
 		// OPT_DMA
 		// {{{
-`ifdef	INCLUDE_DMA_CONTROLLER
 		parameter [0:0]	OPT_DMA=1,
-`else
-		parameter [0:0]	OPT_DMA=0,
-`endif
+		parameter	DMA_LGMEM = 10,
 		// }}}
-		parameter [0:0]	OPT_LOWPOWER=0,
 		// OPT_ACCOUNTING
 		// {{{
-`ifdef	INCLUDE_ACCOUNTING_COUNTERS
-		localparam [0:0]	OPT_ACCOUNTING = 1'b1,
-`else
-		localparam [0:0]	OPT_ACCOUNTING = 1'b0,
-`endif
+		parameter [0:0]	OPT_ACCOUNTING = 1'b1,
 		// }}}
 		// Bus delay options
 		// {{{
@@ -195,73 +182,20 @@ module	zipsystem #(
 		//
 		parameter [0:0]		DELAY_EXT_BUS = 1'b0,
 		// }}}
+`ifdef	VERILATOR
+		parameter [0:0]	OPT_SIM=1'b1,
+		parameter [0:0]	OPT_CLKGATE = OPT_LOWPOWER,
+`else
+		parameter [0:0]	OPT_SIM=1'b0,
+		parameter [0:0]	OPT_CLKGATE = 1'b0,
+`endif
+		// }}}
 		parameter	RESET_DURATION = 0,
 		// Short-cut names
 		// {{{
 		localparam	// Derived parameters
 				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-				PAW=ADDRESS_WIDTH,
-`ifdef	OPT_MMU
-				VIRTUAL_ADDRESS_WIDTH=30,
-`else
-				VIRTUAL_ADDRESS_WIDTH=PAW,
-`endif
-				// LGTLBSZ = 6,	// Log TLB size
-				// VAW=VIRTUAL_ADDRESS_WIDTH,
-
-		// localparam	AW=ADDRESS_WIDTH,
-		// }}}
-		// Peripheral addresses
-		// {{{
-		// Verilator lint_off UNUSED
-		// These values may (or may not) be used, depending on whether
-		// or not the respective peripheral is included in the
-		// CPU.
-		localparam [31:0] PERIPHBASE = 32'hc0000000,
-		localparam [7:0] INTCTRL     = 8'h0,
-		localparam [7:0] WATCHDOG    = 8'h1, // Interrupt generates reset signal
-		localparam [7:0] BUSWATCHDOG = 8'h2,	// Sets IVEC[0]
-		localparam [7:0] CTRINT      = 8'h3,	// Sets IVEC[5]
-		localparam [7:0] TIMER_A     = 8'h4,	// Sets IVEC[4]
-		localparam [7:0] TIMER_B     = 8'h5,	// Sets IVEC[3]
-		localparam [7:0] TIMER_C     = 8'h6,	// Sets IVEC[2]
-		localparam [7:0] JIFFIES     = 8'h7,	// Sets IVEC[1]
-		// Accounting counter addresses
-		localparam [7:0] MSTR_TASK_CTR = 8'h08,
-		localparam [7:0] MSTR_MSTL_CTR = 8'h09,
-		localparam [7:0] MSTR_PSTL_CTR = 8'h0a,
-		localparam [7:0] MSTR_INST_CTR = 8'h0b,
-		localparam [7:0] USER_TASK_CTR = 8'h0c,
-		localparam [7:0] USER_MSTL_CTR = 8'h0d,
-		localparam [7:0] USER_PSTL_CTR = 8'h0e,
-		localparam [7:0] USER_INST_CTR = 8'h0f,
-		// The MMU
-		localparam [7:0] MMU_ADDR = 8'h80,
-		// DMA controller (DMAC)
-		// Although I have a hole at 5'h2, the DMA controller requires
-		// four wishbone addresses, therefore we place it by itself
-		// and expand our address bus width here by another bit.
-		localparam [7:0] DMAC_ADDR = 8'h10,
-		// Verilator lint_on  UNUSED
-		// }}}
-		// Debug bit allocations
-		// {{{
-		//	DBGCTRL
-		//		10 HALT
-		//		 9 HALT(ED)
-		//		 8 STEP	(W=1 steps, and returns to halted)
-		//		 7 INTERRUPT-FLAG
-		//		 6 RESET_FLAG
-		//		ADDRESS:
-		//		 5	PERIPHERAL-BIT
-		//		[4:0]	REGISTER-ADDR
-		//	DBGDATA
-		//		read/writes internal registers
-		//
-		localparam	RESET_BIT = 6,
-		localparam	STEP_BIT = 8,
-		localparam	HALT_BIT = 10,
-		localparam	CLEAR_CACHE_BIT = 11
+				PAW=ADDRESS_WIDTH-2
 		// }}}
 		// }}}
 	) (
@@ -289,19 +223,87 @@ module	zipsystem #(
 		input	wire [DW/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire [DW-1:0]	o_dbg_data
+		output	wire [DW-1:0]	o_dbg_data,
 		// }}}
-`ifdef	DEBUG_SCOPE
-		, output wire	[31:0]	o_cpu_debug
-`endif
+		output wire	[31:0]	o_cpu_debug
 		// }}}
 	);
 
 	// Local declarations
 	// {{{
+	// Local parameter declarations
+	// {{{
+	// Peripheral addresses
+	// {{{
+	// Verilator lint_off UNUSED
+	// These values may (or may not) be used, depending on whether or not
+	// the respective peripheral is included in the CPU.
+	localparam [31:0] PERIPHBASE = 32'hc0000000;
+	localparam [7:0] INTCTRL     = 8'h0,
+			WATCHDOG    = 8'h1, // Interrupt generates reset signal
+			BUSWATCHDOG = 8'h2,	// Sets IVEC[0]
+			CTRINT      = 8'h3,	// Sets IVEC[5]
+			TIMER_A     = 8'h4,	// Sets IVEC[4]
+			TIMER_B     = 8'h5,	// Sets IVEC[3]
+			TIMER_C     = 8'h6,	// Sets IVEC[2]
+			JIFFIES     = 8'h7,	// Sets IVEC[1]
+			// Accounting counter addresses
+			MSTR_TASK_CTR = 8'h08,
+			MSTR_MSTL_CTR = 8'h09,
+			MSTR_PSTL_CTR = 8'h0a,
+			MSTR_INST_CTR = 8'h0b,
+			USER_TASK_CTR = 8'h0c,
+			USER_MSTL_CTR = 8'h0d,
+			USER_PSTL_CTR = 8'h0e,
+			USER_INST_CTR = 8'h0f,
+			// The MMU
+			MMU_ADDR = 8'h80,
+			// DMA controller (DMAC)
+			// Although I have a hole at 5'h2, the DMA controller
+			// requires four wishbone addresses, therefore we place
+			// it by itself and expand our address bus width here
+			// by another bit.
+			DMAC_ADDR = 8'h10;
+	// Verilator lint_on  UNUSED
+	// }}}
+
+	// Debug bit allocations
+	// {{{
+	//	DBGCTRL
+	//		10 HALT
+	//		 9 HALT(ED)
+	//		 8 STEP	(W=1 steps, and returns to halted)
+	//		 7 INTERRUPT-FLAG
+	//		 6 RESET_FLAG
+	//		ADDRESS:
+	//		 5	PERIPHERAL-BIT
+	//		[4:0]	REGISTER-ADDR
+	//	DBGDATA
+	//		read/writes internal registers
+	//
+	localparam	RESET_BIT = 6,
+			STEP_BIT = 8,
+			HALT_BIT = 10,
+			CLEAR_CACHE_BIT = 11;
+	// }}}
+
+	// Virtual address width
+	// {{{
+	localparam
+`ifdef	OPT_MMU
+				VIRTUAL_ADDRESS_WIDTH=30;
+`else
+				VIRTUAL_ADDRESS_WIDTH=PAW;
+`endif
+				// LGTLBSZ = 6,	// Log TLB size
+				// VAW=VIRTUAL_ADDRESS_WIDTH,
+	// }}}
+
 	localparam	[1:0]	DBG_ADDR_CPU = 2'b00,
 				DBG_ADDR_CTRL= 2'b01,
 				DBG_ADDR_SYS = 2'b10;
+	// }}}
+
 	wire	[31:0]	ext_idata;
 
 	wire	[14:0]	main_int_vector, alt_int_vector;
@@ -312,7 +314,7 @@ module	zipsystem #(
 	wire		actr_ack, actr_stall;
 
 	//
-	wire	cpu_clken;
+	wire	cpu_clken, cpu_clock, clk_gate;
 	//
 	//
 	wire	sys_cyc, sys_stb, sys_we;
@@ -976,8 +978,11 @@ module	zipsystem #(
 	generate if (OPT_DMA)
 	begin : DMA
 		// {{{
-		wbdmac	#(PAW)
-		dma_controller(
+		wbdmac	#(
+			// {{{
+			.ADDRESS_WIDTH(PAW), .LGMEMLEN(DMA_LGMEM), .DW(DW)
+			// }}}
+		) dma_controller(
 			// {{{
 			i_clk, cpu_reset,
 				sys_cyc, dmac_stb, sys_we,
@@ -1216,6 +1221,7 @@ module	zipsystem #(
 
 	fdebug #(
 		// {{{
+		.OPT_START_HALTED(START_HALTED),
 		.OPT_DISTRIBUTED_RAM(1'b1)
 		// }}}
 	) fdbg (
@@ -1243,22 +1249,29 @@ module	zipsystem #(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
 		.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
-		.LGICACHE(LGICACHE),
-		.OPT_LGDCACHE(LGDCACHE),
-		.IMPLEMENT_MPY(OPT_MPY),
-		.IMPLEMENT_DIVIDE(OPT_DIV),
+		.OPT_PIPELINED(OPT_PIPELINED),
+		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+		.OPT_LGICACHE(OPT_LGICACHE),
+		.OPT_LGDCACHE(OPT_LGDCACHE),
+		.OPT_MPY(OPT_MPY),
+		.OPT_DIV(OPT_DIV),
 		.IMPLEMENT_FPU(OPT_FPU),
-		.IMPLEMENT_LOCK(OPT_LOCK),
-`ifdef	VERILATOR
-		.OPT_SIM(1'b1),
-`else
-		.OPT_SIM(1'b0),
-`endif
+		.OPT_CIS(OPT_CIS),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_SHIFTS(OPT_SHIFTS),
+		.OPT_START_HALTED(START_HALTED),
+		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
+		.OPT_USERMODE(OPT_USERMODE),
+		.OPT_DBGPORT(OPT_DBGPORT),
+		.OPT_TRACE_PORT(OPT_TRACE_PORT),
+		.OPT_SIM(OPT_SIM),
+		.OPT_CLKGATE(OPT_CLKGATE),
 		.WITH_LOCAL_BUS(1'b1)
 		// }}}
 	) thecpu(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_interrupt(pic_interrupt),
+		.i_clk(cpu_clock), .i_reset(cpu_reset),
+			.i_interrupt(pic_interrupt),
 			.o_cpu_clken(cpu_clken),
 		// Debug interface
 		// {{{
@@ -1283,10 +1296,7 @@ module	zipsystem #(
 				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
 		// }}}
 			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
-				.o_i_count(cpu_i_count)
-`ifdef	DEBUG_SCOPE
-			, .o_debug(o_cpu_debug)
-`endif
+				.o_i_count(cpu_i_count), .o_debug(o_cpu_debug)
 		// }}}
 	);
 `endif
@@ -1524,7 +1534,7 @@ module	zipsystem #(
 
 	// assign	dbg_stall = (!dbg_cmd_write || !cpu_dbg_stall) && dbg_we
 	// 		&& (dbg_addr[6:5] == 2'b00);
-	assign	dbg_stall = (cpu_dbg_stall && cpu_dbg_we)
+	assign	dbg_stall = (cpu_dbg_stall && (cpu_dbg_we || !clk_gate))
 			||(dbg_addr[6]==DBG_ADDR_SYS[1] && cpu_lcl_cyc);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1606,6 +1616,52 @@ module	zipsystem #(
 		assign	ext_idata = i_wb_data;
 		assign	ext_err   = (i_wb_err)||(wdbus_int);
 		// }}}
+	end endgenerate
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Clock Gate
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	generate if (OPT_CLKGATE)
+	begin : GATE_CPU_CLOCK
+		// {{{
+		reg	gatep, r_gated;
+		reg	gaten /* verilator clock_enable */;
+
+		initial	gatep = 1;
+		always @(posedge i_clk)
+		if (i_reset)
+			gatep <= 1'b1;
+		else
+			gatep <= cpu_clken;
+
+		initial	gaten = 1;
+		always @(negedge i_clk)
+		if (i_reset)
+			gaten <= 1'b1;
+		else
+			gaten <= gatep;
+
+		initial	r_gated = 1;
+		always @(posedge i_clk)
+		if (i_reset)
+			r_gated <= 1'b1;
+		else
+			r_gated <= gatep;
+
+
+		assign	cpu_clock = i_clk && gaten;
+		assign	clk_gate  = r_gated;
+		// }}}
+	end else begin : NO_CLOCK_GATE
+
+		assign	cpu_clock = i_clk;
+		assign	clk_gate = 1'b1;
+
 	end endgenerate
 	// }}}
 

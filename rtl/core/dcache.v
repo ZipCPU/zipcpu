@@ -1297,7 +1297,7 @@ module	dcache #(
 
 	fmem #(
 		// {{{
-		.IMPLEMENT_LOCK(OPT_LOCK),
+		.OPT_LOCK(OPT_LOCK),
 		.F_LGDEPTH(F_LGDEPTH),
 		.OPT_MAXDEPTH(1<<(F_LGDEPTH-1))
 		// }}}

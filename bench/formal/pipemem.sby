@@ -23,7 +23,7 @@ read -formal -DPIPEMEM pipemem.v
 cmd = "hierarchy -top pipemem"
 cmd += " -chparam WITH_LOCAL_BUS    %d" % (1 if "local_bus"     in tags else 0)
 cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "alignment_err" in tags else 0)
-cmd += " -chparam IMPLEMENT_LOCK    %d" % (1 if "lock"          in tags else 0)
+cmd += " -chparam OPT_LOCK          %d" % (1 if "lock"          in tags else 0)
 output(cmd)
 --pycode-end--
 prep -top pipemem

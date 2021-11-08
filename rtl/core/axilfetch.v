@@ -214,11 +214,13 @@ module	axilfetch #(
 		//
 		// Throttle the number of requests we make
 		// Verilator lint_off CMPCONST
+		// Verilator lint_off WIDTH
 		//	out_fill will only capture 0 or 1 if DATA_WIDTH == 32
 		if (fill + (M_AXI_ARVALID ? 1:0)
 				+ ((o_valid &&(!i_ready || out_fill > 1)) ? 1:0)
 				>= FETCH_LIMIT)
 			M_AXI_ARVALID <= 1'b0;
+		// Verilator lint_on  WIDTH
 		// Verilator lint_on  CMPCONST
 		if (i_cpu_reset || i_clear_cache || full_bus)
 			M_AXI_ARVALID <= 1'b0;
@@ -314,7 +316,9 @@ module	axilfetch #(
 		// No cache
 
 		// assign	fifo_rd    = fifo_wr;
+		// Verilator lint_off CMPCONST
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
+		// Verilator lint_on  CMPCONST
 		assign	fifo_empty = !fifo_wr; //(out_fill <= (i_aready ? 1:0));
 		assign	fifo_data  = { M_AXI_RRESP[1], endian_swapped_rdata };
 
