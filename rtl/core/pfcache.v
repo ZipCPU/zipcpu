@@ -67,7 +67,7 @@ module	pfcache #(
 				LGLINES=2, // Log of # of separate cache lines
 `else
 		parameter	LGCACHELEN = 12, ADDRESS_WIDTH=30,
-				LGLINES=6, // Log of # of separate cache lines
+				LGLINES=LGCACHELEN-3, // Log of # of separate cache lines
 `endif
 		localparam	CACHELEN=(1<<LGCACHELEN), //Wrd Size of cach mem
 		localparam	CW=LGCACHELEN,	// Short hand for LGCACHELEN

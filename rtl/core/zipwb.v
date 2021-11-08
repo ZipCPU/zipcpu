@@ -121,7 +121,8 @@ module	zipwb #(
 		parameter	[0:0]	OPT_DBGPORT = 1'b1,
 		parameter	[0:0]	OPT_TRACE_PORT = 1'b0,
 		parameter	[0:0]	OPT_USERMODE = 1'b1,
-		localparam	AW=ADDRESS_WIDTH
+		localparam	AW=ADDRESS_WIDTH,
+		localparam	DW=32
 `ifdef	FORMAL
 		, parameter	F_LGDEPTH=8
 `endif
@@ -146,11 +147,11 @@ module	zipwb #(
 		output	wire		o_wb_gbl_cyc, o_wb_gbl_stb,
 		output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we,
 		output	wire	[(AW-1):0]	o_wb_addr,
-		output	wire	[31:0]	o_wb_data,
-		output	wire	[3:0]	o_wb_sel,
+		output	wire [DW-1:0]	o_wb_data,
+		output	wire [DW/8-1:0]	o_wb_sel,
 		// Wishbone interface -- inputs
 		input	wire		i_wb_stall, i_wb_ack,
-		input	wire	[31:0]	i_wb_data,
+		input	wire [DW-1:0]	i_wb_data,
 		input	wire		i_wb_err,
 		// Accounting outputs ... to help us count stalls and usage
 		output	wire		o_op_stall,
@@ -323,18 +324,29 @@ module	zipwb #(
 		// }}}
 	end else begin : PFCACHE
 
-		pfcache #(OPT_LGICACHE, ADDRESS_WIDTH)
-		// {{{
-		pf(i_clk, i_reset,
+		pfcache #(
+			// {{{
+			.LGCACHELEN(OPT_LGICACHE-$clog2(DW/8)),
+			.ADDRESS_WIDTH(ADDRESS_WIDTH)
+			// }}}
+		) pf(
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
 			// CPU signals
-			pf_new_pc, clear_icache, pf_ready,
-				pf_request_address,
-			pf_valid, pf_illegal, pf_instruction,
-				pf_instruction_pc,
+			.i_new_pc(pf_new_pc), .i_clear_cache(clear_icache),
+				.i_ready(pf_ready), .i_pc(pf_request_address),
+			.o_valid(pf_valid), .o_illegal(pf_illegal),
+				.o_insn(pf_instruction),
+				.o_pc(pf_instruction_pc),
 			// Wishbone signals
-			pf_cyc, pf_stb, pf_we, pf_addr, pf_data,
-				pf_stall, pf_ack, pf_err, i_wb_data);
-		// }}}
+			.o_wb_cyc(pf_cyc), .o_wb_stb(pf_stb),
+				.o_wb_we(pf_we), .o_wb_addr(pf_addr),
+				.o_wb_data(pf_data),
+			.i_wb_stall(pf_stall), .i_wb_ack(pf_ack),
+				.i_wb_err(pf_err), .i_wb_data(i_wb_data)
+			// }}}
+		);
+
 	end endgenerate
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -348,9 +360,9 @@ module	zipwb #(
 
 		dcache #(
 			// {{{
-			.LGCACHELEN(OPT_LGDCACHE),
+			.LGCACHELEN(OPT_LGDCACHE-$clog2(DW/8)),
 			.ADDRESS_WIDTH(AW),
-			.LGNLINES(OPT_LGDCACHE-3),
+			.LGNLINES(OPT_LGDCACHE-$clog2(DW/8)-3),
 			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
 			.OPT_PIPE(OPT_MEMPIPE),
 			.OPT_LOCK(OPT_LOCK)
@@ -359,20 +371,27 @@ module	zipwb #(
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif
 			// }}}
-		) mem(i_clk, i_reset, clear_dcache,
+		) mem(
 			/// {{{
+			.i_clk(i_clk), .i_reset(i_reset),.i_clear(clear_dcache),
 			// CPU interface
-			mem_ce, bus_lock && OPT_PIPELINED,
-			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
-			mem_busy, mem_rdbusy, mem_pipe_stalled,
-			mem_valid, mem_bus_err, mem_wreg, mem_result,
+			.i_pipe_stb(mem_ce), .i_lock(bus_lock && OPT_PIPELINED),
+			.i_op(mem_op), .i_addr(mem_cpu_addr),.i_data(mem_wdata),
+				.i_oreg(mem_reg),
+			.o_busy(mem_busy), .o_rdbusy(mem_rdbusy),
+				.o_pipe_stalled(mem_pipe_stalled),
+			.o_valid(mem_valid), .o_err(mem_bus_err),
+				.o_wreg(mem_wreg), .o_data(mem_result),
 			// Wishbone interface
-			mem_cyc_gbl, mem_cyc_lcl,
-				mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_bus_addr, mem_data, mem_sel,
-				mem_stall, mem_ack, mem_err, i_wb_data
+			.o_wb_cyc_gbl(mem_cyc_gbl), .o_wb_cyc_lcl(mem_cyc_lcl),
+				.o_wb_stb_gbl(mem_stb_gbl), .o_wb_stb_lcl(mem_stb_lcl),
+				.o_wb_we(mem_we), .o_wb_addr(mem_bus_addr),
+					.o_wb_data(mem_data),.o_wb_sel(mem_sel),
+				.i_wb_stall(mem_stall), .i_wb_ack(mem_ack),
+					.i_wb_err(mem_err),.i_wb_data(i_wb_data)
 			/// }}}
 		);
+
 	end else if (OPT_MEMPIPE)
 	begin : PIPELINED_MEM
 
@@ -441,7 +460,7 @@ module	zipwb #(
 	begin : PRIORITY_DATA
 
 		wbdblpriarb	#(
-			.DW(32),
+			.DW(DW),
 			.AW(AW)
 		) pformem(i_clk, i_reset,
 			// {{{

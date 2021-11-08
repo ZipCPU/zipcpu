@@ -1,0 +1,77 @@
+\documentclass{article}
+\usepackage{amssymb,bm}
+\title{Logic Usage Cost}
+\author{Dan Gisselquist, Ph.D.}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\definecolor{dkblue}{rgb}{0,0,0.6}
+\hypersetup{colorlinks=true,linkcolor=black,citecolor=dkblue}
+\newcommand{\defined}{\triangleq}
+\newcommand{\MP}{M_{\mbox{\tiny P}}}
+\newcommand{\ML}{M_{\mbox{\tiny L}}}
+\newcommand{\CPI}{{\mbox{\tt CPI}}}
+\newcommand{\CPISNGL}{{\mbox{\tt CPI}}_{\mbox{\tiny SNGL}}}
+\newcommand{\CPIDBL}{{\mbox{\tt CPI}}_{\mbox{\tiny DBLFETCH}}}
+\newcommand{\CPM}{{\mbox{\tt CPM}}}
+\newcommand{\PMEM}{P_{\mbox{\tiny MEM}}}
+\newcommand{\PBr}{P_{\mbox{\tiny BRANCH}}}
+\newcommand{\PB}{P_{\mbox{\tiny BR}}}
+\newcommand{\zhref}[2]{\href{#1}{\textcolor{dkblue}{#2}}}
+\begin{document}
+\maketitle
+
+\begin{center}\begin{tabular}{|l|r|r|}\hline
+ & \multicolumn{1}{c}{iCE40} & \multicolumn{1}{|c|}{Xilinx 7} \\
+ZipBones & \multicolumn{1}{c}{4-LUTs} & \multicolumn{1}{|c|}{6-LUTs}\\\hline\hline
+ASM			& 1076 &  617 \\\hline
+Trap			& 1592 &  936 \\\hline
+All instructions	& 2528 & 1486 \\\hline
+Pipelined		& 3414 & 1933 \\\hline
+Cached			& 9096 & 2733 \\\hline
+Low power		& 9134 & 2743 \\\hline
+\end{tabular}\end{center}
+
+
+\begin{center}\begin{tabular}{|l|r|r|}\hline
+ & \multicolumn{1}{c}{iCE40} & \multicolumn{1}{|c|}{Xilinx 7} \\
+ZipSystem &\multicolumn{1}{c}{4-LUTs} & \multicolumn{1}{|c|}{6-LUTs}\\\hline\hline
+ASM			& 3099 & 1791 \\\hline
+Trap			& 3668 & 2108 \\\hline
+All instructions	& 4633 & 2621 \\\hline
+Pipelined		& 5748 & 3247 \\\hline
+Cached			& 11396 & 4215 \\\hline
+Low power		& 11443 & 4159 \\\hline
+\end{tabular}\end{center}
+
+
+\begin{center}\begin{tabular}{|l|r|r|}\hline
+ & \multicolumn{1}{c}{iCE40} & \multicolumn{1}{c|}{Xilinx 7} \\
+ZipAXI-Lite & \multicolumn{1}{c}{4-LUTs} & \multicolumn{1}{|c|}{6-LUTs}\\\hline\hline
+ASM			& 1450 &  827 \\\hline
+Trap			& 2171 & 1197 \\\hline
+All instructions	& 3022 & 1737 \\\hline
+Pipelined		& 4015 & 2219 \\\hline
+\end{tabular}\end{center}
+
+\begin{center}\begin{tabular}{|l|r|r|}\hline
+ & \multicolumn{1}{c|}{iCE40} & \multicolumn{1}{|c|}{Xilinx 7} \\
+ZipAXI & \multicolumn{1}{c|}{4-LUTs} & \multicolumn{1}{|c|}{6-LUTs}\\\hline\hline
+ASM			& 1454 &  841 \\\hline
+Trap			& 1992 & 1243 \\\hline
+All instructions	& 2969 & 1675 \\\hline
+Pipelined		& 3956 & 2231 \\\hline
+Cached			& 4797 & 2780 \\\hline
+Low power		& 4986 & 2938 \\\hline
+\end{tabular}\end{center}
+
+
+\begin{center}\begin{tabular}{|l|r|r|r|}\hline
+Bus, 6-Luts & \multicolumn{1}{|c|}{Wishbone} & \multicolumn{1}{|c|}{AXI4-Lite}
+		& \multicolumn{1}{|c|}{AXI4} \\\hline\hline
+Basic (All insns)	& 1486 & 1737 & 1675 \\\hline
+Pipelined		& 1933 & 2219 & 2231 \\\hline
+4kB Caches, I+D		& 2733 &  --- & 2780 \\\hline
+Low power option	& 2743 &  --- & 2938 \\\hline
+\end{tabular}\end{center}
+
+\end{document}
