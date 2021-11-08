@@ -263,14 +263,14 @@ module	dcache #(
 		if ((!o_pipe_stalled)&&(!r_rd_pending))
 		begin
 			r_iv   <= c_v[i_cline];
-			r_itag <= c_vtags[i_cline];
+			// r_itag <= c_vtags[i_cline];
 			r_cachable <= (!i_op[0])&&(w_cachable)&&(i_pipe_stb);
 			r_rd_pending <= (i_pipe_stb)&&(!i_op[0])&&(w_cachable)
 				&&((cache_miss_inow)||(c_wr)||(wr_cstb));
 				// &&((!c_wr)||(!wr_cstb));
 		end else begin
 			r_iv   <= c_v[r_cline];
-			r_itag <= c_vtags[r_cline];
+			// r_itag <= c_vtags[r_cline];
 			r_rd_pending <= (r_rd_pending)
 				&&((!cyc)||(!i_wb_err))
 				&&((r_itag != r_ctag)||(!r_iv));
@@ -319,6 +319,9 @@ module	dcache #(
 			last_tag_valid <= 0;
 		end
 	end
+
+	always @(posedge i_clk)
+		r_itag <= c_vtags[(!o_pipe_stalled && !r_rd_pending) ? i_cline : r_cline];
 	// }}}
 
 	// o_wb_sel, r_sel
@@ -905,9 +908,9 @@ module	dcache #(
 			c_wsel  <= 4'hf;
 
 			set_vflag <= !i_wb_err;
-			if (i_wb_ack)
-				c_vtags[r_addr[(CS-1):LS]]
-						<= r_addr[(AW-1):LS];
+			// if (i_wb_ack)
+			//	c_vtags[r_addr[(CS-1):LS]]
+			//			<= r_addr[(AW-1):LS];
 
 			if (((i_wb_ack)&&(end_of_line))||(i_wb_err))
 			begin
@@ -953,7 +956,8 @@ module	dcache #(
 		DC_WRITE: begin
 			// {{{
 			c_wr    <= stb && (c_v[o_wb_addr[CS-1:LS]])
-				&&(c_vtags[o_wb_addr[CS-1:LS]]==o_wb_addr[AW-1:LS]);
+				// &&(c_vtags[o_wb_addr[CS-1:LS]]==o_wb_addr[AW-1:LS]);
+				&&(r_itag==o_wb_addr[AW-1:LS]);
 			c_wdata <= o_wb_data;
 			c_waddr <= r_addr[CS-1:0];
 			c_wsel  <= o_wb_sel;
@@ -989,6 +993,10 @@ module	dcache #(
 		if (i_clear)
 			c_v <= 0;
 	end
+
+	always @(posedge i_clk)
+	if (state == DC_READC && i_wb_ack)
+		c_vtags[r_addr[(CS-1):LS]] <= r_addr[(AW-1):LS];
 	// }}}
 
 	// wr_addr
