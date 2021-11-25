@@ -43,6 +43,9 @@ module	zipbones #(
 		parameter	RESET_ADDRESS=32'h1000_0000,
 				ADDRESS_WIDTH=32,
 		// CPU options
+		// {{{
+		parameter [0:0]	OPT_PIPELINED=1,
+		parameter [0:0]	OPT_EARLY_BRANCHING=OPT_PIPELINED,
 		// OPT_LGICACHE
 		// {{{
 		parameter	OPT_LGICACHE = 2,
@@ -52,10 +55,8 @@ module	zipbones #(
 		// Set to zero for no data cache
 		parameter	OPT_LGDCACHE = 0,
 		// }}}
-		parameter [0:0]	OPT_PIPELINED=1,
-		parameter [0:0]	OPT_EARLY_BRANCHING=1,
+		parameter [0:0]	START_HALTED=1,
 		parameter [0:0]	OPT_DISTRIBUTED_REGS=1,
-		parameter [0:0]	START_HALTED=0,
 		// OPT_MPY
 		// {{{
 		parameter	OPT_MPY = 3,
@@ -64,23 +65,28 @@ module	zipbones #(
 		// {{{
 		parameter [0:0]	OPT_DIV=1,
 		// }}}
-		parameter [0:0]	OPT_SHIFTS=1,
+		// OPT_SHIFTS
+		// {{{
+		parameter [0:0]	OPT_SHIFTS = 1,
+		// }}}
 		// OPT_FPU
 		// {{{
 		parameter [0:0]	OPT_FPU = 0,
 		// }}}
 		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
-`ifdef	VERILATOR
-		parameter [0:0]	OPT_SIM=1,
-`else
-		parameter [0:0]	OPT_SIM=0,
-`endif
-		parameter [0:0]	OPT_LOWPOWER=0,
 		parameter [0:0]	OPT_USERMODE=1,
 		parameter [0:0]	OPT_DBGPORT=1,
-		parameter [0:0]	OPT_TRACE_PORT=0,
-		parameter [0:0]	OPT_CLKGATE=0,
+		parameter [0:0]	OPT_TRACE_PORT=1,
+		parameter [0:0]	OPT_LOWPOWER=0,
+`ifdef	VERILATOR
+		parameter [0:0]	OPT_SIM=1'b1,
+		parameter [0:0]	OPT_CLKGATE = OPT_LOWPOWER,
+`else
+		parameter [0:0]	OPT_SIM=1'b0,
+		parameter [0:0]	OPT_CLKGATE = 1'b0,
+`endif
+		// }}}
 		parameter	RESET_DURATION = 10,
 		// Short-cut names
 		// {{{
@@ -359,16 +365,22 @@ module	zipbones #(
 			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
 			i_ext_int, cpu_reset, 6'h0 };
 
+	// cmd_write
+	// {{{
 	initial	cmd_write = 0;
 	always @(posedge i_clk)
-	if (i_reset)
+	if (i_reset || cpu_reset)
 		cmd_write <= 1'b0;
-	else if (!cmd_write || !cpu_dbg_stall)
+	else if (!cmd_write || (!cpu_dbg_stall && clk_gate))
 		cmd_write <= dbg_stb && dbg_we && (|i_dbg_sel)
 			&& !dbg_addr[5];
+	// }}}
 
+	// cmd_waddr, cmd_wdata
+	// {{{
 	always @(posedge i_clk)
-	if ((!cmd_write || !cpu_dbg_stall)&&(dbg_stb && dbg_we && !dbg_addr[5]))
+	if ((!cmd_write || (!cpu_dbg_stall && clk_gate))
+			&&(dbg_stb && dbg_we && !dbg_addr[5]))
 	begin
 		cmd_waddr <= dbg_addr[4:0];
 		cmd_wdata <= dbg_idata;
@@ -489,7 +501,7 @@ module	zipbones #(
 	if (i_reset || !i_dbg_cyc)
 		dbg_pre_ack <= 1'b0;
 	else
-		dbg_pre_ack <= dbg_stb && !o_dbg_stall;
+		dbg_pre_ack <= dbg_stb && !dbg_stall;
 
 	initial dbg_ack = 1'b0;
 	always @(posedge i_clk)
@@ -507,7 +519,9 @@ module	zipbones #(
 			dbg_odata <= cpu_dbg_data;
 	end
 
-	assign	dbg_stall= reset_hold || ((cmd_write && (cpu_dbg_stall || !clk_gate)) && dbg_we && !dbg_addr[5]);
+	assign	dbg_stall = (!clk_gate && !dbg_we && !dbg_addr[5])
+			||(dbg_we && !dbg_addr[5] && cmd_write
+				&& (!clk_gate || cpu_dbg_stall));
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -520,7 +534,7 @@ module	zipbones #(
 	generate if (OPT_CLKGATE)
 	begin : GATE_CPU_CLOCK
 		// {{{
-		reg	gatep, r_gated;
+		reg	gatep;
 		reg	gaten /* verilator clock_enable */;
 
 		initial	gatep = 1'b1;
@@ -528,7 +542,7 @@ module	zipbones #(
 		if (i_reset)
 			gatep <= 1'b1;
 		else
-			gatep <= cpu_clken;
+			gatep <= cpu_clken || cmd_write || (dbg_stb && !dbg_addr[5]);
 
 		initial	gaten = 1'b1;
 		always @(negedge i_clk)
@@ -537,16 +551,8 @@ module	zipbones #(
 		else
 			gaten <= gatep;
 
-		initial	r_gated = 1'b1;
-		always @(posedge i_clk)
-		if (i_reset)
-			r_gated <= 1'b1;
-		else
-			r_gated <= gatep;
-
-
 		assign	cpu_clock = i_clk && gaten;
-		assign	clk_gate  = r_gated;
+		assign	clk_gate  = gatep;
 		// }}}
 	end else begin : NO_CLOCK_GATE
 

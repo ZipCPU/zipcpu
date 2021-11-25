@@ -1,5 +1,8 @@
 [tasks]
-prf
+prf         insn32 bus32
+prf8b   prf insn8  bus32
+prf8ble prf insn8  bus32 lilend
+prf64b  prf insn32 bus64
 
 [options]
 prf: mode prove
@@ -12,6 +15,19 @@ smtbmc
 read -formal fwb_master.v
 read -formal ffetch.v
 read -formal -DPREFETCH prefetch.v
+--pycode-begin--
+cmd = "hierarchy -top prefetch"
+if ("insn8" in tags):
+	cmd += " -chparam INSN_WIDTH 8"
+elif ("insn32" in tags):
+	cmd += " -chparam INSN_WIDTH 32"
+if ("bus32" in tags):
+	cmd += " -chparam DATA_WIDTH 32"
+elif ("bus64" in tags):
+	cmd += " -chparam DATA_WIDTH 64"
+cmd += " -chparam OPT_LITTLE_ENDIAN %d" % (1 if "lilend" in tags else 0)
+output(cmd)
+--pycode-end--
 prep -top prefetch
 
 [files]

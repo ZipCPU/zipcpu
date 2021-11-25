@@ -940,7 +940,7 @@ module	zipaxil #(
 			gaten <= gatep;
 
 		assign	cpu_clock = S_AXI_ACLK && gaten;
-		assign	clk_gate = gaten;
+		assign	clk_gate = gatep;
 
 	end else begin : NO_CLOCK_GATE
 

@@ -123,7 +123,6 @@ module	zipsystem #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
 				ADDRESS_WIDTH=32,
-		localparam	DW=32,
 		// CPU options
 		// {{{
 		parameter [0:0]	OPT_PIPELINED=1,
@@ -159,8 +158,8 @@ module	zipsystem #(
 		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
 		parameter [0:0]	OPT_USERMODE=1,
-		parameter [0:0]	OPT_DBGPORT=0,
-		parameter [0:0]	OPT_TRACE_PORT=0,
+		parameter [0:0]	OPT_DBGPORT=1,
+		parameter [0:0]	OPT_TRACE_PORT=1,
 		parameter [0:0]	OPT_LOWPOWER=0,
 		// }}}
 		// Local bus options
@@ -195,7 +194,8 @@ module	zipsystem #(
 		// {{{
 		localparam	// Derived parameters
 				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-				PAW=ADDRESS_WIDTH-2
+				PAW=ADDRESS_WIDTH-2,
+		localparam	DW=32
 		// }}}
 		// }}}
 	) (
@@ -720,7 +720,7 @@ module	zipsystem #(
 	always @(posedge i_clk)
 	if (i_reset || cpu_reset)
 		cmd_write <= 1'b0;
-	else if (!cmd_write || !cpu_dbg_stall)
+	else if (!cmd_write || (!cpu_dbg_stall && clk_gate))
 		cmd_write <= dbg_stb && dbg_we && (|i_dbg_sel)
 			&& (dbg_addr[6:5] == DBG_ADDR_CPU);
 	// }}}
@@ -728,7 +728,8 @@ module	zipsystem #(
 	// cmd_waddr, cmd_wdata
 	// {{{
 	always @(posedge i_clk)
-	if ((!cmd_write || !cpu_dbg_stall)&&(dbg_stb && dbg_we && !dbg_addr[5]))
+	if ((!cmd_write || (!cpu_dbg_stall && clk_gate))
+			&&(dbg_stb && dbg_we && dbg_addr[6:5] == DBG_ADDR_CPU))
 	begin
 		cmd_waddr <= dbg_addr[4:0];
 		cmd_wdata <= dbg_idata;
@@ -1206,7 +1207,7 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign cpu_dbg_we = ((dbg_cyc)&&(dbg_stb)&&(dbg_we)
+	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)
 					&&(dbg_addr[6:5] == DBG_ADDR_CPU));
 `ifdef	FORMAL
 	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
@@ -1508,7 +1509,7 @@ module	zipsystem #(
 	if (i_reset || !i_dbg_cyc)
 		dbg_pre_ack <= 1'b0;
 	else
-		dbg_pre_ack <= dbg_stb && !o_dbg_stall;
+		dbg_pre_ack <= dbg_stb && !dbg_stall;
 
 	// A return from one of three busses:
 	//	CMD	giving command instructions to the CPU (step, halt, etc)
@@ -1534,7 +1535,10 @@ module	zipsystem #(
 
 	// assign	dbg_stall = (!dbg_cmd_write || !cpu_dbg_stall) && dbg_we
 	// 		&& (dbg_addr[6:5] == 2'b00);
-	assign	dbg_stall = (cpu_dbg_stall && (cpu_dbg_we || !clk_gate))
+	assign	dbg_stall = (!clk_gate && !dbg_we
+					&& dbg_addr[6:5] == DBG_ADDR_CPU)
+			||(cpu_dbg_we && cmd_write
+				&& (!clk_gate || cpu_dbg_stall))
 			||(dbg_addr[6]==DBG_ADDR_SYS[1] && cpu_lcl_cyc);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1629,33 +1633,26 @@ module	zipsystem #(
 	generate if (OPT_CLKGATE)
 	begin : GATE_CPU_CLOCK
 		// {{{
-		reg	gatep, r_gated;
+		reg	gatep;
 		reg	gaten /* verilator clock_enable */;
 
-		initial	gatep = 1;
+		initial	gatep = 1'b1;
 		always @(posedge i_clk)
 		if (i_reset)
 			gatep <= 1'b1;
 		else
-			gatep <= cpu_clken;
+			gatep <= cpu_clken || cmd_write
+				|| (dbg_stb && dbg_addr[6:5] == DBG_ADDR_CPU);
 
-		initial	gaten = 1;
+		initial	gaten = 1'b1;
 		always @(negedge i_clk)
 		if (i_reset)
 			gaten <= 1'b1;
 		else
 			gaten <= gatep;
 
-		initial	r_gated = 1;
-		always @(posedge i_clk)
-		if (i_reset)
-			r_gated <= 1'b1;
-		else
-			r_gated <= gatep;
-
-
 		assign	cpu_clock = i_clk && gaten;
-		assign	clk_gate  = r_gated;
+		assign	clk_gate  = gatep;
 		// }}}
 	end else begin : NO_CLOCK_GATE
 
@@ -1667,7 +1664,7 @@ module	zipsystem #(
 
 	assign	o_ext_int = (cmd_halt) && (!cpu_stall);
 
-	// Make verilator happy
+	// Make Verilator happy
 	// {{{
 	// verilator lint_off UNUSED
 	wire		unused;

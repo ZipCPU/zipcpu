@@ -4,8 +4,6 @@
 [*]
 [timestart] 0
 [size] 1221 600
-[pos] 1920 12
-*-5.814017 90 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] zipcore.
 [treeopen] zipcore.instruction_decoder.
 [sst_width] 196
