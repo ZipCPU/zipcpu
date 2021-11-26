@@ -92,7 +92,7 @@ module	prefetch #(
 	// {{{
 	reg			invalid;
 
-	wire			r_valid, r_next_valid;
+	wire			r_valid;
 	wire [DATA_WIDTH-1:0]	r_insn, i_wb_shifted;
 	// }}}
 
@@ -184,7 +184,7 @@ module	prefetch #(
 	always @(posedge i_clk)
 	if (i_new_pc)
 		o_wb_addr  <= i_pc[AW-1:$clog2(DATA_WIDTH/8)];
-	else if (o_valid && i_ready && !r_valid && !o_illegal)
+	else if (o_valid && i_ready && !r_valid)
 		o_wb_addr  <= o_wb_addr + 1'b1;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -294,7 +294,6 @@ module	prefetch #(
 		// }}}
 
 		assign	r_valid = rg_valid;
-		assign	r_next_valid = (r_count > 1);
 ;
 		assign	r_insn  = rg_insn;
 		if (OPT_LITTLE_ENDIAN)
@@ -332,7 +331,6 @@ module	prefetch #(
 	end else begin : NO_SUBSHIFT
 		// {{{
 		assign	r_valid = 1'b0;
-		assign	r_next_valid = 1'b0;
 		assign	r_insn  = {(INSN_WIDTH){1'b0}};
 		assign	i_wb_shifted = i_wb_data;
 `ifdef	FORMAL
@@ -427,7 +425,7 @@ module	prefetch #(
 		always @(posedge i_clk)
 		if (i_new_pc)
 			o_pc <= i_pc;
-		else if (o_valid && !o_illegal && i_ready)
+		else if (o_valid && i_ready)
 		begin
 			o_pc <= 0;
 			o_pc[AW-1:$clog2(INSN_WIDTH/8)]
@@ -437,6 +435,7 @@ module	prefetch #(
 	end endgenerate
 `ifdef	FORMAL
 	always @(*)
+	if (!i_reset && !o_illegal && !i_new_pc && !i_clear_cache)
 		assert(o_pc[AW-1:$clog2(DATA_WIDTH/8)] == o_wb_addr);
 `endif
 	// }}}

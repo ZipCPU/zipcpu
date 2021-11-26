@@ -112,9 +112,16 @@ fmem:   memops pipemem dcache axilops axiops axidcache
 ## {{{
 .PHONY: $(PFONE)
 ## {{{
-$(PFONE) : $(PFONE)_prf/PASS
+$(PFONE) : $(PFONE)_prf/PASS $(PFONE)_prf64b/PASS
+$(PFONE) : $(PFONE)_prf8b/PASS $(PFONE)_prf8ble/PASS
 $(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf
+$(PFONE)_prf8b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
+	sby -f $(PFONE).sby prf8b
+$(PFONE)_prf8ble/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
+	sby -f $(PFONE).sby prf8ble
+$(PFONE)_prf64b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
+	sby -f $(PFONE).sby prf64b
 ## }}}
 
 .PHONY: $(AXILPF)
@@ -155,10 +162,18 @@ $(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
 .PHONY: $(PFTWO)
 ## {{{
 $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
+$(PFTWO) : $(PFTWO)_prf8b/PASS $(PFTWO)_prf64b/PASS
+$(PFTWO) : $(PFTWO)_prf8ble/PASS
 $(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf
 $(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby cvr
+$(PFTWO)_prf8b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
+	sby -f $(PFTWO).sby prf8b
+$(PFTWO)_prf8ble/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
+	sby -f $(PFTWO).sby prf8ble
+$(PFTWO)_prf64b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
+	sby -f $(PFTWO).sby prf64b
 ## }}}
 
 .PHONY: $(PFCACHE)

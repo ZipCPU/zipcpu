@@ -45,6 +45,7 @@
 // }}}
 module	ffetch #(
 		// {{{
+		// Address width -- from the CPU's perspective, not the bus'es
 		parameter	ADDRESS_WIDTH = 30,
 		parameter [0:0]	OPT_ALIGNED  = 1'b0,
 		parameter [0:0]	OPT_CONTRACT = 1'b1,
@@ -157,16 +158,16 @@ module	ffetch #(
 
 	// pf_pc, and cpu_pc alignment
 	// {{{
-	generate if (OPT_ALIGNED)
+	generate if (OPT_ALIGNED && INSN_LSB > 0)
 	begin
 
 		always @(*)
 		if (cpu_new_pc)
-			`CPU_ASSERT(cpu_pc[1:0] == 2'b00);
+			`CPU_ASSERT(cpu_pc[INSN_LSB-1:0] == 0);
 
 		always @(*)
 		if (pf_valid)
-			`CPU_ASSUME(pf_pc[1:0] == 2'b00);
+			`CPU_ASSUME(pf_pc[INSN_LSB-1:0] == 0);
 
 	end endgenerate
 	// }}}
