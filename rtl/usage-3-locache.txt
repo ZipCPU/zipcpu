@@ -26,15 +26,9 @@ ZipAXI    LWPWR:  4974  2872
    WB-MEMOPS   :    94    68
    WB-PIPEMEM  :   227    87
    WB-DCACHE   :  1235   658
- AXIL-OPS      :   245   129
-  AXI-OPS      :   321   205
- AXIL-PIPE     :   390   128
-  AXI-PIPE     :   432   147
   AXI-DCACHE   :   967   642
    WB-DMA      :  1219   554
    WB-PREFETCH :    70    66
    WB-DBLFETCH :   152   106
    WB-ICACHE   :   819   523
-  AXILFETCH-BSC:   173    90
-  AXILFETCH-PIP:   219   128
   AXI-ICACHE   :   628   464

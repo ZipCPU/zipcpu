@@ -101,6 +101,8 @@ my $lowpowercfg =" -chparam OPT_PIPELINED 1"
 	. " -chparam OPT_TRACE_PORT	  0"
 	. " -chparam OPT_CIS		  1";
 
+## Memory configurations
+## {{{
 my $wbmemopsconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam OPT_LOCK            1"
 		. " -chparam OPT_ALIGNMENT_ERR   1"
@@ -116,6 +118,34 @@ my $wbdcacheconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam OPT_PIPE            1"
 		. " -chparam OPT_LOWPOWER        0";
 
+my $axilopsconfig=" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH   30"
+		. " -chparam SWAP_WSTRB          1"
+		. " -chparam OPT_ALIGNMENT_ERR	 1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $axiopsconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH   30"
+		. " -chparam AXI_ID              0"
+		. " -chparam SWAP_WSTRB          1"
+		. " -chparam OPT_LOCK		 1"
+		. " -chparam OPT_ALIGNMENT_ERR	 1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $axilpipeconfig=" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH   30"
+		. " -chparam SWAP_WSTRB          1"
+		. " -chparam OPT_ALIGNMENT_ERR	 1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $axipipeconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH   30"
+		. " -chparam AXI_ID              0"
+		. " -chparam SWAP_WSTRB          1"
+		. " -chparam OPT_LOCK		 1"
+		. " -chparam OPT_ALIGNMENT_ERR	 1"
+		. " -chparam OPT_LOWPOWER        0";
+
 my $axdcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam C_AXI_ADDR_WIDTH   30"
 		. " -chparam AXI_ID              0"
@@ -124,7 +154,14 @@ my $axdcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam SWAP_WSTRB          1"
 		. " -chparam OPT_PIPE            1"
 		. " -chparam OPT_LOWPOWER        0";
+## }}}
 
+my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
+		. " -chparam LGMEMLEN      32"
+		. " -chparam DW            32";
+
+## Instruction fetch configs
+## {{{
 my $wbprefetchconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam DATA_WIDTH           32"
 		. " -chparam INSN_WIDTH           32"
@@ -139,9 +176,15 @@ my $wbpfcacheconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam LGCACHELEN          10"
 		. " -chparam LGLINES              7";
 
-my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
-		. " -chparam LGMEMLEN      32"
-		. " -chparam DW            32";
+my $axpfsimpleconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH    30"
+		. " -chparam INSN_WIDTH		 32"
+		. " -chparam FETCH_LIMIT	  1";
+
+my $axpfdblconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH    30"
+		. " -chparam INSN_WIDTH		 32"
+		. " -chparam FETCH_LIMIT	  2";
 
 my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam C_AXI_ADDR_WIDTH    30"
@@ -149,7 +192,7 @@ my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam LGCACHESZ		 12"
 		. " -chparam LGLINESZ		  3"
 		. " -chparam OPT_LOWPOWER         0";
-
+## }}}
 
 my $bonescfg = "";
 my $syscfg   = " -chparam OPT_DMA 1 -chparam DMA_LGMEM 10 -chparam OPT_ACCOUNTING 1";
@@ -303,6 +346,22 @@ $dcch = $dcch . sprintf("   WB-DCACHE   : %5d %5d\n",
 		calcusage($ice40synth, "dcache", $wbdcacheconfig),
 		calcusage($xilinxsynth, "dcache", $wbdcacheconfig));
 
+$dcch = $dcch . sprintf(" AXIL-OPS      : %5d %5d\n",
+		calcusage($ice40synth, "axilops", $axilopsconfig),
+		calcusage($xilinxsynth, "axilops", $axilopsconfig));
+
+$dcch = $dcch . sprintf("  AXI-OPS      : %5d %5d\n",
+		calcusage($ice40synth, "axiops", $axiopsconfig),
+		calcusage($xilinxsynth, "axiops", $axiopsconfig));
+
+$dcch = $dcch . sprintf(" AXIL-PIPE     : %5d %5d\n",
+		calcusage($ice40synth, "axilpipe", $axilpipeconfig),
+		calcusage($xilinxsynth, "axilpipe", $axilpipeconfig));
+
+$dcch = $dcch . sprintf("  AXI-PIPE     : %5d %5d\n",
+		calcusage($ice40synth, "axipipe", $axipipeconfig),
+		calcusage($xilinxsynth, "axipipe", $axipipeconfig));
+
 $dcch = $dcch . sprintf("  AXI-DCACHE   : %5d %5d\n",
 		calcusage($ice40synth, "axidcache", $axdcacheconfig),
 		calcusage($xilinxsynth, "axidcache", $axdcacheconfig));
@@ -322,6 +381,14 @@ $icch = $icch . sprintf("   WB-DBLFETCH : %5d %5d\n",
 $icch = $icch . sprintf("   WB-ICACHE   : %5d %5d\n",
 		calcusage($ice40synth, "pfcache", $wbpfcacheconfig),
 		calcusage($xilinxsynth, "pfcache", $wbpfcacheconfig));
+
+$icch = $icch . sprintf("  AXILFETCH-BSC: %5d %5d\n",
+		calcusage($ice40synth, "axilfetch", $axpfsimpleconfig),
+		calcusage($xilinxsynth, "axilfetch", $axpfsimpleconfig));
+
+$icch = $icch . sprintf("  AXILFETCH-PIP: %5d %5d\n",
+		calcusage($ice40synth, "axilfetch", $axpfdblconfig),
+		calcusage($xilinxsynth, "axilfetch", $axpfdblconfig));
 
 $icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d\n",
 		calcusage($ice40synth, "axiicache", $axpfcacheconfig),
