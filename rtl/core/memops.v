@@ -99,10 +99,10 @@ module	memops #(
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 `endif
 
-	reg		misaligned;
+	wire		misaligned;
 	reg		r_wb_cyc_gbl, r_wb_cyc_lcl;
 	reg	[3:0]	r_op;
-	reg		lock_gbl, lock_lcl;
+	wire		lock_gbl, lock_lcl;
 	wire		gbl_stb, lcl_stb;
 	// }}}
 
@@ -110,16 +110,20 @@ module	memops #(
 	// {{{
 	generate if (OPT_ALIGNMENT_ERR)
 	begin : GENERATE_ALIGNMENT_ERR
+		reg	r_misaligned;
+
 		always @(*)
 		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned = i_stb; // Words must be halfword aligned
-		4'b0110: misaligned = i_stb; // Words must be word aligned
-		4'b10?1: misaligned = i_stb; // Halfwords must be aligned
-		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
-		default: misaligned = 1'b0;
+		4'b01?1: r_misaligned = i_stb; // Words must be halfword aligned
+		4'b0110: r_misaligned = i_stb; // Words must be word aligned
+		4'b10?1: r_misaligned = i_stb; // Halfwords must be aligned
+		// 4'b11??: r_misaligned <= 1'b0; Byte access are never misaligned
+		default: r_misaligned = 1'b0;
 		endcase
+
+		assign	misaligned = r_misaligned;
 	end else
-		always @(*)	misaligned = 1'b0;
+		assign	misaligned = 1'b0;
 	endgenerate
 	// }}}
 
@@ -326,32 +330,37 @@ module	memops #(
 	if (OPT_LOCK)
 	begin
 		// {{{
-		initial	lock_gbl = 1'b0;
-		initial	lock_lcl = 1'b0;
+		reg	r_lock_gbl, r_lock_lcl;
+
+		initial	r_lock_gbl = 1'b0;
+		initial	r_lock_lcl = 1'b0;
 
 		always @(posedge i_clk)
 		if (i_reset)
 		begin
-			lock_gbl <= 1'b0;
-			lock_lcl <= 1'b0;
+			r_lock_gbl <= 1'b0;
+			r_lock_lcl <= 1'b0;
 		end else if (((i_wb_err)&&((r_wb_cyc_gbl)||(r_wb_cyc_lcl)))
 				||(misaligned))
 		begin
 			// Kill the lock if
 			//	there's a bus error, or
 			//	User requests a misaligned memory op
-			lock_gbl <= 1'b0;
-			lock_lcl <= 1'b0;
+			r_lock_gbl <= 1'b0;
+			r_lock_lcl <= 1'b0;
 		end else begin
 			// Kill the lock if
 			//	i_lock goes down
 			//	User starts on the global bus, then switches
 			//	  to local or vice versa
-			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
+			r_lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
 					&&(!lcl_stb);
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
+			r_lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
 					&&(!gbl_stb);
 		end
+
+		assign	lock_gbl = r_lock_gbl;
+		assign	lock_lcl = r_lock_lcl;
 
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
@@ -361,8 +370,7 @@ module	memops #(
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 
-		always @(*)
-			{ lock_gbl, lock_lcl } = 2'b00;
+		assign	{ lock_gbl, lock_lcl } = 2'b00;
 
 		// Make verilator happy
 		// verilator lint_off UNUSED
