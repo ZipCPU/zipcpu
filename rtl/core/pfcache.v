@@ -213,7 +213,7 @@ module	pfcache #(
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Read the tag value associated with this tcache line
+	// Read the tag value associated with this cache line
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -221,7 +221,7 @@ module	pfcache #(
 
 	//
 	// Read the tag value associated with this i_pc value
-	initial	tagvalipc = 0;
+	// initial	tagvalipc = 0;
 	always @(posedge i_clk)
 		tagvalipc <= cache_tags[i_pc[(CW+1):LS+2]];
 
@@ -230,7 +230,7 @@ module	pfcache #(
 	// Read the tag value associated with the lastpc value, from what
 	// i_pc was when we could not tell if this value was in our cache or
 	// not, or perhaps from when we determined that i was not in the cache.
-	initial	tagvallst = 0;
+	// initial	tagvallst = 0;
 	always @(posedge i_clk)
 		tagvallst <= cache_tags[lastpc[(CW+1):LS+2]];
 

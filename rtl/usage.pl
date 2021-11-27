@@ -69,37 +69,87 @@ my $pipeconfig =" -chparam OPT_PIPELINED    1"
 	. " -chparam OPT_TRACE_PORT	0"
 	. " -chparam OPT_CIS	1 ";
 
-my $cacheconfig =" -chparam OPT_PIPELINED    1"
-	. " -chparam OPT_LGDCACHE	12"
-	. " -chparam OPT_LGICACHE	12"
-	. " -chparam OPT_MPY	6"
-	. " -chparam OPT_DIV	1"
-	. " -chparam OPT_SHIFTS	1"
-	. " -chparam OPT_LOCK	1"
-	. " -chparam OPT_EARLY_BRANCHING	1"
-	. " -chparam OPT_LOWPOWER	0"
-	. " -chparam OPT_DISTRIBUTED_REGS	0"
-	. " -chparam OPT_USERMODE	1"
-	. " -chparam OPT_CLKGATE	0"
-	. " -chparam OPT_DBGPORT	1"
-	. " -chparam OPT_TRACE_PORT	0"
-	. " -chparam OPT_CIS	1 ";
+my $cacheconfig =" -chparam OPT_PIPELINED 1"
+	. " -chparam OPT_LGDCACHE	 12"
+	. " -chparam OPT_LGICACHE	 12"
+	. " -chparam OPT_MPY		  6"
+	. " -chparam OPT_DIV		  1"
+	. " -chparam OPT_SHIFTS		  1"
+	. " -chparam OPT_LOCK		  1"
+	. " -chparam OPT_EARLY_BRANCHING  1"
+	. " -chparam OPT_LOWPOWER	  0"
+	. " -chparam OPT_DISTRIBUTED_REGS 0"
+	. " -chparam OPT_USERMODE	  1"
+	. " -chparam OPT_CLKGATE	  0"
+	. " -chparam OPT_DBGPORT	  1"
+	. " -chparam OPT_TRACE_PORT	  0"
+	. " -chparam OPT_CIS		  1";
 
-my $lowpowercfg =" -chparam OPT_PIPELINED    1"
-	. " -chparam OPT_LGDCACHE	12"
-	. " -chparam OPT_LGICACHE	12"
-	. " -chparam OPT_MPY	6"
-	. " -chparam OPT_DIV	1"
-	. " -chparam OPT_SHIFTS	1"
-	. " -chparam OPT_LOCK	1"
-	. " -chparam OPT_EARLY_BRANCHING	1"
-	. " -chparam OPT_LOWPOWER	1"
-	. " -chparam OPT_DISTRIBUTED_REGS	0"
-	. " -chparam OPT_USERMODE	1"
-	. " -chparam OPT_CLKGATE	1"
-	. " -chparam OPT_DBGPORT	1"
-	. " -chparam OPT_TRACE_PORT	0"
-	. " -chparam OPT_CIS	1 ";
+my $lowpowercfg =" -chparam OPT_PIPELINED 1"
+	. " -chparam OPT_LGDCACHE	 12"
+	. " -chparam OPT_LGICACHE	 12"
+	. " -chparam OPT_MPY		  6"
+	. " -chparam OPT_DIV		  1"
+	. " -chparam OPT_SHIFTS		  1"
+	. " -chparam OPT_LOCK		  1"
+	. " -chparam OPT_EARLY_BRANCHING  1"
+	. " -chparam OPT_LOWPOWER	  1"
+	. " -chparam OPT_DISTRIBUTED_REGS 0"
+	. " -chparam OPT_USERMODE	  1"
+	. " -chparam OPT_CLKGATE	  1"
+	. " -chparam OPT_DBGPORT	  1"
+	. " -chparam OPT_TRACE_PORT	  0"
+	. " -chparam OPT_CIS		  1";
+
+my $wbmemopsconfig = " -chparam ADDRESS_WIDTH   30"
+		. " -chparam OPT_LOCK            1"
+		. " -chparam OPT_ALIGNMENT_ERR   1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $wbpipememconfig = " -chparam ADDRESS_WIDTH  30"
+		. " -chparam OPT_LOCK            1"
+		. " -chparam OPT_ALIGNMENT_ERR   1";
+
+my $wbdcacheconfig = " -chparam ADDRESS_WIDTH   30"
+		. " -chparam LGCACHELEN		10"
+		. " -chparam LGNLINES		 7"
+		. " -chparam OPT_PIPE            1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $axdcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH   30"
+		. " -chparam AXI_ID              0"
+		. " -chparam LGCACHELEN		12"
+		. " -chparam LGNLINES		 7"
+		. " -chparam SWAP_WSTRB          1"
+		. " -chparam OPT_PIPE            1"
+		. " -chparam OPT_LOWPOWER        0";
+
+my $wbprefetchconfig = " -chparam ADDRESS_WIDTH   30"
+		. " -chparam DATA_WIDTH           32"
+		. " -chparam INSN_WIDTH           32"
+		. " -chparam OPT_LITTLE_ENDIAN     0";
+
+my $wbdblfetchconfig = " -chparam ADDRESS_WIDTH   30"
+		. " -chparam DATA_WIDTH           32"
+		. " -chparam INSN_WIDTH           32"
+		. " -chparam OPT_LITTLE_ENDIAN     0";
+
+my $wbpfcacheconfig = " -chparam ADDRESS_WIDTH   30"
+		. " -chparam LGCACHELEN          10"
+		. " -chparam LGLINES              7";
+
+my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
+		. " -chparam LGMEMLEN      32"
+		. " -chparam DW            32";
+
+my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
+		. " -chparam C_AXI_ADDR_WIDTH    30"
+		. " -chparam AXI_ID               0"
+		. " -chparam LGCACHESZ		 12"
+		. " -chparam LGLINESZ		  3"
+		. " -chparam OPT_LOWPOWER         0";
+
 
 my $bonescfg = "";
 my $syscfg   = " -chparam OPT_DMA 1 -chparam DMA_LGMEM 10 -chparam OPT_ACCOUNTING 1";
@@ -240,4 +290,44 @@ print $result;
 open(USAGE, "> usage.txt");
 
 print USAGE $result;
+
+$dcch = sprintf("   WB-MEMOPS   : %5d %5d\n",
+		calcusage($ice40synth, "memops", $wbmemopsconfig),
+		calcusage($xilinxsynth, "memops", $wbmemopsconfig));
+
+$dcch = $dcch . sprintf("   WB-PIPEMEM  : %5d %5d\n",
+		calcusage($ice40synth, "pipemem", $wbpipememconfig),
+		calcusage($xilinxsynth, "pipemem", $wbpipememconfig));
+
+$dcch = $dcch . sprintf("   WB-DCACHE   : %5d %5d\n",
+		calcusage($ice40synth, "dcache", $wbdcacheconfig),
+		calcusage($xilinxsynth, "dcache", $wbdcacheconfig));
+
+$dcch = $dcch . sprintf("  AXI-DCACHE   : %5d %5d\n",
+		calcusage($ice40synth, "axidcache", $axdcacheconfig),
+		calcusage($xilinxsynth, "axidcache", $axdcacheconfig));
+
+$dcch = $dcch . sprintf("   WB-DMA      : %5d %5d\n",
+		calcusage($ice40synth, "wbdmac", $wbdmaconfig),
+		calcusage($xilinxsynth, "wbdmac", $wbdmaconfig));
+
+$icch = sprintf("   WB-PREFETCH : %5d %5d\n",
+		calcusage($ice40synth, "prefetch", $wbprefetchconfig),
+		calcusage($xilinxsynth, "prefetch", $wbprefetchconfig));
+
+$icch = $icch . sprintf("   WB-DBLFETCH : %5d %5d\n",
+		calcusage($ice40synth, "dblfetch", $wbdblfetchconfig),
+		calcusage($xilinxsynth, "dblfetch", $wbdblfetchconfig));
+
+$icch = $icch . sprintf("   WB-ICACHE   : %5d %5d\n",
+		calcusage($ice40synth, "pfcache", $wbpfcacheconfig),
+		calcusage($xilinxsynth, "pfcache", $wbpfcacheconfig));
+
+$icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d\n",
+		calcusage($ice40synth, "axiicache", $axpfcacheconfig),
+		calcusage($xilinxsynth, "axiicache", $axpfcacheconfig));
+
+print USAGE $dcch;
+print USAGE $icch;
+
 close(USAGE);

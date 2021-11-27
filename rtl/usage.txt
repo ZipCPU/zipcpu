@@ -1,25 +1,34 @@
                  iCE40  X7-s
 Wrapper   Config  4LUT  6LUT
 ----------------------------
-ZipBones  ASM:    1124   567
-ZipBones  TRAP:   1671   967
-ZipBones  MIN:    2611  1472
-ZipBones  PIPE:   3508  1891
-ZipBones  CACHE: 65684 28201
-ZipBones  LWPWR: 65657 28039
-ZipSystem ASM:    3099  1632
-ZipSystem TRAP:   3742  2156
-ZipSystem MIN:    4686  2584
-ZipSystem PIPE:   5713  3140
-ZipSystem CACHE: 68223 29306
-ZipSystem LWPWR: 67992 30302
-ZipAXI-L  ASM:    1502   840
-ZipAXI-L  TRAP:   2060  1139
-ZipAXI-L  MIN:    3017  1739
-ZipAXI-L  PIPE:   4031  2245
-ZipAXI    ASM:    1504   859
-ZipAXI    TRAP:   2101  1210
-ZipAXI    MIN:    3039  1689
-ZipAXI    PIPE:   4066  2252
-ZipAXI    CACHE: 61284 28535
-ZipAXI    LWPWR: 61422 30065
+ZipBones  ASM:    1071   572
+ZipBones  TRAP:   1582   922
+ZipBones  MIN:    2540  1472
+ZipBones  PIPE:   3436  1929
+ZipBones  CACHE:  5053  2679
+ZipBones  LWPWR:  5010  2734
+ZipSystem ASM:    3083  1786
+ZipSystem TRAP:   3637  2114
+ZipSystem MIN:    4636  2653
+ZipSystem PIPE:   5649  3264
+ZipSystem CACHE:  7365  4158
+ZipSystem LWPWR:  7304  4251
+ZipAXI-L  ASM:    1450   827
+ZipAXI-L  TRAP:   2171  1197
+ZipAXI-L  MIN:    3022  1737
+ZipAXI-L  PIPE:   4015  2219
+ZipAXI    ASM:    1454   841
+ZipAXI    TRAP:   1992  1243
+ZipAXI    MIN:    2969  1675
+ZipAXI    PIPE:   3956  2231
+ZipAXI    CACHE:  4797  2780
+ZipAXI    LWPWR:  4974  2872
+   WB-MEMOPS   :    94    68
+   WB-PIPEMEM  :   227    87
+   WB-DCACHE   :  1235   658
+  AXI-DCACHE   :   967   642
+   WB-DMA      :  1219   554
+   WB-PREFETCH :    70    66
+   WB-DBLFETCH :   152   106
+   WB-ICACHE   :   819   523
+  AXI-ICACHE   :   628   464
