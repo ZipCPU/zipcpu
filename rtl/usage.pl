@@ -245,10 +245,12 @@ my $logfile = "yosys.log";
 my $scriptf = "usage.ys";
 my $ice40synth = "synth_ice40";
 my $xilinxsynth = "synth_xilinx";
+my $asicsynth   = "synth";
+my $asicpost    = "abc -g cmos2";
 
-sub	calcusage($$$) {
+sub	calcusage($$$$) {
 	## {{{
-	my($synth,$toplvl,$config)=@_;
+	my($synth,$toplvl,$config,$postsynth)=@_;
 
 	## Build the script
 	## {{{
@@ -260,6 +262,9 @@ sub	calcusage($$$) {
 
 	print SCRIPT "hierarchy -top $toplvl $config\n";
 	print SCRIPT "$synth -flatten -top $toplvl\n";
+	if ($postsynth ne "") {
+		print SCRIPT "$postsynth\n";
+	}
 	print SCRIPT "stat\n";
 	close(SCRIPT);
 	## }}}
@@ -275,6 +280,8 @@ sub	calcusage($$$) {
 			$usage = $1;
 		} elsif ($line =~ /^\s*SB_LUT4\s*(\d+)\s*$/) {
 			$usage = $1;
+		} elsif ($line =~ /^\s*\$_NAND_\s*(\d+)\s*$/) {
+			$usage = $1;
 		}
 	} close(LOG);
 	## }}}
@@ -288,30 +295,36 @@ sub	topusage($$) {
 	my($name,$toplvl)=@_;
 	my $result = "";
 
-	$result = sprintf("$name ASM:   %5d %5d\n",
-		calcusage($ice40synth, $toplvl, $asmconfig),
-		calcusage($xilinxsynth, $toplvl, $asmconfig));
+	$result = sprintf("$name ASM:   %5d %5d %6d\n",
+		calcusage($ice40synth, $toplvl, $asmconfig,""),
+		calcusage($xilinxsynth,$toplvl, $asmconfig,""),
+		calcusage($asicsynth,  $toplvl, $asmconfig,$asicpost));
 
-	$result = $result . sprintf("$name TRAP:  %5d %5d\n",
-		calcusage($ice40synth, $toplvl, $trapconfig),
-		calcusage($xilinxsynth, $toplvl, $trapconfig));
+	$result = $result . sprintf("$name TRAP:  %5d %5d %6d\n",
+		calcusage($ice40synth, $toplvl, $trapconfig,""),
+		calcusage($xilinxsynth,$toplvl, $trapconfig,""),
+		calcusage($asicsynth,  $toplvl, $trapconfig,$asicpost));
 
-	$result = $result . sprintf("$name MIN:   %5d %5d\n",
-		calcusage($ice40synth, $toplvl, $minconfig),
-		calcusage($xilinxsynth, $toplvl, $minconfig));
+	$result = $result . sprintf("$name MIN:   %5d %5d %6d\n",
+		calcusage($ice40synth, $toplvl, $minconfig,""),
+		calcusage($xilinxsynth,$toplvl, $minconfig,""),
+		calcusage($asicsynth,  $toplvl, $minconfig,$asicpost));
 
-	$result = $result . sprintf("$name PIPE:  %5d %5d\n",
-		calcusage($ice40synth, $toplvl, $pipeconfig),
-		calcusage($xilinxsynth, $toplvl, $pipeconfig));
+	$result = $result . sprintf("$name PIPE:  %5d %5d %6d\n",
+		calcusage($ice40synth, $toplvl, $pipeconfig,""),
+		calcusage($xilinxsynth,$toplvl, $pipeconfig,""),
+		calcusage($asicsynth,  $toplvl, $pipeconfig,$asicpost));
 
 	if ($toplvl ne "zipaxil") {
-		$result = $result . sprintf("$name CACHE: %5d %5d\n",
-			calcusage($ice40synth, $toplvl, $cacheconfig),
-			calcusage($xilinxsynth, $toplvl, $cacheconfig));
+		$result = $result . sprintf("$name CACHE: %5d %5d %6d\n",
+			calcusage($ice40synth, $toplvl, $cacheconfig,""),
+			calcusage($xilinxsynth,$toplvl, $cacheconfig,""),
+			calcusage($asicsynth,  $toplvl, $cacheconfig,$asicpost));
 
-		$result = $result . sprintf("$name LWPWR: %5d %5d\n",
-			calcusage($ice40synth, $toplvl, $lowpowercfg),
-			calcusage($xilinxsynth, $toplvl, $lowpowercfg));
+		$result = $result . sprintf("$name LWPWR: %5d %5d %6d\n",
+			calcusage($ice40synth, $toplvl, $lowpowercfg,""),
+			calcusage($xilinxsynth,$toplvl, $lowpowercfg,""),
+			calcusage($asicsynth,  $toplvl, $lowpowercfg,$asicpost));
 	}
 
 	$result
@@ -325,74 +338,89 @@ $result = $result . topusage("ZipAXI-L ", "zipaxil");
 $result = $result . topusage("ZipAXI   ", "zipaxi");
 
 ## Add a header
-$result = "                 iCE40  X7-s\n"
-	. "Wrapper   Config  4LUT  6LUT\n"
-	. "----------------------------\n" . $result;
+$result = "                 iCE40  X7-s   RAW\n"
+	. "Wrapper   Config  4LUT  6LUT  NANDs\n"
+	. "-----------------------------------\n" . $result;
 print $result;
 
 open(USAGE, "> usage.txt");
 
 print USAGE $result;
 
-$dcch = sprintf("   WB-MEMOPS   : %5d %5d\n",
-		calcusage($ice40synth, "memops", $wbmemopsconfig),
-		calcusage($xilinxsynth, "memops", $wbmemopsconfig));
+$dcch = sprintf("   WB-MEMOPS   : %5d %5d %6d\n",
+		calcusage($ice40synth, "memops", $wbmemopsconfig,""),
+		calcusage($xilinxsynth,"memops", $wbmemopsconfig,""),
+		calcusage($asicsynth,  "memops", $wbmemopsconfig,$asicpost));
 
-$dcch = $dcch . sprintf("   WB-PIPEMEM  : %5d %5d\n",
-		calcusage($ice40synth, "pipemem", $wbpipememconfig),
-		calcusage($xilinxsynth, "pipemem", $wbpipememconfig));
+$dcch = $dcch . sprintf("   WB-PIPEMEM  : %5d %5d %6d\n",
+		calcusage($ice40synth, "pipemem", $wbpipememconfig,""),
+		calcusage($xilinxsynth,"pipemem", $wbpipememconfig,""),
+		calcusage($asicsynth,  "pipemem", $wbpipememconfig,$asicpost));
 
-$dcch = $dcch . sprintf("   WB-DCACHE   : %5d %5d\n",
-		calcusage($ice40synth, "dcache", $wbdcacheconfig),
-		calcusage($xilinxsynth, "dcache", $wbdcacheconfig));
+$dcch = $dcch . sprintf("   WB-DCACHE   : %5d %5d %6d\n",
+		calcusage($ice40synth, "dcache", $wbdcacheconfig,""),
+		calcusage($xilinxsynth,"dcache", $wbdcacheconfig,""),
+		calcusage($asicsynth,  "dcache", $wbdcacheconfig,$asicpost));
 
-$dcch = $dcch . sprintf(" AXIL-OPS      : %5d %5d\n",
-		calcusage($ice40synth, "axilops", $axilopsconfig),
-		calcusage($xilinxsynth, "axilops", $axilopsconfig));
+$dcch = $dcch . sprintf(" AXIL-OPS      : %5d %5d %6d\n",
+		calcusage($ice40synth, "axilops", $axilopsconfig,""),
+		calcusage($xilinxsynth,"axilops", $axilopsconfig,""),
+		calcusage($asicsynth,  "axilops", $axilopsconfig,$asicpost));
 
-$dcch = $dcch . sprintf("  AXI-OPS      : %5d %5d\n",
-		calcusage($ice40synth, "axiops", $axiopsconfig),
-		calcusage($xilinxsynth, "axiops", $axiopsconfig));
+$dcch = $dcch . sprintf("  AXI-OPS      : %5d %5d %6d\n",
+		calcusage($ice40synth, "axiops", $axiopsconfig,""),
+		calcusage($xilinxsynth,"axiops", $axiopsconfig,""),
+		calcusage($asicsynth,  "axiops", $axiopsconfig,$asicpost));
 
-$dcch = $dcch . sprintf(" AXIL-PIPE     : %5d %5d\n",
-		calcusage($ice40synth, "axilpipe", $axilpipeconfig),
-		calcusage($xilinxsynth, "axilpipe", $axilpipeconfig));
+$dcch = $dcch . sprintf(" AXIL-PIPE     : %5d %5d %6d\n",
+		calcusage($ice40synth, "axilpipe", $axilpipeconfig,""),
+		calcusage($xilinxsynth,"axilpipe", $axilpipeconfig,""),
+		calcusage($asicsynth,  "axilpipe", $axilpipeconfig,$asicpost));
 
-$dcch = $dcch . sprintf("  AXI-PIPE     : %5d %5d\n",
-		calcusage($ice40synth, "axipipe", $axipipeconfig),
-		calcusage($xilinxsynth, "axipipe", $axipipeconfig));
+$dcch = $dcch . sprintf("  AXI-PIPE     : %5d %5d %6d\n",
+		calcusage($ice40synth, "axipipe", $axipipeconfig,""),
+		calcusage($xilinxsynth,"axipipe", $axipipeconfig,""),
+		calcusage($asicsynth,  "axipipe", $axipipeconfig,$asicpost));
 
-$dcch = $dcch . sprintf("  AXI-DCACHE   : %5d %5d\n",
-		calcusage($ice40synth, "axidcache", $axdcacheconfig),
-		calcusage($xilinxsynth, "axidcache", $axdcacheconfig));
+$dcch = $dcch . sprintf("  AXI-DCACHE   : %5d %5d %6d\n",
+		calcusage($ice40synth, "axidcache", $axdcacheconfig,""),
+		calcusage($xilinxsynth,"axidcache", $axdcacheconfig,""),
+		calcusage($asicsynth,  "axidcache", $axdcacheconfig,$asicpost));
 
-$dcch = $dcch . sprintf("   WB-DMA      : %5d %5d\n",
-		calcusage($ice40synth, "wbdmac", $wbdmaconfig),
-		calcusage($xilinxsynth, "wbdmac", $wbdmaconfig));
+$dcch = $dcch . sprintf("   WB-DMA      : %5d %5d %6d\n",
+		calcusage($ice40synth, "wbdmac", $wbdmaconfig,""),
+		calcusage($xilinxsynth,"wbdmac", $wbdmaconfig,""),
+		calcusage($asicsynth,  "wbdmac", $wbdmaconfig,$asicpost));
 
-$icch = sprintf("   WB-PREFETCH : %5d %5d\n",
-		calcusage($ice40synth, "prefetch", $wbprefetchconfig),
-		calcusage($xilinxsynth, "prefetch", $wbprefetchconfig));
+$icch = sprintf("   WB-PREFETCH : %5d %5d %6d\n",
+		calcusage($ice40synth, "prefetch", $wbprefetchconfig,""),
+		calcusage($xilinxsynth,"prefetch", $wbprefetchconfig,""),
+		calcusage($asicsynth,  "prefetch", $wbprefetchconfig,$asicpost));
 
-$icch = $icch . sprintf("   WB-DBLFETCH : %5d %5d\n",
-		calcusage($ice40synth, "dblfetch", $wbdblfetchconfig),
-		calcusage($xilinxsynth, "dblfetch", $wbdblfetchconfig));
+$icch = $icch . sprintf("   WB-DBLFETCH : %5d %5d %6d\n",
+		calcusage($ice40synth, "dblfetch", $wbdblfetchconfig,""),
+		calcusage($xilinxsynth,"dblfetch", $wbdblfetchconfig,""),
+		calcusage($asicsynth,  "dblfetch", $wbdblfetchconfig,$asicpost));
 
-$icch = $icch . sprintf("   WB-ICACHE   : %5d %5d\n",
-		calcusage($ice40synth, "pfcache", $wbpfcacheconfig),
-		calcusage($xilinxsynth, "pfcache", $wbpfcacheconfig));
+$icch = $icch . sprintf("   WB-ICACHE   : %5d %5d %6d\n",
+		calcusage($ice40synth, "pfcache", $wbpfcacheconfig,""),
+		calcusage($xilinxsynth,"pfcache", $wbpfcacheconfig,""),
+		calcusage($asicsynth,  "pfcache", $wbpfcacheconfig,$asicpost));
 
-$icch = $icch . sprintf("  AXILFETCH-BSC: %5d %5d\n",
-		calcusage($ice40synth, "axilfetch", $axpfsimpleconfig),
-		calcusage($xilinxsynth, "axilfetch", $axpfsimpleconfig));
+$icch = $icch . sprintf("  AXILFETCH-BSC: %5d %5d %6d\n",
+		calcusage($ice40synth, "axilfetch", $axpfsimpleconfig,""),
+		calcusage($xilinxsynth,"axilfetch", $axpfsimpleconfig,""),
+		calcusage($asicsynth,  "axilfetch", $axpfsimpleconfig,$asicpost));
 
-$icch = $icch . sprintf("  AXILFETCH-PIP: %5d %5d\n",
-		calcusage($ice40synth, "axilfetch", $axpfdblconfig),
-		calcusage($xilinxsynth, "axilfetch", $axpfdblconfig));
+$icch = $icch . sprintf("  AXILFETCH-PIP: %5d %5d %6d\n",
+		calcusage($ice40synth, "axilfetch", $axpfdblconfig,""),
+		calcusage($xilinxsynth,"axilfetch", $axpfdblconfig,""),
+		calcusage($asicsynth,  "axilfetch", $axpfdblconfig,$asicpost));
 
-$icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d\n",
-		calcusage($ice40synth, "axiicache", $axpfcacheconfig),
-		calcusage($xilinxsynth, "axiicache", $axpfcacheconfig));
+$icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d %6d\n",
+		calcusage($ice40synth, "axiicache", $axpfcacheconfig,""),
+		calcusage($xilinxsynth,"axiicache", $axpfcacheconfig,""),
+		calcusage($asicsynth,  "axiicache", $axpfcacheconfig,$asicpost));
 
 print USAGE $dcch;
 print USAGE $icch;
