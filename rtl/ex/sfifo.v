@@ -55,13 +55,13 @@ module sfifo #(
 		// Write interface
 		input	wire		i_wr,
 		input	wire [(BW-1):0]	i_data,
-		output	reg 		o_full,
+		output	wire 		o_full,
 		output	reg [LGFLEN:0]	o_fill,
 		//
 		// Read interface
 		input	wire		i_rd,
 		output	reg [(BW-1):0]	o_data,
-		output	reg		o_empty	// True if FIFO is empty
+		output	wire		o_empty	// True if FIFO is empty
 		// }}}
 	);
 
@@ -76,6 +76,13 @@ module sfifo #(
 	wire	w_wr = (i_wr && !o_full);
 	wire	w_rd = (i_rd && !o_empty);
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Write half
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	// o_fill
 	// {{{
@@ -102,11 +109,7 @@ module sfifo #(
 	default: r_full <= (o_fill == { 1'b1, {(LGFLEN){1'b0}} });
 	endcase
 
-	always @(*)
-	if (OPT_WRITE_ON_FULL && i_rd)
-		o_full = 1'b0;
-	else
-		o_full = r_full;
+	assign	o_full = (i_rd && OPT_WRITE_ON_FULL) ? 1'b0 : r_full;
 	// }}}
 
 	// wr_addr, the write address pointer
@@ -125,6 +128,14 @@ module sfifo #(
 	if (w_wr)
 		mem[wr_addr[(LGFLEN-1):0]] <= i_data;
 	// }}}
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Read half
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	// rd_addr, the read address pointer
 	// {{{
@@ -151,11 +162,7 @@ module sfifo #(
 	default: begin end
 	endcase
 
-	always @(*)
-	if (OPT_READ_ON_EMPTY && i_wr)
-		o_empty = 1'b0;
-	else
-		o_empty = r_empty;
+	assign	o_empty = (OPT_READ_ON_EMPTY && i_wr) ? 1'b0 : r_empty;
 	// }}}
 
 	// Read from the FIFO
@@ -216,13 +223,15 @@ module sfifo #(
 		// }}}
 	end endgenerate
 	// }}}
+	// }}}
 
 	// Make Verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	wire	[LGFLEN-1:0]	unused;
 	assign	unused = rd_next;
 	// verilator lint_on  UNUSED
-
+	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,6 +475,3 @@ module sfifo #(
 `endif // FORMAL
 // }}}
 endmodule
-`ifndef	YOSYS
-`default_nettype wire
-`endif

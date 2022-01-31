@@ -1,9 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipcore.v
-//
-// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 // {{{
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+//
 // Purpose:
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -328,7 +328,7 @@ module	zipcore #(
 	//		Variable declarations
 	//
 	// {{{
-	wire		wr_discard, wr_write_pc, wr_write_cc,
+	wire		wr_write_pc, wr_write_cc,
 			wr_write_scc, wr_write_ucc;
 	reg		wr_reg_ce, wr_flags_ce;
 	reg	[3:0]	wr_flags;
@@ -2157,7 +2157,7 @@ module	zipcore #(
 	// anything else.  Indeed, the (master_ce) bit is only as relevant
 	// as knowinig something is available for writeback.
 
-	// wr_discard, wr_reg_ce
+	// (was) wr_discard, wr_reg_ce
 	// {{{
 	//
 	// Write back to our generic register set ...
@@ -2165,17 +2165,55 @@ module	zipcore #(
 	//	Note that the flags needed to be checked before issuing the
 	//	bus instruction, so they don't need to be checked here.
 	//	Further, alu_wR includes (set_cond), so we don't need to
-	//	check for that here either.
-	assign	wr_discard = (clear_pipeline || alu_illegal);
+	//	check for that here either.  It also includes alu_illegal, so
+	//	again--doesn't need to be checked again here.
+
+/*
+	// 12 inputs -- since we don't need wr_index
 	always @(*)
 	case(wr_index)
 	3'b000: wr_reg_ce  = dbgv;
 	3'b001: wr_reg_ce  = i_mem_valid;
-	//3'b010: wr_reg_ce = (!wr_discard)&&(alu_wR && alu_valid);
-	3'b011: wr_reg_ce  = (!wr_discard)&&(div_valid)&&(!div_error);
-	3'b100: wr_reg_ce  = (!wr_discard)&&(fpu_valid)&&(!fpu_error);
-	default: wr_reg_ce = (!wr_discard)&&(alu_wR && alu_valid);
+	//3'b010: wr_reg_ce = (!clear_pipeline)&&(alu_wR && alu_valid);
+	3'b011: wr_reg_ce  = (!clear_pipeline)&&(div_valid)&&(!div_error);
+	3'b1??: wr_reg_ce  = (!clear_pipeline)&&(fpu_valid)&&(!fpu_error);
+	default: wr_reg_ce = (!clear_pipeline)&&(alu_wR && alu_valid);
 	endcase
+*/
+	// 9-inputs, so ... two cascaded 6-LUTs w/o FPU?
+	always @(*)
+	begin
+		wr_reg_ce = dbgv || i_mem_valid;
+		if ((alu_wR && alu_valid)
+				||(div_valid && !div_error)
+				||(fpu_valid && !fpu_error))
+			wr_reg_ce = wr_reg_ce || !clear_pipeline;
+	end
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset)
+	casez(wr_index)
+	3'b000: assert(!i_mem_valid && (!alu_wR || !alu_valid)
+			&& (!div_valid || div_error)
+			&& (!fpu_valid || fpu_error));
+	3'b001: assert(!dbgv && (!alu_wR || !alu_valid)
+			&& (!div_valid || div_error)
+			&& (!fpu_valid || fpu_error));
+	3'b010: assert(!dbgv && !i_mem_valid
+			// && (!alu_wR || !alu_valid)
+			&& (!div_valid || div_error)
+			&& (!fpu_valid || fpu_error));
+	3'b011: assert(!dbgv && !i_mem_valid
+			&& (!alu_wR || !alu_valid)
+			// && (!div_valid || div_error)
+			&& (!fpu_valid || fpu_error));
+	3'b100: assert(!dbgv && !i_mem_valid
+			&& (!alu_wR || !alu_valid)
+			&& (!div_valid || div_error));
+			// && (!fpu_valid || fpu_error);
+	default: assert(0);
+	endcase
+`endif
 	// }}}
 
 	// wr_reg_id, wr_write-cc, wr_write_scc, wr_write_ucc, wr_write_pc
@@ -2196,6 +2234,7 @@ module	zipcore #(
 	end endgenerate
 
 	// Are we writing to the CC register?
+	// one 5-LUT ea
 	assign	wr_write_cc = (wr_reg_id[3:0] == CPU_CC_REG);
 	assign	wr_write_scc = (wr_reg_id[4:0] == {1'b0, CPU_CC_REG});
 	assign	wr_write_ucc = (wr_reg_id[4:0] == {1'b1, CPU_CC_REG});
@@ -2205,16 +2244,18 @@ module	zipcore #(
 
 	// wr_?preg_vl: Select from among sources the value to be writtena
 	// {{{
+	// One 6-LUT per bit, or 32 6-LUTs w/o FPU
 	always @(*)
-	case(wr_index)
+	casez(wr_index)
 	3'b000: wr_gpreg_vl = dbg_val;
 	3'b001: wr_gpreg_vl = i_mem_result;
 	// 3'b010: wr_gpreg_vl = alu_result;
 	3'b011: wr_gpreg_vl = div_result;
-	3'b100: wr_gpreg_vl = fpu_result;
+	3'b1??: wr_gpreg_vl = fpu_result;
 	default: wr_gpreg_vl = alu_result;
 	endcase
 
+	// One 6-LUT per bit, or 32 6-LUTs
 	always @(*)
 	case(wr_index[1:0])
 	2'b00: wr_spreg_vl = dbg_val;
@@ -2252,19 +2293,48 @@ module	zipcore #(
 	// assign	wr_flags_ce = (alu_wF)&&((alu_valid)
 				// ||(div_valid)||(fpu_valid))
 				// &&(!clear_pipeline)&&(!alu_illegal);
+/*
+	// 10 inputs
 	always @(*)
 	begin
 		wr_flags_ce = 0;
-		if (alu_wF && !wr_discard)
+		if (alu_wF && !clear_pipeline) // Includes !alu_illegal in wF
 		case(wr_index)
 		// 3'b000: wr_flags_ce = 0; // Debug
 		// 3'b001: wr_flags_ce = 0; // Memory
 		3'b010: wr_flags_ce = alu_valid; // ALU
 		3'b011: wr_flags_ce = div_valid && !div_error; // DIV
-		3'b100: wr_flags_ce = fpu_valid && !fpu_error; // FPU
+		3'b1??: wr_flags_ce = fpu_valid && !fpu_error; // FPU
 		default: wr_flags_ce = 0;
 		endcase
 	end
+*/
+	// 7-LUT -- since we don't need wr_index
+	always @(*)
+	begin
+		wr_flags_ce = alu_valid || (div_valid && !div_error)
+				|| (fpu_valid && !fpu_error);
+		if (!alu_wF || clear_pipeline)
+			wr_flags_ce = 1'b0;
+	end
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset)
+	begin
+		casez(wr_index)
+		3'b000:	assert(wr_flags_ce == 1'b0);
+		3'b001:	assert(wr_flags_ce == 1'b0);
+		3'b010:	assert(wr_flags_ce == (alu_wF && !clear_pipeline && alu_valid));
+		3'b011:	assert(wr_flags_ce == (alu_wF && !clear_pipeline && div_valid && !div_error));
+		3'b100:	assert(IMPLEMENT_FPU && wr_flags_ce == (alu_wF && !clear_pipeline && fpu_valid && !fpu_error));
+		default: assert(0);
+		endcase
+
+		if (alu_illegal)
+			assert(!div_valid && !fpu_valid
+				&& (!alu_wF || !alu_valid));
+	end
+`endif
 	// }}}
 
 	// wr_flags: what should the new condition codes be?
@@ -2272,10 +2342,10 @@ module	zipcore #(
 	always @(*)
 	begin
 		wr_flags = 0;
-		case(wr_index)
+		casez(wr_index)
 		3'b010: wr_flags = alu_flags;
 		3'b011: wr_flags = div_flags;
-		3'b100: wr_flags = fpu_flags;
+		3'b1??: wr_flags = fpu_flags;
 		default: wr_flags = 0;
 		endcase
 	end
@@ -2286,11 +2356,11 @@ module	zipcore #(
 	assign	w_uflags = { 2'b00, uhalt_phase, ufpu_err_flag,
 			udiv_err_flag, ubus_err_flag, trap, ill_err_u,
 			ubreak, step, 1'b1, sleep,
-			((wr_flags_ce)&&(alu_gie))?wr_flags:flags };
+			(wr_flags_ce &&  alu_gie) ? wr_flags :  flags };
 	assign	w_iflags = { 2'b00, ihalt_phase, ifpu_err_flag,
 			idiv_err_flag, ibus_err_flag, trap, ill_err_i,
 			break_en, 1'b0, 1'b0, sleep,
-			((wr_flags_ce)&&(!alu_gie))?wr_flags:iflags };
+			(wr_flags_ce && !alu_gie) ? wr_flags : iflags };
 	// }}}
 
 	// flags: The user condition codes, Z, C, N, and V
@@ -2298,22 +2368,20 @@ module	zipcore #(
 	// What value to write?
 	always @(posedge i_clk)
 	// If explicitly writing the register itself
-	if ((wr_reg_ce)&&(wr_write_ucc))
+	if (wr_reg_ce && wr_write_ucc)
 		flags <= wr_gpreg_vl[3:0];
 	// Otherwise if we're setting the flags from an ALU operation
-	else if ((wr_flags_ce)&&(alu_gie))
-		flags <= (div_valid)?div_flags:((fpu_valid)?fpu_flags
-				: alu_flags);
+	else if (wr_flags_ce && alu_gie)
+		flags <= wr_flags;
 	// }}}
 
-	// uflags: The supervisor condition codes, Z, C, N, and V
+	// iflags: The supervisor condition codes, Z, C, N, and V
 	// {{{
 	always @(posedge i_clk)
-	if ((wr_reg_ce)&&(wr_write_scc))
+	if (wr_reg_ce && wr_write_scc)
 		iflags <= wr_gpreg_vl[3:0];
-	else if ((wr_flags_ce)&&(!alu_gie))
-		iflags <= (div_valid)?div_flags:((fpu_valid)?fpu_flags
-				: alu_flags);
+	else if (wr_flags_ce && !alu_gie)
+		iflags <= wr_flags;
 	// }}}
 
 	// break_en
