@@ -63,7 +63,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -1060,7 +1060,7 @@ module	zipsystem #(
 			);
 		end else begin : ALT_PIC
 			icontrol #(8+(EXTERNAL_INTERRUPTS-9))
-			ctri(	
+			ctri(
 			// {{{
 			.i_clk(i_clk), .i_reset(cpu_reset),
 			.i_wb_cyc(sys_cyc), .i_wb_stb(ctri_sel),
@@ -1223,7 +1223,7 @@ module	zipsystem #(
 	fdebug #(
 		// {{{
 		.OPT_START_HALTED(START_HALTED),
-		.OPT_DISTRIBUTED_RAM(1'b1)
+		.OPT_DISTRIBUTED_RAM(OPT_DISTRIBUTED_REGS)
 		// }}}
 	) fdbg (
 		// {{{
@@ -1259,6 +1259,7 @@ module	zipsystem #(
 		.IMPLEMENT_FPU(OPT_FPU),
 		.OPT_CIS(OPT_CIS),
 		.OPT_LOCK(OPT_LOCK),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.OPT_SHIFTS(OPT_SHIFTS),
 		.OPT_START_HALTED(START_HALTED),
 		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),

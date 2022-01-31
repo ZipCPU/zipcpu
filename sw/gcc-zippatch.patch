@@ -109,12 +109,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/configure.ac gcc-10.3.0-zip/configure.ac
  
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c
 --- gcc-10.3.0/gcc/common/config/zip/zip-common.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c	2021-04-12 15:15:51.834009864 -0400
-@@ -0,0 +1,52 @@
++++ gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c	2022-01-31 16:38:27.057427689 -0500
+@@ -0,0 +1,53 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	common/config/zip/zip-common.c
-+//
++// {{{
 +// Project:	Zip CPU backend for the GNU Compiler Collection
 +//
 +// Purpose:	To eliminate the frame register automatically.
@@ -123,9 +123,9 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-1
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2016-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2016-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -140,12 +140,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-1
 +// with this program.  (It's in the $(ROOT)/doc directory, run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
 +//
-+//
 +////////////////////////////////////////////////////////////////////////////////
++// }}}
 +#include "config.h"
 +#include "system.h"
 +#include "coretypes.h"
@@ -181,7 +182,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/compare-elim.c gcc-10.3.0-zip/gcc/co
  	  x = XEXP (x, 0);
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zip/gcc/config/zip/genzipops.c
 --- gcc-10.3.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2021-07-26 09:31:43.128337465 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2022-01-31 16:42:09.439912366 -0500
 @@ -0,0 +1,702 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -215,7 +216,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2017-2021, Gisselquist Technology, LLC
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -274,7 +275,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +";;\n"
 +";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
 +";; }}}\n"
-+";; Copyright (C) 2017-2021, Gisselquist Technology, LLC\n"
++";; Copyright (C) 2017-2022, Gisselquist Technology, LLC\n"
 +";; {{{\n"
 +";; This program is free software (firmware): you can redistribute it and/or\n"
 +";; modify it under the terms of  the GNU General Public License as published\n"
@@ -887,7 +888,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +// }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/config/zip/zip.c
 --- gcc-10.3.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2021-06-19 22:39:01.300824133 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2022-01-31 16:36:28.894233392 -0500
 @@ -0,0 +1,3513 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -902,7 +903,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2021, Gisselquist Technology, LLC
++// Copyright (C) 2016-2022, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -4417,7 +4418,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zipdbg.h gcc-10.3.0-zip/g
 +#endif
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/gcc/config/zip/zip-di.md
 --- gcc-10.3.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2021-06-25 08:20:50.608948424 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2022-01-31 16:36:32.122211377 -0500
 @@ -0,0 +1,586 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -4436,7 +4437,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -5007,7 +5008,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +; }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-zip/gcc/config/zip/zip-float.md
 --- gcc-10.3.0/gcc/config/zip/zip-float.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-float.md	2021-04-12 15:47:58.528638415 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-float.md	2022-01-31 16:36:33.610201229 -0500
 @@ -0,0 +1,138 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -5024,7 +5025,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-z
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -5149,7 +5150,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-z
 +;
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/config/zip/zip.h
 --- gcc-10.3.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2021-06-19 15:53:55.593598449 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2022-01-31 16:36:35.158190671 -0500
 @@ -0,0 +1,4277 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -5164,7 +5165,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2021, Gisselquist Technology, LLC
++// Copyright (C) 2016-2022, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -9430,7 +9431,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc/config/zip/zip.md
 --- gcc-10.3.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2021-10-06 10:04:30.860742559 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2022-01-31 16:36:36.898178805 -0500
 @@ -0,0 +1,2321 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -9447,7 +9448,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -11755,7 +11756,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +; }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-ops.md gcc-10.3.0-zip/gcc/config/zip/zip-ops.md
 --- gcc-10.3.0/gcc/config/zip/zip-ops.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-ops.md	2021-06-19 22:35:57.582202796 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-ops.md	2022-01-31 16:36:38.282169366 -0500
 @@ -0,0 +1,6724 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -11783,7 +11784,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-ops.md gcc-10.3.0-zip
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2017-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2017-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -18483,7 +18484,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-ops.md gcc-10.3.0-zip
 +; }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-10.3.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md	2021-05-24 13:45:06.098412347 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md	2022-01-31 16:36:39.774159191 -0500
 @@ -0,0 +1,591 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -18501,7 +18502,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -19078,7 +19079,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.
 +;
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-zip/gcc/config/zip/zip-protos.h
 --- gcc-10.3.0/gcc/config/zip/zip-protos.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-protos.h	2021-06-19 13:37:52.700188331 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-protos.h	2022-01-31 16:36:41.194149507 -0500
 @@ -0,0 +1,86 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -19093,7 +19094,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2021, Gisselquist Technology, LLC
++// Copyright (C) 2016-2022, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
@@ -19168,7 +19169,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-10.3.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2021-10-06 11:01:22.041895757 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2022-01-31 16:36:42.622139768 -0500
 @@ -0,0 +1,590 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -19185,7 +19186,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2021, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published

@@ -1,24 +1,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	asmdata.h
-//
+// Filename: 	asmdata.h	(DEPRECATED)
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU core
 //
 // Purpose:	Data structures for the assembler.  In particular, this file
 //		declares: Abstract Syntax Trees (ASTs) to store operations for
-//		later calculation, ASMLINEs or assembled lines (which may or
-//		may not be defined, depending upon symbol table status),
-//		symbol table access and the final output object file together
-//		with its necessary relocations.  Yes, linking is done, but as
-//		part of the assembler and not part of a separate linker.
+//	later calculation, ASMLINEs or assembled lines (which may or may not be
+//	defined, depending upon symbol table status), symbol table access and
+//	the final output object file together with its necessary relocations.
+//	Yes, linking is done, but as part of the assembler and not part of a
+//	separate linker.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -33,12 +33,13 @@
 // with this program.  (It's in the $(ROOT)/doc directory, run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
+// }}}
 #ifndef	ASMDATA_H
 #define	ASMDATA_H
 

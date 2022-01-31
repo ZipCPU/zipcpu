@@ -5,8 +5,8 @@ bare		nolocal lock    dualread
 nolock_nolocal	nolocal nolock  dualread
 nolock_system	system  nolock  dualread
 piped		system	lock    dualread
-cover           system lock     dualread
-cover_pipe      system lock     dualread cover piped
+cover           system  lock    dualread
+cover_pipe      system  lock    dualread cover piped
 piped_lp	system	lock    dualread opt_lowpower
 
 [options]

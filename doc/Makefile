@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	
@@ -11,9 +11,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2015-2016, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2015-2022, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -23,28 +23,35 @@
 ## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 ## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 ## for more details.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
-##
 ##
 ################################################################################
 ##
-##
+## }}}
 all:	pdftex gpl-3.0.pdf spec.pdf
 DSRC := src
 
+## gpl-3.0.pdf
+## {{{
 gpl-3.0.pdf: $(DSRC)/gpl-3.0.tex
 	latex $(DSRC)/gpl-3.0.tex
 	latex $(DSRC)/gpl-3.0.tex
 	dvips -q -z -t letter -P pdf -o gpl-3.0.ps gpl-3.0.dvi
 	ps2pdf -dAutoRotatePages=/All gpl-3.0.ps gpl-3.0.pdf
 	rm gpl-3.0.dvi gpl-3.0.log gpl-3.0.aux gpl-3.0.ps
+## }}}
 
 .PHONY: pdftex
+## {{{
 pdftex:
 	@cd gfx; bash -c "if [[ -e Makefile ]]; then make --no-print-directory; fi"
+## }}}
 
+## spec.pdf
+## {{{
 spec.pdf: $(DSRC)/spec.tex $(DSRC)/gqtekspec.cls $(DSRC)/GT.eps
 	cd $(DSRC)/; latex spec.tex
 	cd $(DSRC)/; latex spec.tex
@@ -56,7 +63,10 @@ spec.pdf: $(DSRC)/spec.tex $(DSRC)/gqtekspec.cls $(DSRC)/GT.eps
 	rm $(DSRC)/spec.aux $(DSRC)/spec.toc
 	rm $(DSRC)/spec.lot $(DSRC)/spec.lof
 	rm $(DSRC)/spec.out spec.ps
+## }}}
 
+## zipos.pdf
+## {{{
 zipos.pdf: $(DSRC)/zipos.tex $(DSRC)/gqtekspec.cls $(DSRC)/GT.eps
 	cd $(DSRC)/; latex zipos.tex
 	cd $(DSRC)/; latex zipos.tex
@@ -66,4 +76,4 @@ zipos.pdf: $(DSRC)/zipos.tex $(DSRC)/gqtekspec.cls $(DSRC)/GT.eps
 	rm $(DSRC)/zipos.aux $(DSRC)/zipos.toc
 	rm $(DSRC)/zipos.lot $(DSRC)/zipos.lof
 	rm $(DSRC)/zipos.out zipos.ps
-
+## }}}

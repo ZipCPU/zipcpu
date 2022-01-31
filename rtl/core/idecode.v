@@ -19,7 +19,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -366,10 +366,9 @@ module	idecode #(
 	// {{{
 	generate if (OPT_CIS)
 	begin : GEN_CIS_IMMEDIATE
-		wire	[7:0]	w_halfbits;
-		assign	w_halfbits = iword[CISIMMSEL:16];
+		wire	[7:0]	w_halfI, w_halfbits;
 
-		wire	[7:0]	w_halfI;
+		assign	w_halfbits = iword[CISIMMSEL:16];
 		assign	w_halfI = (iword[26:24]==3'h6) ? w_halfbits[7:0] // 8'b for LDI
 				:(w_halfbits[7])?
 					{ {(6){w_halfbits[2]}}, w_halfbits[1:0]}

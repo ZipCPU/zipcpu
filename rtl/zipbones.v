@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -171,7 +171,7 @@ module	zipbones #(
 	reg	[31:0]	cmd_wdata;
 	wire	[2:0]	cpu_dbg_cc;
 	wire		cpu_reset, cpu_halt, cpu_dbg_stall;
-	wire		cpu_lcl_cyc, cpu_lcl_stb, 
+	wire		cpu_lcl_cyc, cpu_lcl_stb,
 			cpu_op_stall, cpu_pf_stall, cpu_i_count;
 	wire	[31:0]	cpu_dbg_data;
 	wire	[31:0]	cpu_status;
@@ -436,6 +436,7 @@ module	zipbones #(
 		.OPT_DIV(OPT_DIV),
 		.OPT_SHIFTS(OPT_SHIFTS),
 		.IMPLEMENT_FPU(OPT_FPU),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_CIS(OPT_CIS),

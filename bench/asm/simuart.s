@@ -1,7 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Filename:	simuart.s
-;;
+;; {{{
 ;; Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ;;
 ;; Purpose:	
@@ -11,9 +11,9 @@
 ;;		Gisselquist Technology, LLC
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Copyright (C) 2015-2016, Gisselquist Technology, LLC
-;;
+;; }}}
+;; Copyright (C) 2015-2022, Gisselquist Technology, LLC
+;; {{{
 ;; This program is free software (firmware): you can redistribute it and/or
 ;; modify it under the terms of  the GNU General Public License as published
 ;; by the Free Software Foundation, either version 3 of the License, or (at
@@ -23,14 +23,14 @@
 ;; ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 ;; FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 ;; for more details.
-;;
+;; }}}
 ;; License:	GPL, v3, as defined and found on www.gnu.org,
+;; {{{
 ;;		http://www.gnu.org/licenses/gpl.html
-;;
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;
+;; }}}
 	.section .start,"ax",@progbits
 	.global	_start
 	.equ	uart, 0x150
