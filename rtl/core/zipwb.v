@@ -73,7 +73,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -114,6 +114,7 @@ module	zipwb #(
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 		parameter	[0:0]	OPT_START_HALTED=1,
 		parameter	[0:0]	OPT_LOCK=1,
+		parameter	[0:0]	OPT_LOWPOWER = 1'b0,
 		parameter		OPT_LGDCACHE = 10,
 		parameter	[0:0]	OPT_SIM = 1'b1,
 		parameter	[0:0]	OPT_CLKGATE = 1'b0,
@@ -229,6 +230,7 @@ module	zipwb #(
 		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
 		.OPT_USERMODE(OPT_USERMODE),
 		.OPT_LOCK(OPT_LOCK),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.OPT_DBGPORT(OPT_DBGPORT),
 		.OPT_TRACE_PORT(OPT_TRACE_PORT)
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
@@ -503,7 +505,8 @@ module	zipwb #(
 
 		wbdblpriarb	#(
 			.DW(DW),
-			.AW(AW)
+			.AW(AW),
+			.OPT_ZERO_ON_IDLE(OPT_LOWPOWER)
 		) pformem(i_clk, i_reset,
 			// {{{
 			// Memory access to the arbiter, priority position
