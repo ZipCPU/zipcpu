@@ -229,12 +229,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/libnosys/configure.in newlib-
  	;;
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/board.h newlib-4.1.0-zip/libgloss/zip/board.h
 --- newlib-4.1.0/libgloss/zip/board.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/board.h	2020-01-23 16:48:05.857847906 -0500
++++ newlib-4.1.0-zip/libgloss/zip/board.h	2022-01-31 16:44:21.703011719 -0500
 @@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	A description of the hardware and I/O parts and pieces specific
@@ -245,9 +245,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/board.h newlib-4.1.0-zip/
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -262,14 +262,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/board.h newlib-4.1.0-zip/
 +// with this program.  (It's in the $(ROOT)/doc directory, run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifndef	BOARD_H
 +#define	BOARD_H
 +
@@ -452,12 +452,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/board.h newlib-4.1.0-zip/
 +#endif	// BOARD_H
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/boards/zipbasic.h newlib-4.1.0-zip/libgloss/zip/boards/zipbasic.h
 --- newlib-4.1.0/libgloss/zip/boards/zipbasic.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/boards/zipbasic.h	2020-01-23 16:48:05.857847906 -0500
++++ newlib-4.1.0-zip/libgloss/zip/boards/zipbasic.h	2022-01-31 16:44:21.703011719 -0500
 @@ -0,0 +1,219 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	zipbasic.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	A description of the hardware and I/O parts and pieces specific
@@ -468,9 +468,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/boards/zipbasic.h newlib-
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -485,14 +485,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/boards/zipbasic.h newlib-
 +// with this program.  (It's in the $(ROOT)/doc directory, run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifndef	BOARD_H
 +#define	BOARD_H
 +
@@ -675,12 +675,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/boards/zipbasic.h newlib-
 +#endif	// BOARD_H
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/bootloader.h newlib-4.1.0-zip/libgloss/zip/bootloader.h
 --- newlib-4.1.0/libgloss/zip/bootloader.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/bootloader.h	2020-01-23 16:12:26.345174449 -0500
++++ newlib-4.1.0-zip/libgloss/zip/bootloader.h	2022-01-31 16:44:42.342871211 -0500
 @@ -0,0 +1,52 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	bootloader.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
@@ -690,9 +690,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/bootloader.h newlib-4.1.0
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -707,14 +707,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/bootloader.h newlib-4.1.0
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifndef	BOOTLOADER_H
 +#define	BOOTLOADER_H
 +
@@ -4831,12 +4831,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/configure.in newlib-4.1.0
 +
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/crt0.c newlib-4.1.0-zip/libgloss/zip/crt0.c
 --- newlib-4.1.0/libgloss/zip/crt0.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/crt0.c	2020-01-23 16:14:39.972214354 -0500
++++ newlib-4.1.0-zip/libgloss/zip/crt0.c	2022-01-31 16:45:11.674671549 -0500
 @@ -0,0 +1,349 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	crt0.c
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	To start a program from flash, loading its various components
@@ -4925,9 +4925,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/crt0.c newlib-4.1.0-zip/l
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -4937,14 +4937,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/crt0.c newlib-4.1.0-zip/l
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#include "zipcpu.h"
 +#include "board.h"		// Our current board support file
 +#include "bootloader.h"
@@ -5304,12 +5304,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/Makefile.in newlib-4.1.0-
 +	$(SHELL) config.status --recheck
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/syscalls.c newlib-4.1.0-zip/libgloss/zip/syscalls.c
 --- newlib-4.1.0/libgloss/zip/syscalls.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/syscalls.c	2020-01-23 16:17:08.043153235 -0500
++++ newlib-4.1.0-zip/libgloss/zip/syscalls.c	2022-01-31 16:45:29.482550341 -0500
 @@ -0,0 +1,382 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	syscalls.c
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
@@ -5319,9 +5319,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/syscalls.c newlib-4.1.0-z
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -5331,14 +5331,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/syscalls.c newlib-4.1.0-z
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#include <sys/errno.h>
 +#include <stdint.h>
 +#include <sys/unistd.h>
@@ -5690,12 +5690,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/syscalls.c newlib-4.1.0-z
 +
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/udiv.c newlib-4.1.0-zip/libgloss/zip/udiv.c
 --- newlib-4.1.0/libgloss/zip/udiv.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/udiv.c	2020-01-23 16:19:22.566189481 -0500
++++ newlib-4.1.0-zip/libgloss/zip/udiv.c	2022-01-31 16:45:56.006369822 -0500
 @@ -0,0 +1,227 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	udiv.c
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	This is a temporary file--a crutch if you will--until a similar
@@ -5707,9 +5707,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/udiv.c newlib-4.1.0-zip/l
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -5724,14 +5724,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/udiv.c newlib-4.1.0-zip/l
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#include <stdint.h>
 +
 +
@@ -5921,12 +5921,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/udiv.c newlib-4.1.0-zip/l
 +}
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/umod.c newlib-4.1.0-zip/libgloss/zip/umod.c
 --- newlib-4.1.0/libgloss/zip/umod.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/umod.c	2020-01-23 16:19:36.590089025 -0500
++++ newlib-4.1.0-zip/libgloss/zip/umod.c	2022-01-31 16:46:29.682140652 -0500
 @@ -0,0 +1,62 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	umod.c
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	This is a temporary file--a crutch if you will--until a similar
@@ -5944,9 +5944,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/umod.c newlib-4.1.0-zip/l
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -5961,14 +5961,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/umod.c newlib-4.1.0-zip/l
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#include <stdint.h>
 +
 +
@@ -5987,12 +5987,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/umod.c newlib-4.1.0-zip/l
 +
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.c newlib-4.1.0-zip/libgloss/zip/zipcpu.c
 --- newlib-4.1.0/libgloss/zip/zipcpu.c	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/zipcpu.c	2020-01-23 16:02:47.081352607 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipcpu.c	2022-01-31 16:46:46.870023696 -0500
 @@ -0,0 +1,79 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zipsystem.c
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Implements some ZipCPU specific functions.  Specifically, these
@@ -6004,9 +6004,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.c newlib-4.1.0-zip
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -6016,14 +6016,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.c newlib-4.1.0-zip
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#include "zipcpu.h"
 +
 +// Implement a save_context function.  This really boils into a long series of
@@ -6070,12 +6070,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.c newlib-4.1.0-zip
 +
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.h newlib-4.1.0-zip/libgloss/zip/zipcpu.h
 --- newlib-4.1.0/libgloss/zip/zipcpu.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/zipcpu.h	2020-01-23 16:19:54.373961640 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipcpu.h	2022-01-31 16:47:03.077913414 -0500
 @@ -0,0 +1,89 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zipsys.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Declare the capabilities and memory structure of the ZipSystem
@@ -6085,9 +6085,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.h newlib-4.1.0-zip
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -6102,14 +6102,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.h newlib-4.1.0-zip
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifndef	ZIPCPU_H
 +#define	ZIPCPU_H
 +
@@ -6163,12 +6163,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipcpu.h newlib-4.1.0-zip
 +#endif
 diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipsys.h newlib-4.1.0-zip/libgloss/zip/zipsys.h
 --- newlib-4.1.0/libgloss/zip/zipsys.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/libgloss/zip/zipsys.h	2020-01-23 16:20:04.665887921 -0500
++++ newlib-4.1.0-zip/libgloss/zip/zipsys.h	2022-01-31 16:47:21.597787410 -0500
 @@ -0,0 +1,135 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename: 	zipsys.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Declare the capabilities and memory structure of the ZipSystem
@@ -6178,9 +6178,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipsys.h newlib-4.1.0-zip
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -6195,14 +6195,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/libgloss/zip/zipsys.h newlib-4.1.0-zip
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifndef	ZIPSYS_H
 +#define	ZIPSYS_H
 +
@@ -11201,12 +11201,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/configure.in n
 +AC_OUTPUT
 diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h newlib-4.1.0-zip/newlib/libc/machine/zip/ieeefp.h
 --- newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/newlib/libc/machine/zip/ieeefp.h	2020-01-23 16:07:26.331337305 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/ieeefp.h	2022-01-31 16:48:37.261281583 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	ieeefp.h
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	To define, for the sake of newlib, how floating point works
@@ -11217,9 +11217,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h newli
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -11229,14 +11229,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/ieeefp.h newli
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +#ifdef	__ZIPCPU__
 +
 +#ifndef	__IEEE_BIG_ENDIAN
@@ -11727,12 +11727,12 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.h newli
 +#endif
 diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.S newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.S
 --- newlib-4.1.0/newlib/libc/machine/zip/setjmp.S	1969-12-31 19:00:00.000000000 -0500
-+++ newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.S	2020-01-23 16:07:31.563299567 -0500
++++ newlib-4.1.0-zip/newlib/libc/machine/zip/setjmp.S	2022-01-31 16:48:09.061470014 -0500
 @@ -0,0 +1,68 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
 +// Filename:	setjmp.S
-+//
++// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
@@ -11742,9 +11742,9 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.S newli
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2017-2022, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of  the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
@@ -11754,14 +11754,14 @@ diff -Naur '--exclude=*.swp' newlib-4.1.0/newlib/libc/machine/zip/setjmp.S newli
 +// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 +// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 +// for more details.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+//
++// }}}
 +	.text
 +	.align  4
 +	.global setjmp
