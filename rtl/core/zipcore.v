@@ -248,16 +248,17 @@ module	zipcore #(
 	reg		op_valid_div, op_valid_fpu;
 	wire		op_stall;
 	wire	[3:0]	op_opn;
-	reg	[4:0]	op_R;
+	wire	[4:0]	op_R;
 	reg		op_Rcc;
-	reg	[4:0]	op_Aid, op_Bid;
-	reg		op_rA, op_rB;
+	wire	[4:0]	op_Aid, op_Bid;
+	wire		op_rA, op_rB;
 	reg	[31:0]	r_op_Av, r_op_Bv;
-	reg	[(AW+1):0]	op_pc;
+	wire	[AW+1:0]	op_pc;
 	wire	[31:0]	w_op_Av, w_op_Bv, op_Av, op_Bv;
 	reg	[31:0]	w_pcB_v, w_pcA_v;
 	reg	[31:0]	w_op_BnI;
-	reg		op_wR, op_wF;
+	wire		op_wR;
+	reg		op_wF;
 	wire		op_gie;
 	wire	[3:0]	op_Fl;
 	reg	[6:0]	r_op_F;
@@ -812,43 +813,52 @@ module	zipcore #(
 	generate if (OPT_PIPELINED)
 	begin : OP_REG_ADVANEC
 		// {{{
-		initial	op_R   = 0;
-		initial	op_Aid = 0;
-		initial	op_Bid = 0;
-		initial	op_rA  = 0;
-		initial	op_rB  = 0;
+		reg	[4:0]	r_op_R;
+		reg	[4:0]	r_op_Aid, r_op_Bid;
+		reg		r_op_rA, r_op_rB;
+
+		initial	r_op_R   = 0;
+		initial	r_op_Aid = 0;
+		initial	r_op_Bid = 0;
+		initial	r_op_rA  = 0;
+		initial	r_op_rB  = 0;
 		initial	op_Rcc = 0;
 		always @(posedge i_clk)
 		begin
 			if (op_ce && (!OPT_LOWPOWER || w_op_valid))
 			begin
-				op_R   <= dcd_R;
-				op_Aid <= dcd_A;
+				r_op_R   <= dcd_R;
+				r_op_Aid <= dcd_A;
 				if ((dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal))
-					op_Bid <= dcd_B;
-				op_rA  <= (dcd_rA)&&(!dcd_early_branch)&&(!dcd_illegal);
-				op_rB  <= (dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal);
+					r_op_Bid <= dcd_B;
+				r_op_rA  <= (dcd_rA)&&(!dcd_early_branch)&&(!dcd_illegal);
+				r_op_rB  <= (dcd_rB)&&(!dcd_early_branch)&&(!dcd_illegal);
 				op_Rcc <= (dcd_Rcc)&&(dcd_wR)&&(dcd_R[4]==dcd_gie);
 			end
 
 			if (op_lowpower_clear)
 			begin
-				op_rA <= 1'b0;
-				op_rB <= 1'b0;
+				r_op_rA <= 1'b0;
+				r_op_rB <= 1'b0;
 			end
 		end
+
+		assign	op_R   = r_op_R;
+		assign	op_Aid = r_op_Aid;
+		assign	op_Bid = r_op_Bid;
+		assign	op_rA  = r_op_rA;
+		assign	op_rB  = r_op_rB;
 		// }}}
 	end else begin : OP_REG_COPY
 		// {{{
+		assign	op_R = dcd_R;
+		assign	op_Aid = dcd_A;
+		assign	op_Bid = dcd_B;
+		assign	op_rA  = dcd_rA;
+		assign	op_rB  = dcd_rB;
+
 		always @(*)
-		begin
-			op_R   = dcd_R;
-			op_Aid = dcd_A;
-			op_Bid = dcd_B;
-			op_rA  = dcd_rA;
-			op_rB  = dcd_rB;
 			op_Rcc = (dcd_Rcc)&&(dcd_wR)&&(dcd_R[4]==dcd_gie);
-		end
 		// }}}
 	end endgenerate
 	// }}}
@@ -1172,20 +1182,21 @@ module	zipcore #(
 	// {{{
 	generate if ((OPT_PIPELINED)||(OPT_EARLY_BRANCHING))
 	begin
+		reg	r_op_wR;
 
-		initial	op_wR = 1'b0;
+		initial	r_op_wR = 1'b0;
 		always @(posedge i_clk)
 		begin
 			if (op_ce)
-				op_wR <= (dcd_wR)&&(!dcd_early_branch);
+				r_op_wR <= (dcd_wR)&&(!dcd_early_branch);
 			if (op_lowpower_clear)
-				op_wR <= 1'b0;
+				r_op_wR <= 1'b0;
 		end
 
+		assign	op_wR = r_op_wR;
 	end else begin
 
-		always @(*)
-			op_wR = (dcd_wR);
+		assign	op_wR = dcd_wR;
 
 	end endgenerate
 	// }}}
@@ -1235,15 +1246,25 @@ module	zipcore #(
 	generate if ((OPT_PIPELINED)||(OPT_EARLY_BRANCHING))
 	begin : SET_OP_PC
 
-		initial op_pc[0] = 1'b0;
+		reg	[AW+1:0]	r_op_pc;
+
+		initial r_op_pc[0] = 1'b0;
 		always @(posedge i_clk)
-		if (op_ce && (!OPT_LOWPOWER || w_op_valid))
-			op_pc <= (dcd_early_branch)?dcd_branch_pc:dcd_pc;
+		if (op_ce)
+		begin
+			if (dcd_early_branch)
+				// Need to retire an early branch as a NOOP,
+				// to make sure our PC is properly updated
+				r_op_pc <= dcd_branch_pc;
+			else if (!OPT_LOWPOWER || w_op_valid)
+				r_op_pc <= dcd_pc;
+		end
+
+		assign	op_pc = r_op_pc;
 
 	end else begin : SET_OP_PC
 
-		always @(*)
-			op_pc = dcd_pc;
+		assign op_pc = dcd_pc;
 
 	end endgenerate
 	// }}}
@@ -2169,7 +2190,7 @@ module	zipcore #(
 	//	again--doesn't need to be checked again here.
 
 /*
-	// 12 inputs -- since we don't need wr_index
+	// 12 inputs.  This implementation is made worse by wr_index.
 	always @(*)
 	case(wr_index)
 	3'b000: wr_reg_ce  = dbgv;
@@ -2180,7 +2201,7 @@ module	zipcore #(
 	default: wr_reg_ce = (!clear_pipeline)&&(alu_wR && alu_valid);
 	endcase
 */
-	// 9-inputs, so ... two cascaded 6-LUTs w/o FPU?
+	// 7-LUT -- without FPU or wr_index (which wasn't needed)
 	always @(*)
 	begin
 		wr_reg_ce = dbgv || i_mem_valid;
