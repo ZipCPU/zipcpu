@@ -187,13 +187,20 @@ $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 
 .PHONY: $(AXIICC)
 ## {{{
-$(AXIICC): $(AXIICC)_prf/PASS $(AXIICC)_prf64/PASS $(AXIICC)_cvr/PASS
+$(AXIICC): $(AXIICC)_prf/PASS  $(AXIICC)_prf64/PASS  $(AXIICC)_cvr/PASS
+$(AXIICC): $(AXIICC)_prfw/PASS $(AXIICC)_prfw64/PASS $(AXIICC)_cvrw/PASS
 $(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby prf
 $(AXIICC)_prf64/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby prf64
+$(AXIICC)_prfw/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
+	sby -f $(AXIICC).sby prfw
+$(AXIICC)_prfw64/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
+	sby -f $(AXIICC).sby prfw64
 $(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 	sby -f $(AXIICC).sby cvr
+$(AXIICC)_cvrw/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
+	sby -f $(AXIICC).sby cvrw
 ## }}}
 ## }}}
 

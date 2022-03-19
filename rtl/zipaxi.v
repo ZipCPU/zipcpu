@@ -68,6 +68,7 @@ module	zipaxi #(
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
 		parameter [ADDRESS_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
 		parameter [0:0]	START_HALTED = 1'b0,
+		parameter [0:0]	OPT_WRAP   = 1'b1,
 		parameter [0:0]	SWAP_WSTRB = 1'b1,
 		parameter 	OPT_MPY    = 3,
 		parameter [0:0]	OPT_DIV    = 1'b1,
@@ -773,6 +774,7 @@ module	zipaxi #(
 			.AXI_ID(INSN_ID),
 			.LGCACHESZ(OPT_LGICACHE),
 			.LGLINESZ(LGILINESZ),
+			.OPT_WRAP(OPT_WRAP),
 			.OPT_LOWPOWER(OPT_LOWPOWER),
 			// Instruction fetches don't need subword access,
 			// so SWAPWSTRB doesn't make any sense here.
@@ -947,6 +949,7 @@ module	zipaxi #(
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
 			.OPT_LOWPOWER(OPT_LOWPOWER),
 			// .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			// .OPT_WRAP(OPT_WRAP),
 			.OPT_PIPE(OPT_MEMPIPE)
 			// .OPT_LOCK(OPT_LOCK)
 // `ifdef	FORMAL
