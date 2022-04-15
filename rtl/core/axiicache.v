@@ -159,7 +159,7 @@ module	axiicache #(
 	reg	[((1<<(LGLINES))-1):0]	cache_valid;
 	reg	[DW-1:0]	cache_word;
 
-	reg			last_valid, void_access, from_pc, pc_valid,
+	reg			last_valid, from_pc, pc_valid,
 				illegal_valid, request_pending, bus_abort,
 				valid_line;
 	reg	[AW-1:LSB]	pc_tag, last_tag, illegal_tag;
@@ -169,6 +169,10 @@ module	axiicache #(
 	reg			start_read;
 
 	wire			wrap_valid;
+
+	wire	[CWB-LSB-1:0]	axi_line, pc_line, last_line;
+	wire	[AW-CWB-1:0]	axi_tag;
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -178,19 +182,6 @@ module	axiicache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// void_access
-	// {{{
-	initial	void_access = 1;
-	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN || i_cpu_reset || i_clear_cache)
-		void_access <= 1;
-	else if (i_new_pc && i_pc[AW-1:LSB] != o_pc[AW-1:LSB])
-		void_access <= 1;
-	else if (M_AXI_RVALID && M_AXI_RLAST && !OPT_WRAP)
-		void_access <= 1;
-	else
-		void_access <= 0;
-	// }}}
 
 	// from_pc
 	// {{{
@@ -207,13 +198,18 @@ module	axiicache #(
 		from_pc <= 0;
 	// }}}
 
+	assign	axi_line = axi_araddr[CWB-1:LSB];
+	assign	axi_tag  = axi_araddr[AW-1:CWB];
+	assign	pc_line  = i_pc[CWB-1:LSB];
+	assign	last_line= last_pc[CWB-1:LSB];
+
 	//
 	// From the PC
 	// pc_valid
 	// {{{
 	// True if the cache is valid at the address in the program counter
 	always @(posedge S_AXI_ACLK)
-		pc_valid <= cache_valid[i_pc[CWB-1:LSB]];
+		pc_valid <= cache_valid[pc_line];
 	// }}}
 
 	// pc_tag
@@ -221,7 +217,7 @@ module	axiicache #(
 	// Evaluates to the cache tag, at the program counter address for the
 	// incoming/requested program counter
 	always @(posedge S_AXI_ACLK)
-		pc_tag <= { cache_tags[i_pc[CWB-1:LSB]], i_pc[CWB-1:LSB] };
+		pc_tag <= { cache_tags[pc_line], i_pc[CWB-1:LSB] };
 	// }}}
 
 	//
@@ -239,13 +235,13 @@ module	axiicache #(
 	// last_valid
 	// {{{
 	always @(posedge S_AXI_ACLK)
-		last_valid <= cache_valid[last_pc[CWB-1:LSB]];
+		last_valid <= cache_valid[last_line];
 	// }}}
 
 	// last_tag
 	// {{{
 	always @(posedge S_AXI_ACLK)
-		last_tag <={cache_tags[last_pc[CWB-1:LSB]], last_pc[CWB-1:LSB]};
+		last_tag <={cache_tags[last_line], last_pc[CWB-1:LSB]};
 	// }}}
 
 	// valid_line --- are we serving a valid request line?
@@ -290,7 +286,6 @@ module	axiicache #(
 			// 4. Illegal lookup.
 			if (!o_valid && illegal_valid && illegal_tag == last_pc[AW-1:LSB])
 				valid_line = 1;
-			// if (void_access) valid_line = 0;
 		end
 	end
 	// }}}
@@ -445,7 +440,7 @@ module	axiicache #(
 	// {{{
 	always @(posedge S_AXI_ACLK)
 	if (request_pending)
-		cache_tags[axi_araddr[CWB-1:LSB]] <= axi_araddr[AW-1:CWB];
+		cache_tags[axi_line] <= axi_tag;
 	// }}}
 
 	// cache_valid--keep track of which cache entry has valid data w/in it
@@ -455,9 +450,9 @@ module	axiicache #(
 	if (i_cpu_reset || i_clear_cache)
 		cache_valid <= 0;
 	else if (request_pending)
-		cache_valid[axi_araddr[CWB-1:LSB]]
+		cache_valid[axi_line]
 			<= (M_AXI_RVALID && M_AXI_RREADY && M_AXI_RLAST
-				&& !M_AXI_RRESP[1] && !bus_abort);
+				&& !M_AXI_RRESP[1]);
 	// }}}
 
 	// wrap_valid
@@ -1050,7 +1045,6 @@ module	axiicache #(
 		assert(cache_valid == 0);
 		assert(!o_valid);
 		assert(!illegal_valid);
-		assert(void_access);
 	end
 
 	always @(posedge S_AXI_ACLK)
