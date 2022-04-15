@@ -68,11 +68,12 @@ module	axidcache #(
 		// Verilator lint_off UNUSED
 		localparam	LGPIPE = (OPT_PIPE) ? 4:2,
 		// Verilator lint_on  UNUSED
+		parameter [0:0]	OPT_WRAP     = 1'b0,
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
 		// Local parameters, mostly abbreviations
 		// {{{
 		// Verilator lint_off UNUSED
-		localparam [0:0]	OPT_LOCK = 1'b0,
+		parameter [0:0]	OPT_LOCK = 1'b0,
 		// Verilator lint_on  UNUSED
 		localparam [0:0]	OPT_DUAL_READ_PORT = 1'b1,
 		localparam [1:0]	DC_IDLE  = 2'b00,
@@ -97,11 +98,12 @@ module	axidcache #(
 		input	wire		i_pipe_stb, i_lock,
 		input	wire	[2:0]	i_op,
 		input	wire [AW-1:0]	i_addr,
+		input	wire [AW-1:0]	i_restart_pc,
 		input	wire [31:0]	i_data,
 		input	wire [NAUX-1:0]	i_oreg,
 		// Outputs, going back to the CPU
 		output	reg 		o_busy, o_rdbusy,
-		output	reg 		o_pipe_stalled,
+		output	wire 		o_pipe_stalled,
 		output	reg 		o_valid, o_err,
 		output	reg [NAUX-1:0]	o_wreg,
 		output	reg [31:0]	o_data,
@@ -166,6 +168,12 @@ module	axidcache #(
 
 	// Declarations
 	// {{{
+	localparam	[1:0]	INCR = 2'b01,
+				WRAP = 2'b10;
+	localparam	[1:0]	EXOKAY = 2'b01;
+	// Verilator lint_off UNUSED
+	localparam		DSZ = 2;
+	// Verilator lint_on  UNUSED
 
 	// The cache itself
 	// {{{
@@ -178,16 +186,21 @@ module	axidcache #(
 	reg			misaligned;
 
 	wire			cache_miss_inow, address_is_cachable;
+	wire			cachable_request, cachable_read_request;
 
+	wire			i_read, i_write;
 	reg	[AW-AXILSB-1:0]	r_addr;
 	wire	[CS-LS-1:0]	i_cline, r_cline;
 	wire	[CS-1:0]	i_caddr, r_caddr;
 	reg	[TW-1:0]	last_tag, r_itag, r_rtag, w_tag;
 	reg	[CS-LS-1:0]	last_tag_line;
-	wire	[TW-1:0]	r_ctag, i_ctag;
+	wire	[TW-1:0]	r_ctag, i_ctag, axi_tag;
+	wire	[CS-LS-1:0]	axi_line;
 
-	reg			r_iv, r_rv, r_check, w_v;
-	reg			zero_noutstanding, last_ack, full_pipe;
+	reg			r_iv, r_rv, r_check, w_v, set_vflag;
+	reg			zero_noutstanding, last_ack, full_pipe,
+				nearly_full_pipe;
+	wire			w_pipe_stalled;
 	reg	[LGPIPE-1:0]	noutstanding;
 	reg	[CS-1:0]	wcache_addr;
 	reg	[DW-1:0]	wcache_data;
@@ -195,7 +208,7 @@ module	axidcache #(
 	reg	[TW-1:0]	wcache_tag;
 	integer			ik;
 
-	reg			set_vflag, good_cache_read;
+	reg			good_cache_read;
 	reg	[1:0]		state;
 
 	reg			r_dvalid, r_svalid, r_cachable,
@@ -209,6 +222,9 @@ module	axidcache #(
 	reg	[1:0]		suppress_miss;
 	reg	[CS-1:0]	read_addr;
 
+	assign	i_write = i_op[0];
+	assign	i_read  = !i_op[0];
+
 	// AXI registers
 	// {{{
 	reg			axi_awvalid, axi_wvalid;
@@ -216,11 +232,22 @@ module	axidcache #(
 	reg	[DW-1:0]	axi_wdata;
 	reg	[DW/8-1:0]	axi_wstrb;
 	wire	[DW-1:0]	axi_rdata;
+	wire			axi_awlock;
 
 	reg			axi_arvalid;
 	reg	[AW-1:0]	axi_araddr;
 	reg	[7:0]		axi_arlen;
 	reg	[2:0]		axi_arsize;
+	wire	[1:0]		axi_arburst;
+	wire			axi_arlock;
+	// }}}
+
+	// LOCK handling declarations
+	// {{{
+	wire	[AW-1:0]	restart_pc;
+	wire			locked_write_in_progress,
+				locked_read_in_progress,
+				locked_read_in_cache;
 	// }}}
 	// }}}
 
@@ -231,14 +258,14 @@ module	axidcache #(
 	assign	M_AXI_AWLEN = 0;	// All writes are one beat only
 	assign	M_AXI_AWSIZE = 3'b010;	// Write thru cache: All writes are 32-b
 
-	assign	M_AXI_AWBURST = 2'b01;	// INCR addressing only
-	assign	M_AXI_ARBURST = 2'b01;
+	assign	M_AXI_AWBURST = INCR;	// INCR addressing only
+	assign	M_AXI_ARBURST = axi_arburst;
 
-	assign	M_AXI_AWLOCK = 1'b0;	// No lock support (yet)
-	assign	M_AXI_ARLOCK = 1'b0;
+	assign	M_AXI_AWLOCK = OPT_LOCK && axi_awlock;
+	assign	M_AXI_ARLOCK = OPT_LOCK && axi_arlock;
 
-	assign	M_AXI_AWCACHE = 4'b011;
-	assign	M_AXI_ARCACHE = 4'b011;
+	assign	M_AXI_AWCACHE = M_AXI_AWLOCK ? 0 : 4'b011;
+	assign	M_AXI_ARCACHE = M_AXI_ARLOCK ? 0 : 4'b011;
 
 	assign	M_AXI_AWPROT = 3'b0;	// == 3'b001 if GIE is clear, 3'b000 if
 	assign	M_AXI_ARPROT = 3'b0;	// not
@@ -330,35 +357,40 @@ module	axidcache #(
 	);
 	// }}}
 
+	// Locked requests are *not* cachable, but *must* go to the bus
+	assign	cachable_request = address_is_cachable&& (!OPT_LOCK || !i_lock);
+	assign	cachable_read_request = i_pipe_stb && i_read
+						&& cachable_request;
+
 	initial	r_rd_pending = 0;
 	initial	r_cache_miss = 0;
 	initial	last_tag_valid = 0;
 	initial	r_dvalid = 0;
 	always @(posedge S_AXI_ACLK)
 	begin
-		r_svalid <= (i_pipe_stb && !i_op[0] && address_is_cachable
-			&& !misaligned
-			&& !cache_miss_inow && (wcache_strb == 0));
+		r_svalid <= cachable_read_request && !misaligned
+			&& !cache_miss_inow && (wcache_strb == 0);
 
 		if (!o_pipe_stalled)
 			r_addr <= i_addr[AW-1:AXILSB];
 
 		if (!o_pipe_stalled && !r_rd_pending)
 		begin
-			r_cachable <= (!i_op[0] && address_is_cachable && i_pipe_stb);
-			r_rd_pending <= (i_pipe_stb && !i_op[0]
-					&& address_is_cachable
+			r_cachable <= cachable_read_request;
+			r_rd_pending <= cachable_read_request
 					&& !misaligned
-					&& (cache_miss_inow || (|wcache_strb)));
+					&& (cache_miss_inow || (|wcache_strb));
 		end else if (r_rd_pending)
 		begin
 			r_rd_pending <= (w_tag != r_ctag || !w_v);
+			if (OPT_WRAP && M_AXI_RVALID)
+				r_rd_pending <= 0;
 		end
 
 		if (M_AXI_RVALID && M_AXI_RRESP[1])
 			r_rd_pending <= 1'b0;
 
-		// r_rd <= (i_pipe_stb && !i_op[0]);
+		// r_rd <= (i_pipe_stb && !i_read);
 
 		r_dvalid <= !r_svalid && !r_dvalid
 				&& (w_tag == r_ctag) && w_v
@@ -380,6 +412,8 @@ module	axidcache #(
 
 		if (i_clear)
 			last_tag_valid <= 0;
+		if (OPT_PIPE && M_AXI_BVALID && M_AXI_BRESP[1])
+			last_tag_valid <= 0;
 
 		if (!S_AXI_ARESETN || i_cpu_reset)
 		begin
@@ -396,24 +430,43 @@ module	axidcache #(
 	// Transaction counting
 	// {{{
 	initial	noutstanding = 0;
+	initial	zero_noutstanding = 1;
+	initial	nearly_full_pipe = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
+	begin
 		noutstanding <= 0;
-	else case( { ((M_AXI_AWVALID && M_AXI_AWREADY)
+		zero_noutstanding <= 1;
+		nearly_full_pipe <= 0;
+	end else case( { ((M_AXI_AWVALID && M_AXI_AWREADY)
 					||(M_AXI_ARVALID && M_AXI_ARREADY)),
 			((M_AXI_RVALID && M_AXI_RLAST) || M_AXI_BVALID)
 			})
-	2'b10: noutstanding <= noutstanding + 1;
-	2'b01: noutstanding <= noutstanding - 1;
+	2'b10: begin
+		noutstanding <= noutstanding + 1;
+		zero_noutstanding <= 1'b0;
+		nearly_full_pipe <= (noutstanding >= (1<<LGPIPE)-3);
+		end
+	2'b01: begin
+		noutstanding <= noutstanding - 1;
+		zero_noutstanding <= (noutstanding == 1);
+		nearly_full_pipe <= (&noutstanding);
+		end
 	default: begin end
 	endcase
 
+`ifdef	FORMAL
 	always @(*)
-		zero_noutstanding = (noutstanding == 0);
+	begin
+		assert(zero_noutstanding == (noutstanding == 0));
+		assert(nearly_full_pipe == (noutstanding >= (1<<LGPIPE)-2));
+	end
+`endif
+
 	always @(*)
 	begin
 		full_pipe = 1'b0;
-		if (&noutstanding[LGPIPE-1:1])
+		if (nearly_full_pipe)
 			full_pipe = noutstanding[0]
 					|| (M_AXI_AWVALID || M_AXI_WVALID);
 	end
@@ -476,11 +529,11 @@ module	axidcache #(
 		DC_IDLE: begin
 			// {{{
 			good_cache_read <= 1'b1;
-			if (i_pipe_stb && i_op[0] && !misaligned)
+			if (i_pipe_stb && i_write && !misaligned)
 				state <= DC_WRITE;
 			else if (w_cache_miss)
 				state <= DC_READC;
-			else if (i_pipe_stb && !i_op[0] && !address_is_cachable
+			else if (i_pipe_stb && i_read && !cachable_request
 					&& !misaligned)
 				state <= DC_READS;
 
@@ -488,7 +541,7 @@ module	axidcache #(
 				state <= DC_IDLE;
 			end
 			// }}}
-		DC_READC: begin
+		DC_READC: begin	// Read cache line
 			// {{{
 			if (M_AXI_RVALID)
 			begin
@@ -502,7 +555,7 @@ module	axidcache #(
 				set_vflag <= !i_cpu_reset && !i_clear && !flushing && !M_AXI_RRESP[1] && good_cache_read;
 			end end
 			// }}}
-		DC_READS: begin
+		DC_READS: begin	// Read single value
 			// {{{
 			if (M_AXI_RVALID && last_ack)
 				state <= DC_IDLE;
@@ -519,8 +572,73 @@ module	axidcache #(
 
 		if (i_clear || i_cpu_reset)
 			cache_valid <= 0;
+		if (OPT_PIPE && M_AXI_BVALID && M_AXI_BRESP[1])
+			cache_valid <= 0;
 		// }}}
 	end
+	// }}}
+
+	// axi_axlock
+	// {{{
+	generate if (OPT_LOCK)
+	begin : GEN_AXLOCK
+
+		reg		r_arlock, r_awlock;
+		reg	[2:0]	r_read_in_cache;
+
+		initial	r_arlock = 1'b0;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			r_arlock <= 1'b0;
+		else if (i_pipe_stb)
+		begin
+			r_arlock <= i_lock;
+
+			if (misaligned || i_write)
+				r_arlock <= 1'b0;
+		end else if (M_AXI_RVALID)
+			r_arlock <= 1'b0;
+
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN || r_rd_pending || M_AXI_RVALID)
+			r_read_in_cache <= 3'b00;
+		else if (i_pipe_stb)
+		begin
+			r_read_in_cache <= 3'b00;
+			r_read_in_cache[0] <= address_is_cachable && i_read && i_lock;
+		end else if (r_read_in_cache != 0)
+		begin
+			r_read_in_cache[2:1] <= { r_read_in_cache[1:0] };
+			if (r_read_in_cache[1] && ((w_tag != r_ctag) || !w_v))
+				r_read_in_cache <= 0;
+				// && (w_tag == r_ctag) && w_v
+		end
+
+		initial	r_awlock = 1'b0;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			r_awlock <= 1'b0;
+		else if (i_pipe_stb)
+		begin
+			r_awlock <= i_lock;
+
+			if (misaligned || i_read)
+				r_awlock <= 1'b0;
+		end else if (M_AXI_BVALID)
+			r_awlock <= 1'b0;
+
+		assign	locked_write_in_progress = r_awlock;
+		assign	locked_read_in_progress  = r_arlock;
+		assign	locked_read_in_cache = r_read_in_cache[2];
+		assign	axi_awlock = r_awlock;
+		assign	axi_arlock = r_arlock;
+	end else begin
+		assign	axi_awlock = 1'b0;
+		assign	axi_arlock = 1'b0;
+		assign	locked_write_in_progress = 1'b0;
+		assign	locked_read_in_progress  = 1'b0;
+		assign	locked_read_in_cache = 1'b0;
+	end endgenerate
 	// }}}
 
 	// M_AXI_ARVALID, axi_arvalid
@@ -537,7 +655,8 @@ module	axidcache #(
 	else if (!M_AXI_ARVALID || M_AXI_ARREADY)
 	begin
 		axi_arvalid <= 1'b0;
-		if (i_pipe_stb && !i_op[0] && !misaligned && !address_is_cachable)
+		if (i_pipe_stb && i_read && !misaligned
+			&& ((OPT_LOCK && i_lock) || !address_is_cachable))
 			axi_arvalid <= 1;
 		if (w_cache_miss)
 			axi_arvalid <= 1;
@@ -567,7 +686,11 @@ module	axidcache #(
 		if (r_cache_miss)
 		begin
 			// {{{
-			axi_araddr <= { r_ctag, r_cline, {(LS+AXILSB){1'b0}} };
+			if (OPT_WRAP)
+				axi_araddr <= { r_ctag, r_caddr[CS-1:0],
+							{(AXILSB){1'b0}} };
+			else
+				axi_araddr <= { r_ctag, r_cline, {(LS+AXILSB){1'b0}} };
 			axi_arlen  <= (1 << LS) - 1;
 			axi_arsize <= AXILSB[2:0];
 			// }}}
@@ -603,9 +726,43 @@ module	axidcache #(
 		end
 	end
 
+	assign	axi_tag  = axi_araddr[AW-1:AW-TW];
+	assign	axi_line = axi_araddr[AXILSB+LS +: CS-LS];
+
 	assign	M_AXI_ARADDR = axi_araddr;
 	assign	M_AXI_ARLEN  = axi_arlen;
 	assign	M_AXI_ARSIZE = axi_arsize;
+	// }}}
+
+	// M_AXI_ARBURST
+	// {{{
+	generate if (OPT_WRAP)
+	begin : GEN_ARBURST
+		reg	r_wrap;
+
+		initial	r_wrap = 1'b0;
+		always @(posedge S_AXI_ACLK)
+		if (OPT_LOWPOWER && !S_AXI_ARESETN)
+		begin
+			// {{{
+			r_wrap <= 1'b0;
+			// }}}
+		end else if (!M_AXI_ARVALID || M_AXI_ARREADY)
+		begin
+			// {{{
+			r_wrap <= 1'b0;
+			if (r_cache_miss)
+				r_wrap <= 1'b1;
+			// }}}
+		end
+
+		assign	axi_arburst = r_wrap ? WRAP : INCR;
+
+	end else begin : NO_WRAPBURST
+
+		assign	axi_arburst = INCR;
+	end endgenerate
+
 	// }}}
 	// }}}
 
@@ -802,8 +959,16 @@ module	axidcache #(
 	begin
 		wcache_strb <= 0;
 
-		if (i_pipe_stb)
-			read_addr <= { i_addr[LGCACHELEN-1:AXILSB+LS], {(LS){1'b0}} };
+		if (i_pipe_stb && (!OPT_LOWPOWER || i_read))
+		begin
+			if (i_lock && OPT_LOCK)
+				read_addr <= i_addr[LGCACHELEN-1:AXILSB];
+			else if (OPT_WRAP)
+				read_addr <= i_addr[LGCACHELEN-1:AXILSB];
+			else
+				read_addr <= { i_addr[LGCACHELEN-1:AXILSB+LS], {(LS){1'b0}} };
+		end
+
 		if (state == DC_READC)
 		begin
 			// {{{
@@ -820,11 +985,64 @@ module	axidcache #(
 				wcache_strb <= 0;
 			wcache_tag  <= w_tag;
 			// }}}
+		end else if (0 && state == DC_READS && OPT_LOCK)
+		begin
+			// {{{
+			// FIXME TODO
+			wcache_addr <= read_addr;
+			wcache_data <= axi_rdata;
+			wcache_tag  <= w_tag;
+
+			// wcache_data
+			// {{{
+			if (OPT_LOWPOWER && !M_AXI_RVALID)
+				wcache_data <= 0;
+			// }}}
+
+			// wcache_strb
+			// {{{
+			if (SWAP_WSTRB)
+			begin
+				case(i_op[2:1])
+				// Write a 16b half-word
+				2'b10: wcache_strb<=
+					{ 2'h3, {(C_AXI_DATA_WIDTH/8-2){1'b0}} }
+						>> (read_addr[AXILSB-1:0]);
+				// Write an 8b byte
+				2'b11: wcache_strb<=
+					{ 1'b1, {(C_AXI_DATA_WIDTH/8-1){1'b0}} }
+						>> (read_addr[AXILSB-1:0]);
+				default: wcache_strb<=
+					{ 4'hf, {(C_AXI_DATA_WIDTH/8-4){1'b0}} }
+						>> (read_addr[AXILSB-1:0]);
+				endcase
+			end else begin
+				case(i_op[2:1])
+				// Write a 16b half-word
+				2'b10: wcache_strb<=
+					{ {(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'h3 }
+						<< (read_addr[AXILSB-1:0]);
+				// Write an 8b byte
+				2'b11: wcache_strb<=
+					{ {(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'h1 }
+						<< (read_addr[AXILSB-1:0]);
+				default: wcache_strb<=
+					{{(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'hf }
+						<< (read_addr[AXILSB-1:0]);
+				endcase
+			end
+			// }}}
+
+			if (!M_AXI_RVALID || flushing || i_cpu_reset
+				|| M_AXI_RRESP[1])
+				wcache_strb <= 0;
+			// }}}
 		end else begin
 			// {{{
-			wcache_data <= { {(DW-32){1'b0}}, i_data } << (8*i_addr[AXILSB-1:0]);
 			if (i_pipe_stb)
 				{ wcache_tag, wcache_addr } <= i_addr[AW-1:AXILSB];
+			else if (locked_read_in_progress)
+				wcache_addr <= read_addr;
 			else
 				wcache_addr[LS-1:0] <= 0;
 
@@ -857,6 +1075,9 @@ module	axidcache #(
 					i_data } << (8*i_addr[AXILSB-1:0]);
 				endcase
 			end
+
+			if (locked_read_in_progress)
+				wcache_data <= axi_rdata;
 			// }}}
 
 			// wcache_strb
@@ -893,7 +1114,12 @@ module	axidcache #(
 			end
 			// }}}
 
-			if (!i_pipe_stb || !i_op[0] || misaligned)
+			if (locked_read_in_progress)
+			begin
+				if (!locked_read_in_cache || !M_AXI_RVALID
+						|| M_AXI_RRESP != EXOKAY)
+					wcache_strb <= 0;
+			end else if (!i_pipe_stb || !i_op[0] || misaligned)
 				wcache_strb <= 0;
 			// }}}
 		end
@@ -927,8 +1153,10 @@ module	axidcache #(
 		o_busy <= 1'b1;
 	else if (state  == DC_READS && M_AXI_RVALID && last_ack)
 		o_busy <= 1'b0;
-	// else if (state  == DC_READC && M_AXI_RVALID && M_AXI_RLAST)
-	else if (r_dvalid || r_svalid)
+	else if (OPT_WRAP && state  == DC_READC && M_AXI_RVALID && M_AXI_RLAST
+			&& !r_rd_pending)
+		o_busy <= 1'b0;
+	else if ((r_dvalid || r_svalid) && (!OPT_WRAP || state == DC_IDLE))
 		o_busy <= 1'b0;
 	else if (M_AXI_BVALID && last_ack && (!OPT_PIPE || !i_pipe_stb))
 		o_busy <= 1'b0;
@@ -942,11 +1170,13 @@ module	axidcache #(
 		o_rdbusy <= 1'b0;
 	else if (i_cpu_reset)
 		o_rdbusy <= 1'b0;
-	else if (i_pipe_stb && !i_op[0] && !misaligned)
+	else if (i_pipe_stb && (i_read || (i_lock && OPT_LOCK))&& !misaligned)
 		o_rdbusy <= 1'b1;
 	else if (state == DC_READS && M_AXI_RVALID)
 		o_rdbusy <= 1'b0;
-	else if (state == DC_READC && M_AXI_RVALID && M_AXI_RRESP[1])
+	else if (state == DC_READC && M_AXI_RVALID && (OPT_WRAP || M_AXI_RRESP[1]))
+		o_rdbusy <= 1'b0;
+	else if (locked_write_in_progress && M_AXI_BVALID)
 		o_rdbusy <= 1'b0;
 	else if (r_svalid || r_dvalid)
 		o_rdbusy <= 1'b0;
@@ -954,19 +1184,118 @@ module	axidcache #(
 
 	// o_pipe_stalled
 	// {{{
-	always @(*)
-	if (!OPT_PIPE)
-		o_pipe_stalled = o_busy;
-	else if (o_rdbusy || flushing)
-		o_pipe_stalled = 1'b1;
-	else if (M_AXI_AWVALID && !M_AXI_AWREADY)
-		o_pipe_stalled = 1'b1;
-	else if (M_AXI_WVALID && !M_AXI_WREADY)
-		o_pipe_stalled = 1'b1;
-	else if (full_pipe)
-		o_pipe_stalled = 1'b1;
-	else
-		o_pipe_stalled = 1'b0;
+	generate if (OPT_PIPE)
+	begin : GEN_PIPE_STALL
+		reg	r_pipe_stalled, pipe_stalled;
+		(* keep *) reg	[3:0]	r_pipe_code;
+
+	// else case( { ((M_AXI_AWVALID && M_AXI_AWREADY)
+	//				||(M_AXI_ARVALID && M_AXI_ARREADY)),
+	//		((M_AXI_RVALID && M_AXI_RLAST) || M_AXI_BVALID)
+	//		})
+	// 2'b10: noutstanding <= noutstanding + 1;
+	// 2'b01: noutstanding <= noutstanding - 1;
+
+		initial	r_pipe_stalled = 1'b0;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+		begin
+			r_pipe_stalled <= 1'b0;
+			r_pipe_code = 4'h0;
+		end else begin
+			// Clear any stall on the last outstanding bus response
+			if ((!OPT_WRAP && r_dvalid) || (OPT_WRAP
+				&& state == DC_READC
+						&& M_AXI_RVALID && M_AXI_RLAST))
+			begin
+				r_pipe_stalled <= 1'b0;
+				r_pipe_code  <= 4'h1;
+			end
+			if (r_svalid)
+			begin
+				r_pipe_stalled <= 1'b0;
+				r_pipe_code  <= 4'h2;
+			end
+			if (last_ack && (M_AXI_BVALID || (!r_rd_pending && M_AXI_RVALID && M_AXI_RLAST)))
+			begin
+				r_pipe_stalled <= 1'b0;
+				r_pipe_code <= 4'h3;
+			end
+
+			// If we have to start flushing, then we have to stall
+			// while flushing
+
+			if (i_cpu_reset
+			|| (M_AXI_RVALID && M_AXI_RRESP[1])
+			|| (M_AXI_BVALID && M_AXI_BRESP[1])
+			|| (OPT_PIPE && i_pipe_stb && misaligned))
+			begin
+			// {{{
+			r_pipe_stalled <= 1'b0;
+			r_pipe_code <= 4'ha;
+
+			// Always stall if we have to start flushing
+			if (M_AXI_ARVALID || M_AXI_AWVALID || M_AXI_WVALID)
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h4;
+			end
+			if (!last_ack)
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h5;
+			end
+			if ((noutstanding >= 1) && !M_AXI_BVALID
+						&& (!M_AXI_RVALID || !M_AXI_RLAST))
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h6;
+			end
+			// }}}
+			end
+
+			// All cachable read requests will stall our pipeline
+			if (!i_cpu_reset && i_pipe_stb && i_read && !misaligned)
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h7;
+			end
+			if (!i_cpu_reset && i_pipe_stb && i_lock && !misaligned)
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h8;
+			end
+
+			if (flushing && (M_AXI_AWVALID || M_AXI_ARVALID || M_AXI_WVALID))
+			begin
+				r_pipe_stalled <= 1'b1;
+				r_pipe_code <= 4'h9;
+			end
+		end
+
+		always @(*)
+		if (r_pipe_stalled)
+			pipe_stalled = 1'b1;
+		else if (M_AXI_AWVALID && !M_AXI_AWREADY)
+			pipe_stalled = 1'b1;
+		else if (M_AXI_WVALID && !M_AXI_WREADY)
+			pipe_stalled = 1'b1;
+		else if (full_pipe)
+			pipe_stalled = 1'b1;
+		else
+			pipe_stalled = 1'b0;
+
+		assign	w_pipe_stalled = r_pipe_stalled;
+		assign	o_pipe_stalled = pipe_stalled;
+	end else begin : PIPE_STALL_ON_BUSY
+		assign	w_pipe_stalled = 1'b0;
+		assign	o_pipe_stalled = o_busy;
+
+		// Verilator lint_off UNUSED
+		wire	unused_pipe;
+		assign	unused_pipe = &{ 1'b0, full_pipe };
+		// Verilator lint_on  UNUSED
+	end endgenerate
 	// }}}
 
 	// o_wreg
@@ -974,7 +1303,33 @@ module	axidcache #(
 	// generate if (!OPT_PIPE)
 	always @(posedge S_AXI_ACLK)
 	if (i_pipe_stb)
+	begin
 		o_wreg <= i_oreg;
+		if (OPT_LOCK && i_lock && i_op[0])
+			o_wreg <= { i_oreg[4], i_oreg[3:0] };
+	end
+	// }}}
+
+	// restart_pc
+	// {{{
+	generate if (OPT_LOCK)
+	begin : GEN_RESTART_PC
+		reg	[AW-1:0]	r_pc;
+
+		always @(posedge S_AXI_ACLK)
+		if (i_pipe_stb && i_lock && i_op[0])
+			r_pc <= i_restart_pc;
+
+		assign	restart_pc = r_pc;
+
+	end else begin
+		assign	restart_pc = 0;
+
+		// Verilator lint_off UNUSED
+		wire	unused_restart_pc;
+		assign	unused_restart_pc = &{ 1'b0, i_restart_pc };
+		// Verilator lint_on  UNUSED
+	end endgenerate
 	// }}}
 
 	// req_data
@@ -997,7 +1352,10 @@ module	axidcache #(
 		o_err <= 1'b0;
 	else begin
 		o_err <= 1'b0;
-		if (M_AXI_RVALID && M_AXI_RRESP[1])
+		if (M_AXI_RVALID && M_AXI_RRESP[1] && o_rdbusy && !r_dvalid)
+			o_err <= 1'b1;
+		if (M_AXI_RVALID && locked_read_in_progress
+						&& M_AXI_RRESP != EXOKAY)
 			o_err <= 1'b1;
 		if (M_AXI_BVALID && M_AXI_BRESP[1])
 			o_err <= 1'b1;
@@ -1032,7 +1390,7 @@ module	axidcache #(
 	always @(*)
 	if (r_svalid)
 		pre_data = cached_iword;
-	else if (state == DC_READS)
+	else if (state == DC_READS || (OPT_WRAP && state == DC_READC))
 		pre_data = axi_rdata;
 	else
 		pre_data = cached_rword;
@@ -1068,6 +1426,12 @@ module	axidcache #(
 			default: begin end
 			endcase
 		end
+
+		if (locked_write_in_progress)
+		begin
+			o_data <= 0;
+			o_data[AW-1:0] <= restart_pc;
+		end
 	end
 	// }}}
 
@@ -1078,7 +1442,15 @@ module	axidcache #(
 	if (i_cpu_reset || flushing)
 		o_valid <= 1'b0;
 	else if (state == DC_READS)
+	begin
 		o_valid <= M_AXI_RVALID && !M_AXI_RRESP[1];
+		if (OPT_LOCK && locked_read_in_progress && M_AXI_RRESP != EXOKAY)
+			o_valid <= 0;
+	end else if (locked_write_in_progress && M_AXI_BVALID
+						&& M_AXI_BRESP != EXOKAY)
+		o_valid <= 1'b1;
+	else if (OPT_WRAP && r_rd_pending && state == DC_READC)
+		o_valid <= M_AXI_RVALID  && !M_AXI_RRESP[1];
 	else
 		o_valid <= r_svalid || r_dvalid;
 	// }}}
@@ -1089,6 +1461,7 @@ module	axidcache #(
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, r_addr, M_AXI_RRESP[0],
 				M_AXI_BRESP[0], i_lock, shifted_data,
+				w_pipe_stalled, axi_tag, axi_line,
 				rev_addr[C_AXI_ADDR_WIDTH-1:AXILSB] };
 	// Verilator lint_on UNUSED
 	// }}}
@@ -1143,10 +1516,12 @@ module	axidcache #(
 	wire	[F_LGDEPTH-1:0]	faxi_rdid_bursts_to_lock;
 	wire	[F_LGDEPTH-1:0]	faxi_wrid_bursts_to_exwrite;
 	wire			faxi_active_lock;
-	wire	[AW-1:0]	faxi_exlock_addr,  faxi_exreq_addr;
+	wire	[AW-1:0]	faxi_exreq_addr;
 	wire	[7:0]		faxi_exlock_len,   faxi_exreq_len;
 	wire	[1:0]		faxi_exlock_burst, faxi_exreq_burst;
-	wire	[2:0]		faxi_exlock_size,  faxi_exreq_size;
+	wire	[2:0]		faxi_exreq_size;
+	reg	[AW-1:0]	faxi_exlock_addr;
+	reg	[2:0]		faxi_exlock_size;
 	wire			faxi_exreq_return;
 	// Verilator lint_on  UNUSED
 	// Verilator lint_on  UNDRIVEN
@@ -1314,11 +1689,22 @@ module	axidcache #(
 		assert(!M_AXI_WVALID);
 		assert(faxi_awr_nbursts == 0);
 		assert(o_busy);
-		assert(flushing || o_rdbusy);
+		if (r_rd_pending)
+		begin
+			assert(o_rdbusy);
+		end
+		if (flushing)
+			assert(!o_rdbusy);
+		assert(!locked_write_in_progress);
 	end else if (faxi_awr_nbursts > 0)
 	begin
+		assert(!locked_read_in_progress);
 		assert(o_busy);
-		assert(!o_rdbusy);	// || OPT_LOCK && LOCKD WRITE
+		if (locked_write_in_progress)
+		begin
+			assert(o_rdbusy);
+		end else
+			assert(!o_rdbusy);	// || OPT_LOCK && LOCKD WRITE
 		assert(!M_AXI_ARVALID);
 		// assert(f_wr_pending == (M_AXI_WVALID ? 1:0));
 	end
@@ -1350,7 +1736,7 @@ module	axidcache #(
 		assert(faxi_wr_burst == M_AXI_AWBURST);
 		assert(faxi_wr_size == M_AXI_AWSIZE);
 		assert(faxi_wr_len == 8'h00);
-		assert(faxi_wr_lockd == 1'b0);
+		assert(faxi_wr_lockd == locked_write_in_progress);
 	end
 	// }}}
 
@@ -1359,13 +1745,59 @@ module	axidcache #(
 	always @(*)
 	if (!cpu_read_cycle)
 	begin
-		assert(flushing || (faxi_rd_nbursts == 0));
-		// Verilator lint_off WIDTH
-		assert(flushing || o_err || (cpu_outstanding == faxi_awr_nbursts
+		if (OPT_WRAP && state == DC_READC)
+		begin
+			assert(!r_rd_pending);
+			assert(faxi_rd_nbursts == (M_AXI_ARVALID ? 0:1));
+			assert(faxi_awr_nbursts == 0);
+		end else begin
+			assert(flushing || (faxi_rd_nbursts == 0));
+			// Verilator lint_off WIDTH
+			assert(flushing || o_err
+				|| (cpu_outstanding == faxi_awr_nbursts
 					+ (M_AXI_AWVALID ? 1:0)));
-		// Verilator lint_on  WIDTH
+			// Verilator lint_on  WIDTH
+		end
 	end else // if (!flushing)
 		assert(faxi_awr_nbursts == 0);
+	// }}}
+
+	// Read request checking
+	// {{{
+	always @(*)
+	if (!S_AXI_ARESETN)
+	begin end
+	else if (state == DC_IDLE || state == DC_WRITE)
+	begin
+		assert(!M_AXI_ARVALID);
+		assert(flushing || faxi_rd_outstanding == 0);
+	end else if (M_AXI_ARVALID && !flushing)
+	begin
+		assert(faxi_rd_outstanding == 0);
+		if (state == DC_READC)
+		begin
+			assert(M_AXI_ARBURST == (OPT_WRAP) ? WRAP : INCR);
+			assert(!M_AXI_ARLOCK);
+			assert(M_AXI_ARLEN == (1 << LS) - 1);
+			assert(M_AXI_ARADDR[AW-1:CS+AXILSB] == r_ctag);
+			assert(axi_tag == r_ctag);
+			assert(M_AXI_ARADDR[CS+AXILSB-1:LS+AXILSB] == r_cline);
+			assert(axi_line == r_cline);
+			assert(M_AXI_ARADDR[AXILSB-1:0] == 0);
+			if (!OPT_WRAP)
+			begin
+				assert(read_addr[LS-1:0] == 0);
+			end
+			assert(M_AXI_ARADDR[AXILSB +: CS] == read_addr);
+		end else begin
+			assert(state == DC_READS);
+			assert(M_AXI_ARBURST == INCR);
+			assert(M_AXI_ARLEN   == 0);
+			assert(M_AXI_ARLOCK == locked_read_in_progress);
+			if (locked_read_in_progress || OPT_WRAP)
+				assert(M_AXI_ARADDR[AXILSB +: CS] == read_addr);
+		end
+	end
 	// }}}
 
 	// Read packet checking
@@ -1384,26 +1816,28 @@ module	axidcache #(
 	begin
 		// .f_axi_rd_cklen(	faxi_rd_cklen),
 		// .f_axi_rd_ckaddr(	faxi_rd_ckaddr),
-		assert(faxi_rd_ckburst == 2'b01);
-		assert(!faxi_rd_cklockd);
 		if (state == DC_READC)
 		begin
 			// Read to cache
-			assert(faxi_rd_ckarlen == ((1<< LS)-1));
+			assert(faxi_rd_ckarlen == (1 << LS) - 1);
 			assert(faxi_rd_nbursts == 1);
 			assert(faxi_rd_cksize  == AXILSB[2:0]);
-			assert(faxi_rd_ckarlen == (1 << LS) - 1);
-			assert(faxi_rd_lastaddr[AXILSB-1:0] == 0);
-			assert(&faxi_rd_lastaddr[AXILSB +: LS]);
+			if (!OPT_WRAP)
+			begin
+				assert(faxi_rd_lastaddr[AXILSB-1:0] == 0);
+				assert(&faxi_rd_lastaddr[AXILSB +: LS]);
+			end
 			assert(last_ack == (axi_arvalid ? 0:1));
 			assert(r_ctag == faxi_rd_ckaddr[AW-1:CS+AXILSB]);
 			assert(!faxi_rd_cklockd);
+			assert(faxi_rd_ckburst == (OPT_WRAP) ? WRAP : INCR);
 			// Need to verify wcache_addr
 		end else begin
 			// Single, uncachable reads
 			// assert(!w_v || wcache_tag != r_ctag);
 			assert(faxi_rd_ckarlen == 0);
-			assert(!faxi_rd_cklockd);
+			assert(locked_read_in_progress == faxi_rd_cklockd);
+			assert(faxi_rd_ckburst == INCR);
 			if (SWAP_WSTRB)
 			begin
 				assert(faxi_rd_cksize == 3'b010);
@@ -1428,6 +1862,7 @@ module	axidcache #(
 	fmem #(
 		// {{{
 		.OPT_LOCK(OPT_LOCK),
+		.OPT_AXI_LOCK(OPT_LOCK),
 		.F_LGDEPTH(LGPIPE+1),
 		.OPT_MAXDEPTH((OPT_PIPE) ? ((1<<LGPIPE)-1) : 1)
 		// }}}
@@ -1468,7 +1903,8 @@ module	axidcache #(
 		assert(cpu_outstanding <= 1);
 
 	always @(*)
-	if (o_rdbusy && (cpu_outstanding == 1 + ((f_done || o_err) ? 1:0)))
+	if (o_rdbusy && (cpu_outstanding == 1 + ((f_done || o_err) ? 1:0))
+			&& (r_rd_pending))
 		assert(o_pipe_stalled);
 
 	always @(*)
@@ -1488,11 +1924,48 @@ module	axidcache #(
 		assert(!cpu_lockd_write_cycle);
 
 	always @(*)
-	if (o_rdbusy)
+	if (o_rdbusy && !locked_write_in_progress)
 	begin
 		assert(cpu_gie == o_wreg[4]);
 		assert(cpu_last_reg == o_wreg);
 	end
+
+	always @(*)
+	if (S_AXI_ARESETN
+		&& (locked_write_in_progress || locked_read_in_progress))
+	begin
+		assert(OPT_LOCK);
+		assert(o_pipe_stalled);
+	end
+
+	always @(*)
+	if (S_AXI_ARESETN && OPT_PIPE
+		&& (locked_write_in_progress || locked_read_in_progress))
+	begin
+		assert(w_pipe_stalled);
+	end
+
+	always @(*)
+	if (OPT_PIPE && state == DC_READC)
+		assert(w_pipe_stalled);
+
+	always @(*)
+	if (OPT_PIPE && flushing)
+		assert(w_pipe_stalled);
+
+	always @(posedge S_AXI_ACLK)
+	if (S_AXI_ARESETN && OPT_PIPE && $past(S_AXI_ARESETN))
+	begin
+		if ($past(!i_cpu_reset && i_pipe_stb && i_read && !misaligned))
+			assert(w_pipe_stalled);
+		else if (M_AXI_ARVALID)
+			assert(o_pipe_stalled);
+		else if ((faxi_rd_nbursts == 0) && (faxi_awr_nbursts == 0)
+				&& !r_rd_pending && !r_svalid && !r_dvalid
+				&& (!M_AXI_AWVALID && !M_AXI_WVALID))
+			assert(!w_pipe_stalled);
+	end
+
 	// }}}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1556,7 +2029,7 @@ module	axidcache #(
 		end else begin
 			assert(faxi_awr_nbursts == noutstanding);
 		end
-		assert(!o_rdbusy);
+		assert(o_rdbusy == locked_write_in_progress);
 		assert(!cpu_read_cycle);
 		assert(o_busy);
 		assert(!r_rd_pending);
@@ -1577,23 +2050,24 @@ module	axidcache #(
 		// assert(faxi_rd_nbursts == 0);
 		assert(noutstanding == (M_AXI_ARVALID ? 0:1));
 		assert(faxi_awr_nbursts == 0);
-		assert(flushing || o_rdbusy);
+		assert(flushing || (OPT_WRAP || o_rdbusy));
 		assert(o_busy);
-		assert(r_rd_pending || flushing);
-		assert(r_cache_miss || flushing);
 		assert(faxi_rd_nbursts == (M_AXI_ARVALID ? 0:1));
 		assert(faxi_rd_outstanding <= (1<<LS));
-		assert(!r_dvalid);
+		assert(OPT_WRAP || r_cache_miss || flushing);
+		assert(OPT_WRAP || !r_dvalid);
 		assert(!r_svalid);
 		assert(good_cache_read || flushing);
 		assert(wcache_addr[CS-1:LS] == r_cline);
 		assert(read_addr[CS-1:LS] == r_cline);
+		if (!OPT_WRAP)
+			assert(r_rd_pending || flushing);
 		if (flushing)
 		begin
 			assert(!r_rd_pending);
 			assert(cpu_outstanding == (o_err ? 1:0));
 		end else
-			assert(r_rd_pending);
+			assert(OPT_WRAP || r_rd_pending);
 		end
 		// }}}
 	DC_READS: begin
@@ -1625,7 +2099,7 @@ module	axidcache #(
 	//   2. Can't handle the wrong cache read ...
 	//
 	*/
-	reg	[2:0]	f_read_state;
+	reg	[3:0]	f_read_state;
 	(* anyconst *) reg f_never_err;
 
 	always @(*)
@@ -1636,46 +2110,58 @@ module	axidcache #(
 	end
 
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN || !f_never_err)
+	if (!S_AXI_ARESETN) // || !f_never_err)
 		f_read_state <= 0;
 	else if (i_cpu_reset)
 		f_read_state <= 0;
 	else case(f_read_state)
-	3'b000: begin
+	4'h0: begin // Idle.  What operation do we start?
+		// {{{
 		assert(!r_rd_pending);
+		assert(!set_vflag);
 		if (!flushing)
-			assert(state == DC_IDLE || state == DC_WRITE);
-		if (!flushing && i_pipe_stb && !i_op[0] && !misaligned)
 		begin
-			if (address_is_cachable)
-				f_read_state <= 3'b001;
-			else
-				f_read_state <= 3'b110;
+			assert(state == DC_IDLE || state == DC_WRITE);
+			assert(faxi_rd_nbursts == 0);
+			if (i_pipe_stb && i_read && !misaligned)
+			begin
+				if (cachable_read_request)
+					f_read_state <= 4'h1;
+				else
+					f_read_state <= 4'h6;
+			end
 		end end
-	3'b001: begin
+		// }}}
+	4'h1: begin // Cachable read request, checking if its in the cache
+		// {{{
 		assert(r_svalid ^ r_rd_pending);
 		assert(state == DC_IDLE);
 		assert(r_check);
 		assert(!set_vflag);
 		if (r_svalid)
-			f_read_state <= 3'b111;
+			f_read_state <= 4'h7;
 		else
-			f_read_state <= 3'b010;
+			f_read_state <= 4'h2;
 		end
-	3'b010: begin
+		// }}}
+	4'h2: begin // Cachable read, checking in the cache step #2
+		// {{{
 		assert(!flushing);
 		assert(r_cachable);
 		assert(r_rd_pending ^ r_dvalid);
 		assert(!r_check);
-		assert(!set_vflag);
 		assert(state == DC_IDLE);
+		assert(!set_vflag);
 		if (r_dvalid)
-			f_read_state <= 3'b111;
+			f_read_state <= 4'h7;
 		else begin
 			assert(!r_rv || r_rtag != r_ctag);
-			f_read_state <= 3'b011;
+			f_read_state <= 4'h3;
 		end end
-	3'b011: begin
+		// }}}
+	4'h3: begin // Cachable read, now starting the read operation
+		// {{{
+		assert(faxi_rd_nbursts == (M_AXI_ARVALID ? 0:1));
 		assert(!flushing);
 		assert(!r_svalid);
 		assert(!r_dvalid);
@@ -1683,58 +2169,111 @@ module	axidcache #(
 		assert(!r_rv || r_rtag != r_ctag);
 		assert(r_rd_pending);
 		assert(r_cachable);
-		assert(!set_vflag);
 		assert(state == DC_READC);
 		assert(good_cache_read);
-		if (M_AXI_RVALID && M_AXI_RLAST)
-			f_read_state <= 3'b100;
+		assert(!set_vflag);
+		if (OPT_WRAP && M_AXI_RVALID)
+			f_read_state <= M_AXI_RLAST ? 4'h9 : 4'h8;
+		if (!OPT_WRAP && M_AXI_RVALID && M_AXI_RLAST)
+			f_read_state <= 4'h4;
+		if (M_AXI_RVALID && M_AXI_RRESP[1])
+			f_read_state <= 4'h0;
 		end
-	3'b100: begin
+		// }}}
+	4'h4: begin // Completed the cachable read operation into the cache
+		// {{{
+		assert(!OPT_WRAP);
 		assert(!flushing);
 		assert(!r_svalid);
 		assert(r_cachable);
 		assert(r_rd_pending);
-		assert(set_vflag == $changed(f_read_state));
 		assert(r_rtag == r_ctag);
 		assert(state == DC_IDLE);
-		if (!set_vflag)
-			f_read_state <= 3'b101;
+		assert(set_vflag);
+		f_read_state <= 4'h5;
 
 		// r_dvalid <= !r_svalid && !r_dvalid
 		//		&& (w_tag == r_ctag) && w_v
 
 		end
-	3'b101: begin
+		// }}}
+	4'h5: begin // Final step of the cachable read
+		// {{{
+		assert(!OPT_WRAP);
 		assert(!flushing);
 		assert(r_cachable);
 		assert(r_rd_pending != r_dvalid);
-		assert(w_v && w_tag == r_ctag);
-		if (!$changed(f_read_state))
-			assert(r_dvalid);
+		// assert(w_v && w_tag == r_ctag);
+		// assert(r_dvalid == $stable(f_read_state));
+		assert(state == DC_IDLE);
+		assert(!set_vflag);
 		if (r_dvalid)
-			f_read_state <= 3'b111;
+			f_read_state <= 4'h7;
 		end
-	3'b110: begin
+		// }}}
+	4'h6: begin // Read single state
+		// {{{
+		assert(faxi_rd_nbursts == (M_AXI_ARVALID ? 0:1));
+		assert(faxi_rd_outstanding == (M_AXI_ARVALID ? 0:1));
 		assert(!flushing);
 		assert(state == DC_READS);
 		if (M_AXI_RVALID)
-			f_read_state <= 3'b111;
+			f_read_state <= 4'h7;
 		end
-	3'b111: begin
+		// }}}
+	4'h7: begin
+		// {{{
+		assert(faxi_rd_outstanding == 0);
 		// assert(r_rd_pending);
 		assert(o_valid || o_err);
-		f_read_state <= 3'b000;
+		f_read_state <= 4'h000;
 		if (!flushing && i_pipe_stb && !i_op[0] && !misaligned)
 		begin
-			if (address_is_cachable)
-				f_read_state <= 3'b001;
+			if (address_is_cachable && (!OPT_LOCK || !i_lock))
+				f_read_state <= 4'h1;
 			else
-				f_read_state <= 3'b110;
+				f_read_state <= 4'h6;
 		end end
+		// }}}
+	4'h8: begin // WRAP Read
+		// {{{
+		assert(OPT_WRAP);
+		assert(faxi_rd_nbursts == 1);
+		assert(!r_rd_pending);
+		assert(!set_vflag);
+		if (M_AXI_RVALID && M_AXI_RLAST)
+			f_read_state <= 4'h9;
+		end
+		// }}}
+	4'h9: begin // Concluding WRAP read
+		// {{{
+		assert(OPT_WRAP);
+		assert(faxi_rd_nbursts == 0);
+		assert(!r_rd_pending);
+		assert(state == DC_IDLE);
+		if (!$past(i_clear))
+			assert(set_vflag || !good_cache_read);
+		f_read_state <= 4'h0;
+		if (!flushing && i_pipe_stb && i_read && !misaligned)
+		begin
+			if (address_is_cachable && (!OPT_LOCK || !i_lock))
+				f_read_state <= 4'h1;
+			else
+				f_read_state <= 4'h6;
+		end end
+		// }}}
 	default: assert(0);
 	endcase
 
+	always @(*)
+	if (S_AXI_ARESETN && faxi_rd_outstanding > 0 && !flushing)
+		assert(f_read_state != 0);
 
+	always @(*)
+	if (S_AXI_ARESETN && (state == DC_READS || state == DC_READC))
+	begin
+		assert(flushing || (f_read_state != 0));
+	end
 
 	// DC_READC checks
 	// {{{
@@ -1745,10 +2284,14 @@ module	axidcache #(
 		if (M_AXI_ARVALID)
 		begin
 			assert(axi_araddr[AW-1:AXILSB+LS] == { r_ctag, r_cline });
-			assert(axi_araddr[AXILSB+LS-1:0] == 0);
+			if (!OPT_WRAP)
+			begin
+				assert(axi_araddr[AXILSB+LS-1:0] == 0);
+			end
 			assert(axi_araddr[AXILSB +: CS] == read_addr[CS-1:0]);
 			// read_addr <= { i_addr[LGCACHELEN-1:AXILSB+LS], {(LS){1'b0}} };
-			assert(read_addr[LS-1:0] == 0);
+			if (!OPT_WRAP)
+				assert(read_addr[LS-1:0] == 0);
 		end else if (faxi_rd_ckvalid)
 		begin
 			assert(faxi_rd_ckaddr[AW-1:AXILSB+LS] == { r_ctag, r_cline });
@@ -1841,6 +2384,8 @@ module	axidcache #(
 	always @(*)
 	begin
 		f_this_return = r_rd_pending && M_AXI_RVALID;
+		if (OPT_WRAP)
+			f_this_return = (state == DC_READC && M_AXI_RVALID);
 		if (read_addr[CS-1:LS] != f_const_line)
 			f_this_return = 0;
 		if ({ r_ctag, r_cline } != { f_const_tag, f_const_line })
@@ -1868,7 +2413,9 @@ module	axidcache #(
 			f_request_addr <= rev_addr;
 			f_simple_return = (f_const_addr[AW-1:AXILSB]
 							== i_addr[AW-1:AXILSB]);
-			if (misaligned || address_is_cachable || i_op[0])
+			if (misaligned || i_op[0])
+				f_simple_return <= 1'b0;
+			if (address_is_cachable && (!OPT_LOCK || !i_lock))
 				f_simple_return <= 1'b0;
 		end else if (M_AXI_RVALID)
 			f_simple_return <= 1'b0;
@@ -1878,11 +2425,14 @@ module	axidcache #(
 			assert(read_addr[CS-1:LS] == f_request_addr[AXILSB +LS
 							+: (CS-LS)]);
 			if (M_AXI_ARVALID)
+			begin
+				if (!OPT_WRAP)
+				begin
 				assert(read_addr[LS-1:0] == 0);
-			if (M_AXI_ARVALID)
 				assert(axi_araddr == { f_request_addr[AW-1:AXILSB+LS],
 							{(LS+AXILSB){1'b0}} });
-			else if (faxi_rd_ckvalid)
+				end
+			end else if (faxi_rd_ckvalid)
 				assert(faxi_rd_ckaddr[AW-1:AXILSB+LS]
 					== f_request_addr[AW-1:AXILSB+LS]);
 		end else if (state == DC_READS)
@@ -1983,7 +2533,7 @@ module	axidcache #(
 		if (!f_const_err)
 		begin
 			assert(good_cache_read);
-		end else if (read_addr[LS-1:0] > f_const_addr[LS+AXILSB-1:AXILSB])
+		end else if (!OPT_WRAP && read_addr[LS-1:0] > f_const_addr[LS+AXILSB-1:AXILSB])
 			assert(flushing);
 	end
 	// }}}
@@ -2040,7 +2590,8 @@ module	axidcache #(
 	assign	f_special_cached_data = cache_mem[{ f_const_line, f_const_caddr }];
 
 	always @(*)
-	if (S_AXI_ARESETN && !OPT_PIPE && cache_valid[f_const_line]
+	if (S_AXI_ARESETN // && (!OPT_PIPE || (!flushing && !o_err))
+			&& cache_valid[f_const_line]
 			&& f_special_tag == f_const_tag)
 	begin
 		assert(f_special_cached_data == f_word_swapped_mem_data);
@@ -2065,11 +2616,29 @@ module	axidcache #(
 		// The cache read is in progress.  Verify any partial results
 		if (f_const_err)
 		begin
-			assert(!good_cache_read && !r_rd_pending);
+			assert(OPT_WRAP || (!good_cache_read && !r_rd_pending));
 		end else if (!flushing)
-			assert(f_special_cached_data == f_word_swapped_mem_data);
+			assert(OPT_WRAP || (f_special_cached_data == f_word_swapped_mem_data));
 	end
 	// }}}
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Exclusive access
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	assign	faxi_exlock_len = 0;
+	assign	faxi_exlock_burst = INCR;
+
+	always @(posedge S_AXI_ACLK)
+	if (M_AXI_ARVALID && M_AXI_ARREADY && M_AXI_ARLOCK)
+	begin
+		faxi_exlock_addr <= M_AXI_ARADDR;
+		faxi_exlock_size <= M_AXI_ARSIZE;
+	end
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -2203,14 +2772,50 @@ module	axidcache #(
 	//
 	//
 
+	always @(*)
+	if (i_pipe_stb && i_write && i_lock)
+	begin
+		assume(i_addr == faxi_exlock_addr);
+		assume(faxi_ex_state == 2'b10);
+
+		if (SWAP_WSTRB)
+		begin
+			assert(faxi_exlock_size == DSZ);
+		end else casez(i_op[2:1])
+		2'b0?: assume(faxi_exlock_size == 3'b010); // Word
+		2'b10: assume(faxi_exlock_size == 3'b001); // Half-word
+		2'b11: assume(faxi_exlock_size == 3'b000); // Byte
+		endcase
+	end
+
+	always @(*)
+	if (faxi_ex_state == 2'b10)
+	begin
+		assert(faxi_exlock_addr  == faxi_exreq_addr);
+		assert(faxi_exlock_len   == faxi_exreq_len);
+		assert(faxi_exlock_size  == faxi_exreq_size);
+		assert(faxi_exlock_burst == faxi_exreq_burst);
+	end
+
+	always @(*)
+	if (i_pipe_stb && i_lock)
+		assume(!i_cpu_reset);
+
+	always @(posedge S_AXI_ACLK)
+	if ($past(i_cpu_reset))
+		assume((faxi_ex_state == 2'b00) || (faxi_ex_state == 2'b01));
+
+	always @(*)
+	if (OPT_WRAP && S_AXI_ARESETN && !i_cpu_reset
+		&& !r_rd_pending && state == DC_READC && M_AXI_RVALID)
+		assume(M_AXI_RRESP[1] == !good_cache_read);
 	// }}}
 
 	// Make Verilator happy
 	// {{{
 	// Verilator lint_off UNUSED
 	wire	unused_formal;
-	assign	unused_formal = &{ 1'b0, faxi_exlock_addr, faxi_exlock_len,
-			faxi_exlock_burst, faxi_exlock_size, cpu_pc,
+	assign	unused_formal = &{ 1'b0, cpu_pc,
 			faxi_rdid_ckign_nbursts, faxi_rdid_ckign_outstanding,
 			faxi_wr_incr, faxi_wr_pending, faxi_wr_addr,
 			cpu_addr_reg, faxi_rd_ckincr,

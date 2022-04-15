@@ -968,6 +968,7 @@ module	zipaxi #(
 			.i_lock(bus_lock),
 			.i_op(mem_op),
 			.i_addr(mem_cpu_addr[AW+1:0]),
+			.i_restart_pc(mem_lock_pc),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
 			.o_busy(mem_busy),
