@@ -1,28 +1,26 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
 %% Filename: 	spec.tex
-%%
+%% {{{
 %% Project:	ZipCPU -- a small, lightweight, RISC CPU soft core
 %%
 %% Purpose:	This LaTeX file contains all of the documentation/description
 %%		currently provided with this ZipCPU soft core.  It supersedes
-%%		any information about the instruction set or CPUs found
-%%		elsewhere.  It's not nearly as interesting, though, as the PDF
-%%		file it creates, so I'd recommend reading that before diving
-%%		into this file.  You should be able to find the PDF file in
-%%		the SVN distribution together with this PDF file and a copy of
-%%		the GPL-3.0 license this file is distributed under.  If not,
-%%		just type 'make' in the doc directory and it (should) build
-%%		without a problem.
-%%		
+%%	any information about the instruction set or CPUs found elsewhere.
+%%	It's not nearly as interesting, though, as the PDF file it creates, so
+%%	I'd recommend reading that before diving into this file.  You should
+%%	be able to find the PDF file in the git repository together with this
+%%	PDF file and a copy of the GPL-3.0 license this file is distributed
+%%	under.  If not, just type 'make' in the doc directory and it (should)
+%%	build without a problem.
 %%
 %% Creator:	Dan Gisselquist
 %%		Gisselquist Technology, LLC
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-%% Copyright (C) 2015, Gisselquist Technology, LLC
-%%
+%% }}}
+%% Copyright (C) 2015-2022, Gisselquist Technology, LLC
+%% {{{
 %% This program is free software (firmware): you can redistribute it and/or
 %% modify it under the terms of  the GNU General Public License as published
 %% by the Free Software Foundation, either version 3 of the License, or (at
@@ -37,8 +35,9 @@
 %% with this program.  (It's in the $(ROOT)/doc directory, run make with no
 %% target there if the PDF file isn't present.)  If not, see
 %% <http://www.gnu.org/licenses/> for a copy.
-%%
+%% }}}
 %% License:	GPL, v3, as defined and found on www.gnu.org,
+%% {{{
 %%		http://www.gnu.org/licenses/gpl.html
 %%
 %%
@@ -78,8 +77,9 @@
 % swap one algorithm out for the other?  And what is the cost of that "context"
 % swap?
 %
-%
+% }}}
 \documentclass{gqtekspec}
+%% {{{
 \usepackage{import}
 \usepackage{bytefield}	% Install via apt-get install texlive-science
 % \graphicspath{{../gfx}}
@@ -101,10 +101,12 @@
 	linkcolor  = webred,
 	citecolor  = webgreen
 }
+%% }}}
 \begin{document}
 \pagestyle{gqtekspecplain}
 \titlepage
 \begin{license}
+%% {{{
 Copyright (C) \theyear\today, Gisselquist Technology, LLC
 
 This project is free software (firmware): you can redistribute it and/or
@@ -121,7 +123,11 @@ You should have received a copy of the GNU General Public License along
 with this program.  If not, see \hbox{$<$http://www.gnu.org/licenses/$>$} for
 a copy.
 \end{license}
+%% }}}
 \begin{revisionhistory}
+%% {{{
+% Revision History
+3.0 & 1/1/2021 & Gisselquist & New debug interface, multi-bus support\\\hline
 2.01 & 10/19/2019 & Gisselquist & Fixed CIS OpCode Table\\\hline
 2.0 & 1/18/2017 & Gisselquist & Switched from 32--bit to 8--bit bytes.\\\hline
 1.1 & 11/28/2016 & Gisselquist & Moved the ZipSystem address to {\tt 0xff000000} base.\\\hline
@@ -140,32 +146,45 @@ a copy.
 0.2 & 8/19/2015 & Gisselquist & Still Draft, more complete \\\hline
 0.1 & 8/17/2015 & Gisselquist & Incomplete First Draft \\\hline
 \end{revisionhistory}
-% Revision History
+%% }}}
 % Table of Contents, named Contents
 \tableofcontents
 \listoffigures
 \listoftables
 \begin{preface}
+%% {{{
 Many people have asked me why I am building the ZipCPU. ARM processors are
-good and effective.  Xilinx makes and markets Microblaze, Altera Nios, and both
-have better toolsets than the ZipCPU will ever have. OpenRISC is also
-available, RISC--V may be replacing it. Why build a new processor?
+cheap and effective and ASIC processors will always have a better performance
+than an FPGA soft-core processor.  Xilinx makes and markets Microblaze, Altera
+Nios, and both have better toolsets than the ZipCPU.  The RISC--V ISA is
+becoming well known among soft-core circles.  So, why build a new processor?
 
+% Reason #1: Because I can
 The easiest, most obvious answer is the simple one: Because I can.
 
+% Reason #2: Open source, and vendor independance
 There's more to it though. There's a lot of things that I would like to do with
 a processor, and I want to be able to do them in a vendor independent fashion.
-First, I would like to be able to place this processor inside an FPGA.  Without
-paying royalties, ARM is out of the question.  I would then like to be able to
+%%
+%% 1.
+First and foremost, I would like to be able to both simulate this processor
+and place it inside an FPGA.  Without paying royalties, gate level ARM
+simulations are out of the question.
+%%
+%% 2.
+I would also like to be able to
 generate Verilog code, both for the processor and the system it sits within,
 that can run equivalently on both Xilinx, Altera, and Lattice chips, and that
-can be easily ported from one manufacturer's chipsets to another. Even more,
-before purchasing a chip or a board, I would like to know that my soft core
-works. I would like to build a test bench to test components with, and
-Verilator is my chosen test bench. This forces me to use all Verilog, and it
-prevents me from using any proprietary cores. For this reason, Microblaze and
-Nios are out of the question.
+can be easily ported from one manufacturer's chipsets to another.
+%%
+%% 3.
+Even more, before purchasing a chip or a board, I would like to know that my
+soft core works.  That means that I'd like to build a test bench to test
+components with, and Verilator is my chosen simulation tool. This forces me to
+use all Verilog, and it prevents me from using any proprietary cores. For this
+reason, ARM, Microblaze and Nios are out of the question.
 
+% Reason #3: Light weight
 Why not OpenRISC? Because the ZipCPU has different goals.  OpenRISC is designed
 to be a full featured CPU.  The ZipCPU was designed to be a simple, resource
 friendly, CPU.  The result is that it is easy to get a ZipCPU program running
@@ -177,6 +196,7 @@ it has never been fully implemented.  The ZipCPU on the other hand has only
 a small handful of instructions, and all but the Floating Point instructions
 have already been fully implemented.
 
+% Reason #4: Learning
 My final reason is that I'm building the ZipCPU as a learning experience. The
 ZipCPU has allowed me to learn a lot about how CPUs work on a very micro
 level. For the first time, I am beginning to understand many of the Computer
@@ -185,63 +205,99 @@ Architecture lessons from years ago.
 To summarize: Because I can, because it is open source, because it is light
 weight, and as an exercise in learning. 
 
+% Reason #5: Update
+Since building the ZipCPU initially in 2015, I've continued to work with it and
+update it for many of the reasons above.  Now, however, I have a couple of new
+reasons for using the ZipCPU as well.  For example, the ZipCPU has now formed
+the basis for many contracts and as a portion of the deliverables within those
+contracts.  The ZipCPU has also been a focus for learning about both formal
+verification, and how various bus structures work.  For example, starting with
+version 3.0, the ZipCPU has full support for both AXI4 and AXI4-lite interfaces.
+
+% Reason #6: Unfunded
+Finally, let me say that even though the ZipCPU project has been unfunded, the
+work that I have placed into it has been paid back nicely.  While working on
+the ZipCPU, I have learned how to build a back end for GCC.  I later received
+a contract for building a special GCC to compensate for a RISC--V processor
+that had made it into silicon, but with some instructions not working.  Also,
+the ZipCPU's instruction fetch routines have formed the basis for a scatter
+gather DMA implementation, for a scripted SONAR transmitter, and will likely
+form the basis in the near future for a small (I2C+SPI) telemetry system.
+These facts now witness to the truth of the Proverb, ``In all labour there is
+profit: but the talkof the lips tendeth only to penury.'' (Prov 14:23)
 \end{preface}
+%% }}}
 
 \chapter{Introduction}
+%% {{{
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
-The goal of the ZipCPU was to be a very simple CPU.   You might think of it as
-a poor man's alternative to the OpenRISC architecture.  You might also think of
-it as an Open Source microcontroller.
+The goal of the ZipCPU is to be a simple and very basic soft core CPU.   You
+might think of it as a poor man's alternative to the larger architectures
+prevalent today.  You might also think of it as an Open Source microcontroller.
 For this reason, all instructions have been designed to be as simple as
 possible, and the base instructions are all designed to be executed in one
 instruction cycle per instruction, barring pipeline stalls.\footnote{The
 exceptions to this rule are the multiply, divide, and load/store instructions.
-Once the floating point unit is built, I anticipate these will also be
-exceptions to this rule.}  Indeed, even the bus has been simplified to a
-constant 32-bit width, with no option for more or less.  This has resulted in
+If/when the ZipCPU supports native floating point, then I anticipate floating
+point instructions will also be exceptions to this rule.}  This has resulted in
 the choice to drop push and pop instructions, pre-increment and post-decrement
-addressing modes, the integrated memory management unit (MMU), and
-more.\footnote{A not--so integrated MMU is currently under development.}
+addressing modes, interrupt return instructions and more.
 
 For those who like buzz words, the ZipCPU is:
 \begin{itemize}
 \item A 32-bit CPU: All registers are 32-bits, addresses are 32-bits,
 		instructions are 32-bits wide, etc.
+
 \item A RISC CPU.  There is no microcode for executing instructions.  All
 	instructions are designed to be completed in one clock cycle.
+
 \item A Load/Store architecture.  (Only load and store instructions
 		can access memory.)
-\item Wishbone compliant.  All peripherals are accessed just like
+
+\item Wishbone and AXI4 compliant.  All peripherals are accessed just like
 		memory across this bus.
-\item A Von-Neumann architecture.  The instructions and data share a 
-		common bus.
+
+\item A Von-Neumann architecture.  Both instructions and data share a 
+	common addressing space.
+
 \item A pipelined architecture, having stages for {\bf Prefetch},
 	{\bf Decode}, {\bf Read-Operand}, a combined stage containing
-	the {\bf ALU}, {\bf Memory}, {\bf Divide}, and {\bf Floating Point}
-	units, and then the final {\bf Write-back} stage. 
-		See Fig.~\ref{fig:cpu}
+	the {\bf ALU}, {\bf Memory}, and {\bf Divide} units, and then the
+	final {\bf Write-back} stage.  See Fig.~\ref{fig:cpu}
 \begin{figure}\begin{center}
 \includegraphics[width=3.5in]{../gfx/cpu.eps}
 \caption{ZipCPU internal pipeline architecture}\label{fig:cpu}
 \end{center}\end{figure}
 		for a diagram of this structure.
+
 \item Completely open source, licensed under the GPL.\footnote{Should you
 	need a copy of the ZipCPU licensed under other terms, please 
 	contact me.}
 \end{itemize}
 
-The ZipCPU also has one very unique feature: the ability to do pipelined loads
-and stores.  This allows the CPU to access on-chip memory at one access per
-clock, minus any stalls for the initial access.
+The ZipCPU also has several memory controllers.  These support Wishbone,
+AXI4--lite, and AXI4 bus structures, and may or may not provide a cache
+depending upon the configuration.
 
-\section{Characteristics of a SwiC}
-
+\section{Characteristics of a SwiC} %% Needs a rewrite
+%% {{{
 This section might also be called {\em the ZipCPU philosophy}.  It discusses
 the basis for the ZipCPU design decisions, and why a low logic count CPU
 is or can be a good thing.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This section really needs to be rewritten.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% ZiPCPU is defined to be a SWIC: System within a Chip
 Many other FPGA processors have been defined to be good Systems on a Chip, or 
 SoC's.  The entire goal of such designs, then, is to provide an interface
 to the processor and its external environment.  This is not the case with the
@@ -250,25 +306,42 @@ an FPGA, as a ``System within a Chip,'' or a SwiC.  SwiCs have some very
 unique properties internal to them that have influenced the design of the
 ZipCPU.  Among these are the bus, memory, and available peripherals.
 
+%%
+%% Goal: Minimize impact to the rest of the design
+%%
+%%	Minimal impact
+%%		= CPU + (16kB Block)RAM + flash + interconnect
+%%			+ (Interrupt controller) + (GPIOs, UART, Timers)
+%%			+ Special Purpose Application gateware
+%%
+%%	Traditional embedded CPU
+%%		= CPU + GB DDR3 SDRAM + flash + interconnect + (GPIOs, UART)
+%%			+ Network + Hard drive (SD Card) + Video + Audio
+%%			+ RealTime Clock
+%%			+ USB
+%%			
+%%
+%%
+
+%% Single bus port
 Many other approaches to soft core CPU's employ a Harvard architecture. 
 This allows these other CPU's to have two separate bus structures: one for the
 program fetch, and the other for the memory.  Indeed, Xilinx's proprietary
-Microblaze processor
-goes so far as to support four busses: two for cacheable memory, and two for
-peripherals, with each of those split between instructions and data.  The
-ZipCPU on the other hand is fairly unique in its approach because it uses a
-Von Neumann architecture, requiring only one bus within any FPGA.  This
-structure was chosen for its simplicity.  Having only the one bus helps to
-minimize real-estate, logic, and the number of wires that need to be passed
-back and forth, while maintaining a high clock speed.  The disadvantage is
-that both prefetch and memory access units need to contend for time on the 
-same bus.
+Microblaze processor goes so far as to support four busses: two for cacheable
+memory, and two for peripherals, with each of those split between instructions
+and data.  The ZipCPU's Wishbone wrapper, however, requires only a single
+bus port within any FPGA.  This is a combined port for both instructions and
+memory.  This structure was chosen for its simplicity.
+Having a single bus port only helps to minimize real-estate, logic, and the
+number of wires that need to be passed back and forth, while maintaining a
+high clock speed.  The disadvantage is that both prefetch and memory access
+units need to contend for time on the same bus.
 
-Soft core's within an FPGA have an additional characteristic regarding
-memory access: it is slow.  While memory on chip may be accessed at a single
-cycle per access, small FPGA's often have only a limited amount of memory on
-chip.  Going off chip, however, is expensive.  Two examples will prove this
-point.  On
+%% Memory is slow
+Soft core's within an FPGA have an additional characteristic regarding memory
+access: it is slow.  While memory on chip may be accessed at a single cycle per
+access, small FPGA's often have only a limited amount of memory on chip.  Going
+off chip, however, is expensive.  Two examples will prove this point.  On
 the XuLA2 board, Flash can be accessed at 128~cycles per 32--bit word,
 or 64~cycles per subsequent word in a pipelined architecture.  Likewise, the
 SDRAM chip on the XuLA2 board allows a 6~cycle access for a write, 10~cycles
@@ -277,6 +350,7 @@ Either way you look at it, this memory access will be slow and this doesn't
 account for any logic delays should the bus implementation logic get
 complicated.
 
+%% Pipelined access
 As may be noticed from the above discussion about memory speed, a second
 characteristic of memory is sequential memory accesses may be optimized for
 minimal delays (pipelined), and that pipelined memory access is faster than
@@ -284,17 +358,20 @@ non--pipelined access.  Therefore, a SwiC soft core should support pipelined
 operations, but it should also allow a higher priority subsystem to get access
 to the bus (no starvation).
 
+%% Cache is expensive
 As a further characteristic of SwiC memory options, on-chip cache's are
 expensive.  If you want to have a minimum of logic, cache logic may not be
 the highest on the priority list.  Any SwiC capable processor must be able
 to either be built without caches, or to scale up or down the logic required
 by any cache.
 
+%% Cache is expensive
 In sum, memory is slow.  While one processor on one FPGA may be able to fill
 its pipeline, the same processor on another FPGA may struggle to get more than
 one instruction at a time into the pipeline.  Any SwiC must be able to deal
 with both cases: fast and slow memories.
 
+%% Peripherals are easily built and highly reconfigurable
 A final characteristic of SwiC's within FPGA's is the peripherals. 
 Specifically, FPGA's are highly reconfigurable.  Soft peripherals can easily
 be created on chip to support the SwiC if necessary.  As an example, a simple
@@ -304,19 +381,21 @@ FPGA, but expensive in instructions.  Reading from another 16--bit peripheral
 might calculate a sine function, where the 16--bit address internal to the
 peripheral was the angle of the sine wave.
 
+%% Speed is not a priority, speed is handled elsewhere in the fabric
 Indeed, anything that must be done fast within an FPGA is likely to already
 be done--elsewhere in the fabric.  Further, the application designer gets to
 choose what tasks are so important they need fabric dedicated to them, and which
 ones can be done more slowly in a CPU.  This leaves the CPU with the simple role
 of solely handling sequential tasks, and tasks that need a lot of state.
 
+%% Summary
 This means that the SwiC needs to live within a very unique environment,
 separate and different from the traditional SoC.  That isn't to say that a 
 SwiC cannot be turned into a SoC, just that this SwiC has not been designed
 for that purpose.  Indeed, some of the best examples of the ZipCPU are
 System on a Chip examples.
-
-\section{Scope}\label{sec:limits}
+%% }}}
+\section{Document Scope}\label{sec:limits}
 
 The ZipCPU is itself nothing more than a CPU that can be placed within a 
 larger design.  It is not a System on a Chip, but it can be used to create
@@ -326,9 +405,9 @@ within a design will vary from one design to the next.  Further, because
 control access will vary from one environment to the next, this document will
 not discuss any host control programs, leaving those to be discussed and defined
 together with the environments the ZipCPU is placed within.
-
+%% }}}
 \chapter{CPU Architecture}\label{chap:arch}
-
+%% {{{
 This chapter describes the general architecture of the ZipCPU.  It first
 discusses
 the configuration options to the CPU and then breaks into two threads. These
@@ -339,7 +418,7 @@ surrounding it, and what those systems must do to support it.  Specifically,
 the external architecture section will discuss both the ZipSystem, the
 peripherals provided by it, as well as the debug interface.
 
-\section{Build Options/defines}\label{ssec:build-options}
+\section{ZipCPU Parameters}\label{ssec:build-options}
 
 One problem with a simple goal such as being light on logic, is that some
 architectures have some needs, others have other needs.  What is light logic
@@ -348,162 +427,170 @@ As an example, the CMod~S6 board built by Digilent uses a very spare Xilinx
 Spartan~6 LX4 FPGA.  This FPGA doesn't have enough look up tables (LUTs) to
 support pipelined mode, whereas another project running on a XuLA2 LX25 board
 made by Xess, having a Spartan~6 LX25 on board, has more than enough logic
-to support a pipelined mode.   Very quickly it becomes clear that LUTs can be
-traded for performance.
-
-To make this possible, the ZipCPU has both a configuration file as well as a
-set of parameters that it can be built with.  Often, those parameters can
-override the configuration file, but not all configuration file changes can
-be overridden.  Several options are available within the configuration file,
-such as making the Zip CPU pipelined or not, able to handle a faster clock
-with more stalls or a slower clock with no stalls, etc.
-
-The {\tt cpudefs.v} file encapsulates those control options.  It contains a 
-series of {\tt `define} statements that can either be commented or left
-active.  If active, the option is considered to be in effect.  The number of
-LUTs the Zip CPU uses varies dramatically with the options defined in this file.
-This section will outline the various configuration options captured by this
-file.
-
-The first couple of options control the Zip CPU instruction set, and how
-it handles various instructions within the set:
-
-
-{\tt OPT\_MULTIPLY} controls whether or not the multiply is built and included
-in the ALU by default, and if it is which of several multiply options is 
-selected.  Unlike many of the defines that follow within {\tt cpudefs.v} that
-are either defined or not, this option requires a value.  A value of zero means
-no multiply support, whereas a value of one, two, or three, means that a
-multiply will be included that takes one, two, or three clock cycles to
-complete.  The option, however, only controls the default value that the
-{\tt IMPLEMENT\_MPY} parameter to the CPU, having the same interpretation, is
-given.  Because this is just the default value, it can easily be overridden
-upon instantiation.  If the {\tt IMPLEMENT\_MPY} parameter is set to zero,
-then any attempt to execute a multiply instruction will cause an illegal
-instruction exception.
-
-{\tt OPT\_DIVIDE} controls whether or not the divide instruction is built and
-included into the ZipCPU by default.  Set this option and the
-{\tt IMPLEMENT\_DIVIDE} parameter will have a default value of one, meaning that
-unless it is overridden with zero, the divide unit will be included.    If the
-divide is not included, then any attempt to use a divide instruction will
-create an illegal instruction exception that will send the CPU into supervisor
-mode.
-
-{\tt OPT\_IMPLEMENT\_FPU} will (one day) control whether or not the floating
-point unit (once I have one) is built and included into the ZipCPU by default.
-This option sets the {\tt IMPLEMENT\_FPU} parameter to one, so alternatively
-it can be set and adjusted upon instantiation.  If the floating point unit is
-not included then, as with the multiply and divide, any floating point
-instruction will result in an illegal instruction exception that will send the
-CPU into supervisor mode.
-
-{\tt OPT\_SINGLE\_FETCH} controls whether or not the prefetch has a cache, and 
-whether or not it can issue one instruction per clock.  When set, the
-prefetch has no cache, and only one instruction is fetched at any given time.
-This effectively sets the CPU so that only one instruction is ever 
-in the pipeline at a time, and hence you may think of this as a ``no 
-pipeline'' option.  However, since the pipeline uses so much area on the FPGA,
-this is an important option to use in trimming down used logic if necessary. 
-Hence, it needs to be maintained for that purpose.  Be aware, though, setting
-this option will disable all pipelining, and therefore will drop your
-performance by a factor of 8x or even more.
-
-I recommend only defining or enabling this option if you {\em need} to,
-such as if area is tight and speed isn't as important.  Otherwise, leave the
-option undefined since the pipelined options have a much better speed
+to support a pipelined mode.  The Artix--7 35T has not only enough logic for
+a pipelined mode, but plenty of RAM to support instruction and data caches
+as well.  Very quickly it becomes clear that LUTs and RAMs can be traded for
 performance.
 
-The next several options are pipeline optimization options.  They make no
-sense in a single instruction fetch mode, hence they are all disabled if
-{\tt OPT\_SINGLE\_FETCH} is defined.
+To make tailored configurations possible, the ZipCPU has a set of parameters
+that can be used to configure its logic usage and performance.
 
-{\tt OPT\_PIPELINED} is the natural result and opposite of using the single 
-instruction fetch unit.  It is an internal parameter that doesn't need user
-adjustment, but if you look through the {\tt cpudefs.v} file you may see
-and notice it.  If you have not set the {\tt OPT\_SINGLE\_FETCH} parameter,
-{\tt cpudefs.v} will set the {\tt OPT\_PIPELINED} option.  This is more for
-readability than anything else, since {\tt OPT\_PIPELINED} makes more
-intuitive readability sense than {\tt OPT\_SINGLE\_FETCH}.  In other words,
-define or comment out {\tt OPT\_SINGLE\_FETCH}, and let {\tt OPT\_PIPELINED} be
-taken care of automatically.
+The first several parameters control the ZipCPU's design as a whole, such
+as whether or not the CPU is pipelined, how the register file is implemented,
+or how big the caches are.
 
-Assuming you have chosen not to define {\tt OPT\_SINGLE\_FETCH},
-{\tt OPT\_TRADITIONAL\_PFCACHE} allows you to switch between one of two
-prefetch cache modules.  If enabled (recommended), a more traditional cache 
-will be implemented in the CPU.  This more traditional cache reduces
-the stall count tremendously over the alternative pipeline cache, and its
-LUT usage is quite competitive.  As there is little downside to defining
-this option if pipelining is enabled, I would recommend including it.
+\begin{itemize}
+\item {\bf\tt OPT\_PIPELINED}:  The first performance question is whether or not
+	the ZipCPU will operate on multiple instructions at a time in a
+	pipelined fashion.  Since the ZipCPU is fundamentally a pipelined
+	architecture, setting this value to zero will primarily simplify the
+	pipeline stall logic so that only one instruction is ever allowed into
+	the pipeline at a time.
 
-The alternative prefetch and cache, sometimes called the pipeline cache, tries
-to read instructions ahead of where they are needed, while maintaining what it
-has read in a cache.  That cache is cleared anytime you jump outside of its
-window, and it often competes with the CPU for access to the bus.  These
-two characteristics make this alternative bus often less than optimal.
+\item {\bf\tt OPT\_EARLY\_BRANCHING}:  When enabled, the ZipCPU may branch
+	on an unconditional branch instruction as soon as it is recognized
+	coming out of the instruction decoder.  This minimizes the pipeline
+	stalls associated with branching, at a small logic cost.
+
+\item {\bf\tt OPT\_DISTRIBUTED\_REGS}:  The ZipCPU normally keeps its registers
+	in distributed RAM, where it can read them on the same clock cycle
+	their address becomes available.  This doesn't work, however, on an
+	iCE40 FPGA since iCE40 FPGAs don't have distributed RAM.  Instead,
+	iCE40 FPGAs require a clock to read from RAM, and they also require
+	that any read of the RAM go immediately and unconditionally into a
+	registered output.  Set this parameter to zero for a register file
+	implementation that will use the block RAM resources on an iCE40.
+
+\item {\bf\tt OPT\_LGICACHE}: This specifies the log, based two, of the
+	instruction cache size.  A value of one or less will result in no
+	instruction cache.  A value of two (for Wishbone) or four or less
+	(for AXI4 and AXI4--lite) will result in a small pipelined memory
+	reader--with no cache.  Anything larger will specify an instruction
+	cache size.
+
+\item {\bf\tt OPT\_LGDCACHE}: Specifies the log, based two, of the data cache
+	size.  As with the instruction cache, a value of zero will yield
+	a basic memory controller with no cache.  If {\tt OPT\_PIPELINED} is
+	true, a pipelined memory controller may be used that allows multiple
+	requests to be outstanding at once.  For anything larger than two,
+	this value specifies the log of the data cache size.
+
+\item {\bf\tt OPT\_LOWPOWER}: The ZipCPU has been designed as a low logic
+	processor.  Low logic, however, isn't necessarily low power.  If the
+	{\tt OPT\_LOWPOWER} parameter is set, the ZipCPU will attempt to either
+	minimize transitions of items not being used or else pin their values
+	to zero.
+\end{itemize}
+
+The next several instructions control the instruction set, and whether or not
+all instructions are implemented or not.
+
+\begin{itemize}
+\item {\bf\tt OPT\_MPY}: Controls the algorithm that will be used to implement
+	a multiply.  If left at zero, any multiply instruction will result in
+	an illegal instruction error.  Values of 1--4 will generate a multiply
+	algorithm requiring that many cycles.  Of those, 1--2 are not well
+	protected from the critical path and may not be usable.
+	{\tt  OPT\_MPY = 3} seems to work very nicely on Xilinx series 7 parts,
+	whereas {\tt  OPT\_MPY = 4}, a binomial multiply requiring an extra
+	clock cycle, seems to work well on Spartan~6's.  If an FPGA doesn't
+	have multiply support built in, any value greater than four will
+	generate a low logic shift--add algorithm that should work on any
+	architecture at the cost of 33+ clock cycles per multiply.
+
+\item {\bf\tt OPT\_DIV}: If set, the ZipCPU will include a divide unit to
+	support divide instructions.  If not, any attempt to issue a divide
+	instruction will result in an illegal instruction error.
+
+\item {\bf\tt OPT\_SHIFTS}: If set, the ZipCPU will support shift instructions:
+	{\tt LSR} (logical shift right), {\tt ASR} (arithmetic shift right),
+	and {\tt LSL} (logical shift left) for any number of shifts.  If clear,
+	these instructions will only ever shift by one bit.
+
+	Unlike divide or multiply instructions, if {\tt OPT\_SHIFTS} is clear
+	the CPU will not generate an illegal instruction error.  Instead, it
+	will quietly execute the wrong instruction.  As a result, there's no
+	current way to trap an unimplemented shift and replace it with software.
+	Worse, GCC support currently requires that this value be set, so
+	turning this option off is quite problematic.
+
+	However, shift register support currently costs a couple hundred LUTs,
+	and hence the reason for this option.  A very low logic implementation
+	might wish to keep this parameter clear.
+
+\item {\bf\tt OPT\_CIS}: Controls whether or not the instruction decoder
+	includes the logic necessary to handle the compressed instruction set.
+
+\item {\bf\tt OPT\_LOCK}: Atomic access on the ZipCPU requires the use of a LOCK
+	instruction.  If this value is set, the LOCK instruction will be
+	supported.  If clear, LOCK instructions will generate illegal
+	instruction errors.
+
+	LOCK instructions should only be necessary in multitasking or
+	interrupt environments.
+
+\item {\bf\tt OPT\_SIM}: The ZipCPU supports several simulation--only
+	instructions.  If this value is set, these instructions will be
+	decoded and processed through the pipeline.  If clear, any simulation
+	only instruction will be converted into either a NOOP or an illegal
+	instruction--depending upon the instruction opcode in question.
+\end{itemize}
+
+The final set of parameters control the ZipCPU's wrappers, and hence its
+environment.
+\begin{itemize} \item {\bf\tt OPT\_START\_HALTED}: The ZipCPU can be configured
+	to start up on power up, or it can be configured to wait for a command
+	on the debug port before starting.  If {\tt OPT\_START\_HALTED} is
+	true, then the ZipCPU will wait to start.
+
+	Incidentally, I almost always leave {\tt OPT\_START\_HALTED} at true.
+	This allows me time to load the ZipCPU's program into RAM (or flash)
+	externally, and then start the CPU.
+
+The {\tt START\_HALTED} parameter, if set to non--zero, will cause the 
+CPU to be halted upon startup.  This is useful for debugging, since it prevents
+the CPU from doing anything without supervision.  Of course, once all pieces
+of your design are in place and proven, you'll probably want to set this to
+zero, so that the CPU will then start up immediately upon power up.
 
 
-{\tt OPT\_EARLY\_BRANCHING} is an attempt to execute a {\tt BRA} (branch or
-jump) statement as early
-in the pipeline as possible, to avoid as many pipeline stalls on a branch as
-possible.  As an example, if you have {\tt OPT\_TRADITIONAL\_PFCACHE} defined
-as well, then branches within the cache will only cost a single stall cycle.
-Indeed, using early branching, a {\tt BRA} instruction can be used as the
-compiler's branch prediction optimizer: {\tt BRA}'s barely stall, while
-branches on conditions will always suffer about 6~stall cycles.  Setting
-this option causes the parameter, {\tt EARLY\_BRANCHING}, to be set to one,
-so it can be overridden upon instantiation.
+\item {\bf\tt RESET\_DURATION}: Some architectures require that the CPU stay
+	halted for a particular period of time before first attempting to
+	access memory or other peripherals.  This behavior can be controlled
+	by the {\tt RESET\_DURATION} parameter, controlling how long the CPU
+	remains in reset before leaving its initial halted state.
 
-Given the performance benefits achieved by early branching, setting this flag
-is highly recommended.
+\item {\bf\tt OPT\_TRACE\_PORT}: The ZipCPU has a trace port that can be useful
+	for debugging the CPU in hardware if necessary.  The trace port is
+	a 32-bit output containing internal details of the CPU on a clock by
+	clock basis.  For example, it is possible to watch what is happening
+	within the pipeline, what registers are getting set to what values and
+	more by observing the trace port.  This port, however, costs area,
+	so it is not enabled by default.  When not enabled, the debug trace port
+	will be clamped at zero.
 
-{\tt OPT\_PIPELINED\_BUS\_ACCESS} controls whether or not memory
-instructions can take advantage of the pipelined wishbone bus.  To be
-eligible, the operations to be pipelined must be adjacent, must be all
-loads or all stores, and the addresses must all use the same base
-address register and either have identical immediate offsets, or immediate
-offsets that increase by one for each instruction.  Further, the
-string of load (or store) instructions must all have the same conditional
-(if any).  Currently, this approach and benefit is most effectively used
-when saving registers to or restoring registers from the stack at the
-beginning/end of a procedure, when using assembly optimized programs, or
-when doing a context swap.
+\item {\bf\tt OPT\_CLKGATE}: Some of the ZipCPU's wrappers, notably the AXI4
+	and AXI4--lite wrappers, include a clock gating option.  If set to one,
+	this option will be enabled and the ZipCPU will halt its clock any
+	time it is halted or asleep.
 
-I recommend setting this flag, for performance reasons, especially if your
-wishbone bus implementation can handle pipelined bus accesses.  The logic
-impact of this setting is minimal, the performance impact can be significant.
+	This option is designed for optimizing simulations only, and is not
+	likely to work on most FPGAs.
 
-{\tt OPT\_CIS} includes within the instruction set the Very Long Instruction
-Word packing, which packs up to two instructions within each instruction word.
-Non--packed instructions will still execute as normal, this just enables the
-decoding and running of packed instructions.
+\item {\bf\tt OPT\_DMA}:
+\item {\bf\tt OPT\_ACCOUNTING}:
+\item {\bf\tt EXTERNAL\_INTERRUPTS}:
+Controls the number of interrupt wires coming into the ZipSystem CPU wrapper.
+This number must be between one and sixteen,
+or if the performance counters are disabled, between one and twenty four.
 
-The two next options, {\tt INCLUDE\_DMA\_CONTROLLER} and
-{\tt INCLUDE\_ACCOUNTING\_COUNTERS}
-control whether the DMA controller is included in the ZipSystem, and
-whether or not the eight accounting timers are also included.  Set these to
-include the respective peripherals, comment them out not to.  These only 
-affect the ZipSystem implementation, and not any ZipBones implementations.
-
-Finally, if you find yourself needing to debug the core and specifically
-needing to get a trace from the core to find out why something specifically
-failed, you may find it useful to define {\tt DEBUG\_SCOPE}.  This will add a
-32--bit debug output from the core, as the last argument to the core, to the
-ZipSystem, or even to ZipBones.  The actual definition and composition of
-this debugging bit--field changes from one implementation to the next,
-depending upon needs and necessities, so please look at the code at the
-bottom of {\tt zipcpu.v} for more details.
-
-That ends our discussion of CPU options, but there remain several
-implementation parameters that can be defined with the CPU as well.  Some of
-these, such as {\tt IMPLEMENT\_MPY}, {\tt IMPLEMENT\_DIVIDE},
-{\tt IMPLEMENT\_FPU}, and {\tt EARLY\_BRANCHING} have already been discussed.
-The remainder shall be discussed quickly here.
-
+\item {\bf\tt RESET\_ADDRESS}:
 The {\tt RESET\_ADDRESS} parameter controls what address the CPU attempts to
 fetch its first instruction from upon any CPU reset.  The default value is
 not likely to be particularly useful, so overriding the default is recommended
 for every implementation.
+
+\item {\bf\tt ADDRESS\_WIDTH}:
 
 The {\tt ADDRESS\_WIDTH} parameter can be used to trim down the width of
 addresses used by the CPU.  For example, although the Wishbone Bus definition
@@ -512,30 +599,6 @@ fewer.  By setting this value to the actual number of wires in the address
 bus, some logic can be spared within the CPU.  The default is also the maximum,
 a 30--bit address width.  Two additional bits are used internally by the CPU
 to create the appearance of an 8--bit bus, by using the wishbone select lines.
-
-The {\tt LGICACHE} parameter specifies the log base two of the instruction
-cache size.  If no instruction cache is used, this option has no effect. 
-Otherwise it sets the size of the instruction cache to be
-$2^{\mbox{\tiny\tt LGICACHE}}$ words.  The traditional prefetch cache, if used,
-will split this cache size into up to thirty two separate cache lines.
-
-The {\tt IMPLEMENT\_LOCK} parameter controls whether or not the {\tt LOCK}
-instruction is implemented.  If set to zero, the {\tt LOCK} instruction will
-cause an illegal instruction exception, otherwise it will be implemented if
-pipelining is enabled.
-
-Other parameters are defined within the ZipSystem parent module, and affect
-the performance of the system as a whole.
-
-The {\tt START\_HALTED} parameter, if set to non--zero, will cause the 
-CPU to be halted upon startup.  This is useful for debugging, since it prevents
-the CPU from doing anything without supervision.  Of course, once all pieces
-of your design are in place and proven, you'll probably want to set this to
-zero, so that the CPU will then start up immediately upon power up.
-
-The {\tt EXTERNAL\_INTERRUPTS} parameter controls the number of interrupt
-wires coming into the CPU.  This number must be between one and sixteen,
-or if the performance counters are disabled, between one and twenty four.
 
 \section{Internal Architecture}\label{sec:internals}
 
@@ -1979,9 +2042,9 @@ Finally, without halting the CPU, the debug controller can read from any
 single register, and it can see if the CPU is still actively running, whether
 it is in user or supervisor modes, and whether or not it is sleeping.  This
 alone is useful for detecting deadlocks or other difficult problems.
-
+%% }}}
 \chapter{Application Binary Interface}\label{chap:abi}
-
+%% {{{
 This chapter discusses not the CPU itself, but rather how the GCC and binutils
 toolchains have been configured to support the ZipCPU.
 
@@ -2347,9 +2410,9 @@ If the kernel entry function, {\tt entry()}, is placed in flash, it should call
 a separate function to run the main while loop once it has been set up.  In
 this fashion, the main while loop may be kept in the fastest memory necessary
 (that it will fit within), to ensure good performance.
-
+%% }}}
 \chapter{Operation}\label{chap:ops}
-
+%% {{{
 This chapter will explore how to perform common tasks with the ZipCPU,
 offering examples in both C and assembly for those tasks.
 
@@ -2728,7 +2791,8 @@ memcpy\_opt: \\
 \>	{\tt LB 2(R1),R4}\>{\em; Load and store the second item (if necessary)} \\
 \>	{\tt SB R4,2(R1)}\>{\em; {\tt LW}, {\tt SW}, {\tt RETN} will cost 10 cycles}\\
 \>	{\tt RETN} \> {\em ; Finally, we return}\\
-\end{tabbing}}}
+\end{tabbing}}%
+}
 \caption{Example Memory Copy code in Zip Assembly, Hand Optimized}\label{tbl:memcp-opt}
 \end{center}\end{table}
 This pipeline memory example, though, provides some neat things to discuss
@@ -3106,8 +3170,9 @@ the {\tt zip\_save\_context(int *)} function.
 	again.
 \end{enumerate}
 
-
+%% }}}
 \chapter{Registers}\label{chap:regs}
+%% {{{
 This chapter covers the definitions and locations of the various registers
 associated with both the ZipSystem, and the ZipCPU contained within it.
 These registers fall into two separate categories: the registers belonging
@@ -3446,8 +3511,9 @@ step CPU bits high, (32'hd00).  The debugger may then replace the breakpoint
 now that the CPU has gone beyond it, and clear the cache again (32'h500).
 
 To leave this debug mode, simply write a `32'h0' value to the command register.
-
+%% }}}
 \chapter{Wishbone Datasheets}\label{chap:wishbone}
+%% {{{
 The ZipSystem supports two wishbone ports, a slave debug port and a master
 port for the system itself.  These are shown in Tbl.~\ref{tbl:wishbone-slave}
 \begin{table}[htbp]
@@ -3532,9 +3598,9 @@ that don't guarantee this property is as simple as anding the slave's
 {\tt CYC\_I} and {\tt STB\_I} lines together.  No change needs to be made to
 any ZipCPU master, however, in order to access any peripheral that hasn't been
 so simplified.
-
+%% }}}
 \chapter{Clocks}\label{chap:clocks}
-
+%% {{{
 This core has now been tested and proven on the Xilinx Spartan~6 FPGA as well
 as the Artix--7 FPGA.  
 \begin{table}[htbp]
@@ -3553,8 +3619,9 @@ On a SPARTAN 6, the clock can run successfully at 80~MHz.
 
 A second Artix--7 design on the Digilent's Arty board is limited to 81.25~MHz
 by the memory interface generated core used to access SDRAM.
-
+%% }}}
 \chapter{I/O Ports}\label{chap:ioports}
+%% {{{
 This chapter presents and outlines the various I/O lines in and out of the
 ZipSystem.  Since the ZipCPU needs to be a component of such a larger part,
 this makes sense. 
@@ -3617,15 +3684,33 @@ The I/O lines to the ZipBones package are identical to those of the ZipSystem,
 with the only exception that the ZipBones package has only a single interrupt
 line input.  This means that the ZipBones implementation practically depends
 upon an external interrupt controller.
-
-\chapter{Initial Assessment}\label{chap:assessment}
-
-Having now worked with the ZipCPU for a while, it is worth offering an
+%% }}}
+\chapter{Current Assessment}\label{chap:assessment}
+%% {{{
+Having now worked with the ZipCPU for several years, it is worth offering an
 honest assessment of how well it works and how well it was designed. At the
 end of this assessment, I will propose some changes that may take place in a
 later version of this ZipCPU to make it better.
 
+%%
+%% Applications:
+%%	(Designed for) GPS Correlator controller
+%%	Video configuration handler
+%%		Negotiate video clock rate, resolution, etc.
+%%	SONAR data recorder
+%%	Embedded Hard Drive test bench controller
+%%	SONAR transmit controller
+%%	FFT accelerator
+%%	(NOR flash bringup)
+%%	Simulation:
+%%		Clock gate testing
+%%		Embedded hard drive test bench controller
+%%		Embedded flash test bench controller
+%%
+%%
+
 \section{The Good}
+%% {{{
 \begin{itemize}
 \item The ZipCPU was designed to be a simple and light weight CPU.  It has
 	achieved this end nicely.  The proof of this is the full multitasking
@@ -3638,38 +3723,38 @@ later version of this ZipCPU to make it better.
 	simple enough. 
 
 	Indeed, a non--pipelined version of the bare ZipBones (with no
-	peripherals) has been built that only uses 1.3k~6--LUTs.  When using
+	peripherals) has been built that only uses 1.2k~6--LUTs.  When using
 	pipelining, the full cache, and all of the peripherals, the ZipSystem
-	can take up to 4.5~k LUTs.  Where it fits in between is a function of
+	can take up to 3.9~k LUTs.  Where it fits in between is a function of
 	your needs.
 
-	A new implementation using an iCE40 FPGA suggests that the ZipCPU
-	will fit within the 4k~4--way LUTs of the iCE40 HK4X FPGA, but only
-	just barely.
+	When using an iCE40 FPGA, the minimal ZipBones wrapper plus the
+	ZipCPU will fit nicely within the 2.3k~4-LUTs.
 
-\item The ZipCPU was designed to be an implementable soft core that could be
-	placed within an FPGA, controlling actions internal to the FPGA.  This
-	version of the CPU in particular has been updated so that it would
-	support a more general purpose CPU, since as of version~2.0 the ZipCPU
-	now supports octet level access across the bus. 
+%% Fits its role
+\item The ZipCPU was designed to be placed within an FPGA and so to control the
+	actions within an FPGA.  It fits this role rather nicely.
 
-	Still, it fits this role rather nicely.  Other capabilities common
-	to more general purpose CPUs, such as 
-	double--precision floating point capability, vector registers and
-	vector operations have been left out.  However, it was never designed
-	to be such a general purpose CPU but rather a system within a chip.  
+	Some capabilities common to more general purpose CPUs, such as a
+	floating point capability, vector registers and vector operations have
+	been left out in favor of lower logic usage.  However, it was never
+	designed to be such a general purpose CPU but rather a system within
+	a chip.  
 
-\item The extremely simplified instruction set of the ZipCPU was a good
-	choice. Although it does not have many of the commonly used
-	instructions, PUSH, POP, JSR, and RET among them, the simplified
-	instruction set has demonstrated an amazing versatility. I will contend
-	therefore and for anyone who will listen, that this instruction set
-	offers a full and complete capability for whatever a user might wish
-	to do with the only exception being accelerated floating-point support.
-\item The burst load/store approach using the wishbone pipelining mode is
-	novel, and can be used to greatly increase the speed of the processor.
-\item The novel approach to interrupts greatly facilitates the development of
-	interrupt handlers from within high level languages.
+%% Simple instruction set
+\item The extremely simplified instruction set of the ZipCPU has proven to be
+	a good choice. Indeed, it is good enough that the ZipCPU has not needed
+	an instruction set upgrade between version 2.0 and 3.0.  Although this
+	instruction set does not have many of the commonly used instructions,
+	PUSH, POP, JSR, and RET among them, the simplified instruction set has
+	demonstrated an amazing versatility. I will contend therefore and for
+	anyone who will listen, that this instruction set offers a full and
+	complete capability for whatever a user might wish to do--with the
+	only exception being accelerated floating-point support.
+
+%% Interrupt approach
+\item The ZipCPU's approach to interrupts greatly facilitates the development
+	of interrupt handlers from within high level languages.
 
 	The approach involves a single interrupt ``vector'' only, and simply
 	switches the CPU back to the instruction it left off at.  By using
@@ -3679,35 +3764,36 @@ later version of this ZipCPU to make it better.
 	At the same time, if most modern systems handle interrupt vectoring in
 	software anyway, why maintain complicated hardware support for it?
 
-\item Both GCC and binutils back ends exist for the ZipCPU.
-\item As of this version of the CPU, a newlib veresion of the C--library
-	now exists.
+%% Memory access
+\item The ZipCPU can be configured with both instruction and data caches,
+	for both Wishbone and AXI.
+
+%% Tool suite
+\item A complete tool suite consisting of GCC, binutils, newlib, and FATFS
+	support now exists.
 \end{itemize}
+%% }}}
 
 \section{The Not so Good}
+%% {{{
 \begin{itemize}
-\item The ZipCPU does not (yet) support a data cache.  One is currently under
-	development.
-
-	The ZipCPU compensates for this lack via its burst memory capability.
-	Further, performance tests using Dhrystone suggest that the ZipCPU is
-	no slower than other processors containing a data cache.
-
+%% 3 Operand instructions
 \item Many other instruction sets offer three operand instructions, whereas
 	the ZipCPU only offers two operand instructions. This means that it
 	may take the ZipCPU more instructions to do many of the same operations.
 	The good part of this is that it gives the ZipCPU a greater amount of
-	flexibility in its immediate operand mode, although that increased
-	flexibility isn't necessarily as valuable as one might like.
+	flexibility in its immediate operand mode.
 
 	The impact of this lack of three operand instructions is application
 	dependent, but does not appear to be too severe.
 
+%% OOM
 \item The ZipCPU doesn't support out of order execution.
 
 	I suppose it could be modified to do so, but then it would no longer
 	be the ``simple'' and low LUT count CPU it was designed to be.
 
+%% Context switching
 \item Although switching to an interrupt context in the ZipCPU design doesn't
 	require a tremendous swapping of registers, in reality it still
 	does--since any task swap (such as swapping to a task waiting on an
@@ -3718,85 +3804,64 @@ later version of this ZipCPU to make it better.
 	architectures have 32~registers that will need to be swapped upon any
 	context swap.
 
-\item The ZipCPU is by no means generic: it will never handle addresses
-	larger than 32-bits (4GB) without a complete and total redesign.
-	This may limit its utility as a generic CPU in the future, although
-	as an embedded CPU within an FPGA this isn't really much of a
-	restriction.
+%% 4GB address space
+\item The ZipCPU cannot handle addresses larger than 32-bits (4GB).
+	This is fundamentally a limit of the 32-bit register architecture
+	within the ZipCPU.  While an MMU might help this problem, user
+	tasks would remain limited to 4GB of addressable memory.  While
+	this may limit the ZipCPU's utility as a generic CPU in the
+	future, the limitation has yet to impact any of my projects.
 
-\item While a toolchain does exist for the ZipCPU, it isn't yet fully featured.
-	The ZipCPU does not yet have any support for soft floating point
-	arithmetic, nor does it have gdb support.  These may be provided
+%% GDB
+\item The ZipCPU doesn't yet have full gdb support.  This may be provided
 	in future versions.
+
+%% Memory and DMA
+\item When using a DMA to move memory, the only way to tell the CPU that
+	memory may have been updated outside of the cache is currently to
+	clear the cache.  While this isn't ideal, it does work.
+
+%% Loading the ZipCPU
 \end{itemize}
+%% }}}
 
 \section{The Next Generation}
+%% {{{
 This section could also be labeled as my ``To do'' list.  It outlines where
-you may expect features in the future.  Currently, there are five primary
+you may expect features in the future.  Currently, there are two primary
 items on my to do list:
 \begin{enumerate}
-\item Soft Floating Point capability
+\item ROM instruction space
 
-	The lack of any floating point capability, either hard or soft, makes
-	porting math software to the ZipCPU difficult.  Simply building a 
-	soft floating point library will solve this problem.
+\item An optional Memory Management Unit
 
-\item A data cache
+	An MMU is necessary to run Linux.  Linux, however, may easily get in the
+	way of the ZipCPU's typically deeply embedded application.  As a
+	bare metal (no O/S) CPU, the ZiPCPU does nicely without any MMU.  An
+	MMU might first be a challenge to configure, and second it would be
+	likely to slow down every memory access by one to two clock cycles.
 
-	A preliminary data cache implemented as a write through cache has
-	been developed.  Adding this into the CPU should require few changes
-	internal to the CPU.  I expect future versions of the CPU will permit
-	this as an option.
+	So, is an MMU truly necessary?
 
-\item A Memory Management Unit
+	Where not having an MMU becomes problematic is when trying to keep
+	tasks running on the ZipCPU from overrunning their stack or smashing
+	into another tasks memory area.  For this reason alone, an MMU could
+	be valuable.
 
-	The first version of such an MMU has already been written.  It is 
-	available for examination in the ZipCPU repository.  This MMU exists
-	as a peripheral of the ZipCPU.  Integrating this MMU into the ZipCPU
-	will involve slowing down memory stores so that they can be
-	accomplished synchronously, as well as determining how and when
-	particular cache lines need to be invalidated.
+	The first version of an MMU has already been written.  It is 
+	available for examination in the ZipCPU repository.  This MMU
+	however, did not make it to integration.  The current
+	3.0~architecture should make integrating an MMU easier.
 
 \item An integrated floating point unit (FPU)
 
 	Why a small scale CPU needs a hefty floating point unit, I'm not
 	certain, but many application contexts require the ability to do
-	floating point math.
+	floating point math.  This need is currently provided via GCC's
+	floating point emulation library.  Whether a true floating point
+	unit is really necessary is an open question--and one of the reasons
+	why it has not (yet) been written.
 \end{enumerate}
-
-
+%% }}}
+%% }}}
 \end{document}
-
-%
-%
-% Symbol table relocation types:
-%
-% Only 3-types of instructions truly need relocations: those that modify the
-% PC register, and those that access memory.
-%
-% -	LDI	Addr,Rx		// Load's an absolute address into Rx, 24 bits
-%
-% -	LDILO	Addr,Rx		// Load's an absolute address into Rx, 32 bits
-%	LDIHI	Addr,Rx		//   requires two instructions
-%
-% -	JMP	Rx		// Jump to any address in Rx
-%			// Can be prefixed with two instructions to load Rx
-%			// from any 32-bit immediate
-% -	JMP	#Addr		// Jump to any 24'bit (signed) address, 23'b uns
-%
-% -	ADD	x,PC		// Any PC relative jump (20 bits)
-%
-% -	ADD.C	x,PC		// Any PC relative conditional jump (20 bits)
-%
-% -	LDIHI	Addr,Rx		// Load from any 32-bit address, clobbers Rx,
-%	LW	Addr(Rx),Rx	//    unconditional, requires second instruction
-%
-% - 	LW.C	Addr(Ry),Rx	// Any 16-bit relative address load, poss. cond
-%
-% -	SW.C	Rx,Addr(Ry)	// Any 16-bit rel addr, Rx and Ry must be valid
-%
-% -	FARJMP	#Addr:		// Arbitrary 32-bit jumps require a jump table
-%	BRA	+1		// memory address.  The BRA +1 can be skipped,
-%	.WORD	Addr		// but only if the address is placed at the end
-%	LW	-2(PC),PC	// of an executable section
-%
