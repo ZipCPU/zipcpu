@@ -949,9 +949,9 @@ module	zipaxi #(
 			// .OPT_SIGN_EXTEND(OPT_SIGN_EXTEND),
 			.OPT_LOWPOWER(OPT_LOWPOWER),
 			// .OPT_LOCAL_BUS(WITH_LOCAL_BUS),
-			// .OPT_WRAP(OPT_WRAP),
-			.OPT_PIPE(OPT_MEMPIPE)
-			// .OPT_LOCK(OPT_LOCK)
+			.OPT_WRAP(OPT_WRAP),
+			.OPT_PIPE(OPT_MEMPIPE),
+			.OPT_LOCK(OPT_LOCK)
 // `ifdef	FORMAL
 			// Used with OPT_PIPE, not yet enabled
 			// , .OPT_FIFO_DEPTH(2)

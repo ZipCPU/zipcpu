@@ -376,33 +376,61 @@ $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 
 .PHONY: $(AXIDCC)
 ## {{{
-$(AXIDCC): $(AXIDCC)_prf/PASS   $(AXIDCC)_prf64/PASS   $(AXIDCC)_cvr/PASS
-$(AXIDCC): $(AXIDCC)_prfs/PASS  $(AXIDCC)_prfs64/PASS
-$(AXIDCC): $(AXIDCC)_prfp/PASS  $(AXIDCC)_prf64p/PASS  $(AXIDCC)_cvrp/PASS
-$(AXIDCC): $(AXIDCC)_prfsp/PASS $(AXIDCC)_prfs64p/PASS
-$(AXIDCC): $(AXIDCC)_prflp/PASS $(AXIDCC)_prfplp/PASS
+$(AXIDCC): $(AXIDCC)_prf/PASS      $(AXIDCC)_prf64/PASS   $(AXIDCC)_cvr/PASS
+$(AXIDCC): $(AXIDCC)_prflp/PASS    $(AXIDCC)_prflk/PASS   $(AXIDCC)_prflplk/PASS
+$(AXIDCC): $(AXIDCC)_prf64lk/PASS
+## Swap
+$(AXIDCC): $(AXIDCC)_prfs/PASS     $(AXIDCC)_prfs64/PASS
+$(AXIDCC): $(AXIDCC)_prfsw/PASS    $(AXIDCC)_prfs64w/PASS
+## Pipelined
+$(AXIDCC): $(AXIDCC)_prfp/PASS     $(AXIDCC)_prf64p/PASS  $(AXIDCC)_cvrp/PASS
+$(AXIDCC): $(AXIDCC)_prfplk/PASS   $(AXIDCC)_prfplp/PASS
+$(AXIDCC): $(AXIDCC)_prfsp/PASS    $(AXIDCC)_prfs64p/PASS
+$(AXIDCC): $(AXIDCC)_prfspw/PASS   $(AXIDCC)_prfs64pw/PASS
+$(AXIDCC): $(AXIDCC)_prfspwlk/PASS $(AXIDCC)_prfs64pwlk/PASS
 $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf64
+$(AXIDCC)_prflp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prflp
+$(AXIDCC)_prflk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prflk
+$(AXIDCC)_prflplk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prflplk
+$(AXIDCC)_prf64lk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prf64lk
 $(AXIDCC)_prfs/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfs
 $(AXIDCC)_prfs64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfs64
+$(AXIDCC)_prfsw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfsw
+$(AXIDCC)_prfs64w/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs64w
 $(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby cvr
+## Pipelined
 $(AXIDCC)_prfp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfp
 $(AXIDCC)_prf64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prf64p
-$(AXIDCC)_prfsp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfsp
-$(AXIDCC)_prflp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prflp
+$(AXIDCC)_prfplk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfplk
 $(AXIDCC)_prfplp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfplp
+$(AXIDCC)_prfsp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfsp
 $(AXIDCC)_prfs64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby prfs64p
+$(AXIDCC)_prfspw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfspw
+$(AXIDCC)_prfs64pw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs64pw
+$(AXIDCC)_prfspwlk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfspwlk
+$(AXIDCC)_prfs64pwlk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
+	sby -f $(AXIDCC).sby prfs64pwlk
 $(AXIDCC)_cvrp/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 	sby -f $(AXIDCC).sby cvrp
 ## }}}

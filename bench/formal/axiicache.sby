@@ -8,11 +8,12 @@ cvrw   cvr       opt_wrap
 
 [options]
 prf: mode prove
-prf:  depth 10
-prfw: depth 18
+prf:    depth 10
+prfw:   depth 19
+prfw64: depth 19
 cvr: mode cover
-cvr:  depth 40
-cvrw: depth 28
+cvr:    depth 40
+cvrw:   depth 28
 
 [engines]
 smtbmc yices
