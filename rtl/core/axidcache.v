@@ -1018,58 +1018,6 @@ module	axidcache #(
 				wcache_strb <= 0;
 			wcache_tag  <= w_tag;
 			// }}}
-		end else if (0 && state == DC_READS && OPT_LOCK)
-		begin
-			// {{{
-			// FIXME TODO
-			wcache_addr <= read_addr;
-			wcache_data <= axi_rdata;
-			wcache_tag  <= w_tag;
-
-			// wcache_data
-			// {{{
-			if (OPT_LOWPOWER && !M_AXI_RVALID)
-				wcache_data <= 0;
-			// }}}
-
-			// wcache_strb
-			// {{{
-			if (SWAP_WSTRB)
-			begin
-				case(i_op[2:1])
-				// Write a 16b half-word
-				2'b10: wcache_strb<=
-					{ 2'h3, {(C_AXI_DATA_WIDTH/8-2){1'b0}} }
-						>> (read_addr[AXILSB-1:0]);
-				// Write an 8b byte
-				2'b11: wcache_strb<=
-					{ 1'b1, {(C_AXI_DATA_WIDTH/8-1){1'b0}} }
-						>> (read_addr[AXILSB-1:0]);
-				default: wcache_strb<=
-					{ 4'hf, {(C_AXI_DATA_WIDTH/8-4){1'b0}} }
-						>> (read_addr[AXILSB-1:0]);
-				endcase
-			end else begin
-				case(i_op[2:1])
-				// Write a 16b half-word
-				2'b10: wcache_strb<=
-					{ {(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'h3 }
-						<< (read_addr[AXILSB-1:0]);
-				// Write an 8b byte
-				2'b11: wcache_strb<=
-					{ {(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'h1 }
-						<< (read_addr[AXILSB-1:0]);
-				default: wcache_strb<=
-					{{(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'hf }
-						<< (read_addr[AXILSB-1:0]);
-				endcase
-			end
-			// }}}
-
-			if (!M_AXI_RVALID || flushing || i_cpu_reset
-				|| M_AXI_RRESP[1])
-				wcache_strb <= 0;
-			// }}}
 		end else begin
 			// {{{
 			if (i_pipe_stb)
@@ -1235,7 +1183,7 @@ module	axidcache #(
 		if (!S_AXI_ARESETN)
 		begin
 			r_pipe_stalled <= 1'b0;
-			r_pipe_code = 4'h0;
+			r_pipe_code <= 4'h0;
 		end else begin
 			// Clear any stall on the last outstanding bus response
 			if ((!OPT_WRAP && r_dvalid)
@@ -1328,6 +1276,10 @@ module	axidcache #(
 		assign	w_pipe_stalled = r_pipe_stalled;
 		assign	o_pipe_stalled = pipe_stalled;
 
+		// Verilator lint_off UNUSED
+		wire	unused_pipe;
+		assign	unused_pipe = &{ 1'b0, r_pipe_code };
+		// Verilator lint_on  UNUSED
 `ifdef	FORMAL
 		always @(*)
 		if (S_AXI_ARESETN && locked_write_in_progress)
