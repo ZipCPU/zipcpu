@@ -121,6 +121,7 @@ module	zipwb #(
 		parameter	[0:0]	WITH_LOCAL_BUS = 1'b1,
 		parameter	[0:0]	OPT_DBGPORT = 1'b1,
 		parameter	[0:0]	OPT_TRACE_PORT = 1'b0,
+		parameter	[0:0]	OPT_PROFILER = 1'b0,
 		parameter	[0:0]	OPT_USERMODE = 1'b1,
 		localparam	AW=ADDRESS_WIDTH,
 		localparam	DW=32
@@ -159,7 +160,10 @@ module	zipwb #(
 		output	wire		o_pf_stall,
 		output	wire		o_i_count,
 		//
-		output	wire	[31:0]	o_debug
+		output	wire	[31:0]	o_debug,
+		output	wire		o_prof_stb,
+		output	wire [AW+1:0]	o_prof_addr,
+		output	wire [31:0]	o_prof_ticks
 	// }}}
 	);
 
@@ -232,7 +236,8 @@ module	zipwb #(
 		.OPT_LOCK(OPT_LOCK),
 		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.OPT_DBGPORT(OPT_DBGPORT),
-		.OPT_TRACE_PORT(OPT_TRACE_PORT)
+		.OPT_TRACE_PORT(OPT_TRACE_PORT),
+		.OPT_PROFILER(OPT_PROFILER)
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
 		// localparam	AW=ADDRESS_WIDTH;
 		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
@@ -282,7 +287,10 @@ module	zipwb #(
 		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
 			.o_i_count(o_i_count),
 		// }}}
-		.o_debug(cpu_debug)
+		.o_debug(cpu_debug),
+		.o_prof_stb(o_prof_stb),
+		.o_prof_addr(o_prof_addr),
+		.o_prof_ticks(o_prof_ticks)
 		// }}}
 	);
 	// }}}

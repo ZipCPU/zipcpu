@@ -78,6 +78,7 @@ module	zipbones #(
 		parameter [0:0]	OPT_USERMODE=1,
 		parameter [0:0]	OPT_DBGPORT=1,
 		parameter [0:0]	OPT_TRACE_PORT=1,
+		parameter [0:0]	OPT_PROFILER=0,
 		parameter [0:0]	OPT_LOWPOWER=0,
 `ifdef	VERILATOR
 		parameter [0:0]	OPT_SIM=1'b1,
@@ -151,7 +152,11 @@ module	zipbones #(
 		output	wire		o_dbg_ack,
 		output	wire [DW-1:0]	o_dbg_data,
 		// }}}
-		output wire	[31:0]	o_cpu_debug
+		output	wire	[31:0]	o_cpu_debug,
+		//
+		output	wire		o_prof_stb,
+		output wire [ADDRESS_WIDTH-1:0]	o_prof_addr,
+		output	wire	[31:0]	o_prof_ticks
 		// }}}
 	);
 
@@ -387,6 +392,7 @@ module	zipbones #(
 	end
 	// }}}
 	// }}}
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// The CPU itself
@@ -443,6 +449,7 @@ module	zipbones #(
 		.OPT_SIM(OPT_SIM),
 		.OPT_DBGPORT(OPT_DBGPORT),
 		.OPT_TRACE_PORT(OPT_TRACE_PORT),
+		.OPT_PROFILER(OPT_PROFILER),
 		.OPT_CLKGATE(OPT_CLKGATE),
 		.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
 		.OPT_USERMODE(OPT_USERMODE),
@@ -465,19 +472,23 @@ module	zipbones #(
 		// }}}
 		// Wishbone bus interface
 		// {{{
-			.o_wb_gbl_cyc(o_wb_cyc), .o_wb_gbl_stb(o_wb_stb),
-				.o_wb_lcl_cyc(cpu_lcl_cyc),
-				.o_wb_lcl_stb(cpu_lcl_stb),
-				.o_wb_we(o_wb_we), .o_wb_addr(o_wb_addr),
-				.o_wb_data(o_wb_data), .o_wb_sel(o_wb_sel),
-				// Return values from the Wishbone bus
-				.i_wb_stall(i_wb_stall),
-				.i_wb_ack(i_wb_ack),
+		.o_wb_gbl_cyc(o_wb_cyc), .o_wb_gbl_stb(o_wb_stb),
+			.o_wb_lcl_cyc(cpu_lcl_cyc),
+			.o_wb_lcl_stb(cpu_lcl_stb),
+			.o_wb_we(o_wb_we), .o_wb_addr(o_wb_addr),
+			.o_wb_data(o_wb_data), .o_wb_sel(o_wb_sel),
+		// Return values from the Wishbone bus
+		.i_wb_stall(i_wb_stall), .i_wb_ack(i_wb_ack),
 				.i_wb_data(i_wb_data),
 				.i_wb_err((i_wb_err)||(cpu_lcl_cyc)),
 		// }}}
 			.o_op_stall(cpu_op_stall), .o_pf_stall(cpu_pf_stall),
-				.o_i_count(cpu_i_count), .o_debug(o_cpu_debug)
+				.o_i_count(cpu_i_count),
+		.o_debug(o_cpu_debug),
+		//
+		.o_prof_stb(o_prof_stb),
+		.o_prof_addr(o_prof_addr),
+		.o_prof_ticks(o_prof_ticks)
 		// }}}
 	);
 `endif

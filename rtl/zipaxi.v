@@ -77,10 +77,11 @@ module	zipaxi #(
 		parameter [0:0]	IMPLEMENT_FPU = 0,
 		parameter [0:0]	OPT_EARLY_BRANCHING = 1,
 		parameter [0:0]	OPT_CIS = 1'b1,
-		parameter [0:0]	OPT_LOWPOWER = 1'b0,
+		parameter [0:0]	OPT_LOWPOWER   = 1'b0,
 		parameter [0:0]	OPT_DISTRIBUTED_REGS = 1'b1,
-		parameter [0:0]	OPT_DBGPORT = 1'b1,
+		parameter [0:0]	OPT_DBGPORT    = 1'b1,
 		parameter [0:0]	OPT_TRACE_PORT = 1'b0,
+		parameter [0:0]	OPT_PROFILER   = 1'b0,
 		parameter	[0:0]	OPT_USERMODE = 1'b1,
 		parameter		LGILINESZ= 3,
 		parameter		OPT_LGDLINESZ = 3,
@@ -236,7 +237,11 @@ module	zipaxi #(
 		output	wire		o_pf_stall,
 		output	wire		o_i_count,
 		//
-		output wire	[31:0]	o_debug
+		output wire	[31:0]	o_debug,
+		//
+		output	wire		o_prof_stb,
+		output	wire [ADDRESS_WIDTH-1:0]	o_prof_addr,
+		output	wire	[31:0]	o_prof_ticks
 	// }}}
 	);
 
@@ -696,6 +701,7 @@ module	zipaxi #(
 		.OPT_START_HALTED(START_HALTED),
 		.OPT_DBGPORT(OPT_DBGPORT),
 		.OPT_TRACE_PORT(OPT_TRACE_PORT),
+		.OPT_PROFILER(OPT_PROFILER),
 		.OPT_LOWPOWER(OPT_LOWPOWER),
 		// localparam	[0:0]	OPT_LOCK=(IMPLEMENT_LOCK)&&(OPT_PIPELINED);
 		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
@@ -746,7 +752,10 @@ module	zipaxi #(
 		// Accounting/CPU usage interface
 		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
 		.o_i_count(o_i_count),
-		.o_debug(o_debug)
+		.o_debug(o_debug),
+		.o_prof_stb(  o_prof_stb),
+		.o_prof_addr( o_prof_addr),
+		.o_prof_ticks(o_prof_ticks)
 		// }}}
 	);
 `endif

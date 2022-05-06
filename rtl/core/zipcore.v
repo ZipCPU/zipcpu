@@ -58,6 +58,7 @@ module	zipcore #(
 		parameter	[0:0]	OPT_START_HALTED = 1'b1,
 		parameter	[0:0]	OPT_DBGPORT = 1'b1,
 		parameter	[0:0]	OPT_TRACE_PORT = 1'b0,
+		parameter	[0:0]	OPT_PROFILER = 1'b0,
 
 		localparam	AW=ADDRESS_WIDTH
 `ifdef	FORMAL
@@ -115,8 +116,14 @@ module	zipcore #(
 		// }}}
 		// Debug data for on-line/live tracing
 		// {{{
-		output	wire	[31:0]	o_debug
+		output	wire	[31:0]	o_debug,
 		//}}}
+		// (Optional) Profiler data
+		// {{{
+		output	wire		o_prof_stb,
+		output	wire [AW+1:0]	o_prof_addr,
+		output	wire [31:0]	o_prof_ticks
+		// }}}
 		// }}}
 	);
 
@@ -163,7 +170,8 @@ module	zipcore #(
 	reg	[3:0]	flags, iflags;
 	wire	[15:0]	w_uflags, w_iflags;
 	reg		break_en, step, sleep, r_halted;
-	wire		break_pending, trap, gie, ubreak, pending_interrupt;
+	wire		break_pending, trap, gie, ubreak, pending_interrupt,
+			stepped;
 	wire		ill_err_u;
 	reg		ill_err_i;
 	reg		ibus_err_flag;
@@ -228,7 +236,7 @@ module	zipcore #(
 
 	wire		dcd_sim;
 	wire	[22:0]	dcd_sim_immv;
-	wire		prelock_stall;
+	wire		prelock_stall, last_lock_insn;
 	wire		cc_invalid_for_dcd;
 	wire		pending_sreg_write;
 	// }}}
@@ -575,6 +583,7 @@ module	zipcore #(
 	// Master stall condition
 	// {{{
 	assign	master_stall = (!master_ce)||(!op_valid)||(ill_err_i)
+			||(step && stepped)
 			||(ibus_err_flag)||(idiv_err_flag)
 			||(pending_interrupt && !o_bus_lock)&&(!alu_phase)
 			||(alu_busy)||(div_busy)||(fpu_busy)||(op_break)
@@ -1109,7 +1118,7 @@ module	zipcore #(
 	else if ((OPT_PIPELINED)&&(op_ce))
 		r_op_break <= (dcd_valid)&&(dcd_break)&&(!dcd_illegal);
 	else if ((!OPT_PIPELINED)&&(dcd_valid))
-		r_op_break <= (dcd_break)&&(!dcd_illegal);
+		r_op_break <= (dcd_break)&&(!dcd_illegal)&&(!gie || !step || !stepped);
 
 	assign	op_break = r_op_break;
 `ifdef	FORMAL
@@ -1820,6 +1829,7 @@ module	zipcore #(
 		assign	prelock_stall = OPT_PIPELINED && r_prelock_stall;
 		assign	o_bus_lock    = |r_bus_lock;
 		assign	o_mem_lock_pc = r_lock_pc;
+		assign	last_lock_insn = (r_bus_lock <= 1);
 `ifdef	FORMAL
 		// {{{
 		if (OPT_PIPELINED)
@@ -1867,6 +1877,7 @@ module	zipcore #(
 		assign	prelock_stall = 1'b0;
 		assign	o_bus_lock    = 1'b0;
 		assign	o_mem_lock_pc = 0;
+		assign	last_lock_insn= 1;
 		// }}}
 	end endgenerate
 	// }}}
@@ -1899,7 +1910,8 @@ module	zipcore #(
 			initial	r_alu_sim = 1'b0;
 			always @(posedge i_clk)
 			begin
-				if (!i_reset && !clear_pipeline && adf_ce_unconditional
+				if (!i_reset && !clear_pipeline
+						&& adf_ce_unconditional
 						&& op_sim && op_valid_alu)
 				begin
 				// Execute simulation only instructions
@@ -2440,7 +2452,7 @@ module	zipcore #(
 		else if ((op_break)&&(!r_break_pending))
 			r_break_pending <= (!alu_busy)&&(!div_busy)
 				&&(!fpu_busy)&&(!i_mem_busy)
-				&&(!wr_reg_ce);
+				&&(!wr_reg_ce) && (!step || !stepped);
 		// else
 			// r_break_pending <= 1'b0;
 
@@ -2448,6 +2460,12 @@ module	zipcore #(
 	end else begin
 
 		assign	break_pending = op_break;
+
+`ifdef	FORMAL
+		always @(*)
+		if (!gie && step && stepped)
+			assert(!op_break);
+`endif
 	end endgenerate
 	// }}}
 
@@ -2603,11 +2621,25 @@ module	zipcore #(
 	begin : GEN_PENDING_INTERRUPT
 		// {{{
 		reg	r_pending_interrupt;
+		reg	r_user_stepped;
 
+		initial	r_user_stepped = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || !gie || !step)
+			r_user_stepped <= 1'b0;
+		// else if(w_switch_to_interrupt)
+		//	r_user_stepped <= 1'b0;
+		else if (op_valid && !op_phase && !op_lock && last_lock_insn
+				&& (adf_ce_unconditional || mem_ce))
+			r_user_stepped <= 1'b1;
+
+		initial	r_pending_interrupt = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
 			r_pending_interrupt <= 1'b0;
-		else if (!gie || clear_pipeline || w_switch_to_interrupt)
+		else if (!gie || w_switch_to_interrupt)
+			r_pending_interrupt <= 1'b0;
+		else if (clear_pipeline && (!step || !stepped))
 			r_pending_interrupt <= 1'b0;
 		else begin
 			if (i_interrupt)
@@ -2619,7 +2651,8 @@ module	zipcore #(
 			if (adf_ce_unconditional && op_illegal)
 				r_pending_interrupt <= 1'b1;
 
-			if ((adf_ce_unconditional || mem_ce) && step && !op_lock && !o_bus_lock)
+			if (((!alu_busy && !i_mem_busy && !div_busy && !fpu_busy)
+				|| wr_reg_ce) && step && stepped)
 				r_pending_interrupt <= 1'b1;
 		end
 
@@ -2659,13 +2692,25 @@ module	zipcore #(
 		if (r_pending_interrupt && gie && !clear_pipeline)
 			assert(i_interrupt || step || alu_illegal
 					|| ill_err_u || break_pending);
+
+		always @(posedge i_clk)
+		if (f_past_valid && $past(step && stepped && !o_bus_lock
+							&& !o_dbg_stall))
+			assert(!gie || r_pending_interrupt);
 `endif
+		assign	stepped = r_user_stepped;
 		// }}}
 	end else begin : NO_PENDING_INTS
 		// {{{
 		assign	w_switch_to_interrupt    = 1'b0;
 		assign	w_release_from_interrupt = 1'b0;
 		assign	pending_interrupt = 1'b0;
+		assign	stepped = 1'b0;
+
+		// Verilator lint_off UNUSED
+		wire	unused_int_signals;
+		assign	unused_int_signals = &{ 1'b0, last_lock_insn };
+		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
 
@@ -3430,6 +3475,50 @@ module	zipcore #(
 	end endgenerate
 
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Hardware profiler support
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	generate if (OPT_PROFILER)
+	begin : GEN_PROFILER
+		reg			prof_stb;
+		reg	[AW+1:0]	prof_addr;
+		reg	[31:0]		prof_ticks;
+
+		initial	prof_stb = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || clear_pipeline)
+			prof_stb <= 1'b0;
+		else
+			prof_stb <= (alu_pc_valid || mem_pc_valid);
+
+		initial	prof_addr = 0;
+		always @(posedge i_clk)
+		if (i_reset || clear_pipeline)
+			prof_addr <= RESET_ADDRESS;
+		else if (alu_pc_valid || mem_pc_valid)
+			prof_addr <= alu_pc;
+
+		initial	prof_ticks = 0;
+		always @(posedge i_clk)
+		if (i_reset)
+			prof_ticks <= 0;
+		else if (!i_halt)
+			prof_ticks <= prof_ticks + 1;
+
+		assign	o_prof_stb   = prof_stb;
+		assign	o_prof_addr  = prof_addr;
+		assign	o_prof_ticks = prof_ticks;
+	end else begin
+		assign	o_prof_stb = 1'b0;
+		assign	o_prof_addr = 0;
+		assign	o_prof_ticks = 0;
+	end endgenerate
+	// }}}
 
 	// Make verilator happy
 	// {{{
@@ -3852,6 +3941,7 @@ module	zipcore #(
 		&&(!op_break)&&(!o_break)
 		&&(!w_switch_to_interrupt)
 		&&(!alu_illegal) && (!prelock_stall)
+		&&(!gie || !step || !stepped)
 		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
 		`ASSERT(adf_ce_unconditional | mem_ce);
 
@@ -4229,7 +4319,12 @@ module	zipcore #(
 				`ASSERT(f_op_zI == (fc_op_I == 0));
 				`ASSERT(fc_op_wF  == op_wF);
 				`ASSERT(fc_op_lock == op_lock);
-				`ASSERT(fc_op_break == op_break);
+				if (!OPT_PIPELINED && gie && step && stepped)
+				begin
+					`ASSERT(!op_break);
+				end else begin
+					`ASSERT(fc_op_break == op_break);
+				end
 				`ASSERT(fc_op_I == 0 || !i_mem_rdbusy
 					|| f_exwrite_cycle
 					|| !fc_op_rB
@@ -5234,6 +5329,59 @@ module	zipcore #(
 		end
 
 	end endgenerate
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Step properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	always @(posedge i_clk)
+	if (f_past_valid && !i_reset && $past(!gie))
+		assert(!stepped);
+
+	always @(posedge i_clk)
+	if (f_past_valid && step && stepped)
+	begin
+		assert(!break_pending);
+		assert(!o_bus_lock);
+	end
+
+	always @(posedge i_clk)
+	if (f_past_valid && !i_reset && !o_bus_lock && !$past(o_bus_lock)
+			&& !$past(o_dbg_stall) && !o_dbg_stall)
+	begin
+		if (!gie && step && !stepped)
+		begin
+			`ASSERT(!i_mem_rdbusy);
+			`ASSERT(!div_busy);
+			`ASSERT(!alu_busy);
+			`ASSERT(!fpu_busy);
+		end
+
+		if (wr_reg_ce || wr_flags_ce)
+			`ASSERT(!gie || !step || stepped);
+	end
+
+	always @(posedge i_clk)
+	if (!i_reset &&(i_mem_rdbusy|| div_busy|| alu_busy || fpu_busy))
+		assert(!r_halted);
+
+	always @(posedge i_clk)
+	if (f_past_valid && !$past(i_reset) && i_mem_busy)
+		assert(!$rose(r_halted));
+
+	always @(posedge i_clk)
+	if (step && stepped)
+	begin
+		assert(!adf_ce_unconditional);
+		assert(!div_ce);
+		assert(!mem_ce);
+		assert(!fpu_ce);
+	end
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
