@@ -57,7 +57,7 @@
 // }}}
 module	prefetch #(
 		// {{{
-		parameter		ADDRESS_WIDTH=30,
+		parameter		ADDRESS_WIDTH=30,	// Byte addr wid
 					INSN_WIDTH=32,
 					DATA_WIDTH=INSN_WIDTH,
 		localparam		AW=ADDRESS_WIDTH,
@@ -76,7 +76,7 @@ module	prefetch #(
 		output	reg			o_valid, // If output is valid
 		output	reg			o_illegal, // bus err result
 		output	reg [INSN_WIDTH-1:0]	o_insn,	// Insn read from WB
-		output	reg	[AW-1:0]	o_pc,	// Addr of that insn
+		output	reg	[AW-1:0]	o_pc,	// Byt addr of that insn
 		// Wishbone outputs
 		output	reg			o_wb_cyc, o_wb_stb,
 		output	wire			o_wb_we,
@@ -361,6 +361,9 @@ module	prefetch #(
 		else
 			o_insn <= r_insn[DW-1:DW-INSN_WIDTH];
 	end
+`ifdef	FORMAL
+	always @(posedge i_clk) if (!i_reset && o_valid) assert(!i_wb_ack);
+`endif
 	// }}}
 
 	// o_valid, o_illegal

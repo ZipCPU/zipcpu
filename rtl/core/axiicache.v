@@ -217,7 +217,7 @@ module	axiicache #(
 	// Evaluates to the cache tag, at the program counter address for the
 	// incoming/requested program counter
 	always @(posedge S_AXI_ACLK)
-		pc_tag <= { cache_tags[pc_line], i_pc[CWB-1:LSB] };
+		pc_tag <= { cache_tags[pc_line], pc_line };
 	// }}}
 
 	//
@@ -241,7 +241,7 @@ module	axiicache #(
 	// last_tag
 	// {{{
 	always @(posedge S_AXI_ACLK)
-		last_tag <={cache_tags[last_line], last_pc[CWB-1:LSB]};
+		last_tag <= { cache_tags[last_line], last_line };
 	// }}}
 
 	// valid_line --- are we serving a valid request line?

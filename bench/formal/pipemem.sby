@@ -1,16 +1,19 @@
 [tasks]
-lcl_aligned_lock	local_bus alignment_err lock
-lcl_aligned_nolock	local_bus alignment_err nolock
-lcl_noaligned_lock	local_bus noalignment_err lock
-lcl_noaligned_nolock	local_bus noalignment_err nolock
-nolcl_aligned_lock	nolocal_bus alignment_err lock
-nolcl_aligned_nolock	nolocal_bus alignment_err nolock
-nolcl_noaligned_lock	nolocal_bus noalignment_err lock
-nolcl_noaligned_nolock	nolocal_bus noalignment_err nolock
+prf			    bus32  nolocal_bus alignment_err nolock
+prflck			prf bus32  nolocal_bus alignment_err lock
+prflcl			prf bus32  local_bus alignment_err nolock
+prflcllck		prf bus32  local_bus alignment_err lock
+lcl_noaligned_lock	prf bus32  local_bus noalignment_err lock
+lcl_noaligned_nolock	prf bus32  local_bus noalignment_err nolock
+nolcl_noaligned_lock	prf bus32  nolocal_bus noalignment_err lock
+nolcl_noaligned_nolock	prf bus32   nolocal_bus noalignment_err nolock
+prf64			prf bus64  nolocal_bus alignment_err nolock
+prf128			prf bus128 nolocal_bus alignment_err nolock
 
 [options]
-mode prove
+prf: mode prove
 depth 4
+bus64: depth 16
 
 [engines]
 smtbmc
@@ -24,6 +27,12 @@ cmd = "hierarchy -top pipemem"
 cmd += " -chparam WITH_LOCAL_BUS    %d" % (1 if "local_bus"     in tags else 0)
 cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "alignment_err" in tags else 0)
 cmd += " -chparam OPT_LOCK          %d" % (1 if "lock"          in tags else 0)
+if ("bus32" in tags):
+	cmd += " -chparam BUS_WIDTH 32"
+elif ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
 output(cmd)
 --pycode-end--
 prep -top pipemem

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	abs_prefetch.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Rather than feed our CPU with actual valid instructions returned
@@ -15,13 +15,17 @@
 //	or even pfcache.v.  On the other hand, it might not.  If the CPU can
 //	pass either way, then it can most certainly pass with a true prefetch.
 //
+//	This file has since been made obsolete by ffetch.v, the formal
+//	interface file describing the interface between the ZipCore and any
+//	arbitrary prefetch engine.
+//
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
+// }}}
 // Copyright (C) 2015-2019, Gisselquist Technology, LLC
-//
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -36,16 +40,15 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
+// }}}
 module	abs_prefetch(i_clk, i_reset, i_new_pc, i_clear_cache,
 			// i_early_branch, i_from_addr,
 			i_stall_n, i_pc, o_insn, o_pc, o_valid,

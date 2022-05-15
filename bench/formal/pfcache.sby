@@ -1,6 +1,8 @@
 [tasks]
-prf
-cvr
+prf          bus32
+prf64   prf  bus64
+prf128  prf  bus128
+cvr          bus32
 
 [options]
 prf: mode prove
@@ -15,6 +17,20 @@ smtbmc
 read -formal fwb_master.v
 read -formal ffetch.v
 read -formal -DPFCACHE pfcache.v
+--pycode-begin--
+cmd = "hierarchy -top pfcache"
+if ("bus32" in tags):
+	cmd += " -chparam BUS_WIDTH 32"
+elif ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
+elif ("bus256" in tags):
+	cmd += " -chparam BUS_WIDTH 256"
+elif ("bus512" in tags):
+	cmd += " -chparam BUS_WIDTH 512"
+output(cmd)
+--pycode-end--
 prep -top pfcache
 
 [files]

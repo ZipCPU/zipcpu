@@ -4,10 +4,12 @@ cvr         insn32 bus32
 prf8b   prf insn8  bus32
 prf8ble prf insn8  bus32 lilend
 prf64b  prf insn32 bus64
+prf128b prf insn32 bus128
 
 [options]
 prf: mode prove
 prf: depth 8
+prf128b: depth 13
 
 cvr: mode cover
 cvr: depth 8
@@ -29,6 +31,8 @@ if ("bus32" in tags):
 	cmd += " -chparam DATA_WIDTH 32"
 elif ("bus64" in tags):
 	cmd += " -chparam DATA_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam DATA_WIDTH 128"
 cmd += " -chparam OPT_LITTLE_ENDIAN %d" % (1 if "lilend" in tags else 0)
 output(cmd)
 --pycode-end--

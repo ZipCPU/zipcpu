@@ -39,7 +39,7 @@
 module	zipcore #(
 		// {{{
 		parameter	ADDRESS_WIDTH=30,	// 32-b word addr width
-		parameter [ADDRESS_WIDTH+1:0] RESET_ADDRESS=32'h010_0000,
+		parameter [31:0] RESET_ADDRESS=32'h010_0000,
 		parameter	OPT_MPY = 0,
 		parameter [0:0]	OPT_SHIFTS = 1,
 		parameter [0:0]	OPT_DIV = 1,
@@ -100,7 +100,7 @@ module	zipcore #(
 		output	wire [2:0]	o_mem_op,
 		output	wire [31:0]	o_mem_addr,
 		output	wire [31:0]	o_mem_data,
-		output	wire [(AW+1):0]	o_mem_lock_pc,
+		output	wire [AW+1:0]	o_mem_lock_pc,
 		output	wire [4:0]	o_mem_reg,
 		input	wire 		i_mem_busy, i_mem_rdbusy,
 					i_mem_pipe_stalled, i_mem_valid,
@@ -131,7 +131,7 @@ module	zipcore #(
 	// {{{
 	// Verilator lint_off UNUSED
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
-	localparam [(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
+	localparam [(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[AW+1:2];
 	localparam	[3:0]	CPU_CC_REG = 4'he,
 				CPU_PC_REG = 4'hf;
 	localparam	[3:0]	CPU_SUB_OP = 4'h0,// also a compare instruction

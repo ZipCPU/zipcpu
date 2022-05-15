@@ -103,7 +103,9 @@ module	zipwb #(
 		// {{{
 		parameter [31:0] RESET_ADDRESS=32'h010_0000,
 		parameter	ADDRESS_WIDTH=30,
+				BUS_WIDTH = 32,		// Bus width
 				OPT_LGICACHE=12,
+		localparam	DATA_WIDTH = 32,	// CPU data width
 		parameter	OPT_MPY = 3,
 		parameter [0:0]	OPT_DIV = 1,
 		parameter [0:0]	OPT_SHIFTS = 1,
@@ -124,7 +126,7 @@ module	zipwb #(
 		parameter	[0:0]	OPT_PROFILER = 1'b0,
 		parameter	[0:0]	OPT_USERMODE = 1'b1,
 		localparam	AW=ADDRESS_WIDTH,
-		localparam	DW=32
+		localparam	WBLSB = $clog2(BUS_WIDTH/8)
 `ifdef	FORMAL
 		, parameter	F_LGDEPTH=8
 `endif
@@ -137,11 +139,11 @@ module	zipwb #(
 		input	wire		i_halt, i_clear_cache,
 		input	wire	[4:0]	i_dbg_wreg,
 		input	wire		i_dbg_we,
-		input	wire	[31:0]	i_dbg_data,
+		input	wire	[DATA_WIDTH-1:0]	i_dbg_data,
 		input	wire	[4:0]	i_dbg_rreg,
 		// Debug interface -- outputs
 		output	wire		o_dbg_stall,
-		output	wire	[31:0]	o_dbg_reg,
+		output	wire	[DATA_WIDTH-1:0]	o_dbg_reg,
 		output	wire	[2:0]	o_dbg_cc,
 		output	wire		o_break,
 		// CPU interface to the wishbone bus
@@ -149,11 +151,11 @@ module	zipwb #(
 		output	wire		o_wb_gbl_cyc, o_wb_gbl_stb,
 		output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we,
 		output	wire	[AW-1:0]	o_wb_addr,
-		output	wire [DW-1:0]	o_wb_data,
-		output	wire [DW/8-1:0]	o_wb_sel,
+		output	wire [BUS_WIDTH-1:0]	o_wb_data,
+		output	wire [BUS_WIDTH/8-1:0]	o_wb_sel,
 		// Wishbone interface -- inputs
 		input	wire		i_wb_stall, i_wb_ack,
-		input	wire [DW-1:0]	i_wb_data,
+		input	wire [BUS_WIDTH-1:0]	i_wb_data,
 		input	wire		i_wb_err,
 		// Accounting outputs ... to help us count stalls and usage
 		output	wire		o_op_stall,
@@ -162,9 +164,9 @@ module	zipwb #(
 		//
 		output	wire	[31:0]	o_debug,
 		output	wire		o_prof_stb,
-		output	wire [AW+1:0]	o_prof_addr,
+		output	wire [AW+WBLSB-1:0]	o_prof_addr,
 		output	wire [31:0]	o_prof_ticks
-	// }}}
+		// }}}
 	);
 
 	// Declarations
@@ -179,13 +181,13 @@ module	zipwb #(
 	// Fetch
 	// {{{
 	wire		pf_new_pc, clear_icache, pf_ready;
-	wire [AW+$clog2(INSN_WIDTH/8)-1:0]	pf_request_address;
+	wire [AW+WBLSB-1:0]	pf_request_address;
 	wire	[INSN_WIDTH-1:0]	pf_instruction;
-	wire [AW+$clog2(INSN_WIDTH/8)-1:0]	pf_instruction_pc;
+	wire [AW+WBLSB-1:0]	pf_instruction_pc;
 	wire		pf_valid, pf_illegal;
 	//
 	wire [AW-1:0]	pf_addr;
-	wire [DW-1:0]	pf_data;
+	wire [BUS_WIDTH-1:0]	pf_data;
 	wire		pf_cyc, pf_stb, pf_we, pf_stall, pf_ack, pf_err;
 	// }}}
 	// Memory
@@ -193,19 +195,19 @@ module	zipwb #(
 	wire		clear_dcache, mem_ce, bus_lock;
 	wire	[2:0]	mem_op;
 	wire	[31:0]	mem_cpu_addr;
-	wire [AW+$clog2(INSN_WIDTH/8)-1:0]	mem_lock_pc;
-	wire	[31:0]	mem_wdata;
-	wire [DW-1:0]	mem_data;
+	wire [AW+WBLSB-1:0]	mem_lock_pc;	// Byte address
+	wire [DATA_WIDTH-1:0]	mem_wdata;
+	wire [BUS_WIDTH-1:0]	mem_data;
 	wire	[4:0]	mem_reg;
 	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
 			mem_bus_err;
 	wire	[4:0]	mem_wreg;
-	wire	[31:0]	mem_result;
+	wire [DATA_WIDTH-1:0]	mem_result;
 	//
 	wire		mem_stb_lcl, mem_stb_gbl, mem_cyc_lcl, mem_cyc_gbl;
 	wire [AW-1:0]	mem_bus_addr;
 	wire		mem_we, mem_stall, mem_ack, mem_err;
-	wire [DW/8-1:0]	mem_sel;
+	wire [BUS_WIDTH/8-1:0]	mem_sel;
 	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -219,7 +221,7 @@ module	zipwb #(
 	zipcore #(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
-		.ADDRESS_WIDTH(ADDRESS_WIDTH),
+		.ADDRESS_WIDTH(AW+WBLSB-$clog2(DATA_WIDTH/8)),
 		.OPT_MPY(OPT_MPY),
 		.OPT_DIV(OPT_DIV),
 		.OPT_SHIFTS(OPT_SHIFTS),
@@ -304,14 +306,16 @@ module	zipwb #(
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
+	//
+
 	generate if (OPT_LGICACHE <= 1)
 	begin : SINGLE_FETCH
 
 		prefetch	#(
 			// {{{
-			.ADDRESS_WIDTH(ADDRESS_WIDTH+$clog2(INSN_WIDTH/8)),
+			.ADDRESS_WIDTH(ADDRESS_WIDTH+WBLSB),
 			.INSN_WIDTH(INSN_WIDTH),
-			.DATA_WIDTH(DW),
+			.DATA_WIDTH(BUS_WIDTH),
 			.OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
 		) pf (
@@ -342,8 +346,8 @@ module	zipwb #(
 
 		dblfetch #(
 			// {{{
-			.ADDRESS_WIDTH(ADDRESS_WIDTH+$clog2(INSN_WIDTH/8)),
-			.DATA_WIDTH(DW),
+			.ADDRESS_WIDTH(ADDRESS_WIDTH+WBLSB),
+			.DATA_WIDTH(BUS_WIDTH),
 			.INSN_WIDTH(INSN_WIDTH),
 			.OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
@@ -374,7 +378,9 @@ module	zipwb #(
 
 		pfcache #(
 			// {{{
-			.LGCACHELEN(OPT_LGICACHE-$clog2(DW/8)),
+			.BUS_WIDTH(BUS_WIDTH),
+			// .INSN_WIDTH(INSN_WIDTH),
+			.LGCACHELEN(OPT_LGICACHE-WBLSB),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH)
 			// }}}
 		) pf(
@@ -408,13 +414,13 @@ module	zipwb #(
 
 		dcache #(
 			// {{{
-			.LGCACHELEN(OPT_LGDCACHE-$clog2(DW/8)),
+			.LGCACHELEN(OPT_LGDCACHE-WBLSB),
 			.ADDRESS_WIDTH(AW),
-			.LGNLINES(OPT_LGDCACHE-$clog2(DW/8)-3),
+			// .DATA_WIDTH(BUS_WIDTH),
+			.LGNLINES(OPT_LGDCACHE-WBLSB-3),
 			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
 			.OPT_PIPE(OPT_MEMPIPE),
 			.OPT_LOCK(OPT_LOCK)
-			// DATA_WIDTH(DW),
 `ifdef	FORMAL
 			, .OPT_FIFO_DEPTH(2)
 			, .F_LGDEPTH(F_LGDEPTH)
@@ -447,26 +453,33 @@ module	zipwb #(
 		pipemem	#(
 			// {{{
 			.ADDRESS_WIDTH(AW),
+			.BUS_WIDTH(BUS_WIDTH),
 			.OPT_LOCK(OPT_LOCK),
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
-			// DATA_WIDTH(DW),
 `ifdef	FORMAL
 			, .OPT_MAXDEPTH(4'h3),
 			.F_LGDEPTH(F_LGDEPTH)
 `endif
 			// }}}
-		) domem(i_clk, i_reset,
-			/// {{{
+		) domem(
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
 			// CPU interface
-			mem_ce, bus_lock && OPT_PIPELINED,
-			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
-			mem_busy, mem_rdbusy, mem_pipe_stalled,
-			mem_valid, mem_bus_err, mem_wreg, mem_result,
+			.i_pipe_stb(mem_ce), .i_lock(bus_lock && OPT_PIPELINED),
+			.i_op(mem_op), .i_addr(mem_cpu_addr),
+				.i_data(mem_wdata), .i_oreg(mem_reg),
+			.o_busy(mem_busy), .o_rdbusy(mem_rdbusy),
+				.o_pipe_stalled(mem_pipe_stalled),
+			.o_valid(mem_valid), .o_err(mem_bus_err),
+				.o_wreg(mem_wreg), .o_result(mem_result),
 			// Wishbone interface
-			mem_cyc_gbl, mem_cyc_lcl,
-				mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_bus_addr, mem_data, mem_sel,
-				mem_stall, mem_ack, mem_err, i_wb_data
+			.o_wb_cyc_gbl(mem_cyc_gbl), .o_wb_cyc_lcl(mem_cyc_lcl),
+				.o_wb_stb_gbl(mem_stb_gbl),
+				.o_wb_stb_lcl(mem_stb_lcl),
+				.o_wb_we(mem_we), .o_wb_addr(mem_bus_addr),
+					.o_wb_data(mem_data),.o_wb_sel(mem_sel),
+				.i_wb_stall(mem_stall), .i_wb_ack(mem_ack),
+					.i_wb_err(mem_err),.i_wb_data(i_wb_data)
 			// }}}
 		);
 
@@ -475,9 +488,9 @@ module	zipwb #(
 		memops	#(
 			// {{{
 			.ADDRESS_WIDTH(AW),
+			.BUS_WIDTH(BUS_WIDTH),
 			.OPT_LOCK(OPT_LOCK),
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
-			// DATA_WIDTH(DW),
 `ifdef	FORMAL
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif	// F_LGDEPTH
@@ -512,11 +525,14 @@ module	zipwb #(
 	begin : PRIORITY_DATA
 
 		wbdblpriarb	#(
-			.DW(DW),
-			.AW(AW),
-			.OPT_ZERO_ON_IDLE(OPT_LOWPOWER)
-		) pformem(i_clk, i_reset,
 			// {{{
+			.AW(AW),
+			.DW(BUS_WIDTH),
+			.OPT_ZERO_ON_IDLE(OPT_LOWPOWER)
+			// }}}
+		) pformem(
+			// {{{
+			i_clk, i_reset,
 			// Memory access to the arbiter, priority position
 			mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
 				mem_we, mem_bus_addr, mem_data, mem_sel,
@@ -532,7 +548,7 @@ module	zipwb #(
 			// (mem_data and mem_sel) can be shared with the memory
 			// in order to ease timing and LUT usage.
 			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, 4'hf,
+				pf_addr, mem_data, {(BUS_WIDTH/8){1'b1}},
 				pf_stall, pf_ack, pf_err,
 			// Common wires, in and out, of the arbiter
 			o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
@@ -544,13 +560,14 @@ module	zipwb #(
 	end else begin : PRIORITY_PREFETCH
 
 		wbdblpriarb	#(
-			.DW(32), .AW(AW)
-		) pformem(i_clk, i_reset,
+			.DW(BUS_WIDTH), .AW(AW)
+		) pformem(
 			//{{{
+			i_clk, i_reset,
 			// Prefetch access to the arbiter, priority position
 			//
 			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, 4'hf,
+				pf_addr, mem_data, {(BUS_WIDTH/8){1'b1}},
 				pf_stall, pf_ack, pf_err,
 			// Memory access to the arbiter
 			mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
@@ -560,8 +577,9 @@ module	zipwb #(
 			o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
 				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
 				i_wb_stall, i_wb_ack, i_wb_err
+			//}}}
 		);
-		//}}}
+
 	end endgenerate
 	//}}}
 	// Make Verilator happy

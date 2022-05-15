@@ -123,6 +123,8 @@ module	zipsystem #(
 		// {{{
 		parameter	RESET_ADDRESS=32'h1000_0000,
 				ADDRESS_WIDTH=32,
+				BUS_WIDTH=32,
+		localparam	DBG_WIDTH=32,
 		// CPU options
 		// {{{
 		parameter [0:0]	OPT_PIPELINED=1,
@@ -196,7 +198,7 @@ module	zipsystem #(
 		localparam	// Derived parameters
 				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
 				PAW=ADDRESS_WIDTH-2,
-		localparam	DW=32
+		localparam	DW=BUS_WIDTH
 		// }}}
 		// }}}
 	) (
@@ -209,7 +211,7 @@ module	zipsystem #(
 		output	wire [DW-1:0]	o_wb_data,
 		output	wire [DW/8-1:0]	o_wb_sel,
 		input	wire		i_wb_stall, i_wb_ack,
-		input	wire	[31:0]	i_wb_data,
+		input	wire [DW-1:0]	i_wb_data,
 		input	wire		i_wb_err,
 		// }}}
 		// Incoming interrupts
@@ -220,11 +222,11 @@ module	zipsystem #(
 		// {{{
 		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
 		input	wire	[6:0]	i_dbg_addr,
-		input	wire [DW-1:0]	i_dbg_data,
-		input	wire [DW/8-1:0]	i_dbg_sel,
+		input	wire [DBG_WIDTH-1:0]	i_dbg_data,
+		input	wire [DBG_WIDTH/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire [DW-1:0]	o_dbg_data,
+		output	wire [DBG_WIDTH-1:0]	o_dbg_data,
 		// }}}
 		output wire	[31:0]	o_cpu_debug,
 		output wire		o_prof_stb,
@@ -291,7 +293,7 @@ module	zipsystem #(
 			CLEAR_CACHE_BIT = 11;
 	// }}}
 
-	// Virtual address width
+	// Virtual address width (unused)
 	// {{{
 	localparam
 `ifdef	OPT_MMU
@@ -308,114 +310,115 @@ module	zipsystem #(
 				DBG_ADDR_SYS = 2'b10;
 	// }}}
 
-	wire	[31:0]	ext_idata;
-
 	wire	[14:0]	main_int_vector, alt_int_vector;
 	wire		ctri_int, tma_int, tmb_int, tmc_int, jif_int, dmac_int;
 	wire		mtc_int, moc_int, mpc_int, mic_int,
 			utc_int, uoc_int, upc_int, uic_int;
-	wire	[31:0]	actr_data;
+	wire	[DBG_WIDTH-1:0]	actr_data;
 	wire		actr_ack, actr_stall;
 
 	//
 	wire	cpu_clken, cpu_clock, clk_gate;
 	//
 	//
-	wire	sys_cyc, sys_stb, sys_we;
-	wire	[7:0]	sys_addr;
+	wire			sys_cyc, sys_stb, sys_we;
+	wire	[7:0]		sys_addr;
 	wire	[(PAW-1):0]	cpu_addr;
-	wire	[31:0]	sys_data;
-	reg	[31:0]	sys_idata;
-	reg		sys_ack;
-	wire		sys_stall;
+	wire	[DBG_WIDTH-1:0]	sys_data;
+	reg	[DBG_WIDTH-1:0]	sys_idata;
+	reg			sys_ack;
+	wire			sys_stall;
 
 	wire	sel_counter, sel_timer, sel_pic, sel_apic,
 		sel_watchdog, sel_bus_watchdog, sel_dmac, sel_mmus;
 
-	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
-	wire	[6:0]	dbg_addr;
-	wire	[31:0]	dbg_idata;
-	reg	[31:0]	dbg_odata;
-	reg		dbg_ack;
-	wire	[3:0]	dbg_sel;
-	wire		no_dbg_err;
+	wire				dbg_cyc, dbg_stb, dbg_we, dbg_stall;
+	wire	[6:0]			dbg_addr;
+	wire	[DBG_WIDTH-1:0]		dbg_idata;
+	reg	[DBG_WIDTH-1:0]		dbg_odata;
+	reg				dbg_ack;
+	wire	[DBG_WIDTH/8-1:0]	dbg_sel;
+	wire				no_dbg_err;
 
-	wire		cpu_break, dbg_cmd_write;
-	wire	[31:0]	dbg_cmd_data;
-	reg		cmd_reset, cmd_step, cmd_clear_cache;
-	reg		cmd_write;
-	reg	[4:0]	cmd_waddr;
-	reg	[31:0]	cmd_wdata;
-	wire		reset_hold;
-	reg		cmd_halt;
-	wire	[2:0]	cpu_dbg_cc;
+	wire			cpu_break, dbg_cmd_write;
+	wire	[DBG_WIDTH-1:0]	dbg_cmd_data;
+	reg			cmd_reset, cmd_step, cmd_clear_cache;
+	reg			cmd_write;
+	reg	[4:0]		cmd_waddr;
+	reg	[DBG_WIDTH-1:0]	cmd_wdata;
+	wire			reset_hold;
+	reg			cmd_halt;
+	wire	[2:0]		cpu_dbg_cc;
 
-	wire		cpu_reset;
-	wire		cpu_dbg_stall;
-	wire	[31:0]	pic_data;
-	wire	[31:0]	cpu_status;
-	wire		cpu_gie;
+	wire			cpu_reset;
+	wire			cpu_dbg_stall;
+	wire	[DBG_WIDTH-1:0]	pic_data;
+	wire	[DBG_WIDTH-1:0]	cpu_status;
+	wire			cpu_gie;
 
-	wire		wdt_stall, wdt_ack, wdt_reset;
-	wire	[31:0]	wdt_data;
-	reg	wdbus_ack;
+	wire			wdt_stall, wdt_ack, wdt_reset;
+	wire	[DBG_WIDTH-1:0]	wdt_data;
+	reg			wdbus_ack;
 	reg	[(PAW-1):0] 	r_wdbus_data;
-	wire	[31:0]	 	wdbus_data;
+	wire	[DBG_WIDTH-1:0]	wdbus_data;
 	wire	reset_wdbus_timer, wdbus_int;
 
 	wire		cpu_op_stall, cpu_pf_stall, cpu_i_count;
 
 	wire		dmac_stb, dc_err;
-	wire	[31:0]	dmac_data;
+	wire	[DBG_WIDTH-1:0]	dmac_data;
 	wire		dmac_stall, dmac_ack;
 	wire		dc_cyc, dc_stb, dc_we, dc_stall, dc_ack;
-	wire	[31:0]	dc_data;
+	wire	[BUS_WIDTH-1:0]	dc_data;
 	wire	[(PAW-1):0]	dc_addr;
 	wire		cpu_gbl_cyc;
 	wire	[31:0]	dmac_int_vec;
 
 	wire		ctri_sel, ctri_stall, ctri_ack;
-	wire	[31:0]	ctri_data;
+	wire	[DBG_WIDTH-1:0]	ctri_data;
 
-	wire		tma_stall, tma_ack;
-	wire		tmb_stall, tmb_ack;
-	wire		tmc_stall, tmc_ack;
-	wire		jif_stall, jif_ack;
-	wire	[31:0]	tma_data;
-	wire	[31:0]	tmb_data;
-	wire	[31:0]	tmc_data;
-	wire	[31:0]	jif_data;
+	wire			tma_stall, tma_ack;
+	wire			tmb_stall, tmb_ack;
+	wire			tmc_stall, tmc_ack;
+	wire			jif_stall, jif_ack;
+	wire	[DBG_WIDTH-1:0]	tma_data;
+	wire	[DBG_WIDTH-1:0]	tmb_data;
+	wire	[DBG_WIDTH-1:0]	tmc_data;
+	wire	[DBG_WIDTH-1:0]	jif_data;
 
 	wire		pic_interrupt, pic_stall, pic_ack;
 
 	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb,
 			cpu_we, cpu_dbg_we;
-	wire	[31:0]	cpu_data, cpu_idata;
-	wire	[3:0]	cpu_sel, mmu_sel;
+	wire	[BUS_WIDTH-1:0]		cpu_data, cpu_idata;
+	wire	[BUS_WIDTH/8-1:0]	cpu_sel, mmu_sel;
 	wire		cpu_stall, cpu_ack, cpu_err;
-	wire	[31:0]	cpu_dbg_data;
+	wire	[DBG_WIDTH-1:0]	cpu_dbg_data;
 
 	wire	ext_stall, ext_ack;
 	wire	mmu_cyc, mmu_stb, mmu_we, mmu_stall, mmu_ack, mmu_err;
 	wire	mmus_stall, mmus_ack;
 	wire [PAW-1:0]	mmu_addr;
-	wire [31:0]	mmu_data, mmu_idata, mmus_data;
+	wire [BUS_WIDTH-1:0]	mmu_data, mmu_idata;
+	wire	[DBG_WIDTH-1:0]	mmus_data;
 	wire		cpu_miss;
 
 	wire		mmu_cpu_stall, mmu_cpu_ack;
-	wire	[31:0]	mmu_cpu_idata;
+	wire	[BUS_WIDTH-1:0]	mmu_cpu_idata;
 
 	// The wires associated with cache snooping
 	wire		pf_return_stb, pf_return_we, pf_return_cachable;
 	wire	[19:0]	pf_return_v, pf_return_p;
 
-	wire		ext_cyc, ext_stb, ext_we, ext_err;
-	wire	[(PAW-1):0]	ext_addr;
-	wire	[31:0]		ext_odata;
-	wire	[3:0]		ext_sel;
-	reg	[31:0]	tmr_data;
-	reg	[2:0]	w_ack_idx, ack_idx;
-	reg	last_sys_stb;
+	wire				ext_cyc, ext_stb, ext_we, ext_err;
+	wire	[(PAW-1):0]		ext_addr;
+	wire	[BUS_WIDTH-1:0]		ext_odata;
+	wire	[BUS_WIDTH/8-1:0]	ext_sel;
+	wire	[BUS_WIDTH-1:0]		ext_idata;
+
+	reg	[DBG_WIDTH-1:0]		tmr_data;
+	reg	[2:0]			w_ack_idx, ack_idx;
+	reg				last_sys_stb;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -818,15 +821,15 @@ module	zipsystem #(
 		wire		upc_stall, upc_ack;
 		wire		uic_stall, uic_ack;
 		// Verilator lint_on  UNUSED
-		wire	[31:0]	mtc_data;
-		wire	[31:0]	moc_data;
-		wire	[31:0]	mpc_data;
-		wire	[31:0]	mic_data;
-		wire	[31:0]	utc_data;
-		wire	[31:0]	uoc_data;
-		wire	[31:0]	upc_data;
-		wire	[31:0]	uic_data;
-		reg	[31:0]	r_actr_data;
+		wire	[DBG_WIDTH-1:0]	mtc_data;
+		wire	[DBG_WIDTH-1:0]	moc_data;
+		wire	[DBG_WIDTH-1:0]	mpc_data;
+		wire	[DBG_WIDTH-1:0]	mic_data;
+		wire	[DBG_WIDTH-1:0]	utc_data;
+		wire	[DBG_WIDTH-1:0]	uoc_data;
+		wire	[DBG_WIDTH-1:0]	upc_data;
+		wire	[DBG_WIDTH-1:0]	uic_data;
+		reg	[DBG_WIDTH-1:0]	r_actr_data;
 		// }}}
 
 		// Master counters
@@ -987,7 +990,8 @@ module	zipsystem #(
 		// {{{
 		wbdmac	#(
 			// {{{
-			.ADDRESS_WIDTH(PAW), .LGMEMLEN(DMA_LGMEM), .DW(DW)
+			.ADDRESS_WIDTH(PAW), .LGMEMLEN(DMA_LGMEM),
+			.DW(DW)
 			// }}}
 		) dma_controller(
 			// {{{
@@ -1256,6 +1260,7 @@ module	zipsystem #(
 		// {{{
 		.RESET_ADDRESS(RESET_ADDRESS),
 		.ADDRESS_WIDTH(VIRTUAL_ADDRESS_WIDTH),
+		.BUS_WIDTH(BUS_WIDTH),
 		.OPT_PIPELINED(OPT_PIPELINED),
 		.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 		.OPT_LGICACHE(OPT_LGICACHE),
@@ -1328,25 +1333,31 @@ module	zipsystem #(
 
 `ifdef	OPT_MMU
 	// Ok ... here's the MMU
-	zipmmu	#(	.LGTBL(LGTLBSZ),
-			.ADDRESS_WIDTH(PHYSICAL_ADDRESS_WIDTH)
-			)
-		themmu(i_clk, cpu_reset,
-			// Slave interface
-			(sys_stb)&&(sel_mmus),
-				sys_we, sys_addr[7:0], sys_data,
-				mmus_stall, mmus_ack, mmus_data,
-			// CPU global bus master lines
-			cpu_gbl_cyc, cpu_gbl_stb, cpu_we, cpu_addr,
-				cpu_data, cpu_sel,
-			// MMU bus master outgoing lines
-			mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
-				// .... and the return from the slave(s)
-				mmu_stall, mmu_ack, mmu_err, mmu_idata,
-			// CPU gobal bus master return lines
-				mmu_cpu_stall, mmu_cpu_ack, cpu_err, cpu_miss, mmu_cpu_idata,
-				pf_return_stb, pf_return_we, pf_return_p, pf_return_v,
-					pf_return_cachable);
+	zipmmu	#(
+		// {{{
+		.LGTBL(LGTLBSZ),
+		.ADDRESS_WIDTH(PHYSICAL_ADDRESS_WIDTH)
+		// }}}
+	) themmu(
+		// {{{
+		i_clk, cpu_reset,
+		// Slave interface
+		(sys_stb)&&(sel_mmus),
+			sys_we, sys_addr[7:0], sys_data,
+			mmus_stall, mmus_ack, mmus_data,
+		// CPU global bus master lines
+		cpu_gbl_cyc, cpu_gbl_stb, cpu_we, cpu_addr,
+			cpu_data, cpu_sel,
+		// MMU bus master outgoing lines
+		mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
+			// .... and the return from the slave(s)
+			mmu_stall, mmu_ack, mmu_err, mmu_idata,
+		// CPU gobal bus master return lines
+			mmu_cpu_stall, mmu_cpu_ack, cpu_err, cpu_miss, mmu_cpu_idata,
+			pf_return_stb, pf_return_we, pf_return_p, pf_return_v,
+				pf_return_cachable
+		// }}}
+	);
 
 `else
 	reg	r_mmus_ack;
@@ -1387,7 +1398,8 @@ module	zipsystem #(
 				||((cpu_gbl_cyc)&&(mmu_cpu_ack));
 	assign	cpu_stall = ((cpu_lcl_cyc)&&(sys_stall))
 				||((cpu_gbl_cyc)&&(mmu_cpu_stall));
-	assign	cpu_idata     = (cpu_gbl_cyc)?mmu_cpu_idata : sys_idata;
+	assign	cpu_idata     = (cpu_gbl_cyc)?mmu_cpu_idata
+				: { {(BUS_WIDTH-DBG_WIDTH){1'b0}}, sys_idata };
 
 	// The following lines (will be/) are used to allow the prefetch to
 	// snoop on any external interaction.  Until this capability is
@@ -1425,7 +1437,7 @@ module	zipsystem #(
 
 	assign	sys_we  = (cpu_lcl_cyc) ? cpu_we : dbg_we;
 	assign	sys_addr= (cpu_lcl_cyc) ? cpu_addr[7:0] : { 3'h0, dbg_addr[4:0]};
-	assign	sys_data= (cpu_lcl_cyc) ? cpu_data : dbg_idata;
+	assign	sys_data= (cpu_lcl_cyc) ? cpu_data[DBG_WIDTH-1:0] : dbg_idata;
 
 	// tmr_data
 	// {{{
@@ -1504,9 +1516,9 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	reg		dbg_pre_ack;
-	reg	[1:0]	dbg_pre_addr;
-	reg	[31:0]	dbg_cpu_status;
+	reg			dbg_pre_ack;
+	reg	[1:0]		dbg_pre_addr;
+	reg	[DBG_WIDTH-1:0]	dbg_cpu_status;
 
 	always @(posedge i_clk)
 		dbg_pre_addr <= dbg_addr[6:5];
@@ -1564,13 +1576,13 @@ module	zipsystem #(
 	// The way this works, though, the CPU will stall once the flash
 	// cache gets access to the bus--the CPU will be stuck until the
 	// flash cache is finished with the bus.
-	wbpriarbiter #(32,PAW)
+	wbpriarbiter #(BUS_WIDTH,PAW)
 	dmacvcpu(
 		// {{{
 		i_clk,
 		mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
 			mmu_stall, mmu_ack, mmu_err,
-		dc_cyc, dc_stb, dc_we, dc_addr, dc_data, 4'hf,
+		dc_cyc, dc_stb, dc_we, dc_addr, dc_data, {(BUS_WIDTH/8){1'b1}},
 			dc_stall, dc_ack, dc_err,
 		ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
 			ext_stall, ext_ack, ext_err
@@ -1603,7 +1615,7 @@ module	zipsystem #(
 		busdelay #(
 			// {{{
 			.AW(PAW),
-			.DW(32),
+			.DW(BUS_WIDTH),
 			.DELAY_STALL(0)
 			// }}}
 		) extbus(

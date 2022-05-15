@@ -103,7 +103,8 @@ module	zipbones #(
 				// VAW=VIRTUAL_ADDRESS_WIDTH,
 
 		// localparam	AW=ADDRESS_WIDTH,
-		localparam	DW=32,	// Bus data width
+		parameter	BUS_WIDTH=32,	// Bus data width
+		localparam	DBG_WIDTH=32,	// Debug bus data width
 		// }}}
 		// Debug bit allocations
 		// {{{
@@ -132,10 +133,10 @@ module	zipbones #(
 		// {{{
 		output	wire		o_wb_cyc, o_wb_stb, o_wb_we,
 		output wire [(PAW-1):0]	o_wb_addr,
-		output	wire [DW-1:0]	o_wb_data,
-		output	wire [DW/8-1:0]	o_wb_sel,
+		output	wire [BUS_WIDTH-1:0]	o_wb_data,
+		output	wire [BUS_WIDTH/8-1:0]	o_wb_sel,
 		input	wire		i_wb_stall, i_wb_ack,
-		input	wire [DW-1:0]	i_wb_data,
+		input	wire [BUS_WIDTH-1:0]	i_wb_data,
 		input	wire		i_wb_err,
 		// }}}
 		// Incoming interrupts
@@ -146,11 +147,11 @@ module	zipbones #(
 		// {{{
 		input	wire		i_dbg_cyc, i_dbg_stb, i_dbg_we,
 		input	wire	[5:0]	i_dbg_addr,
-		input	wire [DW-1:0]	i_dbg_data,
-		input	wire [DW/8-1:0]	i_dbg_sel,
+		input	wire [DBG_WIDTH-1:0]	i_dbg_data,
+		input	wire [DBG_WIDTH/8-1:0]	i_dbg_sel,
 		output	wire		o_dbg_stall,
 		output	wire		o_dbg_ack,
-		output	wire [DW-1:0]	o_dbg_data,
+		output	wire [DBG_WIDTH-1:0]	o_dbg_data,
 		// }}}
 		output	wire	[31:0]	o_cpu_debug,
 		//
@@ -162,26 +163,26 @@ module	zipbones #(
 
 	// Declarations
 	// {{{
-	wire		cpu_clken, cpu_clock, clk_gate;
-	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall;
-	wire	[5:0]	dbg_addr;
-	wire	[31:0]	dbg_idata;
-	reg	[31:0]	dbg_odata;
-	reg		dbg_ack;
-	wire		cpu_break, dbg_cmd_write;
-	wire		reset_hold;
-	reg		cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
-			cmd_write;
-	reg	[4:0]	cmd_waddr;
-	reg	[31:0]	cmd_wdata;
-	wire	[2:0]	cpu_dbg_cc;
-	wire		cpu_reset, cpu_halt, cpu_dbg_stall;
-	wire		cpu_lcl_cyc, cpu_lcl_stb,
-			cpu_op_stall, cpu_pf_stall, cpu_i_count;
-	wire	[31:0]	cpu_dbg_data;
-	wire	[31:0]	cpu_status;
-	reg		dbg_pre_addr, dbg_pre_ack;
-	reg	[31:0]	dbg_cpu_status;
+	wire			cpu_clken, cpu_clock, clk_gate;
+	wire			dbg_cyc, dbg_stb, dbg_we, dbg_stall;
+	wire	[5:0]		dbg_addr;
+	wire	[DBG_WIDTH-1:0]	dbg_idata;
+	reg	[DBG_WIDTH-1:0]	dbg_odata;
+	reg			dbg_ack;
+	wire			cpu_break, dbg_cmd_write;
+	wire			reset_hold;
+	reg			cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
+				cmd_write;
+	reg	[4:0]		cmd_waddr;
+	reg	[DBG_WIDTH-1:0]	cmd_wdata;
+	wire	[2:0]		cpu_dbg_cc;
+	wire			cpu_reset, cpu_halt, cpu_dbg_stall;
+	wire			cpu_lcl_cyc, cpu_lcl_stb,
+				cpu_op_stall, cpu_pf_stall, cpu_i_count;
+	wire	[DBG_WIDTH-1:0]	cpu_dbg_data;
+	wire	[DBG_WIDTH-1:0]	cpu_status;
+	reg			dbg_pre_addr, dbg_pre_ack;
+	reg	[DBG_WIDTH-1:0]	dbg_cpu_status;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -602,7 +603,7 @@ module	zipbones #(
 	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(!dbg_addr[5]));
 
 	fwb_slave #(
-		.AW(6), .DW(32), .F_LGDEPTH(F_LGDEPTH)
+		.AW(6), .DW(DBG_WIDTH), .F_LGDEPTH(F_LGDEPTH)
 	) fwb(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset),

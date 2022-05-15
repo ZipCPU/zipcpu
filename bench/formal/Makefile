@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2017-2020, Gisselquist Technology, LLC
+## Copyright (C) 2017-2022, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -112,7 +112,7 @@ fmem:   memops pipemem dcache axilops axiops axidcache
 ## {{{
 .PHONY: $(PFONE)
 ## {{{
-$(PFONE) : $(PFONE)_prf/PASS $(PFONE)_prf64b/PASS
+$(PFONE) : $(PFONE)_prf/PASS $(PFONE)_prf64b/PASS $(PFONE)_prf128b/PASS
 $(PFONE) : $(PFONE)_prf8b/PASS $(PFONE)_prf8ble/PASS
 $(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf
@@ -122,6 +122,8 @@ $(PFONE)_prf8ble/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf8ble
 $(PFONE)_prf64b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
 	sby -f $(PFONE).sby prf64b
+$(PFONE)_prf128b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
+	sby -f $(PFONE).sby prf128b
 ## }}}
 
 .PHONY: $(AXILPF)
@@ -162,7 +164,7 @@ $(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
 .PHONY: $(PFTWO)
 ## {{{
 $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
-$(PFTWO) : $(PFTWO)_prf8b/PASS $(PFTWO)_prf64b/PASS
+$(PFTWO) : $(PFTWO)_prf8b/PASS $(PFTWO)_prf64b/PASS $(PFTWO)_prf128b/PASS
 $(PFTWO) : $(PFTWO)_prf8ble/PASS
 $(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf
@@ -174,13 +176,20 @@ $(PFTWO)_prf8ble/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf8ble
 $(PFTWO)_prf64b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf64b
+$(PFTWO)_prf128b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
+	sby -f $(PFTWO).sby prf128b
 ## }}}
 
 .PHONY: $(PFCACHE)
 ## {{{
-$(PFCACHE): $(PFCACHE)_prf/PASS $(PFCACHE)_cvr/PASS
+$(PFCACHE): $(PFCACHE)_prf/PASS   $(PFCACHE)_cvr/PASS
+$(PFCACHE): $(PFCACHE)_prf64/PASS $(PFCACHE)_prf128/PASS
 $(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby prf
+$(PFCACHE)_prf64/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
+	sby -f $(PFCACHE).sby prf64
+$(PFCACHE)_prf128/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
+	sby -f $(PFCACHE).sby prf128
 $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	sby -f $(PFCACHE).sby cvr
 ## }}}
@@ -215,9 +224,50 @@ $(DBL)_prf/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
 
 .PHONY: $(MEM)
 ## {{{
-$(MEM): $(MEM)_cvr/PASS $(MEM)_prf/PASS
+$(MEM): $(MEM)_prf/PASS       $(MEM)_prflp/PASS
+$(MEM): $(MEM)_prflck/PASS    $(MEM)_prflcklp/PASS
+$(MEM): $(MEM)_prflcklcl/PASS $(MEM)_prflcklplcl/PASS
+$(MEM): $(MEM)_prflcl/PASS    $(MEM)_prflplcl/PASS
+$(MEM): $(MEM)_prf64/PASS     $(MEM)_prf64lp/PASS
+$(MEM): $(MEM)_prf64lcl/PASS  $(MEM)_prf64lplcl/PASS
+$(MEM): $(MEM)_prf128/PASS    $(MEM)_prf128lp/PASS
+$(MEM): $(MEM)_prf128lcl/PASS $(MEM)_prf128lplcl/PASS
+$(MEM): $(MEM)_prf128lck/PASS
+$(MEM): $(MEM)_cvr/PASS
 $(MEM)_prf/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 	sby -f $(MEM).sby prf
+$(MEM)_prflp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflp
+$(MEM)_prf64/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf64
+$(MEM)_prf64lp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf64lp
+$(MEM)_prf128/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf128
+$(MEM)_prf128lp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf128lp
+$(MEM)_prflck/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflck
+$(MEM)_prflcklp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflcklp
+$(MEM)_prf128lck/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf128lck
+$(MEM)_prflcklcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflcklcl
+$(MEM)_prflcklplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflcklplcl
+$(MEM)_prflcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflcl
+$(MEM)_prflplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prflplcl
+$(MEM)_prf64lcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf64lcl
+$(MEM)_prf64lplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf64lplcl
+$(MEM)_prf128lcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf128lcl
+$(MEM)_prf128lplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
+	sby -f $(MEM).sby prf128lplcl
 $(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
 	sby -f $(MEM).sby cvr
 ## }}}
@@ -347,31 +397,36 @@ $(AXIPIPE)_cvr64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
 
 .PHONY: $(WBPIPE)
 ## {{{
-$(WBPIPE): $(WBPIPE)_lcl_aligned_lock/PASS
-$(WBPIPE): $(WBPIPE)_lcl_aligned_nolock/PASS
+$(WBPIPE): $(WBPIPE)_prf/PASS
+$(WBPIPE): $(WBPIPE)_prflck/PASS
+$(WBPIPE): $(WBPIPE)_prflcl/PASS
+$(WBPIPE): $(WBPIPE)_prflcllck/PASS
 $(WBPIPE): $(WBPIPE)_lcl_noaligned_lock/PASS
 $(WBPIPE): $(WBPIPE)_lcl_noaligned_nolock/PASS
-$(WBPIPE): $(WBPIPE)_nolcl_aligned_lock/PASS
-$(WBPIPE): $(WBPIPE)_nolcl_aligned_nolock/PASS
 $(WBPIPE): $(WBPIPE)_nolcl_noaligned_lock/PASS
 $(WBPIPE): $(WBPIPE)_nolcl_noaligned_nolock/PASS
+$(WBPIPE): $(WBPIPE)_prf64/PASS $(WBPIPE)_prf128/PASS
 PIPEDEPS := $(WBPIPE).sby $(RTL)/core/$(WBPIPE).v $(MASTER) $(FMEM)
-$(WBPIPE)_lcl_aligned_lock/PASS:       $(PIPEDEPS)
-	sby -f $(WBPIPE).sby lcl_aligned_lock
-$(WBPIPE)_lcl_aligned_nolock/PASS:     $(PIPEDEPS)
-	sby -f $(WBPIPE).sby lcl_aligned_nolock
+$(WBPIPE)_prf/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prf
+$(WBPIPE)_prflck/PASS:     $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prflck
+$(WBPIPE)_prflcl/PASS:     $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prflcl
+$(WBPIPE)_prflcllck/PASS:       $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prflcllck
 $(WBPIPE)_lcl_noaligned_lock/PASS:     $(PIPEDEPS)
 	sby -f $(WBPIPE).sby lcl_noaligned_lock
 $(WBPIPE)_lcl_noaligned_nolock/PASS:   $(PIPEDEPS)
 	sby -f $(WBPIPE).sby lcl_noaligned_nolock
-$(WBPIPE)_nolcl_aligned_lock/PASS:     $(PIPEDEPS)
-	sby -f $(WBPIPE).sby nolcl_aligned_lock
-$(WBPIPE)_nolcl_aligned_nolock/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby nolcl_aligned_nolock
 $(WBPIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
 	sby -f $(WBPIPE).sby nolcl_noaligned_lock
 $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
 	sby -f $(WBPIPE).sby nolcl_noaligned_nolock
+$(WBPIPE)_prf64/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prf64
+$(WBPIPE)_prf128/PASS:   $(PIPEDEPS)
+	sby -f $(WBPIPE).sby prf128
 ## }}}
 
 .PHONY: $(AXIDCC)
