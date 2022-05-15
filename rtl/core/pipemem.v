@@ -182,6 +182,7 @@ module	pipemem #(
 	else case({ i_pipe_stb, i_wb_ack })
 	2'b10: fifo_full <= (fifo_fill >= OPT_MAXDEPTH-1);
 	2'b01: fifo_full <= 1'b0;
+	default: begin end
 	endcase
 `ifdef	FORMAL
 	always @(*)

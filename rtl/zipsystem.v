@@ -230,7 +230,7 @@ module	zipsystem #(
 		// }}}
 		output wire	[31:0]	o_cpu_debug,
 		output wire		o_prof_stb,
-		output wire [PAW+1:0]	o_prof_addr,
+		output wire [PAW+$clog2(BUS_WIDTH/8)-1:0]	o_prof_addr,
 		output wire	[31:0]	o_prof_ticks
 		// }}}
 	);
@@ -991,7 +991,7 @@ module	zipsystem #(
 		wbdmac	#(
 			// {{{
 			.ADDRESS_WIDTH(PAW), .LGMEMLEN(DMA_LGMEM),
-			.DW(DW)
+			.BUS_WIDTH(DW)
 			// }}}
 		) dma_controller(
 			// {{{

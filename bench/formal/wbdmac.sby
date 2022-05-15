@@ -1,5 +1,7 @@
 [tasks]
-prf
+prf         bus32
+prf64   prf bus64
+prf128  prf bus128
 
 [options]
 prf: mode prove
@@ -12,6 +14,16 @@ smtbmc
 read -formal wbdmac.v
 read -formal fwb_master.v
 read -formal fwb_slave.v
+--pycode-begin--
+cmd = "hierarchy -top wbdmac"
+if ("bus32" in tags):
+	cmd += " -chparam BUS_WIDTH 32"
+elif ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
+output(cmd)
+--pycode-end--
 prep -top wbdmac
 
 [files]

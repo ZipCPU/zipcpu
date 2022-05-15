@@ -560,9 +560,13 @@ $(DCD)_nopipe_nodiv_nompy_nocis_nopipe/PASS: $(RTL)/core/$(DCD).v $(DCD).sby f_i
 
 .PHONY: $(WBDMA)
 ## {{{
-$(WBDMA): $(WBDMA)_prf/PASS
+$(WBDMA): $(WBDMA)_prf/PASS $(WBDMA)_prf64/PASS $(WBDMA)_prf128/PASS
 $(WBDMA)_prf/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE)
 	sby -f $(WBDMA).sby prf
+$(WBDMA)_prf64/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE)
+	sby -f $(WBDMA).sby prf64
+$(WBDMA)_prf128/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLAVE)
+	sby -f $(WBDMA).sby prf128
 ## }}}
 
 .PHONY: $(AXLPH)
