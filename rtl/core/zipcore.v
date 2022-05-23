@@ -767,24 +767,29 @@ module	zipcore #(
 			pre_rewrite_flag_A <= (wr_reg_ce)&&(dcd_preA == wr_reg_id);
 			pre_rewrite_flag_B <= (wr_reg_ce)&&(dcd_preB == wr_reg_id);
 			pre_rewrite_value  <= wr_gpreg_vl;
+		end else if (OPT_PIPELINED && dcd_valid)
+		begin
+			pre_rewrite_flag_A <= (wr_reg_ce)&&(dcd_A == wr_reg_id);
+			pre_rewrite_flag_B <= (wr_reg_ce)&&(dcd_B == wr_reg_id);
+			pre_rewrite_value  <= wr_gpreg_vl;
 		end
 
 		if (OPT_USERMODE)
 		begin : GEN_FULL_REGSET
 
 			always @(posedge i_clk)
-			if (dcd_ce)
+			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
 			begin
-				pre_op_Av <= regset[dcd_preA];
-				pre_op_Bv <= regset[dcd_preB];
+				pre_op_Av <= regset[dcd_ce ? dcd_preA : dcd_A];
+				pre_op_Bv <= regset[dcd_ce ? dcd_preB : dcd_B];
 			end
 
 		end else begin : GEN_NO_USERREGS
 			always @(posedge i_clk)
-			if (dcd_ce)
+			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
 			begin
-				pre_op_Av <= regset[dcd_preA[3:0]];
-				pre_op_Bv <= regset[dcd_preB[3:0]];
+				pre_op_Av <= regset[dcd_ce ? dcd_preA[3:0] : dcd_A[3:0]];
+				pre_op_Bv <= regset[dcd_ce ? dcd_preB[3:0] : dcd_B[3:0]];
 			end
 		end
 
@@ -1919,7 +1924,9 @@ module	zipcore #(
 				if ((op_sim_immv[19:10] == 10'h0)&&(op_sim_immv[8]))
 				begin // [N/S]EXIT
 					// {{{
-					// $finish;
+`ifndef	VERILATOR
+					$finish;
+`endif
 
 					// if (op_sim_immv[19:4] == 16'h0031)
 						// Exit(User reg), code cpu_wr_gpreg
@@ -2067,7 +2074,9 @@ module	zipcore #(
 				if ((op_sim_immv[19:10] == 10'h0)&&(op_sim_immv[8]))
 				begin // [N/S]EXIT
 					// {{{
-					// $finish;
+`ifndef	VERILATOR
+					$finish;
+`endif
 
 					// if (op_sim_immv[19:4] == 16'h0031)
 						// Exit(User reg), code cpu_wr_gpreg

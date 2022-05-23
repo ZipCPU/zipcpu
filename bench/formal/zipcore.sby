@@ -1,8 +1,9 @@
 [tasks]
 piped		prf lock pipelined mpy div cis pipelined earlybranching
+pipedbk		prf lock pipelined mpy div cis pipelined earlybranching bkregs
 nopipe		prf lock nopipe            cis
 lowlogic	prf lock nopipe		
-ice40		prf lock nopipe    mpy div cis nobkram
+ice40		prf lock nopipe    mpy div cis bkregs
 
 pipedlp		piped prf lock pipelined mpy div cis earlybranching opt_lowpower
 nopipelp	nopipe prf lock nopipe            cis opt_lowpower
@@ -24,6 +25,7 @@ piped:    depth  5
 nopipe:   depth  4
 lowlogic: depth  4
 ice40:    depth  5
+pipedbk:  depth  5
 cvr: depth 35
 
 [engines]
@@ -56,7 +58,7 @@ cmd += " -chparam OPT_EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags els
 cmd += " -chparam OPT_LOWPOWER    %d" % ( 1 if "opt_lowpower" in tags else 0)
 cmd += " -chparam OPT_CLKGATE     %d" % ( 1 if "opt_ckgate"   in tags else 0)
 cmd += " -chparam OPT_START_HALTED %d" % (1 if "opt_halted"   in tags else 0)
-cmd += " -chparam OPT_DISTRIBUTED_REGS %d" % (0 if "nobkram"  in tags else 1)
+cmd += " -chparam OPT_DISTRIBUTED_REGS %d" % (0 if "bkregs"  in tags else 1)
 output(cmd)
 --pycode-end--
 
