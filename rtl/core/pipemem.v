@@ -109,7 +109,7 @@ module	pipemem #(
 	reg	[4+2+WBLSB-1:0]	fifo_mem [0:15];
 	reg					fifo_gie;
 	wire	[4+2+WBLSB-1:0]	w_wreg;
-	reg					misaligned;
+	wire					misaligned;
 
 	reg	[BUS_WIDTH/8-1:0]	oword_sel;
 	wire	[BUS_WIDTH/8-1:0]	pre_wb_sel;
@@ -119,17 +119,25 @@ module	pipemem #(
 
 	// misaligned
 	// {{{
-	always	@(*)
-	if (OPT_ALIGNMENT_ERR)
-	begin
+	generate if (OPT_ALIGNMENT_ERR)
+	begin : GEN_ALIGNMENT_ERR
+		reg	r_mis;
+
+		always	@(*)
 		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned = i_pipe_stb;
-		4'b0110: misaligned = i_pipe_stb;
-		4'b10?1: misaligned = i_pipe_stb;
-		default: misaligned = i_pipe_stb;
+		4'b01?1: r_mis = i_pipe_stb;
+		4'b0110: r_mis = i_pipe_stb;
+		4'b10?1: r_mis = i_pipe_stb;
+		default: r_mis = i_pipe_stb;
 		endcase
-	end else
-		misaligned = 1'b0;
+
+		assign	misaligned = r_mis;
+
+	end else begin : NO_MISALIGNMENT_ERRS
+
+		assign	misaligned = 1'b0;
+
+	end endgenerate
 	// }}}
 
 	// fifo_mem

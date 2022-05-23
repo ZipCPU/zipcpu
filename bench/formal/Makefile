@@ -592,7 +592,9 @@ DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core
 
 $(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
 $(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
-$(DCACHE) : $(DCACHE)_piped/PASS $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
+$(DCACHE) : $(DCACHE)_piped/PASS  $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
+$(DCACHE) : $(DCACHE)_prf64/PASS  $(DCACHE)_prf64lp/PASS
+$(DCACHE) : $(DCACHE)_prf128/PASS $(DCACHE)_prf128lp/PASS
 $(DCACHE)_full/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby full
 $(DCACHE)_full_single/PASS: $(DCACHE_FILES)
@@ -609,6 +611,16 @@ $(DCACHE)_nolock_system/PASS: $(DCACHE_FILES)
 
 $(DCACHE)_piped/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby piped
+
+$(DCACHE)_prf64/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby prf64
+$(DCACHE)_prf64lp/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby prf64lp
+
+$(DCACHE)_prf128/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby prf128
+$(DCACHE)_prf128lp/PASS: $(DCACHE_FILES)
+	sby -f $(DCACHE).sby prf128lp
 
 $(DCACHE)_cover/PASS: $(DCACHE_FILES)
 	sby -f $(DCACHE).sby cover

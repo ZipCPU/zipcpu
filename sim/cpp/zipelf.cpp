@@ -50,6 +50,8 @@
 
 #include "zipelf.h"
 
+const	bool	ELFDEBUG = false;
+
 bool
 iself(const char *fname)
 {
@@ -75,7 +77,7 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 	Elf_Kind	ek;
 	GElf_Ehdr	ehdr;
 	GElf_Phdr	phdr;
-	const	bool	dbg = false;
+	const	bool	dbg = ELFDEBUG;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		fprintf(stderr, "ELF library initialization err, %s\n", elf_errmsg(-1));

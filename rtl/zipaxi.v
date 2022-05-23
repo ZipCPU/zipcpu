@@ -49,7 +49,7 @@
 //
 `default_nettype	none
 //
-`include "cpudefs.v"
+// `include "cpudefs.v"
 //
 // }}}
 module	zipaxi #(
@@ -237,7 +237,7 @@ module	zipaxi #(
 		output	wire		o_pf_stall,
 		output	wire		o_i_count,
 		//
-		output wire	[31:0]	o_debug,
+		output wire	[31:0]	o_cpu_debug,
 		//
 		output	wire		o_prof_stb,
 		output	wire [ADDRESS_WIDTH-1:0]	o_prof_addr,
@@ -752,7 +752,7 @@ module	zipaxi #(
 		// Accounting/CPU usage interface
 		.o_op_stall(o_op_stall), .o_pf_stall(o_pf_stall),
 		.o_i_count(o_i_count),
-		.o_debug(o_debug),
+		.o_debug(o_cpu_debug),
 		.o_prof_stb(  o_prof_stb),
 		.o_prof_addr( o_prof_addr),
 		.o_prof_ticks(o_prof_ticks)

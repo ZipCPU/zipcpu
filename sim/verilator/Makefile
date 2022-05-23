@@ -120,7 +120,12 @@
 ################################################################################
 ##
 ## }}}
-all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb zipaxil_tb # zipmmu_tb
+all: mkhex pdump div_tb mpy_tb pfcache_tb
+##
+## The following are now obsolete.  (They were structurally unable to test
+## multiple design configurations.)  They may be re-enabled later:
+##
+# all: zipsys_tb zipbones_tb zipaxil_tb # zipmmu_tb
 
 CXX	:= g++
 #
@@ -259,6 +264,9 @@ itestb: zipbones_tb
 .PHONY: test
 test: zipsys_tb atest stest atestb stestb atestaxil stestaxil
 
+mkhex: mkhex.cpp zipelf.cpp zipelf.h
+	g++ -Wall -g mkhex.cpp zipelf.cpp -lelf -o mkhex
+
 .PHONY: dhrystone
 dhrystone: zipsys_tb
 	./zipsys_tb -a $(DHRYSTONEF)
@@ -295,4 +303,4 @@ clean:
 	rm -rf ./zipsys_tb ./zipbones_tb pdump div_tb mpy_tb
 	rm -rf pfcache_tb
 
--include $(OBJDIR)/depends.txt
+# -include $(OBJDIR)/depends.txt

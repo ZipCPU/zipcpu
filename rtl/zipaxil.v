@@ -49,7 +49,7 @@
 //
 `default_nettype	none
 //
-`include "cpudefs.v"
+// `include "cpudefs.v"
 //
 // }}}
 module	zipaxil #(
@@ -191,7 +191,7 @@ module	zipaxil #(
 		output	wire		o_pf_stall,
 		output	wire		o_i_count,
 		//
-		output wire	[31:0]	o_debug,
+		output	wire	[31:0]	o_cpu_debug,
 		output	wire		o_prof_stb,
 		output	wire [ADDRESS_WIDTH-1:0] o_prof_addr,
 		output	wire	[31:0]	o_prof_ticks
@@ -721,7 +721,7 @@ module	zipaxil #(
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
-	assign	o_debug = cpu_debug;
+	assign	o_cpu_debug = cpu_debug;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -876,7 +876,7 @@ module	zipaxil #(
 			.i_stb(mem_ce),
 			.i_lock(bus_lock),
 			.i_op(mem_op),
-			.i_addr(mem_cpu_addr),
+			.i_addr(mem_cpu_addr[ADDRESS_WIDTH-1:0]),
 			.i_data(mem_wdata),
 			.i_oreg(mem_reg),
 			.o_busy(mem_busy),
