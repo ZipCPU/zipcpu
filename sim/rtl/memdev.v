@@ -77,13 +77,8 @@ module	memdev #(
 	// {{{
 	generate if (HEXFILE != 0)
 	begin : PRELOAD_MEMORY
-		integer	ik;
 
-		initial begin
-			for(ik=0; ik<(1<<LGMEMSZ); ik=ik+1)
-				mem[ik] = 0;
-			$readmemh(HEXFILE, mem);
-		end
+		initial $readmemh(HEXFILE, mem);
 
 	end endgenerate
 	// }}}

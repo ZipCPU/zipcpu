@@ -1669,19 +1669,6 @@ void entry(void) {
 }
 
 int	main(int argc, char **argv) {
-	asm("LDI 0,R1");
-	asm("LDI 0,R2");
-	asm("LDI 0,R3");
-	asm("LDI 0,R4");
-	asm("LDI 0,R5");
-	asm("LDI 0,R6");
-	asm("LDI 0,R7");
-	asm("LDI 0,R8");
-	asm("LDI 0,R9");
-	asm("LDI 0,R10");
-	asm("LDI 0,R11");
-	asm("LDI 0,R12");
-	asm("LDI 0,CC");
 	entry();
 }
 
