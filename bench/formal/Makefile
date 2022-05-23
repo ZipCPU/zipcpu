@@ -642,7 +642,7 @@ $(DIV)_prflp/PASS: $(DIV).sby $(RTL)/core/div.v
 .PHONY: $(CPU)
 ## {{{
 $(CPU): $(CPU)_piped/PASS     $(CPU)_nopipe/PASS
-$(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS
+$(CPU): $(CPU)_lowlogic/PASS  $(CPU)_ice40/PASS $(CPU)_pipedbk/PASS
 $(CPU): $(CPU)_pipedlp/PASS   $(CPU)_lowlogiclp/PASS   $(CPU)_nopipelp/PASS
 $(CPU): $(CPU)_pipedlpck/PASS $(CPU)_lowlogiclpck/PASS
 $(CPU): $(CPU)_pipedckh/PASS  $(CPU)_lowlogiclpckh/PASS
@@ -658,6 +658,8 @@ $(CPU)_piped/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby piped
 $(CPU)_nopipe/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby nopipe
+$(CPU)_pipedbk/PASS: $(CPUDEPS)
+	sby -f $(CPU).sby pipedbk
 $(CPU)_lowlogic/PASS: $(CPUDEPS)
 	sby -f $(CPU).sby lowlogic
 $(CPU)_ice40/PASS: $(CPUDEPS)
