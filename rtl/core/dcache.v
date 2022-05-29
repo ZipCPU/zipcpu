@@ -794,8 +794,6 @@ module	dcache #(
 	// {{{
 		reg	[AW-1:0]	fr_last_addr;
 
-		initial	f_fill = 0;
-
 		always @(posedge i_clk)
 		if (i_pipe_stb)
 			req_data <= { i_oreg, i_op[2:1], i_addr[WBLSB-1:0] };
@@ -865,11 +863,15 @@ module	dcache #(
 		if (o_rdbusy)
 			assert(o_wreg == f_last_reg);
 		// }}}
-`endif
 		// verilator lint_off UNUSED
-		wire	unused_no_fifo;
-		assign	unused_no_fifo = &{ 1'b0, gie, f_return_address,
+		initial	f_fill = 0;
+
+		wire	unused_no_fifo_formal;
+		assign	unused_no_fifo_formal = &{ 1'b0, f_return_address,
 				f_addr_reg, f_fill };
+`endif
+		wire	unused_no_fifo;
+		assign	unused_no_fifo = &{ 1'b0, gie };
 		// verilator lint_on  UNUSED
 		// }}}
 	end endgenerate

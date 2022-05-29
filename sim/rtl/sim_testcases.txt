@@ -53,48 +53,66 @@ axmincheck     AXMIN  cputest.hex axmin-out.txt
 wbbmincheck    WBBMIN cputest.hex wbbmin-out.txt
 wbmincheck     WBMIN  cputest.hex wbmin-out.txt		# DUMP_TO_VCD=1 VCD_FILE="wbmintrace.vcd"
 ##
+axlminhello   AXLMIN  hellostep.hex axlminhlout.txt
+axminhello    AXMIN   hellostep.hex axminhl-out.txt
+wbbminhello   WBBMIN  hellostep.hex wbbminhl-out.txt
+wbminhello    WBMIN   hellostep.hex wbminhl-out.txt
+##
 axlmincklock   AXLMIN lockcheck.hex axlminlk-out.txt
 axmincklock    AXMIN  lockcheck.hex axminlk-out.txt
-wbbmincklock   WBBMIN  lockcheck.hex wbbminlk-out.txt
-wbmincklock    WBMIN lockcheck.hex wbminlk-out.txt
+wbbmincklock   WBBMIN lockcheck.hex wbbminlk-out.txt
+wbmincklock    WBMIN  lockcheck.hex wbminlk-out.txt
 ##
 # axlminchk64    AXLMIN cputest64.hex axlmin64-out.txt		BUS_WIDTH=64
 # axminchk64     AXMIN  cputest64.hex axmin64-out.txt		BUS_WIDTH=64
-# wbbminchk64    WBBMIN  cputest64.hex wbbmin64-out.txt		BUS_WIDTH=64
-# wbminchk64     WBMIN cputest64.hex wbmin64-out.txt		BUS_WIDTH=64
+# wbbminchk64    WBBMIN cputest64.hex wbbmin64-out.txt		BUS_WIDTH=64
+# wbminchk64     WBMIN  cputest64.hex wbmin64-out.txt		BUS_WIDTH=64
 ##
 axlpipecheck   AXLPIPE cputest.hex axlpipe-out.txt
 axpipecheck    AXPIPE  cputest.hex axpipe-out.txt
-wbbpipecheck   WBBPIPE  cputest.hex wbbpipe-out.txt
-wbpipecheck    WBPIPE cputest.hex wbpipe-out.txt
+wbbpipecheck   WBBPIPE cputest.hex wbbpipe-out.txt
+wbpipecheck    WBPIPE  cputest.hex wbpipe-out.txt
+##
+axlpipehello   AXLPIPE hellostep.hex axlpipehl-out.txt
+axpipehello    AXPIPE  hellostep.hex axpipehl-out.txt
+wbbpipehello   WBBPIPE hellostep.hex wbbpipehl-out.txt
+wbpipehello    WBPIPE  hellostep.hex wbpipehl-out.txt
 ##
 axlpipecklock  AXLPIPE lockcheck.hex axlpiplk-out.txt
 axpipecklock   AXPIPE  lockcheck.hex axpiplk-out.txt
-wbbpipecklock  WBBPIPE  lockcheck.hex wbbpiplk-out.txt
-wbpipecklock   WBPIPE lockcheck.hex wbpiplk-out.txt
+wbbpipecklock  WBBPIPE lockcheck.hex wbbpiplk-out.txt
+wbpipecklock   WBPIPE  lockcheck.hex wbpiplk-out.txt
 ##
 # axlpipechk64   AXLPIPE cputest64.hex axlpip64-out.txt	BUS_WIDTH=64
 # axpipechk64    AXPIPE  cputest64.hex axpip64-out.txt	BUS_WIDTH=64
-# wbbpipechk64   WBBPIPE  cputest64.hex wbbpip64-out.txt	BUS_WIDTH=64
-# wbpipechk64    WBPIPE cputest64.hex wbpip64-out.txt	BUS_WIDTH=64
+# wbbpipechk64   WBBPIPE cputest64.hex wbbpip64-out.txt	BUS_WIDTH=64
+# wbpipechk64    WBPIPE  cputest64.hex wbpip64-out.txt	BUS_WIDTH=64
 ##
 axcachecheck   AXCACHE  cputest.hex axcache-out.txt
-wbbcachecheck  WBBCACHE  cputest.hex wbbcache-out.txt
-wbcachecheck   WBCACHE cputest.hex wbcache-out.txt
+wbbcachecheck  WBBCACHE cputest.hex wbbcache-out.txt
+wbcachecheck   WBCACHE  cputest.hex wbcache-out.txt
+##
+axcachehello   AXCACHE  hellostep.hex axcachehl-out.txt
+wbbcachehello  WBBCACHE hellostep.hex wbbcachehl-out.txt
+wbcachehello   WBCACHE  hellostep.hex wbcachehl-out.txt
 ##
 axcachecklock  AXCACHE  lockcheck.hex axcachlk-out.txt
-wbbcachecklock WBBCACHE  lockcheck.hex wbbcachlk-out.txt
-wbcachecklock  WBCACHE lockcheck.hex wbcachlk-out.txt
+wbbcachecklock WBBCACHE lockcheck.hex wbbcachlk-out.txt
+wbcachecklock  WBCACHE  lockcheck.hex wbcachlk-out.txt
 ##
 # axcachechk64   AXCACHE  cputest64.hex axcach64-out.txt	BUS_WIDTH=64
-# wbbcachechk64  WBBCACHE  cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64
-# wbcachechk64   WBCACHE cputest64.hex wbcach64-out.txt	BUS_WIDTH=64
+# wbbcachechk64  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64
+# wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64
 ##
 axlpwrcheck    AXLPWR  cputest.hex axlpwr-out.txt
-wbblpwrcheck   WBBLPWR  cputest.hex wblpwr-out.txt
-wblpwrcheck    WBLPWR cputest.hex wbblpwr-out.txt
+wbblpwrcheck   WBBLPWR cputest.hex wblpwr-out.txt
+wblpwrcheck    WBLPWR  cputest.hex wbblpwr-out.txt
+##
+axlpwrhello   AXLPWR  hello.hex axlpwrhl-out.txt
+wbblpwrhello  WBBLPWR hello.hex wbblpwrhl-out.txt
+wblpwrhello   WBLPWR  hello.hex wblpwrhl-out.txt
 ##
 axlpwrcklock   AXLPWR  lockcheck.hex axlpwrlk-out.txt
-wbblpwrcklock  WBBLPWR  lockcheck.hex wbblpwrlk-out.txt
-wblpwrcklock   WBLPWR lockcheck.hex wblpwrlk-out.txt
+wbblpwrcklock  WBBLPWR lockcheck.hex wbblpwrlk-out.txt
+wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ##

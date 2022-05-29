@@ -45,7 +45,7 @@
 #include "zipcpu.h"
 #include "board.h"
 
-const unsigned	NUM_TASKS = 4;
+const unsigned	NUM_TASKS = 3;
 
 typedef	struct	TASKT_S {
 	unsigned volatile *regs;
@@ -56,12 +56,16 @@ volatile char		atomic;
 volatile unsigned	shared_resource;
 
 void	user_task(int task_id, int *loops) {
+	// const	unsigned	NLOOPS = 1024;
+	const	unsigned	NLOOPS = 12;
 	unsigned	task_fail = 0;
 	*loops = 0;
-	while(*loops < 1024) {
+	while(!task_fail && *loops < NLOOPS) {
 		if (!__atomic_test_and_set(&atomic, __ATOMIC_RELAXED)) {
+	//		printf("Task #%d:\n", task_id);
 			shared_resource = task_id;
 			for(int k=0; k<5; k++) {
+				// NSTR("K-Loop");
 				// if (shared_resource != task_id) LED = RED;
 				if (shared_resource != task_id)
 					task_fail = 1;
@@ -69,14 +73,18 @@ void	user_task(int task_id, int *loops) {
 					task_fail = 1;
 			}
 
+			// NSTR("Increment");
 			*loops = *loops + 1;
+			printf("Task #%d: %d loops\n", task_id, *loops);
+	//		NSTR("Release");
 			atomic = 0;
 		}
 	}
 
+	// Spin and grab the lock
 	while (__atomic_test_and_set(&atomic, __ATOMIC_RELAXED)) {}
 
-	printf("Task #%d: COMPLETE\n", task_id);
+	printf("Task #%d: COMPLETE%s\n", task_id, (task_fail) ? " -- FAILED!":"");
 	atomic = 0;
 
 	if (task_fail)
@@ -124,6 +132,10 @@ int	main(int argc,char **argv) {
 				zip_save_context((void *)TASK[taskn].regs);
 				if (zip_ucc() & (CC_EXCEPTION))
 					success = 0;
+
+				if (TASK[taskn].regs[14] & (CC_TRAP|CC_EXCEPTION)) {
+					printf("TASK[%2d] has completed\n", taskn);
+				}
 			}
 		}
 

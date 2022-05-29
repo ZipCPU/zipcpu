@@ -40,8 +40,8 @@ module	iscachable #(
 		// {{{
 		parameter	ADDRESS_WIDTH=28,
 		localparam	AW = ADDRESS_WIDTH, // Just for ease of notation below
-		parameter [AW-1:0] 	MEM_ADDR  = {1'b1, {(ADDRESS_WIDTH-1){1'b0}} },
-		parameter [AW-1:0] 	MEM_MASK  = {1'b1, {(ADDRESS_WIDTH-1){1'b0}} }
+		parameter [AW-1:0] 	MEM_ADDR  = {2'b01, {(ADDRESS_WIDTH-2){1'b0}} },
+		parameter [AW-1:0] 	MEM_MASK  = {2'b11, {(ADDRESS_WIDTH-2){1'b0}} }
 		// }}}
 	) (
 		// {{{

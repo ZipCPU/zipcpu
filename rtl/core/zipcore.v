@@ -3508,7 +3508,7 @@ module	zipcore #(
 		initial	prof_addr = 0;
 		always @(posedge i_clk)
 		if (i_reset || clear_pipeline)
-			prof_addr <= RESET_ADDRESS;
+			prof_addr <= RESET_ADDRESS[AW+1:0];
 		else if (alu_pc_valid || mem_pc_valid)
 			prof_addr <= alu_pc;
 
@@ -3526,6 +3526,108 @@ module	zipcore #(
 		assign	o_prof_stb = 1'b0;
 		assign	o_prof_addr = 0;
 		assign	o_prof_ticks = 0;
+	end endgenerate
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Verilator $display simulation dumping support
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	// The following is somewhat useful for debugging under Icarus Verilog.
+	// In that case, the VCD file can tell you what's going on at any
+	// specific moment, but it doesn't put the register set into the VCD
+	// file, nor does it give you any insight into the current contents of
+	// the memory, or how they got that way.  The following is intended to
+	// be a first step towards that end.
+	//
+	// As currently envisioned, we track values written to the registers,
+	// and values read and written to memory.  The program counter offered
+	// is typically off by 4 from the actual instruction address being
+	// completed.  It may be off by more in the case of memory instructions.
+	// I haven't (yet) tried to make the PC given match the instruction
+	// address--so that may be an item to do later.
+	//
+	// You can activate (or de-activate) these instructions via the
+	// OPT_SIM_DEBUG flag below.  If set to one, the simulation debuggin
+	// statements will be output as the CPU executes.
+	localparam	OPT_SIM_DEBUG = 1'b0;
+	generate if (OPT_SIM_DEBUG)
+	begin : GEN_SIM_DEBUG
+
+		reg [31:0]	nstime;
+
+		initial	nstime = 0;
+		always @(posedge i_clk)
+			nstime <= nstime + 10;
+
+		always @(posedge i_clk)
+		if (!i_reset && o_mem_ce)
+		begin
+			if (o_mem_reg[4] && !o_mem_op[0])
+			begin
+				case(o_mem_op[2:1])
+				// 3'b000: 
+				// 3'b001: 
+				2'b01: $display("MEM: %8d LW uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
+				2'b10: $display("MEM: %8d LH uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
+				2'b11: $display("MEM: %8d LB uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
+				default: $display("MEM: %8d Unknown MEM op: %d\n", nstime, o_mem_op);
+			endcase
+			end else case(o_mem_op[2:0])
+			// 3'b000: 
+			// 3'b001: 
+			3'b010: $display("MEM: %8d LW sR%1d         <- @%08x", nstime, o_mem_reg, o_mem_addr);
+			3'b011: $display("MEM: %8d SW 0x%08x -> @%08x", nstime, o_mem_data, o_mem_addr);
+			3'b100: $display("MEM: %8d LH sR%1d         <- @%08x", nstime, o_mem_reg, o_mem_addr);
+			3'b101: $display("MEM: %8d SH 0x%08x -> @%04x", nstime, o_mem_data[15:0], o_mem_addr);
+			3'b110: $display("MEM: %8d LB sR%1d         <- @%08x", nstime, o_mem_reg, o_mem_addr);
+			3'b111: $display("MEM: %8d SB 0x%08x -> @%02x", nstime, o_mem_data[7:0], o_mem_addr);
+			default: $display("MEM: %8d Unknown MEM op: %d\n", nstime, o_mem_op);
+			endcase
+		end
+
+		always @(posedge i_clk)
+		if (!i_reset && i_bus_err)
+		begin
+			$display("MEM: %8d BUS ERROR!!", nstime);
+		end
+
+		always @(posedge i_clk)
+		if (!i_reset && wr_reg_ce)
+		begin
+			if (i_mem_valid)
+			begin
+				if (i_mem_wreg[4])
+					$display("MEM: %8d Load 0x%08x -> uR%1d", nstime, i_mem_result, i_mem_wreg[3:0]);
+				else
+					$display("MEM: %8d Load 0x%08x -> sR%1d", nstime, i_mem_result, i_mem_wreg[3:0]);
+			end
+
+			if (wr_reg_id[4] && OPT_USERMODE)
+			begin
+				if (wr_reg_id[3:0] == CPU_PC_REG)
+					$display("REG: %8d   uPC          <- 0x%08x [0x%08x]", nstime, wr_spreg_vl, (gie) ? upc : ipc);
+				else if (wr_reg_id[3:0] == CPU_CC_REG)
+					$display("REG: %8d   uCC          <- 0x%08x [0x%08x]", nstime, wr_spreg_vl, (gie) ? upc : ipc);
+				else if (wr_reg_id == 4'hd)
+					$display("REG: %8d   uSP          <- 0x%08x [0x%08x]", nstime, wr_gpreg_vl, (gie) ? upc : ipc);
+				else
+					$display("REG: %8d   uR%1x          <- 0x%08x [0x%08x]", nstime, wr_reg_id[3:0], wr_gpreg_vl, (gie) ? upc : ipc);
+			end else begin
+
+				if (wr_reg_id[3:0] == CPU_PC_REG)
+					$display("REG: %8d   sPC          <- 0x%08x [0x%08x]", nstime, wr_spreg_vl, ipc);
+				else if (wr_reg_id[3:0] == CPU_CC_REG)
+					$display("REG: %8d   sCC          <- 0x%08x [0x%08x]", nstime, wr_spreg_vl, ipc);
+				else if (wr_reg_id[3:0] == 4'hd)
+					$display("REG: %8d   sSP          <- 0x%08x [0x%08x]", nstime, wr_gpreg_vl, ipc);
+				else
+					$display("REG: %8d   sR%1x          <- 0x%08x [0x%08x]", nstime, wr_reg_id[3:0], wr_gpreg_vl, ipc);
+			end
+		end
 	end endgenerate
 	// }}}
 

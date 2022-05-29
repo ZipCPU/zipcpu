@@ -78,7 +78,7 @@ my $cacheconfig =" -chparam OPT_PIPELINED 1"
 	. " -chparam OPT_LOCK		  1"
 	. " -chparam OPT_EARLY_BRANCHING  1"
 	. " -chparam OPT_LOWPOWER	  0"
-	. " -chparam OPT_DISTRIBUTED_REGS 0"
+	. " -chparam OPT_DISTRIBUTED_REGS 1"
 	. " -chparam OPT_USERMODE	  1"
 	. " -chparam OPT_CLKGATE	  0"
 	. " -chparam OPT_DBGPORT	  1"
@@ -94,7 +94,7 @@ my $lowpowercfg =" -chparam OPT_PIPELINED 1"
 	. " -chparam OPT_LOCK		  1"
 	. " -chparam OPT_EARLY_BRANCHING  1"
 	. " -chparam OPT_LOWPOWER	  1"
-	. " -chparam OPT_DISTRIBUTED_REGS 0"
+	. " -chparam OPT_DISTRIBUTED_REGS 1"
 	. " -chparam OPT_USERMODE	  1"
 	. " -chparam OPT_CLKGATE	  1"
 	. " -chparam OPT_DBGPORT	  1"
@@ -262,7 +262,13 @@ sub	calcusage($$$$) {
 		print SCRIPT "read -sv $key\n";
 	}
 
-	print SCRIPT "hierarchy -top $toplvl $config\n";
+	if ($synth eq $ice40synth and $config =~ /OPT_DISTRIBUTED_REGS/) {
+		$lclconfig = $config;
+		$lclconfig =~ s/OPT_DISTRIBUTED_REGS\s+\d+/OPT_DISTRIBUTED_REGS 0/g;
+		print SCRIPT "hierarchy -top $toplvl $lclconfig\n";
+	} else {
+		print SCRIPT "hierarchy -top $toplvl $config\n";
+	}
 	print SCRIPT "$synth -flatten -top $toplvl\n";
 	if ($postsynth ne "") {
 		print SCRIPT "$postsynth\n";

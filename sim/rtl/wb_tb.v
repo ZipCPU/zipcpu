@@ -87,7 +87,7 @@ module	wb_tb #(
 		// Sim control input(s)
 		// {{{
 		input	wire	i_sim_cyc, i_sim_stb, i_sim_we,
-		input	wire	[ADDRESS_WIDTH-3:0]	i_sim_addr,
+		input	wire	[ADDRESS_WIDTH-2:0]	i_sim_addr,
 		input	wire	[31:0]			i_sim_data,
 		input	wire	[3:0]			i_sim_sel,
 		output	wire				o_sim_stall,
@@ -171,7 +171,7 @@ module	wb_tb #(
 
 	wire				zsys_cyc, zsys_stb, zsys_we,
 					zsys_ack, zsys_stall, zsys_err;
-	wire	[ADDRESS_WIDTH-3-$clog2(32/8)-1:0]	zsys_addr;
+	wire	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr;
 	wire	[31:0]			zsys_data, zsys_idata;
 	wire	[3:0]			zsys_sel;
 	reg				r_zsys_ack;
@@ -198,7 +198,7 @@ module	wb_tb #(
 
 `ifndef	VERILATOR
 	wire				i_sim_cyc, i_sim_stb, i_sim_we;
-	wire	[ADDRESS_WIDTH-3:0]	i_sim_addr;
+	wire	[ADDRESS_WIDTH-2:0]	i_sim_addr;
 	wire	[31:0]			i_sim_data;
 	wire	[3:0]			i_sim_sel;
 	wire				o_sim_stall;
@@ -260,12 +260,12 @@ module	wb_tb #(
 	wbxbar #(
 		// {{{
 		.NM(1), .NS(2), .AW(ADDRESS_WIDTH+1-$clog2(32/8)), .DW(32),
-		.SLAVE_ADDR(
+		.SLAVE_ADDR({
 			{ 1'b0, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} },
-			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} } ), // CPU
-		.SLAVE_MASK(
+			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} }}), // CPU
+		.SLAVE_MASK({
 			{ 1'b0, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} },
-			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} } )  // CPU
+			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} }})  // CPU
 		// }}}
 	) simxbar (
 		// {{{
@@ -316,6 +316,7 @@ module	wb_tb #(
 		wire			fifo_full, fifo_empty;
 		wire	[LGFIFO:0]	fifo_fill;
 		wire	[$clog2(BUS_WIDTH/8)-$clog2(32/8)-1:0]	fifo_addr;
+		wire	[BUS_WIDTH-1:0]	wide_idata;
 
 		assign	simw_stb   = sim_stb    && !fifo_full;
 		assign	sim_stall  = simw_stall ||  fifo_full;
@@ -529,7 +530,7 @@ module	wb_tb #(
 		.i_mcyc({   simw_cyc,   cpu_cyc }),
 		.i_mstb({   simw_stb,   cpu_stb }),
 		.i_mwe({    simw_we,    cpu_we }),
-		.i_maddr({  simw_addr,  cpu_addr }),
+		.i_maddr({  simw_addr[ADDRESS_WIDTH-WBLSB-1:0],  cpu_addr }),
 		.i_mdata({  simw_data,  cpu_data }),
 		.i_msel({   simw_sel,   cpu_sel }),
 		.o_mstall({ simw_stall, cpu_stall }),
@@ -735,6 +736,8 @@ module	wb_tb #(
 	end else
 		r_zsys_data <= 32'h0;
 
+	assign	zsys_data = r_zsys_data;
+
 	ziptimer
 	u_timer_a (
 		// {{{
@@ -808,7 +811,9 @@ module	wb_tb #(
 	begin : GEN_WBSCOPE
 		// {{{
 		wire		scope_cyc, scope_stb, scope_we;
+		// Verilator lint_off UNUSED
 		wire	[ADDRESS_WIDTH-3-$clog2(32/8)-1:0]	scope_addr;
+		// Verilator lint_on  UNUSED
 		wire	[31:0]	scope_data, scope_idata;
 		wire	[3:0]	scope_sel;
 		wire		scope_stall, scope_ack, scope_err;
@@ -846,7 +851,7 @@ module	wb_tb #(
 			.LGMEM(12)
 		) u_scope (
 			// {{{
-			.i_data_clk(i_clk), .i_trigger(1'b0),
+			.i_data_clk(i_clk), .i_trigger(1'b0), .i_ce(1'b1),
 			.i_data(cpu_trace),
 			//
 			.i_wb_clk(i_clk),
@@ -925,5 +930,24 @@ module	wb_tb #(
 	always @(posedge i_clk)
 	if (!i_reset && cpu_int)
 		$display("\nCPU Halted without error: PASS\n");
+	// }}}
+
+	// Keep Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0,
+		DUMP_TO_VCD, VCD_FILE,
+		conw_addr, scopew_addr, zsysw_addr, zsysw_addr,
+`ifdef	VERILATOR
+		simw_addr,
+`endif
+		con_addr,  zsys_addr, mem_addr, dbg_addr,
+		con_cyc, con_data[31:8], con_sel[3:1],
+		timer_a_int, timer_b_int, timer_c_int, jiffies_int,
+		timer_a_ack, timer_b_ack, timer_c_ack, jiffies_ack,
+		timer_a_stall, timer_b_stall, timer_c_stall, jiffies_stall,
+			scope_int };
+	// Verilator lint_on  UNUSED
 	// }}}
 endmodule

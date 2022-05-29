@@ -51,6 +51,14 @@ module wbdown #(
 		assign	o_wack   = i_ack;
 		assign	o_wdata  = i_data;
 		assign	o_werr   = i_err;
+
+		// Keep Verilator happy
+		// {{{
+		// Verilator lint_off UNUSED
+		wire	unused;
+		assign	unused = &{ 1'b0, i_clk, i_reset };
+		// Verilator lint_on  UNUSED
+		// }}}
 		// }}}
 	end else begin : DOWNSIZE
 		localparam	LGFIFO = 5;

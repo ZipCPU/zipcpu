@@ -624,7 +624,7 @@ module	axilpipe #(
 		2'b10: wide_wstrb
 			= { 2'b11, {(C_AXI_DATA_WIDTH/4-2){1'b0}} } >> i_addr[AXILLSB-1:0];
 		2'b11: wide_wstrb
-			= { 1'b0, {(C_AXI_DATA_WIDTH/4-1){1'b0}} } >> i_addr[AXILLSB-1:0];
+			= { 1'b1, {(C_AXI_DATA_WIDTH/4-1){1'b0}} } >> i_addr[AXILLSB-1:0];
 		endcase
 		// }}}
 	end else begin : LITTLE_ENDIAN_DATA

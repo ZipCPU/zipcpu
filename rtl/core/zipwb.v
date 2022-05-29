@@ -240,9 +240,6 @@ module	zipwb #(
 		.OPT_DBGPORT(OPT_DBGPORT),
 		.OPT_TRACE_PORT(OPT_TRACE_PORT),
 		.OPT_PROFILER(OPT_PROFILER)
-		// parameter [0:0]	WITH_LOCAL_BUS = 1'b1;
-		// localparam	AW=ADDRESS_WIDTH;
-		// localparam	[(AW-1):0]	RESET_BUS_ADDRESS = RESET_ADDRESS[(AW+1):2];
 `ifdef	FORMAL
 		, .F_LGDEPTH(F_LGDEPTH)
 `endif

@@ -430,9 +430,9 @@ module	fwb_master #(
 		end else
 			`SLAVE_ASSUME(f_nreqs <= F_MAX_REQUESTS);
 		`SLAVE_ASSERT(f_nacks <= f_nreqs);
-		assert(f_outstanding < (1<<F_LGDEPTH)-1);
+		assert(f_outstanding < MAX_OUTSTANDING);
 	end else
-		assume(f_outstanding < (1<<F_LGDEPTH)-1);
+		assume(f_outstanding < MAX_OUTSTANDING);
 
 	always @(*)
 	if ((i_wb_cyc)&&(f_outstanding == 0))
@@ -544,6 +544,14 @@ module	fwb_master #(
 		if ((f_past_valid)&&(!$past(i_wb_cyc))&&(i_wb_cyc))
 			`SLAVE_ASSUME(i_wb_stb);
 	end endgenerate
+	// }}}
+
+	// Keep Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, f_request };
+	// Verilator lint_on  UNUSED
 	// }}}
 endmodule
 `undef	SLAVE_ASSUME

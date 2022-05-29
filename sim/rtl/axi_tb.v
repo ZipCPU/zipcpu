@@ -134,8 +134,24 @@ module	axi_tb #(
 	parameter [AW-1:0]	AXILP_ADDR   = { {(AW-24){1'b1}},{(24){1'b0}} };
 	// localparam	LGFIFO = 4;
 
+	// CPU declarations
+	// {{{
+	localparam		RESET_DURATION = 10;
+	localparam	[0:0]	OPT_SIM = 1'b1;
+`ifdef	VERILATOR
+	localparam	[0:0]	OPT_PROFILER = 1'b1;
+`else
+	localparam	[0:0]	OPT_PROFILER = 1'b0;
+`endif
 	wire		cpu_int, scope_int;
 	wire	[31:0]	cpu_trace;
+
+	wire	cpu_reset;
+	wire	cpu_halted;
+	wire	cpu_gie;
+	wire	cpu_op_stall, cpu_pf_stall, cpu_i_count;
+
+	wire	pic_interrupt, watchdog_reset;
 
 	// dbg*
 	// {{{
@@ -158,6 +174,7 @@ module	axi_tb #(
 	wire	[31:0]		dbg_rdata;
 	wire	[1:0]		dbg_rresp;
 	// }}}
+
 
 	// cpui*
 	// {{{
@@ -241,6 +258,25 @@ module	axi_tb #(
 	wire			cpud_rlast;
 	// }}}
 
+	// }}}
+
+	// Memory declarations
+	// {{{
+	genvar	gk;
+	integer	rk;
+	wire	ram_we, ram_rd;
+	wire	[LGMEMSZ-$clog2(BUS_WIDTH/8)-1:0]	ram_waddr, ram_raddr;
+	wire	[BUS_WIDTH-1:0]	ram_wdata;
+	wire [BUS_WIDTH/8-1:0]	ram_wstrb;
+	wire	[BUS_WIDTH-1:0]	ram_rdata;
+
+	wire	[BUS_WIDTH-1:0]	ram_wdata_swap;
+	reg	[BUS_WIDTH-1:0]	ram_rdata_swap;
+	wire [BUS_WIDTH/8-1:0]	ram_wstrb_swap;
+
+
+	reg	[BUS_WIDTH-1:0]	ram [0:(1<<(LGMEMSZ-$clog2(BUS_WIDTH/8)))-1];
+
 	// mem*
 	// {{{
 	wire			mem_awvalid, mem_awready;
@@ -282,6 +318,12 @@ module	axi_tb #(
 	wire			mem_rlast;
 	// }}}
 
+	// }}}
+
+	// Console declarations
+	// {{{
+	integer	sim_console;
+
 	// con*
 	// {{{
 	wire			con_awvalid, con_awready;
@@ -320,6 +362,29 @@ module	axi_tb #(
 	wire	[BUS_WIDTH-1:0]	con_rdata;
 	wire	[1:0]		con_rresp;
 	wire			con_rlast;
+	// }}}
+
+	// conl*
+	// {{{
+	wire			conl_awvalid, conl_awready;
+	wire	[AW-4:0]	conl_awaddr;
+	wire	[2:0]		conl_awprot;
+
+	wire			conl_wvalid, conl_wready;
+	wire	[31:0]		conl_wdata;
+	wire	[3:0]		conl_wstrb;
+
+	wire			conl_bvalid, conl_bready;
+	wire	[1:0]		conl_bresp;
+
+	wire			conl_arvalid, conl_arready;
+	wire	[AW-4:0]	conl_araddr;
+	wire	[2:0]		conl_arprot;
+
+	wire			conl_rvalid, conl_rready;
+	wire	[31:0]		conl_rdata;
+	wire	[1:0]		conl_rresp;
+	// }}}
 	// }}}
 
 	// scope*
@@ -363,7 +428,10 @@ module	axi_tb #(
 	wire			scope_rlast;
 	// }}}
 
-	// axip_*
+	// AXI Peripheral set declarations
+	// {{{
+
+	// axip_* - The AXI4 (full) connection to the peripheral set
 	// {{{
 	wire			axip_awvalid, axip_awready;
 	wire	[IW-1:0]	axip_awid;
@@ -402,93 +470,34 @@ module	axi_tb #(
 	wire	[BUS_WIDTH-1:0]	axip_rdata;
 	wire	[1:0]		axip_rresp;
 	wire			axip_rlast;
-	// }}}
+
 
 	// }}}
-	////////////////////////////////////////////////////////////////////////
-	//
-	// Traditional TB support
+
+	// axilp_* - The AXI-Lite connection to the peripheral set
 	// {{{
-	////////////////////////////////////////////////////////////////////////
-	//
-	//
+	wire			axilp_awvalid, axilp_awready;
+	wire	[AW-4:0]	axilp_awaddr;
+	wire	[2:0]		axilp_awprot;
 
-`ifndef	VERILATOR
-	// {{{
-	wire				sim_awvalid;
-	wire				sim_awready;
-	wire	[ADDRESS_WIDTH-1:0]	sim_awaddr;
-	wire	[2:0]			sim_awprot;
+	wire			axilp_wvalid, axilp_wready;
+	wire	[31:0]		axilp_wdata;
+	wire	[3:0]		axilp_wstrb;
 
-	wire				sim_wvalid;
-	wire				sim_wready;
-	wire	[31:0]			sim_wdata;
-	wire	[3:0]			sim_wstrb;
+	wire			axilp_bvalid, axilp_bready;
+	wire	[1:0]		axilp_bresp;
 
-	wire				sim_bvalid;
-	wire				sim_bready;
-	wire	[1:0]			sim_bresp;
+	wire			axilp_arvalid, axilp_arready;
+	wire	[AW-4:0]	axilp_araddr;
+	wire	[2:0]		axilp_arprot;
 
-	wire				sim_arvalid;
-	wire				sim_arready;
-	wire	[ADDRESS_WIDTH-1:0]	sim_araddr;
-	wire	[2:0]			sim_arprot;
-
-	wire				sim_rvalid;
-	wire				sim_rready;
-	wire	[31:0]			sim_rdata;
-	wire	[1:0]			sim_rresp;
+	wire			axilp_rvalid, axilp_rready;
+	wire	[31:0]		axilp_rdata;
+	wire	[1:0]		axilp_rresp;
 	// }}}
-
-	wire				i_sim_int;
-	wire				o_prof_stb;
-	// wire	[31:0]			o_prof_addr;
-	wire	[ADDRESS_WIDTH-1:0]	o_prof_addr;
-	wire	[31:0]			o_prof_ticks;
-
-	reg	i_aclk, i_aresetn, reset_pipe;
-
-	initial	i_aclk = 0;
-	always
-		#5 i_aclk = !i_aclk;
-
-	initial	{ i_aresetn, reset_pipe } = 0;
-	always @(posedge i_aclk)
-		{ i_aresetn, reset_pipe } <= { reset_pipe, 1'b1 };
-
-	// Tie off (unused) Sim control input(s)
-	// {{{
-	assign	sim_awvalid = 1'b0;
-	assign	sim_awaddr  = 0;
-	assign	sim_awprot  = 0;
-
-	assign	sim_wvalid  = 1'b0;
-	assign	sim_wdata   = 0;
-	assign	sim_wstrb   = 0;
-
-	assign	sim_bready  = 1'b1;
-
-	assign	sim_arvalid = 1'b0;
-	assign	sim_araddr  = 0;
-	assign	sim_arprot  = 0;
-
-	assign	sim_rready  = 1'b1;
 	// }}}
-	assign	i_sim_int  = 1'b0;
-`endif
-	// }}}
-	////////////////////////////////////////////////////////////////////////
-	//
-	// External sim port: Either controls ZipCPU or wide WB bus
-	// {{{
-	////////////////////////////////////////////////////////////////////////
-	//
-	//
 
 `ifdef	VERILATOR
-	// Only required if we are using Verilator.  Other test benches won't
-	// use this input port
-
 	// simfull_*
 	// {{{
 	wire				simfull_awvalid;
@@ -532,6 +541,102 @@ module	axi_tb #(
 	wire				simfull_rlast;
 	wire	[1:0]			simfull_rresp;
 	// }}}
+`else
+	// Traditional TB only declarations
+	// {{{
+	// sim*
+	// {{{
+	wire				sim_awvalid;
+	wire				sim_awready;
+	wire	[ADDRESS_WIDTH-1:0]	sim_awaddr;
+	wire	[2:0]			sim_awprot;
+
+	wire				sim_wvalid;
+	wire				sim_wready;
+	wire	[31:0]			sim_wdata;
+	wire	[3:0]			sim_wstrb;
+
+	wire				sim_bvalid;
+	wire				sim_bready;
+	wire	[1:0]			sim_bresp;
+
+	wire				sim_arvalid;
+	wire				sim_arready;
+	wire	[ADDRESS_WIDTH-1:0]	sim_araddr;
+	wire	[2:0]			sim_arprot;
+
+	wire				sim_rvalid;
+	wire				sim_rready;
+	wire	[31:0]			sim_rdata;
+	wire	[1:0]			sim_rresp;
+	// }}}
+
+	wire				i_sim_int;
+	wire				o_prof_stb;
+	// wire	[31:0]			o_prof_addr;
+	wire	[ADDRESS_WIDTH-1:0]	o_prof_addr;
+	wire	[31:0]			o_prof_ticks;
+
+	reg	i_aclk, i_aresetn, reset_pipe;
+	// }}}
+`endif
+
+	// Watchdog timer
+	// {{{
+	localparam	TB_WATCHDOG_TIMEOUT = 1_000_00;	// 1ms
+	reg	[$clog2(TB_WATCHDOG_TIMEOUT+2)-1:0]	watchdog_counter;
+	// }}}
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Traditional TB support
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+`ifndef	VERILATOR
+	initial	i_aclk = 0;
+	always
+		#5 i_aclk = !i_aclk;
+
+	initial	{ i_aresetn, reset_pipe } = 0;
+	always @(posedge i_aclk)
+		{ i_aresetn, reset_pipe } <= { reset_pipe, 1'b1 };
+
+	// Tie off (unused) Sim control input(s)
+	// {{{
+	assign	sim_awvalid = 1'b0;
+	assign	sim_awaddr  = 0;
+	assign	sim_awprot  = 0;
+
+	assign	sim_wvalid  = 1'b0;
+	assign	sim_wdata   = 0;
+	assign	sim_wstrb   = 0;
+
+	assign	sim_bready  = 1'b1;
+
+	assign	sim_arvalid = 1'b0;
+	assign	sim_araddr  = 0;
+	assign	sim_arprot  = 0;
+
+	assign	sim_rready  = 1'b1;
+	// }}}
+	assign	i_sim_int  = 1'b0;
+`endif
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// External sim port: Either controls ZipCPU or wide WB bus
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+`ifdef	VERILATOR
+	// Only required if we are using Verilator.  Other test benches won't
+	// use this input port
 
 	axilxbar #(
 		// {{{
@@ -650,20 +755,6 @@ module	axi_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	localparam		RESET_DURATION = 10;
-	localparam	[0:0]	OPT_SIM = 1'b1;
-`ifdef	VERILATOR
-	localparam	[0:0]	OPT_PROFILER = 1'b1;
-`else
-	localparam	[0:0]	OPT_PROFILER = 1'b0;
-`endif
-	wire	cpu_reset;
-	wire	cpu_halted;
-	wire	cpu_gie;
-	wire	cpu_op_stall, cpu_pf_stall, cpu_i_count;
-
-	wire	pic_interrupt, watchdog_reset;
 
 	generate if (OPT_ZIPAXIL)
 	begin : GEN_ZIPAXIL
@@ -1323,6 +1414,7 @@ module	axi_tb #(
 		//
 		.M_AXI_RVALID({ axip_rvalid, con_rvalid, scope_rvalid,  mem_rvalid  }),
 		.M_AXI_RREADY({ axip_rready, con_rready, scope_rready,  mem_rready  }),
+		.M_AXI_RID({    axip_rid,    con_rid,    scope_rid,     mem_rid  }),
 		.M_AXI_RDATA({  axip_rdata,  con_rdata,  scope_rdata,   mem_rdata  }),
 		.M_AXI_RLAST({  axip_rlast,  con_rlast,  scope_rlast,   mem_rlast  }),
 		.M_AXI_RRESP({  axip_rresp,  con_rresp,  scope_rresp,   mem_rresp  })
@@ -1338,15 +1430,6 @@ module	axi_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	integer	rk;
-	wire	ram_we, ram_rd;
-	wire	[LGMEMSZ-$clog2(BUS_WIDTH/8)-1:0]	ram_waddr, ram_raddr;
-	wire	[BUS_WIDTH-1:0]	ram_wdata;
-	wire [BUS_WIDTH/8-1:0]	ram_wstrb;
-	reg	[BUS_WIDTH-1:0]	ram_rdata;
-
-	reg	[BUS_WIDTH-1:0]	ram [0:(1<<(LGMEMSZ-$clog2(BUS_WIDTH/8)))-1];
 
 	demofull #(
 		// {{{
@@ -1417,15 +1500,26 @@ module	axi_tb #(
 		$readmemh(MEM_FILE, ram);
 	end
 
+	generate for(gk=0; gk<BUS_WIDTH/32; gk=gk+1)
+	begin : SWAP_RAM_WORDS
+		// The ZipCPU's AXI interface currently maintains a little
+		// endian word order, while using big endian word order within
+		// a word.
+		assign	ram_wstrb_swap[ 4*gk +:  4] = ram_wstrb[ 4*(BUS_WIDTH/32-gk-1) +: 4];
+		assign	ram_wdata_swap[32*gk +: 32] = ram_wdata[32*(BUS_WIDTH/32-gk-1) +:32];
+
+		assign	ram_rdata[32*gk +: 32] = ram_rdata_swap[32*(BUS_WIDTH/32-gk-1) +:32];
+	end endgenerate
+
 	always @(posedge i_aclk)
 	if (ram_we)
 	for(rk=0; rk<BUS_WIDTH/8; rk=rk+1)
-	if (ram_wstrb[rk])
-		ram[ram_waddr][rk*8 +: 8] <= ram_wdata[rk*8 +: 8];
+	if (ram_wstrb_swap[rk])
+		ram[ram_waddr][rk*8 +: 8] <= ram_wdata_swap[rk*8 +: 8];
 
 	always @(posedge i_aclk)
 	if (ram_rd)
-		ram_rdata <= ram[ram_raddr];
+		ram_rdata_swap <= ram[ram_raddr];
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1435,28 +1529,6 @@ module	axi_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	integer	sim_console;
-
-	// {{{
-	wire			conl_awvalid, conl_awready;
-	wire	[AW-4:0]	conl_awaddr;
-	wire	[2:0]		conl_awprot;
-
-	wire			conl_wvalid, conl_wready;
-	wire	[31:0]		conl_wdata;
-	wire	[3:0]		conl_wstrb;
-
-	wire			conl_bvalid, conl_bready;
-	wire	[1:0]		conl_bresp;
-
-	wire			conl_arvalid, conl_arready;
-	wire	[AW-4:0]	conl_araddr;
-	wire	[2:0]		conl_arprot;
-
-	wire			conl_rvalid, conl_rready;
-	wire	[31:0]		conl_rdata;
-	wire	[1:0]		conl_rresp;
-	// }}}
 
 	axi2axilsub #(
 		// {{{
@@ -1585,28 +1657,6 @@ module	axi_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	// AXI-Lite connections
-	// {{{
-	wire			axilp_awvalid, axilp_awready;
-	wire	[AW-4:0]	axilp_awaddr;
-	wire	[2:0]		axilp_awprot;
-
-	wire			axilp_wvalid, axilp_wready;
-	wire	[31:0]		axilp_wdata;
-	wire	[3:0]		axilp_wstrb;
-
-	wire			axilp_bvalid, axilp_bready;
-	wire	[1:0]		axilp_bresp;
-
-	wire			axilp_arvalid, axilp_arready;
-	wire	[AW-4:0]	axilp_araddr;
-	wire	[2:0]		axilp_arprot;
-
-	wire			axilp_rvalid, axilp_rready;
-	wire	[31:0]		axilp_rdata;
-	wire	[1:0]		axilp_rresp;
-	// }}}
 
 	axi2axilsub #(
 		// {{{
@@ -1959,9 +2009,6 @@ module	axi_tb #(
 	// Don't let the simulation hang.  Let's place a watchdog timeout on the
 	// CPU's data bus.  If the databus becomes idle for too long, then
 	// stop the simulation with an error.
-
-	localparam	TB_WATCHDOG_TIMEOUT = 1_000_00;	// 1ms
-	reg	[$clog2(TB_WATCHDOG_TIMEOUT+2)-1:0]	watchdog_counter;
 
 	initial	watchdog_counter = 0;
 	always @(posedge i_aclk)
