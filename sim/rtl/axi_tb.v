@@ -30,7 +30,7 @@
 // Copyright (C) 2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -1278,9 +1278,9 @@ module	axi_tb #(
 				MEMORY_ADDR }),
 		.SLAVE_MASK({
 			{ {(AW-24){1'b1}}, {(24){1'b0}} },	// AXI-Lite Periph Set
-			{ 4'hf, {(AW-4){1'b0}} },	// Console
-			{ 4'hf, {(AW-4){1'b0}} },	// Scope
-			{ 2'b01, {(AW-2){1'b0}} } })	// Memory
+			{ 4'b1111, {(AW-4){1'b0}} },	// Console
+			{ 4'b1111, {(AW-4){1'b0}} },	// Scope
+			{ 2'b11,   {(AW-2){1'b0}} } })	// Memory
 		// }}}
 	) u_main_crossbar (
 		// {{{

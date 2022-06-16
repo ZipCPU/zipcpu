@@ -30,10 +30,10 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -180,7 +180,7 @@ module	axipipe #(
 	wire	[1:0]			fifo_op;
 	wire	[3:0]			fifo_return_reg;
 	wire	[AXILSB-1:0]		fifo_lsb;
-	reg [2*C_AXI_DATA_WIDTH-1:0]	wide_return, wide_wdata;
+	reg [2*C_AXI_DATA_WIDTH-1:0]	wide_return, wide_wdata, pre_result;
 	reg [2*C_AXI_DATA_WIDTH/8-1:0]	wide_wstrb;
 	reg	[C_AXI_DATA_WIDTH-1:0]	misdata;
 
@@ -862,7 +862,7 @@ module	axipipe #(
 		// }}}
 
 		// misaligned_aw_request
-		// {{{	
+		// {{{
 		initial	r_misaligned_aw_request = 0;
 		always @(posedge i_clk)
 		if (!S_AXI_ARESETN)
@@ -1031,17 +1031,6 @@ module	axipipe #(
 				wide_return = { M_AXI_RDATA, {(DW){1'b0}} }
 							<< (8*fifo_lsb);
 
-			casez(fifo_op[1:0])
-			2'b10: wide_return = { {(16){1'b0}},
-					wide_return[(2*DW)-1:(2*DW)-16],
-					{(2*DW-32){1'b0}} };
-			2'b11: wide_return = { {(24){1'b0}},
-						wide_return[(2*DW)-1:(2*DW)-8],
-					{(2*DW-32){1'b0}} };
-			default: begin end
-			endcase
-
-			wide_return[31:0] = wide_return[(2*DW-1):(2*DW-32)];
 		end else begin
 			if (fifo_misaligned && !OPT_ALIGNMENT_ERR)
 				wide_return = { M_AXI_RDATA, misdata } >> (8*fifo_lsb);
@@ -1052,6 +1041,23 @@ module	axipipe #(
 
 		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
 			wide_return = 0;
+	end
+
+	always @(*)
+	begin
+		if (SWAP_WSTRB)
+		begin
+
+			casez(fifo_op)
+			2'b10: pre_result = { {(DW){1'b0}}, 16'h0,
+					wide_return[(2*DW)-1:(2*DW)-16] };
+			2'b11: pre_result = { {(DW){1'b0}}, 24'h0,
+					wide_return[(2*DW)-1:(2*DW)-8] };
+			default: pre_result[31:0] = wide_return[(2*DW-1):(2*DW-32)];
+			endcase
+
+		end else
+			pre_result = wide_return;
 	end
 	// }}}
 
@@ -1073,22 +1079,25 @@ module	axipipe #(
 	// {{{
 	always @(posedge i_clk)
 	if (OPT_LOWPOWER && (!S_AXI_ARESETN || r_flushing || i_cpu_reset))
+	begin
 		o_result <= 0;
-	else if (OPT_LOCK && M_AXI_BVALID && (!OPT_LOWPOWER || (r_lock && M_AXI_BRESP == OKAY)))
+	end else if (OPT_LOCK && M_AXI_BVALID && (!OPT_LOWPOWER || (r_lock && M_AXI_BRESP == OKAY)))
 	begin
 		o_result <= 0;
 		o_result[AW-1:0] <= r_pc;
 	end else if (!OPT_LOWPOWER || M_AXI_RVALID)
 	begin
 
-		o_result <= wide_return[31:0];
+		o_result <= pre_result[31:0];
 
 		if (OPT_SIGN_EXTEND)
 		begin
 			// {{{
+			// Optionally sign extend the return result.
 			case(fifo_op)
-			2'b10: o_result[31:16] <= {(16){wide_return[15]}};
-			2'b11: o_result[31: 8] <= {(24){wide_return[ 7]}};
+			2'b10: o_result[31:16] <= {(16){pre_result[15]}};
+			2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
+			default: begin end
 			endcase
 			// }}}
 		end else if (fifo_op[1])
@@ -1101,8 +1110,6 @@ module	axipipe #(
 			// }}}
 		end
 
-		if (OPT_LOWPOWER&&(i_cpu_reset || r_flushing))
-			o_result <= 0;
 	end
 	// }}}
 	// }}}
@@ -1140,7 +1147,9 @@ module	axipipe #(
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0],
 			M_AXI_BID, M_AXI_RID, M_AXI_RLAST,
 			// i_addr[31:C_AXI_ADDR_WIDTH],
-			(&i_addr), wide_return[2*C_AXI_DATA_WIDTH-1:32],
+			(&i_addr),
+			// wide_return[2*C_AXI_DATA_WIDTH-1:32],
+			pre_result[2*C_AXI_DATA_WIDTH-1:32],
 			pending_err, fifo_read_op,
 			none_outstanding };
 	// verilator lint_on  UNUSED

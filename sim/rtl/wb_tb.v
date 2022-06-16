@@ -30,7 +30,7 @@
 // Copyright (C) 2022, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -125,6 +125,9 @@ module	wb_tb #(
 	wire	[ADDRESS_WIDTH+1-$clog2(32/8)-1:0]	dbg_addr;
 	wire	[31:0]	dbg_data, dbg_idata;
 	wire	[3:0]	dbg_sel;
+
+	wire		pic_int, timer_a_int, timer_b_int, timer_c_int,
+			jiffies_int;
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -413,7 +416,7 @@ module	wb_tb #(
 			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
 				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
 			// }}}
-			.i_ext_int(i_sim_int), .o_ext_int(cpu_int),
+			.i_ext_int(pic_int), .o_ext_int(cpu_int),
 			// Debug control port
 			// {{{
 			.i_dbg_cyc(dbg_cyc), .i_dbg_stb(dbg_stb),
@@ -474,7 +477,8 @@ module	wb_tb #(
 			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
 				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
 			// }}}
-			.i_ext_int(i_sim_int), .o_ext_int(cpu_int),
+			.i_ext_int({ i_sim_int }),
+			.o_ext_int(cpu_int),
 			// Debug control port
 			// {{{
 			.i_dbg_cyc(dbg_cyc), .i_dbg_stb(dbg_stb),
@@ -515,7 +519,7 @@ module	wb_tb #(
 		.NS(4), .AW(ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)), .DW(BUS_WIDTH),
 		.SLAVE_ADDR({ ZSYS_ADDR,CONSOLE_ADDR,SCOPE_ADDR, MEMORY_ADDR }),
 		.SLAVE_MASK({
-			{ {(WAW+WBLSB-24){1'b1}},{(24-WBLSB){1'b0}} }, // ZipSys
+			{ {(ADDRESS_WIDTH-24){1'b1}},{(24-WBLSB){1'b0}} }, // ZipSys
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Console
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Scope
 			{ 2'b11,   {(WAW-2){1'b0}} } })	// Memory
@@ -574,6 +578,7 @@ module	wb_tb #(
 	memdev #(
 		// {{{
 		.LGMEMSZ(LGMEMSZ),
+		.DW(BUS_WIDTH),
 		.HEXFILE(MEM_FILE),
 		.OPT_ROM(1'b0)
 		// }}}
@@ -659,6 +664,9 @@ module	wb_tb #(
 	//
 	//
 
+	wire		pic_stall, pic_ack;
+	wire	[31:0]	pic_data;
+
 	wire		timer_a_stall, timer_b_stall, timer_c_stall,
 			jiffies_stall;	// Jiffies
 
@@ -667,10 +675,6 @@ module	wb_tb #(
 
 	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
 			jiffies_data;	// Jiffies
-
-	wire		timer_a_int, timer_b_int, timer_c_int,
-			jiffies_int;	// Jiffies
-
 
 	wbdown #(
 		// {{{
@@ -716,7 +720,7 @@ module	wb_tb #(
 	begin
 		r_zsys_data <= 32'h0;
 		case(zsys_addr)
-		 0: begin end	// PIC
+		 0: r_zsys_data <= pic_data;		// PIC
 		 1: begin end	// Watchdog
 		 2: begin end	// APIC
 		 3: begin end	// Bus Watchdog
@@ -736,7 +740,25 @@ module	wb_tb #(
 	end else
 		r_zsys_data <= 32'h0;
 
-	assign	zsys_data = r_zsys_data;
+	assign	zsys_idata = r_zsys_data;
+
+	icontrol #(
+		.IUSED(16)
+	) u_pic (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h0),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
+		.o_wb_stall(pic_stall),
+		.o_wb_ack(pic_ack),
+		.o_wb_data(pic_data),
+		.i_brd_ints({ 9'h0, i_sim_int,
+			1'b0, timer_a_int, timer_b_int, timer_c_int, jiffies_int, 1'b0 }),
+		.o_interrupt(pic_int)
+		// }}}
+	);
 
 	ziptimer
 	u_timer_a (

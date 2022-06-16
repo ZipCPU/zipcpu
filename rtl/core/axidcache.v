@@ -664,7 +664,9 @@ module	axidcache #(
 	always @(posedge S_AXI_ACLK)
 		suppress_miss <= { suppress_miss[0] || set_vflag, set_vflag };
 	always @(*)
-		w_cache_miss = r_cache_miss && state == DC_IDLE && !r_dvalid && !o_err && wcache_strb == 0 && !suppress_miss[1];
+		w_cache_miss = r_cache_miss && state == DC_IDLE
+				&& !r_dvalid && !o_err
+				&& wcache_strb == 0 && !suppress_miss[1];
 
 	initial	axi_arvalid = 0;
 	always @(posedge S_AXI_ACLK)
@@ -981,11 +983,13 @@ module	axidcache #(
 	always @(*)
 	begin
 		rev_addr = i_addr;
+		/*
 		if (SWAP_WSTRB && C_AXI_DATA_WIDTH != 32)
 		begin
 			rev_addr[AXILSB-1:0] = ~i_addr[AXILSB-1:0];
 			rev_addr[1:0] = i_addr[1:0];
 		end
+		*/
 	end
 
 	always @(posedge S_AXI_ACLK)

@@ -417,7 +417,7 @@ module	pipemem #(
 
 	end else begin : GEN_PRERESULT
 
-		assign	pre_result = i_wb_data << (32*w_wreg[WBLSB-1:2]);
+		assign	pre_result = i_wb_data << (8*w_wreg[WBLSB-1:0]);
 		// Verilator lint_off UNUSED
 		wire	unused_preresult;
 		assign	unused_preresult = &{1'b0, pre_result[BUS_WIDTH-33:0] };

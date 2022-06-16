@@ -98,6 +98,9 @@ $(OBJDIR)/cputest.s: cputest.c
 cputest: $(OBJDIR)/cputestcis.o board.ld $(LIB)
 	$(CC) $(CFLAGS) $(LFLAGS) $< $(LIBS) -o $@
 
+clkgatechk: $(OBJDIR)/clkgatechk.o $(OBJDIR)/txfns.o board.ld $(LIB)
+	$(CC) $(CFLAGS) $(LFLAGS) $< $(OBJDIR)/txfns.o $(LIBS) -o $@
+
 $(OBJDIR)/contest.o: contest.c
 	$(mk-objdir)
 	$(CC) $(CFLAGS) -c -fno-builtin $< -o $@
@@ -128,10 +131,13 @@ lockcheck: $(OBJDIR)/lockcheck.o $(OBJDIR)/txfns.o board.ld $(LIB)
 ## Convert executables to hex
 ##
 .PHONY: hex
-hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex hello.hex hello64.hex hellosim.hex hellosim64.hex hellostep.hex hellostep64.hex
+hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex hello.hex hello64.hex hellosim.hex hellosim64.hex hellostep.hex hellostep64.hex clkgatechk.hex
 
 cputest.hex: cputest
 	$(MKHEX) cputest -o $@
+
+clkgatechk.hex: clkgatechk
+	$(MKHEX) clkgatechk -o $@
 
 cputest64.hex: cputest
 	$(MKHEX) cputest -w 64 -o $@

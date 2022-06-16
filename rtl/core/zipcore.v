@@ -365,7 +365,7 @@ module	zipcore #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	master_ce = ((!i_halt)||(alu_phase))
+	assign	master_ce = (!i_halt || alu_phase)
 				&&(!cc_write_hold)&&(!o_break)&&(!sleep);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1916,8 +1916,10 @@ module	zipcore #(
 			always @(posedge i_clk)
 			begin
 				if (!i_reset && !clear_pipeline
-						&& adf_ce_unconditional
-						&& op_sim && op_valid_alu)
+					&& adf_ce_unconditional && set_cond
+					&& op_sim && op_valid_alu
+					&&(!wr_reg_ce || !wr_write_pc
+						|| wr_reg_id[4] != alu_gie))
 				begin
 				// Execute simulation only instructions
 				// {{{
@@ -2066,8 +2068,10 @@ module	zipcore #(
 			always @(posedge i_clk)
 			begin
 				if (!i_reset && !clear_pipeline
-						&& adf_ce_unconditional
-						&& op_sim && op_valid_alu)
+					&& adf_ce_unconditional && set_cond
+					&& op_sim && op_valid_alu
+					&&(!wr_reg_ce || !wr_write_pc
+						|| wr_reg_id[4] != alu_gie))
 				begin
 				// Execute simulation only instructions
 				// {{{
@@ -3131,7 +3135,7 @@ module	zipcore #(
 		last_write_to_cc <= 1'b0;
 	else
 		last_write_to_cc <= (wr_reg_ce)&&(wr_write_cc);
-	assign	cc_write_hold = (wr_reg_ce)&&(wr_write_cc)||(last_write_to_cc);
+	assign	cc_write_hold = (wr_reg_ce && wr_write_cc)||(last_write_to_cc);
 
 	// o_clear_icache
 	// {{{

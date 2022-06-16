@@ -225,7 +225,7 @@ module	axiops #(
 	reg				axlock;
 	reg	[AXILSB-1:0]		swapaddr;
 	wire	[DW-1:0]		endian_swapped_rdata;
-	reg	[2*DW-1:0]		pre_result;
+	reg	[2*DW-1:0]		pre_result, wide_return;
 
 	// }}}
 
@@ -370,11 +370,16 @@ module	axiops #(
 			M_AXI_AWADDR <= 0;
 
 		if (SWAP_ENDIANNESS || SWAP_WSTRB)
+		begin
 			// When adjusting endianness, reads (or writes) are
 			// always full words.  This is important since the
 			// the bytes at issues may (or may not) be in their
 			// expected locations
-			M_AXI_AWADDR[AXILSB-1:0] <= 0;
+			if (OPT_ALIGNMENT_ERR)
+				M_AXI_AWADDR[AXILSB-1:0] <= 0;
+			else
+				M_AXI_AWADDR[1:0] <= 0;
+		end
 		// }}}
 	end else if ((M_AXI_AWVALID && M_AXI_AWREADY)
 			||(M_AXI_ARVALID && M_AXI_ARREADY))
@@ -420,7 +425,7 @@ module	axiops #(
 		endcase
 
 		if (SWAP_WSTRB)
-			axsize <= DSZ;
+			axsize <= (OPT_ALIGNMENT_ERR) ? DSZ : AXILSB[2:0];
 	end
 
 	assign	M_AXI_AWSIZE = axsize;
@@ -864,35 +869,40 @@ module	axiops #(
 		if (SWAP_WSTRB)
 		begin
 			if (misaligned_read && !OPT_ALIGNMENT_ERR)
-				pre_result={ last_result, endian_swapped_rdata }
+				wide_return={ last_result, endian_swapped_rdata }
 						<< (8*r_op[AXILSB-1:0]);
 			else
-				pre_result = { endian_swapped_rdata, {(DW){1'b0}} }
+				wide_return = { endian_swapped_rdata, {(DW){1'b0}} }
 						<< (8*r_op[AXILSB-1:0]);
-
-			casez(r_op[AXILSB +: 2])
-			2'b10: pre_result = { 16'h0,
-					pre_result[(2*DW)-1:(2*DW)-16],
-					{(DW){1'b0}} };
-			2'b11: pre_result = { 24'h0,
-					pre_result[(2*DW)-1:(2*DW)-8],
-					{(DW){1'b0}} };
-			default: begin end
-			endcase
-
-			pre_result[31:0] = pre_result[(2*DW-1):(2*DW-32)];
 
 		end else begin
 			if (misaligned_read && !OPT_ALIGNMENT_ERR)
-				pre_result={ endian_swapped_rdata, last_result }
+				wide_return={ endian_swapped_rdata, last_result }
 						>> (8*r_op[AXILSB-1:0]);
 			else
-				pre_result = { {(DW){1'b0}}, endian_swapped_rdata }
+				wide_return = { {(DW){1'b0}}, endian_swapped_rdata }
 						>> (8*r_op[AXILSB-1:0]);
 		end
 
 		if (OPT_LOWPOWER && (!M_AXI_RVALID || M_AXI_RRESP[1]))
-			pre_result = 0;
+			wide_return = 0;
+	end
+
+	always @(*)
+	begin
+		if (SWAP_WSTRB)
+		begin
+
+			casez(r_op[AXILSB +: 2])
+			2'b10: pre_result = { {(DW){1'b0}}, 16'h0,
+					wide_return[(2*DW)-1:(2*DW)-16] };
+			2'b11: pre_result = { {(DW){1'b0}}, 24'h0,
+					wide_return[(2*DW)-1:(2*DW)-8] };
+			default: pre_result[31:0] = wide_return[(2*DW-1):(2*DW-32)];
+			endcase
+
+		end else
+			pre_result = wide_return;
 	end
 
 	// }}}
@@ -904,6 +914,9 @@ module	axiops #(
 		{ last_result, o_result } <= 0;
 	else begin
 		// {{{
+		if (OPT_LOWPOWER)
+			o_result <= 0;
+
 		if (OPT_LOCK && M_AXI_BVALID && (!OPT_LOWPOWER
 					|| (axlock && M_AXI_BRESP == OKAY)))
 		begin
@@ -918,9 +931,6 @@ module	axiops #(
 				last_result <= 0;
 			else
 				last_result <= endian_swapped_rdata;
-
-			if (OPT_ALIGNMENT_ERR)
-				last_result <= 0;
 
 			o_result <= pre_result[31:0];
 
@@ -943,12 +953,17 @@ module	axiops #(
 				endcase
 			end
 
-			if (OPT_LOWPOWER && (M_AXI_RRESP[1] || pending_err
-					|| misaligned_response_pending
+			if (OPT_LOWPOWER && (M_AXI_RRESP[1]
 					|| (axlock && !M_AXI_RRESP[0])))
 				o_result <= 0;
 			// }}}
 		end
+
+		if (OPT_ALIGNMENT_ERR)
+			last_result <= 0;
+
+		if (OPT_LOWPOWER && (pending_err || misaligned_response_pending))
+			o_result <= 0;
 		// }}}
 	end
 	// }}}

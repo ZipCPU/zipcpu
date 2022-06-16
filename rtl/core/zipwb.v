@@ -133,39 +133,40 @@ module	zipwb #(
 		// }}}
 	) (
 		// {{{
-		input	wire		i_clk, i_reset, i_interrupt,
-		output	wire		o_cpu_clken,
+		input	wire			i_clk, i_reset, i_interrupt,
+		input	wire			i_cpu_clken,
 		// Debug interface -- inputs
-		input	wire		i_halt, i_clear_cache,
-		input	wire	[4:0]	i_dbg_wreg,
-		input	wire		i_dbg_we,
-		input	wire	[DATA_WIDTH-1:0]	i_dbg_data,
-		input	wire	[4:0]	i_dbg_rreg,
+		input	wire			i_halt, i_clear_cache,
+		input	wire	[4:0]		i_dbg_wreg,
+		input	wire			i_dbg_we,
+		input	wire [DATA_WIDTH-1:0]	i_dbg_data,
+		input	wire	[4:0]		i_dbg_rreg,
 		// Debug interface -- outputs
-		output	wire		o_dbg_stall,
-		output	wire	[DATA_WIDTH-1:0]	o_dbg_reg,
-		output	wire	[2:0]	o_dbg_cc,
-		output	wire		o_break,
+		output	wire			o_dbg_stall,
+		output	wire [DATA_WIDTH-1:0]	o_dbg_reg,
+		output	wire	[2:0]		o_dbg_cc,
+		output	wire			o_break,
 		// CPU interface to the wishbone bus
 		// Wishbone interface -- outputs
-		output	wire		o_wb_gbl_cyc, o_wb_gbl_stb,
-		output	wire		o_wb_lcl_cyc, o_wb_lcl_stb, o_wb_we,
+		output	wire			o_wb_gbl_cyc, o_wb_gbl_stb,
+		output	wire			o_wb_lcl_cyc, o_wb_lcl_stb,
+						o_wb_we,
 		output	wire	[AW-1:0]	o_wb_addr,
 		output	wire [BUS_WIDTH-1:0]	o_wb_data,
 		output	wire [BUS_WIDTH/8-1:0]	o_wb_sel,
 		// Wishbone interface -- inputs
-		input	wire		i_wb_stall, i_wb_ack,
+		input	wire			i_wb_stall, i_wb_ack,
 		input	wire [BUS_WIDTH-1:0]	i_wb_data,
-		input	wire		i_wb_err,
+		input	wire			i_wb_err,
 		// Accounting outputs ... to help us count stalls and usage
-		output	wire		o_op_stall,
-		output	wire		o_pf_stall,
-		output	wire		o_i_count,
+		output	wire			o_op_stall,
+		output	wire			o_pf_stall,
+		output	wire			o_i_count,
 		//
-		output	wire	[31:0]	o_debug,
-		output	wire		o_prof_stb,
+		output	wire	[31:0]		o_debug,
+		output	wire			o_prof_stb,
 		output	wire [AW+WBLSB-1:0]	o_prof_addr,
-		output	wire [31:0]	o_prof_ticks
+		output	wire [31:0]		o_prof_ticks
 		// }}}
 	);
 
@@ -176,6 +177,7 @@ module	zipwb #(
 	localparam	[0:0]	OPT_MEMPIPE = OPT_PIPELINED_BUS_ACCESS;
 	localparam		INSN_WIDTH = 32;
 
+	wire		cpu_clken, cpu_clock, clk_gate;
 	wire	[31:0]	cpu_debug;
 
 	// Fetch
@@ -217,6 +219,7 @@ module	zipwb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+	wire	w_dbg_stall;
 
 	zipcore #(
 		// {{{
@@ -246,14 +249,14 @@ module	zipwb #(
 		// }}}
 	) core (
 		// {{{
-		.i_clk(i_clk), .i_reset(i_reset), .i_interrupt(i_interrupt),
-		.o_clken(o_cpu_clken),
+		.i_clk(cpu_clock), .i_reset(i_reset), .i_interrupt(i_interrupt),
+		.o_clken(cpu_clken),
 		// Debug interface
 		// {{{
 		.i_halt(i_halt), .i_clear_cache(i_clear_cache),
 			.i_dbg_wreg(i_dbg_wreg), .i_dbg_we(i_dbg_we),
 			.i_dbg_data(i_dbg_data),
-			.i_dbg_rreg(i_dbg_rreg), .o_dbg_stall(o_dbg_stall),
+			.i_dbg_rreg(i_dbg_rreg), .o_dbg_stall(w_dbg_stall),
 			.o_dbg_reg(o_dbg_reg), .o_dbg_cc(o_dbg_cc),
 			.o_break(o_break),
 		// }}}
@@ -292,6 +295,8 @@ module	zipwb #(
 		.o_prof_ticks(o_prof_ticks)
 		// }}}
 	);
+
+	assign	o_dbg_stall = w_dbg_stall || !clk_gate;
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{
@@ -321,7 +326,7 @@ module	zipwb #(
 			// CPU signals
 			// {{{
 			.i_new_pc(pf_new_pc), .i_clear_cache(clear_icache),
-				.i_ready(pf_ready),
+				.i_ready(pf_ready && clk_gate),
 				.i_pc(pf_request_address),
 			.o_valid(pf_valid), .o_illegal(pf_illegal),
 				.o_insn(pf_instruction),
@@ -355,7 +360,7 @@ module	zipwb #(
 			// {{{
 			.i_new_pc(pf_new_pc),
 			.i_clear_cache(clear_icache),
-			.i_ready(pf_ready),
+			.i_ready(pf_ready && clk_gate),
 			.i_pc(pf_request_address),
 			.o_valid(pf_valid), .o_illegal(pf_illegal),
 				.o_insn(pf_instruction),
@@ -385,7 +390,7 @@ module	zipwb #(
 			.i_clk(i_clk), .i_reset(i_reset),
 			// CPU signals
 			.i_new_pc(pf_new_pc), .i_clear_cache(clear_icache),
-				.i_ready(pf_ready), .i_pc(pf_request_address),
+				.i_ready(pf_ready && clk_gate), .i_pc(pf_request_address),
 			.o_valid(pf_valid), .o_illegal(pf_illegal),
 				.o_insn(pf_instruction),
 				.o_pc(pf_instruction_pc),
@@ -413,7 +418,7 @@ module	zipwb #(
 			// {{{
 			.LGCACHELEN(OPT_LGDCACHE-WBLSB),
 			.ADDRESS_WIDTH(AW),
-			// .DATA_WIDTH(BUS_WIDTH),
+			.BUS_WIDTH(BUS_WIDTH),
 			.LGNLINES(OPT_LGDCACHE-WBLSB-3),
 			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
 			.OPT_PIPE(OPT_MEMPIPE),
@@ -425,7 +430,7 @@ module	zipwb #(
 			// }}}
 		) mem(
 			// {{{
-			.i_clk(i_clk), .i_reset(i_reset),.i_clear(clear_dcache),
+			.i_clk(cpu_clock), .i_reset(i_reset),.i_clear(clear_dcache),
 			// CPU interface
 			.i_pipe_stb(mem_ce), .i_lock(bus_lock && OPT_PIPELINED),
 			.i_op(mem_op), .i_addr(mem_cpu_addr),.i_data(mem_wdata),
@@ -460,7 +465,7 @@ module	zipwb #(
 			// }}}
 		) domem(
 			// {{{
-			.i_clk(i_clk), .i_reset(i_reset),
+			.i_clk(cpu_clock), .i_reset(i_reset),
 			// CPU interface
 			.i_pipe_stb(mem_ce), .i_lock(bus_lock && OPT_PIPELINED),
 			.i_op(mem_op), .i_addr(mem_cpu_addr),
@@ -492,18 +497,23 @@ module	zipwb #(
 			, .F_LGDEPTH(F_LGDEPTH)
 `endif	// F_LGDEPTH
 			// }}}
-		) domem(i_clk, i_reset,
+		) domem(
 			// {{{
+			.i_clk(cpu_clock), .i_reset(i_reset),
 			// CPU interface
-			mem_ce, bus_lock && OPT_PIPELINED,
-			mem_op, mem_cpu_addr, mem_wdata, mem_reg,
-			mem_busy, mem_rdbusy,
-			mem_valid, mem_bus_err, mem_wreg, mem_result,
+			.i_stb(mem_ce), .i_lock(bus_lock && OPT_PIPELINED),
+			.i_op(mem_op), .i_addr(mem_cpu_addr),
+				.i_data(mem_wdata), .i_oreg(mem_reg),
+			.o_busy(mem_busy), .o_rdbusy(mem_rdbusy),
+			.o_valid(mem_valid), .o_err(mem_bus_err),
+				.o_wreg(mem_wreg), .o_result(mem_result),
 			// Wishbone interface
-			mem_cyc_gbl, mem_cyc_lcl,
-				mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_bus_addr, mem_data, mem_sel,
-				mem_stall, mem_ack, mem_err, i_wb_data
+			.o_wb_cyc_gbl(mem_cyc_gbl), .o_wb_cyc_lcl(mem_cyc_lcl),
+				.o_wb_stb_gbl(mem_stb_gbl), .o_wb_stb_lcl(mem_stb_lcl),
+				.o_wb_we(mem_we), .o_wb_addr(mem_bus_addr),
+				.o_wb_data(mem_data), .o_wb_sel(mem_sel),
+				.i_wb_stall(mem_stall), .i_wb_ack(mem_ack),
+				.i_wb_err(mem_err), .i_wb_data(i_wb_data)
 			// }}}
 		);
 
@@ -529,11 +539,14 @@ module	zipwb #(
 			// }}}
 		) pformem(
 			// {{{
-			i_clk, i_reset,
+			.i_clk(i_clk), .i_reset(i_reset),
 			// Memory access to the arbiter, priority position
-			mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_bus_addr, mem_data, mem_sel,
-				mem_stall, mem_ack, mem_err,
+			.i_a_cyc_a(mem_cyc_gbl), .i_a_cyc_b(mem_cyc_lcl),
+				.i_a_stb_a(mem_stb_gbl), .i_a_stb_b(mem_stb_lcl),
+				.i_a_we(mem_we), .i_a_adr(mem_bus_addr),
+				.i_a_dat(mem_data), .i_a_sel(mem_sel),
+				.o_a_stall(mem_stall), .o_a_ack(mem_ack),
+				.o_a_err(mem_err),
 			// Prefetch access to the arbiter
 			//
 			// At a first glance, we might want something like:
@@ -542,43 +555,108 @@ module	zipwb #(
 			//
 			// However, we know that the prefetch will not generate
 			// any writes.  Therefore, the write specific lines
-			// (mem_data and mem_sel) can be shared with the memory
-			// in order to ease timing and LUT usage.
-			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, {(BUS_WIDTH/8){1'b1}},
-				pf_stall, pf_ack, pf_err,
+			// (mem_data) can be shared with the memory in order to
+			// ease timing and LUT usage.  This is not true of
+			// mem_sel, which may be used to know which bytes we are
+			// reading from.
+			.i_b_cyc_a(pf_cyc), .i_b_cyc_b(1'b0),
+				.i_b_stb_a(pf_stb), .i_b_stb_b(1'b0),
+				.i_b_we(pf_we), .i_b_adr(pf_addr),
+				.i_b_dat(mem_data),
+				.i_b_sel({(BUS_WIDTH/8){1'b1}}),
+				.o_b_stall(pf_stall), .o_b_ack(pf_ack),
+				.o_b_err(pf_err),
 			// Common wires, in and out, of the arbiter
-			o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
-				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-				i_wb_stall, i_wb_ack, i_wb_err
+			.o_cyc_a(o_wb_gbl_cyc), .o_cyc_b(o_wb_lcl_cyc),
+				.o_stb_a(o_wb_gbl_stb), .o_stb_b(o_wb_lcl_stb),
+				.o_we(o_wb_we), .o_adr(o_wb_addr),
+				.o_dat(o_wb_data), .o_sel(o_wb_sel),
+				.i_stall(i_wb_stall), .i_ack(i_wb_ack),
+				.i_err(i_wb_err)
 			// }}}
 		);
 
 	end else begin : PRIORITY_PREFETCH
 
 		wbdblpriarb	#(
-			.DW(BUS_WIDTH), .AW(AW)
+			// {{{
+			.DW(BUS_WIDTH), .AW(AW),
+			.OPT_ZERO_ON_IDLE(OPT_LOWPOWER)
+			// }}}
 		) pformem(
-			//{{{
-			i_clk, i_reset,
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
 			// Prefetch access to the arbiter, priority position
 			//
-			pf_cyc,1'b0,pf_stb, 1'b0, pf_we,
-				pf_addr, mem_data, {(BUS_WIDTH/8){1'b1}},
-				pf_stall, pf_ack, pf_err,
+			.i_a_cyc_a(pf_cyc), .i_a_cyc_b(1'b0),
+				.i_a_stb_a(pf_stb), .i_a_stb_b(1'b0),
+				.i_a_we(pf_we), .i_a_adr(pf_addr),
+				.i_a_dat(mem_data),
+				.i_a_sel({(BUS_WIDTH/8){1'b1}}),
+				.o_a_stall(pf_stall), .o_a_ack(pf_ack),
+				.o_a_err(pf_err),
 			// Memory access to the arbiter
-			mem_cyc_gbl, mem_cyc_lcl, mem_stb_gbl, mem_stb_lcl,
-				mem_we, mem_bus_addr, mem_data, mem_sel,
-				mem_stall, mem_ack, mem_err,
+			.i_b_cyc_a(mem_cyc_gbl), .i_b_cyc_b(mem_cyc_lcl),
+				.i_b_stb_a(mem_stb_gbl),.i_b_stb_b(mem_stb_lcl),
+				.i_b_we(mem_we), .i_b_adr(mem_bus_addr),
+				.i_b_dat(mem_data), .i_b_sel(mem_sel),
+				.o_b_stall(mem_stall), .o_b_ack(mem_ack),
+				.o_b_err(mem_err),
 			// Common wires, in and out, of the arbiter
-			o_wb_gbl_cyc, o_wb_lcl_cyc, o_wb_gbl_stb, o_wb_lcl_stb,
-				o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-				i_wb_stall, i_wb_ack, i_wb_err
-			//}}}
+			.o_cyc_a(o_wb_gbl_cyc), .o_cyc_b(o_wb_lcl_cyc),
+				.o_stb_a(o_wb_gbl_stb), .o_stb_b(o_wb_lcl_stb),
+				.o_we(o_wb_we), .o_adr(o_wb_addr),
+				.o_dat(o_wb_data), .o_sel(o_wb_sel),
+				.i_stall(i_wb_stall), .i_ack(i_wb_ack),
+				.i_err(i_wb_err)
+			// }}}
 		);
 
 	end endgenerate
 	//}}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) Clock Gate
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	generate if (OPT_CLKGATE)
+	begin : GATE_CPU_CLOCK
+		// {{{
+		reg	gatep;
+		reg	gaten /* verilator clock_enable */;
+
+		initial	gatep = 1'b1;
+		always @(posedge i_clk)
+		if (i_reset)
+			gatep <= 1'b1;
+		else
+			gatep <= cpu_clken || i_dbg_we || i_cpu_clken;
+
+		initial	gaten = 1'b1;
+		always @(negedge i_clk)
+		if (i_reset)
+			gaten <= 1'b1;
+		else
+			gaten <= gatep;
+
+		assign	cpu_clock = i_clk && gaten;
+		assign	clk_gate  = gatep;
+		// }}}
+	end else begin : NO_CLOCK_GATE
+
+		assign	cpu_clock = i_clk;
+		assign	clk_gate = 1'b1;
+
+		// Verilattor lint_off UNUSED
+		wire	unused_clk;
+		assign	unused_clk = &{ 1'b0, i_cpu_clken, cpu_clken };
+		// Verilator lint_on  UNUSED
+	end endgenerate
+	// }}}
+
 	// Make Verilator happy
 	// {{{
 	// Verilator lint_off UNUSED

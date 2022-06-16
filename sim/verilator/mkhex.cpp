@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	mkfile.cpp
-//
-// Project:	N68335-19-C-0379
+// Filename: 	sim/verilator/mkfile.cpp
+// {{{
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	Take a file mapped to SDRAM, and create a hexfile that can
 //		be automatically loaded into the memory.
@@ -11,12 +11,27 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
+// }}}
+// Copyright (C) 2019-2022, Gisselquist Technology, LLC
+// {{{
+// This program is free software (firmware): you can redistribute it and/or
+// modify it under the terms of the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License, or (at
+// your option) any later version.
 //
-// Copyright (C) 2019, Gisselquist Technology, LLC
+// This program is distributed in the hope that it will be useful, but WITHOUT
+// ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+// FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+// for more details.
 //
-// The algorithms described in this file are proprietary to Gisselquist
-// Technology, LLC.  They may not be redistributed without the express
-// permission of an authorized representative of Gisselquist Technology.
+// You should have received a copy of the GNU General Public License along
+// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+// target there if the PDF file isn't present.)  If not, see
+// <http://www.gnu.org/licenses/> for a copy.
+// }}}
+// License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
+//		http://www.gnu.org/licenses/gpl.html
 //
 ////////////////////////////////////////////////////////////////////////////////
 //

@@ -6,6 +6,7 @@ $path_cnt = @ARGV;
 # 	sim_run <testcasename>
 ## Setup
 ## {{{
+my $verilator_flag = 0;
 my $testd = "test";
 my $simd  = "rtl";
 my $rtld  = "../rtl/export";
@@ -181,6 +182,7 @@ sub simline($) {
 	while ($line =~ /^(.*)#.*/) {
 		$line = $1;
 	} if ($line =~ /^\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s(.*)\s*$/) {
+		## {{{
 		$tstname = $1;
 		$config  = $2;
 		$memfil  = $3;
@@ -197,68 +199,134 @@ sub simline($) {
 
 		## Build up the simulation command
 		## {{{
-		$cmd = "iverilog -g2012";
+		if ($verilator_flag) {
+			$cmd = "verilator -Wall -Wno-TIMESCALEMOD --trace";
+			$cmd = $cmd . " -O3";
+			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core -y ../rtl/peripherals -y ../rtl/ex";
+			$cmd = $cmd . " --prefix $config";
 
-		if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
-			$toplevel = $1;
-		} elsif ($cfgfiles{$config} =~ /-s\s+(\S+)$/) {
-			$toplevel = $1;
-		} else {
-			$toplevel = "no_tb";
-		}
-
-		if ($cfghash{$config} ne "") {
-			## Must include sim file list and top level
-			## as well as any parameters
-			$cfgstr = $cfghash{$config};
-			$cfgstr =~ s/-P/-P$toplevel./g;
-			$cfgstr =~ s/\"/\\\"/g;
-			$cmd = $cmd . " " . $cfgstr;
-		}
-
-		$cmd = $cmd . " -P$toplevel.MEM_FILE=\\\"zipsw/$memfil\\\"";
-		$cmd = $cmd . " -P$toplevel.CONSOLE_FILE=\\\"$testd/$confil\\\"";
-
-		$cdr = $params;
-		while($cdr =~ /\s*(\S+)=(\S+)(.*)$/) {
-			$p = $1;
-			$v = $2;
-			$cdr = $3;
-
-			if ($v =~ /\"(.*)\"/) {
-				$str = $1;
-				$cmd = $cmd . " -P$toplevel.$p=\\\"$str\\\"";
+			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
+				$toplevel = $1;
+			} elsif ($cfgfiles{$config} =~ /-s\s+(\S+)$/) {
+				$toplevel = $1;
 			} else {
-				$cmd = $cmd . " -P$toplevel.$p=$v";
+				$toplevel = "no_tb";
 			}
-		}
 
-		if ($cfgfiles{$config} ne "") {
-			$cmd = $cmd . " " . $cfgfiles{$config};
-		}
+			if ($cfghash{$config} ne "") {
+				## Must include sim file list and top level
+				## as well as any parameters
+				$cfgstr = $cfghash{$config};
+				$cfgstr =~ s/-P/-G/g;
+				$cfgstr =~ s/\"/\\\"/g;
+				$cmd = $cmd . " " . $cfgstr;
+			}
 
-		$cmd = $cmd . " -o $tstname";
+			$cmd = $cmd . " -GMEM_FILE=\\\"zipsw/$memfil\\\"";
+			$cmd = $cmd . " -GCONSOLE_FILE=\\\"$testd/$confil\\\"";
+
+			$cdr = $params;
+			while($cdr =~ /\s*(\S+)=(\S+)(.*)$/) {
+				$p = $1;
+				$v = $2;
+				$cdr = $3;
+
+				if ($v =~ /\"(.*)\"/) {
+					$str = $1;
+					$cmd = $cmd . " -G$p=\\\"$str\\\"";
+				} else {
+					$cmd = $cmd . " -G$p=$v";
+				}
+			}
+
+			$cmd = $cmd . " -cc $toplevel" . ".v";
+		} else {
+			$cmd = "iverilog -g2012";
+
+			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
+				$toplevel = $1;
+			} elsif ($cfgfiles{$config} =~ /-s\s+(\S+)$/) {
+				$toplevel = $1;
+			} else {
+				$toplevel = "no_tb";
+			}
+
+			if ($cfghash{$config} ne "") {
+				## Must include sim file list and top level
+				## as well as any parameters
+				$cfgstr = $cfghash{$config};
+				$cfgstr =~ s/-P/-P$toplevel./g;
+				$cfgstr =~ s/\"/\\\"/g;
+				$cmd = $cmd . " " . $cfgstr;
+			}
+
+			$cmd = $cmd . " -P$toplevel.MEM_FILE=\\\"zipsw/$memfil\\\"";
+			$cmd = $cmd . " -P$toplevel.CONSOLE_FILE=\\\"$testd/$confil\\\"";
+
+			$cdr = $params;
+			while($cdr =~ /\s*(\S+)=(\S+)(.*)$/) {
+				$p = $1;
+				$v = $2;
+				$cdr = $3;
+
+				if ($v =~ /\"(.*)\"/) {
+					$str = $1;
+					$cmd = $cmd . " -P$toplevel.$p=\\\"$str\\\"";
+				} else {
+					$cmd = $cmd . " -P$toplevel.$p=$v";
+				}
+			}
+
+			if ($cfgfiles{$config} ne "") {
+				$cmd = $cmd . " " . $cfgfiles{$config};
+			}
+
+			$cmd = $cmd . " -o $testd/$tstname";
+		}
 		## }}}
 
 		$sim_log = "test/" . $tstname . ".txt";
 
-		## Run the simulation
+		## Build the simulation
 		## {{{
 		system "echo \"$tstamp -- Starting build\" | tee $sim_log";
-		if (-e "$tstname") {
-			unlink "$tstname";
+		if (-e "$testd/$tstname") {
+			unlink "$testd/$tstname";
 		}
 
 		$cmd = $cmd . " |& tee -a $sim_log";
 		system "echo \'$cmd\'";
 		system "bash -c \'$cmd\'";
-		if (-x "$tstname") {
+		$errB = $?;
+
+		if ($errB == 0 and $verilator_flag) {
+			system "cd obj_dir; make -f V$config.mk";
+			$errB = $?;
+			if ($errB == 0) {
+				$bldcmd = "g++ -Wall -g -Og";
+				if ($toplevel eq "axi_tb") {
+					$bldcmd = $bldcmd . " -DAXI";
+				}
+				$bldcmd = $bldcmd . " -D$config";
+				$bldcmd = $bldcmd . " -I$verilatord/include";
+				$bldcmd = $bmdcmd . " -Iobj_dir";
+				$bldcmd = $bmdcmd . " $verilatord/include/verilated.cpp";
+				$bldcmd = $bmdcmd . " $verilatord/include/verilated_vcd_c.cpp";
+				$bldcmd = $bldcmd . " -DBASE=V$config";
+				$bldcmd = $bmdcmd . " verilator/zipcpu_tb.cpp -o $config";
+			}
+		}
+		## }}}
+
+		if ($errB == 0 and -x "$testd/$tstname") {
+			## Run the simulation
+			## {{{
 			($sc,$mn,$hr,$dy,$mo,$yr,$wday,$yday,$isdst)=localtime(time);
 			$yr=$yr+1900; $mo=$mo+1;
 			$tstamp = sprintf("%04d/%02d/%02d %02d:%02d:%02d",
 					$yr,$mo,$dy,$hr,$mn,$sc);
 			system "echo \"$tstamp -- Starting simulation\" | tee $sim_log";
-			system "./$tstname >> $sim_log";
+			system "$testd/$tstname >> $sim_log";
 
 			## Finish the log with another timestamp
 			## {{{
@@ -283,7 +351,11 @@ sub simline($) {
 			$errS = $?;
 
 			open (SUM,">> $report");
-			$msg = sprintf("%s IVerilog -- %s", $tstamp, $tstname);
+			if ($verilator_flag) {
+			$msg = sprintf("%s Verilator -- %s", $tstamp, $tstname);
+			} else {
+			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
+			}
 			if ($errE == 0 or $errA == 0 or $errF == 0) {
 				## ERRORs found
 				print SUM "ERRORS    $msg\n";
@@ -297,11 +369,16 @@ sub simline($) {
 				push @passed,$tstname;
 			}
 			## }}}
+			## }}}
 		} else {
 			## Report that this failed to build
 			## {{{
 			open (SUM, ">> $report");
-			$msg = sprintf("%s IVerilog -- %s", $tstamp, $tstname);
+			if ($verilator_flag) {
+			$msg = sprintf("%s Verilator -- %s", $tstamp, $tstname);
+			} else {
+			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
+			}
 			print SUM "BLD-FAIL  $msg\n";
 
 			push @failed,$tstname;
