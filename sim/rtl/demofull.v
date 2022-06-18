@@ -851,7 +851,7 @@ module demofull #(
 			reg			w_valid_lock_request,
 						w_cancel_lock,
 						lock_valid, returned_lock_valid;
-			reg	[1:0]		lock_burst;
+			// reg	[1:0]		lock_burst;
 			reg	[2:0]		lock_size;
 			reg	[3:0]		lock_len;
 			reg	[AW-LSB-1:0]	lock_start, lock_end;
@@ -922,11 +922,13 @@ module demofull #(
 			if (w_valid_lock_request)
 			begin
 				lock_start <= S_AXI_ARADDR[C_S_AXI_ADDR_WIDTH-1:LSB];
+				// Verilator lint_off WIDTH
 				lock_end <= S_AXI_ARADDR[C_S_AXI_ADDR_WIDTH-1:LSB]
-					+ ((S_AXI_ARBURST == 2'b00) ? 0 : S_AXI_ARLEN[3:0]);
+					+ ((S_AXI_ARBURST == 2'b00) ? 4'h0 : S_AXI_ARLEN[3:0]);
+				// Verilator lint_on  WIDTH
 				lock_len   <= S_AXI_ARLEN[3:0];
 				lock_size  <= S_AXI_ARSIZE;
-				lock_burst <= S_AXI_ARBURST;
+				// lock_burst <= S_AXI_ARBURST;
 			end
 			// }}}
 

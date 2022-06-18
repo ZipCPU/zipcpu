@@ -398,7 +398,7 @@ module	wbdblpriarb #(
 	) f_wba_a(
 		// {{{
 		i_clk, i_reset,
-			i_a_cyc_a, i_a_stb_a, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+			i_a_cyc_a, i_a_stb_a, i_a_we, i_a_adr, i_a_dat, i_a_sel,
 			(o_cyc_a)&&(o_a_ack), o_a_stall, 32'h0, (o_cyc_a)&&(o_a_err),
 			f_a_nreqs_a, f_a_nacks_a, f_a_outstanding_a
 		// }}}
@@ -415,7 +415,7 @@ module	wbdblpriarb #(
 	) f_wba_b(
 		// {{{
 		i_clk, i_reset,
-			i_a_cyc_b, i_a_stb_b, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+			i_a_cyc_b, i_a_stb_b, i_a_we, i_a_adr, i_a_dat, i_a_sel,
 			(o_cyc_b)&&(o_a_ack), o_a_stall, 32'h0, (o_cyc_b)&&(o_a_err),
 			f_a_nreqs_b, f_a_nacks_b, f_a_outstanding_b
 		// }}}

@@ -473,8 +473,10 @@ module	axixbar #(
 	wire	[NM-1:0]	bskd_ready;
 	wire	[NM-1:0]	rskd_ready;
 
+	// Verilator lint_off UNUSED
 	wire	[NMFULL-1:0]	write_qos_lockout,
 				read_qos_lockout;
+	// Verilator lint_on  UNUSED
 
 	reg	[NSFULL-1:0]	slave_awready, slave_wready, slave_arready;
 	// }}}

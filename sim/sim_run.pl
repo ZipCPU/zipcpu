@@ -7,6 +7,8 @@ $path_cnt = @ARGV;
 ## Setup
 ## {{{
 my $verilator_flag = 0;
+my $verilatord = "/usr/local/share/verilator";
+my $vobjd = "obj_dir";
 my $testd = "test";
 my $simd  = "rtl";
 my $rtld  = "../rtl/export";
@@ -179,6 +181,16 @@ if ($ARGV[0] eq "") {
 ## {{{
 sub simline($) {
 	my $line = shift;
+
+	my $tstname;
+	my $config;
+	my $memfil;
+	my $confil;
+	my $params;
+
+	my $vcddump=0;
+	my $vcdfile="";
+
 	while ($line =~ /^(.*)#.*/) {
 		$line = $1;
 	} if ($line =~ /^\s*(\S+)\s*(\S+)\s*(\S+)\s*(\S+)\s(.*)\s*$/) {
@@ -200,10 +212,13 @@ sub simline($) {
 		## Build up the simulation command
 		## {{{
 		if ($verilator_flag) {
+			## Setup the Verilator command
+			## {{{
 			$cmd = "verilator -Wall -Wno-TIMESCALEMOD --trace";
+			# $cmd = $cmd . " -Wno-UNUSED";
 			$cmd = $cmd . " -O3";
 			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core -y ../rtl/peripherals -y ../rtl/ex";
-			$cmd = $cmd . " --prefix $config";
+			$cmd = $cmd . " --prefix $tstname";
 
 			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
 				$toplevel = $1;
@@ -222,6 +237,17 @@ sub simline($) {
 				$cmd = $cmd . " " . $cfgstr;
 			}
 
+			$vcddump=0;
+			$vcdfile="";
+			printf("CFG-HASH=%s\n", $cfghash{$config});
+			if ($cfghash{$config} =~ /DUMP_TO_VCD=(\d+)/) {
+				$vcddump=$1;
+			} if ($cfghash{$config} =~ /VCD_FILE=.(\S+).$/) {
+				$vcdfile=$1;
+			} elsif ($cfghash{$config} =~ /VCD_FILE=.(\S+).\s/) {
+				$vcdfile=$1;
+			}
+
 			$cmd = $cmd . " -GMEM_FILE=\\\"zipsw/$memfil\\\"";
 			$cmd = $cmd . " -GCONSOLE_FILE=\\\"$testd/$confil\\\"";
 
@@ -237,10 +263,22 @@ sub simline($) {
 				} else {
 					$cmd = $cmd . " -G$p=$v";
 				}
+
+				if ($p =~ /DUMP_TO_VCD/) {
+					$vcddump=$v;
+				} if ($p =~ /VCD_FILE/) {
+					$vcdfile=$v;
+				} elsif ($p =~ /VCD_FILE=.(\S+).\s/) {
+					$vcdfile=$v;
+				}
+
 			}
 
 			$cmd = $cmd . " -cc $toplevel" . ".v";
+			## }}}
 		} else {
+			## Set up the IVerilog command
+			## {{{
 			$cmd = "iverilog -g2012";
 
 			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
@@ -282,12 +320,13 @@ sub simline($) {
 			}
 
 			$cmd = $cmd . " -o $testd/$tstname";
+			## }}}
 		}
 		## }}}
 
 		$sim_log = "test/" . $tstname . ".txt";
 
-		## Build the simulation
+		## Build the simulation executable
 		## {{{
 		system "echo \"$tstamp -- Starting build\" | tee $sim_log";
 		if (-e "$testd/$tstname") {
@@ -300,20 +339,35 @@ sub simline($) {
 		$errB = $?;
 
 		if ($errB == 0 and $verilator_flag) {
-			system "cd obj_dir; make -f V$config.mk";
+			system "cd $vobjd; make -f $tstname.mk";
 			$errB = $?;
 			if ($errB == 0) {
-				$bldcmd = "g++ -Wall -g -Og";
+				$bldcmd = "g++ -Wall -g -Og -DROOT_VERILATOR -faligned-new";
+				if ($vcddump) {
+					$bldcmd = $bldcmd . " -DVCD_FILE=\\\"$vcdfile\\\"";
+				}
+
 				if ($toplevel eq "axi_tb") {
 					$bldcmd = $bldcmd . " -DAXI";
 				}
-				$bldcmd = $bldcmd . " -D$config";
+				# $bldcmd = $bldcmd . " -D$config";
+				$bldcmd = $bldcmd . " -DBASE=$tstname";
+				$bldcmd = $bldcmd . " -DBASEINC='\"$tstname.h\"'";
+				$bldcmd = $bldcmd . " -DROOTINC='\"$tstname";
+				$bldcmd = $bldcmd . "___024root.h\"'";
+				# $bldcmd = $bldcmd . " -DCORE=axi_tb__DOT__GEN_ZIPAXIL__DOT__u_cpu__DOT__core";
 				$bldcmd = $bldcmd . " -I$verilatord/include";
-				$bldcmd = $bmdcmd . " -Iobj_dir";
-				$bldcmd = $bmdcmd . " $verilatord/include/verilated.cpp";
-				$bldcmd = $bmdcmd . " $verilatord/include/verilated_vcd_c.cpp";
-				$bldcmd = $bldcmd . " -DBASE=V$config";
-				$bldcmd = $bmdcmd . " verilator/zipcpu_tb.cpp -o $config";
+				$bldcmd = $bldcmd . " -I$verilatord/include/vltstd";
+				$bldcmd = $bldcmd . " -I../sw/zasm";
+				$bldcmd = $bldcmd . " -I$vobjd";
+				$bldcmd = $bldcmd . " $verilatord/include/verilated.cpp";
+				$bldcmd = $bldcmd . " $verilatord/include/verilated_vcd_c.cpp";
+				$bldcmd = $bldcmd . " -DBASE=$tstname";
+				$bldcmd = $bldcmd . " verilator/vbare_tb.cpp $vobjd/$tstname" . "__ALL.a -o $testd/$tstname";
+
+				system "echo $bldcmd";
+				system $bldcmd;
+				$errB = $?;
 			}
 		}
 		## }}}
@@ -429,6 +483,10 @@ if ($all_run) {
 		# print "TEST LINE: $line";
 		simline($line);
 	}
+
+	open(SUM,">> $report");
+	print(SUM "----\nTest run complete\n\n");
+	close SUM;
 } else {
 	foreach $akey (@array) {
 		$line = gettest($akey);

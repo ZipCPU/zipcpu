@@ -15,7 +15,7 @@
 //		1. If 'A' or 'B' asserts the o_cyc line, a bus cycle will begin,
 //			with acccess granted to whomever requested it.
 //		2. If both 'A' and 'B' assert o_cyc at the same time, only 'A'
-//			will be granted the bus.  (If the alternating parameter 
+//			will be granted the bus.  (If the alternating parameter
 //			is set, A and B will alternate who gets the bus in
 //			this case.)
 //		3. The bus will remain owned by whomever the bus was granted to
@@ -322,7 +322,7 @@ module	wbarbiter #(
 	) f_wba (
 		// {{{
 		i_clk, i_reset,
-		i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+		i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel,
 		o_a_ack, o_a_stall, 32'h0, o_a_err,
 		f_a_nreqs, f_a_nacks, f_a_outstanding
 		// }}}

@@ -1926,9 +1926,7 @@ module	zipcore #(
 				if ((op_sim_immv[19:10] == 10'h0)&&(op_sim_immv[8]))
 				begin // [N/S]EXIT
 					// {{{
-`ifndef	VERILATOR
 					$finish;
-`endif
 
 					// if (op_sim_immv[19:4] == 16'h0031)
 						// Exit(User reg), code cpu_wr_gpreg
@@ -2078,9 +2076,7 @@ module	zipcore #(
 				if ((op_sim_immv[19:10] == 10'h0)&&(op_sim_immv[8]))
 				begin // [N/S]EXIT
 					// {{{
-`ifndef	VERILATOR
 					$finish;
-`endif
 
 					// if (op_sim_immv[19:4] == 16'h0031)
 						// Exit(User reg), code cpu_wr_gpreg

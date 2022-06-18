@@ -57,6 +57,7 @@ module	wb_tb #(
 		// {{{
 		parameter	ADDRESS_WIDTH        = 28,	//Width in bytes
 		parameter	BUS_WIDTH            = 32,
+		// Verilator lint_off WIDTH
 		parameter [0:0]	OPT_ZIPBONES         = 1'b1,
 		parameter [0:0]	OPT_PIPELINED        = 1'b1,
 		parameter	OPT_LGICACHE         = 12,
@@ -79,6 +80,7 @@ module	wb_tb #(
 		//
 		parameter [0:0]	DUMP_TO_VCD = 1'b0,
 		parameter	VCD_FILE = "dump.vcd"
+		// Verilator lint_on  WIDTH
 		// }}}
 	) (
 		// {{{
@@ -184,7 +186,8 @@ module	wb_tb #(
 	//
 	// Optional SCOPE
 	// {{{
-	wire	scopew_cyc, scopew_stb, scopew_we, scopew_ack, scopew_stall, scopew_err;
+	wire	scopew_cyc, scopew_stb, scopew_we, scopew_ack, scopew_stall,
+		scopew_err;
 	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	scopew_addr;
 	wire	[BUS_WIDTH-1:0]		scopew_data, scopew_idata;
 	wire	[BUS_WIDTH/8-1:0]	scopew_sel;
@@ -347,6 +350,12 @@ module	wb_tb #(
 
 		assign	wide_idata = simw_idata << (32*fifo_addr);
 		assign	sim_idata  = wide_idata[BUS_WIDTH-1:BUS_WIDTH-32];
+
+		// Verilator lint_off UNUSED
+		wire	unused_sim_expander;
+		assign	unused_sim_expander = &{ 1'b0,
+			fifo_fill, fifo_empty, wide_idata[BUS_WIDTH-32-1:0] };
+		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
 `else
@@ -497,6 +506,10 @@ module	wb_tb #(
 			// }}}
 		);
 
+		// Verilator lint_off UNUSED
+		wire	unused_zipsys;
+		assign	unused_zipsys = &{ 1'b0, pic_int };
+		// Verilator lint_on  UNUSED
 	end endgenerate
 
 	assign	dbg_err = 1'b0;
@@ -820,6 +833,16 @@ module	wb_tb #(
 		// }}}
 	);
 
+	// Verilator lint_off UNUSED
+	wire	unused_zsys;
+	assign	unused_zsys = &{ 1'b0, pic_stall, pic_ack,
+			timer_a_stall, timer_a_ack,
+			timer_b_stall, timer_b_ack,
+			timer_c_stall, timer_c_ack,
+			jiffies_stall, jiffies_ack
+		};
+	// Verilator lint_on  UNUSED
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -905,6 +928,13 @@ module	wb_tb #(
 		assign	scopew_err   = 1'b0;
 
 		assign	scope_int = 1'b0;
+
+		// Verilator lint_off UNUSED
+		wire	unused_scope;
+		assign	unused_scope = &{ 1'b0, scopew_cyc, scopew_we,
+					scopew_data, scopew_sel, cpu_trace };
+		// Verilator lint_on  UNUSED
+
 		// }}}
 	end endgenerate
 

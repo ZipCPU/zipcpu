@@ -299,7 +299,8 @@ module	axilcon #(
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
 			S_AXI_ARADDR[ADDRLSB-1:0],
-			S_AXI_AWADDR[ADDRLSB-1:0] };
+			S_AXI_AWADDR[ADDRLSB-1:0],
+			wskd_data[31:8], wskd_strb[3:1] };
 	// Verilator lint_on  UNUSED
 	// }}}
 endmodule

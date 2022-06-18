@@ -47,7 +47,7 @@
 //				exactly where the controller is at mid-transfer.
 //	27..16	W	WriteProtect	When a 12'h3db is written to these
 //				bits, the write protect bit will be cleared.
-//				
+//
 //	15	R/W	on_dev_trigger	When set to '1', the controller will
 //				wait for an external interrupt before starting.
 //	14..10	R/W	device_id	This determines which external interrupt
@@ -64,7 +64,7 @@
 //	To use this, follow this checklist:
 //	1. Wait for any prior DMA operation to complete
 //		(Read address 0, wait 'till either top bit is set or cfg_len==0)
-//	2. Write values into length, source and destination address. 
+//	2. Write values into length, source and destination address.
 //		(writei(3, &vals) should be sufficient for this.)
 //	3. Enable the DMAC interrupt in whatever interrupt controller is present
 //		on the system.
@@ -251,7 +251,7 @@ module wbdmac #(
 		// {{{
 		o_mwb_addr <= cfg_raddr;
 
-		// When the slave wishbone writes, and we are in this 
+		// When the slave wishbone writes, and we are in this
 		// (ready) configuration, then allow the DMA to be controlled
 		// and thus to start.
 		if ((s_stb)&&(s_we))
@@ -563,7 +563,7 @@ module wbdmac #(
 
 	// rdaddr
 	// {{{
-	// This is tricky.  In order for Vivado to consider dma_mem to be a 
+	// This is tricky.  In order for Vivado to consider dma_mem to be a
 	// proper memory, it must have a simple address fed into it.  Hence
 	// the read_address (rdaddr) register.  The problem is that this
 	// register must always be one greater than the address we actually

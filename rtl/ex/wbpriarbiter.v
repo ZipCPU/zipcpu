@@ -250,7 +250,7 @@ module	wbpriarbiter #(
 	) f_wba(
 		// {{{
 		i_clk, f_reset,
-			i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel, 
+			i_a_cyc, i_a_stb, i_a_we, i_a_adr, i_a_dat, i_a_sel,
 			o_a_ack, o_a_stall, 32'h0, o_a_err,
 			f_a_nreqs, f_a_nacks, f_a_outstanding
 		// }}}

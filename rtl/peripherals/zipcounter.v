@@ -8,7 +8,7 @@
 //		A very, _very_ simple counter.  It's purpose doesn't really
 //	include rollover, but it will interrupt on rollover.  It can be set,
 //	although my design concept is that it can be reset.  It cannot be
-//	halted.  It will always produce interrupts--whether or not they are 
+//	halted.  It will always produce interrupts--whether or not they are
 //	handled interrupts is another question--that's up to the interrupt
 //	controller.
 //
@@ -17,7 +17,7 @@
 //	each task by resetting the counter at the beginning of every task
 //	interval, and reading the result at the end of the interval.  As long
 //	as the interval is less than 2^32 clocks, there should be no problem.
-//	Similarly, this can be used to measure CPU wishbone bus stalls, 
+//	Similarly, this can be used to measure CPU wishbone bus stalls,
 //	prefetch stalls, or other CPU stalls (i.e. stalling as part of a JMP
 //	instruction, or a read from the condition codes following a write).
 //

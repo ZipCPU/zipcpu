@@ -66,7 +66,7 @@ module	zipaxi #(
 		parameter	OPT_LGICACHE = 0,
 		parameter	OPT_LGDCACHE = 0,
 		parameter	[0:0]	OPT_PIPELINED = 1'b1,
-		parameter [ADDRESS_WIDTH-1:0] RESET_ADDRESS=32'h010_0000,
+		parameter [ADDRESS_WIDTH-1:0] RESET_ADDRESS={(ADDRESS_WIDTH){1'b0}},
 		parameter [0:0]	START_HALTED = 1'b0,
 		parameter [0:0]	OPT_WRAP   = 1'b1,
 		parameter [0:0]	SWAP_WSTRB = 1'b1,
@@ -1284,9 +1284,13 @@ module	zipaxi #(
 			S_DBG_ARADDR[DBGLSB-1:0],
 			S_DBG_ARPROT, S_DBG_AWPROT,
 			M_INSN_AWREADY, M_INSN_WREADY,
-			M_INSN_BVALID, M_INSN_BID, M_INSN_BRESP,
-			mem_lock_pc
+			M_INSN_BVALID, M_INSN_BID, M_INSN_BRESP
 		};
+	generate if (32 > ADDRESS_WIDTH)
+	begin
+		wire	unused_addr;
+		assign	unused_addr = &{ 1'b0, mem_cpu_addr[31:ADDRESS_WIDTH] };
+	end endgenerate
 	// Verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

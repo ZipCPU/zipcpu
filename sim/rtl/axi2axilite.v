@@ -173,51 +173,25 @@ module axi2axilite #(
 	// {{{
 	//
 	// Write registers
-	reg				m_axi_awvalid, r_axi_wready;
 	wire				s_axi_wready;
 	reg	[C_AXI_ADDR_WIDTH-1:0]	axi_awaddr;
-	reg	[7:0]			r_axi_awlen, axi_blen;
 	wire	[7:0]			axi_awlen;
 	reg	[1:0]			axi_awburst;
 	reg	[2:0]			axi_awsize;
-	wire	[C_AXI_ADDR_WIDTH-1:0]	next_write_addr;
 	wire	[4:0]			wfifo_count;
 	wire				wfifo_full;
 	wire				wfifo_empty;
 	wire	[7:0]			wfifo_bcount;
 	wire	[IW-1:0]		wfifo_bid;
-	reg	[8:0]			r_bcounts;
 	wire	[8:0]			bcounts;
-	reg	[C_AXI_ID_WIDTH-1:0]	r_axi_bid, r_bid;
-	wire	[C_AXI_ID_WIDTH-1:0]	axi_bid, bid;
-	reg	[1:0]			r_axi_bresp;
-	wire	[1:0]			axi_bresp;
-	reg				s_axi_bvalid;
 	wire				read_from_wrfifo;
 	//
 	// Read register
-	reg				m_axi_arvalid;
 	wire	[4:0]			rfifo_count;
 	wire				rfifo_full;
 	wire				rfifo_empty;
-	wire	[7:0]			rfifo_rcount;
-	reg				s_axi_rvalid;
-	reg	[1:0]			s_axi_rresp;
-	reg	[8:0]			r_rcounts;
-	wire	[8:0]			rcounts;
-	reg	[C_AXI_ADDR_WIDTH-1:0]	axi_araddr;
-	reg	[7:0]			r_axi_arlen, axi_rlen;
 	wire	[7:0]			axi_arlen;
-	reg	[1:0]			axi_arburst;
-	reg	[2:0]			axi_arsize;
-	wire	[C_AXI_ADDR_WIDTH-1:0]	next_read_addr;
-	reg	[C_AXI_ID_WIDTH-1:0]	s_axi_rid;
-	wire	[C_AXI_ID_WIDTH-1:0]	rfifo_rid;
-	reg	[C_AXI_DATA_WIDTH-1:0]	s_axi_rdata;
-	reg				s_axi_rlast;
-	reg	[IW-1:0]		r_rid;
 	wire	[IW-1:0]		rid;
-	wire				read_from_rdfifo;
 
 	//
 	// S_AXI_AW* skid buffer
@@ -274,6 +248,17 @@ module axi2axilite #(
 	generate if (OPT_WRITES)
 	begin : IMPLEMENT_WRITES
 		// {{{
+		reg				s_axi_bvalid;
+		reg	[1:0]			r_axi_bresp;
+		wire	[1:0]			axi_bresp;
+		reg	[C_AXI_ID_WIDTH-1:0]	r_axi_bid, r_bid;
+		wire	[C_AXI_ID_WIDTH-1:0]	axi_bid, bid;
+		reg	[8:0]			r_bcounts;
+		wire	[C_AXI_ADDR_WIDTH-1:0]	next_write_addr;
+		reg	[7:0]			r_axi_awlen, axi_blen;
+		reg				r_axi_wready;
+		reg				m_axi_awvalid;
+
 		// The write address channel's skid buffer
 		// {{{
 		skidbuffer #(
@@ -545,6 +530,12 @@ module axi2axilite #(
 		//
 		assign	M_AXI_BREADY  = 0;
 
+		assign	axi_awaddr = 0;
+		assign	axi_awlen  = 0;
+		// Verilator lint_off WIDTH
+		assign	axi_awsize = $clog2(C_AXI_DATA_WIDTH/8);
+		// Verilator lint_on  WIDTH
+		assign	axi_awburst= 2'b01;
 		//
 		// S_AXI_AW* skid buffer
 		assign	skids_awvalid = 0;
@@ -581,21 +572,39 @@ module axi2axilite #(
 		assign	s_axi_wready = 0;
 		assign	axi_awlen    = 0;
 		assign	bcounts = 0;
-		assign	bid = 0;
-		assign	axi_bresp = 0;
-		assign	axi_bid   = 0;
 
 		assign	wfifo_full  = 0;
 		assign	wfifo_empty = 1;
+		assign	wfifo_bid   = 0;
 		assign	wfifo_count = 0;
+		assign	wfifo_bcount= 0;
 		assign	read_from_wrfifo = 0;
 
 		// Make Verilator happy
 		// {{{
 		// Verilator lint_off UNUSED
 		wire	unused_write_signals;
-		assign	unused_write_signals = &{ 1'b0, M_AXI_AWREADY,
-				M_AXI_WREADY, S_AXI_BREADY };
+		assign	unused_write_signals = &{ 1'b0,
+				S_AXI_AWVALID, S_AXI_AWID, S_AXI_AWADDR,
+					S_AXI_AWLEN,
+					S_AXI_AWSIZE, S_AXI_AWBURST,
+				M_AXI_AWREADY,
+				M_AXI_WREADY, S_AXI_BREADY,
+				M_AXI_BVALID, M_AXI_BREADY,
+				read_from_wrfifo, wfifo_full,
+				bcounts,
+				wfifo_bcount, wfifo_bid, wfifo_empty,
+				skidm_wvalid, skidm_wready, skidm_wdata,
+					skidm_wstrb,
+				s_axi_wready,
+				axi_awaddr, axi_awlen, axi_awsize, axi_awburst,
+				skids_awvalid, skids_awready, skids_awid,
+					skids_awaddr, skids_awlen,
+					skids_awburst, skids_awsize,
+				skids_wvalid, skids_wready, skids_wdata,
+					skids_wstrb,
+				skidm_bvalid, skidm_bready, skidm_bresp
+				};
 		// Verilator lint_on  UNUSED
 		// }}}
 
@@ -612,6 +621,24 @@ module axi2axilite #(
 	generate if (OPT_READS)
 	begin : IMPLEMENT_READS
 		// {{{
+		reg				m_axi_arvalid;
+		reg	[C_AXI_ID_WIDTH-1:0]	s_axi_rid;
+		wire	[C_AXI_ID_WIDTH-1:0]	rfifo_rid;
+		reg	[IW-1:0]		r_rid;
+		wire				read_from_rdfifo;
+		reg	[C_AXI_DATA_WIDTH-1:0]	s_axi_rdata;
+		reg				s_axi_rlast;
+		reg	[C_AXI_ADDR_WIDTH-1:0]	axi_araddr;
+		reg	[7:0]			r_axi_arlen, axi_rlen;
+		reg	[1:0]			axi_arburst;
+		reg	[2:0]			axi_arsize;
+		wire	[C_AXI_ADDR_WIDTH-1:0]	next_read_addr;
+		reg				s_axi_rvalid;
+		reg	[1:0]			s_axi_rresp;
+		reg	[8:0]			r_rcounts;
+		wire	[8:0]			rcounts;
+		wire	[7:0]			rfifo_rcount;
+
 		// S_AXI_AR* skid buffer
 		// {{{
 		skidbuffer #(
@@ -844,7 +871,7 @@ module axi2axilite #(
 		//
 		//
 		assign	axi_arlen = 0;
-		assign	rcounts   = 0;
+		// assign	rcounts   = 0;
 		assign	rid       = 0;
 		assign	rfifo_empty = 1;
 		assign	rfifo_full  = 0;
@@ -854,8 +881,13 @@ module axi2axilite #(
 		// {{{
 		// Verilator lint_off UNUSED
 		wire	unused_read_signals;
-		assign	unused_read_signals = &{ 1'b0, M_AXI_ARREADY,
-				S_AXI_RREADY };
+		assign	unused_read_signals = &{ 1'b0,
+				rid, rfifo_empty, rfifo_count, rfifo_full,
+				axi_arlen,
+				skids_arvalid, skids_arready, skids_arid, skids_araddr, skids_arlen, skids_arsize, skids_arburst,
+				skidm_rvalid, skidm_rready,
+					skidm_rdata, skidm_rresp,
+				M_AXI_ARREADY, S_AXI_RREADY };
 		// Verilator lint_on  UNUSED
 		// }}}
 

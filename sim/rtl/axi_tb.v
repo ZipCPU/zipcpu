@@ -57,6 +57,7 @@ module	axi_tb #(
 		// {{{
 		parameter	ADDRESS_WIDTH        = 28,	//Width in bytes
 		parameter	BUS_WIDTH            = 32,
+		// Verilator lint_off WIDTH
 		parameter [0:0]	OPT_ZIPAXIL          = 1'b1,
 		parameter [0:0]	OPT_PIPELINED        = 1'b1,
 		parameter	OPT_LGICACHE         = 12,
@@ -78,9 +79,11 @@ module	axi_tb #(
 		parameter	ID_WIDTH = 4,
 		localparam	IW = ID_WIDTH,
 		parameter	LGMEMSZ = ADDRESS_WIDTH-2,
-		//
+		// Verilator lint_off UNUSED
 		parameter [0:0]	DUMP_TO_VCD = 1'b0,
 		parameter	VCD_FILE = "dump.vcd"
+		// Verilator lint_on  UNUSED
+		// Verilator lint_on  WIDTH
 		// }}}
 	) (
 		// {{{
@@ -143,7 +146,10 @@ module	axi_tb #(
 `else
 	localparam	[0:0]	OPT_PROFILER = 1'b0;
 `endif
-	wire		cpu_int, scope_int;
+	// Verilator lint_off UNUSED
+	wire		cpu_int;
+	// Verilator lint_on  UNUSED
+	wire		scope_int;
 	wire	[31:0]	cpu_trace;
 
 	wire	cpu_reset;
@@ -322,7 +328,6 @@ module	axi_tb #(
 
 	// Console declarations
 	// {{{
-	integer	sim_console;
 
 	// con*
 	// {{{
@@ -503,6 +508,7 @@ module	axi_tb #(
 	wire				simfull_awvalid;
 	wire				simfull_awready;
 	wire	[IW-1:0]		simfull_awid;
+	wire	[ADDRESS_WIDTH:0]	simwide_awaddr;
 	wire	[ADDRESS_WIDTH-1:0]	simfull_awaddr;
 	wire	[7:0]			simfull_awlen;
 	wire	[2:0]			simfull_awsize;
@@ -526,6 +532,7 @@ module	axi_tb #(
 	wire				simfull_arvalid;
 	wire				simfull_arready;
 	wire	[IW-1:0]		simfull_arid;
+	wire	[ADDRESS_WIDTH:0]	simwide_araddr;
 	wire	[ADDRESS_WIDTH-1:0]	simfull_araddr;
 	wire	[7:0]			simfull_arlen;
 	wire	[2:0]			simfull_arsize;
@@ -537,6 +544,7 @@ module	axi_tb #(
 
 	wire				simfull_rvalid;
 	wire				simfull_rready;
+	wire	[IW-1:0]		simfull_rid;
 	wire	[31:0]			simfull_rdata;
 	wire				simfull_rlast;
 	wire	[1:0]			simfull_rresp;
@@ -637,95 +645,151 @@ module	axi_tb #(
 `ifdef	VERILATOR
 	// Only required if we are using Verilator.  Other test benches won't
 	// use this input port
+	wire		simsub_arvalid, simsub_arready;
+	wire	[31:0]	simsub_wdata, simsub_rdata;
+	wire	[3:0]	simsub_wstrb;
 
 	axilxbar #(
 		// {{{
-		.NM(1), .NS(2), .AW(ADDRESS_WIDTH+1), .DW(32),
-		.SLAVE_ADDR(
-			{ 1'b0, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} },
-			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} } ), // CPU
-		.SLAVE_MASK(
-			{ 1'b0, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} },
-			{ 1'b1, {(ADDRESS_WIDTH-$clog2(32/8)){1'b0}} } )  // CPU
+		.NM(1), .NS(2),
+		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH+1),
+		.C_AXI_DATA_WIDTH(32),
+		.SLAVE_ADDR({
+			{ 1'b0, {(ADDRESS_WIDTH){1'b0}} },
+			{ 1'b1, {(ADDRESS_WIDTH){1'b0}} }}), // CPU
+		.SLAVE_MASK({
+			{ 1'b0, {(ADDRESS_WIDTH){1'b0}} },
+			{ 1'b1, {(ADDRESS_WIDTH){1'b0}} }})  // CPU
 		// }}}
 	) simxbar (
 		// {{{
-		.i_clk(i_aclk), .i_reset(i_reset),
+		.S_AXI_ACLK(i_aclk), .S_AXI_ARESETN(i_aresetn),
 		// One master: the SIM bus input
 		// {{{
-		.i_mcyc(i_sim_cyc), .i_mstb(i_sim_stb), .i_mwe(i_sim_we),
-		.i_maddr(i_sim_addr), .i_mdata(i_sim_data), .i_msel(i_sim_sel),
+		.S_AXI_AWVALID(sim_awvalid),
+		.S_AXI_AWREADY(sim_awready),
+		.S_AXI_AWADDR(sim_awaddr),
+		.S_AXI_AWPROT(sim_awprot),
 		//
-		.o_mstall(o_sim_stall), .o_mack(o_sim_ack),.o_mdata(o_sim_data),
-			.o_merr(o_sim_err),
+		.S_AXI_WVALID(sim_wvalid),
+		.S_AXI_WREADY(sim_wready),
+		.S_AXI_WDATA(sim_wdata),
+		.S_AXI_WSTRB(sim_wstrb),
+		//
+		.S_AXI_BVALID(sim_bvalid),
+		.S_AXI_BREADY(sim_bready),
+		.S_AXI_BRESP(sim_bresp),
+		//
+		.S_AXI_ARVALID(sim_arvalid),
+		.S_AXI_ARREADY(sim_arready),
+		.S_AXI_ARADDR(sim_araddr),
+		.S_AXI_ARPROT(sim_arprot),
+		//
+		.S_AXI_RVALID(sim_rvalid),
+		.S_AXI_RREADY(sim_rready),
+		.S_AXI_RDATA(sim_rdata),
+		.S_AXI_RRESP(sim_rresp),
 		// }}}
 		// Two slaves: The wide bus the ZipCPU masters, and the ZipCPU's
 		// debug port
 		// {{{
-		.o_scyc({  sim_cyc, dbg_cyc  }),
-		.o_sstb({  sim_stb, dbg_stb  }),
-		.o_swe({   sim_we,  dbg_we   }),
-		.o_saddr({ sim_addr,dbg_addr }),
-		.o_sdata({ sim_data,dbg_data }),
-		.o_ssel({  sim_sel, dbg_sel  }),
+		.M_AXI_AWVALID({ simfull_awvalid, dbg_awvalid }),
+		.M_AXI_AWREADY({ simfull_awready, dbg_awready }),
+		.M_AXI_AWADDR({  simwide_awaddr,  dbg_awaddr  }),
+		.M_AXI_AWPROT({  simfull_awprot,  dbg_awprot }),
 		//
-		.i_sstall({ sim_stall, dbg_stall }),
-		.i_sack({   sim_ack,   dbg_ack   }),
-		.i_sdata({  sim_idata, dbg_idata }),
-		.i_serr({   sim_err,   dbg_err   })
+		.M_AXI_WVALID({ simfull_wvalid, dbg_wvalid }),
+		.M_AXI_WREADY({ simfull_wready, dbg_wready }),
+		.M_AXI_WDATA({  simsub_wdata,  dbg_wdata }),
+		.M_AXI_WSTRB({  simsub_wstrb,  dbg_wstrb }),
+		//
+		.M_AXI_BVALID({ simfull_bvalid, dbg_bvalid }),
+		.M_AXI_BREADY({ simfull_bready, dbg_bready }),
+		.M_AXI_BRESP({  simfull_bresp,  dbg_bresp }),
+		//
+		.M_AXI_ARVALID({ simsub_arvalid, dbg_arvalid }),
+		.M_AXI_ARREADY({ simsub_arready, dbg_arready }),
+		.M_AXI_ARADDR({  simwide_araddr,  dbg_araddr }),
+		.M_AXI_ARPROT({  simfull_arprot,  dbg_arprot }),
+		//
+		.M_AXI_RVALID({ simfull_rvalid, dbg_rvalid }),
+		.M_AXI_RREADY({ simfull_rready, dbg_rready }),
+		.M_AXI_RDATA({  simsub_rdata,  dbg_rdata }),
+		.M_AXI_RRESP({  simfull_rresp,  dbg_rresp })
 		// }}}
 		// }}}
 	);
 
-	assign	simw_cyc   = sim_cyc;
-	assign	simw_we    = sim_we;
-	assign	sim_ack    = simw_ack;
-	assign	sim_err    = simw_err;
+	assign	simfull_awid    = 0;
+	assign	simfull_awaddr  = simwide_awaddr[ADDRESS_WIDTH-1:0];
+	assign	simfull_awlen   = 0;
+	assign	simfull_awsize  = 3'h2;
+	assign	simfull_awburst = 2'b01;
+	assign	simfull_awlock  = 1'b0;
+	assign	simfull_awcache = 4'h3;
+	assign	simfull_awqos   = 0;
+
+	assign	simfull_wdata = {(BUS_WIDTH/32){simsub_wdata}};
+	assign	simfull_wstrb = {(BUS_WIDTH/32){simsub_wstrb}};
+	assign	simfull_wlast   = 1;
+
+	assign	simfull_arid    = 0;
+	assign	simfull_araddr  = simwide_araddr[ADDRESS_WIDTH-1:0];
+	assign	simfull_arlen   = 0;
+	assign	simfull_arsize  = 3'h2;
+	assign	simfull_arburst = 2'b01;
+	assign	simfull_arlock  = 1'b0;
+	assign	simfull_arcache = 4'h3;
+	assign	simfull_arqos   = 0;
 
 	generate if (BUS_WIDTH == 32)
-	begin : NO_EXPAND_SIMBUS
-		// {{{
-		assign	simw_stb  = sim_stb;
-		assign	simw_addr = sim_addr;
-		assign	simw_data = sim_data;
-		assign	simw_sel  = sim_sel;
-		assign	sim_stall = simw_stall;
-		assign	sim_idata = simw_idata;
-		// }}}
-	end else begin : GEN_EXPAND_SIMBUS
-		// {{{
-		wire			fifo_full, fifo_empty;
-		wire	[LGFIFO:0]	fifo_fill;
-		wire	[$clog2(BUS_WIDTH/8)-$clog2(32/8)-1:0]	fifo_addr;
+	begin : NO_RETURN_DATA_SHIFT
 
-		assign	simw_stb   = sim_stb    && !fifo_full;
-		assign	sim_stall  = simw_stall ||  fifo_full;
+		assign	simfull_arvalid = simsub_arvalid;
+		assign	simsub_arready  = simfull_arready;
+		assign	simsub_rdata    = simfull_rdata;
 
-		assign	simw_addr = sim_addr[ADDRESS_WIDTH+1-$clog2(BUS_WIDTH)-1:0];
-		assign	simw_sel  = { sim_sel, {(BUS_WIDTH/8-4){1'b0}} } >> (4*simw_addr[BUS_WIDTH/8:2]);
-		assign	simw_data = { sim_data, {(BUS_WIDTH-32){1'b0}} } >> (32*simw_addr[BUS_WIDTH/8:2]);
+	end else begin : SHIFT_RETURN_DATA
+		// {{{
+		localparam	LGFIFO = 5;
+
+		wire					rfif_full, rfif_empty;
+		wire	[$clog2(BUS_WIDTH/32)-1:0]	rfif_shift;
+		wire	[LGFIFO:0]			rfif_fill;
+		wire	[BUS_WIDTH-1:0]			shifted_rdata;
 
 		sfifo #(
-			// {{{
 			.LGFLEN(LGFIFO),
-			.OPT_READ_ON_EMPTY(1'b1),
-			.BW($clog2(BUS_WIDTH/8)-$clog2(32/8))
-			// }}}
-		) u_simaddr_fifo (
-			// {{{
-			.i_clk(i_aclk), .i_reset(i_aresetn),
-			.i_wr(simw_stb && !sim_stall),
-			.i_data(simw_addr[$clog2(BUS_WIDTH/8):2]),
-			.o_full(fifo_full), .o_fill(fifo_fill),
-			.i_rd(simw_ack), .o_data(fifo_addr),
-			.o_empty(fifo_empty)
-			// }}}
+			.BW($clog2(BUS_WIDTH/32))
+		) rdata_addr_fifo (
+			.i_clk(i_aclk), .i_reset(!i_aresetn),
+			.i_wr(simfull_arvalid && simfull_arready),
+			.i_data(simfull_araddr[$clog2(BUS_WIDTH/32)+1:2]),
+				.o_full(rfif_full), .o_fill(rfif_fill),
+			.i_rd(simfull_rvalid && simfull_rready),
+				.o_data(rfif_shift), .o_empty(rfif_empty)
 		);
 
-		assign	wide_idata = simw_idata << (32*fifo_addr);
-		assign	sim_idata  = wide_idata[BUS_WIDTH-1:BUS_WIDTH-32];
+		assign	shifted_rdata = simfull_rdata >> (rfif_shift*32);
+		assign	simsub_rdata = shifted_rdata[31:0];
+
+		// Verilator lint_off UNUSED
+		wire	unused_rfif;
+		assign	unused_rfif = &{ 1'b0, rfif_fill, rfif_empty,
+					shifted_rdata[BUS_WIDTH-1:32] };
+		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
+
+	// Verilator lint_off UNUSED
+	wire	unused_sim;
+	assign	unused_sim = &{ 1'b0,
+				simwide_awaddr[ADDRESS_WIDTH],
+				simwide_araddr[ADDRESS_WIDTH],
+				simfull_rlast, simfull_bid, simfull_rid,
+				dbg_awaddr[AW:8], dbg_araddr[AW:8]
+			};
+	// Verilator lint_on  UNUSED
 `else
 	// If we aren't using Verilator, then there's no external bus driver.
 	// Cap off the debug port therefore.
@@ -802,7 +866,7 @@ module	axi_tb #(
 		zipaxil #(
 			// {{{
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
-			.RESET_ADDRESS(RESET_ADDRESS),
+			.RESET_ADDRESS(RESET_ADDRESS[ADDRESS_WIDTH-1:0]),
 			.OPT_PIPELINED(OPT_PIPELINED),
 			.C_AXI_DATA_WIDTH(BUS_WIDTH),
 			.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
@@ -1090,7 +1154,7 @@ module	axi_tb #(
 
 		zipaxi #(
 			// {{{
-			.RESET_ADDRESS(RESET_ADDRESS),
+			.RESET_ADDRESS(RESET_ADDRESS[ADDRESS_WIDTH-1:0]),
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.C_AXI_ID_WIDTH(IW),
 			.C_AXI_DATA_WIDTH(BUS_WIDTH),
@@ -1521,6 +1585,14 @@ module	axi_tb #(
 	if (ram_rd)
 		ram_rdata_swap <= ram[ram_raddr];
 
+	// Verilator lint_off UNUSED
+	wire	unused_mem;
+	assign	unused_mem = &{ 1'b0,
+			mem_awaddr[AW-1:LGMEMSZ], mem_araddr[AW-1:LGMEMSZ]
+			};
+	// Verilator lint_on  UNUSED
+
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1649,6 +1721,14 @@ module	axi_tb #(
 		// }}}
 	);
 
+	// Verilator lint_off UNUSED
+	wire	unused_con;
+	assign	unused_con = &{ 1'b0,
+			con_awaddr[AW-1:AW-4], con_araddr[AW-1:AW-4],
+			conl_awaddr[AW-4:4],   conl_araddr[AW-4:4]
+			};
+	// Verilator lint_on  UNUSED
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1744,7 +1824,7 @@ module	axi_tb #(
 
 	axilperiphs #(
 		.OPT_LOWPOWER(1'b1), .OPT_SKIDBUFFER(1'b1),
-		.OPT_COUNTERS(1'b1), .EXTERNAL_INTERRUPTS(1)
+		.OPT_COUNTERS(1'b1), .EXTERNAL_INTERRUPTS(2)
 	) u_axilp (
 		// {{{
 		.S_AXI_ACLK(i_aclk), .S_AXI_ARESETN(i_aresetn),
@@ -1780,11 +1860,19 @@ module	axi_tb #(
 		.i_cpu_pfstall(cpu_pf_stall),
 		.i_cpu_opstall(cpu_op_stall),
 		.i_cpu_icount(cpu_i_count),
-		.i_ivec(1'b0),
+		.i_ivec({ scope_int, i_sim_int }),
 		.o_interrupt(pic_interrupt),
 		.o_watchdog_reset(watchdog_reset)
 		// }}}
 	);
+
+	// Verilator lint_off UNUSED
+	wire	unused_axip;
+	assign	unused_axip = &{ 1'b0,
+			axip_awaddr[AW-1:AW-4], axip_araddr[AW-1:AW-4],
+			axilp_awaddr[AW-4:4],   axilp_araddr[AW-4:4]
+			};
+	// Verilator lint_on  UNUSED
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1979,7 +2067,19 @@ module	axi_tb #(
 			.S_AXI_RRESP( scope_rresp)
 			// }}}
 		);
+
+		assign	scope_int = 1'b0;
 		// }}}
+
+		// Verilator lint_off UNUSED
+		wire	unused_scope;
+		assign	unused_scope = &{ 1'b0,
+				cpu_trace,
+				scope_awaddr, scope_awlen, scope_awlock, scope_awburst, scope_awsize, scope_awcache, scope_awprot, scope_awqos,
+				scope_wdata, scope_wstrb,
+				scope_araddr, scope_arlen, scope_arlock, scope_arburst, scope_arsize, scope_arcache, scope_arprot, scope_arqos
+				};
+		// Verilator lint_on  UNUSED
 	end endgenerate
 
 	// }}}
@@ -2030,6 +2130,9 @@ module	axi_tb #(
 
 	always @(posedge i_aclk)
 	if (i_aresetn && cpu_halted)
+	begin
 		$display("\nCPU Halted without error: PASS\n");
+		$finish;
+	end
 	// }}}
 endmodule
