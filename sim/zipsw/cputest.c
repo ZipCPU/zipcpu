@@ -1296,6 +1296,22 @@ asm("\t.text\n\t.global\tstep_stoerr_test\n"
 
 int	step_word = 0;
 
+int	smp_count(void);
+// {{{
+asm("\t.text\n\t.global\tsmp_count\n"
+	"\t.type\tsmp_count,@function\n"
+"smp_count:\n"
+	"\tCLR	R1\n"
+	// "\tLDI	_smp,R2\n"
+	"\tLDI	50332160,R2\n"
+"smp_count_loop:\n"
+	"\tLW	(R2),R3\n"
+	"\tADD	1,R1\n"
+	"\tADD	512,R2\n"
+	"\tJMP	smp_count_loop\n"
+);
+// }}}
+
 extern	int	step_test(void *pc, void *stack);
 // {{{
 asm("\t.text\n\t.global\tstep_test\n"
@@ -1423,6 +1439,33 @@ void	txreg(const char *name, int val) {
 	txstr("0x");	// 2 characters
 	txhex(val);	// 8 characters
 	txstr("    ");	// 4 characters
+}
+// }}}
+
+void	txunsigned(unsigned uv) {
+	// {{{
+	unsigned	i, d;
+	char		str[32];
+
+	if (uv == 0)
+		txchr('0');
+	else {
+		for(i=0; i<31 && (d = (uv % 10)); i++) {
+			str[i] = '0'+d;
+			uv /= 10;
+		} for(d=0; d<i; d++)
+			txchr(str[i-d-1]);
+	}
+}
+// }}}
+
+void	txdecimal(int val) {
+	// {{{
+	if (val < 0) {
+		txchr('-');
+		txunsigned((unsigned)-val);
+	} else
+		txunsigned((unsigned)val);
 }
 // }}}
 
@@ -1696,14 +1739,12 @@ void entry(void) {
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #17
 
 	// Compare EQuals test
-	cc_fail = CC_BUSERR|CC_DIVERR|CC_FPUERR|CC_BREAK|CC_MMUERR|CC_ILL;
 	testid("Comparison test, =="); MARKSTART;
 	if ((run_test(cmpeq_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #18
 
 	// Compare !EQuals test
-	cc_fail = CC_BUSERR|CC_DIVERR|CC_FPUERR|CC_BREAK|CC_MMUERR|CC_ILL;
 	testid("Comparison test, !="); MARKSTART;
 	if ((run_test(cmpneq_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
@@ -1840,6 +1881,24 @@ void entry(void) {
 	if ((run_test(div_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	} txstr("Pass\r\n"); testlist[tnum++] = 0;	// #36
+
+
+#define	OPT_SMP
+#ifdef	OPT_SMP
+	// SMP_TEST
+	{
+		unsigned	count, cc;
+
+		testid("SMP Count");
+		MARKSTART;
+		count = run_test(smp_count, user_stack_ptr);
+		if ((cc=zip_ucc())&(CC_ILL|CC_DIVERR|CC_FPUERR
+							|CC_BREAK|CC_MMUERR))
+			test_fails(start_time, &testlist[tnum]);
+		txdecimal(count+1); txstr(" CPUs\r\n");
+		testlist[tnum++] = 0;	// #37
+	}
+#endif
 
 
 	txstr("\r\n");

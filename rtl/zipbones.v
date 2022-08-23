@@ -96,7 +96,7 @@ module	zipbones #(
 		localparam	DBG_WIDTH=32,	// Debug bus data width
 		localparam	// Derived parameters
 				// PHYSICAL_ADDRESS_WIDTH=ADDRESS_WIDTH,
-				PAW=ADDRESS_WIDTH-$clog2(BUS_WIDTH/8),
+				PAW=ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)
 `ifdef	OPT_MMU
 				// VIRTUAL_ADDRESS_WIDTH=30,
 `else
@@ -105,25 +105,6 @@ module	zipbones #(
 				// LGTLBSZ = 6,
 				// VAW=VIRTUAL_ADDRESS_WIDTH,
 
-		// }}}
-		// Debug bit allocations
-		// {{{
-		//	DBGCTRL
-		//		10 HALT
-		//		 9 HALT(ED)
-		//		 8 STEP	(W=1 steps, and returns to halted)
-		//		 7 INTERRUPT-FLAG
-		//		 6 RESET_FLAG
-		//		ADDRESS:
-		//		 5	PERIPHERAL-BIT
-		//		[4:0]	REGISTER-ADDR
-		//	DBGDATA
-		//		read/writes internal registers
-		//
-		localparam	RESET_BIT = 6,
-		localparam	STEP_BIT = 8,
-		localparam	HALT_BIT = 10,
-		localparam	CLEAR_CACHE_BIT = 11
 		// }}}
 		// }}}
 	) (
@@ -163,8 +144,24 @@ module	zipbones #(
 
 	// Declarations
 	// {{{
-	localparam	[0:0]	DBG_ADDR_CPU = 1'b0,
-				DBG_ADDR_CTRL= 1'b1;
+	localparam	[0:0]	DBG_ADDR_CTRL = 1'b0,
+				DBG_ADDR_CPU  = 1'b1;
+
+	// Debug bit allocations
+	// {{{
+	//	DBGCTRL
+	//		 3 RESET_FLAG
+	//		 2 STEP	(W=1 steps, and returns to halted)
+	//		 1 HALT(ED)
+	//		 0 HALT
+	//	DBGDATA
+	//		read/writes internal registers
+	//
+	localparam	HALT_BIT = 0,
+			STEP_BIT = 2,
+			RESET_BIT = 3,
+			CLEAR_CACHE_BIT = 4;
+	// }}}
 
 	wire			cpu_clken;
 	wire			dbg_cyc, dbg_stb, dbg_we, dbg_stall;
@@ -362,29 +359,30 @@ module	zipbones #(
 	// }}}
 
 	assign	cpu_reset = (cmd_reset);
+	assign	cpu_halt = (cmd_halt);
 
 	// cpu_status
 	// {{{
-	assign	cpu_halt = (cmd_halt);
-	// Values:
-	//	0x10000 -> External interrupt is high
+	//	0xffff_f000 -> (Unused / reserved)
 	//
-	//	0x0_8000 -> cpu_break (CPU is halted on an error)
-	//	0x0_4000 -> Supervisor bus error
-	//	0x0_2000 -> cc.gie
-	//	0x0_1000 -> cc.sleep
-	//	0x0_0800 -> cmd_clear_cache	(auto clearing)
-	//	0x0_0400 -> cmd_halt (HALT request)
-	//	0x0_0200 -> [CPU is halted]
-	//	0x0_0100 -> cmd_step	(auto clearing)
+	//	0x0000_0800 -> cpu_break
+	//	0x0000_0400 -> Interrupt pending
+	//	0x0000_0200 -> User mode
+	//	0x0000_0100 -> Sleep (CPU is sleeping)
 	//
-	//	0x0_0080 -> External interrupt is high
-	//	0x0_0040 -> reset	(auto clearing)
-	//	0x0_003f -> [UNUSED -- was cmd_addr mask]
-	assign	cpu_status = { 7'h00, 8'h00, i_ext_int,
-			cpu_break, cpu_dbg_cc,
-			1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-			i_ext_int, cpu_reset, 6'h0 };
+	//	0x0000_00e0 -> (Unused/reserved)
+	//	0x0000_0010 -> cmd_clear_cache
+	//
+	//	0x0000_0008 -> Reset
+	//	0x0000_0004 -> Step (auto clearing, write only)
+	//	0x0000_0002 -> Halt (status)
+	//	0x0000_0001 -> Halt (request)
+	assign	cpu_status = { 16'h0, 4'h0,
+			cpu_break, i_ext_int, cpu_dbg_cc[1:0],
+			3'h0, 1'b0,
+			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
+		};
+	// }}}
 
 	// cmd_write
 	// {{{
@@ -414,7 +412,7 @@ module	zipbones #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	cpu_clken = cmd_write || dbg_stb && !dbg_addr[5];
+	assign	cpu_clken = cmd_write || dbg_stb;
 `ifdef	FORMAL
 	// {{{
 	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
@@ -562,7 +560,7 @@ module	zipbones #(
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, dbg_cyc, cpu_lcl_stb, cpu_op_stall,
-			cpu_pf_stall, cpu_i_count };
+			cpu_dbg_cc[2], cpu_pf_stall, cpu_i_count };
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,7 +578,7 @@ module	zipbones #(
 	reg	[F_LGDEPTH-1:0]	fwb_nreqs, fwb_nacks, fwb_outstanding;
 	wire			cpu_dbg_we;
 
-	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(!dbg_addr[5]));
+	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)&&(dbg_addr[5] == DBG_ADDR_CPU));
 
 	fwb_slave #(
 		.AW(6), .DW(DBG_WIDTH), .F_LGDEPTH(F_LGDEPTH)

@@ -1292,7 +1292,7 @@ module	dcache #(
 
 	always @(*)
 	if (o_wb_cyc_lcl)
-		pre_shifted = { i_wb_data, {(BUS_WIDTH-32){1'b0}} } << (8*req_data[2-1:0]);
+		pre_shifted = { i_wb_data[31:0], {(BUS_WIDTH-32){1'b0}} } << (8*req_data[2-1:0]);
 	else
 		pre_shifted = pre_data << (8*req_data[WBLSB-1:0]);
 
@@ -1385,17 +1385,28 @@ module	dcache #(
 	initial	lock_gbl = 0;
 	initial	lock_lcl = 0;
 	always @(posedge i_clk)
-	if (i_reset)
+	if (i_reset || !OPT_LOCK)
 	begin
 		lock_gbl <= 1'b0;
 		lock_lcl<= 1'b0;
 	end else begin
-		lock_gbl <= (OPT_LOCK)&&(i_lock)&&((r_wb_cyc_gbl)||(lock_gbl));
-		lock_lcl <= (OPT_LOCK)&&(i_lock)&&((r_wb_cyc_lcl)||(lock_lcl));
+		// lock_gbl <= (r_wb_cyc_gbl)||(lock_gbl);
+		// lock_lcl <= (r_wb_cyc_lcl)||(lock_lcl);
+		if (i_pipe_stb)
+		begin
+			lock_gbl <= (!OPT_LOCAL_BUS
+				|| i_addr[DATA_WIDTH-1:DATA_WIDTH-8] != 8'hff);
+			lock_lcl <=(i_addr[DATA_WIDTH-1:DATA_WIDTH-8] == 8'hff);
+		end
 
 		if (r_wb_cyc_gbl && i_wb_err)
 			lock_gbl <= 1'b0;
 		if (r_wb_cyc_lcl && i_wb_err)
+			lock_lcl <= 1'b0;
+
+		if (!i_lock)
+			{ lock_gbl, lock_lcl } <= 2'b00;
+		if (!OPT_LOCAL_BUS)
 			lock_lcl <= 1'b0;
 	end
 
@@ -1404,14 +1415,16 @@ module	dcache #(
 
 	// Make Verilator happy
 	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, pre_shifted };
 	generate if (AW+WBLSB < DATA_WIDTH)
 	begin : UNUSED_BITS
 
-		// Verilator lint_off UNUSED
-		wire	unused;
+		wire	unused_aw;
 		assign	unused = &{ 1'b0, i_addr[DATA_WIDTH-1:AW+WBLSB] };
-		// Verilator lint_on  UNUSED
 	end endgenerate
+	// Verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -1724,7 +1737,8 @@ module	dcache #(
 	assign	f_const_tag_addr = f_const_addr[CS-1:LS];
 	assign	f_cmem_here    = c_mem[f_const_addr[CS-1:0]];
 	assign	f_ctag_here    = c_vtags[f_const_addr[CS-1:LS]];
-	assign	f_wb_tag       = r_addr[AW-1:LS];
+	assign	f_wb_tag       = (OPT_LOWPOWER ? r_addr[AW-1:LS]
+						: o_wb_addr[AW-1:LS]);
 
 	assign	f_cval_in_cache= (c_v[f_const_addr[CS-1:LS]])
 					&&(f_ctag_here == f_const_tag);
@@ -1893,8 +1907,9 @@ module	dcache #(
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(state == DC_READC))
 	begin
+		`ASSERT(f_return_address[AW-1:LS] == r_ctag);
 		`ASSERT(f_wb_tag == r_ctag);
-		if ((wb_start[AW-1:LS] == f_const_tag)
+		if ((r_ctag == f_const_tag)
 			&&(!c_v[f_const_tag_addr])
 			&&(f_const_addr[AW] == r_wb_cyc_lcl)
 			&&(f_nacks > f_const_addr[LS-1:0]))
@@ -1910,7 +1925,7 @@ module	dcache #(
 		end
 
 		if (!i_reset && f_nacks > 0)
-			`ASSERT(!c_v[wb_start[CS-1:LS]]);
+			`ASSERT(!c_v[r_cline]);
 	end
 	// }}}
 
@@ -2186,6 +2201,8 @@ module	dcache #(
 		`ASSERT(!o_wb_cyc_lcl);
 		`ASSERT(!o_wb_we);
 		`ASSERT(f_wb_cachable);
+		`ASSERT(!lock_gbl);
+		`ASSERT(!lock_lcl);
 
 		`ASSERT(r_rd_pending);
 		`ASSERT(r_cachable);
@@ -2440,8 +2457,8 @@ module	dcache #(
 		`ASSERT(|c_v);
 
 	always @(posedge i_clk)
-	if ((cyc)&&(state == DC_READC)&&($past(f_nacks > 0)))
-		`ASSERT(!c_v[o_wb_addr[CS-1:LS]]);
+	if (cyc &&(state == DC_READC)&&($past(f_nacks > 0)))
+		`ASSERT(!c_v[r_cline]);
 
 	always @(*)
 	if (last_tag_valid)

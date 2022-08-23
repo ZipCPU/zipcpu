@@ -17,6 +17,7 @@ svn-commit*
 *dbg.txt
 *dump.txt
 *debug.txt
+stmp
 tags
 cpudefs.h
 legal.txt

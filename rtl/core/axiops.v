@@ -211,7 +211,7 @@ module	axiops #(
 	reg	[AXILSB+1:0]		r_op;
 	reg	[DW-1:0]		next_wdata;
 	reg	[DW/8-1:0]		next_wstrb;
-	reg	[31:0]			last_result;
+	reg	[DW-1:0]		last_result;
 	// reg	[31:0]			endian_swapped_wdata;
 	// reg	[31:0]			endian_swapped_result;
 	reg	[2*DW/8-1:0]		shifted_wstrb_word,
@@ -225,7 +225,8 @@ module	axiops #(
 	reg				axlock;
 	reg	[AXILSB-1:0]		swapaddr;
 	wire	[DW-1:0]		endian_swapped_rdata;
-	reg	[2*DW-1:0]		pre_result, wide_return;
+	reg	[2*DW-1:0]		wide_return;
+	reg	[31:0]			pre_result;
 
 	// }}}
 
@@ -892,17 +893,18 @@ module	axiops #(
 	begin
 		if (SWAP_WSTRB)
 		begin
+			pre_result = 0;
 
 			casez(r_op[AXILSB +: 2])
-			2'b10: pre_result = { {(DW){1'b0}}, 16'h0,
+			2'b10: pre_result[15:0] = {
 					wide_return[(2*DW)-1:(2*DW)-16] };
-			2'b11: pre_result = { {(DW){1'b0}}, 24'h0,
+			2'b11: pre_result[7:0] = {
 					wide_return[(2*DW)-1:(2*DW)-8] };
 			default: pre_result[31:0] = wide_return[(2*DW-1):(2*DW-32)];
 			endcase
 
 		end else
-			pre_result = wide_return;
+			pre_result = wide_return[31:0];
 	end
 
 	// }}}
@@ -972,8 +974,20 @@ module	axiops #(
 	// {{{
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, M_AXI_RLAST,
-			pre_result[2*C_AXI_DATA_WIDTH-1:32] };
+	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, M_AXI_RLAST };
+
+	generate if (SWAP_WSTRB)
+	begin
+		wire	wide_unused;
+
+		if (SWAP_WSTRB)
+		begin
+			assign	wide_unused = &{ 1'b0,
+					wide_return[2*DW-32-1:0] };
+		end else begin
+			assign	wide_unused = &{ 1'b0, wide_return[2*DW-1:32] };
+		end
+	end endgenerate
 	// verilator lint_on  UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

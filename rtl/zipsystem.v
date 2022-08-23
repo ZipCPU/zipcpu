@@ -277,21 +277,17 @@ module	zipsystem #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
-	//		10 HALT
-	//		 9 HALT(ED)
-	//		 8 STEP	(W=1 steps, and returns to halted)
-	//		 7 INTERRUPT-FLAG
-	//		 6 RESET_FLAG
-	//		ADDRESS:
-	//		 5	PERIPHERAL-BIT
-	//		[4:0]	REGISTER-ADDR
+	//		 3 RESET_FLAG
+	//		 2 STEP	(W=1 steps, and returns to halted)
+	//		 1 HALT(ED)
+	//		 0 HALT
 	//	DBGDATA
 	//		read/writes internal registers
 	//
-	localparam	RESET_BIT = 6,
-			STEP_BIT = 8,
-			HALT_BIT = 10,
-			CLEAR_CACHE_BIT = 11;
+	localparam	HALT_BIT = 0,
+			STEP_BIT = 2,
+			RESET_BIT = 3,
+			CLEAR_CACHE_BIT = 4;
 	// }}}
 
 	// Virtual address width (unused)
@@ -306,8 +302,8 @@ module	zipsystem #(
 				// VAW=VIRTUAL_ADDRESS_WIDTH,
 	// }}}
 
-	localparam	[1:0]	DBG_ADDR_CPU = 2'b00,
-				DBG_ADDR_CTRL= 2'b01,
+	localparam	[1:0]	DBG_ADDR_CTRL= 2'b00,
+				DBG_ADDR_CPU = 2'b01,
 				DBG_ADDR_SYS = 2'b10;
 	// }}}
 
@@ -699,32 +695,36 @@ module	zipsystem #(
 	// Values:
 	//	0xxxxx_0000 -> External interrupt lines
 	//
-	//	0x0_8000 -> cpu_break (CPU is halted on an error)
-	//	0x0_4000 -> Supervisor bus error
-	//	0x0_2000 -> cc.gie
-	//	0x0_1000 -> cc.sleep
-	//	0x0_0800 -> cmd_clear_cache	(auto clearing)
-	//	0x0_0400 -> cmd_halt (HALT request)
-	//	0x0_0200 -> [CPU is halted]
-	//	0x0_0100 -> cmd_step	(auto clearing)
+	//	0xffff_f000 -> (Unused / reserved)
 	//
-	//	0x0_0080 -> PIC interrrupt pending
-	//	0x0_0040 -> reset	(auto clearing)
-	//	0x0_003f -> [UNUSED -- was cmd_addr mask]
-	//	Other external interrupts follow
+	//	0x0000_0800 -> cpu_break
+	//	0x0000_0400 -> Interrupt pending
+	//	0x0000_0200 -> User mode
+	//	0x0000_0100 -> Sleep (CPU is sleeping)
+	//
+	//	0x0000_00e0 -> (Unused/reserved)
+	//	0x0000_0010 -> cmd_clear_cache
+	//
+	//	0x0000_0008 -> Reset
+	//	0x0000_0004 -> Step (auto clearing, write only)
+	//	0x0000_0002 -> Halt (status)
+	//	0x0000_0001 -> Halt (request)
 	generate
-	if (EXTERNAL_INTERRUPTS < 16)
-		assign	cpu_status = { {(16-EXTERNAL_INTERRUPTS){1'b0}},
-					i_ext_int,
-				cpu_break, cpu_dbg_cc,	// 4 bits
-				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-				pic_interrupt, cpu_reset, 6'h0 };
-	else
-		assign	cpu_status = { i_ext_int[15:0],
-				cpu_break, cpu_dbg_cc,	// 4 bits
-				1'b0, cmd_halt, (!cpu_dbg_stall), 1'b0,
-				pic_interrupt, cpu_reset, 6'h0 };
-	endgenerate
+	if (EXTERNAL_INTERRUPTS < 20)
+	begin : CPU_STATUS_NO_EXTRA_INTERRUPTS
+		assign	cpu_status = { {(20-EXTERNAL_INTERRUPTS){1'b0}},
+			i_ext_int,
+			cpu_break, pic_interrupt, cpu_dbg_cc[1:0],
+			3'h0, 1'b0,
+			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
+		};
+	end else begin : CPU_STATUS_MAX_INTERRUPTS
+		assign	cpu_status = { i_ext_int[19:0],
+			cpu_break, pic_interrupt, cpu_dbg_cc[1:0],
+			3'h0, 1'b0,
+			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
+		};
+	end endgenerate
 	// }}}
 
 	assign	cpu_gie = cpu_dbg_cc[1];
@@ -1221,7 +1221,7 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	cpu_clken = cmd_write || dbg_stb && !dbg_addr[5];
+	assign	cpu_clken = cmd_write || (dbg_stb && dbg_addr[6] == DBG_ADDR_CPU[1]);
 `ifdef	FORMAL
 	// {{{
 	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
@@ -1437,7 +1437,7 @@ module	zipsystem #(
 	// and one of two other things.  Either
 	//	((cpu_halt)&&(!cpu_dbg_stall))	the CPU is completely halted,
 	// or
-	//	(!dbg_addr[5])		we are trying to read a CPU register
+	//	(dbg_addr[6:5]==2'b01)	we are trying to read a CPU register
 	//			while in motion.  Let the user beware that,
 	//			by not waiting for the CPU to fully halt,
 	//			his results may not be what he expects.
@@ -1663,7 +1663,8 @@ module	zipsystem #(
 	// {{{
 	// verilator lint_off UNUSED
 	wire		unused;
-	assign unused = &{ 1'b0, dbg_addr[5:0],
+	assign unused = &{ 1'b0,
+		cpu_dbg_cc[2],
 		pic_ack, pic_stall, cpu_clken,
 		tma_ack, tma_stall, tmb_ack, tmb_stall, tmc_ack, tmc_stall,
 		jif_ack, jif_stall, no_dbg_err, dbg_sel,

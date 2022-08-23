@@ -74,6 +74,7 @@ module	wb_tb #(
 		parameter [0:0]	OPT_DBGPORT          = 1'b1,
 		parameter [0:0]	OPT_TRACE_PORT       = 1'b1,
 		parameter [0:0]	OPT_CIS              = 1'b1,
+		parameter	OPT_SMP              = 1, // Must be > 0
 		parameter	MEM_FILE = "cputest",
 		parameter	CONSOLE_FILE = "console.txt",
 		parameter	LGMEMSZ = ADDRESS_WIDTH-2,
@@ -111,22 +112,66 @@ module	wb_tb #(
 
 	// Local declarations
 	// {{{
+	genvar		gk;
 	localparam	WBLSB = $clog2(BUS_WIDTH/8);
 	parameter [31:0] RESET_ADDRESS = { {(32-ADDRESS_WIDTH){1'b0}}, MEMORY_ADDR, {(WBLSB){1'b0}} };
 	localparam	WAW = ADDRESS_WIDTH-WBLSB;
 	parameter [WAW-1:0]	SCOPE_ADDR   = { 4'b0001, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	CONSOLE_ADDR = { 4'b0010, {(WAW-4){1'b0}} };
+	parameter [WAW-1:0]	SMP_BASE_ADDR = { 4'b0011, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	ZSYS_ADDR = { {(ADDRESS_WIDTH-24){1'b1}}, {(24-WBLSB){1'b0}} };
 	parameter [WAW-1:0]	MEMORY_ADDR  = { 2'b01, {(WAW-2){1'b0}} };
 	localparam	LGFIFO = 4;
 
-	wire		cpu_int, scope_int;
-	wire	[31:0]	cpu_trace;
+	localparam	MIN_SMP = (OPT_SMP < 2) ? 1 : OPT_SMP;
+	parameter	[OPT_SMP*WAW-1:0]	SMP_ADDR = SMP_ADDR_fn(MIN_SMP);
+	parameter	[OPT_SMP*WAW-1:0]	SMP_MASK = SMP_MASK_fn(MIN_SMP);
+
+	// Verilator lint_off UNUSED
+	function [OPT_SMP*WAW-1:0]	SMP_ADDR_fn(input integer min_smp);
+		// {{{
+		integer	ik, offset;
+	begin
+		SMP_ADDR_fn = {(OPT_SMP){SMP_BASE_ADDR}};
+
+		for(ik=1; ik < OPT_SMP; ik=ik+1)
+		begin
+			offset = ik;
+			SMP_ADDR_fn[ik*WAW+(9-WBLSB) +: $clog2(OPT_SMP)+1]
+				= offset[$clog2(OPT_SMP):0];
+		end
+	end endfunction
+	// }}}
+
+	function [OPT_SMP*WAW-1:0]	SMP_MASK_fn(input integer min_smp);
+		// {{{
+		integer	ik;
+	begin
+		SMP_MASK_fn = {(OPT_SMP){ 4'b1111, {(WAW-4){1'b0}} }};
+
+		for(ik=0; ik < OPT_SMP; ik=ik+1)
+		begin
+			SMP_MASK_fn[ik*WAW+(9-WBLSB) +: $clog2(OPT_SMP)+1]
+				= {($clog2(OPT_SMP)+1){1'b1}};
+		end
+	end endfunction
+	// Verilator lint_on  UNUSED
+	// }}}
+
+	wire	[OPT_SMP-1:0]	cpu_int;
+	wire			scope_int;
+	wire	[31:0]		cpu_trace;
 
 	wire		dbg_cyc, dbg_stb, dbg_we, dbg_stall, dbg_ack, dbg_err;
 	wire	[ADDRESS_WIDTH+1-$clog2(32/8)-1:0]	dbg_addr;
 	wire	[31:0]	dbg_data, dbg_idata;
 	wire	[3:0]	dbg_sel;
+
+	wire	[OPT_SMP-1:0]		smpw_cyc, smpw_stb, smpw_we,
+					smpw_stall, smpw_ack, smpw_err;
+	wire	[OPT_SMP*WAW-1:0]	smpw_addr;
+	wire	[OPT_SMP*BUS_WIDTH-1:0]	smpw_data, smpw_idata;
+	wire [OPT_SMP*BUS_WIDTH/8-1:0]	smpw_sel;
 
 	wire		pic_int, timer_a_int, timer_b_int, timer_c_int,
 			jiffies_int;
@@ -135,10 +180,11 @@ module	wb_tb #(
 	//
 	// CPU bus declarations
 	// {{{
-	wire	cpu_cyc, cpu_stb, cpu_we, cpu_ack, cpu_stall, cpu_err;
-	wire	[WAW-1:0]		cpu_addr;
-	wire	[BUS_WIDTH-1:0]		cpu_data, cpu_idata;
-	wire	[BUS_WIDTH/8-1:0]	cpu_sel;
+	wire	[OPT_SMP-1:0]		cpu_cyc, cpu_stb, cpu_we,
+					cpu_ack, cpu_stall, cpu_err;
+	wire	[OPT_SMP*WAW-1:0]	cpu_addr;
+	wire	[OPT_SMP*BUS_WIDTH-1:0]	cpu_data, cpu_idata;
+	wire [OPT_SMP*BUS_WIDTH/8-1:0]	cpu_sel;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -254,8 +300,8 @@ module	wb_tb #(
 	wire			sim_cyc, sim_stb, sim_we,
 				sim_stall, sim_ack, sim_err;
 	wire	[ADDRESS_WIDTH+1-$clog2(32/8)-1:0]	sim_addr;
-	wire	[BUS_WIDTH-1:0]	sim_data, sim_idata;
-	wire [BUS_WIDTH/8-1:0]	sim_sel;
+	wire	[31:0]		sim_data, sim_idata;
+	wire	[32/8-1:0]	sim_sel;
 
 	wire			simw_cyc, simw_stb, simw_we,
 				simw_stall, simw_ack, simw_err;
@@ -327,21 +373,21 @@ module	wb_tb #(
 		assign	simw_stb   = sim_stb    && !fifo_full;
 		assign	sim_stall  = simw_stall ||  fifo_full;
 
-		assign	simw_addr = sim_addr[ADDRESS_WIDTH+1-$clog2(BUS_WIDTH)-1:0];
-		assign	simw_sel  = { sim_sel, {(BUS_WIDTH/8-4){1'b0}} } >> (4*simw_addr[BUS_WIDTH/8:2]);
-		assign	simw_data = { sim_data, {(BUS_WIDTH-32){1'b0}} } >> (32*simw_addr[BUS_WIDTH/8:2]);
+		assign	simw_addr = sim_addr[ADDRESS_WIDTH+1-$clog2(32/8)-1:$clog2(BUS_WIDTH/32)];
+		assign	simw_sel  = { sim_sel, {(BUS_WIDTH/8-4){1'b0}} } >> (4*simw_addr[$clog2(BUS_WIDTH/8)-1:2]);
+		assign	simw_data = { sim_data, {(BUS_WIDTH-32){1'b0}} } >> (32*simw_addr[$clog2(BUS_WIDTH/8)-1:2]);
 
 		sfifo #(
 			// {{{
 			.LGFLEN(LGFIFO),
 			.OPT_READ_ON_EMPTY(1'b1),
-			.BW($clog2(BUS_WIDTH/8)-$clog2(32/8))
+			.BW($clog2(BUS_WIDTH/32))
 			// }}}
 		) u_simaddr_fifo (
 			// {{{
 			.i_clk(i_clk), .i_reset(i_reset),
 			.i_wr(simw_stb && !sim_stall),
-			.i_data(simw_addr[$clog2(BUS_WIDTH/8):2]),
+			.i_data(simw_addr[$clog2(BUS_WIDTH/8)-1:2]),
 			.o_full(fifo_full), .o_fill(fifo_fill),
 			.i_rd(simw_ack), .o_data(fifo_addr),
 			.o_empty(fifo_empty)
@@ -354,7 +400,8 @@ module	wb_tb #(
 		// Verilator lint_off UNUSED
 		wire	unused_sim_expander;
 		assign	unused_sim_expander = &{ 1'b0,
-			fifo_fill, fifo_empty, wide_idata[BUS_WIDTH-32-1:0] };
+			fifo_fill, fifo_empty, wide_idata[BUS_WIDTH-32-1:0],
+			sim_addr[$clog2(BUS_WIDTH/32):0] };
 		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
@@ -419,13 +466,16 @@ module	wb_tb #(
 			.i_clk(i_clk), .i_reset(i_reset),
 			// Master bus
 			// {{{
-			.o_wb_cyc(cpu_cyc), .o_wb_stb(cpu_stb),.o_wb_we(cpu_we),
-			.o_wb_addr(cpu_addr), .o_wb_data(cpu_data),
-				.o_wb_sel(cpu_sel),
-			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
-				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
+			.o_wb_cyc(cpu_cyc[0]), .o_wb_stb(cpu_stb[0]),
+			.o_wb_we(cpu_we[0]),
+			.o_wb_addr(cpu_addr[WAW-1:0]),
+				.o_wb_data(cpu_data[BUS_WIDTH-1:0]),
+				.o_wb_sel(cpu_sel[BUS_WIDTH/8-1:0]),
+			.i_wb_stall(cpu_stall[0]), .i_wb_ack(cpu_ack[0]),
+				.i_wb_data(cpu_idata[BUS_WIDTH-1:0]),
+				.i_wb_err(cpu_err[0]),
 			// }}}
-			.i_ext_int(pic_int), .o_ext_int(cpu_int),
+			.i_ext_int(pic_int), .o_ext_int(cpu_int[0]),
 			// Debug control port
 			// {{{
 			.i_dbg_cyc(dbg_cyc), .i_dbg_stb(dbg_stb),
@@ -480,14 +530,16 @@ module	wb_tb #(
 			.i_clk(i_clk), .i_reset(i_reset),
 			// Master bus
 			// {{{
-			.o_wb_cyc(cpu_cyc), .o_wb_stb(cpu_stb),.o_wb_we(cpu_we),
-			.o_wb_addr(cpu_addr), .o_wb_data(cpu_data),
-				.o_wb_sel(cpu_sel),
-			.i_wb_stall(cpu_stall), .i_wb_ack(cpu_ack),
-				.i_wb_data(cpu_idata), .i_wb_err(cpu_err),
+			.o_wb_cyc(cpu_cyc[0]), .o_wb_stb(cpu_stb[0]),
+			.o_wb_we(cpu_we[0]),
+			.o_wb_addr(cpu_addr[WAW-1:0]), .o_wb_data(cpu_data[BUS_WIDTH-1:0]),
+				.o_wb_sel(cpu_sel[BUS_WIDTH/8-1:0]),
+			.i_wb_stall(cpu_stall[0]), .i_wb_ack(cpu_ack[0]),
+				.i_wb_data(cpu_idata[BUS_WIDTH-1:0]),
+				.i_wb_err(cpu_err[0]),
 			// }}}
 			.i_ext_int({ i_sim_int }),
-			.o_ext_int(cpu_int),
+			.o_ext_int(cpu_int[0]),
 			// Debug control port
 			// {{{
 			.i_dbg_cyc(dbg_cyc), .i_dbg_stb(dbg_stb),
@@ -516,6 +568,237 @@ module	wb_tb #(
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
+	// Extra CPU's, if running in multiprocessor mode (OPT_SMP > 1)
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	// No slave connection
+	// {{{
+	reg	r_smp_err;
+
+	initial	r_smp_err = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset)
+		r_smp_err <= 1'b0;
+	else
+		r_smp_err <= smpw_stb[0];
+
+	assign	smpw_stall[0] = 1'b0;
+	assign	smpw_ack[0]   = 1'b0;
+	assign	smpw_idata[BUS_WIDTH-1:0] = {(BUS_WIDTH){1'b0}};
+	assign	smpw_err[0]   = r_smp_err;
+
+	// Verilator lint_off UNUSED
+	wire	unused_smpw;
+	assign	unused_smpw = &{ 1'b0, smpw_cyc[0], smpw_we[0],
+				smpw_addr[WAW-1:0],
+				smpw_data[BUS_WIDTH-1:0],
+				smpw_sel[BUS_WIDTH/8-1:0]
+				};
+	// Verilator lint_on  UNUSED
+	// }}}
+
+	generate for (gk=1; gk<OPT_SMP; gk=gk+1)
+	begin : GEN_SMPCPU
+		// Local declarations
+		// {{{
+		wire	[31:0]		smp_trace;
+		wire			smp_prof_stb;
+		wire	[ADDRESS_WIDTH-1:0]	smp_prof_addr;
+		wire	[31:0]		smp_prof_ticks;
+
+		wire		smp_cyc, smp_stb, smp_we;
+		wire	[6:0]	smp_addr;
+		wire	[31:0]	smp_data;
+		wire	[3:0]	smp_sel;
+		wire		smp_stall, smp_ack, smp_err;
+		wire	[31:0]	smp_idata;
+		// }}}
+
+		wbdown #(
+			// {{{
+			.ADDRESS_WIDTH(9),
+			.WIDE_DW(BUS_WIDTH), .SMALL_DW(32)
+			// }}}
+		) u_smpdown (
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
+			// The "Wide" connection
+			// {{{
+			.i_wcyc(smpw_cyc[gk]), .i_wstb(smpw_stb[gk]), .i_wwe(smpw_we[gk]),
+			.i_waddr(smpw_addr[gk * WAW +: (9-WBLSB)]),
+				.i_wdata(smpw_data[gk*BUS_WIDTH +: BUS_WIDTH]),
+				.i_wsel(smpw_sel[gk*BUS_WIDTH/8 +: BUS_WIDTH/8]),
+			//
+			.o_wstall(smpw_stall[gk]), .o_wack(smpw_ack[gk]),
+				.o_wdata(smpw_idata[gk*BUS_WIDTH +: BUS_WIDTH]),
+				.o_werr(smpw_err[gk]),
+			// }}}
+			// The downsized connection
+			// {{{
+			.o_cyc(smp_cyc), .o_stb(smp_stb), .o_we(smp_we),
+			.o_addr(smp_addr), .o_data(smp_data), .o_sel(smp_sel),
+			//
+			.i_stall(smp_stall), .i_ack(smp_ack),
+				.i_data(smp_idata),
+				.i_err(smp_err)
+			// }}}
+			// }}}
+		);
+
+		assign	smp_err = 1'b0;
+
+		if (OPT_ZIPBONES)
+		begin : GEN_ZIPBONES
+
+			zipbones #(
+				// {{{
+				.ADDRESS_WIDTH(ADDRESS_WIDTH),
+				.RESET_ADDRESS(RESET_ADDRESS),
+				.OPT_PIPELINED(OPT_PIPELINED),
+				.BUS_WIDTH(BUS_WIDTH),
+				.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+				.OPT_LGICACHE(OPT_LGICACHE),
+				.OPT_LGDCACHE(OPT_LGDCACHE),
+				.START_HALTED(1'b1),
+				.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
+				.OPT_MPY(OPT_MPY),
+				.OPT_DIV(OPT_DIV),
+				.OPT_SHIFTS(OPT_SHIFTS),
+				.OPT_LOCK(OPT_LOCK),
+				.OPT_CIS(OPT_CIS),
+				.OPT_USERMODE(OPT_USERMODE),
+				.OPT_DBGPORT(OPT_DBGPORT),
+				.OPT_TRACE_PORT(OPT_TRACE_PORT),
+				.OPT_PROFILER(OPT_PROFILER),
+				.OPT_LOWPOWER(OPT_LOWPOWER),
+				.OPT_SIM(OPT_SIM),
+				.OPT_CLKGATE(OPT_CLKGATE),
+				.RESET_DURATION(RESET_DURATION)
+				// }}}
+			) u_smp (
+				// {{{
+				.i_clk(i_clk), .i_reset(i_reset),
+				// Master bus
+				// {{{
+				.o_wb_cyc(cpu_cyc[gk]),
+				.o_wb_stb(cpu_stb[gk]),
+				.o_wb_we(cpu_we[gk]),
+				.o_wb_addr(cpu_addr[gk*WAW +: WAW]),
+				.o_wb_data(cpu_data[gk*BUS_WIDTH +: BUS_WIDTH]),
+				.o_wb_sel(cpu_sel[gk*BUS_WIDTH/8 +: BUS_WIDTH/8]),
+				.i_wb_stall(cpu_stall[gk]),
+					.i_wb_ack(cpu_ack[gk]),
+					.i_wb_data(cpu_idata[gk*BUS_WIDTH +: BUS_WIDTH]),
+					.i_wb_err(cpu_err[gk]),
+				// }}}
+				.i_ext_int(pic_int), .o_ext_int(cpu_int[gk]),
+				// Debug control port
+				// {{{
+				.i_dbg_cyc(smp_cyc), .i_dbg_stb(smp_stb),
+					.i_dbg_we(smp_we), .i_dbg_addr(smp_addr[5:0]),
+					.i_dbg_data(smp_data), .i_dbg_sel(smp_sel),
+				.o_dbg_stall(smp_stall), .o_dbg_ack(smp_ack),
+					.o_dbg_data(smp_idata),
+				// }}}
+				.o_cpu_debug(smp_trace),
+				// (Optional) Profiler
+				// {{{
+				.o_prof_stb(smp_prof_stb),
+				.o_prof_addr(smp_prof_addr),
+				.o_prof_ticks(smp_prof_ticks)
+				// }}}
+				// }}}
+			);
+
+		end else begin : GEN_ZIPSYSTEM
+
+			zipsystem #(
+				// {{{
+				.RESET_ADDRESS(RESET_ADDRESS),
+				.ADDRESS_WIDTH(ADDRESS_WIDTH),
+				.BUS_WIDTH(BUS_WIDTH),
+				.OPT_PIPELINED(OPT_PIPELINED),
+				.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
+				.OPT_LGICACHE(OPT_LGICACHE),
+				.OPT_LGDCACHE(OPT_LGDCACHE),
+				.START_HALTED(1'b1),
+				.OPT_DISTRIBUTED_REGS(OPT_DISTRIBUTED_REGS),
+				.OPT_MPY(OPT_MPY),
+				.OPT_DIV(OPT_DIV),
+				.OPT_SHIFTS(OPT_SHIFTS),
+				.OPT_LOCK(OPT_LOCK),
+				.OPT_CIS(OPT_CIS),
+				.OPT_USERMODE(OPT_USERMODE),
+				.OPT_DBGPORT(1'b1),
+				.OPT_TRACE_PORT(1'b0),
+				.OPT_PROFILER(1'b0),
+				.OPT_LOWPOWER(OPT_LOWPOWER),
+				.OPT_SIM(OPT_SIM),
+				.OPT_CLKGATE(OPT_CLKGATE),
+				.RESET_DURATION(RESET_DURATION),
+				// ZipSystem only parameters
+				.OPT_DMA(1'b1),
+				.OPT_ACCOUNTING(1'b1),
+				.EXTERNAL_INTERRUPTS(1)
+				// }}}
+			) u_cpu (
+				// {{{
+				.i_clk(i_clk), .i_reset(i_reset),
+				// Master bus
+				// {{{
+				.o_wb_cyc(cpu_cyc[gk]), .o_wb_stb(cpu_stb[gk]),
+					.o_wb_we(cpu_we[gk]),
+				.o_wb_addr(cpu_addr[gk*WAW +: WAW]),
+				.o_wb_data(cpu_data[gk*BUS_WIDTH +: BUS_WIDTH]),
+					.o_wb_sel(cpu_sel[gk*BUS_WIDTH/8 +: BUS_WIDTH/8]),
+				.i_wb_stall(cpu_stall[gk]),
+					.i_wb_ack(cpu_ack[gk]),
+					.i_wb_data(cpu_idata[gk*BUS_WIDTH +: BUS_WIDTH]),
+					.i_wb_err(cpu_err[gk]),
+				// }}}
+				.i_ext_int({ i_sim_int }),
+				.o_ext_int(cpu_int[gk]),
+				// Debug control port
+				// {{{
+				.i_dbg_cyc(smp_cyc), .i_dbg_stb(smp_stb),
+					.i_dbg_we(smp_we), .i_dbg_addr(smp_addr[6:0]),
+					.i_dbg_data(smp_data), .i_dbg_sel(smp_sel),
+				.o_dbg_stall(smp_stall), .o_dbg_ack(smp_ack),
+					.o_dbg_data(smp_idata),
+				// }}}
+				.o_cpu_debug(smp_trace),
+				// (Optional) Profiler
+				// {{{
+				.o_prof_stb(smp_prof_stb),
+				.o_prof_addr(smp_prof_addr),
+				.o_prof_ticks(smp_prof_ticks)
+				// }}}
+				// }}}
+			);
+
+			// Verilator lint_off UNUSED
+			wire	unused_zipsys;
+			assign	unused_zipsys = &{ 1'b0, pic_int };
+			// Verilator lint_on  UNUSED
+
+		end
+
+		// Verilator lint_off UNUSED
+		wire	unused_smp;
+		assign	unused_smp = &{ 1'b0, smp_prof_stb, smp_prof_addr,
+				smp_prof_ticks, smp_trace, cpu_int[gk],
+				smp_addr[6],
+				smpw_addr[gk*WAW + (9-WBLSB) +: (WAW-(9-WBLSB))]
+				};
+		// Verilator lint_on  UNUSED
+	end endgenerate
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// The wide bus interconnect
 	// {{{
 	////////////////////////////////////////////////////////////////////////
@@ -525,14 +808,19 @@ module	wb_tb #(
 	wbxbar #(
 		// {{{
 `ifdef	VERILATOR
-		.NM(2),
+		.NM(1+OPT_SMP),
 `else
-		.NM(1),
+		.NM(OPT_SMP),
 `endif
-		.NS(4), .AW(ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)), .DW(BUS_WIDTH),
-		.SLAVE_ADDR({ ZSYS_ADDR,CONSOLE_ADDR,SCOPE_ADDR, MEMORY_ADDR }),
+		.NS(4+OPT_SMP),
+		.AW(ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)), .DW(BUS_WIDTH),
+		.SLAVE_ADDR({ ZSYS_ADDR, SMP_ADDR,
+			CONSOLE_ADDR,
+			SCOPE_ADDR,
+			MEMORY_ADDR }),
 		.SLAVE_MASK({
 			{ {(ADDRESS_WIDTH-24){1'b1}},{(24-WBLSB){1'b0}} }, // ZipSys
+			SMP_MASK,	// SMP
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Console
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Scope
 			{ 2'b11,   {(WAW-2){1'b0}} } })	// Memory
@@ -564,17 +852,17 @@ module	wb_tb #(
 		// }}}
 		// Master port ... to control the slaves w/in this design
 		// {{{
-		.o_scyc({   zsysw_cyc,  conw_cyc,  scopew_cyc,  mem_cyc  }),
-		.o_sstb({   zsysw_stb,  conw_stb,  scopew_stb,  mem_stb  }),
-		.o_swe({    zsysw_we,   conw_we,   scopew_we,   mem_we   }),
-		.o_saddr({  zsysw_addr, conw_addr, scopew_addr, mem_addr }),
-		.o_sdata({  zsysw_data, conw_data, scopew_data, mem_data }),
-		.o_ssel({   zsysw_sel,  conw_sel,  scopew_sel,  mem_sel  }),
+		.o_scyc({   zsysw_cyc,  smpw_cyc,  conw_cyc,  scopew_cyc,  mem_cyc  }),
+		.o_sstb({   zsysw_stb,  smpw_stb,  conw_stb,  scopew_stb,  mem_stb  }),
+		.o_swe({    zsysw_we,   smpw_we,   conw_we,   scopew_we,   mem_we   }),
+		.o_saddr({  zsysw_addr, smpw_addr, conw_addr, scopew_addr, mem_addr }),
+		.o_sdata({  zsysw_data, smpw_data, conw_data, scopew_data, mem_data }),
+		.o_ssel({   zsysw_sel,  smpw_sel,  conw_sel,  scopew_sel,  mem_sel  }),
 		//
-		.i_sstall({ zsysw_stall,conw_stall, scopew_stall, mem_stall }),
-		.i_sack({   zsysw_ack,  conw_ack,   scopew_ack,   mem_ack   }),
-		.i_sdata({  zsysw_idata,conw_idata, scopew_idata, mem_idata }),
-		.i_serr({   zsysw_err,  conw_err,   scopew_err,   mem_err   })
+		.i_sstall({ zsysw_stall,smpw_stall,conw_stall, scopew_stall, mem_stall }),
+		.i_sack({   zsysw_ack,  smpw_ack,  conw_ack,   scopew_ack,   mem_ack   }),
+		.i_sdata({  zsysw_idata,smpw_idata,conw_idata, scopew_idata, mem_idata }),
+		.i_serr({   zsysw_err,  smpw_err,  conw_err,   scopew_err,   mem_err   })
 		// }}}
 		// }}}
 	);
@@ -671,7 +959,7 @@ module	wb_tb #(
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Artificial ZipCPU System, for when running with ZipBones
+	// Artificial ZipCPU System components, for when running with ZipBones
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -924,7 +1212,7 @@ module	wb_tb #(
 
 		assign	scopew_stall = 1'b0;
 		assign	scopew_ack   = r_scope_ack;
-		assign	scopew_idata = 32'h0;
+		assign	scopew_idata = {(BUS_WIDTH){1'b0}};
 		assign	scopew_err   = 1'b0;
 
 		assign	scope_int = 1'b0;
@@ -967,7 +1255,7 @@ module	wb_tb #(
 	// if (i_reset)
 	//	watchdog_counter <= 0;
 	// else
-	if (cpu_stb && !cpu_stall)
+	if (|(cpu_stb & ~cpu_stall))
 		watchdog_counter <= 0;
 	else
 		watchdog_counter <= watchdog_counter + 1;
@@ -980,7 +1268,7 @@ module	wb_tb #(
 	end
 
 	always @(posedge i_clk)
-	if (!i_reset && cpu_int)
+	if (!i_reset && cpu_int[0])
 		$display("\nCPU Halted without error: PASS\n");
 	// }}}
 

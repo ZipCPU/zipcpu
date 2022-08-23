@@ -7,6 +7,7 @@ $path_cnt = @ARGV;
 ## Setup
 ## {{{
 my $verilator_flag = 0;
+my $verilator_lint_only = 0;
 my $verilatord = "/usr/local/share/verilator";
 my $vobjd = "obj_dir";
 my $testd = "test";
@@ -190,6 +191,7 @@ sub simline($) {
 
 	my $vcddump=0;
 	my $vcdfile="";
+	my $lint_only = 0;
 
 	while ($line =~ /^(.*)#.*/) {
 		$line = $1;
@@ -214,9 +216,15 @@ sub simline($) {
 		if ($verilator_flag) {
 			## Setup the Verilator command
 			## {{{
+			$lint_only = $verilator_lint_only;
+
 			$cmd = "verilator -Wall -Wno-TIMESCALEMOD --trace";
 			# $cmd = $cmd . " -Wno-UNUSED";
-			$cmd = $cmd . " -O3";
+			if ($lint_only != 0) {
+				$cmd = $cmd . " --lint_only";
+			} else {
+				$cmd = $cmd . " -O3";
+			}
 			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core -y ../rtl/peripherals -y ../rtl/ex";
 			$cmd = $cmd . " --prefix $tstname";
 
@@ -274,7 +282,9 @@ sub simline($) {
 
 			}
 
-			$cmd = $cmd . " -cc $toplevel" . ".v";
+			if ($verilator_lint_only == 0) {
+				$cmd = $cmd . " -cc";
+			} $cmd = $cmd . " $toplevel" . ".v";
 			## }}}
 		} else {
 			## Set up the IVerilog command
@@ -328,7 +338,12 @@ sub simline($) {
 
 		## Build the simulation executable
 		## {{{
-		system "echo \"$tstamp -- Starting build\" | tee $sim_log";
+		if ($lint_only != 0) {
+			system "echo \"$tstamp -- Starting lint\" | tee $sim_log";
+		} else {
+			system "echo \"$tstamp -- Starting build\" | tee $sim_log";
+		}
+
 		if (-e "$testd/$tstname") {
 			unlink "$testd/$tstname";
 		}
@@ -341,7 +356,7 @@ sub simline($) {
 		if ($errB == 0 and $verilator_flag) {
 			system "cd $vobjd; make -f $tstname.mk";
 			$errB = $?;
-			if ($errB == 0) {
+			if ($errB == 0 and $lint_only == 0) {
 				$bldcmd = "g++ -Wall -g -Og -DROOT_VERILATOR -faligned-new";
 				if ($vcddump) {
 					$bldcmd = $bldcmd . " -DVCD_FILE=\\\"$vcdfile\\\"";
@@ -372,14 +387,15 @@ sub simline($) {
 		}
 		## }}}
 
-		if ($errB == 0 and -x "$testd/$tstname") {
+		if ($lint_only != 0) {
+		} elsif ($errB == 0 and -x "$testd/$tstname") {
 			## Run the simulation
 			## {{{
 			($sc,$mn,$hr,$dy,$mo,$yr,$wday,$yday,$isdst)=localtime(time);
 			$yr=$yr+1900; $mo=$mo+1;
 			$tstamp = sprintf("%04d/%02d/%02d %02d:%02d:%02d",
 					$yr,$mo,$dy,$hr,$mn,$sc);
-			system "echo \"$tstamp -- Starting simulation\" | tee $sim_log";
+			system "echo \"$tstamp -- Starting simulation\" | tee -a $sim_log";
 			system "$testd/$tstname >> $sim_log";
 
 			## Finish the log with another timestamp
@@ -403,6 +419,8 @@ sub simline($) {
 			$errF = $?;
 			system "grep -iq \'TEST SUCCESS\' $sim_log";
 			$errS = $?;
+			system "grep -iq \'warning\' $sim_log";
+			$warnW = $?;
 
 			open (SUM,">> $report");
 			if ($verilator_flag) {
@@ -415,6 +433,10 @@ sub simline($) {
 				print SUM "ERRORS    $msg\n";
 				print     "ERRORS    $msg\n";
 				push @failed,$tstname;
+			} elsif ($warnW == 0) {
+				print SUM "Warnings! $msg\n";
+				print     "Warnings! $msg\n";
+				push @passed,$tstname;
 			# } elsif ($errS != 0) {
 				## TEST SUCCESS message not found
 			} else {
@@ -472,8 +494,8 @@ sub gettest($) {
 
 ## Run all tests
 ## {{{
-if (! -d "test/") {
-	mkdir "test";
+if (! -d "$testd/") {
+	mkdir $testd;
 }
 
 if ($all_run) {

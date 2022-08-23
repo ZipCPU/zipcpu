@@ -64,10 +64,10 @@ axpipecheck    AXPIPE  cputest.hex axpipe-out.txt
 wbbpipecheck   WBBPIPE cputest.hex wbbpipe-out.txt
 wbpipecheck    WBPIPE  cputest.hex wbpipe-out.txt
 ##
-axlpipechk64   AXLPIPE cputest64.hex axlpip64-out.txt	BUS_WIDTH=64
-axpipechk64    AXPIPE  cputest64.hex axpip64-out.txt	BUS_WIDTH=64
-wbbpipechk64   WBBPIPE cputest64.hex wbbpip64-out.txt	BUS_WIDTH=64
-wbpipechk64    WBPIPE  cputest64.hex wbpip64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/wbpip64trace.vcd"
+axlpipechk64   AXLPIPE cputest64.hex axlpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+axpipechk64    AXPIPE  cputest64.hex axpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+wbbpipechk64   WBBPIPE cputest64.hex wbbpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+wbpipechk64    WBPIPE  cputest64.hex wbpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3 # DUMP_TO_VCD=1 VCD_FILE="test/wbpip64trace.vcd"
 ##
 axcachecheck   AXCACHE  cputest.hex axcache-out.txt
 wbbcachecheck  WBBCACHE cputest.hex wbbcache-out.txt

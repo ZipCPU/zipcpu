@@ -156,4 +156,8 @@ int	main(int argc, char **argv) {
 
 	while(!Verilated::gotFinish())
 		tb->tick();
+
+#ifdef	VM_COVERAGE
+	VerilatedCov::write(COVDATA_FILE);
+#endif
 }

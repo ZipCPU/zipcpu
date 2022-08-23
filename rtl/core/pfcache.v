@@ -131,7 +131,7 @@ module	pfcache #(
 
 	wire			r_v;
 	reg	[BUSW-1:0]	cache	[0:CACHELEN-1];
-	reg	[BUSW-1:0]	cache_word;
+	wire	[BUSW-1:0]	cache_word;
 	reg	[AW-CW-1:0]	cache_tags	[0:((1<<(LGLINES))-1)];
 	reg	[((1<<(LGLINES))-1):0]	valid_mask;
 

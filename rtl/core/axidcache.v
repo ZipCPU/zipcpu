@@ -306,12 +306,12 @@ module	axidcache #(
 	// {{{
 	always @(*)
 	begin
-		misaligned = checklsb(i_op[2:1], i_addr[AXILSB-1:0]);
+		misaligned = checklsb(i_op[2:1], i_addr[1:0]);
 	end
 
 	function checklsb;
-		input	[1:0]		op;
-		input	[AXILSB-1:0]	addr;
+		input	[1:0]	op;
+		input	[1:0]	addr;
 
 		casez(op[1:0])
 		2'b0?:	checklsb = (addr[1:0] != 2'b00); // 32'bit words
@@ -2556,7 +2556,7 @@ module	axidcache #(
 	always @(*)
 	if (cpu_outstanding > 0 && !o_err)
 	begin
-		assert(!checklsb(f_op[AXILSB+1:AXILSB], f_op[AXILSB-1:0]));
+		assert(!checklsb(f_op[AXILSB+1:AXILSB], f_op[1:0]));
 		assert(f_op[AXILSB-1:0] == f_request_addr[AXILSB-1:0]);
 		if (!OPT_PIPE)
 			assert(f_request_addr[AW-1:AXILSB] == r_addr);

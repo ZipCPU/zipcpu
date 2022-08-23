@@ -67,6 +67,19 @@ typedef	struct	ZIPSYS	AXILP;
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// SMP access
+// {{{
+typedef struct  SMP_S {
+	unsigned	c_control;
+	unsigned	c_unused_0[31];
+	unsigned	c_sreg[16];
+	unsigned	c_ureg[16];
+	unsigned	c_unused_1[64];
+} SMP;
+
+// }}}
+////////////////////////////////////////////////////////////////////////////////
+//
 // Console
 // {{{
 typedef struct  CONSOLE_S {
@@ -101,6 +114,7 @@ extern char	_bkram[0x00100000];
 
 static volatile SCOPE   *const _scope = ((SCOPE   *)0x01000000);
 static volatile CONSOLE *const _uart  = ((CONSOLE *)0x02000000);
+static volatile SMP     *const _smp   = ((SMP     *)0x03000000);
 static volatile AXILP   *const _axilp = ((AXILP   *)0xff000000);
 // static volatile ZIPSYS  *const _zip   = ((ZIPSYS   *)0xff000000);
 #define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS

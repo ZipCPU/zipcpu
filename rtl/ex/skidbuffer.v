@@ -5,7 +5,7 @@
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A basic SKID buffer.
-//
+// {{{
 //	Skid buffers are required for high throughput AXI code, since the AXI
 //	specification requires that all outputs be registered.  This means
 //	that, if there are any stall conditions calculated, it will take a clock
@@ -28,8 +28,9 @@
 //	the incoming data is placed into a buffer.  Internally, that buffer
 //	is held in r_data with the r_valid flag used to indicate that valid
 //	data is within it.
-//
+// }}}
 // Parameters:
+// {{{
 //	DW or data width
 //		In order to make this core generic, the width of the data in the
 //		skid buffer is parameterized
@@ -50,7 +51,7 @@
 //	OPT_PASSTHROUGH
 //		Turns the skid buffer into a passthrough.  Used for formal
 //		verification only.
-//
+// }}}
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
@@ -118,6 +119,14 @@ module skidbuffer #(
 			o_data = i_data;
 
 		assign	w_data = 0;
+
+		// Keep Verilator happy
+		// Verilator lint_off UNUSED
+		// {{{
+		wire	unused_passthrough;
+		assign	unused_passthrough = &{ 1'b0, i_clk, i_reset };
+		// }}}
+		// Verilator lint_on  UNUSED
 		// }}}
 	end else begin : LOGIC
 		// We'll start with skid buffer itself
