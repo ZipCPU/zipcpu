@@ -1,35 +1,35 @@
                  iCE40  X7-s   RAW
 Wrapper   Config  4LUT  6LUT  NANDs
 -----------------------------------
-ZipBones  ASM:    1114   581   3311
-ZipBones  TRAP:   1655   962   5925
-ZipBones  MIN:    2691  1456   9389
-ZipBones  PIPE:   3578  1983  10502
-ZipBones  CACHE:  5407  3217 237794
-ZipBones  LWPWR:  5381  3167 236713
-ZipSystem ASM:    3358  1652  67963
-ZipSystem TRAP:   4100  2209  71068
-ZipSystem MIN:    5157  2678  74036
-ZipSystem PIPE:   6348  3431  76020
-ZipSystem CACHE:  8089  4507 308735
-ZipSystem LWPWR:  8126  4539 307238
-ZipAXI-L  ASM:    1477   876   4075
-ZipAXI-L  TRAP:   2124  1161   6630
-ZipAXI-L  MIN:    3166  1669   9908
-ZipAXI-L  PIPE:   4193  2322  11799
-ZipAXI    ASM:    1471   878   3954
-ZipAXI    TRAP:   2042  1228   6495
-ZipAXI    MIN:    3116  1702  10057
-ZipAXI    PIPE:   4181  2250  11662
-ZipAXI    CACHE:  5225  2908 202903
-ZipAXI    LWPWR:  5362  3060 183185
+ZipBones  ASM:    1112   582   3274
+ZipBones  TRAP:   1662   961   6009
+ZipBones  MIN:    2708  1461   9312
+ZipBones  PIPE:   3578  1881  10290
+ZipBones  CACHE:  5328  3260 239882
+ZipBones  LWPWR:  5499  3124 236802
+ZipSystem ASM:    3347  1754  68237
+ZipSystem TRAP:   4124  2102  71349
+ZipSystem MIN:    5165  2678  74070
+ZipSystem PIPE:   6330  3316  76279
+ZipSystem CACHE:  8064  4610 324978
+ZipSystem LWPWR:  8129  4548 321878
+ZipAXI-L  ASM:    1471   879   3837
+ZipAXI-L  TRAP:   2147  1138   6702
+ZipAXI-L  MIN:    3162  1654  10461
+ZipAXI-L  PIPE:   4193  2205  11923
+ZipAXI    ASM:    1473   878   3843
+ZipAXI    TRAP:   2048  1250   6471
+ZipAXI    MIN:    3143  1725   9822
+ZipAXI    PIPE:   4205  2358  11643
+ZipAXI    CACHE:  5227  2936 217065
+ZipAXI    LWPWR:  5309  3086 191107
    WB-MEMOPS   :   131    77    219
    WB-PIPEMEM  :   227    89    341
-   WB-DCACHE   :  1298   742 115102
- AXIL-OPS      :   273   129    327
-  AXI-OPS      :   345   206    512
- AXIL-PIPE     :   389   152    620
-  AXI-PIPE     :   440   145    679
+   WB-DCACHE   :  1315   750 114961
+ AXIL-OPS      :   269   129    338
+  AXI-OPS      :   346   207    514
+ AXIL-PIPE     :   390   157    662
+  AXI-PIPE     :   439   145    638
   AXI-DCACHE   :  1071   663 110288
    WB-DMA      :     0     0      0
    WB-PREFETCH :   122    66    208
