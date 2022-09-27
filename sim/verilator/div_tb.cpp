@@ -283,8 +283,16 @@ int	main(int argc, char **argv) {
 	Verilated::commandArgs(argc, argv);
 	DIV_TB	*tb = new DIV_TB();
 
+	/* Randomize the seed?
+	time_t	current_time;
+
+	time(&current_time);
+	srand((unsigned int)current_time);
+	printf("Random seed: %08x\n", (unsigned int)current_time);
+	*/
+
 	tb->reset();
-	// tb->opentrace("div_tb.vcd");
+	tb->opentrace("div_tb.vcd");
 
 	// Now we're ready.  All we need to do to test the divide of two
 	// numbers is to call the respective divide(), divs(), or divu()
@@ -309,6 +317,17 @@ int	main(int argc, char **argv) {
 	tb->tick();
 	tb->divs((1u<<30),0);
 	tb->tick();
+
+	tb->divs( 15, 1); tb->tick();
+	tb->divs( 15,-1); tb->tick();
+	tb->divs(-15,-1); tb->tick();
+	tb->divs(-15, 1); tb->tick();
+
+	tb->divs( 15, 4); tb->tick();
+	tb->divs( 15,-4); tb->tick();
+	tb->divs(-15,-4); tb->tick();
+	tb->divs(-15, 4); tb->tick();
+
 	//
 	// Now we switch to a more thorough test set.  It's not complete, just
 	// ... more thorough.

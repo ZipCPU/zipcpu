@@ -290,8 +290,8 @@ module	div #(
 		// absolute value of the dividend
 		if (r_dividend[BW-1])
 		begin
-			r_dividend[2*BW-2:0] <= {(2*BW-1){1'b1}};
-			r_dividend[BW-1:0] <= -r_dividend[BW-1:0];
+			r_dividend[2*BW-2:0] <= {(2*BW-1){1'b0}};
+			r_dividend[BW:0] <= -{ 1'b1, r_dividend[BW-1:0] };
 		end
 	end else if (r_busy)
 	begin
