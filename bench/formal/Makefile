@@ -44,6 +44,7 @@ TESTS += axilfetch axilops axilpipe axilperiphs axiops axipipe axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
+TESTS += txgears rxgears s2mm
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -78,6 +79,12 @@ AXLPIPE:= axilpipe
 AXIPIPE:= axipipe
 AXLPH  := axilperiphs
 AXIDCC := axidcache
+
+## ZipDMA
+MM2S    := zipdma_mm2s
+RXGEARS := zipdma_rxgears
+TXGEARS := zipdma_txgears
+S2MM    := zipdma_s2mm
 
 ## CPU Wrappers
 BONES  := zipbones
@@ -574,6 +581,53 @@ $(WBDMA)_prf128/PASS: $(WBDMA).sby $(RTL)/peripherals/$(WBDMA).v $(MASTER) $(SLA
 $(AXLPH): $(AXLPH)_prf/PASS
 $(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE) $(RTL)/ex/sfifo.v $(RTL)/ex/skidbuffer.v
 	sby -f $(AXLPH).sby prf
+## }}}
+## }}}
+
+## ZipDMA
+## {{{
+
+.PHONY: mm2s $(MM2S)
+## {{{
+mm2s: $(MM2S)
+$(MM2S): $(MM2S)_prf/PASS
+$(MM2S)_prf/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
+	sbyx.pl $(MM2S).sby prf
+$(MM2S)_cvr/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
+	sbyx.pl $(MM2S).sby cvr
+## }}}
+
+.PHONY: rxgears $(RXGEARS)
+## {{{
+rxgears: $(RXGEARS)
+$(RXGEARS): $(RXGEARS)_prf/PASS
+$(RXGEARS)_prf/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
+	sbyx.pl $(RXGEARS).sby prf
+## }}}
+
+.PHONY: txgears $(TXGEARS)
+## {{{
+txgears: $(TXGEARS)
+$(TXGEARS): $(TXGEARS)_prf/PASS $(TXGEARS)_prfw/PASS
+$(TXGEARS): $(TXGEARS)_cvr/PASS $(TXGEARS)_cvrw/PASS
+$(TXGEARS)_prf/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
+	sby -f $(TXGEARS).sby prf
+$(TXGEARS)_prfw/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
+	sby -f $(TXGEARS).sby prfw
+$(TXGEARS)_cvr/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
+	sby -f $(TXGEARS).sby cvr
+$(TXGEARS)_cvrw/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
+	sby -f $(TXGEARS).sby cvrw
+## }}}
+
+.PHONY: s2mm $(S2MM)
+## {{{
+s2mm: $(S2MM)
+$(S2MM): $(S2MM)_prf/PASS $(S2MM)_cvr/PASS
+$(S2MM)_prf/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
+	sby -f $(S2MM).sby prf
+$(S2MM)_cvr/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
+	sby -f $(S2MM).sby cvr
 ## }}}
 ## }}}
 

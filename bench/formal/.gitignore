@@ -39,6 +39,10 @@ zipbones_*/
 zipcounter_*/
 zipcore_*/
 zipcpu_*/
+zipdma_mm2s_*/
+zipdma_rxgears_*/
+zipdma_txgears_*/
+zipdma_s2mm_*/
 ziptimer_*/
 zipjiffies_*/
 zipmmu_*/

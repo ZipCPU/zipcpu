@@ -1,0 +1,119 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Wed Sep 28 13:00:52 2022
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1917 850
+[pos] -1 -1
+*-5.157785 40 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 362
+[signals_width] 198
+[sst_expanded] 1
+[sst_vpaned_height] 244
+@28
+zipdma_s2mm.i_clk
+zipdma_s2mm.i_reset
+@c00200
+-Config
+@28
+zipdma_s2mm.i_inc
+zipdma_s2mm.i_request
+@22
+zipdma_s2mm.i_addr[29:0]
+@28
+zipdma_s2mm.i_size[1:0]
+zipdma_s2mm.o_busy
+[color] 1
+zipdma_s2mm.o_err
+@200
+-
+@28
+zipdma_s2mm.r_inc
+zipdma_s2mm.r_size[1:0]
+@22
+zipdma_s2mm.r_addr[29:0]
+@1401200
+-Config
+@800201
+-AXI-Stream
+@29
+zipdma_s2mm.S_VALID
+zipdma_s2mm.S_READY
+@23
+zipdma_s2mm.S_DATA[63:0]
+zipdma_s2mm.S_BYTES[3:0]
+@29
+zipdma_s2mm.S_LAST
+@201
+-
+@29
+zipdma_s2mm.r_last
+@1000201
+-AXI-Stream
+@800200
+-Wishbone
+@28
+zipdma_s2mm.o_wr_cyc
+zipdma_s2mm.o_wr_stb
+@22
+zipdma_s2mm.o_wr_addr[26:0]
+zipdma_s2mm.o_wr_data[63:0]
+zipdma_s2mm.o_wr_sel[7:0]
+@28
+zipdma_s2mm.i_wr_stall
+zipdma_s2mm.i_wr_ack
+zipdma_s2mm.i_wr_err
+@200
+-
+@22
+zipdma_s2mm.r_data[63:0]
+zipdma_s2mm.r_sel[7:0]
+@28
+zipdma_s2mm.subaddr[2:0]
+@1000200
+-Wishbone
+@22
+zipdma_s2mm.fwb_addr[30:0]
+@200
+-
+@22
+zipdma_s2mm.fc_posn[30:0]
+@c00022
+zipdma_s2mm.fc_byte[7:0]
+@28
+(0)zipdma_s2mm.fc_byte[7:0]
+(1)zipdma_s2mm.fc_byte[7:0]
+(2)zipdma_s2mm.fc_byte[7:0]
+(3)zipdma_s2mm.fc_byte[7:0]
+(4)zipdma_s2mm.fc_byte[7:0]
+(5)zipdma_s2mm.fc_byte[7:0]
+(6)zipdma_s2mm.fc_byte[7:0]
+(7)zipdma_s2mm.fc_byte[7:0]
+@1401200
+-group_end
+@200
+-
+@28
+[color] 3
+zipdma_s2mm.fin_check
+zipdma_s2mm.f_shift[2:0]
+@22
+zipdma_s2mm.f_posn[30:0]
+zipdma_s2mm.fc_partial[63:0]
+@200
+-
+@28
+[color] 3
+zipdma_s2mm.fwb_check
+@22
+zipdma_s2mm.fwb_posn[30:0]
+@28
+zipdma_s2mm.fwb_shift[2:0]
+@22
+zipdma_s2mm.fc_partial_wb[127:0]
+zipdma_s2mm.fc_partial_sel[15:0]
+@28
+zipdma_s2mm.f_sum[2:0]
+[pattern_trace] 1
+[pattern_trace] 0

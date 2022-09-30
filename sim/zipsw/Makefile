@@ -36,7 +36,7 @@
 ##
 ## }}}
 .PHONY: all
-PROGRAMS := hello cputest hellostep lockcheck hellosim
+PROGRAMS := hello cputest hellostep lockcheck hellosim dmatest
 all:	$(PROGRAMS) hex
 #
 #
@@ -126,12 +126,15 @@ hellostep: $(OBJDIR)/hellostep.o board.ld $(OBJDIR)/txfns.o $(LIB)
 lockcheck: $(OBJDIR)/lockcheck.o $(OBJDIR)/txfns.o board.ld $(LIB)
 	$(CC) $(CFLAGS) $(LFLAGS) $< $(OBJDIR)/txfns.o $(LIBS) -o $@
 
+dmatest: $(OBJDIR)/dmatest.o board.ld $(LIB)
+	$(CC) $(CFLAGS) $(LFLAGS) $< $(LIBS) -o $@
+
 ################################################################################
 ##
 ## Convert executables to hex
 ##
 .PHONY: hex
-hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex hello.hex hello64.hex hellosim.hex hellosim64.hex hellostep.hex hellostep64.hex clkgatechk.hex
+hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex hello.hex hello64.hex hellosim.hex hellosim64.hex hellostep.hex hellostep64.hex clkgatechk.hex dmatest.hex dmatest64.hex
 
 cputest.hex: cputest
 	$(MKHEX) cputest -o $@
@@ -165,6 +168,12 @@ hellostep.hex: hellostep
 
 hellostep64.hex: hellostep
 	$(MKHEX) hellostep -w 64 -o $@
+
+dmatest.hex: dmatest
+	$(MKHEX) dmatest -o $@
+
+dmatest64.hex: dmatest
+	$(MKHEX) dmatest -w 64 -o $@
 
 
 .PHONY: iftttt

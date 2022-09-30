@@ -157,3 +157,13 @@ wbblpwrcklock  WBBLPWR lockcheck.hex wbblpwrlk-out.txt
 wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ##
 ## }}}
+################################################################################
+################################################################################
+##
+## ZipDMA
+## {{{
+##
+##
+wbzipdmacach  WBCACHE  dmatest.hex wbzdma-out.txt
+wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 DUMP_TO_VCD=0 VCD_FILE="wbzdmacach64.vcd"
+## }}}

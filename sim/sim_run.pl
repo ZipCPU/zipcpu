@@ -14,6 +14,10 @@ my $testd = "test";
 my $simd  = "rtl";
 my $rtld  = "../rtl/export";
 my $report= $testd . "/sim_report.txt";
+my $coverage_flag = 0;
+my $linestr="----------------------------------------";
+##
+##
 my $asmconfig =" -POPT_PIPELINED=0"
 	. " -POPT_LGDCACHE=0"
 	. " -POPT_LGICACHE=0"
@@ -171,7 +175,14 @@ if ($ARGV[0] eq "") {
 } elsif ($ARGV[0] eq "all") {
 	$all_run  =1;
 	open(SUM,">> $report");
-	print(SUM "\nRunning all tests:\n--------------------\n\n");
+	print(SUM "\nRunning all tests:\n$linestr\n");
+	close SUM;
+} elsif ($ARGV[0] eq "cover" or $ARGV[0] =~ /^cover/i) {
+	$all_run  =1;
+	$verilator_flag = 1;
+	$coverage_flag  = 1;
+	open(SUM,">> $report");
+	print(SUM "\nRunning all tests for cover:\n$linestr\n");
 	close SUM;
 } else {
 	@array = @ARGV;
@@ -223,7 +234,9 @@ sub simline($) {
 			if ($lint_only != 0) {
 				$cmd = $cmd . " --lint_only";
 			} else {
-				$cmd = $cmd . " -O3";
+				if ($coverage_flag) {
+					$cmd = $cmd . " --coverage";
+				} $cmd = $cmd . " -O3";
 			}
 			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core -y ../rtl/peripherals -y ../rtl/ex";
 			$cmd = $cmd . " --prefix $tstname";
@@ -265,7 +278,9 @@ sub simline($) {
 				$v = $2;
 				$cdr = $3;
 
-				if ($v =~ /\"(.*)\"/) {
+				if ($p =~ /COVDATA_FILE/) {
+					## This is a C++ build only parameter
+				} elsif ($v =~ /\"(.*)\"/) {
 					$str = $1;
 					$cmd = $cmd . " -G$p=\\\"$str\\\"";
 				} else {
@@ -289,6 +304,8 @@ sub simline($) {
 		} else {
 			## Set up the IVerilog command
 			## {{{
+			$coverage_flag  = 0;
+
 			$cmd = "iverilog -g2012";
 
 			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
@@ -317,7 +334,9 @@ sub simline($) {
 				$v = $2;
 				$cdr = $3;
 
-				if ($v =~ /\"(.*)\"/) {
+				if ($p =~ /COVDATA_FILE/) {
+					## This is a C++ build only parameter
+				} elsif ($v =~ /\"(.*)\"/) {
 					$str = $1;
 					$cmd = $cmd . " -P$toplevel.$p=\\\"$str\\\"";
 				} else {
@@ -370,6 +389,17 @@ sub simline($) {
 				$bldcmd = $bldcmd . " -DBASEINC='\"$tstname.h\"'";
 				$bldcmd = $bldcmd . " -DROOTINC='\"$tstname";
 				$bldcmd = $bldcmd . "___024root.h\"'";
+				if ($coverage_flag) {
+					$bldcmd = $bldcmd . " -DVM_COVERAGE=1";
+					if ($params =~ /COVDATA_FILE=(\S.*)/) {
+						$bldcmd = $bldcmd . " -DCOVDATA_FILE=\\\"test/$1\\\"";
+					} elsif ($cfghash{$config} =~ /COVDATA_FILE=(\S.*)/) {
+						$bldcmd = $bldcmd . " -DCOVDATA_FILE=\\\"test/$1\\\"";
+					} else {
+						$bldcmd = $bldcmd . " -DCOVDATA_FILE=\\\"test/$tstname.dat\\\"";
+					}
+				}
+
 				# $bldcmd = $bldcmd . " -DCORE=axi_tb__DOT__GEN_ZIPAXIL__DOT__u_cpu__DOT__core";
 				$bldcmd = $bldcmd . " -I$verilatord/include";
 				$bldcmd = $bldcmd . " -I$verilatord/include/vltstd";
@@ -377,6 +407,9 @@ sub simline($) {
 				$bldcmd = $bldcmd . " -I$vobjd";
 				$bldcmd = $bldcmd . " $verilatord/include/verilated.cpp";
 				$bldcmd = $bldcmd . " $verilatord/include/verilated_vcd_c.cpp";
+				if ($coverage_flag) {
+					$bldcmd = $bldcmd . " $verilatord/include/verilated_cov.cpp";
+				}
 				$bldcmd = $bldcmd . " -DBASE=$tstname";
 				$bldcmd = $bldcmd . " verilator/vbare_tb.cpp $vobjd/$tstname" . "__ALL.a -o $testd/$tstname";
 
@@ -439,6 +472,10 @@ sub simline($) {
 				push @passed,$tstname;
 			# } elsif ($errS != 0) {
 				## TEST SUCCESS message not found
+			} elsif ($coverage_flag) {
+				print SUM "COVERED   $msg\n";
+				print     "COVERED   $msg\n";
+				push @passed,$tstname;
 			} else {
 				print SUM "PASSED    $msg\n";
 				print     "PASSED    $msg\n";
@@ -507,7 +544,11 @@ if ($all_run) {
 	}
 
 	open(SUM,">> $report");
-	print(SUM "----\nTest run complete\n\n");
+	if ($coverage_flag) {
+		print(SUM "$linestr\nCoverage complete\n\n");
+	} else {
+		print(SUM "$linestr\nTest run complete\n\n");
+	}
 	close SUM;
 } else {
 	foreach $akey (@array) {

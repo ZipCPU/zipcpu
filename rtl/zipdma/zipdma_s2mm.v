@@ -98,7 +98,6 @@ module	zipdma_s2mm #(
 	//
 	reg				r_inc;
 	reg	[1:0]			r_size;
-	reg	[ADDRESS_WIDTH-1:0]	r_addr;
 	//
 	reg	[ADDRESS_WIDTH:0]	next_addr;
 	reg	[WBLSB-1:0]		subaddr;
@@ -115,14 +114,14 @@ module	zipdma_s2mm #(
 
 	assign	o_wr_we = 1'b1;
 
-	// Copy config: r_inc, r_size, r_addr
+	// Copy config: r_inc, r_size(, r_addr)
 	// {{{
 	always @(posedge i_clk)
 	if (i_request && !o_busy)
 	begin
 		r_inc  <= i_inc;
 		r_size <= i_size;
-		r_addr <= i_addr;
+		// r_addr <= i_addr;
 	end
 	// }}}
 
@@ -408,6 +407,7 @@ module	zipdma_s2mm #(
 	wire	[F_LGDEPTH-1:0]		fwb_nreqs, fwb_nacks, fwb_outstanding;
 	reg	[ADDRESS_WIDTH:0]	f_posn, fwb_addr, fwb_posn;
 	reg	[WBLSB-1:0]	fr_sel_count, fr_sel_count_past;
+	reg	[ADDRESS_WIDTH-1:0]	r_addr;
 
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
@@ -434,6 +434,14 @@ module	zipdma_s2mm #(
 		assume($stable(i_inc));
 		assume($stable(i_size));
 		assume($stable(i_addr));
+	end
+
+	always @(posedge i_clk)
+	if (i_request && !o_busy)
+	begin
+		// r_inc  <= i_inc;
+		// r_size <= i_size;
+		r_addr <= i_addr;
 	end
 
 	always @(*)

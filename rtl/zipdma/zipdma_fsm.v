@@ -67,7 +67,7 @@ module	zipdma_fsm #(
 		input	wire				i_trigger,
 		// MM2S control
 		// {{{
-		output	wire				o_mm2s_request,
+		output	reg				o_mm2s_request,
 		input	wire				i_mm2s_busy,
 		input	wire				i_mm2s_err,
 		input	wire				i_mm2s_inc,
@@ -77,7 +77,7 @@ module	zipdma_fsm #(
 		// }}}
 		// S2MM control
 		// {{{
-		output	wire				o_s2mm_request,
+		output	reg				o_s2mm_request,
 		input	wire				i_s2mm_busy,
 		input	wire				i_s2mm_err,
 		input	wire				i_s2mm_inc,

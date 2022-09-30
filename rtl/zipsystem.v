@@ -366,8 +366,9 @@ module	zipsystem #(
 	wire	[DBG_WIDTH-1:0]	dmac_data;
 	wire			dmac_stall, dmac_ack;
 	wire			dc_cyc, dc_stb, dc_we, dc_stall, dc_ack;
-	wire	[BUS_WIDTH-1:0]	dc_data;
 	wire	[PAW-1:0]	dc_addr;
+	wire	[BUS_WIDTH-1:0]	dc_data;
+	wire [BUS_WIDTH/8-1:0]	dc_sel;
 	wire			cpu_gbl_cyc;
 	wire	[31:0]		dmac_int_vec;
 
@@ -992,24 +993,30 @@ module	zipsystem #(
 	generate if (OPT_DMA)
 	begin : DMA
 		// {{{
-		wbdmac	#(
+		zipdma	#(
 			// {{{
-			.ADDRESS_WIDTH(PAW), .LGMEMLEN(DMA_LGMEM),
-			.BUS_WIDTH(DW)
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), .LGMEMLEN(DMA_LGMEM),
+			.BUS_WIDTH(DW), .OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
 		) dma_controller(
 			// {{{
-			i_clk, cpu_reset,
-				sys_cyc, dmac_stb, sys_we,
-					sys_addr[1:0], sys_data,
-					dmac_stall, dmac_ack, dmac_data,
-				// Need the outgoing DMAC wishbone bus
-				dc_cyc, dc_stb, dc_we, dc_addr, dc_data,
-					dc_stall, dc_ack, ext_idata, dc_err,
-				// External device interrupts
-				dmac_int_vec,
-				// DMAC interrupt, for upon completion
-				dmac_int
+			.i_clk(i_clk), .i_reset(cpu_reset),
+			.i_swb_cyc(sys_cyc), .i_swb_stb(dmac_stb),
+				.i_swb_we(sys_we), .i_swb_addr(sys_addr[1:0]),
+				.i_swb_data(sys_data), .i_swb_sel(4'hf),
+			.o_swb_stall(dmac_stall), .o_swb_ack(dmac_ack),
+				.o_swb_data(dmac_data),
+			// Need the outgoing DMAC wishbone bus
+			.o_mwb_cyc(dc_cyc), .o_mwb_stb(dc_stb),
+				.o_mwb_we(dc_we), .o_mwb_addr(dc_addr),
+				.o_mwb_data(dc_data), .o_mwb_sel(dc_sel),
+			.i_mwb_stall(dc_stall),
+				.i_mwb_ack(dc_ack), .i_mwb_data(ext_idata),
+				.i_mwb_err(dc_err),
+			// External device interrupts
+			.i_dev_ints(dmac_int_vec),
+			// DMAC interrupt, for upon completion
+			.o_interrupt(dmac_int)
 			// }}}
 		);
 		// }}}
@@ -1032,6 +1039,7 @@ module	zipsystem #(
 		assign	dc_we   = 1'b0;
 		assign	dc_addr = { (PAW) {1'b0} };
 		assign	dc_data = 32'h00;
+		assign	dc_sel  = 4'h0;
 
 		assign	dmac_int = 1'b0;
 
@@ -1594,7 +1602,7 @@ module	zipsystem #(
 		i_clk,
 		mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
 			mmu_stall, mmu_ack, mmu_err,
-		dc_cyc, dc_stb, dc_we, dc_addr, dc_data, {(BUS_WIDTH/8){1'b1}},
+		dc_cyc, dc_stb, dc_we, dc_addr, dc_data, dc_sel,
 			dc_stall, dc_ack, dc_err,
 		ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
 			ext_stall, ext_ack, ext_err

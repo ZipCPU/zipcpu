@@ -139,7 +139,9 @@ module	zipdma_rxgears #(
 		r_full <= (next_fill >= (DW/8));
 */
 	always @(*)
+		// Verilator lint_off WIDTH
 		r_full = (fill >= (DW/8));
+		// Verilator lint_on  WIDTH
 	// }}}
 
 	// m_valid
@@ -199,9 +201,11 @@ module	zipdma_rxgears #(
 
 	always @(*)
 	begin
-		shift = fill;
+		shift = fill[WBLSB-1:0];
 		if (M_VALID && M_READY)
+			// Verilator lint_off WIDTH
 			shift = fill - DW/8;
+			// Verilator lint_on  WIDTH
 	end
 
 	initial	sreg = 0;

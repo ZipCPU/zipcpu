@@ -65,15 +65,15 @@ module zipdma_ctrl #(
 		// }}}
 		// DMA control wires and feedback
 		// {{{
-		output	wire				o_dma_request,
-		output	wire				o_dma_abort,
+		output	reg				o_dma_request,
+		output	reg				o_dma_abort,
 		input	wire				i_dma_busy, i_dma_err,
-		output	wire	[AW-1:0]		o_src_addr,
-		output	wire	[AW-1:0]		o_dst_addr,
-		output	wire	[LGDMALENGTH-1:0]	o_length,
+		output	reg	[AW-1:0]		o_src_addr,
+		output	reg	[AW-1:0]		o_dst_addr,
+		output	reg	[LGDMALENGTH-1:0]	o_length,
 		output	reg	[LGMEMLEN:0]		o_transferlen,
-		output	wire				o_mm2s_inc, o_s2mm_inc,
-		output	wire	[1:0]			o_mm2s_size,o_s2mm_size,
+		output	reg				o_mm2s_inc, o_s2mm_inc,
+		output	reg	[1:0]			o_mm2s_size,o_s2mm_size,
 		//
 		output	reg				o_trigger,
 		//
@@ -294,7 +294,7 @@ module zipdma_ctrl #(
 	end
 	// }}}
 
-	// Process i_data writes
+	// o_dma_request, o_dma_abort, o_interrupt, r_err
 	// {{{
 	always @(posedge i_clk)
 	if (i_reset)

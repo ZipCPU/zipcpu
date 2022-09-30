@@ -120,6 +120,7 @@ LWPWR := -GOPT_PIPELINED=1\\\'b1	\
 ## }}}
 
 CORED:= core
+DMAD := zipdma
 PRPHD:= peripherals
 EXD  := ex
 ## Verilator setup
@@ -136,7 +137,7 @@ endif
 # VCOVERAGE := --coverage
 VCOVERAGE :=
 ##
-VFLAGS := -Wall -MMD --trace $(VCOVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD)
+VFLAGS := -Wall -MMD --trace $(VCOVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD) -y $(DMAD)
 
 ## }}}
 ## Dependency suggestions
