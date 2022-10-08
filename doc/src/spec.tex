@@ -14,6 +14,24 @@
 %%	under.  If not, just type 'make' in the doc directory and it (should)
 %%	build without a problem.
 %%
+%%
+%% TODO:
+%% - Discuss how we handle big vs little endian
+%% - Update ZipCPU philosophy
+%% - Update CPU Status register
+%% - Rearrange how the ZipCPU peripherals are presented
+%%	Should be in their own section, since not all peripherals are in the
+%%	ZipSystem
+%% - Rewrite the debugging port section
+%% - Examples of using the ZipCPU's debugging port
+%%	Resetting the CPU
+%%	Halting the CPU
+%%	Reading registers from the CPU
+%%	Writing/updating registers within the CPU (only supports full word writ)
+%%	Breakpoint handling
+%%	Stepping through an instruction
+%%
+%%
 %% Creator:	Dan Gisselquist
 %%		Gisselquist Technology, LLC
 %%
@@ -91,8 +109,6 @@
 \definecolor{webred}{rgb}{0.5,0,0}
 \definecolor{webgreen}{rgb}{0,0.4,0}
 \hypersetup{
-	ps2pdf,
-	pdfpagelabels,
 	hypertexnames,
 	pdfauthor={Dan Gisselquist},
 	pdfsubject={ZipCPU},
@@ -127,7 +143,7 @@ a copy.
 \begin{revisionhistory}
 %% {{{
 % Revision History
-3.0 & 1/1/2021 & Gisselquist & New debug interface, multi-bus support\\\hline
+3.0 & 6/18/2022 & Gisselquist & New debug interface, multi-bus support\\\hline
 2.01 & 10/19/2019 & Gisselquist & Fixed CIS OpCode Table\\\hline
 2.0 & 1/18/2017 & Gisselquist & Switched from 32--bit to 8--bit bytes.\\\hline
 1.1 & 11/28/2016 & Gisselquist & Moved the ZipSystem address to {\tt 0xff000000} base.\\\hline
@@ -157,7 +173,7 @@ Many people have asked me why I am building the ZipCPU. ARM processors are
 cheap and effective and ASIC processors will always have a better performance
 than an FPGA soft-core processor.  Xilinx makes and markets Microblaze, Altera
 Nios, and both have better toolsets than the ZipCPU.  The RISC--V ISA is
-becoming well known among soft-core circles.  So, why build a new processor?
+now well known among soft-core circles.  So, why build a new processor?
 
 % Reason #1: Because I can
 The easiest, most obvious answer is the simple one: Because I can.
@@ -191,10 +207,10 @@ friendly, CPU.  The result is that it is easy to get a ZipCPU program running
 on bare hardware for a special purpose application--such as what FPGAs were
 designed for, but getting a full featured
 Linux distribution running on the ZipCPU may just be beyond my grasp.  Further,
-the OpenRISC ISA is very complex, defining over 200~instructions--even though
-it has never been fully implemented.  The ZipCPU on the other hand has only
-a small handful of instructions, and all but the Floating Point instructions
-have already been fully implemented.
+the OpenRISC ISA is very complex, defining over 200~instructions (even though
+most of them have has never been fully implemented \ldots).  The ZipCPU on the
+other hand has only a small handful of instructions, and all but the Floating
+Point instructions have already been fully implemented.
 
 % Reason #4: Learning
 My final reason is that I'm building the ZipCPU as a learning experience. The
@@ -210,9 +226,10 @@ Since building the ZipCPU initially in 2015, I've continued to work with it and
 update it for many of the reasons above.  Now, however, I have a couple of new
 reasons for using the ZipCPU as well.  For example, the ZipCPU has now formed
 the basis for many contracts and as a portion of the deliverables within those
-contracts.  The ZipCPU has also been a focus for learning about both formal
-verification, and how various bus structures work.  For example, starting with
-version 3.0, the ZipCPU has full support for both AXI4 and AXI4-lite interfaces.
+contracts.  The ZipCPU has also been a focus for learning about Verilog
+simulation environments, formal verification, and how various bus structures
+work.  For example, starting with version 3.0, the ZipCPU has full support for
+both AXI4 and AXI4-lite interfaces.
 
 % Reason #6: Unfunded
 Finally, let me say that even though the ZipCPU project has been unfunded, the
@@ -224,7 +241,7 @@ the ZipCPU's instruction fetch routines have formed the basis for a scatter
 gather DMA implementation, for a scripted SONAR transmitter, and will likely
 form the basis in the near future for a small (I2C+SPI) telemetry system.
 These facts now witness to the truth of the Proverb, ``In all labour there is
-profit: but the talkof the lips tendeth only to penury.'' (Prov 14:23)
+profit: but the talk of the lips tendeth only to penury.'' (Prov 14:23)
 \end{preface}
 %% }}}
 
@@ -233,31 +250,40 @@ profit: but the talkof the lips tendeth only to penury.'' (Prov 14:23)
 \pagenumbering{arabic}
 \setcounter{page}{1}
 
-The goal of the ZipCPU is to be a simple and very basic soft core CPU.   You
-might think of it as a poor man's alternative to the larger architectures
-prevalent today.  You might also think of it as an Open Source microcontroller.
-For this reason, all instructions have been designed to be as simple as
-possible, and the base instructions are all designed to be executed in one
-instruction cycle per instruction, barring pipeline stalls.\footnote{The
-exceptions to this rule are the multiply, divide, and load/store instructions.
-If/when the ZipCPU supports native floating point, then I anticipate floating
-point instructions will also be exceptions to this rule.}  This has resulted in
-the choice to drop push and pop instructions, pre-increment and post-decrement
-addressing modes, interrupt return instructions and more.
+The ZipCPU is a soft--core CPU.  It has been designed to be small in area,
+with only a minimal instruction set.
 
-For those who like buzz words, the ZipCPU is:
+The basic philosophy of the ZipCPU is driven from a desire to minimize
+logic, while maintaining the ability to be a fully pipelined, 32--bit
+CPU capable of running a modern operating system (sans MMU).  It should run
+nicely in a small area, while maintaining compatibility with many FPGA
+architectures.
+
+You might think of the ZipCPU as a poor man's alternative to the larger
+architectures prevalent today.
+%% }}}
+\chapter{Key Features}\label{chap:features}
+%% {{{
+Some of the Key Features of the ZipCPU are listed below:
+
 \begin{itemize}
-\item A 32-bit CPU: All registers are 32-bits, addresses are 32-bits,
+\item 32--bit Architecture: All registers are 32-bits, addresses are 32-bits,
 		instructions are 32-bits wide, etc.
 
-\item A RISC CPU.  There is no microcode for executing instructions.  All
-	instructions are designed to be completed in one clock cycle.
+\item A RISC CPU.  There is no microcode for executing instructions.
+	Where possible, all instructions have been designed to be completed
+	in a single clock cycle.
 
-\item A Load/Store architecture.  (Only load and store instructions
-		can access memory.)
+\item A Load/Store architecture.  Oonly load and store instructions
+	can access memory.
 
-\item Wishbone and AXI4 compliant.  All peripherals are accessed just like
-		memory across this bus.
+\item There are no I/O instructions.  Attached peripherals are memory
+	mapped, and external to the CPU.
+
+\item Big Endian
+
+\item A compressed instruction subset provides some amount of instruction
+	compression for the most commonly used instructions.
 
 \item A Von-Neumann architecture.  Both instructions and data share a 
 	common addressing space.
@@ -270,348 +296,77 @@ For those who like buzz words, the ZipCPU is:
 \includegraphics[width=3.5in]{../gfx/cpu.eps}
 \caption{ZipCPU internal pipeline architecture}\label{fig:cpu}
 \end{center}\end{figure}
-		for a diagram of this structure.
+	for a diagram of this structure.
 
-\item Completely open source, licensed under the GPL.\footnote{Should you
-	need a copy of the ZipCPU licensed under other terms, please 
-	contact me.}
+\item Completely open source, licensed and released under the GPL v3.
+
+\item The ZipCPU has several memory controllers.  These support Wishbone,
+	AXI4--lite, and AXI4 bus structures, and may or may not provide a
+	cache of user configurable size depending upon its configuration.
+
+\item Bus-width agile.  The ZipCPU's memory controllers can handle any bus
+	width of at least 32-bits.  Bus width configuration is parameterizable.
+
+\item There is an (optional) external interface for debugging the CPU.  This
+	allows an external debugger the ability to start, and stop the CPU,
+	read its registers, or step it through one instruction at a time.
+
+\item The ZipCPU is also highly configurable, having optional support for
+	clock gating, an external trace port, profiler, 
+	multi-tasking, multiple multiply configurations, divide instruction
+	support, early branching, and more.
 \end{itemize}
-
-The ZipCPU also has several memory controllers.  These support Wishbone,
-AXI4--lite, and AXI4 bus structures, and may or may not provide a cache
-depending upon the configuration.
-
-\section{Characteristics of a SwiC} %% Needs a rewrite
-%% {{{
-This section might also be called {\em the ZipCPU philosophy}.  It discusses
-the basis for the ZipCPU design decisions, and why a low logic count CPU
-is or can be a good thing.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% This section really needs to be rewritten.
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% ZiPCPU is defined to be a SWIC: System within a Chip
-Many other FPGA processors have been defined to be good Systems on a Chip, or 
-SoC's.  The entire goal of such designs, then, is to provide an interface
-to the processor and its external environment.  This is not the case with the
-ZipCPU.  Instead, we shall define a new concept, that of a soft core internal to
-an FPGA, as a ``System within a Chip,'' or a SwiC.  SwiCs have some very
-unique properties internal to them that have influenced the design of the
-ZipCPU.  Among these are the bus, memory, and available peripherals.
-
-%%
-%% Goal: Minimize impact to the rest of the design
-%%
-%%	Minimal impact
-%%		= CPU + (16kB Block)RAM + flash + interconnect
-%%			+ (Interrupt controller) + (GPIOs, UART, Timers)
-%%			+ Special Purpose Application gateware
-%%
-%%	Traditional embedded CPU
-%%		= CPU + GB DDR3 SDRAM + flash + interconnect + (GPIOs, UART)
-%%			+ Network + Hard drive (SD Card) + Video + Audio
-%%			+ RealTime Clock
-%%			+ USB
-%%			
-%%
-%%
-
-%% Single bus port
-Many other approaches to soft core CPU's employ a Harvard architecture. 
-This allows these other CPU's to have two separate bus structures: one for the
-program fetch, and the other for the memory.  Indeed, Xilinx's proprietary
-Microblaze processor goes so far as to support four busses: two for cacheable
-memory, and two for peripherals, with each of those split between instructions
-and data.  The ZipCPU's Wishbone wrapper, however, requires only a single
-bus port within any FPGA.  This is a combined port for both instructions and
-memory.  This structure was chosen for its simplicity.
-Having a single bus port only helps to minimize real-estate, logic, and the
-number of wires that need to be passed back and forth, while maintaining a
-high clock speed.  The disadvantage is that both prefetch and memory access
-units need to contend for time on the same bus.
-
-%% Memory is slow
-Soft core's within an FPGA have an additional characteristic regarding memory
-access: it is slow.  While memory on chip may be accessed at a single cycle per
-access, small FPGA's often have only a limited amount of memory on chip.  Going
-off chip, however, is expensive.  Two examples will prove this point.  On
-the XuLA2 board, Flash can be accessed at 128~cycles per 32--bit word,
-or 64~cycles per subsequent word in a pipelined architecture.  Likewise, the
-SDRAM chip on the XuLA2 board allows a 6~cycle access for a write, 10~cycles
-per read, and 2~cycles for any subsequent pipelined access read or write.
-Either way you look at it, this memory access will be slow and this doesn't
-account for any logic delays should the bus implementation logic get
-complicated.
-
-%% Pipelined access
-As may be noticed from the above discussion about memory speed, a second
-characteristic of memory is sequential memory accesses may be optimized for
-minimal delays (pipelined), and that pipelined memory access is faster than
-non--pipelined access.  Therefore, a SwiC soft core should support pipelined
-operations, but it should also allow a higher priority subsystem to get access
-to the bus (no starvation).
-
-%% Cache is expensive
-As a further characteristic of SwiC memory options, on-chip cache's are
-expensive.  If you want to have a minimum of logic, cache logic may not be
-the highest on the priority list.  Any SwiC capable processor must be able
-to either be built without caches, or to scale up or down the logic required
-by any cache.
-
-%% Cache is expensive
-In sum, memory is slow.  While one processor on one FPGA may be able to fill
-its pipeline, the same processor on another FPGA may struggle to get more than
-one instruction at a time into the pipeline.  Any SwiC must be able to deal
-with both cases: fast and slow memories.
-
-%% Peripherals are easily built and highly reconfigurable
-A final characteristic of SwiC's within FPGA's is the peripherals. 
-Specifically, FPGA's are highly reconfigurable.  Soft peripherals can easily
-be created on chip to support the SwiC if necessary.  As an example, a simple
-30-bit peripheral could easily support reversing 30-bit numbers: a read from
-the peripheral returns its bit--reversed address.  This is cheap within an
-FPGA, but expensive in instructions.  Reading from another 16--bit peripheral
-might calculate a sine function, where the 16--bit address internal to the
-peripheral was the angle of the sine wave.
-
-%% Speed is not a priority, speed is handled elsewhere in the fabric
-Indeed, anything that must be done fast within an FPGA is likely to already
-be done--elsewhere in the fabric.  Further, the application designer gets to
-choose what tasks are so important they need fabric dedicated to them, and which
-ones can be done more slowly in a CPU.  This leaves the CPU with the simple role
-of solely handling sequential tasks, and tasks that need a lot of state.
-
-%% Summary
-This means that the SwiC needs to live within a very unique environment,
-separate and different from the traditional SoC.  That isn't to say that a 
-SwiC cannot be turned into a SoC, just that this SwiC has not been designed
-for that purpose.  Indeed, some of the best examples of the ZipCPU are
-System on a Chip examples.
-%% }}}
-\section{Document Scope}\label{sec:limits}
-
-The ZipCPU is itself nothing more than a CPU that can be placed within a 
-larger design.  It is not a System on a Chip, but it can be used to create
-a system on a chip.  As a result, this document will not discuss more than a
-small handful of CPU--related peripherals, as the actual peripherals used
-within a design will vary from one design to the next.  Further, because
-control access will vary from one environment to the next, this document will
-not discuss any host control programs, leaving those to be discussed and defined
-together with the environments the ZipCPU is placed within.
 %% }}}
 \chapter{CPU Architecture}\label{chap:arch}
 %% {{{
-This chapter describes the general architecture of the ZipCPU.  It first
-discusses
-the configuration options to the CPU and then breaks into two threads. These
-last two threads are a discussion of the internals of the ZipCPU, such as its 
-instruction set architecture and the details and consequences of it, and then
-the external architecture describing how the ZipCPU fits into the systems
-surrounding it, and what those systems must do to support it.  Specifically,
-the external architecture section will discuss both the ZipSystem, the
-peripherals provided by it, as well as the debug interface.
+This chapter describes the general architecture of the ZipCPU.  It starts
+with a description of the ZipCPU's instruction set.  From there, it moves
+on to discuss how the ZipCPU handles interrupts, its pipeline, and then
+the various memory controller options available to it.
 
-\section{ZipCPU Parameters}\label{ssec:build-options}
+\section{Instruction Set Architecture}\label{sec:isa}
+%% {{{
+The general form of (most) ZipCPU instructions is shown in
+Tbl.~\ref{tbl:gen-insn}.
+\begin{table}\begin{center}
+\begin{tabular}{ll}
+	{\tt OP.C}&{\tt Rb+\#Imm,Ra } \\
+\end{tabular}%
+\caption{The form of a generic ZipCPU instruction}\label{tbl:gen-insn}%
+\end{center}\end{table}
+In general, the ZipCPU will apply some operation, {\tt OP}, to a register
+plus an immediate, {\tt Rb+\#Imm}, and a second register, {\tt Ra},
+while leaving the result in register {\tt Ra}.  If the condition {\tt C}
+is present, the instruction will only complete if the condition holds.
 
-One problem with a simple goal such as being light on logic, is that some
-architectures have some needs, others have other needs.  What is light logic
-in some architectures might consume all the available logic in others.
-As an example, the CMod~S6 board built by Digilent uses a very spare Xilinx
-Spartan~6 LX4 FPGA.  This FPGA doesn't have enough look up tables (LUTs) to
-support pipelined mode, whereas another project running on a XuLA2 LX25 board
-made by Xess, having a Spartan~6 LX25 on board, has more than enough logic
-to support a pipelined mode.  The Artix--7 35T has not only enough logic for
-a pipelined mode, but plenty of RAM to support instruction and data caches
-as well.  Very quickly it becomes clear that LUTs and RAMs can be traded for
-performance.
+If the source register, {\tt Rb}, is the program counter register, {\tt PC},
+than the immediate will be multiplied by four prior to adding it's value to
+{\tt PC} to generate the {\tt Rb} value.
 
-To make tailored configurations possible, the ZipCPU has a set of parameters
-that can be used to configure its logic usage and performance.
+The next several sections will go into detail describing the register
+set, instruction encoding, available operations, condition codes, and more.
 
-The first several parameters control the ZipCPU's design as a whole, such
-as whether or not the CPU is pipelined, how the register file is implemented,
-or how big the caches are.
+\subsection{Operating Modes}
+%% {{{
+Before introducing the register set, it's important to know that
+the ZipCPU supports two separate operating modes, a supervisor mode and a user
+mode.  These modes are connected to interrupt handling: when operating in user
+mode, interrupts are always enabled.\footnote{Interrupts may still be disabled
+in the interrupt controller.}  When operating in supervisor mode,
+interrupts are always disabled.
 
-\begin{itemize}
-\item {\bf\tt OPT\_PIPELINED}:  The first performance question is whether or not
-	the ZipCPU will operate on multiple instructions at a time in a
-	pipelined fashion.  Since the ZipCPU is fundamentally a pipelined
-	architecture, setting this value to zero will primarily simplify the
-	pipeline stall logic so that only one instruction is ever allowed into
-	the pipeline at a time.
-
-\item {\bf\tt OPT\_EARLY\_BRANCHING}:  When enabled, the ZipCPU may branch
-	on an unconditional branch instruction as soon as it is recognized
-	coming out of the instruction decoder.  This minimizes the pipeline
-	stalls associated with branching, at a small logic cost.
-
-\item {\bf\tt OPT\_DISTRIBUTED\_REGS}:  The ZipCPU normally keeps its registers
-	in distributed RAM, where it can read them on the same clock cycle
-	their address becomes available.  This doesn't work, however, on an
-	iCE40 FPGA since iCE40 FPGAs don't have distributed RAM.  Instead,
-	iCE40 FPGAs require a clock to read from RAM, and they also require
-	that any read of the RAM go immediately and unconditionally into a
-	registered output.  Set this parameter to zero for a register file
-	implementation that will use the block RAM resources on an iCE40.
-
-\item {\bf\tt OPT\_LGICACHE}: This specifies the log, based two, of the
-	instruction cache size.  A value of one or less will result in no
-	instruction cache.  A value of two (for Wishbone) or four or less
-	(for AXI4 and AXI4--lite) will result in a small pipelined memory
-	reader--with no cache.  Anything larger will specify an instruction
-	cache size.
-
-\item {\bf\tt OPT\_LGDCACHE}: Specifies the log, based two, of the data cache
-	size.  As with the instruction cache, a value of zero will yield
-	a basic memory controller with no cache.  If {\tt OPT\_PIPELINED} is
-	true, a pipelined memory controller may be used that allows multiple
-	requests to be outstanding at once.  For anything larger than two,
-	this value specifies the log of the data cache size.
-
-\item {\bf\tt OPT\_LOWPOWER}: The ZipCPU has been designed as a low logic
-	processor.  Low logic, however, isn't necessarily low power.  If the
-	{\tt OPT\_LOWPOWER} parameter is set, the ZipCPU will attempt to either
-	minimize transitions of items not being used or else pin their values
-	to zero.
-\end{itemize}
-
-The next several instructions control the instruction set, and whether or not
-all instructions are implemented or not.
-
-\begin{itemize}
-\item {\bf\tt OPT\_MPY}: Controls the algorithm that will be used to implement
-	a multiply.  If left at zero, any multiply instruction will result in
-	an illegal instruction error.  Values of 1--4 will generate a multiply
-	algorithm requiring that many cycles.  Of those, 1--2 are not well
-	protected from the critical path and may not be usable.
-	{\tt  OPT\_MPY = 3} seems to work very nicely on Xilinx series 7 parts,
-	whereas {\tt  OPT\_MPY = 4}, a binomial multiply requiring an extra
-	clock cycle, seems to work well on Spartan~6's.  If an FPGA doesn't
-	have multiply support built in, any value greater than four will
-	generate a low logic shift--add algorithm that should work on any
-	architecture at the cost of 33+ clock cycles per multiply.
-
-\item {\bf\tt OPT\_DIV}: If set, the ZipCPU will include a divide unit to
-	support divide instructions.  If not, any attempt to issue a divide
-	instruction will result in an illegal instruction error.
-
-\item {\bf\tt OPT\_SHIFTS}: If set, the ZipCPU will support shift instructions:
-	{\tt LSR} (logical shift right), {\tt ASR} (arithmetic shift right),
-	and {\tt LSL} (logical shift left) for any number of shifts.  If clear,
-	these instructions will only ever shift by one bit.
-
-	Unlike divide or multiply instructions, if {\tt OPT\_SHIFTS} is clear
-	the CPU will not generate an illegal instruction error.  Instead, it
-	will quietly execute the wrong instruction.  As a result, there's no
-	current way to trap an unimplemented shift and replace it with software.
-	Worse, GCC support currently requires that this value be set, so
-	turning this option off is quite problematic.
-
-	However, shift register support currently costs a couple hundred LUTs,
-	and hence the reason for this option.  A very low logic implementation
-	might wish to keep this parameter clear.
-
-\item {\bf\tt OPT\_CIS}: Controls whether or not the instruction decoder
-	includes the logic necessary to handle the compressed instruction set.
-
-\item {\bf\tt OPT\_LOCK}: Atomic access on the ZipCPU requires the use of a LOCK
-	instruction.  If this value is set, the LOCK instruction will be
-	supported.  If clear, LOCK instructions will generate illegal
-	instruction errors.
-
-	LOCK instructions should only be necessary in multitasking or
-	interrupt environments.
-
-\item {\bf\tt OPT\_SIM}: The ZipCPU supports several simulation--only
-	instructions.  If this value is set, these instructions will be
-	decoded and processed through the pipeline.  If clear, any simulation
-	only instruction will be converted into either a NOOP or an illegal
-	instruction--depending upon the instruction opcode in question.
-\end{itemize}
-
-The final set of parameters control the ZipCPU's wrappers, and hence its
-environment.
-\begin{itemize} \item {\bf\tt OPT\_START\_HALTED}: The ZipCPU can be configured
-	to start up on power up, or it can be configured to wait for a command
-	on the debug port before starting.  If {\tt OPT\_START\_HALTED} is
-	true, then the ZipCPU will wait to start.
-
-	Incidentally, I almost always leave {\tt OPT\_START\_HALTED} at true.
-	This allows me time to load the ZipCPU's program into RAM (or flash)
-	externally, and then start the CPU.
-
-The {\tt START\_HALTED} parameter, if set to non--zero, will cause the 
-CPU to be halted upon startup.  This is useful for debugging, since it prevents
-the CPU from doing anything without supervision.  Of course, once all pieces
-of your design are in place and proven, you'll probably want to set this to
-zero, so that the CPU will then start up immediately upon power up.
-
-
-\item {\bf\tt RESET\_DURATION}: Some architectures require that the CPU stay
-	halted for a particular period of time before first attempting to
-	access memory or other peripherals.  This behavior can be controlled
-	by the {\tt RESET\_DURATION} parameter, controlling how long the CPU
-	remains in reset before leaving its initial halted state.
-
-\item {\bf\tt OPT\_TRACE\_PORT}: The ZipCPU has a trace port that can be useful
-	for debugging the CPU in hardware if necessary.  The trace port is
-	a 32-bit output containing internal details of the CPU on a clock by
-	clock basis.  For example, it is possible to watch what is happening
-	within the pipeline, what registers are getting set to what values and
-	more by observing the trace port.  This port, however, costs area,
-	so it is not enabled by default.  When not enabled, the debug trace port
-	will be clamped at zero.
-
-\item {\bf\tt OPT\_CLKGATE}: Some of the ZipCPU's wrappers, notably the AXI4
-	and AXI4--lite wrappers, include a clock gating option.  If set to one,
-	this option will be enabled and the ZipCPU will halt its clock any
-	time it is halted or asleep.
-
-	This option is designed for optimizing simulations only, and is not
-	likely to work on most FPGAs.
-
-\item {\bf\tt OPT\_DMA}:
-\item {\bf\tt OPT\_ACCOUNTING}:
-\item {\bf\tt EXTERNAL\_INTERRUPTS}:
-Controls the number of interrupt wires coming into the ZipSystem CPU wrapper.
-This number must be between one and sixteen,
-or if the performance counters are disabled, between one and twenty four.
-
-\item {\bf\tt RESET\_ADDRESS}:
-The {\tt RESET\_ADDRESS} parameter controls what address the CPU attempts to
-fetch its first instruction from upon any CPU reset.  The default value is
-not likely to be particularly useful, so overriding the default is recommended
-for every implementation.
-
-\item {\bf\tt ADDRESS\_WIDTH}:
-
-The {\tt ADDRESS\_WIDTH} parameter can be used to trim down the width of
-addresses used by the CPU.  For example, although the Wishbone Bus definition
-used by the CPU  has 30--address lines, particular implementations may have
-fewer.  By setting this value to the actual number of wires in the address
-bus, some logic can be spared within the CPU.  The default is also the maximum,
-a 30--bit address width.  Two additional bits are used internally by the CPU
-to create the appearance of an 8--bit bus, by using the wishbone select lines.
-
-\section{Internal Architecture}\label{sec:internals}
-
-This section discusses the general architecture of the CPU itself, separated
-from its environment.  As such, it focuses on the instruction set layout
-and how those instructions are implemented.
-
+The CPU boots into supervisor mode.  The supervisor program can then cause
+the CPU to switch to user mode by executing a special {\tt RTU} (return to
+userspace) instruction.  When the CPU then encounters either an interrupt or
+a fault, the CPU will return to supervisor mode {\em at the instruction where
+it left off}.  This also means that the ZipCPU does not support any
+interrupt vectors.
+%% }}}
 \subsection{Register Set}
-
-Fundamental to the understanding of the ZipCPU is its register set, and the
-performance model associated with it.
-The ZipCPU register set contains two sets of sixteen 32-bit registers, a
-supervisor and a user set as shown in Fig.~\ref{fig:regset}.
+%% {{{
+The ZipCPU has two sets of sixteen 32-bit registers, one for supervisor mode
+and the other for user mode.  These registers are shown in
+Fig.~\ref{fig:regset}.
 \begin{figure}\begin{center}
 \begin{tabular}{|c|c|c|c|c|}
 \multicolumn{2}{c}{Supervisor Register Set} &
@@ -633,198 +388,233 @@ sR7	& sPC	&& uR7	&	uPC	\\\hline\hline
 \end{tabular}
 \caption{ZipCPU Register File}\label{fig:regset}
 \end{center}\end{figure}
-The supervisor set is used when interrupts are disabled, whereas the user set
-is used any time interrupts are enabled.  This choice makes it easy to set up
-a working context upon any interrupt, as the supervisor register set remains
-what it was when interrupts were enabled.  This sets up one of two modes
-the CPU can run within: a {\em supervisor mode}, which runs with interrupts
-disabled using the supervisor register set, and {\em user mode}, which runs
-with interrupts enabled using the user register set.
+Any switch from supervisor mode to user mode or back will also cause a sudden
+shift from one register set to the other.  A special form of the {\tt MOV}
+instruction exists to allow the supervisor access to user registers, but
+otherwise the two sets don't interact at all.  This effectively means that the
+tool suite knows nothing about the second register set.
 
-This separation is so fundamental to the CPU that it is impossible to enable
-interrupts without switching to the user register set.   Further, on any
-interrupt, exception, or trap, the CPU simply clears the pipeline and switches
-instruction sets.
+Registers in either set may be referenced as {\tt R0} through {\tt R15}.
+When running in supervisor mode, {\tt MOV} operand references to {\tt uR0}
+through {\tt uR15} will reference user registers.
+We'll discuss this further in subsection.~\ref{sec:isa-mov}.
+In all other cases, any register reference refers to the currently active set.
 
-In each register set, the Program Counter (PC) is register 15, whereas
-the status register (SR) or condition code register (CC) is register 14.  All
-other registers are identical in their hardware functionality.\footnote{Jumps
-to {\tt R0}, an instruction used to implement a return from a subroutine, may
-be optimized in the future within the early branch logic.} By convention, the
-stack pointer is register 13 and noted as (SP).  Beyond this convention, 
-word accesses to offsets of the stack pointer are compressed when using the
-CIS instruction set.  Also by convention, if the compiler needs a frame
-pointer it will be placed into register~12, and may be abbreviated by FP. 
-Finally, by convention, R0 will hold a subroutine's return address, sometimes
-called the link register (LR).
+Because the register sets are maintained when not in use, switching operating
+modes has the consequence that the CPU maintains the appearance of continuing
+where it left off when it last switched modes.  Similarly, the supervisor
+may adjust the user register set to perform a task swap if desired.
 
-When the CPU is in supervisor mode, instructions can access both register sets
-via the {\tt MOV} instruction, whereas when the CPU is in user mode, {\tt MOV}
-instructions will only offer access to user registers.  We'll discuss this
-further in subsection.~\ref{sec:isa-mov}.
+Two registers in each set are special within the hardware.  These are the
+Program Counter (PC, or R15), and the status register (CC, or R14).  When
+using the compressed instruction set representation, offsets to R13 are
+optimized within the instruction set to facilitate stack pointer accesses.
+All other registers are identical in their hardware functionality.
 
+By convention, the tool suite assigns a special meaning to three other
+registers.  As mentioned above, the tool suite reserves {\tt R13} for the
+stack pointer.  This also has the mnemonic {\tt SP}.  By convention, {\tt R0}
+is used to maintain the return address of a subroutine, sometimes called the
+link register or {\tt LR}.  Finally, if the compiler requires a frame pointer,
+then {\tt R12} (or {\tt FP}) is available to it for that purpose.
+%% }}}
 \subsection{The Status Register, CC}
-The status register (CC) is special, and bears further mention.  As shown in 
-Fig.~\ref{tbl:cc-register},
+%% {{{
+As mentioned above, the status register (CC) is special.  The bit fields within
+this register have special meaning, and so it really requires its own section.
+These special bit-fields are shown in Fig.~\ref{tbl:cc-register},
 \begin{table}\begin{center}
 \begin{bitlist}
-31\ldots 23 & R & Reserved for future uses\\\hline
-22\ldots 16 & R/W & Reserved for future uses\\\hline
-15 & R & Reserved for MMU exceptions\\\hline
-14 & W & Clear I-Cache command, always reads zero\\\hline
+31\ldots 23 & R & Reserved\\\hline
+22\ldots 16 & R/W & Reserved\\\hline
+15 & W & Clear D-Cache command bit, always reads zero\\\hline
+14 & W & Clear I-Cache command bit, always reads zero\\\hline
 13 & R & CIS instruction phase (1 for first half)\\\hline
 12 & R & (Reserved for) Floating Point Exception\\\hline
 11 & R & Division by Zero Exception\\\hline
 10 & R & Bus-Error Flag\\\hline
 9 & R & Trap Flag (or user interrupt).  Cleared on return to userspace.\\\hline
 8 & R & Illegal Instruction Flag\\\hline
-7 & R/W & Break--Enable (sCC), or user break (uCC)\\\hline
+7 & R/W & Break--Enable (sCC), or user break (uCC) encountered\\\hline
 6 & R/W & Step\\\hline
-5 & R/W & Global Interrupt Enable (GIE)\\\hline
+5 & R/W & User mode / Global Interrupt Enable (GIE) bit\\\hline
 4 & R/W & Sleep.  When GIE is also set, the CPU waits for an interrupt.\\\hline
-3 & R/W & Overflow\\\hline
+3 & R/W & Overflow flag.  The last ALU operation produced an arithmetic overflow.\\\hline
 2 & R/W & Negative.  The sign bit was set as a result of the last ALU instruction.\\\hline
-1 & R/W & Carry\\\hline
+1 & R/W & Carry.  The last ALU operation set the carry bit.\\\hline
 0 & R/W & Zero.  The last ALU operation produced a zero.\\\hline
 \end{bitlist}
 \caption{Condition Code Register Bit Assignment}\label{tbl:cc-register}
 \end{center}\end{table}
-the lower sixteen bits of the status register form a set of CPU state and
-condition codes.  The other bits are reserved for future uses.
+and occupy the lower sixteen bits of the status register.
 
-Of the condition codes, the bottom four bits are the current flags:
+Of the condition codes, the bottom four bits are the current flags from the
+last ALU instruction that set flags.  These are:
 		Zero (Z),
 		Carry (C),
 		Negative (N),
 		and Overflow (V).
 These flags maintain their usual definition from other CPUs that use them, for
-all but the shift right instructions.  On those instructions that set the flags,
-these flags will be set based upon the output of certain instructions.  If the
-result is zero, the Z (zero) flag will be set.  If the high order bit is set,
-the N (negative) flag will be set.  If the instruction caused a bit to fall off
-the end, the carry bit will be set.  In comparisons, this is equivalent to a
-less--than unsigned comparison.  Finally, if the instruction causes a signed
-integer overflow, the V (overflow) flag will be set afterwards.
+all but the shift right instructions.  For example, if the result of the last
+ALU operation is zero, the 'Z' flag will be set.  If the result of the last
+ALU operation sets the most significant bit, then the 'N' flag will be set.
+Carry is set according to unsigned operation overflow, and the overflow bit
+is set according signed arithmetic overflow.
+
+Local and arithmetic shift operations also use the carry bit to capture the
+last bit shifted off the register.  This functionality isn't well supported
+by the compiler, but can be used in assembly to implement rotate or shift
+register instructions.
 
 We'll walk through the next many bits of the status register in order from
 least significant to most significant.
 
 \begin{enumerate}
 	\setcounter{enumi}{3}
-\item The next bit is a sleep bit.  Set this bit to one to disable instruction
-	execution and place the CPU to sleep, or to zero to keep the pipeline
-	running.  Setting this bit will cause the CPU to wait for an interrupt
-	(if interrupts are enabled), or to completely halt (if interrupts are
-	disabled).  This leads to the {\tt WAIT} and {\tt HALT} opcodes
-	which will be discussed more later.  In order to prevent users from
-	halting the CPU, only the supervisor is allowed to both put the CPU to
-	sleep and disable interrupts.  Any user attempt to do so will simply
-	result in a switch to supervisor mode.
+\item Bit 4 is the sleep bit.  When set, the CPU will enter into a sleep mode.
+	If the {\tt OPT\_CLKGATE} parameter is set, this will also turn off the
+	CPU's clock.  The CPU will wake up and exit from sleep mode on any
+	interrupt if interrupts are enabled.
 
-\item The sixth bit is a global interrupt enable bit (GIE).  This bit also
-	forms the top, or fifth, bit of any register address.  When this
-	sixth bit is a `1' interrupts will be enabled, else disabled.  When 
+	This means that this bit can be used to implement two functionalities.
+	There's the {\tt WAIT} for interrupt instruction, whereby the CPU
+	simply sleeps as discussed above in user mode.  This bit can also be
+	used to {\tt HALT} the CPU should it ever be set while the CPU is in
+	supervisor mode.  (The {\tt WAIT} instruction will place the CPU in
+	user mode, independent of the mode it was in when executed.)
+
+\item Bit 5 is a global interrupt enable bit (GIE).  This bit also
+	forms the fifth bit of any register address, controlling whether or not
+	the CPU is in supervisor mode or user mode.  When this bit is set,
+	interrupts will be enabled, otherwise they are disabled.  When 
 	interrupts are disabled, the CPU will be in supervisor mode, otherwise
-	it is in user mode.  Thus, to execute a context switch, one only
-	need enable or disable interrupts.  (When an interrupt line goes
-	high, interrupts will automatically be disabled, as the CPU goes
-	and deals with its context switch.)  Special logic has been added to
-	keep the user mode from setting the sleep register and clearing the
-	GIE register at the same time, with clearing the GIE register taking
-	precedence.
+	it is in user mode.  Thus, to execute a context switch from supervisor
+	mode to user mode, all one needs to do is to set this bit.  Then, on
+	a subsequent interrupt or CPU exception, this bit will be automatically
+	cleared and the CPU will return to supervisor mode.
+
+	Logic within the CPU will prevent user mode software from setting
+	the sleep register and clearing the GIE register at the same time,
+	with clearing the GIE register taking precedence.  This keeps the
+	user from halting the CPU.
 
 	Whenever read, the supervisor CC register will always have this bit
-	cleared, whereas the user CC register will always have this bit set.
+	cleared, whereas the user CC register will always read this bit set.
 
-\item The seventh bit is a step bit in the user CC register, and zero in the
-	supervisor CC director.  This bit can only be set from supervisor
-	mode.  After setting this bit, should the supervisor mode process switch
-	to user mode, it would then accomplish one instruction in user mode
-	before returning to supervisor mode.  This bit has no effect
-	on the CPU while in supervisor mode.
+\item Bit 6 is a step bit in the user's CC register, and zero in the
+	supervisor's CC register.  It can only be read or set from supervisor
+	mode.  When set, any switch to user mode will limit processing in user
+	mode to a single instruction before returning to supervisor mode.
 
-	This functionality was added to enable a userspace debugger
-	functionality on a user process, working through supervisor mode
-	of course.
+	There are two exceptions to this single instruction rule: a usermode
+	program executing a compressed instruction will complete the full
+	two-instruction sequence, and any usermode program executing a
+	{\tt LOCK} instruction will complete an additional three instruction
+	atomic sequence before concluding the step instruction.
 
-	The CPU can be stepped in supervisor mode.  Doing so requires the
-	CPU debug functionality, not the step bit.
+	This functionality was added to allow one software program to debug
+	a second program running in user space.
 
+	The CPU can also be stepped in supervisor mode.  This bit, however, is
+	not used in that process.  Rather, that is accomplished via the CPU
+	debug port.
 
-\item The eighth bit is a break enable bit.  When applied to the supervisor CC
-	register, this controls whether a break instruction in user mode will
-	halt the processor for an external debugger (break enabled), or
-	whether the break instruction will simply send send the CPU into
-	interrupt mode.  This bit can only be set within supervisor mode. 
-	However, when applied to the user CC register, from supervisor mode,
-	this bit will indicate whether or not the reason the CPU entered
-	supervisor mode was from a break instruction or not.  This break
-	reason bit is automatically cleared upon any transition to user mode,
-	although it can also be cleared by the supervisor writing to the
-	user CC register.
+\item Bit 7 is a break bit.
 
-	Encountering a break in supervisor mode will halt the CPU independent
-	of the break enable bit. 
+	In the user register set, this bit is a status bit that will be set if
+	the user mode program encounters a {\tt BREAK} instruction.  It will
+	automatically be cleared upon any release from interrupt.
 
-	This functionality was added to enable a debugger to set and manage
-	breakpoints in a user mode process.
+	In the supervisor register set, this becomes the break enable control
+	bit.  This bit determines if a usermode {\tt BREAK} instruction should
+	generate an external break (break enabled), or just return processing
+	to the supervisor mode.
 
-\item The ninth bit is an illegal instruction bit.  When the CPU tries to
+	A break in supervisor mode will also cause an ``external break'',
+	independent of the break enable bit.
+
+	External breaks are handled by the CPU's wrapper.  If the CPU is set to
+	{\tt START\_HALTED}, such breaks will halt the CPU.  Otherwise, they
+	will cause the CPU to reboot.
+
+	This functionality was added to enable a (potential) external debugger
+	to set and manage software breakpoints.
+
+\item Bit 8 is an illegal instruction bit.  When the CPU attempts to
 	execute either a non-existent instruction, or an instruction from
-	an address that produces a bus error, the CPU will (if implemented)
-	switch to supervisor mode while setting this bit.  The bit will
-	automatically be cleared upon any return to user mode.
+	an address that produced a bus error when read, this bit will
+	get set.  If set in user mode, the CPU will switch to supervisor mode.
+	If an illegal instruction is encountered in supervisor mode,
+	the CPU will issue an external break as described by the break
+	handling section above.
 
-\item The tenth bit is a trap bit.  It is set whenever the user requests a
-	soft interrupt, and cleared on any return to userspace command.  This
-	allows the supervisor, in supervisor mode, to determine whether it got
-	to supervisor mode from a trap, from an external interrupt or both.
+\item Bit 9 is a trap bit.  This bit is shared between both user and supervisor
+	{\tt CC} registers.  It may be set by a usermode process to request a
+	switch to supervisor mode--a soft interrupt if you will.  It is
+	then cleared upon any subsequent return to user space.
 
-\item The eleventh bit is a bus error flag.  If the user program encountered
-	a bus error, this bit will be set in the user CC register and the CPU
-	will switch to supervisor mode.  The bit may be cleared by the
-	supervisor, otherwise it is automatically cleared upon any return to
-	user mode.  If the supervisor encounters a bus error, this bit will be
-	set in the supervisor CC register and the CPU will halt.  In that
-	case, either a CPU reset or a write to the supervisor CC register will
-	clear this register.
+	This bit allows a supervisor mode process to determine, following any
+	switch to supervisor mode, if the switch was caused by a user request.
 
-\item The twelfth bit is a division by zero exception flag.  This operates
+\item Bit 10 is a bus error flag.  This bit will be set following any bus
+	error return response to either a load or store instruction.
+
+	If such a bus error is encountered in user mode, then this bit will be
+	set in the user's CC register and the CPU will switch to supervisor
+	mode.  It will be cleared by any subsequent return to user mode
+	instruction.
+
+	If the bus error is instead encountered in supervisor mode, then this
+	bit will be set in the supervisor's CC register and the CPU will
+	generate an external break.
+
+	Bus errors encountered by the instruction fetch pipeline are returned
+	as illegal instructions, and will not set this bit as a result.
+
+\item Bit 11 is a division by zero exception flag.  This operates
 	in a fashion similar to the bus error flag.  If the user attempts
 	to use the divide instruction with a zero denominator, the system
 	will switch to supervisor mode and set this bit in the user CC
 	register.  The bit is automatically cleared upon any return to user
 	mode, although it can also be manually cleared by the supervisor.  In
 	a similar fashion, if the supervisor attempts to execute a divide by
-	zero, the CPU will halt and set the zero exception flag in the
-	supervisor's CC register.  This will automatically be cleared upon any
-	CPU reset, or it may be manually cleared by the external debugger
-	writing to this register.
+	zero, the CPU will issue an external break, and either reboot or
+	and set the zero exception flag in the supervisor's CC register
+	for the debugger to inspect.  This will automatically be cleared
+	upon any CPU reset, or it may be manually cleared by the external
+	debugger writing to this register.
 
-\item The thirteenth bit will operate in a similar fashion to both the bus
-	error and division by zero flags, only it will be set upon a (yet to
+\item Bit 12 is reserved for a hardware accelerated floating point error.
+	This will operate in a similar fashion to both the bus error and
+	the division by zero flags, only it will be set upon a (yet to
 	be determined) floating point error.
 
-\item In the case of CIS instructions, if an exception occurs after the first
-	instruction but before the second, the fourteenth bit of the CC
-	register will be set to indicate this fact.  This can be combined with
-	the user PC to the address of the half-word where the fault occurred.
+\item Bit 13 is the compressed instruction set phase register.  This
+	register captures whether or not a CPU fault occurred following the
+	first instruction in a compressed instruction set pair.  This is a
+	status bit only.
 
-\item The fifteenth bit references a clear cache bit.  The supervisor may
-	write a one to this bit in order to clear the CPU instruction cache. 
+	The CPU (currently) has no ability to restart an operation in the
+	middle of a compressed instruction set pair.
+
+\item Bit 14 is a clear instruction cache bit.  The supervisor may write a one
+	to this bit in order to cause the CPU instruction cache to be cleared.
 	The bit always reads as a zero.
 
-\item Last, but not least, the sixteenth bit is reserved for a page not found
-	memory exception to be created by the memory management unit.
+	Writing to this bit from user space has no effect.
 
+\item Bit 15 is a clear data cache bit.  The supervisor may write a one
+	to this bit in order to cause the CPU data cache to be cleared.
+	The bit always reads as a zero.
+
+	Writing to this bit from user space has no effect.
 \end{enumerate}
 
-Some of the upper bits have been temporarily assigned to indicate CPU
-capabilities.  This is not a permanent feature, as these upper bits officially
-remain reserved.
-
+The upper 16-bits of this register a reserved.
+%% }}}
 \subsection{Instruction Format}\label{sec:isa-fmt}
-All ZipCPU instructions fit in one of the formats shown in
+%% {{{
+In general, ZipCPU instructions fit in one of the formats shown in
 Fig.~\ref{fig:iset-format}.
 \begin{figure}\begin{center}
 \begin{bytefield}[endianness=big]{32}
@@ -841,7 +631,7 @@ Fig.~\ref{fig:iset-format}.
 		\bitbox{4}{BR}
 		\bitbox{14}{14-bit Signed Immediate}\end{leftwordgroup} \\
 \begin{leftwordgroup}{MOV}\bitbox{1}{0}\bitbox[lr]{4}{}
-		\bitbox[lrt]{5}{5'hf}
+		\bitbox[lrt]{5}{5'hd}
 		\bitbox[lrb]{3}{}
 		\bitbox{1}{A}
 		\bitbox{4}{BR}
@@ -861,22 +651,28 @@ Fig.~\ref{fig:iset-format}.
 \end{center}\end{figure}
 The basic format is that some operation, defined by the OpCode, is applied
 if a condition, Cnd, is true in order to produce a result which is placed in
-the destination register (DR). 
+the destination register (DR).  The destination register also forms the "A"
+operand of any instruction.  The ``B'' operand is formed from either an
+18--bit signed immediate, or a 14--bit signed immediate plus the value
+contained within a second register.
 
-There are three basic exceptions to this general instruction model.  The
+There are a couple of exceptions to this general instruction model.  The
 first is the {\tt MOV} instruction, which steals bits~13 and~18
 to allow supervisor access to user registers.  In supervisor mode, these
 are set to one to reference user registers, zero otherwise.  They are ignored
 in user mode.  The second exception is the load 23--bit
-signed immediate instruction ({\tt LDI}), in that it accepts no conditions and
-uses only a 4-bit opcode.  The last exception is the {\tt NOOP} instruction
-group, containing the {\tt BREAK}, {\tt LOCK}, {\tt SIM}, and {\tt NOOP}
-opcodes.  These instructions ignore their register and immediate settings.
-Further, the immediate bits used by these opcodes are available for simulation
-or debug facilities, but otherwise ignored by the CPU.
-
+signed immediate instruction ({\tt LDI}).  This instruction accepts no
+conditions and uses only a 4-bit opcode.  The third exception is the
+{\tt NOOP} instruction group, encoding the {\tt BREAK}, {\tt LOCK},
+{\tt SIM}, and {\tt NOOP} instructions.  These instructions ignore their
+register and immediate settings.  Further, the immediate bits used by these
+opcodes are available for simulation or debug facilities, but otherwise
+ignored by the CPU.  Finally, there is an (optional) compressed instruction
+format that we'll cover later.
+%% }}}
 \subsection{Instruction OpCodes}\label{sec:isa-opcodes}
-With a 5--bit opcode field, there are 32--possible instructions as shown in 
+%% {{{
+32 possible instructions can be generated from a 5--bit opcode field.
 Tbl.~\ref{tbl:iset-opcodes}.
 \begin{table}\begin{center}
 \begin{tabular}{|l|l|l|l|c|} \hline \rowcolor[gray]{0.85}
@@ -908,12 +704,12 @@ OpCode & & A-Reg & Instruction &Sets CC \\\hline\hline
 5'h16 & {\tt LB} & \multicolumn{2}{l|}{Load 8-bits from memory (OpB) into Ra, clear upper 24 bits} & \\\cline{1-4}
 5'h17 & {\tt SB} & \multicolumn{2}{l|}{Store the lower 8-bits of Ra into memory at (OpB)} &  \\\hline\hline
 5'h18/9 & {\tt LDI} & \multicolumn{2}{l|}{Load 23--bit signed immediate} & N \\\hline\hline
-5'h1a & {\tt FPADD} & R0-R13 & Floating point add &  \\\cline{1-4}
-5'h1b & {\tt FPSUB} & R0-R13 & Floating point subtract &   \\\cline{1-4}
-5'h1c & {\tt FPMPY} & R0-R13 & Floating point multiply & Y \\\cline{1-4}
-5'h1d & {\tt FPDIV} & R0-R13 & Floating point divide &   \\\cline{1-4}
-5'h1e & {\tt FPI2F} & R0-R13 & Convert integer to floating point &   \\\cline{1-4}
-5'h1f & {\tt FPF2I} & R0-R13 & Convert floating point to integer &   \\\hline\hline
+5'h1a & {\tt FPADD} & R0-R13 & (Reserved for) Floating point add &  \\\cline{1-4}
+5'h1b & {\tt FPSUB} & R0-R13 & (Reserved for) Floating point subtract &   \\\cline{1-4}
+5'h1c & {\tt FPMPY} & R0-R13 & (Reserved for) Floating point multiply & Y \\\cline{1-4}
+5'h1d & {\tt FPDIV} & R0-R13 & (Reserved for) Floating point divide &   \\\cline{1-4}
+5'h1e & {\tt FPI2F} & R0-R13 & (Reserved for) Convert integer to floating point &   \\\cline{1-4}
+5'h1f & {\tt FPF2I} & R0-R13 & (Reserved for) Convert floating point to integer &   \\\hline\hline
 5'h1c & {\tt BREAK} &None(15)&& \\\cline{1-4}
 5'h1d & {\tt LOCK} &None(15)&& N\\\cline{1-4}
 5'h1e & {\tt SIM}  &None(15)&&\\\cline{1-4}
@@ -921,11 +717,17 @@ OpCode & & A-Reg & Instruction &Sets CC \\\hline\hline
 \end{tabular}
 \caption{ZipCPU OpCodes}\label{tbl:iset-opcodes}
 \end{center}\end{table}
-%
+shows how these 32--values have been allocated to implement 29~instructions.
+An additional six instruction opcodes are reserved for a (potential, future,
+optional) floating point accelerator.
+
+%% }}}
 \subsection{Conditional Instructions}\label{sec:isa-cond}
+%% {{{
 Most, although not quite all, instructions may be conditionally executed.  
-The 23--bit load immediate instruction, together with the {\tt NOOP}, 
-{\tt BREAK}, and {\tt LOCK} instructions are the exceptions to this rule.
+The 23--bit load immediate instruction, together with the special
+instructions, {\tt NOOP}, {\tt SIM}, {\tt BREAK}, and {\tt LOCK}, are
+the exceptions to this rule.
 All other instructions may be conditionally executed.
 
 From the four condition code flags, eight conditions are defined, as shown in
@@ -944,19 +746,19 @@ Code & Mnemonic & Condition \\\hline
 \end{tabular}
 \caption{Conditions for conditional operand execution}\label{tbl:conditions}
 \end{center}\end{table}
-There are no condition codes for either less than or equal or greater than,
-whether signed or unsigned.  In a similar fashion, there is no condition
-code for not V---there just wasn't enough space in 3--bits.  Ways of handling
-non--supported conditions are discussed in Sec.~\ref{sec:in-mcond}.
+There are no condition codes for either less than or equal, or for greater
+than, whether signed or unsigned.  In a similar fashion, there is no condition
+code for not V.  Ways of handling non--supported conditions are discussed
+in Sec.~\ref{sec:in-mcond}.
 
 With the exception of \hbox{\tt CMP} and \hbox{\tt TST} instructions,
-conditionally executed instructions will not further adjust the condition
-codes.  Conditional \hbox{\tt CMP} or \hbox{\tt TST} instructions will adjust
-conditions whenever they are executed.  In this way, multiple conditions may
-be evaluated without branches, creating a sort of logical and--but only if all
-the conditions are the same.  For example, to do something if \hbox{\tt R0} is
-one and \hbox{\tt R1} is two, one might try code such as
-Tbl.~\ref{tbl:dbl-condition}.
+conditionally executed instructions will not further adjust the
+condition codes.  Conditional \hbox{\tt CMP} or \hbox{\tt TST} instructions
+will adjust conditions whenever they are executed.  In this way, multiple
+conditions may be evaluated without branches, creating a sort of logical
+and--but only if all the conditions are the same.  For example, to do
+something if \hbox{\tt R0} is one and \hbox{\tt R1} is two, one might
+implement the assembly shown in Tbl.~\ref{tbl:dbl-condition}.
 \begin{table}\begin{center}
 \begin{tabular}{l}
 	{\tt CMP 1,R0} \\
@@ -965,19 +767,22 @@ Tbl.~\ref{tbl:dbl-condition}.
 	{\em ; If R0 $\neq$ 1, conditions are unchanged, {\tt Z} is still false.} \\
 	{\em ; If R0 $=$ 1, conditions are now set based upon R1-2.} \\
 	{\em ; Now some instruction could be done based upon the conjunction} \\
-	{\em ; of both conditions.} \\
+	{\em ; of both of these conditions.} \\
 	{\em ; While we use the example of a {\tt SW}, it could easily be any
-		instruction.} \\
+		other instruction.} \\
 	{\tt SW.Z R0,(R2)} \\
 \end{tabular}
 \caption{An example of a double conditional}\label{tbl:dbl-condition}
 \end{center}\end{table}
+This ability to generate double conditions is used heavily by the compiler
+when comparing 64-bit numbers together.
 
 The real utility of conditionally executed instructions is that, unlike
-conditional branches, conditionally executed instructions will not stall
-the bus if they are not executed.
-
+conditional branches, conditionally executed instructions will not clear the
+pipeline if they are not executed.
+%% }}}
 \subsection{Modifying Conditions}\label{sec:in-mcond}
+%% {{{
 A quick look at the list of conditions supported by the ZipCPU and listed
 in Tbl.~\ref{tbl:conditions} reveals that the ZipCPU does not have a full set
 of conditions.  In particular, only one explicit unsigned condition is
@@ -999,7 +804,7 @@ Original & Modified & Name \\\hline\hline
 	& Greater-than (register) \\[4mm]\hline\hline
 \parbox[t]{1.5in}{\tt CMP Imm,Ry\\BLEU label}
 	& \parbox[t]{1.5in}{\tt CMP 1+Imm,Ry\\BC label}
-	& Less-than or equal unsigned immediate \\[4mm]\hline
+	& Less-than or equal, unsigned immediate \\[4mm]\hline
 \parbox[t]{1.5in}{\tt CMP Rx,Ry\\BLEU label}
 	& \parbox[t]{1.5in}{\tt CMP Ry,Rx\\BNC label}
 	& Less-than or equal unsigned register\\[4mm]\hline\hline
@@ -1012,19 +817,16 @@ Original & Modified & Name \\\hline\hline
 \end{tabular}
 \caption{Modifying conditions}\label{tbl:creating-conditions}
 \end{center}\end{table}
-shows examples of how these unsupported conditions can be created
-simply by adjusting the compare instruction, for no extra cost in clocks.
-Of course, if the compare originally had an immediate within it, that immediate
-would need to be loaded into a register in order to do make some of these
-adjustments.  That case is shown as the last case above.
+shows examples of how these unsupported conditions can be created simply by
+adjusting the compare instruction, for no extra cost in clocks.
+Care needs to be taken to ensure that adding one to any immediates, as shown
+above, does not overflow the size of the immediate field.
 
-Many of these alternate conditions are chosen by the compiler implementation.
-
-Users should be aware of any signed overflow that might take place within the
-modified conditions, especially when numbers close to the limit are used.
-
-
+Many of these alternate conditions are chosen by the ZipCPU compiler
+back end.
+%% }}}
 \subsection{Operand B}\label{sec:isa-opb}
+%% {{{
 Many instruction forms have a 19-bit source ``Operand B'', or OpB for short,
 associated with them.  This ``Operand B'' is shown in
 Fig.~\ref{fig:iset-format} as part of the standard instructions.  An Operand B
@@ -1049,13 +851,15 @@ In those cases where a fourteen or eighteen bit immediate doesn't make sense,
 such as for {\tt LDILO}, the extra bits associated with the immediate are
 simply ignored.  (This rule does not apply to the shift instructions,
 {\tt ASR}, {\tt LSR}, and {\tt LSL}--which all use all of their immediate bits.)
-
+%% }}}
 \subsection{Address Modes}\label{sec:isa-addr}
-The ZipCPU supports two addressing modes: register plus immediate, and
-immediate addressing.  Addresses are encoded in the same fashion as
-Operand B's, discussed above. 
-
+%% {{{
+Load and store types of instructions both use the OpB field for their
+addresses.  As a result, the ZipCPU can support two addressing modes:
+register plus immediate, and immediate addressing, as outlined above.
+%% }}}
 \subsection{Move Operands}\label{sec:isa-mov}
+%% {{{
 The previous set of operands would be perfect and complete, save only that the
 CPU needs access to non--supervisory registers while in supervisory mode.  The
 MOV instruction has been modified to fit that purpose.  The two bits,
@@ -1072,11 +876,16 @@ cross register set move instructions.
 
 Further, the {\tt MOV} instruction lacks the full OpB capability to use a
 register or a register plus immediate as a source, since a load immediate
-instruction already exists.  As a result, all moves come from a register plus a 
-potential offset.
+instruction, {\tt LDI}, already exists.  As a result, all moves come from a
+register plus a potential offset.
 
+This also creates a situation where a {\tt MOV} instruction may be used
+like a 3-operand {\tt ADD} instruction.  Because the {\tt MOV} instruction
+doesn't affect the condition codes, the compiler will often use this
+instruction during address calculation.
+%% }}}
 \subsection{Multiply Operations}\label{sec:isa-mpy}
-
+%% {{{
 The ZipCPU supports three separate 32x32-bit multiply
 instructions: {\tt MPY}, {\tt MPYUHI}, and {\tt MPYSHI}.  The first of these
 produces the low 32-bits of a 32x32-bit multiply result.  The second two
@@ -1087,16 +896,45 @@ the compiler is likely to use them in a dependent fashion.
 
 In an effort to maintain a fast clock speed, all three of these multiplies
 have been slowed down in logic.  Thus, depending upon the setting of
-{\tt OPT\_MULTIPLY} within {\tt cpudefs.v}, or the corresponding
-{\tt IMPLEMENT\_MPY} parameter that may override it, the multiply instructions
+the {\tt OPT\_MULTIPLY} parameter, the multiply instructions
 will either 1)~cause an ILLEGAL instruction error ({\tt OPT\_MULTIPLY=0}, or
-no multiply support), 2)~take one additional clock ({\tt OPT\_MULTIPLY=2}),
-or 3)~take two additional clock cycles ({\tt OPT\_MULTIPLY=3}).\footnote{Support
-also exists for a one clock multiply (no clock slowdown), or a four clock
-multiply, and I am anticipating supporting a much longer multiply for FPGA
-architectures with no accelerated hardware multiply support.}
+no multiply support), or take {\tt OPT\_MULTIPLY} additional clock
+cycles to complete.
 
+Several implementations of this multiplication algorithm
+exist, as shown in Tbl.~\ref{tbl:opt-multiply}.
+\begin{table}\begin{center}
+\begin{tabular}{c|p{5in}}
+{\tt OPT\_MULTIPLY} & Implementation\\\hline\hline
+0 & No multiply support \\\hline
+1 & Single clock multiply.  This implementation neither registers
+	the inputs to the multiplier, nor the output prior to the ALU
+	output result.\\\hline
+2 & Two clock multiply.  This implementation registers the inputs to the
+	multiply unit, but the outputs are not registered prior to the
+	ALU mux.\\\hline
+3 & Three clock multiply.  This implementation registers the inputs to the
+	multiply unit as well as the outputs immediately following the
+	multiply and prior to the final ALU register.  This is the workhorse
+	of most FPGA DSP implementations, although it does require a DSP
+	or DSP combination capable of implementing a 32x32 multiply.\\\hline
+4 & Four clock multiply.  This implementation splits the multiply into
+	multiple sixteen bit multiplies in a FOIL (first, outer, inner, last)
+	binomial multiplication fashion.  The first clock registers the
+	inputs.  The second clock calculates all FOIL values, and the third
+	clock adds the results together to form a full 64-bit multiply result.
+	This method is appropriate for DSP implementations that can not handle
+	32x32 bit multiplies, and cannot be combined to handle them either.
+	\\\hline
+5+ & Slow multiply.  This implementation uses (roughly) 32-cycles to achieve
+	a full multiply result.  This is the one implementation that does not
+	use hardware multiply (DSP) support.\\\hline
+\end{tabular}
+\caption{Multiply implementation choices}\label{tbl:opt-multiply}%
+\end{center}\end{table}
+%% }}}
 \subsection{Divide Unit}
+%% {{{
 The ZipCPU also has an optional divide unit which can be built alongside the
 ALU.  This divide unit provides the ZipCPU with another two instructions that
 cannot be executed in a single cycle: {\tt DIVS}, or signed divide, and
@@ -1105,21 +943,19 @@ dividing one 32--bit number by another.  In this case, the Operand B field,
 whether it be register or register plus immediate, constitutes the denominator,
 whereas the numerator is given by the other register.
 
-As with the multiply, the divide instructions are also a multi--clock
+As with the multiply, the divide instructions are also multi--clock
 instructions.  While the divide is running, the ALU, any memory loads, and the
-floating point unit (if installed) will be idle.  Once the divide completes,
-other units may continue.
+floating point unit (if installed) will all be idle.  Once the divide completes,
+other units may be activated.
 
-Of course, any divide instruction can result in a division by zero exception. 
-If this happens the CPU will either suddenly transition from user mode to
-supervisor mode, or it will halt if the CPU is already in supervisor mode.  Upon
-exception, the divide by zero bit will be set in the CC register.  In the
-case of a user mode divide by zero, this will be cleared by any return to user
-mode command.  The supervisor bit may be cleared either by a reboot or by the
-external debugger.
-
-\section{CIS Instructions}
-
+Should the divisor be zero, the divide will result in a division by zero
+exception.  Upon exception, the divide by zero bit will be set in the
+appropriate CC~register.  In the case of a user mode divide by zero, this will
+be cleared by any return to user mode command.  The supervisor bit may be
+cleared either by a reboot or by the external debugger.
+%% }}}
+\subsection{Compressed Instructions}
+%% {{{
 The ZipCPU also supports a compressed instruction set (CIS), outlined in
 Fig.~\ref{fig:iset-cis},
 \begin{figure}\begin{center}
@@ -1148,8 +984,10 @@ Fig.~\ref{fig:iset-cis},
 when enabled via {\tt OPT\_CIS}.
 This compressed instruction set packs two instructions per word.  Words
 must still be aligned, and jumping into the middle of a compressed instruction
-is not allowed.  Further, the CIS only permits the encoding of 8~of the
-32~opcodes available in the ISA, as listed in Tbl.~\ref{tbl:iset-cisops}.
+is not (currently) allowed.  Interrupts, therefore, are disabled between the two
+instructions.  Further, the CIS only permits the encoding of 8~of the
+32~opcodes available in the ISA.  These eight compressed opcodes are listed
+in Tbl.~\ref{tbl:iset-cisops}.
 \begin{table}\begin{center}
 \begin{tabular}{|l|l|l|} \hline \rowcolor[gray]{0.85}
 COp & & Instruction \\\hline\hline
@@ -1164,32 +1002,36 @@ COp & & Instruction \\\hline\hline
 \end{tabular}
 \caption{CIS OpCodes}\label{tbl:iset-cisops}
 \end{center}\end{table}
-A final feature of the compressed instruction set has to do with {\tt LW} and
-{\tt SW} instructions.  An {\tt LW} or {\tt SW} instruction with bit-7 set
-low references an offset of the Stack Pointer, (SP).  Hence the compressed
-instruction set allows loads and stores to offsets of the Stack Pointer
-of -128~octets on up to~127 octets.  In practice, this gives the compressed
-load and store instructions, when referencing the stack, thirty--two words
-that they can reference.
 
-This compressed instruction set somewhat similar to other architectures that
+A final feature of the compressed instruction set has to do with load and
+store instructions.  All CIS load and store instructions use the form
+{\tt Rb+\#Imm}.  The instruction encoding that would otherwise be for
+{\tt \#Imm} has been made into a shorthand for using the stack pointer as
+{\tt Rb} with an offset.  Hence the compressed instruction set allows loads and
+stores to offsets of the Stack Pointer of -128~octets on up to~127 octets.  In
+practice, this gives the compressed load and store instructions, when
+referencing the stack, thirty--two words that they can reference.
+
+This compressed instruction set is somewhat similar to other architectures that
 have a thumb instruction set, with the difference that the ZipCPU can intermix
-regular and thumb instructions at will.  When using the CIS, instructions are
-still issued one at a time, however interrupts are disabled between
-instruction halves, in order to prevent the CPU from stopping mid instruction.
-Further, it is the silent job of the assembler to compress CIS instructions
-in an opportunistic fashion.
+regular and compressed instructions at will.  When using the CIS, instructions
+are still issued one at a time, however interrupts are disabled between
+instruction halves in order to prevent the CPU from stopping and then needing
+to re-start mid-instruction.  Further, it is the silent job of the assembler
+to generate CIS instructions in an opportunistic fashion--unless this feature
+has been disabled on the command line.
 
 The disassembler represents CIS instructions by placing a vertical bar
 between the two components, while still leaving them on the same line.
 
-The CIS instruction set does not support conditional execution.
-
+Compressed instructions do not support conditional execution.
+%% }}}
 \subsection{BREAK, Bus LOCK, SIM, and NOOP Instructions}
-Four instructions within the opcode list in Tbl.~\ref{tbl:iset-opcodes}, are
-somewhat special.  These are the {\tt BREAK}, bus {\tt LOCK}, {\tt SIM}, and
-{\tt NOOP} instructions.  These are encoded according to
-Fig.~\ref{fig:iset-noop}.
+%% {{{
+Four instructions within the opcode list in Tbl.~\ref{tbl:iset-opcodes}, have
+been reserved for special operations.  These are the {\tt BREAK}, bus
+{\tt LOCK}, {\tt SIM}, and {\tt NOOP} instructions.  These are encoded
+according to Fig.~\ref{fig:iset-noop}.
 \begin{figure}\begin{center}
 \begin{bytefield}[endianness=big]{32}
 \bitheader{0-31}\\
@@ -1217,30 +1059,31 @@ The {\tt BREAK} instruction is useful for creating a debug instruction that
 will halt the CPU without executing.  If in user mode, depending upon the
 setting of the break enable bit, it will either switch to supervisor mode or
 halt the CPU--depending upon where the user wishes to do his debugging.  The
-lower 22~bits of this instruction are reserved for the debuggers use.
+lower 22~bits of this instruction are reserved for the debugger's use.
 
-The {\tt LOCK} instruction provides the ZipCPU's atomic operation support, 
-althought it only works when the CPU is configured for pipeline
-mode.\footnote{The reason for not allowing {\tt LOCK} support in
-non-pipelined mode is that the instruction fetch is not allowed to interrupt
-a lock cycle.  In non-pipelined mode, the instruction fetch must take place
-between every bus access, negating this utility.}  It works by stalling the
-ALU pipeline stack until all prior stages are filled, and then it guarantees
-that once a bus cycle is started, the wishbone {\tt CYC} line will remain
-asserted for up to three instructions.  This allows the execution of one
-memory load (ex. {\tt LW}), one ALU operation (ex. {\tt ADD}), and then
-another memory instruction (ex. {\tt SW}), to take place in an uninterrupted
-fashion.  Example uses of this capability include an atomic increment, such
-as {\tt LOCK}, {\tt LW (Rx),Ry}, {\tt ADD \#1,Ry}, {\tt SW Ry,(Rx)}, or even
-a two instruction pair such as a test and set sequence: {\tt LDI 1,Rz},
-{\tt LOCK}, {\tt LW (Rx),Ry}, {\tt SW Rz,(Rx)}.
+The {\tt LOCK} instruction forms the basis of the ZipCPU's atomic operation
+support.  The {\tt LOCK} instruction is the first instruction of a four
+instruction sequence that executes with interrupts disabled.  This sequence is
+typically characterized by a {\tt LOCK} instruction, followed by a load
+instruction, an ALU operation, and then a store instruction.  Using this four
+instruction sequence, the
+ZipCPU can perfom atomic ALU operations such as adds, subtracts, bit-wise
+OR, bit-wise AND, and exclusive OR operations.  It can also be used to
+implement atomic exchanges, test and set instructions, or compare and swap
+instructions.  Since interrupts are disabled during {\tt LOCK} instructions,
+the sequence can also be used for a short series of instructions that need to
+execute with interrupts disabled.
 
 The {\tt SIM} and {\tt NOOP} instructions need a touch more explaining.
-From the standpoint of the CPU, when running from Verilog within an FPGA,
-the {\tt SIM} instruction is an illegal instruction--generating an illegal
-instruction exception.  Likewise the {\tt NOOP} instruction is just that:
-an instruction that consumes a clock, but does not perform any operation.
-In both cases, the lower 22--bits are ignored.
+These instructions have one meaning when run in simulation, and a separate
+meaning when run in hardware.  From the CPU's standpoint, the {\tt SIM}
+instruction is designed to be an illegal instruction in hardware (i.e. when the
+{\tt OPT\_SIM} parameter is clear), and a {\tt NOOP} instruction when executed
+in simulation.  When executed in hardware, the lower 22--bits of these
+instructions are ignored.
+
+In simulation, however, those lower 22--bits often have a meaning specifying
+a simulation only instructions.
 
 Both {\tt SIM} and {\tt NOOP} instructions, though, contain 22--bits that can
 be used by a simulator if present.  The encoding of these 22-bits is identical,
@@ -1253,43 +1096,224 @@ or simpling sending a character to the simulator's standard output stream,
 {\tt $x$OUT}--where $x$ is either {\tt N} for the {\tt NOOP} version of the
 instruction, or {\tt S} for the {\tt SIM} version of the opcode.
 
-The {\tt SIM} instruction is currrently a new facility for the ZipCPU, and
-so its functionality remains under test.
-
+The various {\tt NOOP} and {\tt SIM} encodings are listed in
+Fig.~\ref{fig:iset-simop}.
+\begin{figure}\begin{center}
+\begin{bytefield}[endianness=big]{32}
+\bitheader{0-31}\\
+\begin{leftwordgroup}{$x$EXIT}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h01}
+		\bitbox{8}{Rsrvd}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$DUMP}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h02}
+		\bitbox{8}{8'hff}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$DUMP Rx}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h002}
+		\bitbox{4}{0}
+		\bitbox{4}{Reg}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$DUMP uRx}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h02}
+		\bitbox{4}{1}
+		\bitbox{4}{uReg}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$OUT Rx}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h02}
+		\bitbox{4}{2}
+		\bitbox{4}{Reg}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$OUT uRx}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h02}
+		\bitbox{4}{3}
+		\bitbox{4}{uReg}
+		\end{leftwordgroup} \\
+	%% }}}
+\begin{leftwordgroup}{$x$OUT \#Imm}
+	%% {{{
+		\bitbox{1}{0}
+		%% Destination register
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{}
+		%% Op-Code
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{1}
+		\bitbox{1}{S}
+		%% 22-bits
+		\bitbox{2}{}
+		\bitbox{12}{12'h004}
+		\bitbox{8}{Imm}
+		\end{leftwordgroup} \\
+	%% }}}
+\end{bytefield}
+\caption{NOOP/SIM Sub-Instruction Format}\label{fig:iset-simop}
+\end{center}\end{figure}
+%% }}}
 \subsection{Floating Point}
+%% {{{
 Although the ZipCPU does not (yet) have a floating point unit, the current
-instruction set offers six opcodes for floating point operations, and treats
-floating point exceptions like divide by zero errors.  Once this unit is built
-and integrated together with the rest of the CPU, the ZipCPU will support
-32--bit floating point instructions natively.  Any 64--bit floating point
-instructions will either need to be emulated in software, or else they will
-need an external floating point peripheral.
+instruction set reserves six opcodes for floating point operations.  It also
+reserves a bit in the CC register for treating floating point exceptions like
+divide by zero errors.
+
+This should allow a 32--bit floating point accelerator to be included within
+the CPU, and to allow some amount of native support for 32--bit floating point
+operations.  64--bit floating point instructions will still either need to be
+emulated in software, or else they will need an external floating point
+peripheral.
 
 Until this FPU is built and integrated, of even afterwards if the floating
 point unit is not installed by option, floating point instructions will
 trigger an illegal instruction exception, which may be trapped and then
-implemented in software.
-
+implemented in software.\footnote{As of this writing, no software has yet
+been written to handle floating point exceptions.}
+%% }}}
 \subsection{Derived Instructions}
+%% {{{
 The ZipCPU supports many other common instructions by construction, although
-not all of them are single cycle instructions.  Tables~\ref{tbl:derived-1}, \ref{tbl:derived-2}, \ref{tbl:derived-3} and~\ref{tbl:derived-4} show how these
-other instructions may be implemented on the ZipCPU.  Many of these
-instructions will have assembly equivalents,
-such as the branch instructions, to facilitate working with the CPU.
+not all of them are single cycle instructions.  Tables~\ref{tbl:derived-1},
+\ref{tbl:derived-2}, \ref{tbl:derived-3} and~\ref{tbl:derived-4} show how
+many of these other instructions may be implemented on the ZipCPU.  Many of
+these instructions will have assembly equivalents, such as the branch
+instructions, to facilitate working with the CPU.
 \begin{table}\begin{center}
 \begin{tabular}{p{1.0in}p{1.5in}p{3in}}\\\hline
 Mapped & Actual  & Notes \\\hline
 {\tt ABS Rx}
 	& \parbox[t]{1.5in}{\tt TST -1,Rx\\NEG.LT Rx}
-	& Absolute value, depends upon the derived {\tt NEG} instruction
-	below, and so this expands into three instructions total.\\\hline
+	& Absolute value instruction.  This depends upon the derived
+	{\tt NEG} instruction below, and so this expands into three
+	instructions total.\\\hline
 \parbox[t]{1.4in}{\tt ADD Ra,Rx\\ADDC Rb,Ry}
 	& \parbox[t]{1.5in}{\tt Add Ra,Rx\\ADD.C \$1,Ry\\Add Rb,Ry}
-	& Add with carry \\\hline
+	& Add with carry.  This capability does not extend easily past 64~bits.
+	\\\hline
 \hbox{\tt BRA.$x$ +/-\$Addr}
 	& \hbox{\tt ADD.$x$ \$Addr+PC,PC}
 	& Branch or jump on condition $x$.  Works for 18--bit
 		signed address offsets.\\\hline
+\hbox{\tt BZ \$Addr}
+	& \hbox{\tt Add.Z \$Addr+PC,PC}
+	& Branch on zero.  Also known as branch on equals.\\\hline
+\hbox{\tt BNZ \$Addr}
+	& \hbox{\tt Add.NZ \$Addr+PC,PC}
+	& Branch on not-zero.  Also known as branch on not-equals.\\\hline
+\hbox{\tt BLT \$Addr}
+	& \hbox{\tt Add.LT \$Addr+PC,PC}
+	& Branch on less than.\\\hline
+\hbox{\tt BGE \$Addr}
+	& \hbox{\tt Add.GE \$Addr+PC,PC}
+	& Branch on greater than or equal to.\\\hline
+\hbox{\tt BC \$Addr}
+	& \hbox{\tt Add.C \$Addr+PC,PC}
+	& Branch on carry, also known as branch on less-than unsigned.\\\hline
+\hbox{\tt BNC \$Addr}
+	& \hbox{\tt Add.NC \$Addr+PC,PC}
+	& Branch on not carry.\\\hline
+\hbox{\tt BV \$Addr}
+	& \hbox{\tt Add.V \$Addr+PC,PC}
+	& Branch on overflow.\\\hline
+
 % {\tt BRA.Cond +/-\$Addr}
 % 	& \parbox[t]{1.5in}{\tt LDI \$Addr,Rx \\ ADD.cond Rx,PC}
 % 	& Branch/jump on condition.  Works for 23 bit address offsets, but
@@ -1300,61 +1324,47 @@ Mapped & Actual  & Notes \\\hline
 %	& \parbox[t]{1.5in}{\tt Test \$Carry,CC \\ ADD.Z PC+\$Addr,PC}
 %	& Example of a branch on an unsupported
 %		condition, in this case a branch on not carry \\\hline
-{\tt BUSY } & {\tt ADD \$-1,PC} & Execute an infinite loop.  This is used
-	within ZipCPU simulations as the execute simulation on error
-	instruction. \\\hline
-{\tt CLRF.NZ Rx }
-	& {\tt XOR.NZ Rx,Rx}
-	& Clear Rx, and flags, if the Z-bit is not set \\\hline
-{\tt CLR Rx }
+{\tt BUSY } & {\tt ADD \$-1,PC} & Execute an infinite loop.\\
+% {\tt CLRF Rx }	%% Has no assembler support
+%	& {\tt XOR Rx,Rx}
+%	& Clear Rx, while also setting the flags appropriately.\\\hline
+{\tt CLR Rx}
 	& {\tt LDI \$0,Rx}
 	& Clears Rx, leaving the flags untouched.  This instruction cannot be
 		conditional. \\\hline
 {\tt CLR.NZ Rx }
 	& {\tt BREV.NZ \$0,Rx}
 	& Clears Rx, leaving the flags untouched.  This instruction can be
-		executed conditionally. The assembler will quietly  choose
+		executed conditionally. The assembler will quietly choose
 		between {\tt LDI} and {\tt BREV} depending upon the existence
 		of the condition.\\\hline
-{\tt EXCH.W Rx }
-	& \parbox[t]{1.5in}{\tt MOV Rx,Rh \\
-		LSL \$16,Rh \\
-		LSR \$16,Rx \\
-		OR Rh,Rx }
-	& Exchanges the top and bottom 16'bit words of Rx \\\hline
 {\tt HALT }
 	& {\tt Or \$SLEEP,CC}
 	& This only works when issued in interrupt/supervisor mode.  In user
-	mode this is simply a wait until interrupt instruction.
-
-	This is also used within the simulator as an exit simulation on
-	success instruction.\\\hline
-{\tt INT } & {\tt LDI \$0,CC} & This is also known as a trap instruction\\\hline
-{\tt IRET}
-	& {\tt OR \$GIE,CC}
-	& Also known as an RTU instruction (Return to Userspace) \\\hline
+	mode this is simply a wait until interrupt instruction.  \\\hline
 \hbox{\tt JMP R6+\$Offset}
 	& {\tt MOV \$Offset(R6),PC}
-	& Only works for 13--bit offsets.  Other offsets require adding the
-	offset first to R6 before jumping.\\\hline
-{\tt LJMP \$Addr}
-	& \parbox[t]{1.5in}{\tt LW (PC),PC \\ {\em Address }}
-	& Although this only works for an unconditional jump, and it only
-	works in an architecture with a unified instruction and data address
-	space, this instruction combination makes for a nice combination that
-	can be adjusted by a linker at a later time.\\\hline
-{\tt LJMP.x \$Addr}
-	& \parbox[t]{1.5in}{\tt LW.x 4(PC),PC \\ ADD 4,PC \\ {\em Address }}
-	& Long jump, works for a conditional long jump, not necessarily the best way to do this.  \\\hline
+	& Only works for 15--bit aligned offsets.  Other offsets require adding
+	the offset first to R6 before jumping.\\\hline
 \end{tabular}
 \caption{Derived Instructions}\label{tbl:derived-1}
 \end{center}\end{table}
 \begin{table}\begin{center}
 \begin{tabular}{p{1.1in}p{1.8in}p{3in}}\\\hline
 Mapped & Actual  & Notes \\\hline
+{\tt LJMP \$Addr}
+	& \parbox[t]{1.5in}{\tt LW (PC),PC \\ {\em Address }}
+	& Although this only works for an unconditional jump, and it only
+	works in an architecture with a unified instruction and data address
+	space, this instruction combination makes for a nice combination that
+	can be adjusted by a linker at a later time.\\\hline
+{\tt LJMP.$x$ \$Addr}
+	& \parbox[t]{1.5in}{\tt LW.$x$ 4(PC),PC \\ ADD 4,PC \\ {\em Address }}
+	& Implements a conditional long jump.\\\hline
 {\tt LJSR \$Addr  }
 	& \parbox[t]{1.5in}{\tt MOV \$8+PC,R0 \\ LW (PC),PC \\ {\em Address}}
-	& Similar to LJMP, but it handles the return address properly.
+	& Long jump-to-subroutine.  This is similar to the LJMP instruction,
+	save that it handles the return address properly.
 	\\\hline
 {\tt JSR PC+\$Offset  }
 	& \parbox[t]{1.5in}{\tt MOV \$4+PC,R0 \\ ADD \$Offset,PC}
@@ -1365,36 +1375,40 @@ Mapped & Actual  & Notes \\\hline
 {\tt LDI \$val,Rx }
 	& \parbox[t]{1.8in}{\tt BREV REV($val$)\&0x0ffff,Rx \\
 			LDILO ($val$\&0x0ffff),Rx}
-	& \parbox[t]{3.0in}{Sadly, there's not enough instruction
-		space to load a complete immediate value into any register.
-		Therefore, fully loading any register takes two cycles.
-		The {\tt LDILO} (load immediate low) instruction has been
-		created to facilitate this together with {\tt BREV}.
+	& \parbox[t]{3.0in}{Since there's not enough instruction
+		space to load a complete immediate value into any register,
+		fully loading a register with a 32-bit value requires two
+		cycles.  The {\tt LDILO} (load immediate low) instruction
+		has been created to facilitate this together with {\tt BREV}.
 		\\
 	This is also the appropriate means for setting a register value
 	to an arbitrary 32--bit value in a post--assembly link
 	operation.}\\\hline
-\parbox[t]{1.5in}{\tt LSL \$1,Rx\\ LSLC \$1,Ry}
-	& \parbox[t]{1.5in}{\tt LSL \$1,Ry \\
-	LSL \$1,Rx \\
-	OR.C \$1,Ry}
-	& Logical shift left with carry.  Note that the
-	instruction order is now backwards, to keep the conditions valid.
-	That is, LSL sets the carry flag, so if we did this the other way
-	with Rx before Ry, then the condition flag wouldn't have been right
-	for an {\tt OR} correction at the end. \\\hline
-\parbox[t]{1.5in}{\tt LSR \$1,Rx \\ LSRC \$1,Ry}
-	& \parbox[t]{1.5in}{\tt CLR Rz \\
-	LSR \$1,Ry \\
-	BREV.C \$1,Rz \\
-	LSR \$1,Rx \\
-	OR Rz,Rx}
-	& Logical shift right with carry.  Unlike the shift left, this
-	approach doesn't extend well to numbers larger than two words. \\\hline
+% \parbox[t]{1.5in}{\tt LSL \$1,Rx\\ LSLC \$1,Ry}
+%	& \parbox[t]{1.5in}{\tt LSL \$1,Ry \\
+%	LSL \$1,Rx \\
+%	OR.C \$1,Ry}
+%	& Logical shift left with carry.  Note that the
+%	instruction order is now backwards, to keep the conditions valid.
+%	That is, LSL sets the carry flag, so if we did this the other way
+%	with Rx before Ry, then the condition flag wouldn't have been right
+%	for an {\tt OR} correction at the end. \\\hline
+% \parbox[t]{1.5in}{\tt LSR \$1,Rx \\ LSRC \$1,Ry}
+%	& \parbox[t]{1.5in}{\tt BREV $1,Rz\\
+%	LSR \$1,Ry \\
+%	LSR \$1,Rx \\
+%	OR.C Rz,Ry}
+%	& Logical shift right with carry.  Again, notice the required backwards
+%	ordering.\\\hline
 {\tt NEG Rx} & \parbox[t]{1.5in}{\tt XOR \$-1,Rx \\ ADD \$1,Rx} & Negates Rx\\\hline
 {\tt NEG.C Rx} & \parbox[t]{1.5in}{\tt MOV.C \$-1+Rx,Rx\\XOR.C \$-1,Rx}
 	& Conditionally negates Rx\\\hline
 {\tt NOT Rx } & {\tt XOR \$-1,Rx } & One's complement\\\hline
+\end{tabular}
+\caption{Derived Instructions, continued}\label{tbl:derived-2}
+\end{center}\end{table}
+\begin{table}\begin{center}
+\begin{tabular}{p{1.0in}p{1.5in}p{3.2in}}\\\hline
 {\tt POP Rx }
 	& \parbox[t]{1.5in}{\tt LW \$(SP),Rx \\ ADD \$4,SP}
 	& The compiler avoids the need for this instruction and the similar
@@ -1409,44 +1423,42 @@ Mapped & Actual  & Notes \\\hline
 	after each other.  Further, to avoid a pipeline stall, the
 	immediate value for the first store must be zero.
 	\\\hline
-\end{tabular}
-\caption{Derived Instructions, continued}\label{tbl:derived-2}
-\end{center}\end{table}
-\begin{table}\begin{center}
-\begin{tabular}{p{1.0in}p{1.5in}p{3.2in}}\\\hline
-{\tt PUSH Rx-Ry}
-	& \parbox[t]{1.5in}{\tt SUB \$$4n$,SP \\
-	SW Rx,\$(SP)
-	\ldots \\
-	SW Ry,\$$4\left(n-1\right)$(SP)}
-	& Multiple pushes at once only need the single subtract from the
-	stack pointer.  This derived instruction is analogous to a similar one
-	on the Motorola 68k architecture, although the Zip Assembler
-	does not support the combined instruction.  This instruction
-	also supports pipelined memory access.\\\hline
-{\tt RESET}
-	& \parbox[t]{1in}{\tt LDI~0xff000000,R2\\LDI 1,R1\\\hbox{SW R1,\$watchdog(R2)}\\BUSY}
-	& This depends upon the existence of a watchdog peripheral, and the
-	peripheral base address being preloaded into {\tt R12}.  The BUSY
-	instructions are required because the CPU will continue until the
-	{\tt SW} has completed.
-
-	Another opportunity might be to jump to the reset address from within
-	supervisor mode.\\\hline
+% {\tt PUSH Rx-Ry}
+%	& \parbox[t]{1.5in}{\tt SUB \$$4n$,SP \\
+%	SW Rx,\$(SP)
+%	\ldots \\
+%	SW Ry,\$$4\left(n-1\right)$(SP)}
+%	& Multiple pushes at once only need the single subtract from the
+%	stack pointer.  This derived instruction is analogous to a similar one
+%	on the Motorola 68k architecture, although the Zip Assembler
+%	does not support the combined instruction.  This instruction
+%	also supports pipelined memory access.\\\hline
+% {\tt RESET}
+%	& \parbox[t]{1in}{
+%		\tt LDI~0xff000000,R2\\
+%		LDI 1,R1\\
+%		\hbox{SW R1,\$watchdog(R2)}\\BUSY}
+%	& This depends upon the existence of a watchdog peripheral, and the
+%	peripheral base address being preloaded into {\tt R12}.  The BUSY
+%	instructions are required because the CPU will continue until the
+%	{\tt SW} has completed.
+%
+%	Another opportunity might be to jump to the reset address from within
+%	supervisor mode.\\\hline
 {\tt RET} & {\tt MOV R0,PC}
-	& This depends upon the form of the {\tt JSR} given on the previous
-	page that stores the return address into R0.
-	\\\hline
+	& This depends upon the return address either remaining in {\tt R0}
+	from a prior {\tt JSR} instruction, or otherwise it needs to be
+	restored prior to the return call.  \\\hline
 {\tt SEXB Rx }
 	& \parbox[t]{1.5in}{\tt LSL 24,Rx \\ ASR 24,Rx}
 	& Signed extend an 8--bit value into a full word.\\\hline
 {\tt SEXH Rx }	
 	& \parbox[t]{1.5in}{\tt LSL 16,Rx \\ ASR 16,Rx}
 	& Sign extend a 16--bit value into a full word.\\\hline
-{\tt STEP Rr,Rt}
-	& \parbox[t]{1.5in}{\tt LSR \$1,Rr \\ XOR.C Rt,Rr}
-	& Step a Galois implementation of a Linear Feedback Shift Register, Rr,
-		using taps Rt \\\hline
+% {\tt STEPLSR Rr,Rt}
+%	& \parbox[t]{1.5in}{\tt LSR \$1,Rr \\ XOR.C Rt,Rr}
+%	& Step a Galois implementation of a Linear Feedback Shift Register, Rr,
+%		using taps Rt \\\hline
 {\tt STEP}
 	& \parbox[t]{1.5in}{\tt OR \$Step|\$GIE,CC}
 	& Steps a user mode process by one instruction\\\hline
@@ -1459,10 +1471,10 @@ Mapped & Actual  & Notes \\\hline
 	& \parbox[t]{1.5in}{\tt SUB Ra,Rx\\SUB.C \$1,Ry\\SUB Rb,Ry}
 	& Subtract with carry.  Note that the overflow flag may not be
 	set correctly after this operation.\\\hline
-{\tt SWAP Rx,Ry }
-	& \parbox[t]{1.5in}{\tt XOR Ry,Rx \\ XOR Rx,Ry \\ XOR Ry,Rx} 
-	& While no extra registers are needed, this example
-	does take 3-clocks. \\\hline
+% {\tt SWAP Rx,Ry }
+%	& \parbox[t]{1.5in}{\tt XOR Ry,Rx \\ XOR Rx,Ry \\ XOR Ry,Rx} 
+%	& While no extra registers are needed, this example
+%	does take 3-clocks. \\\hline
 {\tt TRAP \#X}
 	& \parbox[t]{1.5in}{\tt LDI \$x,R1 \\ AND \textasciitilde\$GIE,CC }
 	& This works because whenever a user lowers the \$GIE flag, it sets
@@ -1475,10 +1487,11 @@ Mapped & Actual  & Notes \\\hline
 {\tt TS Rx,Ry,(Rz)}
 	& \hbox{\tt LDI 1,Rx}
 		\hbox{\tt LOCK}
-		\hbox{\tt LW (Rz),Ry}
-		\hbox{\tt SW Rx,(Rz)}
+		\hbox{\tt LB (Rz),Ry}
+		\hbox{\tt TEST Ry}
+		\hbox{\tt SB.Z Rx,(Rz)}
 	& A test and set instruction.  The {\tt LOCK} instruction insures
-	that the next two instructions lock the bus between the instructions,
+	that the next three instructions lock the bus between the instructions,
 	so no one else can use it.  Thus guarantees that the operation is
 	atomic.
 	\\\hline
@@ -1500,8 +1513,11 @@ Mapped & Actual  & Notes \\\hline
 \end{tabular}
 \caption{Derived Instructions, continued}\label{tbl:derived-4}
 \end{center}\end{table}
+%% }}}
+%% }}}
 
-\subsection{Interrupt Handling}
+\section{Interrupt Handling}
+%% {{{
 The ZipCPU does not maintain any interrupt vector tables.  If an interrupt
 takes place, the CPU simply switches to from user to supervisor (interrupt)
 mode.  Since getting to user mode in the first place required a return to
@@ -1513,8 +1529,10 @@ Since the CPU may return from userspace after either an interrupt (hardware
 generated), a trap (software generated), or an exception (a fault of some
 type), it is up to the supervisor code that handles the transition to
 determine which of the three has taken place.
+%% }}}
 
-\subsection{Pipeline Stages}
+\section{Pipeline Operation}
+%% {{{
 As mentioned in the introduction, and highlighted in Fig.~\ref{fig:cpu},
 the ZipCPU supports a five stage pipeline.
 \begin{enumerate}
@@ -1780,11 +1798,10 @@ restoring registers to the stack, the compiler does not optimize well (yet)
 for using this burst mode.
 
 \end{itemize}
+%% }}}
 
-% \subsection{Debug}
-
-\section{External Architecture}
-
+\section{Memory Architecture}
+%% {{{
 Having now described the CPU registers, instructions, and instruction formats,
 we now turn our attention to how the CPU interacts with the rest of the world.
 Specifically, we shall discuss how the bus is implemented, and the memory
@@ -1844,174 +1861,6 @@ the CPU.  These peripherals are shown in Fig.~\ref{fig:zipsystem}
 and described here.  They are designed to make
 the ZipCPU more useful in an Embedded Operating System environment.
 
-\subsubsection{Interrupt Controller}\label{sec:pic}
-
-Perhaps the most important peripheral within the ZipSystem is the interrupt
-controller.  While the ZipCPU itself can only handle one interrupt, and has
-only the one interrupt state: disabled or enabled, the interrupt controller
-can make things more interesting.
-
-The ZipSystem interrupt controller module supports up to 15 interrupts, all
-controlled from one register.  Further, it has been designed so that individual
-interrupts can be enabled or disabled individually without having any knowledge
-of the rest of the controller setting.  To enable an interrupt, write to the
-register with bit 15 set and the respective interrupt
-enable bit set.  No other bits will be affected.  To disable an interrupt,
-write to the register bit 15 clear and the
-respective interrupt enable bit set.  To clear an interrupt, write a `1' to
-that interrupt's status bit.  The interrupt enable pin for the global interrupt
-enable is set and cleared likewise.
-
-As an example, suppose you wished to enable interrupt \#4.  You would then
-write to the register a {\tt 0x80108010} to enable interrupt \#4, interrupts
-in general, and to clear any past active state.  When you later wish to disable
-this interrupt, you would write a {\tt 0x00100010} to the register.  This both
-disables the interrupt and clears the active indicator.  This does not
-disable interrupts in general, however.  To do that you'd also need to set
-bit 31.  Similarly a subsequent write of {\tt 0x80000000} will disable all
-interrupts as well.
-
-The ZipSystem hosts two interrupt controllers: a primary and a secondary.  The
-primary interrupt controller is the one that interrupts the CPU.  It has
-six local interrupt lines, the rest coming from external interrupt sources.
-One of those interrupt lines to the primary controller comes from the secondary
-interrupt controller.  This controller maintains an interrupt state for the
-process accounting counters, and any other external interrupts that didn't fit
-into the primary interrupt controller.
-
-As a word of caution, because the interrupt controller is an external
-peripheral, and because memory writes take place concurrently with any following
-instructions, any attempt to clear interrupts on one instruction followed by
-an immediate Return to Userspace ({\tt RTU}) instruction, may not have the
-effect of having interrupts cleared before the {\tt RTU} instruction executes.
-This is only relevant if the two instructions take place in immediate
-succession.  As an alternative, reading from the interrupt controller after
-writing to it will place enough time between these two events for the
-{\tt RTU} command to successfully complete.
-
-\subsubsection{Counter}
-
-The Zip Counter is a very simple counter: it just counts.  It cannot be
-halted.  When it rolls over, it issues an interrupt.  Writing a value to the
-counter just sets the current value, and it starts counting again from that
-value.
-
-Eight counters are implemented in the ZipSystem for process accounting if
-the {\tt INCLUDE\_ACCOUNTING\_COUNTERS} define is set within {\tt cpudefs.v}.
-Four of those measure the performance of the system as a whole, four are
-used for measuring user CPU usage.
-This may change in the future, as nothing as yet uses these counters.
-
-\subsubsection{Timer}
-
-The Zip Timer is also very simple: it is a 31--bit counter that simply counts
-down to zero.  When it transitions from a one to a zero it creates an interrupt.
-
-Writing any non-zero value to the timer starts the timer.  If the high order
-bit is set when writing to the timer, the timer becomes an interval timer and
-reloads its last start time on any interrupt.  Hence, to mark seconds, one
-might set the 31--bits of the timer to the number of clocks per second and the
-top bit to one.  Ever after, the timer will interrupt the CPU once per
-second--until a non--interrupt interval is set in the timer.  This reload
-capability also limits the maximum timer value to $2^{31}-1$, rather than
-$2^{32}-1$.
-
-\subsubsection{Watchdog Timer}
-
-The watchdog timer has only two differences from the of the other timers.
-The first difference is that it is a one--shot timer.  The second difference,
-though, is critical: the interrupt line from the watchdog timer is tied to the
-reset line of the CPU.  Hence writing a `1' to the watchdog timer will always
-reset the CPU.  To stop the Watchdog timer, write a `0' to it.  To start it,
-write any other number to it---as with the other timers.
-
-
-\subsubsection{Bus Watchdog}
-There is an additional watchdog timer on the Wishbone bus of the ZipSystem. 
-This timer,
-however, is hardware configured and not software configured.  The timer is
-reset at the beginning of any bus transaction, and only counts clocks during
-such bus transactions.  If the bus transaction takes longer than the number
-of counts the timer allots, it will raise a bus error flag to terminate the
-transaction.  This is useful in the case of any peripherals that are
-misbehaving.  If the bus watchdog terminates a bus transaction, the CPU may
-then read from its port to find out which memory location created the problem.
-
-Aside from its unusual configuration, the bus watchdog is just another
-implementation of the fundamental timer described above--stripped down
-for simplicity.
-
-\subsubsection{Jiffies}
-
-This peripheral is motivated by the Linux use of `jiffies' whereby a process
-can request to be put to sleep until a certain number of `jiffies' have
-elapsed.  Using this interface, the CPU can read the number of `jiffies'
-from the peripheral (it only has the one location in address space), add the
-sleep length to it, and write the result back to the peripheral.  The
-{\tt zipjiffies}
-peripheral will record the value written to it only if it is nearer the current
-counter value than the last current waiting interrupt time.  If no other 
-interrupts are waiting, and this time is in the future, it will be enabled.
-(There is currently no way to disable a jiffie interrupt once set, other
-than to disable the interrupt line in the interrupt controller.)  The processor
-may then place this sleep request into a list among other sleep requests.
-Once the timer expires, it would write the next Jiffy request to the peripheral
-and wake up the process whose timer had expired.
-
-Indeed, the Jiffies register is nothing more than a glorified counter with
-an interrupt.  Unlike the other counters, the internal Jiffies counter can only
-be read, never set.
-Writes to the jiffies register create an interrupt time.  When the Jiffies
-register later equals the value written to it, an interrupt will be asserted
-and the register then continues counting as though no interrupt had taken
-place.
-
-Finally, if the new value written to the Jiffies register is within the past
-$2^{31-1}$ clock ticks, the Jiffies register will immediately cause an interrupt
-and otherwise ignore the new request.
-
-The purpose of this register is to support alarm times within a CPU.  To
-set an alarm for a particular process $N$ clocks in advance, read the current
-Jiffies value, add $N$, and write it back to the Jiffies register.  The
-O/S must also keep track of values written to the Jiffies register.  Thus,
-when an `alarm' trips, it should be removed from the list of alarms, the list
-should be resorted, and the next alarm in terms of Jiffies should be written
-to the register--possibly for a second time.
-
-\subsubsection{Direct Memory Access Controller}
-
-The Direct Memory Access (DMA) controller can be used to either move memory
-from one location to another, to read from a peripheral into memory, or to
-write from a peripheral into memory all without CPU intervention.  Further,
-since the DMA controller can issue (and does issue) pipeline wishbone accesses,
-any DMA memory move will by nature be faster than a corresponding program
-accomplishing the same move.  To put this to numbers, it may take a program
-running on the CPU 18~clocks per word transferred, whereas this DMA controller
-can move one word in eight clocks--provided it has bus
-access\footnote{The pipeline cost of the DMA controller, including setup cost,
-is a minimum of $14+2N$ clocks.} (The CPU gets priority over the bus, but once
-bus access is granted to the DMA peripheral, it will not be revoked mid--read
-or mid--write.)
-
-The DMA controller supports only aligned word accesses.  It does not support
-byte or half-word accesses.
-
-When copying memory from one location to another, the DMA controller will
-copy in units of a given transfer length--up to 1024 words at a time.  It will
-read that transfer length into its internal buffer, and then write to the
-destination address from that buffer.
-
-When coupled with a peripheral, the DMA controller can be configured to start
-a memory copy when any interrupt line goes high.  Further, the controller can
-be configured to issue reads from (or to) the same address instead of
-incrementing the address at each clock.  The DMA completes once the total
-number of items specified (not the transfer length) have been transferred.
-
-In each case, once the transfer is complete and the DMA unit returns to
-idle, the DMA will issue an interrupt.
-
-% \subsubsection{Memory Management Unit}
-
 \section{Debug Interface}\label{sec:debug}
 
 The ZipCPU supports an external debug port.  Access to the port is the
@@ -2043,373 +1892,6 @@ single register, and it can see if the CPU is still actively running, whether
 it is in user or supervisor modes, and whether or not it is sleeping.  This
 alone is useful for detecting deadlocks or other difficult problems.
 %% }}}
-\chapter{Application Binary Interface}\label{chap:abi}
-%% {{{
-This chapter discusses not the CPU itself, but rather how the GCC and binutils
-toolchains have been configured to support the ZipCPU.
-
-% ELF Format
-% Stack:
-%	R13 is the stack register.
-%	The stack grows downward.
-%	Memory at the current stack pointer is allocated.
-%	Hence, a PUSH is : SUB 1,SP; SW Rx,(SP)
-% Heap:
-%	In general, not yet implemented.  
-%	A less than adequate Heap has been implemented as a pointer, from which
-%	malloc requests simply decrement it.  Free's are NOOPs, leaving
-%	allocated memory allocated forever.
-
-\section{Executable File Format}\label{sec:abi-elf}
-ZipCPU executable files are stored in the Executable and Linkable Format
-(ELF), prior to being placed in flash, or whatever memory they will be
-executed from.  
-
-The ZipCPU described by this specification uses the 16-bits {\tt 16'hdad1}
-to identify itself against other CPUs.  This is not an officially registered
-number, and may change in the future.
-
-The ZipCPU does not (yet) have a dynamic linker/loader.  All linking is
-currently static, and done prior to run time.
-
-\section{Stack}\label{sec:abi-stack}
-Register {\tt R13} (also known as the {\tt SP} register) is the stack register.
-The compiler generates code that grows the stack from
-high addresses to lower addresses.  That means that the stack will usually
-start out set to a very large value, such as one past the last RAM address,
-and it will grow to lower and lower values--hopefully never mixing with the
-heap.  Memory at the current stack position is assumed to be allocated.
-
-When creating a stack frame for a function, the compiler will subtract
-the size of the stack frame from the stack register.  It will then store
-any registers used by the function, from {\tt R5} to {\tt R12} (including
-the link register {\tt R0}) onto offsets given by the stack pointer plus a 
-constant.  If a frame pointer is used, the compiler uses {\tt R12} (or
-{\tt FP}) for this purpose.  The frame pointer is set by moving the stack
-pointer plus an offset into {\tt FP}.  This {\tt MOV} instruction effectively
-limits the size of any individual stack frame to $2^{12}-1$ octets.
-
-Once a subroutine is complete, the frame is unwound.  If the frame pointer,
-{\tt FP} was used, then {\tt FP} is copied directly to the stack pointer,
-{\tt SP}.  Registers are restored, starting with {\tt R0} all the way to
-{\tt R12} ({\tt FP}).  This also restores, and obliterates, the subroutine
-frame pointer.  Once complete, a value is added to the stack pointer to
-return it to its original value, and a jump is made to the value located
-within {\tt R0}.
-
-\section{Relocations}\label{sec:abi-reloc}
-
-The ZipCPU binutils back end supports several types of relocations, although
-the two most common are the 32--bit relocations for register load and long
-jump.
-
-The first of these is for loading an arbitrary 32--bit value into a register. 
-Such instructions are broken into a pair of {\tt BREV} and {\tt LDILO}
-instructions, and once the value of the parameter is known their immediate
-values can be filled in.
-
-The second type of 32--bit relocation is for jumps to arbitrary addresses.
-These jumps are supported by the \hbox{\tt LW (PC),PC} instruction, followed
-by the 32--bit address to be filled in later by the linker.  If the jump is
-conditional, then a conditional \hbox{\tt LW.$x$ 4(PC),PC} instruction is
-used, followed by a {\tt ADD 4,PC} and then the 32--bit relocation value.
-
-If a branch distance is known and within reach, then it will be implemented
-with an {\tt ADD \#,PC} instruction, possibly conditional, as necessary.
-
-While other relocations are supported, they tend not to be used nearly as much
-as these two.
-
-\section{Call format}\label{sec:abi-jsr}
-
-One unique of the ZipCPU is that it has no JSR instruction.  The assembler
-attempts to minimize this problem by replacing a {\tt JSR}~{\em address}
-instruction with a {\tt MOV \#(PC),R0} followed by a jump to the requested
-address.  In this case, the offset to the PC for the {\tt MOV} instruction
-is determined by whether or not the jump can be accomplished with a local
-branch or a long jump.
-
-While this works well in practice, this implementation prevents such things
-as {\tt JSR}'s followed by {\tt BRA}'s from being combined together.
-
-Finally, GCC will place first five operands passed to the subroutine into
-registers R1--R5.  Any additional operands are placed upon the stack.
-
-\section{Built-ins}\label{sec:abi-builtin}
-The ZipCPU ABI supports the a number of built in functions.  The compiler
-maps these functions directly to assembly language equivalents, essentially 
-providing the C~programmer with access to several assembly language
-instructions.  These are:
-\begin{enumerate}
-\item {\tt zip\_bitrev(int)} reverses the bits in the given integer, returning
-	the result.  This utilizes the internal {\tt BREV} instruction, and is
-	designed to be used with FFT's as necessary.
-\item {\tt zip\_busy()} executes an {\tt ADD -4,PC} function, essentially
-	forcing the CPU into a very tight infinite loop.
-\item {\tt zip\_cc()} returns the value of the current CC register.  This may
-	be used within both user and supervisor code to determine in which
-	mode the CPU is within.
-\item {\tt zip\_halt()} executes an \hbox{\tt OR \$SLEEP,CC} instruction to
-	place the processor to sleep.  If the processor is in supervisor mode,
-	this halt's the processor.
-\item {\tt zip\_rtu()} executes an \hbox{\tt OR \$GIE,CC} instruction.  This
-	will place the CPU into user mode, and has no effect if the CPU is
-	already in user mode.
-\item {\tt zip\_step()} executes an \hbox{\tt OR \$STEP|\$GIE,CC} instruction.
-	This will place the CPU into user mode in order to step one instruction,
-	and then return to supervisor mode.
-	It has no effect if the CPU is already in user mode.
-\item {\tt zip\_system()} executes an \hbox{\tt AND \textasciitilde\$GIE,CC}
-	instruction to return the CPU to supervisor mode.  This essentially
-	executes a trap, setting the trap bit for the supervisor to examine. 
-	What this instruction does not do is arrange for the trap arguments to
-	be placed into the  registers {\tt R1} through {\tt R5}.  Since this is
-	a wholly inadequate solution, a function call may be made to an
-	assembly routine that executes a trap if necessary.
-\item {\tt zip\_wait()} executes a \hbox{\tt \$SLEEP|\$GIE,CC} instruction.
-	Unlike {\tt zip\_halt()}, this {\tt zip\_wait()} instruction places
-	the CPU into a wait state regardless of whether or not the CPU is
-	in supervisor mode or not.   When this function, i.e. instruction,
-	completes, it will leave the CPU in supervisor mode upon an interrupt
-	having taken place.
-
-	You may wish to set the user program counter prior to this instruction,
-	as the prefetch unit will try to load instructions from the address
-	contained within the user program counter.  Attempts to read from 
-	addresses with sideeffects may not produce the desired outcome. 
-	However, once that cache fails (or succeeds), the CPU will have been
-	put to sleep and will do no more.
-
-\item {\tt zip\_restore\_context(context *)} inserts the 32~assembly
-	instructions necessary to copy all sixteen user registers to a memory
-	region pointed to by the given context pointer, starting with {\tt uR0}
-	on up to {\tt uPC}.
-
-\item {\tt zip\_save\_context(context *)} inserts the 32~assembly instructions
-	necessary to copy all sixteen user registers to a memory region pointed
-	to by the given context pointer argument, starting
-	with {\tt uR0} on up to {\tt uPC}.
-\item {\tt zip\_ucc()}, returns the value of the user CC register.
-\end{enumerate}
-
-% Builtin functions:
-%	zip_break();
-%	zip_idle();
-%	zip_syscall(a,b,c,d)
-%
-\section{Linker Scripts}\label{sec:ld}
-The ZipCPU makes no assumptions about its memory layout.  The result, though,
-is that the memory layout of a given project is board specific.  This
-is accomplished via a board specific linker script.  This section will discuss
-some of the specifics of a ZipCPU linker script.
-
-Because the ZipCPU uses a modified binutils package as part of its tool chain,
-the format for this linker script is defined by the GNU LD project within
-binutils.  Further details on that format may be found within the GNU LD 
-documentation within the binutils package.
-
-This discussion will focus on those parts of the script specific to the ZipCPU.
-
-\subsection{Memory Types}\label{sec:ld-mem}
-Of the FPGA boards that the ZipCPU has been applied to, most of them have some
-combination of three types of memory: flash, block RAM, and Synchronous 
-Dynamic RAM (SDRAM).  Of these three, only the flash is non--volatile.  The
-block RAM is the fastest, and the SDRAM the largest.  While other memory types
-are available, such as files on an external media such as an SD card or a 
-network drive, these three types have so far been sufficient for our purposes.
-
-To support these memories, the linker script has three memory lines identifying
-where each memory exists on the bus, the size of the memory, and any protections
-associated with it.  For example,
-\begin{eqnarray*}
-\mbox{blkram (wx) : ORIGIN = 0x0008000, LENGTH = 0x0008000}
-\end{eqnarray*}
-specifies that there is a region of memory, called blkram, that can be read and
-written, and that programs can execute from.  This section starts at address
-{\tt 0x8000} and extends for another {\tt 0x8000} bytes.  The other memories
-are defined in a similar manner, with names {\tt flash} and {\tt sdram}.
-
-Following the memory section, three specific symbols are defined:
-	{\tt \_flash}, defining the beginning of flash memory,
-	{\tt \_blkram}, defining the beginning of on--chip block RAM,
-	and
-	{\tt \_sdram}, defining the beginning of SDRAM.
-These symbols are used to make the bootloader's task easier.
-
-\subsection{The Entry Function}\label{sec:ld-entry}
-The ZipCPU has, as a parameter, a {\tt RESET\_ADDRESS}.  It is important
-that this address contain a valid instruction (or more), since this is the
-first instruction the ZipCPU will execute.  Traditionally, this address is also
-the first address in instruction memory as well.
-
-To make this happen, the ZipCPU defines two additional segments: the
-{\tt .start} and the {\tt .boot} segments.  The {\tt  .start} segment is to 
-have nothing in it but the very initial startup code.  This code needs to run 
-from flash (or other ROM).  By placing this segment at the very beginning of
-the ZipCPU's flash address space, and in particular at the first valid flash
-address, the ZipCPU will boot from this address.  This is the purpose of the
-{\tt .start} section.
-
-The {\tt .boot} section has a similar purpose.  This section includes anything
-associated with the bootloader.  It is a special section because, when loading
-from flash, the bootloader {\em cannot} be placed in RAM, but must be placed
-in flash--since it is the code that loads things from flash into RAM.
-
-It may also make sense to place any code executed once only within flash as
-well.  Such code may run slower than the main system code, but by leaving it in
-flash it can be kept from consuming any higher speed RAM.  To do this, place
-this other code into the {\tt .boot} section.
-
-You may also find that large data structures that are best left in flash
-can also be placed into this {\tt .boot} section as well for that purpose.
-
-\subsection{Bootloader Tags}\label{sec:ld-boot}
-
-The bootloader needs to know a couple things from the linker script.  It needs
-to know what code/data to copy to block RAM from the flash, what code/data to
-copy to SDRAM, and finally what initial data area needs to be zeroed.  Four
-additional pointers, set within a linker script, can define these regions.
-
-\begin{enumerate}
-\item {\tt \_kernel\_image\_start}
-
-	This is the first location in flash containing data that the bootloader
-	needs to move.
-
-\item {\tt \_kernel\_image\_end}
-
-	This is a pointer to one past the last location in block RAM to place
-	things into.  If this pointer is equal to {\tt \_kernel\_image\_start},
-	then no information is placed into block RAM.
-
-\item {\tt \_sdram\_image\_start}
-
-	This should be equal to {\tt \_kernel\_image\_end}.  It is a pointer,
-	within block RAM address space, of the first location to be moved
-	into SDRAM.  By adding the difference between
-	{\tt \_sdram\_image\_start} and {\tt \_blkram} to the flash address
-	in {\tt \_kernel\_image\_start}, the actual source address within the
-	flash of the code/data that needs to be copied into SDRAM can be
-	determined.
-
-\item {\tt \_sdram\_image\_end}
-
-	This is the ending address of any code/data to be copied into SDRAM.
-	The distance between this pointer and {\tt \_sdram} should be the 
-	amount of data to be placed into SDRAM.
-
-\item {\tt \_bss\_image\_end}
-
-	The BSS segment contains data the starts with an initial value of
-	zero.  Such data are usually not placed in the executable file, nor
-	are they placed into any flash image.  This address points to the
-	last location in SDRAM used by the BSS segment.  The bootloader
-	is responsible then for clearing the SDRAM between
-	{\tt \_sdram\_image\_end} and {\tt \_bss\_image\_end}.
-
-	The bootloader must also be robust enough to handle the cases where
-	1) there is no SDRAM, 2) there is no block RAM, and 3) where there
-	is non requirement to move memory at all---such as when the program
-	is placed into memory and started from there.
-\end{enumerate}
-\subsection{Other required linker symbols}\label{sec:ld-other}
-
-Two other symbols need to be defined in the linker script, which are used
-by the startup code.  These are:
-\begin{enumerate}
-\item {\tt \_top\_of\_stack}
-
-	This is the address that the startup code will set the stack pointer
-	to point to.  It may be one past the last location of a RAM memory,
-	whether block RAM or SDRAM.
-
-\item {\tt \_top\_of\_heap}
-
-	This is the first location past the end of the {\tt .bss} segment.
-	Equivalently, this is the address of the first unused piece of
-	memory, or the location from whence to start any dynamic memory
-	subsystem.
-\end{enumerate}
-
-All of these symbols need to reference word aligned addresses.
-
-\section{Loading ZipCPU Programs}
-There are two basic ways to load a ZipCPU program, depending upon whether or
-not the ZipCPU is active within the current configuration.  If the ZipCPU
-is not a part of the current FPGA configuration, one need only write the 
-flash and then switch configurations.  It will be the CPU's responsibility
-to place itself in RAM then. 
-
-The more practical alternative is a little more involved, and there are
-several steps to it.
-\begin{enumerate}
-\item Halt the CPU by writing 0x0440 to the CPU control register.  This
-	both halts and resets the CPU.  It then prevents both bus contention,
-	while writing the new instructions to memory, as well as preventing the
-	CPU from running some instructions from one program and other
-	instructions from another.
-\item Load the program into memory.  For many programs this will involve
-	loading the program into flash, and necessitate having and using a 
-	flash controller.  The ZipCPU also supports being loaded straight into
-	RAM address as well, as though the bootloader had completed
-	it's task.
-\item You may optionally, at this point, clear all of the CPUs registers,
-	to make certain the reboot is clean.
-\item Set the sPC register to the starting address. 
-\item Clear the instruction cache in order to force the CPU to reload its
-	cache upon start.
-\item Release the CPU by writing to the CPU debug control register a number
-	between 0 and 31.  This number will correspond to the register number
-	of the register that can be ``peeked'' at while the CPU is running.
-\end{enumerate}
-
-%
-\section{Starting a ZipCPU program}
-\subsection{CRT0}
-
-Most computers have a section of code, conventionally called {\tt crt0}, which
-loads a program into memory.  On the ZipCPU, this code starts at {\tt \_start}.
-It is responsible for setting the stack pointer, calling the boot loader,
-and then calling the main entry function, {\tt entry()}.
-
-Because {\tt \_start} {\em must} be the first symbol in a program, and because
-that first symbol is located at the boot address for the CPU, the {\tt \_start}
-is placed into the {\tt .start} segment.  It is the only routine placed there.
-
-On those CPU's that don't have enough logic space for a debugger, it may be
-useful to place a routine to dump any registers, stack values and/or kernel
-traces to an output routine at this time.  That way, on any kernel fault, the
-kernel can be brought back up with a debug trace.  This works because rebooting
-the CPU doesn't reset any register values save the {\tt sCC} and {\tt sPC}.
-
-\subsection{The Bootloader}
-
-As discussed in Sec.~\ref{sec:ld-boot}, the bootloader must be placed into 
-flash if it is used.  It can be a small C program (it need not be assembly,
-like {\tt \_start}), and it only needs to copy memory.  First, it copies any
-memory from flash to block RAM.  Second, it copies any necessary memory from
-flash to SDRAM.  Then, it zeros any memory necessary in SDRAM (or block RAM,
-if there is no SDRAM).
-
-These memory copies may be done with the DMA, or they may be done one--at--a
-time for a performance penalty.
-
-\subsection{Kernel Entry}
-
-After calling the boot loader, execution returns to the {\tt \_start} routine
-which then calls the main program entry function, {\tt entry()}.  No
-requirements are laid upon this entry function regarding where it must reside.
-The simplest place to put it is in Block RAM--and just to put all code and
-variables there.  In reality, this entry function may easily be left in flash.
-It often doesn't need to run particularly fast, since there may easily be
-one--time setup functions that are independent of the programs main loop.
-
-\subsection{Kernel Main}
-
-If the kernel entry function, {\tt entry()}, is placed in flash, it should call
-a separate function to run the main while loop once it has been set up.  In
-this fashion, the main while loop may be kept in the fastest memory necessary
-(that it will fit within), to ensure good performance.
 %% }}}
 \chapter{Operation}\label{chap:ops}
 %% {{{
@@ -3171,17 +2653,539 @@ the {\tt zip\_save\_context(int *)} function.
 \end{enumerate}
 
 %% }}}
-\chapter{Registers}\label{chap:regs}
+\chapter{Tool Suite and Application Binary Interface}\label{chap:abi}
 %% {{{
-This chapter covers the definitions and locations of the various registers
-associated with both the ZipSystem, and the ZipCPU contained within it.
-These registers fall into two separate categories: the registers belonging
-to the ZipSystem, and then the two debug port registers belonging to the CPU
-itself.  In this chapter, we'll discuss the ZipSystem peripheral registers
-first, followed by the two ZipCPU registers.
+This chapter discusses not the CPU itself, but rather how the GCC and binutils
+toolchains have been configured to support the ZipCPU.
 
+% ELF Format
+% Stack:
+%	R13 is the stack register.
+%	The stack grows downward.
+%	Memory at the current stack pointer is allocated.
+%	Hence, a PUSH is : SUB 1,SP; SW Rx,(SP)
+% Heap:
+%	In general, not yet implemented.  
+%	A less than adequate Heap has been implemented as a pointer, from which
+%	malloc requests simply decrement it.  Free's are NOOPs, leaving
+%	allocated memory allocated forever.
+
+\section{Executable File Format}\label{sec:abi-elf}
+ZipCPU executable files are stored in the Executable and Linkable Format
+(ELF), prior to being placed in flash, or whatever memory they will be
+executed from.  
+
+The ZipCPU described by this specification uses the 16-bits {\tt 16'hdad1}
+to identify itself against other CPUs.  This is not an officially registered
+number, and may change in the future.
+
+The ZipCPU does not (yet) have a dynamic linker/loader.  All linking is
+currently static, and done prior to run time.
+
+\section{Stack}\label{sec:abi-stack}
+Register {\tt R13} (also known as the {\tt SP} register) is the stack register.
+The compiler generates code that grows the stack from
+high addresses to lower addresses.  That means that the stack will usually
+start out set to a very large value, such as one past the last RAM address,
+and it will grow to lower and lower values--hopefully never mixing with the
+heap.  Memory at the current stack position is assumed to be allocated.
+
+When creating a stack frame for a function, the compiler will subtract
+the size of the stack frame from the stack register.  It will then store
+any registers used by the function, from {\tt R5} to {\tt R12} (including
+the link register {\tt R0}) onto offsets given by the stack pointer plus a 
+constant.  If a frame pointer is used, the compiler uses {\tt R12} (or
+{\tt FP}) for this purpose.  The frame pointer is set by moving the stack
+pointer plus an offset into {\tt FP}.  This {\tt MOV} instruction effectively
+limits the size of any individual stack frame to $2^{12}-1$ octets.
+
+Once a subroutine is complete, the frame is unwound.  If the frame pointer,
+{\tt FP} was used, then {\tt FP} is copied directly to the stack pointer,
+{\tt SP}.  Registers are restored, starting with {\tt R0} all the way to
+{\tt R12} ({\tt FP}).  This also restores, and obliterates, the subroutine
+frame pointer.  Once complete, a value is added to the stack pointer to
+return it to its original value, and a jump is made to the value located
+within {\tt R0}.
+
+\section{Relocations}\label{sec:abi-reloc}
+
+The ZipCPU binutils back end supports several types of relocations, although
+the two most common are the 32--bit relocations for register load and long
+jump.
+
+The first of these is for loading an arbitrary 32--bit value into a register. 
+Such instructions are broken into a pair of {\tt BREV} and {\tt LDILO}
+instructions, and once the value of the parameter is known their immediate
+values can be filled in.
+
+The second type of 32--bit relocation is for jumps to arbitrary addresses.
+These jumps are supported by the \hbox{\tt LW (PC),PC} instruction, followed
+by the 32--bit address to be filled in later by the linker.  If the jump is
+conditional, then a conditional \hbox{\tt LW.$x$ 4(PC),PC} instruction is
+used, followed by a {\tt ADD 4,PC} and then the 32--bit relocation value.
+
+If a branch distance is known and within reach, then it will be implemented
+with an {\tt ADD \#,PC} instruction, possibly conditional, as necessary.
+
+While other relocations are supported, they tend not to be used nearly as much
+as these two.
+
+\section{Call format}\label{sec:abi-jsr}
+
+One unique of the ZipCPU is that it has no JSR instruction.  The assembler
+attempts to minimize this problem by replacing a {\tt JSR}~{\em address}
+instruction with a {\tt MOV \#(PC),R0} followed by a jump to the requested
+address.  In this case, the offset to the PC for the {\tt MOV} instruction
+is determined by whether or not the jump can be accomplished with a local
+branch or a long jump.
+
+While this works well in practice, this implementation prevents such things
+as {\tt JSR}'s followed by {\tt BRA}'s from being combined together.
+
+Finally, GCC will place first five operands passed to the subroutine into
+registers R1--R5.  Any additional operands are placed upon the stack.
+
+\section{Built-ins}\label{sec:abi-builtin}
+The ZipCPU ABI supports the a number of built in functions.  The compiler
+maps these functions directly to assembly language equivalents, essentially 
+providing the C~programmer with access to several assembly language
+instructions.  These are:
+\begin{enumerate}
+\item {\tt zip\_bitrev(int)} reverses the bits in the given integer, returning
+	the result.  This utilizes the internal {\tt BREV} instruction, and is
+	designed to be used with FFT's as necessary.
+\item {\tt zip\_busy()} executes an {\tt ADD -4,PC} function, essentially
+	forcing the CPU into a very tight infinite loop.
+\item {\tt zip\_cc()} returns the value of the current CC register.  This may
+	be used within both user and supervisor code to determine in which
+	mode the CPU is within.
+\item {\tt zip\_halt()} executes an \hbox{\tt OR \$SLEEP,CC} instruction to
+	place the processor to sleep.  If the processor is in supervisor mode,
+	this halt's the processor.
+\item {\tt zip\_rtu()} executes an \hbox{\tt OR \$GIE,CC} instruction.  This
+	will place the CPU into user mode, and has no effect if the CPU is
+	already in user mode.
+\item {\tt zip\_step()} executes an \hbox{\tt OR \$STEP|\$GIE,CC} instruction.
+	This will place the CPU into user mode in order to step one instruction,
+	and then return to supervisor mode.
+	It has no effect if the CPU is already in user mode.
+\item {\tt zip\_system()} executes an \hbox{\tt AND \textasciitilde\$GIE,CC}
+	instruction to return the CPU to supervisor mode.  This essentially
+	executes a trap, setting the trap bit for the supervisor to examine. 
+	What this instruction does not do is arrange for the trap arguments to
+	be placed into the  registers {\tt R1} through {\tt R5}.  Since this is
+	a wholly inadequate solution, a function call may be made to an
+	assembly routine that executes a trap if necessary.
+\item {\tt zip\_wait()} executes a \hbox{\tt \$SLEEP|\$GIE,CC} instruction.
+	Unlike {\tt zip\_halt()}, this {\tt zip\_wait()} instruction places
+	the CPU into a wait state regardless of whether or not the CPU is
+	in supervisor mode or not.   When this function, i.e. instruction,
+	completes, it will leave the CPU in supervisor mode upon an interrupt
+	having taken place.
+
+	You may wish to set the user program counter prior to this instruction,
+	as the prefetch unit will try to load instructions from the address
+	contained within the user program counter.  Attempts to read from 
+	addresses with sideeffects may not produce the desired outcome. 
+	However, once that cache fails (or succeeds), the CPU will have been
+	put to sleep and will do no more.
+
+\item {\tt zip\_restore\_context(context *)} inserts the 32~assembly
+	instructions necessary to copy all sixteen user registers to a memory
+	region pointed to by the given context pointer, starting with {\tt uR0}
+	on up to {\tt uPC}.
+
+\item {\tt zip\_save\_context(context *)} inserts the 32~assembly instructions
+	necessary to copy all sixteen user registers to a memory region pointed
+	to by the given context pointer argument, starting
+	with {\tt uR0} on up to {\tt uPC}.
+\item {\tt zip\_ucc()}, returns the value of the user CC register.
+\end{enumerate}
+
+% Builtin functions:
+%	zip_break();
+%	zip_idle();
+%	zip_syscall(a,b,c,d)
+%
+\section{Linker Scripts}\label{sec:ld}
+The ZipCPU makes no assumptions about its memory layout.  The result, though,
+is that the memory layout of a given project is board specific.  This
+is accomplished via a board specific linker script.  This section will discuss
+some of the specifics of a ZipCPU linker script.
+
+Because the ZipCPU uses a modified binutils package as part of its tool chain,
+the format for this linker script is defined by the GNU LD project within
+binutils.  Further details on that format may be found within the GNU LD 
+documentation within the binutils package.
+
+This discussion will focus on those parts of the script specific to the ZipCPU.
+
+\subsection{Memory Types}\label{sec:ld-mem}
+Of the FPGA boards that the ZipCPU has been applied to, most of them have some
+combination of three types of memory: flash, block RAM, and Synchronous 
+Dynamic RAM (SDRAM).  Of these three, only the flash is non--volatile.  The
+block RAM is the fastest, and the SDRAM the largest.  While other memory types
+are available, such as files on an external media such as an SD card or a 
+network drive, these three types have so far been sufficient for our purposes.
+
+To support these memories, the linker script has three memory lines identifying
+where each memory exists on the bus, the size of the memory, and any protections
+associated with it.  For example,
+\begin{eqnarray*}
+\mbox{blkram (wx) : ORIGIN = 0x0008000, LENGTH = 0x0008000}
+\end{eqnarray*}
+specifies that there is a region of memory, called blkram, that can be read and
+written, and that programs can execute from.  This section starts at address
+{\tt 0x8000} and extends for another {\tt 0x8000} bytes.  The other memories
+are defined in a similar manner, with names {\tt flash} and {\tt sdram}.
+
+Following the memory section, three specific symbols are defined:
+	{\tt \_flash}, defining the beginning of flash memory,
+	{\tt \_blkram}, defining the beginning of on--chip block RAM,
+	and
+	{\tt \_sdram}, defining the beginning of SDRAM.
+These symbols are used to make the bootloader's task easier.
+
+\subsection{The Entry Function}\label{sec:ld-entry}
+The ZipCPU has, as a parameter, a {\tt RESET\_ADDRESS}.  It is important
+that this address contain a valid instruction (or more), since this is the
+first instruction the ZipCPU will execute.  Traditionally, this address is also
+the first address in instruction memory as well.
+
+To make this happen, the ZipCPU defines two additional segments: the
+{\tt .start} and the {\tt .boot} segments.  The {\tt  .start} segment is to 
+have nothing in it but the very initial startup code.  This code needs to run 
+from flash (or other ROM).  By placing this segment at the very beginning of
+the ZipCPU's flash address space, and in particular at the first valid flash
+address, the ZipCPU will boot from this address.  This is the purpose of the
+{\tt .start} section.
+
+The {\tt .boot} section has a similar purpose.  This section includes anything
+associated with the bootloader.  It is a special section because, when loading
+from flash, the bootloader {\em cannot} be placed in RAM, but must be placed
+in flash--since it is the code that loads things from flash into RAM.
+
+It may also make sense to place any code executed once only within flash as
+well.  Such code may run slower than the main system code, but by leaving it in
+flash it can be kept from consuming any higher speed RAM.  To do this, place
+this other code into the {\tt .boot} section.
+
+You may also find that large data structures that are best left in flash
+can also be placed into this {\tt .boot} section as well for that purpose.
+
+\subsection{Bootloader Tags}\label{sec:ld-boot}
+
+The bootloader needs to know a couple things from the linker script.  It needs
+to know what code/data to copy to block RAM from the flash, what code/data to
+copy to SDRAM, and finally what initial data area needs to be zeroed.  Four
+additional pointers, set within a linker script, can define these regions.
+
+\begin{enumerate}
+\item {\tt \_kernel\_image\_start}
+
+	This is the first location in flash containing data that the bootloader
+	needs to move.
+
+\item {\tt \_kernel\_image\_end}
+
+	This is a pointer to one past the last location in block RAM to place
+	things into.  If this pointer is equal to {\tt \_kernel\_image\_start},
+	then no information is placed into block RAM.
+
+\item {\tt \_sdram\_image\_start}
+
+	This should be equal to {\tt \_kernel\_image\_end}.  It is a pointer,
+	within block RAM address space, of the first location to be moved
+	into SDRAM.  By adding the difference between
+	{\tt \_sdram\_image\_start} and {\tt \_blkram} to the flash address
+	in {\tt \_kernel\_image\_start}, the actual source address within the
+	flash of the code/data that needs to be copied into SDRAM can be
+	determined.
+
+\item {\tt \_sdram\_image\_end}
+
+	This is the ending address of any code/data to be copied into SDRAM.
+	The distance between this pointer and {\tt \_sdram} should be the 
+	amount of data to be placed into SDRAM.
+
+\item {\tt \_bss\_image\_end}
+
+	The BSS segment contains data the starts with an initial value of
+	zero.  Such data are usually not placed in the executable file, nor
+	are they placed into any flash image.  This address points to the
+	last location in SDRAM used by the BSS segment.  The bootloader
+	is responsible then for clearing the SDRAM between
+	{\tt \_sdram\_image\_end} and {\tt \_bss\_image\_end}.
+
+	The bootloader must also be robust enough to handle the cases where
+	1) there is no SDRAM, 2) there is no block RAM, and 3) where there
+	is non requirement to move memory at all---such as when the program
+	is placed into memory and started from there.
+\end{enumerate}
+\subsection{Other required linker symbols}\label{sec:ld-other}
+
+Two other symbols need to be defined in the linker script, which are used
+by the startup code.  These are:
+\begin{enumerate}
+\item {\tt \_top\_of\_stack}
+
+	This is the address that the startup code will set the stack pointer
+	to point to.  It may be one past the last location of a RAM memory,
+	whether block RAM or SDRAM.
+
+\item {\tt \_top\_of\_heap}
+
+	This is the first location past the end of the {\tt .bss} segment.
+	Equivalently, this is the address of the first unused piece of
+	memory, or the location from whence to start any dynamic memory
+	subsystem.
+\end{enumerate}
+
+All of these symbols need to reference word aligned addresses.
+
+\section{Loading ZipCPU Programs}
+There are two basic ways to load a ZipCPU program, depending upon whether or
+not the ZipCPU is active within the current configuration.  If the ZipCPU
+is not a part of the current FPGA configuration, one need only write the 
+flash and then switch configurations.  It will be the CPU's responsibility
+to place itself in RAM then. 
+
+The more practical alternative is a little more involved, and there are
+several steps to it.
+\begin{enumerate}
+\item Halt the CPU by writing 0x0440 to the CPU control register.  This
+	both halts and resets the CPU.  It then prevents both bus contention,
+	while writing the new instructions to memory, as well as preventing the
+	CPU from running some instructions from one program and other
+	instructions from another.
+\item Load the program into memory.  For many programs this will involve
+	loading the program into flash, and necessitate having and using a 
+	flash controller.  The ZipCPU also supports being loaded straight into
+	RAM address as well, as though the bootloader had completed
+	it's task.
+\item You may optionally, at this point, clear all of the CPUs registers,
+	to make certain the reboot is clean.
+\item Set the sPC register to the starting address. 
+\item Clear the instruction cache in order to force the CPU to reload its
+	cache upon start.
+\item Release the CPU by writing to the CPU debug control register a number
+	between 0 and 31.  This number will correspond to the register number
+	of the register that can be ``peeked'' at while the CPU is running.
+\end{enumerate}
+
+%
+\section{Starting a ZipCPU program}
+\subsection{CRT0}
+
+Most computers have a section of code, conventionally called {\tt crt0}, which
+loads a program into memory.  On the ZipCPU, this code starts at {\tt \_start}.
+It is responsible for setting the stack pointer, calling the boot loader,
+and then calling the main entry function, {\tt entry()}.
+
+Because {\tt \_start} {\em must} be the first symbol in a program, and because
+that first symbol is located at the boot address for the CPU, the {\tt \_start}
+is placed into the {\tt .start} segment.  It is the only routine placed there.
+
+On those CPU's that don't have enough logic space for a debugger, it may be
+useful to place a routine to dump any registers, stack values and/or kernel
+traces to an output routine at this time.  That way, on any kernel fault, the
+kernel can be brought back up with a debug trace.  This works because rebooting
+the CPU doesn't reset any register values save the {\tt sCC} and {\tt sPC}.
+
+\subsection{The Bootloader}
+
+As discussed in Sec.~\ref{sec:ld-boot}, the bootloader must be placed into 
+flash if it is used.  It can be a small C program (it need not be assembly,
+like {\tt \_start}), and it only needs to copy memory.  First, it copies any
+memory from flash to block RAM.  Second, it copies any necessary memory from
+flash to SDRAM.  Then, it zeros any memory necessary in SDRAM (or block RAM,
+if there is no SDRAM).
+
+These memory copies may be done with the DMA, or they may be done one--at--a
+time for a performance penalty.
+
+\subsection{Kernel Entry}
+
+After calling the boot loader, execution returns to the {\tt \_start} routine
+which then calls the main program entry function, {\tt entry()}.  No
+requirements are laid upon this entry function regarding where it must reside.
+The simplest place to put it is in Block RAM--and just to put all code and
+variables there.  In reality, this entry function may easily be left in flash.
+It often doesn't need to run particularly fast, since there may easily be
+one--time setup functions that are independent of the programs main loop.
+
+\subsection{Kernel Main}
+
+If the kernel entry function, {\tt entry()}, is placed in flash, it should call
+a separate function to run the main while loop once it has been set up.  In
+this fashion, the main while loop may be kept in the fastest memory necessary
+(that it will fit within), to ensure good performance.
+%% }}}
+\chapter{Debug Register Addressing}\label{chap:regs}
+%% {{{
+This chapter covers the definitions and locations of the ZipCPU's registers
+when accessed by the debugging port.  The ZipSystem is special, having access
+to an extra set of registers within the same address space, so we'll cover
+that separately.
+
+This chapter also marks a significant upgrade from version~2.0 and prior of the
+CPU.  In particular, each CPU register has now been given its own address
+location in the debug address space.  This should make it easier to read all
+registers at once via a burst read command of some type.
+
+\section{Debug Port Registers}\label{sec:reg-debug}
+%% {{{
+Accessing the ZipCPU via the debug port isn't as straight forward as
+accessing the system via its native bus.  The basic address space contains
+64~word addresses, of which only 33~have any special meaning.  These registers
+are shown in Tbl.~\ref{tbl:dbgregs}.
+\begin{table}[htbp]
+\begin{center}\begin{reglist}
+ZIPCTRL & 0 & 32 & R/W & ZipCPU Control and Status Register \\\hline
+\vdots & \vdots & &  & (Reserved addresses)\\\hline
+sR0 & 128 & 32 & R/W & Supervisor Register R0 \\\hline
+sR1 & 132 & 32 & R/W & Supervisor Register R1 \\\hline
+\vdots & \vdots & 32 & R/W & Other supervisor registers\\\hline
+sSP & 180 & 32 & R/W & Supervisor Stack Pointer\\\hline
+sCC & 184 & 32 & R/W & Supervisor Condition Code Register \\\hline
+sPC & 188 & 32 & R/W & Supervisor Program Counter\\\hline
+uR0 & 192 & 32 & R/W & User Register R0 \\\hline
+uR1 & 196 & 32 & R/W & User Register R1 \\\hline
+\vdots & \vdots & 32 & R/W & Other user registers\\\hline
+uSP & 244 & 32 & R/W & User Stack Pointer\\\hline
+uCC & 248 & 32 & R/W & User Condition Code Register \\\hline
+uPC & 252 & 32 & R/W & User Program Counter\\\hline
+\end{reglist}
+\caption{ZipSystem Debug Registers}\label{tbl:dbgregs}
+\end{center}\end{table}
+The ZipSystem wrapper contains an additional 64~words as well, which we'll get
+to in a moment.
+
+The foremost register among these is the ZipCPU Control and Status Register.
+This register has the fields shown in
+Tbl.~\ref{tbl:dbgctrl}.
+\begin{table}\begin{center}
+\begin{bitlist}
+11 & RO & The CPU has suffered from a break condition, and has halted itself
+	as a result.\\\hline
+10 & RO & True if an interrupt is pending.\\\hline
+9 & RO & GIE.  If set, the CPU is currently in user mode.\\\hline
+8 & RO & Sleep.  The CPU is sleeping.\\\hline
+7--5 & & (Reserved)\\\hline
+4 & WO & Clear cache.  Set to `1' to clear the CPU's caches.
+	This is useful if you are using caches, you've adjusted memory, and
+	  need the CPU to be able to read that adjusted memory.
+	As a side effect, this also halts the CPU if it wasn't halted before.
+	\\\hline
+3 & R/W & Reset.  Set to `1' to reset the CPU.  If the CPU has been configured
+	to start in a halted state, it will reset and then halt.\\\hline
+2 & WO & Step Command.  Set to `1' to step the CPU, and then leave it halted.  Self clearing.\\\hline
+1 & RO & Halt status.  If true, the CPU has halted.\\\hline
+0 & R/W & Halt request.  Set to `1' to halt the CPU.\\\hline
+\end{bitlist}
+\caption{Debug Control Register Bits}\label{tbl:dbgctrl}
+\end{center}\end{table}
+
+Here are some operations you can do with this register:
+
+\begin{enumerate}
+\item Reset: To reset the CPU, write an {\tt 0x08} to the debug control
+	register.  If the CPU was configured to immediately start on reset,
+	then the CPU will start immediately.
+\item Reset and halt: To reset the CPU but leave it halted, write a
+	{\tt 0x09} to the debug control register.
+\item Start a halted CPU: If the CPU is halted, simply write a {\tt 0x00} to the
+	debug control register in order to cause it to continue.
+\item Stepping the CPU: To step through a single instruction, write a
+	{\tt 0x04} to the debug control register.  This will step one
+	instruction through the CPU and then halt it again immediately
+	following that instruction.
+
+	The CPU will not step through compound or LOCK instructions, but rather
+	it will step over them.  Hence, any compound instruction will continue
+	until both instructions have been executed (or one trapped).  Similarly,
+	a LOCK instruction will step the three instructions following as well
+	before halting.
+\item Halting the CPU.  To halt the CPU, simply write a {\tt 0x01} to the
+	debug control register.  Once the register reads back a {\tt 0x03}, the
+	CPU is halted.
+\end{enumerate}
+
+Internal CPU registers may be read whether or not the CPU is halted.  However,
+for coherence sake, it makes sense to halt the CPU first.
+
+On the other hand, any attempt to write to an internal CPU register will first
+halt the CPU and then write to that register.  This will leave the CPU in a
+halted state.
+
+\subsection{Breakpoint Handling}
+
+Breakpoints can be handled via the debug control register.  Once a breakpoint
+has been hit, the CPU will halt, raise its external interrupt flag, and
+set the break bit in the debug control register.
+
+At this point, the debugger may examine and/or modify any registers as
+necessary.
+
+Once complete, the breakpoint instruction may be replaced with another
+instruction, the cache cleared, and that instruction may then be stepped
+through.  The breakpoint may then be replaced and the cache cleared again.
+The CPU may then be started to go until its next breakpoint.
+
+\section{ZipSystem Registers}
+
+The ZipSystem has an additional set of registers which may be accessed by
+the CPU.  These are associated with the additional peripherals the ZipSystem
+wrapper provides to the CPU.  These registers are listed in
+Tbl.~\ref{tbl:dbgaddrs}.
+\begin{table}\begin{center}
+\begin{reglist}
+PIC & 32 & 32 & R/W & Primary Interrupt Controller \\\hline
+WDT & 33 & 32 & R/W & Watchdog Timer\\\hline
+WBUS & 34 & 32 & R & Last Bus Error\\\hline
+CTRIC & 35 & 32 & R/W & Secondary Interrupt Controller\\\hline
+TMRA & 36 & 32 & R/W & Timer A\\\hline
+TMRB & 37 & 32 & R/W & Timer B\\\hline
+TMRC & 38 & 32 & R/W & Timer C\\\hline
+JIFF & 39 & 32 & R/W & Jiffies peripheral\\\hline
+MTASK & 40 & 32 & R/W & Master task clock counter\\\hline
+MMSTL & 41 & 32 & R/W & Master memory stall counter\\\hline
+MPSTL & 42 & 32 & R/W & Master Pre-Fetch Stall counter\\\hline
+MICNT & 43 & 32 & R/W & Master instruction counter\\\hline
+UTASK & 44 & 32 & R/W & User task clock counter\\\hline
+UMSTL & 45 & 32 & R/W & User memory stall counter\\\hline
+UPSTL & 46 & 32 & R/W & User Pre-Fetch Stall counter\\\hline
+UICNT & 47 & 32 & R/W & User instruction counter\\\hline
+DMACMD & 48 & 32 & R/W & DMA command and status register\\\hline
+DMALEN & 49 & 32 & R/W & DMA transfer length\\\hline
+DMARD & 50 & 32 & R/W & DMA read address\\\hline
+DMAWR & 51 & 32 & R/W & DMA write address\\\hline
+\end{reglist}
+\caption{Debug Register Addresses}\label{tbl:dbgaddrs}
+\end{center}\end{table}
+Primarily, these ``registers'' include access to the entire CPU register
+set, as well as the internal peripherals.  To read one of these registers
+once the address is set, simply issue a read from the data port.  To write
+one of these registers or peripheral ports, simply write to the data port
+after setting the proper address.
+
+In this manner, all of the CPU's internal state may be read and adjusted.
+
+As an example of how to use this, consider what would happen in the case
+of an external break point.  If and when the CPU hits a break point that
+causes it to halt, the Command HALT bit will activate on its own, the CPU
+will then raise an external interrupt line and wait for a debugger to examine
+its state.  After examining the state, the debugger will need to remove
+the breakpoint by writing a different instruction into memory and by writing
+to the command register while holding the clear cache, command halt, and
+step CPU bits high, (32'hd00).  The debugger may then replace the breakpoint
+now that the CPU has gone beyond it, and clear the cache again (32'h500).
+
+To leave this debug mode, simply write a `32'h0' value to the command register.
+%% }}}
 
 \section{ZipSystem Peripheral Registers}
+%% {{{
 The ZipSystem maintains currently maintains 20 register locations, as shown
 in Tbl.~\ref{tbl:zpregs}.
 \begin{table}[htbp]
@@ -3219,6 +3223,7 @@ registers in turn, together with any bit fields that may be associated with
 them, and how to set those fields.
 
 \subsection{Interrupt Controller(s)}
+%% {{{
 Any CPU with only a single interrupt line, such as the ZipCPU, really needs an
 interrupt controller to give it access to more than the single interrupt.  The
 ZipCPU is no different.  When the ZipCPU is built as part of the ZipSystem,
@@ -3284,8 +3289,9 @@ interrupts, 3\ldots0.
 	whichever task is running, by executing a return to userspace
 	instruction.
 \end{enumerate}
-
+%% }}}
 \subsection{Timer Register}\label{sec:reg-timer}
+%% {{{
 
 Leaving the interrupt controller, we show the timer registers bit definitions
 in Tbl.~\ref{tbl:tmrbits}.
@@ -3304,8 +3310,9 @@ In this mode, upon setting its interrupt bit for one cycle, the timer will
 also reset itself back to the value of the timer that was written to it when
 the auto--reload option was written to it.  To clear and stop the timer, 
 just simply write a `32'h00' to this register.
-
+%% }}}
 \subsection{Jiffies}\label{sec:reg-jiffies}
+%% {{{
 
 The Jiffies register is first and foremost a counter.  It counts up one on
 every clock.  Reads from this register, as shown in Tbl.~\ref{tbl:jiffybits},
@@ -3330,8 +3337,9 @@ When the Jiffy counter value equals the value in its trigger register, then
 the jiffies peripheral will trigger an interrupt.  At this point, the internal
 register is cleared.  It will create no more interrupts unless a new value
 is written to it.
-
+%% }}}
 \subsection{Performance Counters}
+%% {{{
 
 The ZipCPU also supports several counter peripherals, mostly for the purpose of
 process accounting.  These counters each contain a single register, as shown
@@ -3366,8 +3374,9 @@ Operating System will read the timers back off, to determine how much of the
 CPU the process had consumed.  To keep this accurate, the user counters will
 only increment when the GIE bit is set to indicate that the processor is
 in user mode.
-
+%% }}}
 \subsection{DMA Controller}\label{sec:reg-dmac}
+%% {{{
 
 The final peripheral to discuss is the DMA controller.  This controller
 has four registers.  Of these four, the length, source and destination address
@@ -3413,106 +3422,592 @@ interrupts.)  As a third example, if you wished to write to an external
 FIFO anytime it was less than half full (had fewer than 512 items), and
 interrupt line 3 indicated this condition, you might wish to issue a
 \hbox{32'h1fed8dff} to this port.
-
-\section{Debug Port Registers}\label{sec:reg-debug}
-Accessing the ZipSystem via the debug port isn't as straight forward as
-accessing the system via the wishbone bus.  The debug port itself has been
-reduced to two addresses, as outlined earlier in Tbl.~\ref{tbl:dbgregs}.
-\begin{table}[htbp]
-\begin{center}\begin{reglist}
-ZIPCTRL & 0 & 32 & R/W & Debug Control Register \\\hline
-ZIPDATA & 4 & 32 & R/W & Debug Data Register \\\hline
-\end{reglist}
-\caption{ZipSystem Debug Registers}\label{tbl:dbgregs}
-\end{center}\end{table}
-
-Access to the ZipSystem begins with the Debug Control register, shown in 
-Tbl.~\ref{tbl:dbgctrl}.
-\begin{table}\begin{center}
-\begin{bitlist}
-31\ldots 14 & R & External interrupt state.  Bit 14 is valid for one
-	interrupt only, bit 15 for two, etc.\\\hline
-13 & R & CPU GIE setting\\\hline
-12 & R & CPU is sleeping\\\hline
-11 & W & Command clear PF cache\\\hline
-10 & R/W & Command HALT, Set to `1' to halt the CPU\\\hline
-9 & R & Stall Status, `1' if CPU is busy (i.e., not halted yet)\\\hline
-8 & R/W & Step Command, set to `1' to step the CPU, also sets the halt bit\\\hline
-7 & R & Interrupt Request Pending\\\hline
-6 & R/W & Command RESET \\\hline
-5\ldots 0 & R/W & Debug Register Address \\\hline
-\end{bitlist}
-\caption{Debug Control Register Bits}\label{tbl:dbgctrl}
-\end{center}\end{table}
-
-The first step in debugging access is to determine whether or not the CPU
-is halted, and to halt it if not.  To do this, first write a `1' to the
-Command HALT bit.  This will halt the CPU and place it into debug mode.
-Once the CPU is halted, the stall status bit will drop to zero.  Thus,
-if bit 10 is high and bit 9 low, the debug port is open to examine the 
-internal state of the CPU.
-
-At this point, the external debugger may examine internal state information
-from within the CPU.  To do this, first write again to the command register
-a value (with command halt still high) containing the address of an internal
-register of interest in the bottom 6~bits.  Internal registers that may be
-accessed this way are listed in Tbl.~\ref{tbl:dbgaddrs}.
-\begin{table}\begin{center}
-\begin{reglist}
-sR0 & 0 & 32 & R/W & Supervisor Register R0 \\\hline
-sR1 & 0 & 32 & R/W & Supervisor Register R1 \\\hline
-sSP & 13 & 32 & R/W & Supervisor Stack Pointer\\\hline
-sCC & 14 & 32 & R/W & Supervisor Condition Code Register \\\hline
-sPC & 15 & 32 & R/W & Supervisor Program Counter\\\hline
-uR0 & 16 & 32 & R/W & User Register R0 \\\hline
-uR1 & 17 & 32 & R/W & User Register R1 \\\hline
-uSP & 29 & 32 & R/W & User Stack Pointer\\\hline
-uCC & 30 & 32 & R/W & User Condition Code Register \\\hline
-uPC & 31 & 32 & R/W & User Program Counter\\\hline
-PIC & 32 & 32 & R/W & Primary Interrupt Controller \\\hline
-WDT & 33 & 32 & R/W & Watchdog Timer\\\hline
-WBUS & 34 & 32 & R & Last Bus Error\\\hline
-CTRIC & 35 & 32 & R/W & Secondary Interrupt Controller\\\hline
-TMRA & 36 & 32 & R/W & Timer A\\\hline
-TMRB & 37 & 32 & R/W & Timer B\\\hline
-TMRC & 38 & 32 & R/W & Timer C\\\hline
-JIFF & 39 & 32 & R/W & Jiffies peripheral\\\hline
-MTASK & 40 & 32 & R/W & Master task clock counter\\\hline
-MMSTL & 41 & 32 & R/W & Master memory stall counter\\\hline
-MPSTL & 42 & 32 & R/W & Master Pre-Fetch Stall counter\\\hline
-MICNT & 43 & 32 & R/W & Master instruction counter\\\hline
-UTASK & 44 & 32 & R/W & User task clock counter\\\hline
-UMSTL & 45 & 32 & R/W & User memory stall counter\\\hline
-UPSTL & 46 & 32 & R/W & User Pre-Fetch Stall counter\\\hline
-UICNT & 47 & 32 & R/W & User instruction counter\\\hline
-DMACMD & 48 & 32 & R/W & DMA command and status register\\\hline
-DMALEN & 49 & 32 & R/W & DMA transfer length\\\hline
-DMARD & 50 & 32 & R/W & DMA read address\\\hline
-DMAWR & 51 & 32 & R/W & DMA write address\\\hline
-\end{reglist}
-\caption{Debug Register Addresses}\label{tbl:dbgaddrs}
-\end{center}\end{table}
-Primarily, these ``registers'' include access to the entire CPU register
-set, as well as the internal peripherals.  To read one of these registers
-once the address is set, simply issue a read from the data port.  To write
-one of these registers or peripheral ports, simply write to the data port
-after setting the proper address.
-
-In this manner, all of the CPU's internal state may be read and adjusted.
-
-As an example of how to use this, consider what would happen in the case
-of an external break point.  If and when the CPU hits a break point that
-causes it to halt, the Command HALT bit will activate on its own, the CPU
-will then raise an external interrupt line and wait for a debugger to examine
-its state.  After examining the state, the debugger will need to remove
-the breakpoint by writing a different instruction into memory and by writing
-to the command register while holding the clear cache, command halt, and
-step CPU bits high, (32'hd00).  The debugger may then replace the breakpoint
-now that the CPU has gone beyond it, and clear the cache again (32'h500).
-
-To leave this debug mode, simply write a `32'h0' value to the command register.
 %% }}}
-\chapter{Wishbone Datasheets}\label{chap:wishbone}
+%% }}}
+%% }}}
+\chapter{Integration}\label{chap:integration}
+%% {{{
+\section{ZipCPU Parameters}\label{ssec:build-options}
+%% {{{
+One problem with a simple goal such as being light on logic, is that some
+architectures have some needs, others have other needs.  What is light logic
+in some architectures might consume all the available logic in others.
+As an example, the CMod~S6 board built by Digilent uses a very spare Xilinx
+Spartan~6 LX4 FPGA.  This FPGA doesn't have enough look up tables (LUTs) to
+support pipelined mode, whereas another project running on a XuLA2 LX25 board
+made by Xess, having a Spartan~6 LX25 on board, has more than enough logic
+to support a pipelined mode.  The Artix--7 35T has not only enough logic for
+a pipelined mode, but plenty of RAM to support instruction and data caches
+as well.  Very quickly it becomes clear that LUTs and RAMs can be traded for
+performance.
+
+To make tailored configurations possible, the ZipCPU has a set of parameters
+that can be used to configure its logic usage and performance.
+
+The first several parameters control the ZipCPU's design as a whole, such
+as whether or not the CPU is pipelined, how the register file is implemented,
+or how big the caches are.
+
+\begin{itemize}
+\item {\bf\tt OPT\_PIPELINED}:  The first performance question is whether or not
+	the ZipCPU will operate on multiple instructions at a time in a
+	pipelined fashion.  Since the ZipCPU is fundamentally a pipelined
+	architecture, setting this value to zero will primarily simplify the
+	pipeline stall logic so that only one instruction is ever allowed into
+	the pipeline at a time.
+
+\item {\bf\tt OPT\_EARLY\_BRANCHING}:  When enabled, the ZipCPU may branch
+	on an unconditional branch instruction as soon as it is recognized
+	coming out of the instruction decoder.  This minimizes the pipeline
+	stalls associated with branching, at a small logic cost.
+
+\item {\bf\tt OPT\_DISTRIBUTED\_REGS}:  The ZipCPU normally keeps its registers
+	in distributed RAM, where it can read them on the same clock cycle
+	their address becomes available.  This doesn't work, however, on an
+	iCE40 FPGA since iCE40 FPGAs don't have distributed RAM.  Instead,
+	iCE40 FPGAs require a clock to read from RAM, and they also require
+	that any read of the RAM go immediately and unconditionally into a
+	registered output.  Set this parameter to zero for a register file
+	implementation that will use the block RAM resources on an iCE40.
+
+\item {\bf\tt OPT\_LGICACHE}: This specifies the log, based two, of the
+	instruction cache size.  A value of one or less will result in no
+	instruction cache.  A value of two (for Wishbone) or four or less
+	(for AXI4 and AXI4--lite) will result in a small pipelined memory
+	reader--with no cache.  Anything larger will specify an instruction
+	cache size.
+
+\item {\bf\tt OPT\_LGDCACHE}: Specifies the log, based two, of the data cache
+	size.  As with the instruction cache, a value of zero will yield
+	a basic memory controller with no cache.  If {\tt OPT\_PIPELINED} is
+	true, a pipelined memory controller may be used that allows multiple
+	requests to be outstanding at once.  For anything larger than two,
+	this value specifies the log of the data cache size.
+
+\item {\bf\tt OPT\_LOWPOWER}: The ZipCPU has been designed as a low logic
+	processor.  Low logic isn't necessarily low power.  If the
+	{\tt OPT\_LOWPOWER} parameter is set, the ZipCPU will attempt to either
+	minimize transitions of items not being used or else pin their values
+	to zero.
+\end{itemize}
+
+The next several parameters control the instruction set, and whether or not
+all instructions are implemented or not.
+
+\begin{itemize}
+\item {\bf\tt OPT\_MPY}: Controls the algorithm that will be used to implement
+	a multiply.  If left at zero, any multiply instruction will result in
+	an illegal instruction error.  Values of 1--4 will generate a multiply
+	algorithm requiring that many cycles.  Of those, 1--2 are not well
+	protected from the critical path and may not be usable.
+	{\tt  OPT\_MPY = 3} seems to work very nicely on Xilinx series 7 parts,
+	whereas {\tt  OPT\_MPY = 4}, a binomial multiply requiring an extra
+	clock cycle, seems to work well on Spartan~6's.  If an FPGA doesn't
+	have multiply support built in, any value greater than four will
+	generate a low logic shift--add algorithm that should work on any
+	architecture at the cost of 33+ clock cycles per multiply.
+
+\item {\bf\tt OPT\_DIV}: If set, the ZipCPU will include a divide unit to
+	support divide instructions.  If not, any attempt to issue a divide
+	instruction will result in an illegal instruction error.
+
+\item {\bf\tt OPT\_SHIFTS}: If set, the ZipCPU will support shift instructions:
+	{\tt LSR} (logical shift right), {\tt ASR} (arithmetic shift right),
+	and {\tt LSL} (logical shift left) for any number of shifts.  If clear,
+	these instructions will only ever shift by one bit.
+
+	Unlike divide or multiply instructions, if {\tt OPT\_SHIFTS} is clear
+	the CPU will not generate an illegal instruction error.  Instead, it
+	will quietly execute the wrong instruction.  As a result, there's no
+	current way to trap an unimplemented shift and replace it with software.
+	Worse, GCC support currently requires that this value be set, so
+	turning this option off is quite problematic.
+
+	Shift register support costs a couple hundred LUTs, and hence the
+	reason for this option.  A very low logic implementation
+	might wish to keep this parameter clear.
+
+	Note that the ZipCPU GCC compiler port does not support this option.
+
+\item {\bf\tt OPT\_CIS}: Controls whether or not the instruction decoder
+	includes the logic necessary to handle the compressed instruction set.
+
+\item {\bf\tt OPT\_LOCK}: Atomic access on the ZipCPU requires the use of a
+	LOCK instruction.  If this value is set, the LOCK instruction will be
+	supported.  If clear, LOCK instructions will generate illegal
+	instruction errors.
+
+	LOCK instructions should only be necessary in multitasking or
+	interrupt environments.
+
+\item {\bf\tt OPT\_SIM}: The ZipCPU supports several simulation--only
+	instructions.  If this value is set, these instructions will be
+	decoded and processed through the pipeline.  If clear, any simulation
+	only instruction will be converted into either a NOOP or an illegal
+	instruction--depending upon the instruction opcode in question.
+\end{itemize}
+
+The final set of parameters control the ZipCPU's wrappers, and hence its
+environment.
+\begin{itemize} \item {\bf\tt OPT\_START\_HALTED}: The ZipCPU can be configured
+	to immediately start processing instructions on power up, or it can be
+	configured to wait for a command on the debug port before starting.
+	If {\tt OPT\_START\_HALTED} is set, then the ZipCPU will stay in its
+	halted state upon reset.
+
+	This {\tt START\_HALTED} option is sueful for debugging, since it
+	prevents the CPU from doing anything without supervision.  Of course,
+	once all pieces of your design are in place and proven, you'll probably
+	want to set this to zero, so that the CPU will then start up
+	immediately upon power up.
+
+\item {\bf\tt RESET\_DURATION}: Some architectures, such as the iCE40s,
+	require that the CPU stay halted for a particular period of time
+	before first attempting to access memory or other peripherals.  This
+	behavior can be controlled by the {\tt RESET\_DURATION} parameter,
+	controlling how long the CPU remains in reset before leaving its
+	initial halted state.
+
+\item {\bf\tt OPT\_TRACE\_PORT}: The ZipCPU has a trace port that can be useful
+	for debugging the CPU in hardware if necessary.  The trace port is
+	a 32-bit output containing internal details of the CPU on a clock by
+	clock basis.  For example, it is possible to watch what is happening
+	within the pipeline, what registers are getting set to what values and
+	more by observing the trace port.  This port, however, costs area,
+	so it is not enabled by default.  When not enabled, the debug trace
+	port output will be clamped at zero.
+
+\item {\bf\tt OPT\_CLKGATE}: All of the ZipCPU's wrappers now include a clock
+	gating option controlled by this parameter.  If set to one, clock
+	gating will be enabled and the ZipCPU will halt its clock any
+	time it is halted or asleep.
+
+	This option is designed for optimizing simulations only, and is not
+	likely to work on most FPGAs.
+
+\item {\bf\tt OPT\_DMA}: The ZipSystem wrapper optionally contains a Wishbone
+	DMA.  When this option is set, the DMA will be included.  If clear,
+	any DMA will need to be implemented off-core.
+
+\item {\bf\tt OPT\_ACCOUNTING}: The ZipSystem wrapper also includes a set of
+	counters which can be used for accounting.  This parameter controls
+	whether or not these accounting timers are inclued into the ZipSystem
+	wrapper or not.
+
+	When using either the AXI--Lite or AXI wrappers, these accounting
+	registers have been moved into an external AXI peripheral package.
+
+\item {\bf\tt EXTERNAL\_INTERRUPTS}:
+	Controls the number of interrupt wires coming into the ZipSystem CPU
+	wrapper.  This number must be between one and sixteen, or if the
+	performance counters are disabled, between one and twenty four.
+
+\item {\bf\tt RESET\_ADDRESS}:
+	The {\tt RESET\_ADDRESS} parameter controls what address the CPU will
+	attempt to fetch its first instruction from upon any CPU reset.  The
+	default value is not likely to be particularly useful, so overriding
+	the default is recommended for every implementation.
+
+\item {\bf\tt ADDRESS\_WIDTH}:
+
+	The {\tt ADDRESS\_WIDTH} parameter configures the size of the ZipCPU's
+	address space {\em in bytes} (not words).  This parameter can be used
+	to trim down the width of the address registers used by the CPU.  For
+	example, although the ZipCPU will support a 32-bit addressing,
+	particular implementations may only implement a smaller subset of these
+	bits.  By setting this value to the actual size of the external
+	address space, some logic can be spared within the CPU.  The default
+	is also the maximum, a 32--bit address width.
+\end{itemize}
+%% }}}
+\appendix{Clocks}\label{chap:clocks}
+%% {{{
+This core has now been tested and proven on the Xilinx Spartan~6 FPGA,
+as well as the Artix--7 FPGA.
+\begin{table}[htbp]
+\begin{center}
+\begin{clocklist}
+i\_clk & External & 100~MHz & & System clock, Artix--7/35T\\\hline
+ & & 80~MHz & & System clock, Spartan 6\\\hline
+\end{clocklist}
+\caption{List of Clocks}\label{tbl:clocks}
+\end{center}\end{table}
+
+On a SPARTAN 6, the clock can run successfully at 80~MHz.
+
+When running on Digilent's Arty board, the clock is limited to 81.25~MHz
+by the memory interface generated (MIG) core used to access SDRAM.
+
+Others have described running the ZipCPU successfully at 140~MHz on a Kintex--7.
+%% }}}
+\section{I/O Ports}\label{chap:ioports}
+%% {{{
+This chapter presents and outlines the various I/O lines in and out of the
+ZipSystem.  Since the ZipCPU needs to be a component of such a larger part,
+this makes sense. 
+
+The I/O ports to the ZipSystem may be grouped into three categories.  The first
+is that of the master wishbone used by the CPU, then the slave wishbone used
+to command the CPU via a debugger, and then the rest.  The first two of these
+were already discussed in the wishbone chapter.  They are listed here
+for completeness in Tbl.~\ref{tbl:iowb-master}
+\begin{table}
+\begin{center}\begin{portlist}
+{\tt o\_wb\_cyc}   &  1 & Output & Indicates an active Wishbone cycle\\\hline
+{\tt o\_wb\_stb}   &  1 & Output & WB Strobe signal\\\hline
+{\tt o\_wb\_we}    &  1 & Output & Write enable\\\hline
+{\tt o\_wb\_addr}  & 30 & Output & Bus address \\\hline
+{\tt o\_wb\_data}  & 32 & Output & Data on WB write\\\hline
+{\tt o\_wb\_sel}   &  4 & Output & Select lines\\\hline
+{\tt i\_wb\_ack}   &  1 & Input  & Slave has completed a R/W cycle\\\hline
+{\tt i\_wb\_stall} &  1 & Input  & WB bus slave not ready\\\hline
+{\tt i\_wb\_data}  & 32 & Input  & Incoming bus data\\\hline
+{\tt i\_wb\_err}   &  1 & Input  & Bus Error indication\\\hline
+\end{portlist}\caption{CPU Master Wishbone I/O Ports}\label{tbl:iowb-master}\end{center}\end{table}
+and~\ref{tbl:iowb-slave} respectively.
+\begin{table}
+\begin{center}\begin{portlist}
+{\tt i\_dbg\_cyc}   &  1 & Input & Indicates an active Wishbone cycle\\\hline
+{\tt i\_dbg\_stb}   &  1 & Input & WB Strobe signal\\\hline
+{\tt i\_dbg\_we}    &  1 & Input & Write enable\\\hline
+{\tt i\_dbg\_addr}  &  1 & Input & Bus address, command or data port \\\hline
+{\tt i\_dbg\_data}  & 32 & Input & Data on WB write\\\hline
+{\tt o\_dbg\_ack}   &  1 & Output  & Slave has completed a R/W cycle\\\hline
+{\tt o\_dbg\_stall} &  1 & Output  & WB bus slave not ready\\\hline
+{\tt o\_dbg\_data}  & 32 & Output  & Incoming bus data\\\hline
+\end{portlist}\caption{CPU Debug Wishbone I/O Ports}\label{tbl:iowb-slave}\end{center}\end{table}
+
+There are only four other lines to the CPU: the external clock, external
+reset, incoming external interrupt line(s), and the outgoing debug interrupt
+line.  These are shown in Tbl.~\ref{tbl:ioports}.
+\begin{table}
+\begin{center}\begin{portlist}
+{\tt i\_clk} & 1 & Input & The master CPU clock \\\hline
+{\tt i\_rst} & 1 & Input &  Active high reset line \\\hline
+{\tt i\_ext\_int} & 1\ldots 16 & Input &  Incoming external interrupts, actual
+		value set by implementation parameter.  This is only ever one
+		for the ZipBones implementation.\\\hline
+{\tt o\_ext\_int} & 1 & Output & CPU Halted interrupt \\\hline
+\end{portlist}\caption{I/O Ports}\label{tbl:ioports}\end{center}\end{table}
+The clock line was discussed briefly in Chapt.~\ref{chap:clocks}.  The reset
+line is an active high reset.  When
+asserted, the CPU will start running again from its {\tt RESET\_ADDRESS} in
+memory.  Further, depending upon how the CPU is configured and specifically 
+based upon how the {\tt START\_HALTED} parameter is set, the CPU may or may
+not start running automatically following a reset.  The {\tt i\_ext\_int}
+bus is for set of external interrupt lines to the ZipSystem.  This line may
+actually be as wide as 16~external interrupts, depending upon the setting of
+the {\tt EXTERNAL\_INTERRUPTS} parameter.  Finally, the ZipSystem produces one
+external interrupt whenever the entire CPU halts to wait for the debugger.
+
+The I/O lines to the ZipBones package are identical to those of the ZipSystem,
+with the only exception that the ZipBones package has only a single interrupt
+line input.  This means that the ZipBones implementation practically depends
+upon an external interrupt controller.
+%% }}}
+%% }}}
+\chapter{Accessory Peripherals}\label{chap:accessory}
+%% {{{
+\subsubsection{Interrupt Controller}\label{sec:pic}
+%% {{{
+Perhaps the most important peripheral within the ZipSystem is the interrupt
+controller.  While the ZipCPU itself can only handle one interrupt, and has
+only the one interrupt state: disabled or enabled, the interrupt controller
+can make things more interesting.
+
+The ZipSystem interrupt controller module supports up to 15 interrupts, all
+controlled from one register.  Further, it has been designed so that individual
+interrupts can be enabled or disabled individually without having any knowledge
+of the rest of the controller setting.  To enable an interrupt, write to the
+register with bit 15 set and the respective interrupt
+enable bit set.  No other bits will be affected.  To disable an interrupt,
+write to the register bit 15 clear and the
+respective interrupt enable bit set.  To clear an interrupt, write a `1' to
+that interrupt's status bit.  The interrupt enable pin for the global interrupt
+enable is set and cleared likewise.
+
+As an example, suppose you wished to enable interrupt \#4.  You would then
+write to the register a {\tt 0x80108010} to enable interrupt \#4, interrupts
+in general, and to clear any past active state.  When you later wish to disable
+this interrupt, you would write a {\tt 0x00100010} to the register.  This both
+disables the interrupt and clears the active indicator.  This does not
+disable interrupts in general, however.  To do that you'd also need to set
+bit 31.  Similarly a subsequent write of {\tt 0x80000000} will disable all
+interrupts as well.
+
+The ZipSystem hosts two interrupt controllers: a primary and a secondary.  The
+primary interrupt controller is the one that interrupts the CPU.  It has
+six local interrupt lines, the rest coming from external interrupt sources.
+One of those interrupt lines to the primary controller comes from the secondary
+interrupt controller.  This controller maintains an interrupt state for the
+process accounting counters, and any other external interrupts that didn't fit
+into the primary interrupt controller.
+
+As a word of caution, because the interrupt controller is an external
+peripheral, and because memory writes take place concurrently with any following
+instructions, any attempt to clear interrupts on one instruction followed by
+an immediate Return to Userspace ({\tt RTU}) instruction, may not have the
+effect of having interrupts cleared before the {\tt RTU} instruction executes.
+This is only relevant if the two instructions take place in immediate
+succession.  As an alternative, reading from the interrupt controller after
+writing to it will place enough time between these two events for the
+{\tt RTU} command to successfully complete.
+%% }}}
+\subsubsection{Counter}
+%% {{{
+The Zip Counter is a very simple counter: it just counts.  It cannot be
+halted.  When it rolls over, it issues an interrupt.  Writing a value to the
+counter just sets the current value, and it starts counting again from that
+value.
+
+Eight counters are implemented in the ZipSystem for process accounting if
+the {\tt INCLUDE\_ACCOUNTING\_COUNTERS} define is set within {\tt cpudefs.v}.
+Four of those measure the performance of the system as a whole, four are
+used for measuring user CPU usage.
+This may change in the future, as nothing as yet uses these counters.
+%% }}}
+\subsubsection{Timer}
+%% {{{
+The Zip Timer is also very simple: it is a 31--bit counter that simply counts
+down to zero.  When it transitions from a one to a zero it creates an interrupt.
+
+Writing any non-zero value to the timer starts the timer.  If the high order
+bit is set when writing to the timer, the timer becomes an interval timer and
+reloads its last start time on any interrupt.  Hence, to mark seconds, one
+might set the 31--bits of the timer to the number of clocks per second and the
+top bit to one.  Ever after, the timer will interrupt the CPU once per
+second--until a non--interrupt interval is set in the timer.  This reload
+capability also limits the maximum timer value to $2^{31}-1$, rather than
+$2^{32}-1$.
+%% }}}
+\subsubsection{Watchdog Timer}
+%% {{{
+The watchdog timer has only two differences from the of the other timers.
+The first difference is that it is a one--shot timer.  The second difference,
+though, is critical: the interrupt line from the watchdog timer is tied to the
+reset line of the CPU.  Hence writing a `1' to the watchdog timer will always
+reset the CPU.  To stop the Watchdog timer, write a `0' to it.  To start it,
+write any other number to it---as with the other timers.
+%% }}}
+\subsubsection{Bus Watchdog}
+%% {{{
+There is an additional watchdog timer on the Wishbone bus of the ZipSystem. 
+This timer,
+however, is hardware configured and not software configured.  The timer is
+reset at the beginning of any bus transaction, and only counts clocks during
+such bus transactions.  If the bus transaction takes longer than the number
+of counts the timer allots, it will raise a bus error flag to terminate the
+transaction.  This is useful in the case of any peripherals that are
+misbehaving.  If the bus watchdog terminates a bus transaction, the CPU may
+then read from its port to find out which memory location created the problem.
+
+Aside from its unusual configuration, the bus watchdog is just another
+implementation of the fundamental timer described above--stripped down
+for simplicity.
+%% }}}
+\subsubsection{Jiffies}
+%% {{{
+This peripheral is motivated by the Linux use of `jiffies' whereby a process
+can request to be put to sleep until a certain number of `jiffies' have
+elapsed.  Using this interface, the CPU can read the number of `jiffies'
+from the peripheral (it only has the one location in address space), add the
+sleep length to it, and write the result back to the peripheral.  The
+{\tt zipjiffies}
+peripheral will record the value written to it only if it is nearer the current
+counter value than the last current waiting interrupt time.  If no other 
+interrupts are waiting, and this time is in the future, it will be enabled.
+(There is currently no way to disable a jiffie interrupt once set, other
+than to disable the interrupt line in the interrupt controller.)  The processor
+may then place this sleep request into a list among other sleep requests.
+Once the timer expires, it would write the next Jiffy request to the peripheral
+and wake up the process whose timer had expired.
+
+Indeed, the Jiffies register is nothing more than a glorified counter with
+an interrupt.  Unlike the other counters, the internal Jiffies counter can only
+be read, never set.
+Writes to the jiffies register create an interrupt time.  When the Jiffies
+register later equals the value written to it, an interrupt will be asserted
+and the register then continues counting as though no interrupt had taken
+place.
+
+Finally, if the new value written to the Jiffies register is within the past
+$2^{31-1}$ clock ticks, the Jiffies register will immediately cause an interrupt
+and otherwise ignore the new request.
+
+The purpose of this register is to support alarm times within a CPU.  To
+set an alarm for a particular process $N$ clocks in advance, read the current
+Jiffies value, add $N$, and write it back to the Jiffies register.  The
+O/S must also keep track of values written to the Jiffies register.  Thus,
+when an `alarm' trips, it should be removed from the list of alarms, the list
+should be resorted, and the next alarm in terms of Jiffies should be written
+to the register--possibly for a second time.
+%% }}}
+\subsubsection{Direct Memory Access Controller}
+%% {{{
+The Direct Memory Access (DMA) controller can be used to either move memory
+from one location to another, to read from a peripheral into memory, or to
+write from a peripheral into memory all without CPU intervention.  Further,
+since the DMA controller can issue (and does issue) pipeline wishbone accesses,
+any DMA memory move will by nature be faster than a corresponding program
+accomplishing the same move.  To put this to numbers, it may take a program
+running on the CPU 18~clocks per word transferred, whereas this DMA controller
+can move one word in eight clocks--provided it has bus
+access\footnote{The pipeline cost of the DMA controller, including setup cost,
+is a minimum of $14+2N$ clocks.} (The CPU gets priority over the bus, but once
+bus access is granted to the DMA peripheral, it will not be revoked mid--read
+or mid--write.)
+
+The DMA controller supports only aligned word accesses.  It does not support
+byte or half-word accesses.
+
+When copying memory from one location to another, the DMA controller will
+copy in units of a given transfer length--up to 1024 words at a time.  It will
+read that transfer length into its internal buffer, and then write to the
+destination address from that buffer.
+
+When coupled with a peripheral, the DMA controller can be configured to start
+a memory copy when any interrupt line goes high.  Further, the controller can
+be configured to issue reads from (or to) the same address instead of
+incrementing the address at each clock.  The DMA completes once the total
+number of items specified (not the transfer length) have been transferred.
+
+In each case, once the transfer is complete and the DMA unit returns to
+idle, the DMA will issue an interrupt.
+%% }}}
+% \subsubsection{Memory Management Unit}
+%% }}}
+\end{document}
+\iffalse
+%% This ZipCPU philosophy?
+\section{Security Architecture}	%% ??
+\section{Characteristics of a SwiC} %% Needs a rewrite
+%% {{{
+This section might also be called {\em the ZipCPU philosophy}.  It discusses
+the basis for the ZipCPU design decisions, and why a low logic count CPU
+is or can be a good thing.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This section really needs to be rewritten.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% ZiPCPU is defined to be a SWIC: System within a Chip
+Many other FPGA processors have been defined to be good Systems on a Chip, or 
+SoC's.  The entire goal of such designs, then, is to provide an interface
+to the processor and its external environment.  This is not the case with the
+ZipCPU.  Instead, we shall define a new concept, that of a soft core internal to
+an FPGA, as a ``System within a Chip,'' or a SwiC.  SwiCs have some very
+unique properties internal to them that have influenced the design of the
+ZipCPU.  Among these are the bus, memory, and available peripherals.
+
+%%
+%% Goal: Minimize impact to the rest of the design
+%%
+%%	Minimal impact
+%%		= CPU + (16kB Block)RAM + flash + interconnect
+%%			+ (Interrupt controller) + (GPIOs, UART, Timers)
+%%			+ Special Purpose Application gateware
+%%
+%%	Traditional embedded CPU
+%%		= CPU + GB DDR3 SDRAM + flash + interconnect + (GPIOs, UART)
+%%			+ Network + Hard drive (SD Card) + Video + Audio
+%%			+ RealTime Clock
+%%			+ USB
+%%			
+%%
+%%
+
+%% Single bus port -- No longer applicable as of the AXI port
+% Many other approaches to soft core CPU's employ a Harvard architecture. 
+% This allows these other CPU's to have two separate bus structures: one for the
+% program fetch, and the other for the memory.  Indeed, Xilinx's proprietary
+% Microblaze processor goes so far as to support four busses: two for cacheable
+% memory, and two for peripherals, with each of those split between instructions
+% and data.  The ZipCPU's Wishbone wrapper, however, requires only a single
+% bus port within any FPGA.  This is a combined port for both instructions and
+% memory.  This structure was chosen for its simplicity.
+% Having a single bus port only helps to minimize real-estate, logic, and the
+% number of wires that need to be passed back and forth, while maintaining a
+% high clock speed.  The disadvantage is that both prefetch and memory access
+% units need to contend for time on the same bus.
+
+%% Memory is slow
+Soft core's within an FPGA have an additional characteristic regarding memory
+access: it is slow.  While memory on chip may be accessed at a single cycle per
+access, small FPGA's often have only a limited amount of memory on chip.  Going
+off chip, however, is expensive.  Two examples will prove this point.  On
+the XuLA2 board, Flash can be accessed at 128~cycles per 32--bit word,
+or 64~cycles per subsequent word in a pipelined architecture.  Likewise, the
+SDRAM chip on the XuLA2 board allows a 6~cycle access for a write, 10~cycles
+per read, and 2~cycles for any subsequent pipelined access read or write.
+Either way you look at it, this memory access will be slow and this doesn't
+account for any logic delays should the bus implementation logic get
+complicated.  A pipelined CPU makes no little sense when the memory controller
+can't keep the pipeline full, and so the ZipCPU has options to limit the
+required pipeline logic in these cases.
+
+%% Pipelined access
+As may be noticed from the above discussion about memory speed, a second
+characteristic of memory is sequential memory accesses may be optimized for
+minimal delays (pipelined), and that pipelined memory access is faster than
+non--pipelined access.  Therefore, a SwiC soft core should support pipelined
+memory operations, but it should also allow a higher priority subsystem to get
+access to the bus (no starvation).
+
+%% Cache is expensive
+As a further characteristic of SwiC memory options, on-chip cache's are
+expensive.  If you want to have a minimum of logic, cache logic may not be
+the highest on the priority list.  Any SwiC capable processor must be able
+to either be built without caches, or to scale up or down the logic required
+by any cache.
+
+%% Cache is expensive
+In sum, memory is slow.  While one processor on one FPGA may be able to fill
+its pipeline, the same processor on another FPGA may struggle to get more than
+one instruction at a time into the pipeline.  Any SwiC must be able to deal
+with both cases: fast and slow memories.
+
+%% Peripherals are easily built and highly reconfigurable
+% A final characteristic of SwiC's within FPGA's is the peripherals. 
+% Specifically, FPGA's are highly reconfigurable.  Soft peripherals can easily
+% be created on chip to support the SwiC if necessary.  As an example, a simple
+% 30-bit peripheral could easily support reversing 30-bit numbers: a read from
+% the peripheral returns its bit--reversed address.  This is cheap within an
+% FPGA, but expensive in instructions.  Reading from another 16--bit peripheral
+% might calculate a sine function, where the 16--bit address internal to the
+% peripheral was the angle of the sine wave.
+
+%% Speed is not a priority, speed is handled elsewhere in the fabric
+Indeed, anything that must be done fast within an FPGA is likely to already
+be done--elsewhere in the fabric.  Further, the application designer gets to
+choose what tasks are so important they need fabric dedicated to them, and which
+ones can be done more slowly in a CPU.  This leaves the CPU with the simple role
+of solely handling sequential tasks, and tasks that need a lot of state.
+
+%% Summary
+This means that the SwiC needs to live within a very unique environment,
+separate and different from the traditional SoC.  That isn't to say that a 
+SwiC cannot be turned into a SoC, just that this SwiC has not been designed
+for that purpose.  Indeed, some of the best examples of the ZipCPU are
+System on a Chip examples.
+%% }}}
+\section{Document Scope}\label{sec:limits}
+%% {{{
+The ZipCPU is itself nothing more than a CPU that can be placed within a 
+larger design.  It is not a System on a Chip, but it can be used to create
+a system on a chip.  As a result, this document will not discuss more than a
+small handful of CPU--related peripherals, as the actual peripherals used
+within a design will vary from one design to the next.  Further, because
+control access will vary from one environment to the next, this document will
+not discuss any host control programs, leaving those to be discussed and defined
+together with the environments the ZipCPU is placed within.
+%% }}}
+\appendix{Wishbone Datasheets}\label{chap:wishbone}
 %% {{{
 The ZipSystem supports two wishbone ports, a slave debug port and a master
 port for the system itself.  These are shown in Tbl.~\ref{tbl:wishbone-slave}
@@ -3599,93 +4094,7 @@ that don't guarantee this property is as simple as anding the slave's
 any ZipCPU master, however, in order to access any peripheral that hasn't been
 so simplified.
 %% }}}
-\chapter{Clocks}\label{chap:clocks}
-%% {{{
-This core has now been tested and proven on the Xilinx Spartan~6 FPGA as well
-as the Artix--7 FPGA.  
-\begin{table}[htbp]
-\begin{center}
-\begin{clocklist}
-i\_clk & External & 100~MHz & & System clock, Artix--7/35T\\\hline
- & & 80~MHz & & System clock, Spartan 6\\\hline
-\end{clocklist}
-\caption{List of Clocks}\label{tbl:clocks}
-\end{center}\end{table}
-I hesitate to suggest that the core can run faster than 100~MHz, since I have
-had struggled with various timing violations to keep it at 100~MHz.  So, for 
-now, I will only state that it can run at 100~MHz.
-
-On a SPARTAN 6, the clock can run successfully at 80~MHz.
-
-A second Artix--7 design on the Digilent's Arty board is limited to 81.25~MHz
-by the memory interface generated core used to access SDRAM.
-%% }}}
-\chapter{I/O Ports}\label{chap:ioports}
-%% {{{
-This chapter presents and outlines the various I/O lines in and out of the
-ZipSystem.  Since the ZipCPU needs to be a component of such a larger part,
-this makes sense. 
-
-The I/O ports to the ZipSystem may be grouped into three categories.  The first
-is that of the master wishbone used by the CPU, then the slave wishbone used
-to command the CPU via a debugger, and then the rest.  The first two of these
-were already discussed in the wishbone chapter.  They are listed here
-for completeness in Tbl.~\ref{tbl:iowb-master}
-\begin{table}
-\begin{center}\begin{portlist}
-{\tt o\_wb\_cyc}   &  1 & Output & Indicates an active Wishbone cycle\\\hline
-{\tt o\_wb\_stb}   &  1 & Output & WB Strobe signal\\\hline
-{\tt o\_wb\_we}    &  1 & Output & Write enable\\\hline
-{\tt o\_wb\_addr}  & 30 & Output & Bus address \\\hline
-{\tt o\_wb\_data}  & 32 & Output & Data on WB write\\\hline
-{\tt o\_wb\_sel}   &  4 & Output & Select lines\\\hline
-{\tt i\_wb\_ack}   &  1 & Input  & Slave has completed a R/W cycle\\\hline
-{\tt i\_wb\_stall} &  1 & Input  & WB bus slave not ready\\\hline
-{\tt i\_wb\_data}  & 32 & Input  & Incoming bus data\\\hline
-{\tt i\_wb\_err}   &  1 & Input  & Bus Error indication\\\hline
-\end{portlist}\caption{CPU Master Wishbone I/O Ports}\label{tbl:iowb-master}\end{center}\end{table}
-and~\ref{tbl:iowb-slave} respectively.
-\begin{table}
-\begin{center}\begin{portlist}
-{\tt i\_dbg\_cyc}   &  1 & Input & Indicates an active Wishbone cycle\\\hline
-{\tt i\_dbg\_stb}   &  1 & Input & WB Strobe signal\\\hline
-{\tt i\_dbg\_we}    &  1 & Input & Write enable\\\hline
-{\tt i\_dbg\_addr}  &  1 & Input & Bus address, command or data port \\\hline
-{\tt i\_dbg\_data}  & 32 & Input & Data on WB write\\\hline
-{\tt o\_dbg\_ack}   &  1 & Output  & Slave has completed a R/W cycle\\\hline
-{\tt o\_dbg\_stall} &  1 & Output  & WB bus slave not ready\\\hline
-{\tt o\_dbg\_data}  & 32 & Output  & Incoming bus data\\\hline
-\end{portlist}\caption{CPU Debug Wishbone I/O Ports}\label{tbl:iowb-slave}\end{center}\end{table}
-
-There are only four other lines to the CPU: the external clock, external
-reset, incoming external interrupt line(s), and the outgoing debug interrupt
-line.  These are shown in Tbl.~\ref{tbl:ioports}.
-\begin{table}
-\begin{center}\begin{portlist}
-{\tt i\_clk} & 1 & Input & The master CPU clock \\\hline
-{\tt i\_rst} & 1 & Input &  Active high reset line \\\hline
-{\tt i\_ext\_int} & 1\ldots 16 & Input &  Incoming external interrupts, actual
-		value set by implementation parameter.  This is only ever one
-		for the ZipBones implementation.\\\hline
-{\tt o\_ext\_int} & 1 & Output & CPU Halted interrupt \\\hline
-\end{portlist}\caption{I/O Ports}\label{tbl:ioports}\end{center}\end{table}
-The clock line was discussed briefly in Chapt.~\ref{chap:clocks}.  The reset
-line is an active high reset.  When
-asserted, the CPU will start running again from its {\tt RESET\_ADDRESS} in
-memory.  Further, depending upon how the CPU is configured and specifically 
-based upon how the {\tt START\_HALTED} parameter is set, the CPU may or may
-not start running automatically following a reset.  The {\tt i\_ext\_int}
-bus is for set of external interrupt lines to the ZipSystem.  This line may
-actually be as wide as 16~external interrupts, depending upon the setting of
-the {\tt EXTERNAL\_INTERRUPTS} parameter.  Finally, the ZipSystem produces one
-external interrupt whenever the entire CPU halts to wait for the debugger.
-
-The I/O lines to the ZipBones package are identical to those of the ZipSystem,
-with the only exception that the ZipBones package has only a single interrupt
-line input.  This means that the ZipBones implementation practically depends
-upon an external interrupt controller.
-%% }}}
-\chapter{Current Assessment}\label{chap:assessment}
+\appendix{Current Assessment}\label{chap:assessment}
 %% {{{
 Having now worked with the ZipCPU for several years, it is worth offering an
 honest assessment of how well it works and how well it was designed. At the
@@ -3723,13 +4132,13 @@ later version of this ZipCPU to make it better.
 	simple enough. 
 
 	Indeed, a non--pipelined version of the bare ZipBones (with no
-	peripherals) has been built that only uses 1.2k~6--LUTs.  When using
+	peripherals) has been built that only uses 1.5k~6--LUTs.  When using
 	pipelining, the full cache, and all of the peripherals, the ZipSystem
-	can take up to 3.9~k LUTs.  Where it fits in between is a function of
+	can take up to 4.6~k LUTs.  Where it fits in between is a function of
 	your needs.
 
 	When using an iCE40 FPGA, the minimal ZipBones wrapper plus the
-	ZipCPU will fit nicely within the 2.3k~4-LUTs.
+	ZipCPU will fit nicely within the 2.7k~4-LUTs.
 
 %% Fits its role
 \item The ZipCPU was designed to be placed within an FPGA and so to control the
@@ -3750,7 +4159,8 @@ later version of this ZipCPU to make it better.
 	demonstrated an amazing versatility. I will contend therefore and for
 	anyone who will listen, that this instruction set offers a full and
 	complete capability for whatever a user might wish to do--with the
-	only exception being accelerated floating-point support.
+	only exception being accelerated floating-point or vector operation
+	support.
 
 %% Interrupt approach
 \item The ZipCPU's approach to interrupts greatly facilitates the development
@@ -3763,10 +4173,6 @@ later version of this ZipCPU to make it better.
 
 	At the same time, if most modern systems handle interrupt vectoring in
 	software anyway, why maintain complicated hardware support for it?
-
-%% Memory access
-\item The ZipCPU can be configured with both instruction and data caches,
-	for both Wishbone and AXI.
 
 %% Tool suite
 \item A complete tool suite consisting of GCC, binutils, newlib, and FATFS
@@ -3806,10 +4212,14 @@ later version of this ZipCPU to make it better.
 
 %% 4GB address space
 \item The ZipCPU cannot handle addresses larger than 32-bits (4GB).
-	This is fundamentally a limit of the 32-bit register architecture
-	within the ZipCPU.  While an MMU might help this problem, user
-	tasks would remain limited to 4GB of addressable memory.  While
-	this may limit the ZipCPU's utility as a generic CPU in the
+	This is a fundamental common to all 32-bit architectures, the ZipCPU
+	included.  While an MMU might help this problem, user
+	tasks would remain limited to 4GB of addressable memory.
+
+	Given that both memory and peripherals must share the same bus, this
+	effectively limits the ZipCPU's memory to 2GB.
+
+	While this may limit the ZipCPU's utility as a generic CPU in the
 	future, the limitation has yet to impact any of my projects.
 
 %% GDB
@@ -3819,7 +4229,7 @@ later version of this ZipCPU to make it better.
 %% Memory and DMA
 \item When using a DMA to move memory, the only way to tell the CPU that
 	memory may have been updated outside of the cache is currently to
-	clear the cache.  While this isn't ideal, it does work.
+	flush the entire cache.  While this isn't ideal, it does work.
 
 %% Loading the ZipCPU
 \end{itemize}
@@ -3831,8 +4241,6 @@ This section could also be labeled as my ``To do'' list.  It outlines where
 you may expect features in the future.  Currently, there are two primary
 items on my to do list:
 \begin{enumerate}
-\item ROM instruction space
-
 \item An optional Memory Management Unit
 
 	An MMU is necessary to run Linux.  Linux, however, may easily get in the
@@ -3861,7 +4269,10 @@ items on my to do list:
 	floating point emulation library.  Whether a true floating point
 	unit is really necessary is an open question--and one of the reasons
 	why it has not (yet) been written.
+
+% \item ROM instruction space
+
 \end{enumerate}
 %% }}}
 %% }}}
-\end{document}
+\fi
