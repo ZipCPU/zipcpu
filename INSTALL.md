@@ -19,11 +19,11 @@ The ZipCPU repository contains a couple of very basic cabilities, some very nece
 
 ## Dependencies
 
-Prior to building within the ZipCPU repository directory, you will need to make certain you have a number of prerequisites.  These include: texinfo gcc-dev g++ flex bison libbison-dev verilator libgmp10 libgmp-dev libmpfr-dev libmpc-dev libelf-dev, bc, exuberant-ctags, and libncurses-dev.
+Prior to building within the ZipCPU repository directory, you will need to make certain you have a number of prerequisites.  These include: texinfo, gcc-dev, g++, flex, bison, libbison-dev, verilator, libgmp10, libgmp-dev, libmpfr-dev, libmpc-dev, libelf-dev, bc, exuberant-ctags, and libncurses-dev.
 
 These dependencies can be installed using:
 
-> sudo apt install texinfo gcc-dev g++ flex bison libbison-dev verilator libgmp10 libgmp-dev libmpfr-dev libmpc-dev libelf-dev, bc, exuberant-ctags, and libncurses-dev.
+> sudo apt install texinfo gcc-dev g++ flex bison libbison-dev verilator libgmp10 libgmp-dev libmpfr-dev libmpc-dev libelf-dev bc exuberant-ctags libncurses-dev.
 
 ## Installation instructions
 To build all of the above, type _make_ in the main repository directory.  This will build the tools and place them into a [local install directory](sw/install/cross-tools/bin).  Sadly, this process will currently fail about halfway through.  To get past this, add the [install directory](sw/install/cross-tools/bin) to your path and restart.  _make_ will then pick up where it left off and finish the task.
