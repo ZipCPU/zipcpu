@@ -73,7 +73,7 @@ tags: $(SOURCES)
 	@ctags $(SOURCES)
 
 .PHONY: depends
-depends: tags $(OBJDIR)/
+depends: $(OBJDIR)/
 	$(build-depends)
 
 $(OBJDIR)/:

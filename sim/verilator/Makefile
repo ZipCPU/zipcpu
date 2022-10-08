@@ -288,7 +288,7 @@ tags: $(VLIB) $(SOURCES)
 	@ctags $(SOURCES) $(VLIB)
 
 .PHONY: depends
-depends: tags $(OBJDIR)/
+depends: $(OBJDIR)/
 	$(build-depends)
 
 define	mk-objdir
