@@ -38,3 +38,8 @@ genzipops
 doc/gfx/*.dia
 doc/gfx/*.json
 doc/gfx/*.svg
+coverage.dat
+coverage_lcov.dat
+verilated_cov_2_lcov.py
+coverage.lcov.dat
+annotated/
