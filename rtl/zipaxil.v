@@ -68,7 +68,7 @@ module	zipaxil #(
 		parameter [0:0]	OPT_CIS = 1'b1,
 		parameter [0:0]	OPT_LOWPOWER   = 1'b0,
 		parameter [0:0]	OPT_DISTRIBUTED_REGS = 1'b1,
-		parameter [0:0]	OPT_DBGPORT    = 1'b1,
+		parameter [0:0]	OPT_DBGPORT    = START_HALTED,
 		parameter [0:0]	OPT_TRACE_PORT = 1'b0,
 		parameter [0:0]	OPT_PROFILER   = 1'b0,
 		parameter [0:0]	OPT_USERMODE   = 1'b1,
@@ -212,6 +212,8 @@ module	zipaxil #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
+	//		 5 DBG Catch -- Catch exceptions/fautls w/ debugger
+	//		 4 Clear cache
 	//		 3 RESET_FLAG
 	//		 2 STEP	(W=1 steps, and returns to halted)
 	//		 1 HALT(ED)
@@ -222,7 +224,8 @@ module	zipaxil #(
 	localparam	HALT_BIT = 0,
 			STEP_BIT = 2,
 			RESET_BIT = 3,
-			CLEAR_CACHE_BIT = 4;
+			CLEAR_CACHE_BIT = 4,
+			CATCH_BIT = 5;
 	// }}}
 	localparam [0:0]	OPT_ALIGNMENT_ERR = 1'b0;
 	localparam [0:0]	SWAP_ENDIANNESS = 1'b0;
@@ -244,8 +247,11 @@ module	zipaxil #(
 	wire	[2:0]	cpu_dbg_cc;
 	// }}}
 
-	wire	reset_hold;
+	wire	reset_hold, halt_on_fault, dbg_catch;
 	wire	cpu_clken, cpu_clock, clk_gate;
+	wire	reset_request, release_request, halt_request, step_request,
+		clear_cache_request;
+
 
 	// CPU control registers
 	// {{{
@@ -467,6 +473,18 @@ module	zipaxil #(
 	assign	dbg_cmd_data = wskd_data;
 	assign	dbg_cmd_strb = wskd_strb;
 
+	assign	reset_request = dbg_cmd_write && dbg_cmd_strb[RESET_BIT/8]
+						&& dbg_cmd_data[RESET_BIT];
+	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& !dbg_cmd_data[HALT_BIT];
+	assign	halt_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT];
+	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
+						&& dbg_cmd_data[STEP_BIT];
+	assign	clear_cache_request = dbg_cmd_write
+					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
+					&& dbg_cmd_data[CLEAR_CACHE_BIT];
+
 	//
 	// reset_hold: Always start us off with an initial reset
 	// {{{
@@ -503,23 +521,26 @@ module	zipaxil #(
 	end endgenerate
 	// }}}
 
+	assign	halt_on_fault = dbg_catch;
+
 	// cmd_reset
 	// {{{
+	// Always start us off with an initial reset
 	initial	cmd_reset = 1'b1;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_reset <= 1'b1;
 	else if (reset_hold)
 		cmd_reset <= 1'b1;
-	else if (cpu_break && !START_HALTED)
+	else if (cpu_break && !halt_on_fault)
 		cmd_reset <= 1'b1;
 	else
-		cmd_reset <= (dbg_cmd_write && dbg_cmd_strb[0]
-					&& dbg_cmd_data[RESET_BIT]);
+		cmd_reset <= reset_request;
 	// }}}
 
 	// cmd_halt
 	// {{{
+	initial	cmd_halt  = START_HALTED;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		cmd_halt <= START_HALTED;
@@ -529,9 +550,12 @@ module	zipaxil #(
 		cmd_halt <= START_HALTED;
 	else begin
 		// {{{
+		// When shall we release from a halt?  Only if we have come to
+		// a full and complete stop.  Even then, we only release if we
+		// aren't being given a command to step the CPU.
+		//
 		if (!dbg_write_valid && !cpu_dbg_stall && dbg_cmd_write
-			&& dbg_cmd_strb[0] && (!dbg_cmd_data[HALT_BIT]
-				|| dbg_cmd_data[STEP_BIT]))
+				&& (release_request || step_request))
 			cmd_halt <= 1'b0;
 
 		// Reasons to halt
@@ -540,13 +564,12 @@ module	zipaxil #(
 		//	exception must be cured before we can (re)start.
 		//	If the CPU is configured to start immediately on power
 		//	up, we leave it to reset on any exception instead.
-		if (cpu_break && START_HALTED)
+		if (cpu_break && halt_on_fault)
 			cmd_halt <= 1'b1;
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && dbg_cmd_strb[0] && dbg_cmd_data[HALT_BIT]
-				&& !dbg_cmd_data[STEP_BIT])
+		if (dbg_cmd_write && halt_request && !step_request)
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -562,7 +585,7 @@ module	zipaxil #(
 			cmd_halt <= 1'b1;
 
 		// 5. Halt on any clear cache bit--independent of any step bit
-		if (dbg_cmd_write && dbg_cmd_strb[0] && dbg_cmd_data[CLEAR_CACHE_BIT])
+		if (clear_cache_request)
 			cmd_halt <= 1'b1;
 		// }}}
 	end
@@ -574,8 +597,7 @@ module	zipaxil #(
 	always @(posedge  S_AXI_ACLK)
 	if (!S_AXI_ARESETN || cmd_reset)
 		cmd_clear_cache <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[CLEAR_CACHE_BIT]
-			&& dbg_cmd_data[HALT_BIT] && dbg_cmd_strb[0])
+	else if (dbg_cmd_write && clear_cache_request && halt_request)
 		cmd_clear_cache <= 1'b1;
 	else if (cmd_halt && !cpu_dbg_stall)
 		cmd_clear_cache <= 1'b0;
@@ -587,10 +609,29 @@ module	zipaxil #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[STEP_BIT] && dbg_cmd_strb[0])
+	else if (step_request)
 		cmd_step <= 1'b1;
 	else if (!cpu_dbg_stall)
 		cmd_step <= 1'b0;
+	// }}}
+
+	// dbg_catch
+	// {{{
+	generate if (!OPT_DBGPORT)
+	begin
+		assign	dbg_catch = START_HALTED;
+	end else begin
+		reg	r_dbg_catch;
+
+		initial	r_dbg_catch = START_HALTED;
+		always @(posedge S_AXI_ACLK)
+		if (!S_AXI_ARESETN)
+			r_dbg_catch <= START_HALTED;
+		else if (dbg_cmd_write && dbg_cmd_strb[CATCH_BIT/8])
+			r_dbg_catch <= dbg_cmd_data[CATCH_BIT];
+
+		assign	dbg_catch = r_dbg_catch;
+	end endgenerate
 	// }}}
 
 	// cpu_status
@@ -602,7 +643,8 @@ module	zipaxil #(
 	//	0x0000_0200 -> User mode
 	//	0x0000_0100 -> Sleep (CPU is sleeping)
 	//
-	//	0x0000_00e0 -> (Unused/reserved)
+	//	0x0000_00c0 -> (Unused/reserved)
+	//	0x0000_0020 -> dbg_catch
 	//	0x0000_0010 -> cmd_clear_cache
 	//
 	//	0x0000_0008 -> Reset
@@ -611,7 +653,7 @@ module	zipaxil #(
 	//	0x0000_0001 -> Halt (request)
 	assign	cpu_status = { 16'h0, 4'h0,
 			cpu_break, i_interrupt, cpu_dbg_cc[1:0],
-			3'h0, 1'b0,
+			2'h0, dbg_catch, 1'b0,
 			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
 		};
 	// }}}

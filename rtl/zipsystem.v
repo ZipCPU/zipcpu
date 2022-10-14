@@ -160,7 +160,7 @@ module	zipsystem #(
 		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
 		parameter [0:0]	OPT_USERMODE=1,
-		parameter [0:0]	OPT_DBGPORT=1,
+		parameter [0:0]	OPT_DBGPORT=START_HALTED,
 		parameter [0:0]	OPT_TRACE_PORT=1,
 		parameter [0:0]	OPT_PROFILER=0,
 		parameter [0:0]	OPT_LOWPOWER=0,
@@ -277,6 +277,8 @@ module	zipsystem #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
+	//		 5 DBG Catch -- Catch exceptions/fautls w/ debugger
+	//		 4 Clear cache
 	//		 3 RESET_FLAG
 	//		 2 STEP	(W=1 steps, and returns to halted)
 	//		 1 HALT(ED)
@@ -287,7 +289,8 @@ module	zipsystem #(
 	localparam	HALT_BIT = 0,
 			STEP_BIT = 2,
 			RESET_BIT = 3,
-			CLEAR_CACHE_BIT = 4;
+			CLEAR_CACHE_BIT = 4,
+			CATCH_BIT = 5;
 	// }}}
 
 	// Virtual address width (unused)
@@ -339,15 +342,16 @@ module	zipsystem #(
 	wire			cpu_break, dbg_cmd_write, dbg_cpu_write;
 	wire	[DBG_WIDTH-1:0]	dbg_cmd_data;
 	wire [DBG_WIDTH/8-1:0]	dbg_cmd_strb;
-	reg			cmd_reset, cmd_step, cmd_clear_cache;
-	reg			cmd_write;
+	wire			reset_hold, halt_on_fault, dbg_catch;
+	wire			reset_request, release_request, halt_request,
+				step_request, clear_cache_request;
+	reg			cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
+				cmd_write;
 	reg	[4:0]		cmd_waddr;
 	reg	[DBG_WIDTH-1:0]	cmd_wdata;
-	wire			reset_hold;
-	reg			cmd_halt;
 	wire	[2:0]		cpu_dbg_cc;
 
-	wire			cpu_reset;
+	wire			cpu_reset, cpu_halt;
 	wire			cpu_dbg_stall;
 	wire	[DBG_WIDTH-1:0]	pic_data;
 	wire	[DBG_WIDTH-1:0]	cpu_status;
@@ -559,6 +563,19 @@ module	zipsystem #(
 	assign	dbg_cmd_data = dbg_idata;
 	assign	dbg_cmd_strb = dbg_sel;
 
+
+	assign	reset_request = dbg_cmd_write && dbg_cmd_strb[RESET_BIT/8]
+						&& dbg_cmd_data[RESET_BIT];
+	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& !dbg_cmd_data[HALT_BIT];
+	assign	halt_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT];
+	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
+						&& dbg_cmd_data[STEP_BIT];
+	assign	clear_cache_request = dbg_cmd_write
+					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
+					&& dbg_cmd_data[CLEAR_CACHE_BIT];
+
 	//
 	// reset_hold: Always start us off with an initial reset
 	// {{{
@@ -595,6 +612,8 @@ module	zipsystem #(
 	end endgenerate
 	// }}}
 
+	assign	halt_on_fault = dbg_catch;
+
 	// cmd_reset
 	// {{{
 	// Always start us off with an initial reset
@@ -604,11 +623,10 @@ module	zipsystem #(
 		cmd_reset <= 1'b1;
 	else if (reset_hold || wdt_reset)
 		cmd_reset <= 1'b1;
-	else if (cpu_break && !START_HALTED)
+	else if (cpu_break && !halt_on_fault)
 		cmd_reset <= 1'b1;
 	else
-		cmd_reset <= (dbg_cmd_write && dbg_cmd_strb[0]
-					&& dbg_cmd_data[RESET_BIT]);
+		cmd_reset <= reset_request;
 	// }}}
 
 	// cmd_halt
@@ -626,8 +644,7 @@ module	zipsystem #(
 		// aren't being given a command to step the CPU.
 		//
 		if (!cmd_write && !cpu_dbg_stall && dbg_cmd_write
-			&& dbg_cmd_strb[1] && (!dbg_cmd_data[HALT_BIT]
-				|| dbg_cmd_data[STEP_BIT]))
+				&& (release_request || step_request))
 			cmd_halt <= 1'b0;
 
 		// Reasons to halt
@@ -636,13 +653,12 @@ module	zipsystem #(
 		//	exception must be cured before we can (re)start.
 		//	If the CPU is configured to start immediately on power
 		//	up, we leave it to reset on any exception instead.
-		if (cpu_break && START_HALTED)
+		if (cpu_break && halt_on_fault)
 			cmd_halt <= 1'b1;
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && dbg_cmd_strb[1] && dbg_cmd_data[HALT_BIT]
-				&& !dbg_cmd_data[STEP_BIT])
+		if (dbg_cmd_write && halt_request && !step_request)
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -658,7 +674,7 @@ module	zipsystem #(
 			cmd_halt <= 1'b1;
 
 		// 5. Halt on any clear cache bit--independent of any step bit
-		if (dbg_cmd_write && dbg_cmd_strb[1] && dbg_cmd_data[CLEAR_CACHE_BIT])
+		if (clear_cache_request)
 			cmd_halt <= 1'b1;
 		// }}}
 	end
@@ -670,8 +686,7 @@ module	zipsystem #(
 	always @(posedge i_clk)
 	if (i_reset || cpu_reset)
 		cmd_clear_cache <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[CLEAR_CACHE_BIT]
-			&& dbg_cmd_data[HALT_BIT] && dbg_cmd_strb[1])
+	else if (dbg_cmd_write && clear_cache_request && halt_request)
 		cmd_clear_cache <= 1'b1;
 	else if (cmd_halt && !cpu_dbg_stall)
 		cmd_clear_cache <= 1'b0;
@@ -679,17 +694,37 @@ module	zipsystem #(
 
 	// cmd_step
 	// {{{
-	initial	cmd_step  = 1'b0;
+	initial	cmd_step = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_step <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[STEP_BIT] && dbg_cmd_strb[1])
+	else if (step_request)
 		cmd_step <= 1'b1;
 	else if (!cpu_dbg_stall)
 		cmd_step <= 1'b0;
 	// }}}
 
+	// dbg_catch
+	// {{{
+	generate if (!OPT_DBGPORT)
+	begin
+		assign	dbg_catch = START_HALTED;
+	end else begin
+		reg	r_dbg_catch;
+
+		initial	r_dbg_catch = START_HALTED;
+		always @(posedge i_clk)
+		if (i_reset)
+			r_dbg_catch <= START_HALTED;
+		else if (dbg_cmd_write && dbg_cmd_strb[CATCH_BIT/8])
+			r_dbg_catch <= dbg_cmd_data[CATCH_BIT];
+
+		assign	dbg_catch = r_dbg_catch;
+	end endgenerate
+	// }}}
+
 	assign	cpu_reset = (cmd_reset);
+	assign	cpu_halt = (cmd_halt);
 
 	// cpu_status
 	// {{{
@@ -703,7 +738,8 @@ module	zipsystem #(
 	//	0x0000_0200 -> User mode
 	//	0x0000_0100 -> Sleep (CPU is sleeping)
 	//
-	//	0x0000_00e0 -> (Unused/reserved)
+	//	0x0000_00c0 -> (Unused/reserved)
+	//	0x0000_0020 -> dbg_catch
 	//	0x0000_0010 -> cmd_clear_cache
 	//
 	//	0x0000_0008 -> Reset
@@ -716,13 +752,13 @@ module	zipsystem #(
 		assign	cpu_status = { {(20-EXTERNAL_INTERRUPTS){1'b0}},
 			i_ext_int,
 			cpu_break, pic_interrupt, cpu_dbg_cc[1:0],
-			3'h0, 1'b0,
+			2'h0, dbg_catch, 1'b0,
 			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
 		};
 	end else begin : CPU_STATUS_MAX_INTERRUPTS
 		assign	cpu_status = { i_ext_int[19:0],
 			cpu_break, pic_interrupt, cpu_dbg_cc[1:0],
-			3'h0, 1'b0,
+			2'h0, dbg_catch, 1'b0,
 			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
 		};
 	end endgenerate
@@ -1256,7 +1292,7 @@ module	zipsystem #(
 		.i_clk(i_clk),
 		.i_reset(i_reset),
 		.i_cpu_reset(cpu_reset),
-		.i_halt(cmd_halt),
+		.i_halt(cpu_halt),
 		.i_halted(f_cpu_halted),
 		.i_clear_cache(cmd_clear_cache),
 		.i_dbg_we(cmd_write),
@@ -1306,7 +1342,7 @@ module	zipsystem #(
 			.i_cpu_clken(cpu_clken),
 		// Debug interface
 		// {{{
-		.i_halt(cmd_halt), .i_clear_cache(cmd_clear_cache),
+		.i_halt(cpu_halt), .i_clear_cache(cmd_clear_cache),
 				.i_dbg_wreg(cmd_waddr), .i_dbg_we(cmd_write),
 				.i_dbg_data(cmd_wdata),
 				.i_dbg_rreg(dbg_addr[4:0]),

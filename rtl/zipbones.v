@@ -77,7 +77,7 @@ module	zipbones #(
 		parameter [0:0]	OPT_CIS=1,
 		parameter [0:0]	OPT_LOCK=1,
 		parameter [0:0]	OPT_USERMODE=1,
-		parameter [0:0]	OPT_DBGPORT=1,
+		parameter [0:0]	OPT_DBGPORT=START_HALTED,
 		parameter [0:0]	OPT_TRACE_PORT=1,
 		parameter [0:0]	OPT_PROFILER=0,
 		parameter [0:0]	OPT_LOWPOWER=0,
@@ -150,6 +150,8 @@ module	zipbones #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
+	//		 5 DBG Catch -- Catch exceptions/fautls w/ debugger
+	//		 4 Clear cache
 	//		 3 RESET_FLAG
 	//		 2 STEP	(W=1 steps, and returns to halted)
 	//		 1 HALT(ED)
@@ -160,7 +162,8 @@ module	zipbones #(
 	localparam	HALT_BIT = 0,
 			STEP_BIT = 2,
 			RESET_BIT = 3,
-			CLEAR_CACHE_BIT = 4;
+			CLEAR_CACHE_BIT = 4,
+			CATCH_BIT = 5;
 	// }}}
 
 	wire			cpu_clken;
@@ -171,7 +174,9 @@ module	zipbones #(
 	reg	[DBG_WIDTH-1:0]	dbg_odata;
 	reg			dbg_ack;
 	wire			cpu_break, dbg_cmd_write, dbg_cpu_write;
-	wire			reset_hold;
+	wire			reset_hold, halt_on_fault, dbg_catch;
+	wire			reset_request, release_request, halt_request,
+				step_request, clear_cache_request;
 	reg			cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
 				cmd_write;
 	reg	[4:0]		cmd_waddr;
@@ -228,6 +233,19 @@ module	zipbones #(
 	assign	dbg_cmd_data = dbg_idata;
 	assign	dbg_cmd_strb = dbg_sel;
 
+
+	assign	reset_request = dbg_cmd_write && dbg_cmd_strb[RESET_BIT/8]
+						&& dbg_cmd_data[RESET_BIT];
+	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& !dbg_cmd_data[HALT_BIT];
+	assign	halt_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT];
+	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
+						&& dbg_cmd_data[STEP_BIT];
+	assign	clear_cache_request = dbg_cmd_write
+					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
+					&& dbg_cmd_data[CLEAR_CACHE_BIT];
+
 	//
 	// reset_hold: Always start us off with an initial reset
 	// {{{
@@ -264,6 +282,8 @@ module	zipbones #(
 	end endgenerate
 	// }}}
 
+	assign	halt_on_fault = dbg_catch;
+
 	// cmd_reset
 	// {{{
 	// Always start us off with an initial reset
@@ -273,11 +293,10 @@ module	zipbones #(
 		cmd_reset <= 1'b1;
 	else if (reset_hold)
 		cmd_reset <= 1'b1;
-	else if (cpu_break && !START_HALTED)
+	else if (cpu_break && !halt_on_fault)
 		cmd_reset <= 1'b1;
 	else
-		cmd_reset <= (dbg_cmd_write && dbg_cmd_strb[0]
-					&& dbg_cmd_data[RESET_BIT]);
+		cmd_reset <= reset_request;
 	// }}}
 
 	// cmd_halt
@@ -295,8 +314,7 @@ module	zipbones #(
 		// aren't being given a command to step the CPU.
 		//
 		if (!cmd_write && !cpu_dbg_stall && dbg_cmd_write
-			&& dbg_cmd_strb[1] && (!dbg_cmd_data[HALT_BIT]
-				|| dbg_cmd_data[STEP_BIT]))
+				&& (release_request || step_request))
 			cmd_halt <= 1'b0;
 
 		// Reasons to halt
@@ -305,13 +323,12 @@ module	zipbones #(
 		//	exception must be cured before we can (re)start.
 		//	If the CPU is configured to start immediately on power
 		//	up, we leave it to reset on any exception instead.
-		if (cpu_break && START_HALTED)
+		if (cpu_break && halt_on_fault)
 			cmd_halt <= 1'b1;
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && dbg_cmd_strb[1] && dbg_cmd_data[HALT_BIT]
-				&& !dbg_cmd_data[STEP_BIT])
+		if (dbg_cmd_write && halt_request && !step_request)
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -327,7 +344,7 @@ module	zipbones #(
 			cmd_halt <= 1'b1;
 
 		// 5. Halt on any clear cache bit--independent of any step bit
-		if (dbg_cmd_write && dbg_cmd_strb[1] && dbg_cmd_data[CLEAR_CACHE_BIT])
+		if (clear_cache_request)
 			cmd_halt <= 1'b1;
 		// }}}
 	end
@@ -339,8 +356,7 @@ module	zipbones #(
 	always @(posedge i_clk)
 	if (i_reset || cpu_reset)
 		cmd_clear_cache <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[CLEAR_CACHE_BIT]
-			&& dbg_cmd_data[HALT_BIT] && dbg_cmd_strb[1])
+	else if (dbg_cmd_write && clear_cache_request && halt_request)
 		cmd_clear_cache <= 1'b1;
 	else if (cmd_halt && !cpu_dbg_stall)
 		cmd_clear_cache <= 1'b0;
@@ -348,14 +364,33 @@ module	zipbones #(
 
 	// cmd_step
 	// {{{
-	initial	cmd_step  = 1'b0;
+	initial	cmd_step = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		cmd_step <= 1'b0;
-	else if (dbg_cmd_write && dbg_cmd_data[STEP_BIT] && dbg_cmd_strb[1])
+	else if (step_request)
 		cmd_step <= 1'b1;
 	else if (!cpu_dbg_stall)
 		cmd_step <= 1'b0;
+	// }}}
+
+	// dbg_catch
+	// {{{
+	generate if (!OPT_DBGPORT)
+	begin
+		assign	dbg_catch = START_HALTED;
+	end else begin
+		reg	r_dbg_catch;
+
+		initial	r_dbg_catch = START_HALTED;
+		always @(posedge i_clk)
+		if (i_reset)
+			r_dbg_catch <= START_HALTED;
+		else if (dbg_cmd_write && dbg_cmd_strb[CATCH_BIT/8])
+			r_dbg_catch <= dbg_cmd_data[CATCH_BIT];
+
+		assign	dbg_catch = r_dbg_catch;
+	end endgenerate
 	// }}}
 
 	assign	cpu_reset = (cmd_reset);
@@ -370,7 +405,8 @@ module	zipbones #(
 	//	0x0000_0200 -> User mode
 	//	0x0000_0100 -> Sleep (CPU is sleeping)
 	//
-	//	0x0000_00e0 -> (Unused/reserved)
+	//	0x0000_00c0 -> (Unused/reserved)
+	//	0x0000_0020 -> dbg_catch
 	//	0x0000_0010 -> cmd_clear_cache
 	//
 	//	0x0000_0008 -> Reset
@@ -379,7 +415,7 @@ module	zipbones #(
 	//	0x0000_0001 -> Halt (request)
 	assign	cpu_status = { 16'h0, 4'h0,
 			cpu_break, i_ext_int, cpu_dbg_cc[1:0],
-			3'h0, 1'b0,
+			2'h0, dbg_catch, 1'b0,
 			cmd_reset, 1'b0, !cpu_dbg_stall, cmd_halt
 		};
 	// }}}
