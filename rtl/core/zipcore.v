@@ -169,9 +169,10 @@ module	zipcore #(
 	// (BUS, TRAP,ILL,BREAKEN,STEP,GIE,SLEEP ), V, N, C, Z
 	reg	[3:0]	flags, iflags;
 	wire	[15:0]	w_uflags, w_iflags;
-	reg		break_en, step, sleep, r_halted;
+	reg		break_en, user_step, sleep, r_halted;
 	wire		break_pending, trap, gie, ubreak, pending_interrupt,
 			stepped;
+	wire		step;
 	wire		ill_err_u;
 	reg		ill_err_i;
 	reg		ibus_err_flag;
@@ -1123,7 +1124,7 @@ module	zipcore #(
 	else if ((OPT_PIPELINED)&&(op_ce))
 		r_op_break <= (dcd_valid)&&(dcd_break)&&(!dcd_illegal);
 	else if ((!OPT_PIPELINED)&&(dcd_valid))
-		r_op_break <= (dcd_break)&&(!dcd_illegal)&&(!gie || !step || !stepped);
+		r_op_break <= (dcd_break)&&(!dcd_illegal)&&(!step || !stepped);
 
 	assign	op_break = r_op_break;
 `ifdef	FORMAL
@@ -2397,7 +2398,7 @@ module	zipcore #(
 	// {{{
 	assign	w_uflags = { 2'b00, uhalt_phase, ufpu_err_flag,
 			udiv_err_flag, ubus_err_flag, trap, ill_err_u,
-			ubreak, step, 1'b1, sleep,
+			ubreak, !gie && user_step, 1'b1, sleep,
 			(wr_flags_ce &&  alu_gie) ? wr_flags :  flags };
 	assign	w_iflags = { 2'b00, ihalt_phase, ifpu_err_flag,
 			idiv_err_flag, ibus_err_flag, trap, ill_err_i,
@@ -2472,7 +2473,7 @@ module	zipcore #(
 
 `ifdef	FORMAL
 		always @(*)
-		if (!gie && step && stepped)
+		if (!gie && user_step && stepped)
 			assert(!op_break);
 `endif
 	end endgenerate
@@ -2552,11 +2553,14 @@ module	zipcore #(
 
 	// step : debug single-step control
 	// {{{
+	initial	user_step = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset || !OPT_USERMODE)
-		step <= 1'b0;
+		user_step <= 1'b0;
 	else if ((wr_reg_ce)&&(!alu_gie)&&(wr_write_ucc))
-		step <= wr_spreg_vl[CPU_STEP_BIT];
+		user_step <= wr_spreg_vl[CPU_STEP_BIT];
+
+	assign	step = user_step && gie;
 	// }}}
 
 	// o_clken
@@ -2634,7 +2638,7 @@ module	zipcore #(
 
 		initial	r_user_stepped = 1'b0;
 		always @(posedge i_clk)
-		if (i_reset || !gie || !step)
+		if (i_reset || !gie || !user_step)
 			r_user_stepped <= 1'b0;
 		// else if(w_switch_to_interrupt)
 		//	r_user_stepped <= 1'b0;
@@ -2648,7 +2652,7 @@ module	zipcore #(
 			r_pending_interrupt <= 1'b0;
 		else if (!gie || w_switch_to_interrupt)
 			r_pending_interrupt <= 1'b0;
-		else if (clear_pipeline && (!step || !stepped))
+		else if (clear_pipeline && (!user_step || !stepped))
 			r_pending_interrupt <= 1'b0;
 		else begin
 			if (i_interrupt)
@@ -2661,7 +2665,7 @@ module	zipcore #(
 				r_pending_interrupt <= 1'b1;
 
 			if (((!alu_busy && !i_mem_busy && !div_busy && !fpu_busy)
-				|| wr_reg_ce) && step && stepped)
+				|| wr_reg_ce) && user_step && stepped)
 				r_pending_interrupt <= 1'b1;
 		end
 
@@ -2699,11 +2703,11 @@ module	zipcore #(
 `ifdef	FORMAL
 		always @(posedge i_clk)
 		if (r_pending_interrupt && gie && !clear_pipeline)
-			assert(i_interrupt || step || alu_illegal
+			assert(i_interrupt || user_step || alu_illegal
 					|| ill_err_u || break_pending);
 
 		always @(posedge i_clk)
-		if (f_past_valid && $past(step && stepped && !o_bus_lock
+		if (f_past_valid && $past(user_step && stepped && !o_bus_lock
 							&& !o_dbg_stall))
 			assert(!gie || r_pending_interrupt);
 `endif
@@ -4052,7 +4056,7 @@ module	zipcore #(
 		&&(!op_break)&&(!o_break)
 		&&(!w_switch_to_interrupt)
 		&&(!alu_illegal) && (!prelock_stall)
-		&&(!gie || !step || !stepped)
+		&&(!step || !stepped)
 		&&(!ibus_err_flag)&&(!ill_err_i)&&(!idiv_err_flag))
 		`ASSERT(adf_ce_unconditional | mem_ce);
 
@@ -4430,7 +4434,7 @@ module	zipcore #(
 				`ASSERT(f_op_zI == (fc_op_I == 0));
 				`ASSERT(fc_op_wF  == op_wF);
 				`ASSERT(fc_op_lock == op_lock);
-				if (!OPT_PIPELINED && gie && step && stepped)
+				if (!OPT_PIPELINED && step && stepped)
 				begin
 					`ASSERT(!op_break);
 				end else begin
@@ -5465,7 +5469,7 @@ module	zipcore #(
 	if (f_past_valid && !i_reset && !o_bus_lock && !$past(o_bus_lock)
 			&& !$past(o_dbg_stall) && !o_dbg_stall)
 	begin
-		if (!gie && step && !stepped)
+		if (step && !stepped)
 		begin
 			`ASSERT(!i_mem_rdbusy);
 			`ASSERT(!div_busy);
@@ -5474,7 +5478,7 @@ module	zipcore #(
 		end
 
 		if (wr_reg_ce || wr_flags_ce)
-			`ASSERT(!gie || !step || stepped);
+			`ASSERT(!step || stepped);
 	end
 
 	always @(posedge i_clk)
@@ -5659,7 +5663,7 @@ module	zipcore #(
 	always @(posedge i_clk)
 	begin
 		cover(!i_reset);
-		cover(!i_halt);		// !!!
+		cover(!i_halt);	
 		cover(!i_reset && !i_halt);
 	end
 
@@ -5708,9 +5712,9 @@ module	zipcore #(
 
 
 		cover(gie);
-		cover(gie && step);
-		cover(gie && step && w_switch_to_interrupt);
-		cover(gie && step && w_switch_to_interrupt && !i_interrupt);
+		cover(step);
+		cover(step && w_switch_to_interrupt);
+		cover(step && w_switch_to_interrupt && !i_interrupt);
 	end
 
 	always @(posedge i_clk)
@@ -5722,8 +5726,9 @@ module	zipcore #(
 		cover($past(step && !i_reset && !i_halt));
 		cover($past(step && !i_reset && !i_halt,2));
 		cover(!o_bus_lock && alu_ce && step);
-		cover(step && !gie);
-		cover(step && !gie && wr_reg_ce);
+		cover(user_step && !gie);
+		cover(user_step &&  gie);
+		cover(user_step &&  gie && wr_reg_ce);
 
 		// Cover a division by zero
 		cover(!OPT_DIV || div_busy);
@@ -5751,7 +5756,7 @@ module	zipcore #(
 				&& !$past(i_reset || clear_pipeline))
 		begin
 			cover($rose(o_bus_lock));
-			cover($fell(o_bus_lock));		// !!!!
+			cover($fell(o_bus_lock));
 			cover($fell(o_bus_lock)
 				&& !$past(i_bus_err || div_error || alu_illegal));
 		end
@@ -5777,13 +5782,13 @@ module	zipcore #(
 		// Cover the switch to interrupt
 		cover(i_interrupt);
 		cover(i_interrupt && !alu_phase);
-		cover(i_interrupt && !o_bus_lock);			// !!!
-		cover((i_interrupt)&&(!alu_phase)&&(!o_bus_lock));	// !!!
+		cover(i_interrupt && !o_bus_lock);
+		cover((i_interrupt)&&(!alu_phase)&&(!o_bus_lock));
 
 		// Cover a "step" instruction
 		//
 		cover(((alu_pc_valid)||(mem_pc_valid))
-				&&(step)&&(!alu_phase)&&(!o_bus_lock)); // !!!
+				&&(step)&&(!alu_phase)&&(!o_bus_lock));
 		// `ASSERT(!(((alu_pc_valid)||(mem_pc_valid))
 		//		&&(step)&&(!alu_phase)&&(!o_bus_lock)));
 
