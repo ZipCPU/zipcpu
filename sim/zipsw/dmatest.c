@@ -54,8 +54,8 @@ typedef	struct	ZIPDMA_S {
 	unsigned	d_len;
 } ZIPDMA;
 
-static	volatile	ZIPDMA *const _zipdma = ((ZIPDMA *)0xff000000);
-const int	TESTLEN = 512;
+static	volatile	ZIPDMA *const _zipdma = ((ZIPDMA *)0xff000040);
+const int	TESTLEN = 4096;
 
 void	dma_memcpy(void *d, void *s, unsigned len) {
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
@@ -74,11 +74,29 @@ void	dma_memcpy(void *d, void *s, unsigned len) {
 }
 
 int	main(int argc, char **argv) {
-	char	*src, *dst, *buf;
+	char	*src, *dst;
+	int	fail = 0;
 
-	src = malloc(TESTLEN);
-	dst = malloc(TESTLEN);
-	buf = malloc(TESTLEN);
+	src = malloc(TESTLEN+8);
+	dst = malloc(TESTLEN+8);
+
+	// printf("Initial ptrs: SRC = 0x%08x, DST = 0x%08x\n", src, dst);
+
+	*src++ = 0x01;
+	*src++ = 0x02;
+	*src++ = 0x03;
+	*src++ = 0x04;
+
+	*dst++ = 0x05;
+	*dst++ = 0x06;
+	*dst++ = 0x07;
+	*dst++ = 0x08;
+
+	src[TESTLEN+0] = 0x09; src[TESTLEN+1] = 0x0a;
+	src[TESTLEN+2] = 0x0b; src[TESTLEN+3] = 0x0c;
+
+	dst[TESTLEN+0] = 0x0d; dst[TESTLEN+1] = 0x0e;
+	dst[TESTLEN+2] = 0x0f; dst[TESTLEN+3] = 0x00;
 
 	for(int i=0; i<TESTLEN; i++)
 		src[i] = rand();
@@ -86,7 +104,7 @@ int	main(int argc, char **argv) {
 	printf("Basic MEMCPY: ");
 	dma_memcpy(dst, src, TESTLEN);
 	if (memcmp(dst, src, TESTLEN) != 0) {
-		printf("FAIL!\n");
+		printf("FAIL!\n"); fail = 1;
 	} else
 		printf("PASS\n");
 
@@ -94,14 +112,14 @@ int	main(int argc, char **argv) {
 	// {{{
 	{
 		unsigned s = 0;
-		for(unsigned ln=1; ln<32; ln++) {
+		for(unsigned ln=1; ln<32 && !fail; ln++) {
 
 			printf("SubLen #%d MEMCPY: ", ln);
 			if (ln + s >= TESTLEN)
 				s = 0;
 			dma_memcpy(dst, src+s, ln);
 			if (memcmp(dst, src+s, ln) != 0) {
-				printf("FAIL!\n");
+				printf("FAIL!\n"); fail = 1;
 			} else
 				printf("PASS\n");
 
@@ -112,15 +130,15 @@ int	main(int argc, char **argv) {
 
 	// All offsets test
 	// {{{
-	for(int s=0; s<8; s++) {
-		for(int d=0; d<8; d++) {
+	for(int s=0; s<8 && !fail; s++) {
+		for(int d=0; d<8 && !fail; d++) {
 			unsigned	ln, ln1;
 
 			for(unsigned ln1=1; ln1<8; ln1++) {
 				printf("Offset #%d/#%3d MEMCPY #%d: ", s,TESTLEN-d-ln1,ln1);
 				dma_memcpy(dst+TESTLEN-d-ln1, src+s, ln1);
 				if (memcmp(dst+TESTLEN-d-ln1, src+s, ln1) != 0) {
-					printf("FAIL!\n");
+					printf("FAIL!\n"); fail = 1;
 				} else
 					printf("PASS\n");
 			}
@@ -129,10 +147,53 @@ int	main(int argc, char **argv) {
 			ln = (d > s) ? (TESTLEN-d):(TESTLEN-s);
 			dma_memcpy(dst+d, src+s, ln);
 			if (memcmp(dst+d, src+s, ln) != 0) {
-				printf("FAIL!\n");
+				printf("FAIL!\n"); fail = 1;
 			} else
 				printf("PASS\n");
 		}
 	}
 	// }}}
+
+	if (0x09 != src[TESTLEN+0]) {
+		printf("src[TESTLEN+0] = %02x (FAIL)\n", src[TESTLEN+0]);fail=1;
+	} if (0x0a != src[TESTLEN+1]) {
+		printf("src[TESTLEN+1] = %02x (FAIL)\n", src[TESTLEN+1]);fail=1;
+	} if (0x0b != src[TESTLEN+2]) {
+		printf("src[TESTLEN+2] = %02x (FAIL)\n", src[TESTLEN+2]);fail=1;
+	} if (0x0c != src[TESTLEN+3]) {
+		printf("src[TESTLEN+3] = %02x (FAIL)\n", src[TESTLEN+3]);fail=1;
+	} if (0x0d != dst[TESTLEN+0]) {
+		printf("dst[TESTLEN+1] = %02x (FAIL)\n", dst[TESTLEN+0]);fail=1;
+	} if (0x0e != dst[TESTLEN+1]) {
+		printf("dst[TESTLEN+2] = %02x (FAIL)\n", dst[TESTLEN+1]);fail=1;
+	} if (0x0f != dst[TESTLEN+2]) {
+		printf("dst[TESTLEN+3] = %02x (FAIL)\n", dst[TESTLEN+2]);fail=1;
+	} if (0x00 != dst[TESTLEN+3]) {
+		printf("dst[TESTLEN+0] = %02x (FAIL)\n", dst[TESTLEN+3]);fail=1;
+	}
+	src -= 4; dst -= 4;
+	if (0x01 != src[0]) {
+		printf("src[0] = %02x (FAIL)\n", src[0]);fail=1;
+	} if (0x02 != src[1]) {
+		printf("src[1] = %02x (FAIL)\n", src[1]);fail=1;
+	} if (0x03 != src[2]) {
+		printf("src[2] = %02x (FAIL)\n", src[2]);fail=1;
+	} if (0x04 != src[3]) {
+		printf("src[3] = %02x (FAIL)\n", src[3]);fail=1;
+	} if (0x05 != dst[0]) {
+		printf("dst[0] = %02x (FAIL)\n", dst[0]);fail=1;
+	} if (0x06 != dst[1]) {
+		printf("dst[1] = %02x (FAIL)\n", dst[1]);fail=1;
+	} if (0x07 != dst[2]) {
+		printf("dst[2] = %02x (FAIL)\n", dst[2]);fail=1;
+	} if (0x08 != dst[3]) {
+		printf("dst[3] = %02x (FAIL)\n", dst[3]);fail=1;
+	}
+
+	// printf("Final   ptrs: SRC = 0x%08x, DST = 0x%08x\n", src, dst);
+
+	if (fail)
+		printf("TEST FAILURE!\n");
+	else
+		printf("SUCCESS!!  All tests pass\n");
 }
