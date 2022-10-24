@@ -242,10 +242,12 @@ module	wbarbiter #(
 
 	// Make Verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = i_reset;
+	assign	unused = &{ 1'b0, i_reset };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

@@ -85,10 +85,12 @@ module	mpyop #(
 		assign	o_hi = 1'b0; // Not needed
 
 `ifdef	VERILATOR
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	mpy_unused;
 		assign	mpy_unused = &{ 1'b0, i_clk, i_reset, i_stb, i_op, i_a, i_b };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 `endif
 		// }}}
 	end else begin : IMPY
@@ -107,10 +109,12 @@ module	mpyop #(
 		assign	o_hi = i_op[1];
 
 `ifdef	VERILATOR
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	mpy_unused;
 		assign	mpy_unused = &{ 1'b0, i_clk, i_reset, i_stb, i_op[1] };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 `endif
 		// }}}
 	end else begin: MPN1
@@ -388,10 +392,12 @@ module	mpyop #(
 		// Declarations
 		// {{{
 		reg		r_hi;
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire		unused_aux;
 		wire	[65:0]	full_result;
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 		// }}}
 
 		slowmpy #(.LGNA(6), .NA(33)) slowmpyi(i_clk, i_reset, i_stb,

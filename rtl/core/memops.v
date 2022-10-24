@@ -211,6 +211,7 @@ module	memops #(
 		5'b01110: oword_sel[3:0] = 4'b0010;
 		5'b01111: oword_sel[3:0] = 4'b0001;
 		//
+		// verilator coverage_off
 		5'b10???: oword_sel[3:0] = 4'b1111;
 		5'b1100?: oword_sel[3:0] = 4'b0011;
 		5'b1101?: oword_sel[3:0] = 4'b1100;
@@ -218,6 +219,7 @@ module	memops #(
 		5'b11101: oword_sel[3:0] = 4'b0010;
 		5'b11110: oword_sel[3:0] = 4'b0100;
 		5'b11111: oword_sel[3:0] = 4'b1000;
+		// verilator coverage_on
 		//
 		default: oword_sel[3:0] = 4'b1111;
 		endcase
@@ -263,9 +265,11 @@ module	memops #(
 				3'b011: o_wb_data[31:0] <= { i_data[ 7:0], {(24){1'b0}} } >> (8*oshift2);
 				3'b00?: o_wb_data[31:0] <= i_data[31:0];
 				//
+				// verilator coverage_off
 				3'b110: o_wb_data <= { {(BUS_WIDTH-16){1'b0}}, i_data[15:0] } << (8*oshift2);
 				3'b111: o_wb_data <= { {(BUS_WIDTH-8){1'b0}},  i_data[ 7:0] } << (8*oshift2);
 				3'b10?: o_wb_data <= { {(BUS_WIDTH-32){1'b0}}, i_data[31:0] } << (8*oshift2);
+				// verilator coverage_on
 				//
 				endcase
 				// }}}
@@ -384,13 +388,15 @@ module	memops #(
 		//
 		// Little endian : Same bus result, just grab a different bits
 		//   from the bus return to send back to the CPU.
+		// verilator coverage_on
 		5'b1100?: o_result <= { 16'h00, i_wb_data[15: 0] };
 		5'b1101?: o_result <= { 16'h00, i_wb_data[31:16] };
 		5'b11100: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		5'b11101: o_result <= { 24'h00, i_wb_data[15: 8] };
 		5'b11110: o_result <= { 24'h00, i_wb_data[23:16] };
 		5'b11111: o_result <= { 24'h00, i_wb_data[31:24] };
-		default: o_result <= i_wb_data[31:0];
+		// verilator coverage_off
+		// default: o_result <= i_wb_data[31:0];
 		endcase
 	end else begin
 		casez({ OPT_LITTLE_ENDIAN, r_op[$clog2(BUS_WIDTH/8) +: 2] })
@@ -403,12 +409,14 @@ module	memops #(
 		//
 		// Little endian : Same bus result, just grab a different bits
 		//   from the bus return to send back to the CPU.
+		// verilator coverage_off
 		3'b10?: o_result <= pre_result[31: 0];
 		3'b110: o_result <= { 16'h00, pre_result[15: 0] };
 		3'b111: o_result <= { 24'h00, pre_result[ 7: 0] };
+		// verilator coverage_on
 		//
 		// Just to have an (unused) default
-		default: o_result <= pre_result[31:0];
+		// default: o_result <= pre_result[31:0]; (Messes w/ coverage)
 		endcase
 	end
 	// }}}
@@ -479,6 +487,7 @@ module	memops #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, pre_result };
@@ -490,6 +499,7 @@ module	memops #(
 
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

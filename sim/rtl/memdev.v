@@ -87,7 +87,7 @@ module	memdev #(
 	// {{{
 	generate
 	if (EXTRACLOCK == 0)
-	begin
+	begin : GEN_EXTRA_CLK
 		// {{{
 		assign	w_wstb = (i_wb_stb)&&(i_wb_we);
 		assign	w_stb  = i_wb_stb;
@@ -95,7 +95,7 @@ module	memdev #(
 		assign	w_data = i_wb_data;
 		assign	w_sel  = i_wb_sel;
 		// }}}
-	end else begin
+	end else begin : NO_EXTRA_CLK
 		// {{{
 		reg		last_wstb, last_stb;
 		reg	[(AW-1):0]	last_addr;
@@ -146,10 +146,12 @@ module	memdev #(
 	end else begin : VERILATOR_ROM
 
 		// Make Verilator happy
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	[DW+DW/8:0]	rom_unused;
 		assign	rom_unused = { w_wstb, w_data, w_sel };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 `endif
 	end endgenerate
 	// }}}

@@ -104,7 +104,9 @@ module	axiicache #(
 		// An instruction cache only needs to support cache reads
 		output	wire				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
+		// verilator coverage_off
 		output	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_ARID,
+		// verilator coverage_on
 		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
 		output	wire	[7:0]			M_AXI_ARLEN,
 		output	wire	[2:0]			M_AXI_ARSIZE,
@@ -112,11 +114,15 @@ module	axiicache #(
 		output	wire				M_AXI_ARLOCK,
 		output	wire	[3:0]			M_AXI_ARCACHE,
 		output	wire	[2:0]			M_AXI_ARPROT,
+		// verilator coverage_off
 		output	wire	[3:0]			M_AXI_ARQOS,
+		// verilator coverage_on
 		//
 		input	wire				M_AXI_RVALID,
 		output	wire				M_AXI_RREADY,
+		// verilator coverage_off
 		input	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_RID,
+		// verilator coverage_on
 		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
 		input	wire				M_AXI_RLAST,
 		input	wire	[1:0]			M_AXI_RRESP,
@@ -744,10 +750,12 @@ module	axiicache #(
 
 	// Make Verilator happy
 	// {{{
+	// verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RID, M_AXI_RRESP[0] };
 	// Verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

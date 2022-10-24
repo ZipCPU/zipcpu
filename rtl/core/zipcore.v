@@ -476,11 +476,13 @@ module	zipcore #(
 		assign	pending_sreg_write = 1'b0;
 		assign	cc_invalid_for_dcd = 1'b0;
 
+		// verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire		pipe_unused;
 		assign		pipe_unused = &{ 1'b0, cc_invalid_for_dcd,
 					pending_sreg_write };
 		// Verilator lint_on UNUSED
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 
@@ -515,9 +517,11 @@ module	zipcore #(
 		//	&&(!alu_sreg_stall);
 		assign	alu_ce = (adf_ce_unconditional)&&(op_valid_alu);
 
+		// verilator coverage_off
 		// Verilator lint_off unused
-		wire	unused_alu_stall = alu_stall;
+		wire	unused_alu_stall = &{ 1'b0, alu_stall };
 		// Verilator lint_on  unused
+		// verilator coverage_on
 		// }}}
 	end else begin : NO_ALU_STALLS
 		// alu_stall, alu_ce
@@ -528,9 +532,11 @@ module	zipcore #(
 		//			&&(!alu_stall);
 		assign	alu_ce = (adf_ce_unconditional)&&(op_valid_alu);
 
+		// verilator coverage_off
 		// Verilator lint_off unused
-		wire	unused_alu_stall = alu_stall;
+		wire	unused_alu_stall = &{ 1'b0, alu_stall };
 		// Verilator lint_on  unused
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 	//
@@ -752,10 +758,12 @@ module	zipcore #(
 			assign	w_op_Bv = regset[dcd_B[3:0]];
 		end
 
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	unused_prereg_addrs;
 		assign	unused_prereg_addrs = &{ 1'b0, dcd_preA, dcd_preB };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 		// }}}
 	end else begin : GEN_BLOCKRAM
 		// {{{
@@ -1141,10 +1149,12 @@ module	zipcore #(
 
 		assign op_lock       = 1'b0;
 
+		// verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	dcd_lock_unused;
-		assign	dcd_lock_unused = dcd_lock;
+		assign	dcd_lock_unused = &{ 1'b0, dcd_lock };
 		// Verilator lint_on  UNUSED
+		// verilator coverage_on
 
 	end else // if (!OPT_LOCK)
 	begin : GEN_OPLOCK
@@ -1249,10 +1259,12 @@ module	zipcore #(
 		assign	op_sim = 0;
 		assign	op_sim_immv = 0;
 
+		// verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	op_sim_unused;
 		assign	op_sim_unused = &{ 1'b0, dcd_sim, dcd_sim_immv };
 		// Verilator lint_on  UNUSED
+		// verilator coverage_on
 	end endgenerate
 	// }}}
 
@@ -1528,10 +1540,12 @@ module	zipcore #(
 		assign	div_flags = 4'h0;
 
 		// Make verilator happy here
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	unused_divide;
-		assign	unused_divide = div_ce;
+		assign	unused_divide = &{ 1'b0, div_ce };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}
@@ -3637,6 +3651,7 @@ module	zipcore #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, fpu_ce, wr_spreg_vl[1:0],
@@ -3656,6 +3671,7 @@ module	zipcore #(
 				i_dbg_rreg[4] };
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

@@ -54,6 +54,10 @@ axmincheck     AXMIN  cputest.hex axmin-out.txt
 wbbmincheck    WBBMIN cputest.hex wbbmin-out.txt
 wbmincheck     WBMIN  cputest.hex wbmin-out.txt		# DUMP_TO_VCD=1 VCD_FILE="test/wbmintrace.vcd"
 ##
+axlminchklp    AXLMIN cputest.hex axlminlp-out.txt	OPT_LOWPOWER=1
+axminchklp     AXMIN  cputest.hex axminlp-out.txt	OPT_LOWPOWER=1
+wbbminchklp    WBBMIN cputest.hex wbbminlp-out.txt	OPT_LOWPOWER=1
+##
 axlminchk64    AXLMIN cputest64.hex axlmin64-out.txt		BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axlmin64trace.vcd"
 axminchk64     AXMIN  cputest64.hex axmin64-out.txt		BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axmin64trace.vcd"
 wbbminchk64    WBBMIN cputest64.hex wbbmin64-out.txt		BUS_WIDTH=64
@@ -63,6 +67,10 @@ axlpipecheck   AXLPIPE cputest.hex axlpipe-out.txt	# DUMP_TO_VCD=1 VCD_FILE="tes
 axpipecheck    AXPIPE  cputest.hex axpipe-out.txt
 wbbpipecheck   WBBPIPE cputest.hex wbbpipe-out.txt
 wbpipecheck    WBPIPE  cputest.hex wbpipe-out.txt
+##
+axlpipechklp   AXLPIPE cputest.hex axlpipelp-out.txt	OPT_LOWPOWER=1
+axpipechklp    AXPIPE  cputest.hex axpipelp-out.txt	OPT_LOWPOWER=1
+wbbpipechklp   WBBPIPE cputest.hex wbbpipelp-out.txt	OPT_LOWPOWER=1
 ##
 axlpipechk64   AXLPIPE cputest64.hex axlpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
 axpipechk64    AXPIPE  cputest64.hex axpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
@@ -80,6 +88,13 @@ wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64
 axlpwrcheck    AXLPWR  cputest.hex axlpwr-out.txt
 wbblpwrcheck   WBBLPWR cputest.hex wblpwr-out.txt
 wblpwrcheck    WBLPWR  cputest.hex wbblpwr-out.txt
+## Check various multiplies
+wblpwrcheck0   WBLPWR  cputest.hex wbblpwr0-out.txt	OPT_MPY=0
+wblpwrcheck1   WBLPWR  cputest.hex wbblpwr1-out.txt	OPT_MPY=1
+wblpwrcheck2   WBLPWR  cputest.hex wbblpwr2-out.txt	OPT_MPY=2
+wblpwrcheck3   WBLPWR  cputest.hex wbblpwr3-out.txt	OPT_MPY=3
+wblpwrcheck4   WBLPWR  cputest.hex wbblpwr4-out.txt	OPT_MPY=4
+wblpwrcheck5   WBLPWR  cputest.hex wbblpwr5-out.txt	OPT_MPY=5
 ##
 ################################################################################
 ################################################################################
@@ -165,5 +180,5 @@ wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ##
 ##
 wbzipdmacach  WBCACHE  dmatest.hex wbzdma-out.txt
-wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 DUMP_TO_VCD=0 VCD_FILE="wbzdmacach64.vcd"
+wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
 ## }}}

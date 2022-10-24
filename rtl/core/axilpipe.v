@@ -90,7 +90,9 @@ module	axilpipe #(
 		output	reg			M_AXI_AWVALID,
 		input	wire			M_AXI_AWREADY,
 		output	reg	[AW-1:0]	M_AXI_AWADDR,
+		// verilator coverage_off
 		output	wire	[2:0]		M_AXI_AWPROT,
+		// verilator coverage_on
 		//
 		output	reg			M_AXI_WVALID,
 		input	wire			M_AXI_WREADY,
@@ -106,7 +108,9 @@ module	axilpipe #(
 		output	reg			M_AXI_ARVALID,
 		input	wire			M_AXI_ARREADY,
 		output	reg	[AW-1:0]	M_AXI_ARADDR,
+		// verilator coverage_off
 		output	wire	[2:0]		M_AXI_ARPROT,
+		// verilator coverage_on
 		//
 		input	wire			M_AXI_RVALID,
 		output	wire			M_AXI_RREADY,
@@ -956,6 +960,7 @@ module	axilpipe #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0], i_lock,
@@ -977,6 +982,7 @@ module	axilpipe #(
 		end
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

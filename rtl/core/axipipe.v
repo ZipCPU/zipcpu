@@ -93,15 +93,19 @@ module	axipipe #(
 		// {{{
 		output	reg			M_AXI_AWVALID,
 		input	wire			M_AXI_AWREADY,
+		// verilator coverage_off
 		output	wire	[IW-1:0]	M_AXI_AWID,
+		// verilator coverage_on
 		output	reg	[AW-1:0]	M_AXI_AWADDR,
 		output	wire	[7:0]		M_AXI_AWLEN,
 		output	wire	[2:0]		M_AXI_AWSIZE,
 		output	wire	[1:0]		M_AXI_AWBURST,
 		output	wire			M_AXI_AWLOCK,
 		output	wire	[3:0]		M_AXI_AWCACHE,
+		// verilator coverage_off
 		output	wire	[2:0]		M_AXI_AWPROT,
 		output	wire	[3:0]		M_AXI_AWQOS,
+		// verilator coverage_on
 		//
 		output	reg			M_AXI_WVALID,
 		input	wire			M_AXI_WREADY,
@@ -110,7 +114,9 @@ module	axipipe #(
 		output	wire			M_AXI_WLAST,
 		//
 		input	wire			M_AXI_BVALID,
+		// verilator coverage_off
 		input	wire	[IW-1:0]	M_AXI_BID,
+		// verilator coverage_on
 		output	wire			M_AXI_BREADY,
 		input	wire [1:0]		M_AXI_BRESP,
 		// }}}
@@ -118,19 +124,25 @@ module	axipipe #(
 		// {{{
 		output	reg			M_AXI_ARVALID,
 		input	wire			M_AXI_ARREADY,
+		// verilator coverage_off
 		output	wire	[IW-1:0]	M_AXI_ARID,
+		// verilator coverage_on
 		output	reg	[AW-1:0]	M_AXI_ARADDR,
 		output	wire	[7:0]		M_AXI_ARLEN,
 		output	wire	[2:0]		M_AXI_ARSIZE,
 		output	wire	[1:0]		M_AXI_ARBURST,
 		output	wire			M_AXI_ARLOCK,
 		output	wire	[3:0]		M_AXI_ARCACHE,
+		// verilator coverage_off
 		output	wire	[2:0]		M_AXI_ARPROT,
 		output	wire	[3:0]		M_AXI_ARQOS,
+		// verilator coverage_on
 		//
 		input	wire			M_AXI_RVALID,
 		output	wire			M_AXI_RREADY,
+		// verilator coverage_off
 		input	wire	[IW-1:0]	M_AXI_RID,
+		// verilator coverage_on
 		input	wire	[DW-1:0]	M_AXI_RDATA,
 		input	wire			M_AXI_RLAST,
 		input	wire	[1:0]		M_AXI_RRESP
@@ -1095,12 +1107,15 @@ module	axipipe #(
 		if (OPT_SIGN_EXTEND)
 		begin
 			// {{{
+			// verilator coverage_off
 			// Optionally sign extend the return result.
+			//   This would be contrary to the ZipCPU ISA
 			case(fifo_op)
 			2'b10: o_result[31:16] <= {(16){pre_result[15]}};
 			2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
 			default: begin end
 			endcase
+			// verilator coverage_on
 			// }}}
 		end else if (fifo_op[1])
 		begin
@@ -1144,6 +1159,7 @@ module	axipipe #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_RRESP[0], M_AXI_BRESP[0],
@@ -1167,6 +1183,7 @@ module	axipipe #(
 		end
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

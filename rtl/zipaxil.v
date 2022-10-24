@@ -618,9 +618,9 @@ module	zipaxil #(
 	// dbg_catch
 	// {{{
 	generate if (!OPT_DBGPORT)
-	begin
+	begin : NO_DBG_CATCH
 		assign	dbg_catch = START_HALTED;
-	end else begin
+	end else begin : GEN_DBG_CATCH
 		reg	r_dbg_catch;
 
 		initial	r_dbg_catch = START_HALTED;

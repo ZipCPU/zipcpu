@@ -56,10 +56,14 @@ module	slowmpy #(
 		input	wire				i_stb,
 		input	wire	signed	[(NA-1):0]	i_a,
 		input	wire	signed	[(NB-1):0]	i_b,
+		// verilator coverage_off
 		input	wire				i_aux,
+		// verilator coverage_on
 		output	reg				o_busy, o_done,
 		output	reg	signed	[(NA+NB-1):0]	o_p,
+		// verilator coverage_off
 		output	reg				o_aux
+		// verilator coverage_on
 		// }}}
 	);
 
@@ -69,7 +73,9 @@ module	slowmpy #(
 	reg	[NA-1:0]	p_a;
 	reg	[NB-1:0]	p_b;
 	reg	[NA+NB-1:0]	partial;
+	// verilator coverage_off
 	reg			aux;
+	// verilator coverage_on
 	reg			almost_done;
 	wire			pre_done;
 	wire	[NA-1:0]	pwire;

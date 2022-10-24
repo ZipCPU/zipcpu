@@ -187,20 +187,19 @@ module	icontrol #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
+	// verilator lint_off UNUSED
 	generate if (IUSED < 15)
-	begin
-		// verilator lint_off UNUSED
-		wire	unused;
-		assign	unused = &{ 1'b0, i_wb_data[32-2:(16+IUSED)],
+	begin : UNUSED_INTS
+		wire	unused_int;
+		assign	unused_int = &{ 1'b0, i_wb_data[32-2:(16+IUSED)],
 				i_wb_data[16-2:IUSED] };
-		// verilator lint_on  UNUSED
-
 	end endgenerate
 
-	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, i_wb_cyc, i_wb_sel };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

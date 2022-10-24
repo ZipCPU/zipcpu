@@ -318,6 +318,7 @@ module	zipwb #(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH+WBLSB),
 			.INSN_WIDTH(INSN_WIDTH),
 			.DATA_WIDTH(BUS_WIDTH),
+			// .OPT_LOWPOWER(OPT_LOWPOWER),		(Unused)
 			.OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
 		) pf (
@@ -351,6 +352,7 @@ module	zipwb #(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH+WBLSB),
 			.DATA_WIDTH(BUS_WIDTH),
 			.INSN_WIDTH(INSN_WIDTH),
+			// .OPT_LOWPOWER(OPT_LOWPOWER),		(Unused)
 			.OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
 		) pf (
@@ -383,6 +385,7 @@ module	zipwb #(
 			.BUS_WIDTH(BUS_WIDTH),
 			// .INSN_WIDTH(INSN_WIDTH),
 			.LGCACHELEN(OPT_LGICACHE-WBLSB),
+			// .OPT_LOWPOWER(OPT_LOWPOWER),		(Unused)
 			.ADDRESS_WIDTH(ADDRESS_WIDTH)
 			// }}}
 		) pf(
@@ -421,6 +424,7 @@ module	zipwb #(
 			.BUS_WIDTH(BUS_WIDTH),
 			.LGNLINES(OPT_LGDCACHE-WBLSB-3),
 			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
+			.OPT_LOWPOWER(OPT_LOWPOWER),
 			.OPT_PIPE(OPT_MEMPIPE),
 			.OPT_LOCK(OPT_LOCK)
 `ifdef	FORMAL
@@ -457,6 +461,7 @@ module	zipwb #(
 			.ADDRESS_WIDTH(AW),
 			.BUS_WIDTH(BUS_WIDTH),
 			.OPT_LOCK(OPT_LOCK),
+			// .OPT_LOWPOWER(OPT_LOWPOWER),		(Unused)
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
 `ifdef	FORMAL
 			, .OPT_MAXDEPTH(4'h3),
@@ -491,6 +496,7 @@ module	zipwb #(
 			// {{{
 			.ADDRESS_WIDTH(AW),
 			.BUS_WIDTH(BUS_WIDTH),
+			.OPT_LOWPOWER(OPT_LOWPOWER),
 			.OPT_LOCK(OPT_LOCK),
 			.WITH_LOCAL_BUS(WITH_LOCAL_BUS)
 `ifdef	FORMAL
@@ -659,9 +665,11 @@ module	zipwb #(
 
 	// Make Verilator happy
 	// {{{
+	// verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, pf_data, mem_lock_pc, clear_dcache };
 	// Verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 endmodule

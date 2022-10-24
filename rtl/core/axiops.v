@@ -145,15 +145,19 @@ module	axiops #(
 		// {{{
 		output	reg				M_AXI_AWVALID,
 		input	wire				M_AXI_AWREADY,
+		// verilator coverage_off
 		output	wire	[IW-1:0]		M_AXI_AWID,
+		// verilator coverage_on
 		output	reg	[AW-1:0]		M_AXI_AWADDR,
 		output	wire	[7:0]			M_AXI_AWLEN,
 		output	wire	[2:0]			M_AXI_AWSIZE,
 		output	wire	[1:0]			M_AXI_AWBURST,
 		output	wire				M_AXI_AWLOCK,
 		output	wire	[3:0]			M_AXI_AWCACHE,
+		// verilator coverage_off
 		output	wire	[2:0]			M_AXI_AWPROT,
 		output	wire	[3:0]			M_AXI_AWQOS,
+		// verilator coverage_on
 		//
 		output	reg				M_AXI_WVALID,
 		input	wire				M_AXI_WREADY,
@@ -163,26 +167,34 @@ module	axiops #(
 		//
 		input	wire				M_AXI_BVALID,
 		output	reg				M_AXI_BREADY,
+		// verilator coverage_off
 		input	wire	[IW-1:0]		M_AXI_BID,
+		// verilator coverage_on
 		input	wire	[1:0]			M_AXI_BRESP,
 		// }}}
 		// Reads
 		// {{{
 		output	reg				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
+		// verilator coverage_off
 		output	wire	[IW-1:0]		M_AXI_ARID,
+		// verilator coverage_on
 		output	reg	[AW-1:0]		M_AXI_ARADDR,
 		output	wire	[7:0]			M_AXI_ARLEN,
 		output	wire	[2:0]			M_AXI_ARSIZE,
 		output	wire	[1:0]			M_AXI_ARBURST,
 		output	wire				M_AXI_ARLOCK,
 		output	wire	[3:0]			M_AXI_ARCACHE,
+		// verilator coverage_off
 		output	wire	[2:0]			M_AXI_ARPROT,
 		output	wire	[3:0]			M_AXI_ARQOS,
+		// verilator coverage_on
 		//
 		input	wire				M_AXI_RVALID,
 		output	reg				M_AXI_RREADY,
+		// verilator coverage_off
 		input	wire	[IW-1:0]		M_AXI_RID,
+		// verilator coverage_on
 		input	wire	[DW-1:0]		M_AXI_RDATA,
 		input	wire				M_AXI_RLAST,
 		input	wire	[1:0]			M_AXI_RRESP
@@ -939,12 +951,15 @@ module	axiops #(
 			if (OPT_SIGN_EXTEND)
 			begin
 				// {{{
+				// verilator coverage_off
 				// Optionally sign extend the return result.
+				//   Not covered, since this violates ZipCPU ISA
 				casez(r_op[AXILSB +: 2])
 				2'b10: o_result[31:16] <= {(16){pre_result[15]}};
 				2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
 				default: begin end
 				endcase
+				// verilator coverage_off
 				// }}}
 			end else begin
 				// Fill unused return bits with zeros
@@ -972,6 +987,7 @@ module	axiops #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_AXI_BID, M_AXI_RID, M_AXI_RLAST };
@@ -989,6 +1005,7 @@ module	axiops #(
 		end
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

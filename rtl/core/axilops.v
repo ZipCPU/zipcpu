@@ -142,7 +142,9 @@ module	axilops #(
 		output	reg				M_AXI_AWVALID,
 		input	wire				M_AXI_AWREADY,
 		output	reg	[AW-1:0]		M_AXI_AWADDR,
+		// verilator coverage_off
 		output	wire	[2:0]			M_AXI_AWPROT,
+		// verilator coverage_on
 		//
 		output	reg				M_AXI_WVALID,
 		input	wire				M_AXI_WREADY,
@@ -158,7 +160,9 @@ module	axilops #(
 		output	reg				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
 		output	reg	[AW-1:0]		M_AXI_ARADDR,
+		// verilator coverage_off
 		output	wire	[2:0]			M_AXI_ARPROT,
+		// verilator coverage_on
 		//
 		input	wire				M_AXI_RVALID,
 		output	reg				M_AXI_RREADY,
@@ -789,12 +793,15 @@ module	axilops #(
 			if (OPT_SIGN_EXTEND)
 			begin
 				// {{{
+				// verilator coverage_off
 				// Optionally sign extend the return result.
+				//   ... would violate ZipCPU ISA
 				casez(r_op[AXILSB +: 2])
 				2'b10: o_result[31:16] <= {(16){pre_result[15]}};
 				2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
 				default: begin end
 				endcase
+				// verilator coverage_on
 				// }}}
 			end else begin
 				// Fill unused return bits with zeros
@@ -821,6 +828,7 @@ module	axilops #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, i_lock, M_AXI_RRESP[0], M_AXI_BRESP[0] };
@@ -838,6 +846,7 @@ module	axilops #(
 		end
 	end endgenerate
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

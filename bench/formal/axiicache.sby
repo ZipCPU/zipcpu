@@ -9,8 +9,8 @@ cvrw   cvr       opt_wrap
 [options]
 prf: mode prove
 prf:    depth 10
-prfw:   depth 19
-prfw64: depth 19
+prfw:   depth 17	# Requires SEDA Suite for this depth
+prfw64: depth 16	# Requires SEDA Suite for this depth
 cvr: mode cover
 cvr:    depth 40
 cvrw:   depth 28

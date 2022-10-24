@@ -70,9 +70,13 @@ module	dblfetch #(
 		output	reg	[AW-1:0]	o_pc,
 		// Wishbone outputs
 		output	reg			o_wb_cyc, o_wb_stb,
+		// verilator coverage_off
 		output	wire			o_wb_we,
+		// verilator coverage_on
 		output	reg [AW-$clog2(DW/8)-1:0] o_wb_addr,
+		// verilator coverage_off
 		output	wire	[DW-1:0]	o_wb_data,
+		// verilator coverage_on
 		// And return inputs
 		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
 		input	wire	[DW-1:0]	i_wb_data

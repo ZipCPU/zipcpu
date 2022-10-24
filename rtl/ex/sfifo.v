@@ -212,10 +212,12 @@ module sfifo #(
 
 	// Make Verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
-	wire	[LGFLEN-1:0]	unused;
-	assign	unused = rd_next;
+	wire	unused;
+	assign	unused = &{ 1'b0, rd_next };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
