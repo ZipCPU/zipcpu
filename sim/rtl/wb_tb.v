@@ -74,6 +74,7 @@ module	wb_tb #(
 		parameter [0:0]	OPT_DBGPORT          = 1'b1,
 		parameter [0:0]	OPT_TRACE_PORT       = 1'b1,
 		parameter [0:0]	OPT_CIS              = 1'b1,
+		parameter [0:0]	OPT_DMA              = 1'b1,
 		parameter	OPT_SMP              = 1, // Must be > 0
 		parameter	MEM_FILE = "cputest",
 		parameter	CONSOLE_FILE = "console.txt",
@@ -227,6 +228,21 @@ module	wb_tb #(
 	wire	[3:0]			zsys_sel;
 	reg				r_zsys_ack;
 	reg	[31:0]			r_zsys_data;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) DMA bus declarations
+	// {{{
+	wire				dmac_cyc, dmac_stb, dmac_we;
+	wire	[WAW-1:0]		dmac_addr;
+	wire	[BUS_WIDTH-1:0]		dmac_data;
+	wire	[BUS_WIDTH/8-1:0]	dmac_sel;
+
+	// Verilator lint_off UNUSED
+	wire				dmac_int;
+	wire				dmac_ack, dmac_stall, dmac_err;
+	wire	[BUS_WIDTH-1:0]		dmac_return;
+	// Verilator lint_on  UNUSED
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -521,7 +537,7 @@ module	wb_tb #(
 			.OPT_CLKGATE(OPT_CLKGATE),
 			.RESET_DURATION(RESET_DURATION),
 			// ZipSystem only parameters
-			.OPT_DMA(1'b1),
+			.OPT_DMA(OPT_DMA),
 			.OPT_ACCOUNTING(1'b1),
 			.EXTERNAL_INTERRUPTS(1)
 			// }}}
@@ -740,7 +756,7 @@ module	wb_tb #(
 				.OPT_CLKGATE(OPT_CLKGATE),
 				.RESET_DURATION(RESET_DURATION),
 				// ZipSystem only parameters
-				.OPT_DMA(1'b1),
+				.OPT_DMA(OPT_DMA),
 				.OPT_ACCOUNTING(1'b1),
 				.EXTERNAL_INTERRUPTS(1)
 				// }}}
@@ -808,9 +824,9 @@ module	wb_tb #(
 	wbxbar #(
 		// {{{
 `ifdef	VERILATOR
-		.NM(1+OPT_SMP),
+		.NM(1+1+OPT_SMP),
 `else
-		.NM(OPT_SMP),
+		.NM(1+OPT_SMP),
 `endif
 		.NS(4+OPT_SMP),
 		.AW(ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)), .DW(BUS_WIDTH),
@@ -832,22 +848,28 @@ module	wb_tb #(
 		// {{{
 `ifdef	VERILATOR
 		// Two bus masters: the external SIM input, and the CPU
-		.i_mcyc({   simw_cyc,   cpu_cyc }),
-		.i_mstb({   simw_stb,   cpu_stb }),
-		.i_mwe({    simw_we,    cpu_we }),
-		.i_maddr({  simw_addr[ADDRESS_WIDTH-WBLSB-1:0],  cpu_addr }),
-		.i_mdata({  simw_data,  cpu_data }),
-		.i_msel({   simw_sel,   cpu_sel }),
-		.o_mstall({ simw_stall, cpu_stall }),
-		.o_mack({   simw_ack,   cpu_ack }),
-		.o_mdata({  simw_idata, cpu_idata }),
-		.o_merr({   simw_err,   cpu_err }),
+		.i_mcyc({   simw_cyc,   dmac_cyc, cpu_cyc }),
+		.i_mstb({   simw_stb,   dmac_stb, cpu_stb }),
+		.i_mwe({    simw_we,    dmac_we,  cpu_we }),
+		.i_maddr({  simw_addr[ADDRESS_WIDTH-WBLSB-1:0], dmac_addr, cpu_addr }),
+		.i_mdata({  simw_data,  dmac_data, cpu_data }),
+		.i_msel({   simw_sel,   dmac_sel,  cpu_sel }),
+		.o_mstall({ simw_stall, dmac_stall,cpu_stall }),
+		.o_mack({   simw_ack,   dmac_ack,  cpu_ack }),
+		.o_mdata({  simw_idata, dmac_return,cpu_idata }),
+		.o_merr({   simw_err,   dmac_err,   cpu_err }),
 `else
 		// With no external CPU input, there is no simulation port
-		.i_mcyc(cpu_cyc), .i_mstb(cpu_stb), .i_mwe(cpu_we),
-		.i_maddr(cpu_addr), .i_mdata(cpu_data), .i_msel(cpu_sel),
-		.o_mstall(cpu_stall), .o_mack(cpu_ack), .o_mdata(cpu_idata),
-			.o_merr(cpu_err),
+		.i_mcyc({ dmac_cyc, cpu_cyc }),
+			.i_mstb({  dmac_stb,  cpu_stb }),
+			.i_mwe({   dmac_we,   cpu_we }),
+			.i_maddr({ dmac_addr, cpu_addr }),
+			.i_mdata({ dmac_data, cpu_data }),
+			.i_msel({  dmac_sel,  cpu_sel }),
+		.o_mstall({ dmac_stall, cpu_stall }),
+			.o_mack({  dmac_ack,    cpu_ack }),
+			.o_mdata({ dmac_return, cpu_idata }),
+			.o_merr({  dmac_err,    cpu_err }),
 `endif
 		// }}}
 		// Master port ... to control the slaves w/in this design
@@ -904,6 +926,9 @@ module	wb_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+	reg		con_write_en;
+	reg	[7:0]	con_write_byte;
+
 	integer	sim_console;
 
 	wbdown #(
@@ -945,12 +970,26 @@ module	wb_tb #(
 		sim_console = $fopen(CONSOLE_FILE);
 	end
 
+	// Make sure we can read the outgoing console data from the trace
+	initial	con_write_en = 1'b0;
 	always @(posedge i_clk)
-	if (!i_reset && con_stb && con_we && con_addr[1:0] == 2'b11
-						&& con_sel[0])
+	if (i_reset)
+		con_write_en <= 1'b0;
+	else if (con_stb && con_we && con_addr[1:0] == 2'b11 && con_sel[0])
+		con_write_en <= 1'b1;
+	else
+		con_write_en <= 1'b0;
+
+	initial	con_write_byte = 8'h0;
+	always @(posedge i_clk)
+	if (con_stb && con_we && con_addr[1:0] == 2'b11 && con_sel[0])
+		con_write_byte <= con_data[7:0];
+
+	always @(posedge i_clk)
+	if (!i_reset && con_write_en)
 	begin
-		$fwrite(sim_console, "%1s", con_data[7:0]);
-		$write("%1s", con_data[7:0]);
+		$fwrite(sim_console, "%1s", con_write_byte);
+		$write("%1s", con_write_byte);
 	end
 
 	assign	con_idata = 32'h0;
@@ -976,6 +1015,10 @@ module	wb_tb #(
 
 	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
 			jiffies_data;	// Jiffies
+	wire	[31:0]	dma_slv_data;
+
+	reg		zsys_stb_d;
+	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 
 	wbdown #(
 		// {{{
@@ -997,8 +1040,7 @@ module	wb_tb #(
 		// The downsized connection
 		// {{{
 		.o_cyc(zsys_cyc), .o_stb(zsys_stb), .o_we(zsys_we),
-		.o_addr(zsys_addr[WAW+WBLSB-$clog2(32/8)-5:0]),
-		.o_data(zsys_data), .o_sel(zsys_sel),
+		.o_addr(zsys_addr), .o_data(zsys_data), .o_sel(zsys_sel),
 		//
 		.i_stall(zsys_stall), .i_ack(zsys_ack), .i_data(zsys_idata),
 			.i_err(zsys_err)
@@ -1006,21 +1048,28 @@ module	wb_tb #(
 		// }}}
 	);
 
+	initial	zsys_stb_d = 1'b0;
+	always @(posedge i_clk)
+		zsys_stb_d <= !i_reset && zsys_stb;
+
+	always @(posedge i_clk)
+		zsys_addr_d <= zsys_addr;
+
 	assign	zsys_stall = 1'b0;
 
 	initial	r_zsys_ack = 1'b0;
 	always @(posedge i_clk)
-		r_zsys_ack <= !i_reset && zsys_stb;
+		r_zsys_ack <= !i_reset && zsys_stb_d;
 	assign	zsys_ack = r_zsys_ack;
 
 	assign	zsys_idata = 32'h0;
 	assign	zsys_err   = 1'b0;
 
 	always @(posedge i_clk)
-	if (zsys_stb)
+	if (zsys_stb_d)
 	begin
 		r_zsys_data <= 32'h0;
-		case(zsys_addr)
+		case(zsys_addr_d)
 		 0: r_zsys_data <= pic_data;		// PIC
 		 1: begin end	// Watchdog
 		 2: begin end	// APIC
@@ -1029,14 +1078,18 @@ module	wb_tb #(
 		 5: r_zsys_data <= timer_b_data;	// Timer B
 		 6: r_zsys_data <= timer_c_data;	// Timer C
 		 7: r_zsys_data <= jiffies_data;	// Jiffies
-		 8: begin end	//
-		 9: begin end	//
-		10: begin end	//
-		11: begin end	//
-		12: begin end	//
-		13: begin end	//
-		14: begin end	//
-		15: begin end	//
+		 8: begin end
+		 9: begin end
+		10: begin end
+		11: begin end
+		12: begin end
+		13: begin end
+		14: begin end
+		15: begin end
+		16: r_zsys_data <= dma_slv_data;
+		17: r_zsys_data <= dma_slv_data;
+		18: r_zsys_data <= dma_slv_data;
+		19: r_zsys_data <= dma_slv_data;
 		endcase
 	end else
 		r_zsys_data <= 32'h0;
@@ -1049,14 +1102,15 @@ module	wb_tb #(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset),
 		.i_wb_cyc(zsys_cyc),
-		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h0),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h0),
 		.i_wb_we(zsys_we),
 		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
 		.o_wb_stall(pic_stall),
 		.o_wb_ack(pic_ack),
 		.o_wb_data(pic_data),
 		.i_brd_ints({ 9'h0, i_sim_int,
-			1'b0, timer_a_int, timer_b_int, timer_c_int, jiffies_int, 1'b0 }),
+			1'b0, timer_a_int,
+			timer_b_int, timer_c_int, jiffies_int, dmac_int }),
 		.o_interrupt(pic_int)
 		// }}}
 	);
@@ -1066,7 +1120,7 @@ module	wb_tb #(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset), .i_ce(1'b1),
 		.i_wb_cyc(zsys_cyc),
-		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h4),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h4),
 		.i_wb_we(zsys_we),
 		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
 		.o_wb_stall(timer_a_stall),
@@ -1081,7 +1135,7 @@ module	wb_tb #(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset), .i_ce(1'b1),
 		.i_wb_cyc(zsys_cyc),
-		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h5),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h5),
 		.i_wb_we(zsys_we),
 		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
 		.o_wb_stall(timer_b_stall),
@@ -1096,7 +1150,7 @@ module	wb_tb #(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset), .i_ce(1'b1),
 		.i_wb_cyc(zsys_cyc),
-		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h6),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h6),
 		.i_wb_we(zsys_we),
 		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
 		.o_wb_stall(timer_c_stall),
@@ -1111,7 +1165,7 @@ module	wb_tb #(
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset), .i_ce(1'b1),
 		.i_wb_cyc(zsys_cyc),
-		.i_wb_stb(zsys_stb && zsys_addr[3:0] == 4'h7),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h7),
 		.i_wb_we(zsys_we),
 		.i_wb_data(zsys_data), .i_wb_sel(zsys_sel),
 		.o_wb_stall(jiffies_stall),
@@ -1120,6 +1174,65 @@ module	wb_tb #(
 		.o_int(jiffies_int)
 		// }}}
 	);
+
+	generate if (OPT_ZIPBONES && OPT_DMA)
+	begin : GEN_BONES_DMA
+		// {{{
+		localparam	DMA_LGMEM = 10;
+
+		wire		ign_dmac_stall, ign_dmac_ack;
+		wire	[31:0]	dmac_int_vec;
+
+		assign	dmac_int_vec = { 16'h0, 9'h0, i_sim_int,
+			1'b0, timer_a_int, timer_b_int,
+			timer_c_int, jiffies_int, 1'b0 };
+
+		zipdma #(
+			// {{{
+			.ADDRESS_WIDTH(ADDRESS_WIDTH), .LGMEMLEN(DMA_LGMEM),
+			.BUS_WIDTH(BUS_WIDTH), .OPT_LITTLE_ENDIAN(1'b1)
+			// }}}
+		) u_dma (
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
+			// Slave port
+			// {{{
+			.i_swb_cyc(zsys_cyc),
+				.i_swb_stb(zsys_stb && zsys_addr[4:2]== 3'b100),
+				.i_swb_we(zsys_we),
+				.i_swb_addr(zsys_addr[1:0]),
+				.i_swb_data(zsys_data),
+				.i_swb_sel(zsys_sel),
+				.o_swb_stall(ign_dmac_stall),
+				.o_swb_ack(ign_dmac_ack),
+				.o_swb_data(dma_slv_data),
+			// }}}
+			.o_mwb_cyc(dmac_cyc), .o_mwb_stb(dmac_stb),
+				.o_mwb_we(dmac_we), .o_mwb_addr(dmac_addr),
+				.o_mwb_data(dmac_data), .o_mwb_sel(dmac_sel),
+			.i_mwb_stall(dmac_stall), .i_mwb_ack(dmac_ack),
+				.i_mwb_data(dmac_return), .i_mwb_err(dmac_err),
+			.i_dev_ints(dmac_int_vec),
+			.o_interrupt(dmac_int)
+			// }}}
+		);
+
+		// Verilator lint_off UNUSED
+		wire	unused_dmac;
+		assign	unused_dmac = &{ 1'b0, ign_dmac_stall, ign_dmac_ack };
+		// Verilator lint_on  UNUSED
+		// }}}
+	end else begin : NO_EXTERNAL_DMA
+
+		assign	dmac_int = 1'b0;
+		assign	dma_slv_data = 0;
+
+		assign	{ dmac_cyc, dmac_stb, dmac_we } = 3'h0;
+		assign	dmac_addr = 0;
+		assign	dmac_data = 0;
+		assign	dmac_sel  = 0;
+
+	end endgenerate
 
 	// Verilator lint_off UNUSED
 	wire	unused_zsys;
