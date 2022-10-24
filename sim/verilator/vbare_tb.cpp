@@ -42,6 +42,7 @@
 //
 #include <stdio.h>
 #include <stdint.h>
+#include <signal.h>
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 #ifdef	VM_COVERAGE
@@ -143,6 +144,12 @@ public:
 	// }}}
 };
 
+int	signaled = 0;
+
+void	set_signaled(int) {
+	signaled = 1;
+}
+
 int	main(int argc, char **argv) {
 	Verilated::commandArgs(argc, argv);
 	Verilated::traceEverOn(true);
@@ -153,11 +160,21 @@ int	main(int argc, char **argv) {
 #endif
 
 	tb->reset();
+	signaled = 0;
+	signal(SIGPIPE, set_signaled);
+	signal(SIGINT,  set_signaled);
+	signal(SIGKILL, set_signaled);
 
-	while(!Verilated::gotFinish())
+	while(!Verilated::gotFinish() && !signaled)
 		tb->tick();
 
 #ifdef	VM_COVERAGE
 	VerilatedCov::write(COVDATA_FILE);
 #endif
+
+	if (signaled) {
+		printf("ERROR: Interrupted!\n");
+		exit(EXIT_FAILURE);
+	} else
+		exit(EXIT_SUCCESS);
 }
