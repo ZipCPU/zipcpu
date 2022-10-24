@@ -302,7 +302,7 @@ module zipdma #(
 		// }}}
 	);
 
-	assign	rx_ready = sfifo_full;
+	assign	rx_ready = !sfifo_full;
 	assign	tx_valid = !sfifo_empty;
 
 	zipdma_txgears #(

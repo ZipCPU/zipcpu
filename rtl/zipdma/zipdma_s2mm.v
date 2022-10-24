@@ -294,14 +294,11 @@ module	zipdma_s2mm #(
 		o_wr_data <= 0;
 		o_wr_sel  <= 0;
 
-		o_busy <= i_request && !o_err && S_VALID && !o_busy;
+		o_busy <= i_request && !o_busy;
 
-		if (o_busy && o_wr_cyc && i_wr_err)
-		begin
-			o_err  <= 1'b1;
+		o_err <= o_wr_cyc && i_wr_err;
+		if (o_wr_cyc && i_wr_err)
 			o_busy <= 1'b0;
-		end else if (i_request && !o_busy)
-			o_err <= 1'b0;
 
 		o_wr_addr <= i_addr[ADDRESS_WIDTH-1:WBLSB];
 		subaddr   <= i_addr[WBLSB-1:0];
@@ -335,7 +332,8 @@ module	zipdma_s2mm #(
 					{ o_wr_sel,  r_sel  } <= next_sel;
 				end
 
-			end else if (wb_outstanding == (i_wr_ack ? 1:0))
+			end else if (wb_outstanding + (o_wr_stb ? 1:0)
+							== (i_wr_ack ? 1:0))
 			begin
 				// We are all done writing
 				o_wr_cyc <= 1'b0;
@@ -376,6 +374,10 @@ module	zipdma_s2mm #(
 	end else begin
 		assert(!S_READY);
 	end
+
+	always @(*)
+	if (!i_reset && !o_busy)
+		assert(!o_wr_cyc);
 `endif
 	// }}}
 

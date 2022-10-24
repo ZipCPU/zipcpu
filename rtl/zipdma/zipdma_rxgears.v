@@ -91,8 +91,6 @@ module	zipdma_rxgears #(
 	always @(*)
 	begin
 		next_fill = fill;
-		if (S_VALID && S_READY)
-			next_fill = next_fill + S_BYTES;
 		if (M_VALID && M_READY)
 		begin
 			if (M_LAST)
@@ -101,6 +99,9 @@ module	zipdma_rxgears #(
 				next_fill[WBLSB+1:WBLSB]
 						= next_fill[WBLSB+1:WBLSB] - 1;
 		end
+
+		if (S_VALID && S_READY)
+			next_fill = next_fill + S_BYTES;
 
 		next_last = 0;
 		if (S_VALID && S_READY && S_LAST)
@@ -151,8 +152,17 @@ module	zipdma_rxgears #(
 	if (i_reset || i_soft_reset)
 		m_valid <= 0;
 	else if (!M_VALID || M_READY)
-		m_valid <= r_last || (|next_fill[WBLSB+1:WBLSB]);
-				// was r_last || next_fill >= DW/8);
+		m_valid <= r_last || (S_VALID && S_READY && S_LAST)
+			|| (|next_fill[WBLSB+1:WBLSB]);
+`ifdef	FORMAL
+	always @(*)
+	if (fill >= (DW/8) || r_last || m_last)
+		assert(m_valid);
+
+	always @(*)
+	if (m_last)
+		assert(m_bytes == fill);
+`endif
 	// }}}
 
 	// m_bytes

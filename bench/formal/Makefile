@@ -600,9 +600,14 @@ $(MM2S)_cvr/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
 .PHONY: rxgears $(RXGEARS)
 ## {{{
 rxgears: $(RXGEARS)
-$(RXGEARS): $(RXGEARS)_prf/PASS
+$(RXGEARS): $(RXGEARS)_prf/PASS $(RXGEARS)_prfw/PASS
+$(RXGEARS): $(RXGEARS)_cvr/PASS
 $(RXGEARS)_prf/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
 	sbyx.pl $(RXGEARS).sby prf
+$(RXGEARS)_prfw/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
+	sbyx.pl $(RXGEARS).sby prfw
+$(RXGEARS)_cvr/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
+	sbyx.pl $(RXGEARS).sby cvr
 ## }}}
 
 .PHONY: txgears $(TXGEARS)

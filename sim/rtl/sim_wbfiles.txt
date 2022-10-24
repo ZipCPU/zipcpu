@@ -43,3 +43,10 @@ rtl/iscachable.v
 ../rtl/peripherals/zipcounter.v
 ../rtl/peripherals/zipjiffies.v
 ../rtl/peripherals/ziptimer.v
+../rtl/zipdma/zipdma.v
+../rtl/zipdma/zipdma_ctrl.v
+../rtl/zipdma/zipdma_fsm.v
+../rtl/zipdma/zipdma_mm2s.v
+../rtl/zipdma/zipdma_rxgears.v
+../rtl/zipdma/zipdma_txgears.v
+../rtl/zipdma/zipdma_s2mm.v

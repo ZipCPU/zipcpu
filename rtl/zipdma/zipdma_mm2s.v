@@ -93,7 +93,7 @@ module	zipdma_mm2s #(
 				SZ_32B  = 2'b01,
 				SZ_BUS  = 2'b00;
 	localparam	WBLSB = $clog2(DW/8);
-	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size;
+	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size;
 	reg	[ADDRESS_WIDTH-1:0]	next_addr, last_request_addr;
 	reg	[WBLSB-1:0]	subaddr, rdack_subaddr;
 	reg	[DW/8-1:0]	nxtstb_sel, first_sel;
@@ -136,6 +136,21 @@ module	zipdma_mm2s #(
 		// {{{
 		always @(*)
 		begin
+			first_size = 0;
+			case(i_size)
+			SZ_BYTE: first_size = 1;
+			SZ_16B:  first_size = (i_addr[0]) ? 1:2;
+			// Verilator lint_off WIDTH
+			SZ_32B:  first_size = 4 - i_addr[1:0];
+			SZ_BUS:  first_size = (DW/8)-i_addr[WBLSB-1:0];
+			endcase
+
+			if (first_size > i_transferlen)
+				first_size = i_transferlen;
+		end
+
+		always @(*)
+		begin
 			nxtstb_size = rdstb_size;
 
 			case(r_size)
@@ -144,7 +159,15 @@ module	zipdma_mm2s #(
 			// Verilator lint_off WIDTH
 			SZ_32B: nxtstb_size = (rdstb_len >= 4 && rdstb_len < 8)
 						? (rdstb_len - 4) : 4;
-			SZ_BUS: nxtstb_size = (rdstb_len > DW/8) ? (DW/8) : rdstb_len;
+			SZ_BUS: begin
+				nxtstb_size = (DW/8);
+				if (DW/8 > rdstb_len - rdstb_size)
+					nxtstb_size =
+						{ 1'b0, rdstb_len[WBLSB:0] }
+						-{ 1'b0, rdstb_size[WBLSB:0]};
+				// if (o_rd_stb && nxtstb_size > (DW/8)-subaddr)
+				//	nxtstb_size = (DW/8)-subaddr;
+				end
 			// Verilator lint_on  WIDTH
 			endcase
 		end
@@ -153,14 +176,36 @@ module	zipdma_mm2s #(
 		// {{{
 		always @(*)
 		begin
+			first_size = 0;
+			case(i_size)
+			SZ_BYTE: first_size = 1;
+			SZ_16B:  first_size = (i_addr[0]) ? 1:2;
+			// Verilator lint_off WIDTH
+			default:
+				first_size = (DW/8)-i_addr[WBLSB-1:0];
+			endcase
+
+			if (first_size > i_transferlen)
+				first_size = i_transferlen;
+			// Verilator lint_on  WIDTH
+		end
+
+		always @(*)
+		begin
 			nxtstb_size = rdstb_size;
 
 			casez(r_size)
 			SZ_BYTE: nxtstb_size = 1;
 			SZ_16B: nxtstb_size = (rdstb_len == 3) ? 1 : 2;
-			// Verilator lint_off WIDTH
-			default:nxtstb_size= (rdstb_len > 4) ? 4:rdstb_len[1:0];
-			// Verilator lint_on  WIDTH
+			default: begin
+				// Verilator lint_off WIDTH
+				nxtstb_size = (DW/8);
+				if (DW/8 > rdstb_len - rdstb_size)
+					nxtstb_size =
+						{ 1'b0, rdstb_len[WBLSB:0] }
+						-{ 1'b0, rdstb_size[WBLSB:0]};
+				end
+				// Verilator lint_on  WIDTH
 			endcase
 		end
 		// }}}
@@ -175,7 +220,7 @@ module	zipdma_mm2s #(
 
 		if (o_rd_stb && !i_rd_stall)
 			next_addr = next_addr
-			+ { {(ADDRESS_WIDTH-WBLSB-1){1'b0}}, nxtstb_size };
+			+ { {(ADDRESS_WIDTH-WBLSB-1){1'b0}}, rdstb_size };
 	end
 	// }}}
 
@@ -224,16 +269,7 @@ module	zipdma_mm2s #(
 			{ o_rd_addr, subaddr } <= i_addr;
 
 			// rdstb_size
-			// {{{
-			case(i_size)
-			SZ_BYTE: rdstb_size <= 1;
-			SZ_16B: rdstb_size <= (i_addr[0]) ? 1:2;
-			// Verilator lint_off WIDTH
-			SZ_32B: rdstb_size <= 4 - i_addr[1:0];
-			SZ_BUS: rdstb_size <= (DW/8)-i_addr[WBLSB-1:0];
-			endcase
-			// Verilator lint_on  WIDTH
-			// }}}
+			rdstb_size <= first_size;
 
 			// rdstb_len
 			rdstb_len <= i_transferlen;
@@ -241,28 +277,50 @@ module	zipdma_mm2s #(
 		// }}}
 	end else begin
 		if (!i_rd_stall)
+			o_rd_stb <= 1'b0;
+
+		if (rdstb_len > { {(LGLENGTH-WBLSB){1'b0}}, rdstb_size })
+			o_rd_stb <= 1'b1;
+
+		if (o_rd_stb && !i_rd_stall)
 		begin
 			// {{{
 			if (rdstb_len <= { {(LGLENGTH-WBLSB){1'b0}}, rdstb_size })
 			begin
 				rdstb_len <= 0;
-				o_rd_stb  <= 1'b0;
-			end else
+			end else begin
 				rdstb_len <= rdstb_len
 					- { {(LGLENGTH-WBLSB){1'b0}}, rdstb_size };
+				o_rd_stb <= 1'b1;
+			end
 
 			// rdstb_size
 			rdstb_size <= nxtstb_size;
 
+			{ o_rd_addr, subaddr } <= next_addr;
 			// }}}
 		end
 
 		if (wb_outstanding == (i_rd_ack ? 1:0) && !o_rd_stb)
 			o_rd_cyc <= 1'b0;
 
-		if (!o_rd_cyc && !m_valid)
+		if (m_valid && m_last)
 			o_busy <= 0;
 	end
+`ifdef	FORMAL
+	always @(*)
+	if (!o_busy)
+		assert(!m_valid);
+	else if (m_valid && m_last)
+	begin
+		assert(rdack_len == 0);
+		assert(fill == m_bytes);
+	end
+
+	always @(*)
+	if (o_busy)
+		assert(rdstb_len <= rdack_len);
+`endif
 	// }}}
 
 	// o_rd_sel
@@ -276,7 +334,7 @@ module	zipdma_mm2s #(
 		nxtstb_sel = ((1<<nxtstb_size)-1) << next_addr[WBLSB-1:0];
 	end else begin
 		// Verilator lint_off WIDTH
-		nxtstb_sel = ( {(DW/8){1'b1}} - (1<<(DW/8-1-nxtstb_size)) )
+		nxtstb_sel = (((1<<nxtstb_size)-1) << (DW/8 - nxtstb_size))
 					>> next_addr[WBLSB-1:0];
 		// Verilator lint_on  WIDTH
 	end
@@ -377,23 +435,15 @@ module	zipdma_mm2s #(
 		if (!OPT_LOWPOWER || i_request)
 			o_rd_sel <= first_sel;
 		// }}}
-	end else if (!i_rd_stall)
-	begin
-			// {{{
-			o_rd_sel <= nxtstb_sel;
-			if (rdstb_len <= { {(LGLENGTH-WBLSB){1'b0}}, rdstb_size })
-			begin
-				o_rd_sel  <= 0;
-			end
-		// }}}
-	end
+	end else if (o_rd_stb && !i_rd_stall)
+		o_rd_sel <= nxtstb_sel;
 	// }}}
 
 	// wb_outstanding
 	// {{{
 	initial	wb_outstanding = 0;
 	always @(posedge i_clk)
-	if (i_reset || !o_rd_cyc || !i_rd_err)
+	if (i_reset || !o_rd_cyc || i_rd_err)
 		wb_outstanding <= 0;
 		// wb_pipeline_full <= 1'b0;
 	else case({ (o_rd_stb && !i_rd_stall), i_rd_ack })
@@ -442,27 +492,25 @@ module	zipdma_mm2s #(
 
 	// rdack_size
 	// {{{
-	// Verilator lint_off WIDTH
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
 		if (!OPT_LOWPOWER || i_request)
-		case(i_size)
-		SZ_BYTE:rdack_size <= 1;
-		SZ_16B: rdack_size <= 2 - i_addr[0];
-		SZ_32B: rdack_size <= 4 - i_addr[1:0];
-		SZ_BUS: rdack_size <= (1<<WBLSB) - i_addr[WBLSB-1:0];
-		endcase
+			rdack_size <= first_size;
 	end else if (i_rd_ack)
 	begin
 		case(r_size)
 		SZ_BYTE:rdack_size <= 1;
 		SZ_16B: rdack_size <= 2;
 		SZ_32B: rdack_size <= 4;
-		SZ_BUS: rdack_size <= (rdack_len > DW/8) ? DW/8 : rdack_len;
+		// Verilator lint_off WIDTH
+		SZ_BUS: if (rdack_len > DW/8 + rdack_size)
+				rdack_size <= DW/8;
+			else
+				rdack_size <= rdack_len - rdack_size;
+		// Verilator lint_on  WIDTH
 		endcase
 	end
-	// Verilator lint_on  WIDTH
 	// }}}
 
 	// fill, next_fill (depends on rdack_size)
@@ -471,9 +519,7 @@ module	zipdma_mm2s #(
 	begin
 		next_fill = fill;
 		if (M_VALID)
-			// next_fill = next_fill - (DW/8);
-			next_fill[WBLSB+1:WBLSB]
-					= next_fill[WBLSB+1:WBLSB] - 1;
+			next_fill = next_fill - M_BYTES;
 		if (i_rd_ack)
 			next_fill = next_fill + { 1'b0, rdack_size };
 	end
@@ -491,11 +537,16 @@ module	zipdma_mm2s #(
 	always @(posedge i_clk)
 	if (!o_busy)
 		m_valid <= 1'b0;
-	else
+	else begin
 		// Verilator lint_off WIDTH
-		m_valid <= o_rd_cyc && i_rd_ack && ((next_fill >= DW/8)
+		m_valid <= 0;
+		if ((!m_valid || !m_last) && rdack_len == 0 && fill > 0)
+			m_valid <= 1;
+		else if (o_rd_cyc && i_rd_ack)
+			m_valid <= ((next_fill >= DW/8)
 			|| (rdack_len <= { {(LGLENGTH-1){1'b0}}, rdack_size }));
 		// Verilator lint_on  WIDTH
+	end
 	// }}}
 
 	// sreg
@@ -587,7 +638,13 @@ module	zipdma_mm2s #(
 			// Verilator lint_on  WIDTH
 		else
 			m_bytes <= { 1'b0, next_fill[WBLSB-1:0] };
-	end
+	end else if (rdack_len == 0)
+		m_bytes <= next_fill[WBLSB:0];
+`ifdef	FORMAL
+	always @(*)
+	if (M_VALID)
+		assert(M_BYTES <= DW/8);
+`endif
 	// }}}
 
 	// m_last

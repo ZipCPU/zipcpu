@@ -107,19 +107,24 @@ module	zipdma_txgears #(
 		begin
 			case(i_size)
 			SZ_BYTE: begin sreg <= sreg >>  8; fill <= fill - 1; end
-			SZ_16B: begin sreg <= sreg >> 16; fill <= fill - 2; end
-			SZ_32B: begin sreg <= sreg >> 32; fill <= fill - 4; end
-			SZ_BUS: begin sreg <= 0; fill <= 0; end
+			SZ_16B:  begin sreg <= sreg >> 16; fill <= fill - 2; end
+			SZ_32B:  begin sreg <= sreg >> 32; fill <= fill - 4; end
+			SZ_BUS:  begin sreg <= 0; fill <= 0; end
 			endcase
 		end else begin
 			case(i_size)
 			SZ_BYTE: begin sreg <= sreg <<  8; fill <= fill - 1; end
-			SZ_16B: begin sreg <= sreg << 16; fill <= fill - 2; end
-			SZ_32B: begin sreg <= sreg << 32; fill <= fill - 4; end
-			SZ_BUS: begin sreg <= 0; fill <= 0; end
+			SZ_16B:  begin sreg <= sreg << 16; fill <= fill - 2; end
+			SZ_32B:  begin sreg <= sreg << 32; fill <= fill - 4; end
+			SZ_BUS:  begin sreg <= 0; fill <= 0; end
 			endcase
 		end
 	end
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset)
+		assert(fill <= (DW/8));
+`endif
 	// }}}
 
 	// m_valid
@@ -134,11 +139,16 @@ module	zipdma_txgears #(
 			m_valid <= 1'b1;
 		else case(i_size)
 		SZ_BYTE: m_valid <= (fill > 1);
-		SZ_16B: m_valid <= (fill > 2);
-		SZ_32B: m_valid <= (fill > 4);
-		SZ_BUS: m_valid <= 0;
+		SZ_16B:  m_valid <= (fill > 2);
+		SZ_32B:  m_valid <= (fill > 4);
+		SZ_BUS:  m_valid <= 0;
 		endcase
 	end
+`ifdef	FORMAL
+	always @(*)
+	if (m_valid)
+		assert(m_bytes <= fill);
+`endif
 	// }}}
 
 	// m_bytes
@@ -162,9 +172,12 @@ module	zipdma_txgears #(
 		begin
 			case(i_size)
 			SZ_BYTE: m_bytes <= 1;
-			SZ_16B: m_bytes <= (fill > 4) ? 2 : (fill >= 2) ? (fill - 2) : 0;
-			SZ_32B: m_bytes <= (fill > 8) ? 4 : (fill >= 4) ? (fill - 4) : 0;
-			SZ_BUS: m_bytes <= 0;
+			SZ_16B:  m_bytes <= (fill >= 4) ? 2
+						: (&fill[1:0]) ? 1 : 0;
+			SZ_32B:  m_bytes <= (fill >= 8) ? 4
+				: (fill[2]) ? ({ {(WBLSB-1){1'b0}}, fill[1:0] })
+				: 0;
+			SZ_BUS:  m_bytes <= 0;
 			endcase
 		end
 		// }}}
@@ -178,19 +191,51 @@ module	zipdma_txgears #(
 		begin
 			casez(i_size)
 			SZ_BYTE: m_bytes <= 1;
-			SZ_16B: m_bytes <= (S_BYTES > 2) ? 2 : S_BYTES;
+			SZ_16B:  m_bytes <= (S_BYTES > 2) ? 2 : S_BYTES;
 			default: m_bytes <= S_BYTES;
 			endcase
 		end else if (!M_VALID || M_READY)
 		begin
 			casez(i_size)
 			SZ_BYTE: m_bytes <= 1;
-			SZ_16B: m_bytes <= (fill > 0) ? (fill - 2) : 0;
+			SZ_16B:  m_bytes <= (fill >= 4) ? 2
+						: (&fill[1:0]) ? 1 : 0;
 			default: m_bytes <= 0;
 			endcase
 		end
 		// }}}
 	end endgenerate
+`ifdef	FORMAL
+	// {{{
+	always @(*)
+	if (!i_reset && M_VALID)
+	begin
+		assert(m_bytes > 0);
+		assert(m_bytes <= fill);
+		if (M_LAST)
+			assert(m_bytes == fill);
+
+		case(i_size)
+		SZ_BYTE: assert(m_bytes == 1);
+		SZ_16B:  begin
+			assert(m_bytes <= 2);
+			if (m_bytes < 2)
+				assert(M_LAST && m_bytes == fill);
+			end
+		SZ_32B:  begin
+			assert(m_bytes <= 4);
+			if (m_bytes < 4)
+				assert(M_LAST && m_bytes == fill);
+			end
+		SZ_BUS:  begin
+			assert(m_bytes <= DW/8);
+			if (m_bytes < (DW/8))
+				assert(M_LAST && m_bytes == fill);
+			end
+		endcase
+	end
+	// }}}
+`endif
 	// }}}
 
 	// r_next -- Are we on our last word?
@@ -242,7 +287,7 @@ module	zipdma_txgears #(
 		begin
 			casez(i_size)
 			SZ_BYTE: r_next <= (S_BYTES == 1);
-			SZ_16B: r_next <= (S_BYTES <= 2);
+			SZ_16B:  r_next <= (S_BYTES <= 2);
 			default: r_next <= 1;
 			endcase
 
@@ -251,8 +296,8 @@ module	zipdma_txgears #(
 		end else if (M_VALID && M_READY)
 		begin
 			casez(i_size)
-			SZ_BYTE:r_next <= (fill <= 2);
-			SZ_16B: r_next <= (fill <= 4);
+			SZ_BYTE: r_next <= (fill <= 2);
+			SZ_16B:  r_next <= (fill <= 4);
 			default: r_next <= 1;
 			endcase
 
@@ -263,8 +308,11 @@ module	zipdma_txgears #(
 	end endgenerate
 
 `ifdef	FORMAL
+	// {{{
 	reg	[1:0]	f_mid_packet;
 
+	// f_mid_packet
+	// {{{
 	initial	f_mid_packet = 0;
 	always @(posedge i_clk)
 	if (i_reset || i_soft_reset)
@@ -276,6 +324,7 @@ module	zipdma_txgears #(
 
 	always @(*)
 		assert(f_mid_packet != 2'b11);
+	// }}}
 
 	always @(*)
 	if (!i_reset) begin
@@ -292,6 +341,7 @@ module	zipdma_txgears #(
 		SZ_BUS: assert(r_next);
 		endcase
 	end
+	// }}}
 `endif
 	// }}}
 
@@ -308,9 +358,9 @@ module	zipdma_txgears #(
 		begin
 			case(i_size)
 			SZ_BYTE: { r_last, m_last } <= { (S_BYTES > 1), (S_BYTES == 1) };
-			SZ_16B: { r_last, m_last } <= { (S_BYTES > 2), (S_BYTES <= 2) };
-			SZ_32B: { r_last, m_last } <= { (S_BYTES > 4), (S_BYTES <= 4) };
-			SZ_BUS: { r_last, m_last } <= { 1'b0, S_LAST };
+			SZ_16B:  { r_last, m_last } <= { (S_BYTES > 2), (S_BYTES <= 2) };
+			SZ_32B:  { r_last, m_last } <= { (S_BYTES > 4), (S_BYTES <= 4) };
+			SZ_BUS:  { r_last, m_last } <= { 1'b0, S_LAST };
 			endcase
 
 			if (!S_LAST)
@@ -331,8 +381,8 @@ module	zipdma_txgears #(
 			SZ_BUS: r_last <= 0;
 			endcase
 
-			if (M_LAST)
-				{ r_last, m_last } <= 2'b00;
+			// if (M_LAST)
+			//	{ r_last, m_last } <= 2'b00;
 		end
 		// }}}
 	end else begin : MIN_LAST
@@ -345,7 +395,7 @@ module	zipdma_txgears #(
 		begin
 			casez(i_size)
 			SZ_BYTE: { r_last, m_last } <= { (S_BYTES > 1), (S_BYTES == 1) };
-			SZ_16B: { r_last, m_last } <= { (S_BYTES > 2), (S_BYTES <= 2) };
+			SZ_16B:  { r_last, m_last } <= { (S_BYTES > 2), (S_BYTES <= 2) };
 			default: { r_last, m_last } <= { (S_BYTES > 4), (S_BYTES <= 4) };
 			endcase
 
@@ -355,18 +405,27 @@ module	zipdma_txgears #(
 		begin
 			casez(i_size)
 			SZ_BYTE: m_last <= r_last && (fill <= 2);
-			SZ_16B: m_last <= r_last && (fill <= 4);
+			SZ_16B:  m_last <= r_last && (fill <= 4);
 			default: m_last <= 0;
 			endcase
 
 			casez(i_size)
 			SZ_BYTE: r_last <= r_last && (fill > 2);
-			SZ_16B: r_last <= r_last && (fill > 4);
+			SZ_16B:  r_last <= r_last && (fill > 4);
 			default: r_last <= 0;
 			endcase
+
+			// if (M_LAST)
+			//	{ r_last, m_last } <= 2'b00;
 		end
 		// }}}
 	end endgenerate
+
+`ifdef FORMAL
+	always @(posedge i_clk)
+	if (f_past_valid && $past(!i_reset && M_VALID && M_READY && M_LAST))
+		assert({ r_last, m_last } == 2'b00);
+`endif
 	// }}}
 
 	assign	M_VALID = m_valid;

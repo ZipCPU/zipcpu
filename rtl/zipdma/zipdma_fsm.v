@@ -90,7 +90,7 @@ module	zipdma_fsm #(
 
 	// Local declarations
 	// {{{
-	localparam	[1:0]	// S_IDLE = 2'b00,
+	localparam	[1:0]	S_IDLE = 2'b00,
 				S_WAIT = 2'b01,
 				S_READ = 2'b10,
 				S_WRITE = 2'b11;
@@ -104,14 +104,16 @@ module	zipdma_fsm #(
 	if (i_reset || i_soft_reset || i_mm2s_err || i_s2mm_err)
 	begin
 		// {{{
-		o_dma_busy <= 0;
-		r_length <= 0;
-		r_transferlen <= 0;
+		o_dma_busy     <= 0;
+		r_length       <= 0;
+		r_transferlen  <= 0;
 		o_mm2s_request <= 0;
 		o_s2mm_request <= 0;
 
 		o_mm2s_addr <= 0;
 		o_s2mm_addr <= 0;
+
+		fsm_state   <= S_IDLE;
 		// }}}
 	end else if (!o_dma_busy)
 	begin
@@ -124,7 +126,7 @@ module	zipdma_fsm #(
 					: i_transferlen;
 		// Verilator lint_on  WIDTH
 
-		fsm_state <= (i_trigger) ? S_WAIT : S_READ;
+		fsm_state <= S_IDLE;
 
 		o_mm2s_request <= 0;
 		o_s2mm_request <= 0;
@@ -133,10 +135,16 @@ module	zipdma_fsm #(
 		begin
 			o_dma_busy <= 1'b1;
 
+			fsm_state      <= (i_trigger) ? S_READ : S_WAIT;
+			o_mm2s_request <= i_trigger;
+
 			o_mm2s_addr <= i_src_addr;
 			o_s2mm_addr <= i_dst_addr;
 			r_length <= i_length;
 		end
+`ifdef	FORMAL
+		assert(fsm_state == S_IDLE);
+`endif
 		// }}}
 	end else case(fsm_state)
 	S_WAIT: begin
@@ -151,7 +159,7 @@ module	zipdma_fsm #(
 		// }}}
 	S_READ: begin
 		// {{{
-		if (!i_mm2s_busy)
+		if (o_mm2s_request && !i_mm2s_busy)	// VALID && READY
 			o_mm2s_request <= 1'b0;
 		if (!i_mm2s_busy && !o_mm2s_request)
 		begin
@@ -171,7 +179,7 @@ module	zipdma_fsm #(
 		// }}}
 	S_WRITE: begin
 		// {{{
-		if (!i_s2mm_busy)
+		if (o_s2mm_request && !i_s2mm_busy)	// VALID && READY
 			o_s2mm_request <= 1'b0;
 		if (!i_s2mm_busy && !o_s2mm_request)
 		begin
@@ -185,13 +193,14 @@ module	zipdma_fsm #(
 
 			if (i_s2mm_inc)
 				// Verilator lint_off WIDTH
-				o_s2mm_addr <= o_mm2s_addr + r_transferlen;
+				o_s2mm_addr <= o_s2mm_addr + r_transferlen;
 				// Verilator lint_on  WIDTH
 
 			if (r_length == 0)
 			begin
-				fsm_state  <= S_WAIT;
-				o_dma_busy <= 1'b0;
+				fsm_state      <= S_IDLE;
+				o_mm2s_request <= 1'b0;
+				o_dma_busy     <= 1'b0;
 			end
 		end end
 		// }}}

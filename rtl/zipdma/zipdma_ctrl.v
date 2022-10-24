@@ -111,15 +111,15 @@ module zipdma_ctrl #(
 	always @(*)
 	begin
 		w_control_reg = 0;
-		w_control_reg[31] = i_dma_busy;
-		w_control_reg[30] = r_err || i_dma_err;
-		w_control_reg[29] = int_trigger;
+		w_control_reg[31]    = i_dma_busy;
+		w_control_reg[30]    = r_err || i_dma_err;
+		w_control_reg[29]    = int_trigger;
 		w_control_reg[28:24] = int_sel;
 		//
-		w_control_reg[22] = o_s2mm_inc;
+		w_control_reg[22]    = !o_s2mm_inc;
 		w_control_reg[21:20] = o_s2mm_size;
 		//
-		w_control_reg[19] = o_mm2s_inc;
+		w_control_reg[19]    = !o_mm2s_inc;
 		w_control_reg[18:17] = o_mm2s_size;
 		//
 		w_control_reg[LGMEMLEN:0] = o_transferlen;
@@ -217,8 +217,6 @@ module zipdma_ctrl #(
 	if (i_reset)
 	begin
 		// {{{
-		o_dma_request <= 1'b0;
-		o_dma_abort   <= 1'b0;
 		o_src_addr    <= {(AW){1'b0}};
 		o_dst_addr    <= {(AW){1'b0}};
 		o_length      <= {(LGDMALENGTH){1'b0}};
@@ -231,65 +229,40 @@ module zipdma_ctrl #(
 		o_mm2s_inc  <= 1'b0;
 		o_mm2s_size <= 2'b0;
 
-		r_err <= 1'b0;
-
-		o_interrupt <= 1'b0;
 		int_trigger <= 1'b0;
 		int_sel     <= 5'h0;
 		// }}}
-	end else if (i_stb && !o_stall && i_we)
-	begin
+	end else if (i_stb && !o_stall && i_we && !o_dma_request && !i_dma_busy)
+	begin // Register write, DMA is idle
 		// {{{
-		if (o_dma_request || i_dma_busy)
-		begin
-			if (!i_dma_busy)
-				o_dma_request <= 1'b0;
-			if (i_addr == 2'b00 && (&i_sel) && i_data == ABORT_KEY)
-				{ o_dma_request, o_dma_abort } <= 2'b01;
-			if (i_dma_err)
-				r_err <= 1'b1;
+		case(i_addr)
+		2'b00: begin // Control registers
+			// {{{
+			o_transferlen[LGMEMLEN:0] <= next_tlen[LGMEMLEN:0];
+			if (i_sel[2])
+			begin
+				o_s2mm_inc  <= !i_data[22];
+				o_s2mm_size <=  i_data[21:20];
+				//
+				o_mm2s_inc  <= !i_data[26];
+				o_mm2s_size <=  i_data[25:24];
+			end
 
-			if (r_busy && (!i_dma_busy || i_dma_err))
-				o_interrupt <= 1'b1;
-		end else begin
-			o_dma_abort <= 1'b0;
-
-			case(i_addr)
-			2'b00: begin // Control registers
-				// {{{
-				o_transferlen[LGMEMLEN:0] <= next_tlen[LGMEMLEN:0];
-
-				if (i_sel[2])
-				begin
-					o_s2mm_inc  <= i_data[22];
-					o_s2mm_size <= i_data[21:20];
-					//
-					o_mm2s_inc  <= i_data[26];
-					o_mm2s_size <= i_data[25:24];
-				end
-
-				if (i_sel[3])
-				begin
-					if (i_data[29])
-						o_interrupt <= 1'b0;
-					int_trigger <= i_data[29];
-					int_sel     <= i_data[28:24];
-					if (i_data[30])
-						r_err <= 1'b0;
-					if (!i_data[31] && (!r_err || i_data[30]))
-						o_dma_request <= !r_zero_len;
-				end end
-				// }}}
-			2'b01: o_src_addr <= next_src[AW-1:0];
-			2'b10: o_dst_addr <= next_dst[AW-1:0];
-			2'b11: begin // o_length
-				// {{{
-				o_length <= next_len[LGDMALENGTH-1:0];
-				r_zero_len <= (next_len[LGDMALENGTH-1:0] == 0);
-				end
-				// }}}
-			endcase
-		end
+			if (i_sel[3])
+			begin
+				int_trigger <= i_data[29];
+				int_sel     <= i_data[28:24];
+			end end
+			// }}}
+		2'b01: o_src_addr <= next_src[AW-1:0];
+		2'b10: o_dst_addr <= next_dst[AW-1:0];
+		2'b11: begin // o_length
+			// {{{
+			o_length <= next_len[LGDMALENGTH-1:0];
+			r_zero_len <= (next_len[LGDMALENGTH-1:0] == 0);
+			end
+			// }}}
+		endcase
 		// }}}
 	end
 	// }}}

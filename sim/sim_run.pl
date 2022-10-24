@@ -6,7 +6,7 @@ $path_cnt = @ARGV;
 # 	sim_run <testcasename>
 ## Setup
 ## {{{
-my $verilator_flag = 0;
+my $verilator_flag = 1;
 my $verilator_lint_only = 0;
 my $verilatord = "/usr/local/share/verilator";
 my $vobjd = "obj_dir";
@@ -238,7 +238,9 @@ sub simline($) {
 					$cmd = $cmd . " --coverage";
 				} $cmd = $cmd . " -O3";
 			}
-			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core -y ../rtl/peripherals -y ../rtl/ex";
+			$cmd = $cmd . " -y rtl/ -y ../rtl/ -y ../rtl/core";
+			$cmd = $cmd . " -y ../rtl/peripherals -y ../rtl/ex";
+			$cmd = $cmd . " -y ../rtl/zipdma";
 			$cmd = $cmd . " --prefix $tstname";
 
 			if ($cfgfiles{$config} =~ /-s\s+(\S+)\s/) {
