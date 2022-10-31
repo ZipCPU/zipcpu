@@ -1,0 +1,33 @@
+name: run-fusesoc-targets
+on: [push]
+
+jobs:
+  build-openlane-sky130:
+    runs-on: ubuntu-latest
+    env:
+      REPO : zipcpu
+      VLNV : zipcpu::zipcpu
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          path: zipcpu
+      - run: echo "EDALIZE_LAUNCHER=el_docker" >> $GITHUB_ENV
+      - run: pip3 install fusesoc
+      - run: fusesoc library add $REPO $GITHUB_WORKSPACE/$REPO
+      - run: fusesoc run --target=sky130_div $VLNV
+
+  lint-verilator:
+    runs-on: ubuntu-latest
+    env:
+      REPO : zipcpu
+      VLNV : zipcpu::zipcpu
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          path: zipcpu
+      - run: sudo apt install verilator
+      - run: pip3 install fusesoc
+      - run: fusesoc library add $REPO $GITHUB_WORKSPACE/$REPO
+      - run: fusesoc run --target=lint $VLNV
