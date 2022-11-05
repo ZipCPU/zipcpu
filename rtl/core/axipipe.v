@@ -97,7 +97,9 @@ module	axipipe #(
 		output	wire	[IW-1:0]	M_AXI_AWID,
 		// verilator coverage_on
 		output	reg	[AW-1:0]	M_AXI_AWADDR,
-		output	wire	[7:0]		M_AXI_AWLEN,
+		// verilator coverage_off
+		output	wire	[7:0]		M_AXI_AWLEN,	// == 0
+		// verilator coverage_on
 		output	wire	[2:0]		M_AXI_AWSIZE,
 		output	wire	[1:0]		M_AXI_AWBURST,
 		output	wire			M_AXI_AWLOCK,
@@ -128,7 +130,9 @@ module	axipipe #(
 		output	wire	[IW-1:0]	M_AXI_ARID,
 		// verilator coverage_on
 		output	reg	[AW-1:0]	M_AXI_ARADDR,
-		output	wire	[7:0]		M_AXI_ARLEN,
+		// verilator coverage_off
+		output	wire	[7:0]		M_AXI_ARLEN,	// == 0
+		// verilator coverage_on
 		output	wire	[2:0]		M_AXI_ARSIZE,
 		output	wire	[1:0]		M_AXI_ARBURST,
 		output	wire			M_AXI_ARLOCK,

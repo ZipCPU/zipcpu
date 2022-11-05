@@ -111,10 +111,10 @@ module	axiicache #(
 		output	wire	[7:0]			M_AXI_ARLEN,
 		output	wire	[2:0]			M_AXI_ARSIZE,
 		output	wire	[1:0]			M_AXI_ARBURST,
-		output	wire				M_AXI_ARLOCK,
+		// verilator coverage_off
+		output	wire				M_AXI_ARLOCK,	// = 0
 		output	wire	[3:0]			M_AXI_ARCACHE,
 		output	wire	[2:0]			M_AXI_ARPROT,
-		// verilator coverage_off
 		output	wire	[3:0]			M_AXI_ARQOS,
 		// verilator coverage_on
 		//
@@ -465,6 +465,7 @@ module	axiicache #(
 	// {{{
 	generate if (OPT_WRAP)
 	begin : GEN_WRAP_VALID
+		// {{{
 		reg			r_wrap, r_valid, r_poss;
 		reg	[(1<<LS):0]	r_count;
 
@@ -567,8 +568,18 @@ module	axiicache #(
 			assert(r_valid == (r_count > (o_valid ? 1:0)));
 		// }}}
 `endif
+		// }}}
 	end else begin
+		// {{{
 		assign	wrap_valid = 1'b0;
+
+		// verilator coverage_off
+		// verilator lint_off UNUSED
+		wire	unused_nowrap;
+		assign	unused_nowrap = &{ 1'b0, bus_abort };
+		// verilator lint_on UNUSED
+		// verilator coverage_on
+		// }}}
 	end endgenerate
 	// }}}
 	

@@ -79,9 +79,13 @@ module	prefetch #(
 		output	reg	[AW-1:0]	o_pc,	// Byt addr of that insn
 		// Wishbone outputs
 		output	reg			o_wb_cyc, o_wb_stb,
-		output	wire			o_wb_we,
+		// verilator coverage_off
+		output	wire			o_wb_we,	// == const 0
+		// verilator coverage_on
 		output	reg [AW-$clog2(DW/8)-1:0]	o_wb_addr,
-		output	wire	[DW-1:0]	o_wb_data,
+		// verilator coverage_off
+		output	wire	[DW-1:0]	o_wb_data,	// == const 0
+		// verilator coverage_on
 		// And return inputs
 		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
 		input	wire	[DW-1:0]	i_wb_data
@@ -305,12 +309,14 @@ module	prefetch #(
 
 		// Keep Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_shift;
 		assign	unused_shift = &{ 1'b0,
 				r_insn[DATA_WIDTH-1:INSN_WIDTH],
 				i_wb_shifted[DATA_WIDTH-1:INSN_WIDTH] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 `ifdef	FORMAL
 		assign	f_bus_word = rg_insn << ((r_count-1)* INSN_WIDTH);
@@ -445,10 +451,12 @@ module	prefetch #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
-	wire	[1:0]	unused;
-	assign	unused = i_pc[1:0];
+	wire	unused;
+	assign	unused = &{ 1'b0, i_pc[1:0] };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

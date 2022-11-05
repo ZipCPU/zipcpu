@@ -388,15 +388,15 @@ module	memops #(
 		//
 		// Little endian : Same bus result, just grab a different bits
 		//   from the bus return to send back to the CPU.
-		// verilator coverage_on
+		// verilator coverage_off
 		5'b1100?: o_result <= { 16'h00, i_wb_data[15: 0] };
 		5'b1101?: o_result <= { 16'h00, i_wb_data[31:16] };
 		5'b11100: o_result <= { 24'h00, i_wb_data[ 7: 0] };
 		5'b11101: o_result <= { 24'h00, i_wb_data[15: 8] };
 		5'b11110: o_result <= { 24'h00, i_wb_data[23:16] };
 		5'b11111: o_result <= { 24'h00, i_wb_data[31:24] };
-		// verilator coverage_off
-		// default: o_result <= i_wb_data[31:0];
+		// verilator coverage_on
+		default: o_result <= i_wb_data[31:0];
 		endcase
 	end else begin
 		casez({ OPT_LITTLE_ENDIAN, r_op[$clog2(BUS_WIDTH/8) +: 2] })

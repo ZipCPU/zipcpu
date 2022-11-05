@@ -137,10 +137,12 @@ module	axidcache #(
 		output	wire		M_AXI_AWVALID,
 		input	wire		M_AXI_AWREADY,
 		// verilator coverage_off
-		output	wire [IW-1:0]	M_AXI_AWID,
+		output	wire [IW-1:0]	M_AXI_AWID,	// = constant
 		// verilator coverage_on
 		output	wire [AW-1:0]	M_AXI_AWADDR,
-		output	wire [7:0]	M_AXI_AWLEN,
+		// verilator coverage_off
+		output	wire [7:0]	M_AXI_AWLEN,	// = const 0
+		// verilator coverage_on
 		output	wire [2:0]	M_AXI_AWSIZE,
 		output	wire [1:0]	M_AXI_AWBURST,
 		output	wire 		M_AXI_AWLOCK,

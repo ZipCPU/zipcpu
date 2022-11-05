@@ -97,9 +97,13 @@ module	pfcache #(
 		// The wishbone bus interface
 		// {{{
 		output	reg			o_wb_cyc, o_wb_stb,
+		// verilator coverage_off
 		output	wire			o_wb_we,
+		// verilator coverage_on
 		output	reg	[AW-1:0]	o_wb_addr,
+		// verilator coverage_off
 		output	wire	[BUSW-1:0]	o_wb_data,
+		// verilator coverage_on
 		//
 		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
 		input	wire	[BUSW-1:0]	i_wb_data
@@ -242,10 +246,12 @@ module	pfcache #(
 
 		end
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_shift;
 		assign	unused_shift = &{ 1'b0, shifted };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	end endgenerate
 	// }}}
 	////////////////////////////////////////////////////////////////////////

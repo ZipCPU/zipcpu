@@ -423,11 +423,13 @@ module	dcache #(
 					endcase
 				end
 			end else begin
+				// Verilator coverage_off
 				casez(i_op[2:1])
 				2'b0?: o_wb_data <= i_data << (8*i_addr[$clog2(DATA_WIDTH)-1:0]);
 				2'b10: o_wb_data <= { 16'h0, i_data[15:0] } << (8*i_addr[$clog2(DATA_WIDTH)-1:0]);
 				2'b11: o_wb_data <= { 24'h0, i_data[7:0] } << (8*i_addr[$clog2(DATA_WIDTH)-1:0]);
 				endcase
+				// Verilator coverage_on
 			end
 		end else if (OPT_LOWPOWER && !i_wb_stall)
 			o_wb_data <= 0;
@@ -926,8 +928,10 @@ module	dcache #(
 
 		// end_of_line
 		// {{{
+		// Verilator coverage_off
 		if (LS <= 0)
 			end_of_line <= 1'b1;
+		// Verilator coverage_on
 		else if (!cyc)
 			end_of_line <= 1'b0;
 		else if (!end_of_line)
@@ -945,8 +949,10 @@ module	dcache #(
 		// {{{
 		if (!cyc || !stb || (OPT_LOWPOWER && state != DC_READC))
 			last_line_stb <= (LS <= 0);
+		// Verilator coverage_off
 		else if (!i_wb_stall && (LS <= 1))
 			last_line_stb <= 1'b1;
+		// Verilator coverage_on
 		else if (!i_wb_stall)
 			last_line_stb <= (o_wb_addr[(LS-1):1]=={(LS-1){1'b1}});
 		else
@@ -1415,6 +1421,7 @@ module	dcache #(
 
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, pre_shifted };
@@ -1425,6 +1432,7 @@ module	dcache #(
 		assign	unused = &{ 1'b0, i_addr[DATA_WIDTH-1:AW+WBLSB] };
 	end endgenerate
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

@@ -147,10 +147,12 @@ module	idecode #(
 	end else begin : CLR_IWORD
 		assign	iword = { 1'b0, i_instruction[30:0] };
 
+		// verilator coverage_off
 		// verilator lint_off UNUSED
-		wire	[14:0]	unused_nxt_half;
-		assign		unused_nxt_half = r_nxt_half;
+		wire		unused_nxt_half;
+		assign		unused_nxt_half = &{ 1'b0, r_nxt_half };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 	end endgenerate
 	// }}}
 
@@ -759,10 +761,12 @@ module	idecode #(
 		assign	o_branch_pc = {(AW+2){1'b0}};
 		assign	o_ljmp = 1'b0;
 
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	early_branch_unused;
-		assign	early_branch_unused = w_add;
+		assign	early_branch_unused = &{ 1'b0, w_add };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}
@@ -862,10 +866,12 @@ module	idecode #(
 		assign	o_pipe = 1'b0;
 		assign	insn_is_pipeable = 1'b0;
 
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	unused_pipable;
-		assign	unused_pipable = insn_is_pipeable;
+		assign	unused_pipable = &{ 1'b0, insn_is_pipeable };
 		// verilator lint_on  UNUSED
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}
@@ -903,11 +909,13 @@ module	idecode #(
 
 	// Make Verilator happy across all our various options
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off  UNUSED
 	wire	possibly_unused;
 	assign	possibly_unused = &{ 1'b0, w_lock, w_ljmp, w_ljmp_dly,
 			insn_is_pipeable, w_cis_ljmp, i_pc[1:0] };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

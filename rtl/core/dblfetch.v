@@ -366,7 +366,6 @@ module	dblfetch #(
 
 	// o_insn
 	// {{{
-
 	always @(posedge i_clk)
 	if (!o_valid || i_ready)
 	begin

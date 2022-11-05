@@ -100,7 +100,6 @@ module	pipemem #(
 	reg	f_pc;
 `endif
 
-
 	reg				cyc, r_wb_cyc_gbl, r_wb_cyc_lcl,
 					fifo_full;
 	wire				gbl_stb, lcl_stb, lcl_bus;
@@ -418,10 +417,12 @@ module	pipemem #(
 	end else begin : GEN_PRERESULT
 
 		assign	pre_result = i_wb_data << (8*w_wreg[WBLSB-1:0]);
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_preresult;
 		assign	unused_preresult = &{1'b0, pre_result[BUS_WIDTH-33:0] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	end endgenerate
 
 	always @(posedge i_clk)
@@ -488,20 +489,24 @@ module	pipemem #(
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 
+		// Verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	unused_lock;
 		assign	unused_lock = &{ 1'b0, i_lock };
 		// verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}
 
 	// Make verilator happy
 	// {{{
+	// Verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = { 1'b0 };
 	// verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

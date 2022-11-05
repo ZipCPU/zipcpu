@@ -188,9 +188,13 @@ module	zipwb #(
 	wire [AW+WBLSB-1:0]	pf_instruction_pc;
 	wire		pf_valid, pf_illegal;
 	//
-	wire [AW-1:0]	pf_addr;
+	wire			pf_cyc, pf_stb, pf_stall, pf_ack, pf_err;
+	wire [AW-1:0]		pf_addr;
+	// verilator coverage_off
+	// Since we aren't writing, these values will be constants
+	wire			pf_we;
 	wire [BUS_WIDTH-1:0]	pf_data;
-	wire		pf_cyc, pf_stb, pf_we, pf_stall, pf_ack, pf_err;
+	// verilator coverage_on
 	// }}}
 	// Memory
 	// {{{
