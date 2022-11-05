@@ -217,17 +217,10 @@ module	zipbones #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// We offer only a limited interface here, requiring a pre-register
-	// write to set the local address.  This interface allows access to
-	// the Zip System on a debug basis only, and not to the rest of the
-	// wishbone bus.  Further, to access these registers, the control
-	// register must first be accessed to both stop the CPU and to
-	// set the following address in question.  Hence all accesses require
-	// two accesses: write the address to the control register (and halt
-	// the CPU if not halted), then read/write the data from the data
-	// register.
 
-	assign	dbg_cpu_write = (dbg_stb && dbg_we) && (dbg_addr[5] == DBG_ADDR_CPU);
+	assign	dbg_cpu_write = OPT_DBGPORT && (dbg_stb && dbg_we)
+				&& (dbg_addr[5] == DBG_ADDR_CPU)
+				&& dbg_sel == 4'hf;
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)
 					&&(dbg_addr[5] == DBG_ADDR_CTRL);
 	assign	dbg_cmd_data = dbg_idata;
@@ -332,7 +325,7 @@ module	zipbones #(
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
-		if (dbg_cpu_write && dbg_cmd_strb == 4'hf)
+		if (dbg_cpu_write)
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
@@ -427,7 +420,7 @@ module	zipbones #(
 	if (i_reset || cpu_reset)
 		cmd_write <= 1'b0;
 	else if (!cmd_write || !cpu_dbg_stall)
-		cmd_write <= (dbg_cpu_write && dbg_cmd_strb == 4'hf);
+		cmd_write <= dbg_cpu_write;
 	// }}}
 
 	// cmd_waddr, cmd_wdata

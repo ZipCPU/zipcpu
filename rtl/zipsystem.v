@@ -557,7 +557,9 @@ module	zipsystem #(
 	//
 	//
 
-	assign	dbg_cpu_write = (dbg_stb && dbg_we) && (dbg_addr[6:5] == DBG_ADDR_CPU);
+	assign	dbg_cpu_write = OPT_DBGPORT && (dbg_stb && dbg_we)
+				&& (dbg_addr[6:5] == DBG_ADDR_CPU)
+				&& dbg_sel == 4'hf;
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)
 					&&(dbg_addr[6:5] == DBG_ADDR_CTRL);
 	assign	dbg_cmd_data = dbg_idata;
@@ -773,7 +775,7 @@ module	zipsystem #(
 	if (i_reset || cpu_reset)
 		cmd_write <= 1'b0;
 	else if (!cmd_write || !cpu_dbg_stall)
-		cmd_write <= (dbg_cpu_write && dbg_cmd_strb == 4'hf);
+		cmd_write <= dbg_cpu_write;
 	// }}}
 
 	// cmd_waddr, cmd_wdata

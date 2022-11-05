@@ -238,7 +238,6 @@ module	zipaxil #(
 	wire	[31:0]	wskd_data;
 	wire	[3:0]	wskd_strb;
 	reg		dbg_write_valid, dbg_read_valid;
-	wire		w_dbg_write_valid;
 	reg	[4:0]	dbg_write_reg;
 	wire	[4:0]	dbg_read_reg;
 	reg	[31:0]	dbg_write_data;
@@ -336,15 +335,12 @@ module	zipaxil #(
 
 	// dbg_write_valid
 	// {{{
-	assign	w_dbg_write_valid = OPT_DBGPORT && dbg_write_ready
-			&& (wskd_strb == 4'hf) && awskd_addr[5] == DBG_ADDR_CPU;
-
 	initial	dbg_write_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
 		dbg_write_valid <= 1'b0;
 	else if (!dbg_write_stall)
-		dbg_write_valid <= w_dbg_write_valid;
+		dbg_write_valid <= dbg_cpu_write;
 	// }}}
 
 	// dbg_write_reg
@@ -353,7 +349,7 @@ module	zipaxil #(
 	if (!dbg_write_stall)
 	begin
 		dbg_write_reg <= awskd_addr[4:0];
-		if (OPT_LOWPOWER && !w_dbg_write_valid)
+		if (OPT_LOWPOWER && !dbg_cpu_write)
 			dbg_write_reg <= 0;
 	end
 	// }}}
@@ -364,7 +360,7 @@ module	zipaxil #(
 	if (!dbg_write_stall)
 	begin
 		dbg_write_data <= wskd_data;
-		if (OPT_LOWPOWER && !w_dbg_write_valid)
+		if (OPT_LOWPOWER && !dbg_cpu_write)
 			dbg_write_data <= 0;
 	end
 	// }}}
@@ -470,7 +466,9 @@ module	zipaxil #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	dbg_cpu_write = OPT_DBGPORT && dbg_write_ready && awskd_addr[5] == DBG_ADDR_CPU;
+	assign	dbg_cpu_write = OPT_DBGPORT && dbg_write_ready
+				&& awskd_addr[5] == DBG_ADDR_CPU
+				&& wskd_strb == 4'hf;
 	assign	dbg_cmd_write = dbg_write_ready && awskd_addr[5] == DBG_ADDR_CTRL;
 	assign	dbg_cmd_data = wskd_data;
 	assign	dbg_cmd_strb = wskd_strb;
@@ -575,7 +573,7 @@ module	zipaxil #(
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
-		if (w_dbg_write_valid)
+		if (dbg_cpu_write)
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
