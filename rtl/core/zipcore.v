@@ -2513,8 +2513,8 @@ module	zipcore #(
 			||(ill_err_i)
 			||((!alu_gie)&&(i_bus_err))
 			||((!alu_gie)&&(div_error))
-			||((!alu_gie)&&(fpu_error));
-			// ||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
+			||((!alu_gie)&&(fpu_error))
+			||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
 `ifdef	FORMAL
 	// Can I assume that, if break_pending is true, that we're either
 	// in supervisor mode, or that break_en is set?  If so, can I
@@ -2854,9 +2854,8 @@ module	zipcore #(
 				// supervisor.
 				r_trap <= (r_trap)&&(wr_spreg_vl[CPU_TRAP_BIT]);
 			else if (!wr_spreg_vl[CPU_GIE_BIT]) // && alu_gie
-				// Execute a trap -- unless this write is due
-				// to the debug interface, then ... no.
-				r_trap <= !dbgv;
+				// Execute a trap
+				r_trap <= dbgv;
 		end
 
 		// A user break is an indication of an exception.  Something
