@@ -454,7 +454,7 @@ sub simline($) {
 			$errF = $?;
 			system "grep -iq \'TEST SUCCESS\' $sim_log";
 			$errS = $?;
-			system "grep -iq \'warning\' $sim_log";
+			system "grep -v \"Not enough words in the file for the requested range\" $sim_log | grep -iq \'warning\'";
 			$warnW = $?;
 
 			open (SUM,">> $report");
