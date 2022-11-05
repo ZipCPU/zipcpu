@@ -2855,7 +2855,7 @@ module	zipcore #(
 				r_trap <= (r_trap)&&(wr_spreg_vl[CPU_TRAP_BIT]);
 			else if (!wr_spreg_vl[CPU_GIE_BIT]) // && alu_gie
 				// Execute a trap
-				r_trap <= dbgv;
+				r_trap <= !dbgv;
 		end
 
 		// A user break is an indication of an exception.  Something
