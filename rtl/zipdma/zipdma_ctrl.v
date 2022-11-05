@@ -244,8 +244,8 @@ module zipdma_ctrl #(
 				o_s2mm_inc  <= !i_data[22];
 				o_s2mm_size <=  i_data[21:20];
 				//
-				o_mm2s_inc  <= !i_data[26];
-				o_mm2s_size <=  i_data[25:24];
+				o_mm2s_inc  <= !i_data[18];
+				o_mm2s_size <=  i_data[17:16];
 			end
 
 			if (i_sel[3])

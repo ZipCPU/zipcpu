@@ -65,9 +65,9 @@ module zipdma #(
 		// Master/DMA port
 		// {{{
 		output	wire			o_mwb_cyc, o_mwb_stb, o_mwb_we,
-		output	reg	[AW-1:0]	o_mwb_addr,
-		output	reg	[BUS_WIDTH-1:0]	o_mwb_data,
-		output	reg [BUS_WIDTH/8-1:0]	o_mwb_sel,
+		output	wire	[AW-1:0]	o_mwb_addr,
+		output	wire	[BUS_WIDTH-1:0]	o_mwb_data,
+		output	wire [BUS_WIDTH/8-1:0]	o_mwb_sel,
 		// Master/DMA wishbone responses from the bus
 		input	wire			i_mwb_stall, i_mwb_ack,
 		input	wire	[BUS_WIDTH-1:0]	i_mwb_data,
