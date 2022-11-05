@@ -204,7 +204,7 @@ asm("\t.section\t.start,\"ax\",@progbits\n"
 	"\tBRA\t_bootloader\n"
 "_after_bootloader:\n"
 	"\tLDI\t_top_of_stack,SP"	"\t; Set up our supervisor stack ptr\n"
-	"\tOR\t0x4000,CC"		"\t; Clear the data cache\n"
+	"\tOR\t0xc000,CC"		"\t; Clear the cache\n"
 #endif
 #ifdef	__USE_INIT_FINIT
 	"\tJSR\tinit"		"\t; Initialize any constructor code\n"
