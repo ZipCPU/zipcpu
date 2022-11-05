@@ -194,6 +194,12 @@ my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam LGCACHESZ		 12"
 		. " -chparam LGLINESZ		  3"
 		. " -chparam OPT_LOWPOWER         0";
+
+my $zipdmaconfig =" -chparam BUS_WIDTH           64"
+		. " -chparam ADDRESS_WIDTH       30"
+		. " -chparam LGMEMLEN            10"
+		. " -chparam OPT_LITTLE_ENDIAN    0"
+		. " -chparam OPT_LOWPOWER         0";
 ## }}}
 
 my $bonescfg = "";
@@ -238,6 +244,11 @@ my @files = (
 	"peripherals/zipjiffies.v",
 	# "peripherals/zipmmu.v",
 	## }}}
+	## ZipDMA
+	"zipdma/zipdma_ctrl.v",    "zipdma/zipdma_fsm.v",
+	"zipdma/zipdma_mm2s.v",    "zipdma/zipdma_rxgears.v",
+	"zipdma/zipdma_txgears.v", "zipdma/zipdma_s2mm.v",
+	"zipdma/zipdma.v",
 	## Wrappers
 	"zipbones.v", "zipsystem.v",
 	"zipaxil.v", "zipaxi.v");
@@ -432,5 +443,22 @@ $icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d %6d\n",
 
 print USAGE $dcch;
 print USAGE $icch;
+
+$dmaz = sprintf("  ZIP-DMA/ 32  : %5d %5d %6d\n",
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",""),
+		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",""),
+		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",$asicpost));
+
+$dmaz = $dmaz . sprintf("  ZIP-DMA/ 64  : %5d %5d %6d\n",
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",""),
+		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",""),
+		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",$asicpost));
+
+$dmaz = $dmaz . sprintf("  ZIP-DMA/512  : %5d %5d %6d\n",
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",""),
+		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",""),
+		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",$asicpost));
+
+print USAGE $dmaz;
 
 close(USAGE);
