@@ -750,22 +750,71 @@ int	soft_mpyshi(int a, int b) {
 }
 // }}}
 
-int	div_test(void);
+int	divu_test(void);
 // {{{
-asm("\t.text\n\t.global\tdiv_test\n"
-	"\t.type\tdiv_test,@function\n"
-"div_test:\n"
+asm("\t.text\n\t.global\tdivu_test\n"
+	"\t.type\tdivu_test,@function\n"
+"divu_test:\n"
 	"\tLDI\t0x4881a7,R4\n"
 	"\tLDI\t0x2d5108b,R2\n"
 	"\tLDI\t10,R3\n"
-	"\tDIVU\tR3,R2\n"
-	"\tCMP\tR4,R2\n"
+	"\tDIVU\tR3,R2\n"	// R3 = 0x2d5108b /= 10
+	"\tCMP\tR4,R2\n"	// Compare DIVU result to 0x4881a7
 	"\tLDILO.NZ\t1,R1\n"
 	"\tRETN.NZ\n"
 	"\tLDI\t0x2d5108b,R2\n"
-	"\tDIVU\t10,R2\n"
+	"\tDIVU\t10,R2\n"	// R2 = 0x2d5108b /= 10
+	"\tCMP\tR4,R2\n"	// Compare R2 to 0x4881a7
+	"\tLDILO.NZ\t1,R1\n"
+	"\tRETN\n");
+// }}}
+
+int	divs_test(void);
+// {{{
+asm("\t.text\n\t.global\tdivs_test\n"
+	"\t.type\tdivs_test,@function\n"
+"divs_test:\n"
+	"\tLDI\t-26,R4\n"	// Expected result
+	"\tLDI\t131,R2\n"
+	"\tLDI\t-5,R3\n"
+	"\tDIVS\tR3,R2\n"	// 131 / -5
 	"\tCMP\tR4,R2\n"
 	"\tLDILO.NZ\t1,R1\n"
+	"\tRETN.NZ\n"
+	// 0x2653 * 0x098953d = 0x16d79_f70c7
+	// -883 * -999671 = -882709493
+	// 
+	"\tLDI\t883,R2\n"	// R2 = A
+	"\tLDI\t999671,R3\n"	// R3 = B
+	"\tMOV\tR3,R4\n"	
+	"\tMPY\tR2,R4\n"	// R4 = A*B
+	//
+	"\tMOV\tR4,R5\n"	// R5 = R4 = A*B
+	"\tDIVS\tR2,R5\n"	// R5 = A * B / A
+	"\tCMP\tR3,R5\n"
+	"\tLDILO.NZ\t3,R1\n"
+	"\tRETN.NZ\n"
+	//
+	//	-(A*B) / B
+	"\tMOV\tR4,R5\n"	// R5 =  R4 = A*B
+	"\tNEG\tR5\n"		// R5 = -R4 = -A*B
+	"\tMOV\tR3,R6\n"	// R6 = B
+	"\tNEG\tR6\n"		// R6 = -B
+	"\tDIVS\tR2,R5\n"	// R5 = A * B / A
+	"\tCMP\tR6,R5\n"
+	"\tLDILO.NZ\t5,R1\n"
+	"\tRETN.NZ\n"
+	//
+	//	-(A*B) / -B
+	"\tMOV\tR4,R5\n"	// R5 =  R4 = A*B
+	"\tNEG\tR5\n"		// R5 = -R4 = -A*B
+	"\tMOV\tR2,R6\n"	// R6 = B
+	"\tNEG\tR6\n"		// R6 = -B
+	"\tDIVS\tR6,R5\n"	// R5 = A * B / A
+	"\tCMP\tR3,R5\n"
+	"\tLDILO.NZ\t7,R1\n"
+	// "\tRETN.NZ\n"
+	//
 	"\tRETN\n");
 // }}}
 
@@ -1550,10 +1599,11 @@ void	testid(const char *str) {
 int	testlist[MAXTESTS];
 
 void entry(void) {
-	int	context[16];
-	int	user_stack[256], *user_stack_ptr = &user_stack[256];
-	int	start_time, i;
-	int	cc_fail, cis_insns = 0;
+	int		context[16];
+	int		user_stack[256], *user_stack_ptr = &user_stack[256];
+	int		start_time, i;
+	int		cc_fail, cis_insns = 0;
+	unsigned	cc;
 
 
 	for(i=0; i<MAXTESTS; i++)
@@ -1603,6 +1653,8 @@ void entry(void) {
 		cis_insns = 1;
 	}
 
+	// Break instructions
+	// {{{
 	// Test break instruction in user mode
 	// Make sure the break works as designed
 	testid("Break test #1"); MARKSTART;
@@ -1637,17 +1689,22 @@ void entry(void) {
 			||(zip_ucc()&cc_fail))	// set, and no other excpt flags
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #3
+	// }}}
 
 	// LJMP test ... not (yet) written
 
+	// Branch testing
+	// {{{
 	// Test the early branching capability
 	//	Does it successfully clear whatever else is in the pipeline?
 	testid("Early Branch test"); MARKSTART;
 	if ((run_test(early_branch_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #4
+	// }}}
 
 	// TRAP test
+	// {{{
 	testid("Trap test/AND"); MARKSTART;
 	if ((run_test(trap_test_and, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
@@ -1661,6 +1718,7 @@ void entry(void) {
 	if ((zip_ucc() & 0x0200)==0)
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #6
+	// }}}
 
 	// Overflow test
 	testid("Overflow test"); MARKSTART;
@@ -1722,6 +1780,8 @@ void entry(void) {
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #15
 
+	// Illegal instruction testing
+	// {{{
 	// Illegal Instruction test
 	testid("Ill Instruction test, NULL PC"); MARKSTART;
 	if ((run_test(NULL, user_stack_ptr))||((zip_ucc()^CC_ILL)&CC_EXCEPTION))
@@ -1737,7 +1797,10 @@ void entry(void) {
 	if (context[15] != (int)&ill_test)
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #17
+	// }}}
 
+	// Comparison instruction testing
+	// {{{
 	// Compare EQuals test
 	testid("Comparison test, =="); MARKSTART;
 	if ((run_test(cmpeq_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
@@ -1749,22 +1812,27 @@ void entry(void) {
 	if ((run_test(cmpneq_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #19
+	// }}}
 
 	// Pipeline memory race condition test
 	// DIVIDE test
 
 	// CC Register test
+	// {{{
 	testid("CC Register test"); MARKSTART;
 	if ((run_test(ccreg_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #20
+	// }}}
 
-	// Multiple argument test testid("Multi-Arg test"); MARKSTART;
+	// Multiple argument test
 	testid("Multi-Arg test"); MARKSTART;
 	if ((run_test(multiarg_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #21
 
+	// Load/store testing
+	// {{{
 	// Memory byte-level access test
 	testid("LB/SB test"); MARKSTART;
 	if ((run_test(membyte_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
@@ -1776,7 +1844,10 @@ void entry(void) {
 	if ((run_test(memhalf_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #23
+	// }}}
 
+	// Step testing
+	// {{{
 	// Step test: ALU
 	testid("Step ALU test"); MARKSTART;
 	if ((step_test(step_alu_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
@@ -1856,9 +1927,17 @@ void entry(void) {
 					||((zip_ucc()^CC_BUSERR)&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #33
+	// }}}
 
+	// Multiply
+	// {{{
 	if ((zip_cc() & 0x40000000)==0) {
-		txstr("No multiply unit installed\r\n");
+		testid("Multiply test"); MARKSTART;
+		if ((run_test(mpy_test, user_stack_ptr))
+				|| (zip_ucc()&CC_ILL))
+			txstr("Pass (No MPY, MPY traps)\r\n");
+		else
+			test_fails(start_time, &testlist[tnum]);
 	} else {
 		// MPY_TEST
 		testid("Multiply test"); MARKSTART;
@@ -1872,20 +1951,35 @@ void entry(void) {
 			test_fails(start_time, &testlist[tnum]);
 		txstr("Pass\r\n"); testlist[tnum++] = 0;	// #35
 	}
+	// }}}
 
 	// DIV_TEST
-	testid("Divide test");
+	// {{{
+	testid("(Unsigned) Divide test");
 	if ((zip_cc() & 0x20000000)==0) {
 		txstr("No divide unit installed\r\n");
 	} else { MARKSTART;
-	if ((run_test(div_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
+	if ((run_test(divu_test, user_stack_ptr))||(zip_ucc()&CC_EXCEPTION))
 		test_fails(start_time, &testlist[tnum]);
 	} txstr("Pass\r\n"); testlist[tnum++] = 0;	// #36
 
+	testid("(Signed)   Divide test");
+	MARKSTART;
+	if ((run_test(divs_test, user_stack_ptr))
+			||((cc = zip_ucc())&CC_EXCEPTION)) {
+		if ((zip_cc() & 0x20000000) && (cc & CC_ILL))
+			txstr("Pass (No div, Divide traps)\r\n");
+		else
+			test_fails(start_time, &testlist[tnum]);
+	} else
+		txstr("Pass\r\n");
+	testlist[tnum++] = 0;	// #37
+	// }}}
 
+	// SMP_TEST
+	// {{{
 #define	OPT_SMP
 #ifdef	OPT_SMP
-	// SMP_TEST
 	{
 		unsigned	count, cc;
 
@@ -1896,9 +1990,10 @@ void entry(void) {
 							|CC_BREAK|CC_MMUERR))
 			test_fails(start_time, &testlist[tnum]);
 		txdecimal(count+1); txstr(" CPUs\r\n");
-		testlist[tnum++] = 0;	// #37
+		testlist[tnum++] = 0;	// #38
 	}
 #endif
+	// }}}
 
 
 	txstr("\r\n");
