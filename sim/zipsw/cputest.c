@@ -193,7 +193,7 @@ asm("\t.text\n\t.global\tearly_branch_test\n"
 "early_branch_test:\n"
 	"\tLDI\t1,R1\n"
 	"\tBRA\t_eb_a\n"
-	"\tBREAK\n"	
+	"\tBREAK\n"
 "_eb_a:\n"
 	"\tLDI\t2,R1\n"
 	"\tBRA\t_eb_b\n"
@@ -415,7 +415,7 @@ asm("\t.text\n\t.global\tshift_test\n"
 	"\tLDI\t-1,R2\n"
 	"\tLSL\t32,R2\n"
 	"\tOR.Z\t4096,R3\n"
-	"\tOR.C\t8192,R3\n"	
+	"\tOR.C\t8192,R3\n"
 	"\tCMP\t0,R2\n"
 	"\tOR.Z\t16384,R3\n"
 // How about shifting by zero?
@@ -425,7 +425,7 @@ asm("\t.text\n\t.global\tshift_test\n"
 	"\tOR\t32768,R3\n"
 	"\tCMP\t-1,R2\n"
 	"\tOR.Z\t1,R4\n"
-// 
+//
 	"\tLSR\t0,R2\n"
 	"\tLDI\t131072,R5\n"
 	"\tOR.C\tR5,R1\n"
@@ -783,10 +783,10 @@ asm("\t.text\n\t.global\tdivs_test\n"
 	"\tRETN.NZ\n"
 	// 0x2653 * 0x098953d = 0x16d79_f70c7
 	// -883 * -999671 = -882709493
-	// 
+	//
 	"\tLDI\t883,R2\n"	// R2 = A
 	"\tLDI\t999671,R3\n"	// R3 = B
-	"\tMOV\tR3,R4\n"	
+	"\tMOV\tR3,R4\n"
 	"\tMPY\tR2,R4\n"	// R4 = A*B
 	//
 	"\tMOV\tR4,R5\n"	// R5 = R4 = A*B
@@ -1200,7 +1200,7 @@ asm("\t.text\n\t.global\tccreg_test\n"
 	"\tMOV\tCC,R5\n"	// See if the pipeline makes them take
 	"\tXOR\tR4,R5\n"	// Let's look for anything that has changed
 	"\tOR.NZ\t1,R1\n"	// If anything has changed, then we fail the tst
-	// 
+	//
 	// Test #2: Can we set the flags?
 	"\tMOV\tCC,R6\n"
 	"\tOR\t15,R6\n"
@@ -1574,7 +1574,7 @@ void	test_fails(int start_time, int *listno) {
 	asm("NEXIT -1");
 	// While previous versions of cputest.c called zip_busy(), here we
 	// reject that notion for the simple reason that zip_busy may not
-	// necessarily halt any Verilator simulation.  Instead, we try to 
+	// necessarily halt any Verilator simulation.  Instead, we try to
 	// halt the CPU.
 	while(1)
 		zip_halt();
@@ -1669,7 +1669,7 @@ void entry(void) {
 
 
 	// Test break instruction in user mode
-	// Make sure that a decision on the clock prior won't still cause a 
+	// Make sure that a decision on the clock prior won't still cause a
 	// break condition
 	cc_fail = CC_MMUERR|CC_FPUERR|CC_DIVERR|CC_BUSERR|CC_ILL|CC_BREAK|CC_STEP|CC_SLEEP;
 	testid("Break test #2"); MARKSTART;
@@ -1678,7 +1678,7 @@ void entry(void) {
 	txstr("Pass\r\n"); testlist[tnum++] = 0;	// #2
 
 	// Test break instruction in user mode
-	// Make sure that a decision on the clock prior won't still cause a 
+	// Make sure that a decision on the clock prior won't still cause a
 	// break condition
 	cc_fail = (CC_FAULT)|CC_MMUERR|CC_TRAP|CC_STEP|CC_SLEEP;
 	testid("Break test #3"); MARKSTART;

@@ -74,6 +74,9 @@ module	axi_tb #(
 		parameter [0:0]	OPT_DBGPORT          = 1'b1,
 		parameter [0:0]	OPT_TRACE_PORT       = 1'b1,
 		parameter [0:0]	OPT_CIS              = 1'b1,
+		// verilator lint_off UNUSED
+		parameter [0:0]	OPT_WRAP             = 1'b1,
+		// verilator lint_on UNUSED
 		parameter	OPT_SMP              = 1,
 		parameter	MEM_FILE = "cput3st",
 		parameter	CONSOLE_FILE = "console.txt",
@@ -1257,6 +1260,7 @@ module	axi_tb #(
 			.OPT_SHIFTS(OPT_SHIFTS),
 			.OPT_LOCK(OPT_LOCK),
 			.OPT_CIS(OPT_CIS),
+			.OPT_WRAP(OPT_WRAP),
 			.OPT_USERMODE(OPT_USERMODE),
 			.OPT_DBGPORT(OPT_DBGPORT),
 			.OPT_TRACE_PORT(OPT_TRACE_PORT),
@@ -1527,7 +1531,7 @@ module	axi_tb #(
 			.C_AXI_ADDR_WIDTH(8),
 			.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
 			.C_M_AXI_DATA_WIDTH(32),
-			.OPT_LOWPOWER(1), .OPT_WRITES(1), .OPT_READS(1)
+			.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
 			// }}}
 		) u_smpdown (
 			// {{{
@@ -2134,7 +2138,7 @@ module	axi_tb #(
 		.NS(4+OPT_SMP),
 		.C_AXI_ID_WIDTH(IW),
 		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH), .C_AXI_DATA_WIDTH(BUS_WIDTH),
-		.OPT_LOWPOWER(1'b1),
+		.OPT_LOWPOWER(OPT_LOWPOWER),
 		.SLAVE_ADDR({ AXILP_ADDR, SMP_ADDR, CONSOLE_ADDR, SCOPE_ADDR,
 				MEMORY_ADDR }),
 		.SLAVE_MASK({
@@ -2406,7 +2410,7 @@ module	axi_tb #(
 		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH-3),
 		.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
 		.C_M_AXI_DATA_WIDTH(32),
-		.OPT_LOWPOWER(1), .OPT_WRITES(1), .OPT_READS(1)
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
 		// }}}
 	) u_condown (
 		// {{{
@@ -2485,7 +2489,7 @@ module	axi_tb #(
 	);
 
 	axilcon #(
-		.OPT_LOWPOWER(1'b1), .OPT_SKIDBUFFER(1'b1),
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_SKIDBUFFER(1'b1),
 		.CONSOLE_FILE(CONSOLE_FILE)
 	) u_console (
 		// {{{
@@ -2542,7 +2546,7 @@ module	axi_tb #(
 		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH-3),
 		.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
 		.C_M_AXI_DATA_WIDTH(32),
-		.OPT_LOWPOWER(1), .OPT_WRITES(1), .OPT_READS(1)
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
 		// }}}
 	) u_axilpdown (
 		// {{{
@@ -2621,7 +2625,7 @@ module	axi_tb #(
 	);
 
 	axilperiphs #(
-		.OPT_LOWPOWER(1'b1), .OPT_SKIDBUFFER(1'b1),
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_SKIDBUFFER(1'b1),
 		.OPT_COUNTERS(1'b1), .EXTERNAL_INTERRUPTS(2)
 	) u_axilp (
 		// {{{
@@ -2710,7 +2714,7 @@ module	axi_tb #(
 			.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH-3),
 			.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
 			.C_M_AXI_DATA_WIDTH(32),
-			.OPT_LOWPOWER(1), .OPT_WRITES(1), .OPT_READS(1)
+			.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
 			// }}}
 		) u_scopedown (
 			// {{{

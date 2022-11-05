@@ -54,7 +54,9 @@ module axilite2axi #(
 		input	wire				S_AXI_AWVALID,
 		output	wire				S_AXI_AWREADY,
 		input	wire	[C_AXI_ADDR_WIDTH-1:0]	S_AXI_AWADDR,
+		// Verilator coverage_off
 		input	wire	[3-1:0]			S_AXI_AWPROT,
+		// Verilator coverage_on
 		// Slave write data signals
 		input	wire				S_AXI_WVALID,
 		output	wire				S_AXI_WREADY,
@@ -80,8 +82,11 @@ module axilite2axi #(
 		// Master interface write address
 		output	wire				M_AXI_AWVALID,
 		input	wire				M_AXI_AWREADY,
+		// Verilator coverage_off
 		output	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_AWID,
+		// Verilator coverage_on
 		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_AXI_AWADDR,
+		// Verilator coverage_off
 		output	wire	[8-1:0]			M_AXI_AWLEN,
 		output	wire	[3-1:0]			M_AXI_AWSIZE,
 		output	wire	[2-1:0]			M_AXI_AWBURST,
@@ -89,6 +94,7 @@ module axilite2axi #(
 		output	wire	[4-1:0]			M_AXI_AWCACHE,
 		output	wire	[3-1:0]			M_AXI_AWPROT,
 		output	wire	[4-1:0]			M_AXI_AWQOS,
+		// Verilator coverage_on
 		// Master write data
 		output	wire				M_AXI_WVALID,
 		input	wire				M_AXI_WREADY,
@@ -99,12 +105,15 @@ module axilite2axi #(
 		input	wire				M_AXI_BVALID,
 		output	wire				M_AXI_BREADY,
 		input	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_BID,
+		// Verilator coverage_off
 		input	wire	[1:0]			M_AXI_BRESP,
+		// Verilator coverage_on
 		// Master interface read address
 		output	wire				M_AXI_ARVALID,
 		input	wire				M_AXI_ARREADY,
 		output	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_ARID,
 		output	wire	[C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
+		// Verilator coverage_off
 		output	wire	[8-1:0]			M_AXI_ARLEN,
 		output	wire	[3-1:0]			M_AXI_ARSIZE,
 		output	wire	[2-1:0]			M_AXI_ARBURST,
@@ -112,10 +121,13 @@ module axilite2axi #(
 		output	wire	[4-1:0]			M_AXI_ARCACHE,
 		output	wire	[3-1:0]			M_AXI_ARPROT,
 		output	wire	[4-1:0]			M_AXI_ARQOS,
+		// Verilator coverage_on
 		// Master interface read data return
 		input	wire				M_AXI_RVALID,
 		output	wire				M_AXI_RREADY,
+		// Verilator coverage_off
 		input	wire	[C_AXI_ID_WIDTH-1:0]	M_AXI_RID,
+		// Verilator coverage_on
 		input	wire	[C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
 		input	wire				M_AXI_RLAST,
 		input	wire	[2-1:0]			M_AXI_RRESP
@@ -165,10 +177,14 @@ module axilite2axi #(
 	assign	M_AXI_RREADY  = S_AXI_RREADY;
 
 	// Make Verilator happy
+	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, ACLK, ARESETN, M_AXI_RLAST, M_AXI_RID, M_AXI_BID };
 	// Verilator lint_on UNUSED
+	// Verilator coverage_on
+	// }}}
 
 `ifdef	FORMAL
 	//

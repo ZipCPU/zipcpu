@@ -235,10 +235,12 @@ module	axi_addr #(
 
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = (LENB <= 4) ? &{1'b0, i_len[0] }
 				: &{ 1'b0, i_len[LENB-1:4], i_len[0] };
 	// Verilator lint_on UNUSED
+	// Verilator coverage_on
 	// }}}
 endmodule

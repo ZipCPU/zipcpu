@@ -58,7 +58,9 @@ module	axilcon #(
 		input	wire					S_AXI_AWVALID,
 		output	wire					S_AXI_AWREADY,
 		input	wire	[C_AXI_ADDR_WIDTH-1:0]		S_AXI_AWADDR,
+		// verilator coverage_off
 		input	wire	[2:0]				S_AXI_AWPROT,
+		// verilator coverage_on
 		//
 		input	wire					S_AXI_WVALID,
 		output	wire					S_AXI_WREADY,
@@ -67,7 +69,9 @@ module	axilcon #(
 		//
 		output	wire					S_AXI_BVALID,
 		input	wire					S_AXI_BREADY,
+		// verilator coverage_off
 		output	wire	[1:0]				S_AXI_BRESP,
+		// verilator coverage_on
 		//
 		input	wire					S_AXI_ARVALID,
 		output	wire					S_AXI_ARREADY,
@@ -76,8 +80,10 @@ module	axilcon #(
 		//
 		output	wire					S_AXI_RVALID,
 		input	wire					S_AXI_RREADY,
+		// verilator coverage_off
 		output	wire	[C_AXI_DATA_WIDTH-1:0]		S_AXI_RDATA,
 		output	wire	[1:0]				S_AXI_RRESP
+		// verilator coverage_on
 		// }}}
 	);
 
@@ -295,6 +301,7 @@ module	axilcon #(
 	//
 	// Veri1ator lint-check
 	// {{{
+	// verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
@@ -302,5 +309,6 @@ module	axilcon #(
 			S_AXI_AWADDR[ADDRLSB-1:0],
 			wskd_data[31:8], wskd_strb[3:1] };
 	// Verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 endmodule

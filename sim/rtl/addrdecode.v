@@ -261,6 +261,7 @@ module	addrdecode #(
 
 		// Make Verilator happy
 		// {{{
+		// verilator coverage_off
 		// verilator lint_off UNUSED
 		wire	unused;
 		assign	unused = &{ 1'b0,
@@ -271,6 +272,7 @@ module	addrdecode #(
 `endif
 				i_reset };
 		// verilator lint_on UNUSED
+		// verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}

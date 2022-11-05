@@ -1760,6 +1760,7 @@ module axi2axilsub #(
 		// }}}
 		// Make Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_read;
 		assign	unused_read = &{ 1'b0,
@@ -1775,6 +1776,7 @@ module axi2axilsub #(
 				rfifo_count, rfifo_full
 				};
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 		////////////////////////////////////////////////////////////////
 		////////////////////////////////////////////////////////////////
@@ -1990,6 +1992,7 @@ module axi2axilsub #(
 		assign	S_AXI_RID    = 0;
 
 		// Make Verilator happy
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_read;
 		assign	unused_read = &{ 1'b0, M_AXI_ARREADY, M_AXI_RVALID,
@@ -1998,6 +2001,7 @@ module axi2axilsub #(
 				S_AXI_ARADDR, S_AXI_ARVALID, S_AXI_ARID
 				};
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end end endgenerate
 	// }}}
@@ -2013,6 +2017,7 @@ module axi2axilsub #(
 	// }}}
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0,
@@ -2021,6 +2026,7 @@ module axi2axilsub #(
 		S_AXI_ARLOCK, S_AXI_ARCACHE, S_AXI_ARPROT, S_AXI_ARQOS
 		};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
