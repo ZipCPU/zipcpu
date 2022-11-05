@@ -379,8 +379,9 @@ module	zipaxi #(
 
 	// dbg_write_valid
 	// {{{
-	assign	w_dbg_write_valid = dbg_write_ready && (|wskd_strb)
-				&& awskd_addr[5] == DBG_ADDR_CPU;
+	assign	w_dbg_write_valid = OPT_DBGPORT && dbg_write_ready
+			&& (wskd_strb == 4'hf) && awskd_addr[5] == DBG_ADDR_CPU;
+
 	initial	dbg_write_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN)
@@ -461,7 +462,7 @@ module	zipaxi #(
 	// {{{
 	initial	dbg_read_valid = 0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_read_valid <= 0;
 	else
 		dbg_read_valid <= dbg_read_ready
@@ -476,8 +477,8 @@ module	zipaxi #(
 		S_DBG_RVALID <= 0;
 	else if (!S_DBG_RVALID || S_DBG_RREADY)
 		S_DBG_RVALID <= (dbg_read_ready
-					&& arskd_addr[5] == DBG_ADDR_CTRL)
-				|| dbg_read_valid;
+			  && (!OPT_DBGPORT || arskd_addr[5] == DBG_ADDR_CTRL))
+			|| dbg_read_valid;
 	// }}}
 
 	// S_DBG_RDATA
@@ -489,12 +490,13 @@ module	zipaxi #(
 	else if (!S_DBG_RVALID || S_DBG_RREADY)
 	begin
 		// {{{
-		if (dbg_read_valid)
+		if (OPT_DBGPORT && dbg_read_valid)
 			S_DBG_RDATA <= dbg_read_data;
 		else
 			S_DBG_RDATA <= cpu_status;
 
-		if (OPT_LOWPOWER && !dbg_read_valid && !dbg_read_ready)
+		if (OPT_LOWPOWER && (!OPT_DBGPORT || !dbg_read_valid)
+						&& !dbg_read_ready)
 			S_DBG_RDATA <= 0;
 		// }}}
 	end
@@ -511,7 +513,7 @@ module	zipaxi #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	dbg_cpu_write = dbg_write_ready && awskd_addr[5] == DBG_ADDR_CPU;
+	assign	dbg_cpu_write = OPT_DBGPORT && dbg_write_ready && awskd_addr[5] == DBG_ADDR_CPU;
 	assign	dbg_cmd_write = dbg_write_ready && awskd_addr[5] == DBG_ADDR_CTRL;
 	assign	dbg_cmd_data = wskd_data;
 	assign	dbg_cmd_strb = wskd_strb;
@@ -616,7 +618,7 @@ module	zipaxi #(
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
-		if (dbg_cpu_write && dbg_cmd_strb != 0)
+		if (w_dbg_write_valid)
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command

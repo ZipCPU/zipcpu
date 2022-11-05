@@ -332,7 +332,7 @@ module	zipbones #(
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
-		if (dbg_cpu_write && dbg_cmd_strb != 0)
+		if (dbg_cpu_write && dbg_cmd_strb == 4'hf)
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
@@ -427,7 +427,7 @@ module	zipbones #(
 	if (i_reset || cpu_reset)
 		cmd_write <= 1'b0;
 	else if (!cmd_write || !cpu_dbg_stall)
-		cmd_write <= (dbg_cpu_write && dbg_cmd_strb != 0);
+		cmd_write <= (dbg_cpu_write && dbg_cmd_strb == 4'hf);
 	// }}}
 
 	// cmd_waddr, cmd_wdata
