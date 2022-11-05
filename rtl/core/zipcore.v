@@ -2248,6 +2248,12 @@ module	zipcore #(
 	end
 `ifdef	FORMAL
 	always @(*)
+	if (!i_reset && ((alu_wR && alu_valid)
+				||(div_valid && !div_error)
+				||(fpu_valid && !fpu_error)))
+		assert(!dbgv && !i_mem_valid);
+
+	always @(*)
 	if (!i_reset)
 	casez(wr_index)
 	3'b000: assert(!i_mem_valid && (!alu_wR || !alu_valid)
@@ -2471,13 +2477,16 @@ module	zipcore #(
 
 		initial	r_break_pending = 1'b0;
 		always @(posedge i_clk)
-		if ((clear_pipeline)||(!op_valid))
+		if (clear_pipeline || !op_valid)
 			r_break_pending <= 1'b0;
-		else if ((op_break)&&(!r_break_pending))
+		else if (op_break && !r_break_pending)
 			r_break_pending <= (!alu_busy)&&(!div_busy)
 				&&(!fpu_busy)&&(!i_mem_busy)
 				&&(!wr_reg_ce) && (!step || !stepped);
 		// else
+			// No need to clear this here.  The break will force the
+			// pipeline to be cleared above, at which point we can
+			// clear this register.
 			// r_break_pending <= 1'b0;
 
 		assign	break_pending = r_break_pending;
@@ -2495,13 +2504,43 @@ module	zipcore #(
 
 	// o_break
 	// {{{
-	assign	o_break = ((break_en)||(!op_gie))&&(break_pending)
+	//
+	// This is a 12-input equation on an output.  Can this be
+	// simplified any?  What happens if o_break is set?  Will it ever
+	// clear on its own, or does it require a write to the debug port?
+	assign	o_break = (break_en || !op_gie)&&(break_pending)
 				&&(!clear_pipeline)
 			||(ill_err_i)
 			||((!alu_gie)&&(i_bus_err))
 			||((!alu_gie)&&(div_error))
-			||((!alu_gie)&&(fpu_error))
-			||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
+			||((!alu_gie)&&(fpu_error));
+			// ||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
+`ifdef	FORMAL
+	// Can I assume that, if break_pending is true, that we're either
+	// in supervisor mode, or that break_en is set?  If so, can I
+	// simplify the calculation above?
+	//
+	// No, because once break_pending is set, the supervisor can then
+	// adjust break_en without adjusting the external break.
+	//
+	// always @(*)
+	// if (break_pending)
+	//	assert(!op_gie || break_en);
+
+	always @(*)
+	if (!alu_gie && alu_illegal && !clear_pipeline)
+		assert(!master_ce);
+
+	// Do I need to break on the last condition above?
+	always @(posedge i_clk)
+	if (!i_reset && $past(!i_reset && !alu_gie && alu_illegal
+						&& !clear_pipeline && !dbgv))
+		assert(ill_err_i);
+
+	always @(*)
+	if (!i_reset)
+		assert(!dbgv || !alu_valid);
+`endif
 	// }}}
 
 	// sleep
@@ -2516,47 +2555,67 @@ module	zipcore #(
 	generate if (OPT_USERMODE)
 	begin : GEN_SLEEP
 		// {{{
+		initial	sleep = 1'b0;
 		always @(posedge i_clk)
-		if ((i_reset)||(w_switch_to_interrupt))
+		if (i_reset || w_switch_to_interrupt)
+			// Wake up on any reset or any switch to supervisor mode
 			sleep <= 1'b0;
-		else if ((wr_reg_ce)&&(wr_write_cc)&&(!alu_gie))
-			// In supervisor mode, we have no protections.
-			// The supervisor can set the sleep bit however
-			// he wants.  Well ... not quite.  Switching to
-			// user mode and sleep mode shouold only be
-			// possible if the interrupt flag isn't set.
-			//	Thus: if (i_interrupt)
-			//			&&(wr_spreg_vl[GIE])
-			//		don't set the sleep bit
-			//	otherwise however it would o.w. be set
-			sleep <= (wr_spreg_vl[CPU_SLEEP_BIT])
-				&&((!i_interrupt)
-					||(!wr_spreg_vl[CPU_GIE_BIT]));
-		else if ((wr_reg_ce)&&(wr_write_cc)&&(wr_spreg_vl[CPU_GIE_BIT]))
-			// In user mode, however, you can only set the
-			// sleep mode while remaining in user mode.
-			// You can't switch to sleep mode *and*
-			// supervisor mode at the same time, lest you
-			// halt the CPU.
-			sleep <= wr_spreg_vl[CPU_SLEEP_BIT];
+		else if (wr_reg_ce && wr_write_cc)
+		begin
+			//
+			// !GIE && SLEEP ==> halted
+			//  GIE && SLEEP ==> sleep until an interrupt
+			//
+			if (!alu_gie)
+				// In supervisor mode, we have no protections.
+				// The supervisor can set the sleep bit however
+				// he wants.  Well ... not quite.  Switching to
+				// user mode and sleep mode should only be
+				// possible if the interrupt flag isn't set.
+				// Hence, if an interrupt is pending, then any
+				// WAIT instruction essentially becomes a NOOP.
+				//
+				//	Thus: if (i_interrupt)
+				//			&&(wr_spreg_vl[GIE])
+				//		don't set the sleep bit
+				//	otherwise however it would o.w. be set
+				sleep <= (wr_spreg_vl[CPU_SLEEP_BIT])
+					&&((!i_interrupt)
+						||(!wr_spreg_vl[CPU_GIE_BIT]));
+			else if (wr_spreg_vl[CPU_GIE_BIT])
+				// In user mode, however, you can only set the
+				// sleep mode while remaining in user mode.
+				// You can't switch to sleep mode *and*
+				// supervisor mode at the same time, lest you
+				// halt the CPU.
+				sleep <= wr_spreg_vl[CPU_SLEEP_BIT];
+		end
 		// }}}
 	end else begin : GEN_NO_USERMODE_SLEEP
 		// {{{
+		// Even with no user mode, we still want to implement a sleep
+		// instruction.  Here, we create an r_sleep_is_halt to
+		// differentiate between the halt and the sleep condition
+		// so that the supervisor can still cause the CPU to sleep.
+		//
 		reg	r_sleep_is_halt;
 		initial	r_sleep_is_halt = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
 			r_sleep_is_halt <= 1'b0;
-		else if ((wr_reg_ce)&&(wr_write_cc)
-				&&(wr_spreg_vl[CPU_SLEEP_BIT])
-				&&(!wr_spreg_vl[CPU_GIE_BIT]))
+		else if (wr_reg_ce && wr_write_cc
+				&&  wr_spreg_vl[CPU_SLEEP_BIT]
+				&& !wr_spreg_vl[CPU_GIE_BIT])
+			// Setting SLEEP and supervisor mode at the same time
+			// halts the CPU.  Halts can only be set here.
+			// They can only be cleared on reset.
 			r_sleep_is_halt <= 1'b1;
 
 		// Trying to switch to user mode, either via a WAIT or an RTU
 		// instruction will cause the CPU to sleep until an interrupt,
 		// in the NO-USERMODE build.
 		always @(posedge i_clk)
-		if ((i_reset)||((i_interrupt)&&(!r_sleep_is_halt)))
+		if (i_reset || (i_interrupt && !r_sleep_is_halt))
 			sleep <= 1'b0;
 		else if ((wr_reg_ce)&&(wr_write_cc)
 				&&(wr_spreg_vl[CPU_GIE_BIT]))
@@ -2572,6 +2631,9 @@ module	zipcore #(
 	if (i_reset || !OPT_USERMODE)
 		user_step <= 1'b0;
 	else if ((wr_reg_ce)&&(!alu_gie)&&(wr_write_ucc))
+		// The supervisor can adjust whether or not we are stepping
+		// the user mode process.  This bit does not automatically
+		// clear, but can always be written while in supervisor mode.
 		user_step <= wr_spreg_vl[CPU_STEP_BIT];
 
 	assign	step = user_step && gie;
@@ -2641,7 +2703,7 @@ module	zipcore #(
 	end endgenerate
 	// }}}
 
-	// gie, switch_to_interrupt, release_from_interrupt
+	// gie, switch_to_interrupt, release_from_interrupt, r_user_stepped
 	// {{{
 	// The GIE register.  Only interrupts can disable the interrupt register
 	generate if (OPT_USERMODE)
@@ -2650,11 +2712,16 @@ module	zipcore #(
 		reg	r_pending_interrupt;
 		reg	r_user_stepped;
 
+		// r_user_stepped is used to make certain that we stop a
+		// user task once a full instruction has been accomplished.
 		initial	r_user_stepped = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset || !gie || !user_step)
 			r_user_stepped <= 1'b0;
 		// else if(w_switch_to_interrupt)
+		//	While this is technically what we want, we can wait
+		//	a clock cycle to speed up the CPU by not depending upon
+		//	the complex w_switch_to_interrupt calculation here
 		//	r_user_stepped <= 1'b0;
 		else if (op_valid && !op_phase && !op_lock && last_lock_insn
 				&& (adf_ce_unconditional || mem_ce))
@@ -2749,11 +2816,11 @@ module	zipcore #(
 		initial	r_gie = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset)
-			r_gie <= 1'b0;
+			r_gie <= 1'b0;	// Supervisor mode
 		else if (w_switch_to_interrupt)
-			r_gie <= 1'b0;
+			r_gie <= 1'b0;	// Supervisor mode
 		else if (w_release_from_interrupt)
-			r_gie <= 1'b1;
+			r_gie <= 1'b1;	// User mode
 
 		assign	gie = r_gie;
 	end else begin : ZERO_GIE
@@ -2780,11 +2847,17 @@ module	zipcore #(
 		always @(posedge i_clk)
 		if ((i_reset)||(w_release_from_interrupt))
 			r_trap <= 1'b0;
-		else if ((alu_gie)&&(wr_reg_ce)&&(!wr_spreg_vl[CPU_GIE_BIT])
-				&&(wr_write_ucc)) // &&(wr_reg_id[4]) implied
-			r_trap <= 1'b1;
-		else if ((wr_reg_ce)&&(wr_write_ucc)&&(!alu_gie))
-			r_trap <= (r_trap)&&(wr_spreg_vl[CPU_TRAP_BIT]);
+		else if (wr_reg_ce && wr_write_ucc)
+		begin
+			if (!alu_gie)
+				// The trap bit can only be cleared by the
+				// supervisor.
+				r_trap <= (r_trap)&&(wr_spreg_vl[CPU_TRAP_BIT]);
+			else if (!wr_spreg_vl[CPU_GIE_BIT]) // && alu_gie
+				// Execute a trap -- unless this write is due
+				// to the debug interface, then ... no.
+				r_trap <= !dbgv;
+		end
 
 		// A user break is an indication of an exception.  Something
 		// went wrong.  When entering supervisor mode, if this bit
@@ -2792,11 +2865,16 @@ module	zipcore #(
 		// userspace that needs to be looked into.
 		initial	r_ubreak = 1'b0;
 		always @(posedge i_clk)
-		if ((i_reset)||(w_release_from_interrupt))
+		if (i_reset || w_release_from_interrupt)
 			r_ubreak <= 1'b0;
-		else if ((op_gie)&&(break_pending)&&(w_switch_to_interrupt))
+		else if (op_gie && break_pending && w_switch_to_interrupt)
+			// Breaks are set when a BREAK instruction is accepted
+			// for execution from the OP stage, *and* when in user
+			// mode
 			r_ubreak <= 1'b1;
-		else if (((!alu_gie)||(dbgv))&&(wr_reg_ce)&&(wr_write_ucc))
+		else if ((!alu_gie || dbgv)&&(wr_reg_ce)&&(wr_write_ucc))
+			// Allow the supervisor or debug port to clear this
+			// register--but not to set it
 			r_ubreak <= (ubreak)&&(wr_spreg_vl[CPU_BREAK_BIT]);
 
 		assign	trap = r_trap;
@@ -2816,10 +2894,14 @@ module	zipcore #(
 	always @(posedge i_clk)
 	if (i_reset)
 		ill_err_i <= 1'b0;
-	// Only the debug interface can clear this bit
-	else if ((dbgv)&&(wr_write_scc))
+	else if (dbgv && wr_write_scc)
+		// Only the debug interface (or a CPU reset) can clear the
+		// supervisor's illegal instruction flag
 		ill_err_i <= (ill_err_i)&&(wr_spreg_vl[CPU_ILL_BIT]);
-	else if ((alu_illegal)&&(!alu_gie)&&(!clear_pipeline))
+	else if (!alu_gie && alu_illegal && !clear_pipeline)
+		// The supervisor's illegal instruction flag is set in
+		// supervisor (not user) mode, on trying to execute the illegal
+		// instruction
 		ill_err_i <= 1'b1;
 
 	generate if (OPT_USERMODE)
@@ -2827,17 +2909,24 @@ module	zipcore #(
 
 		reg	r_ill_err_u;
 
+		//
+		// The user's illegal instruction exception flag.  Used and
+		// cleared by the supervisor.
+		//
+
 		initial	r_ill_err_u = 1'b0;
 		always @(posedge i_clk)
 		// The bit is automatically cleared on release from interrupt
 		// or reset
-		if ((i_reset)||(w_release_from_interrupt))
+		if (i_reset || w_release_from_interrupt)
 			r_ill_err_u <= 1'b0;
-		// If the supervisor (or debugger) writes to this
-		// register, clearing the bit, then clear it
-		else if (((!alu_gie)||(dbgv))&&(wr_reg_ce)&&(wr_write_ucc))
+		else if ((!alu_gie || dbgv)&&(wr_reg_ce)&&(wr_write_ucc))
+			// Either the supervisor or the debugger can clear this
+			// bit.  (Neither can set it)
 			r_ill_err_u <=((ill_err_u)&&(wr_spreg_vl[CPU_ILL_BIT]));
-		else if ((alu_illegal)&&(alu_gie)&&(!clear_pipeline))
+		else if (alu_gie && alu_illegal && !clear_pipeline)
+			// This flag is set if the CPU ever attempts to execute
+			// an illegal instruction while in user mode.
 			r_ill_err_u <= 1'b1;
 
 		assign	ill_err_u = r_ill_err_u;
