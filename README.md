@@ -2,7 +2,7 @@
 
 The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
-- 32-bit.  All registers, addresses, and instructions are 32-bits in length.  While the byte-size itself was at one time 32-bits, the CPU now handles 8-bit bytes like all other CPUs
+- 32-bit.  All registers, addresses, and instructions are 32-bits in length.
 
 - A RISC CPU.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (eventually) floating point instructions.
 
@@ -11,18 +11,11 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 - A load/store architecture.  Only load and store instructions may access
   memory.
 
-- Wishbone compliant.  All memory and peripherals are accessed across a single
-  wishbone bus. (_DEPRECATED_)
+- Includes Wishbone, AXI4-Lite, and AXI4 memory options.
 
-  This version is now both Wishbone, AXI-lite, and AXI compliant depending upon
-  how it is built.  The core of the CPU itself is now bus independent, and
-  there exist various wrappers which can be used for each bus option.
+- A (minimally) Von-Neumann architecture
 
-- A Von-Neumann architecture, meaning that both instructions and data share a common bus. (_DEPRECATED_)
-
-  This version now has separate buses for instructions and data, although the
-  address space is assumed to be common.  In particular, the long jump 
-  instruction requires a common address space to make sense.
+  The Wishbone wrappers share buses for instructions and data, the AXI4-Lite and AXI4 wrappers have separate bus interfaces for each.  The address space itself, however, needs to be common.
 
 - A pipelined architecture, having stages for prefetch, decode, read-operand(s),
   a combined stage containing the ALU, memory, divide, and floating point units,
@@ -33,54 +26,11 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 - Completely open source, licensed under the GPLv3.
 
-## The ZipCore branch
-
-This particular branch of the ZipCPU is designed to be bus independent.
-It now has support for Wishbone, AXI-lite, and AXI buses,
-and it is capable of supporting additional buses still.  Core CPU
-functions have now been moved into a [ZipCore](rtl/core/zipcore.v), rather than
-the (now deprecated and deleted) zipcpu.v.  It should now be possible to
-generate support for any bus interface meeting the requirements found in either
-the [ffetch](bench/formal/ffetch.v) (for instructions) or
-[fmem](bench/formal/fmem.v) (for data) property sets.
-
-Status:
-
-- All of the memory units have now been re-verified with the new interface
-  property files.
-
-  -- Instruction fetch units (pick one): [prefetch](rtl/core/prefetch.v) (single instruction fetch), [dblfetch](rtl/core/dblfetch.v) (twin instruction fetch), [pfcache](rtl/core/pfcache.v) (WB fetch with cache), [axilfetch](rtl/core/axilfetch.v) (AXI-lite fetch with possible FIFO, allowing multiple instructions to be in the pipeline at once, [axiicache](rtl/core/axiicache.v) (AXI instruction cache)
-
-  -- Data units (pick one): [memops](rtl/core/memops.v) (WB single operation on the bus at a time), [pipemem](rtl/core/pipemem.v) (WB multiple operations allowed to be on the bus), [dcache](rtl/core/dcache.v) (WB data cache), [axilops](rtl/core/axilops.v), [axilpipe](rtl/core/axilpipe.v) (AXI-lite memory unit allowing multiple transactions to be outstanding), [axiops](rtl/core/axiops.v) and [axipipe](rtl/core/axipipe.v) are like their AXI-lite cousins but with atomic access, and [axidcache](rtl/core/axidcache.v) (AXI (full) data cache implementation).
-
-  -- Formal verification has been done to guarantee bus functionality.  Not all cores have been checked for full contract handling.
-
-  -- Both [axiops](rtl/core/axiops.v) and [axipipe](rtl/core/axipipe.v) support atomic accesses, although the [axidcache](rtl/core/axidcache.v) doesn't yet support them.
-
-   -- The caches do not snoop the bus for coherency purposes, and so they may get out of sync with an actual memory if something else, like a DMA, ever writes to it.  There's a clear-cache instruction to handle this problem, but it's a manual approach to the problem.
-
-- Several wrappers now exist which you can use:
-
-  -- There's both the traditional [ZipBones](rtl/zipbones.v) and [ZipSystem](rtl/zipsystem.v) wishbone cores.  These are both based upon a new [Wishbone wrapper](rtl/core/zipwb.v) which combines instruction and data buses together into a common bus access port.
-
-  -- There is both an [AXI wrapper](rtl/zipaxi.v) and an [AXI-lite wrapper](rtl/zipaxil.v).  Neither of these AXI wrappers include support for the [ZipSystem](rtl/zipsystem.v) peripherals.  These will instead need to be placed into an external bus peripheral.  An [AXI-lite peripheral set](rtl/peripherals/axilperiphs.v) has been created for this purpose.  While this seemed like a great solution at the time, it's likely to be a bit of a dead end since any (eventual) MMU support will require a tightly coupled peripheral set.
-
-- The AXI components and bus really require that the ZipCPU be a little
-  endian machine.  Compiler support doesn't (yet) exist for a little endian
-  version.  Several options have been added to the AXI controllers in an attempt
-  to make endian support work both ways (even in violation of the AXI spec).
-  Currently, the `SWAP_WSTRB` option has been tested quite successfully.  It
-  should work well and consistently with the ZipCPU itself, but may have trouble
-  playing with others since it (essentially) renumbers the bytes on the AXI
-  bus in order to work.
-
-Now back to the regular readme.
-
 ## Unique features and characteristics
 
 - Only 29 instructions are currently implemented.  Six additional instructions have been reserved for a floating point unit, but such a unit has yet to be implemented.
 
-- (Almost) all instructions can be executed conditionally.  Exceptions include load immediate (LDI), the debug break instruction, the bus lock (LOCK) and simulation instructions (SIM), and the no-operation instruction (NOOP).  The assembler will quietly turn a conditional load immediate into a two-instruction equivalent (BREV, LDILO).
+- (Almost) all instructions can be executed conditionally.  Exceptions include load immediate (LDI), the debug break instruction (BREAK), the bus lock (LOCK) and simulation instructions (SIM), and the no-operation instruction (NOOP).  The assembler will quietly turn a conditional load immediate into a two-instruction equivalent (BREV, LDILO).
 
 - The CPU makes heavy use of pipelining wherever and whenever it can.  Hence, when using a pipelined memory core, loading two vaues in a row may cost only one clock more than just loading the one value.
 
