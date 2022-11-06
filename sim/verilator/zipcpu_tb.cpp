@@ -58,12 +58,24 @@
 #include "verilated_cov.h"
 #endif
 
+// ZipBones includes
 #ifdef	ZIPBONES
 #include "Vzipbones.h"
+#ifdef	ROOT_VERILATOR
+#include "Vzipbones___024root.h"
+#endif
+
 #define	SIMCLASS	Vzipbones
 #else
+
+// ZipSystem includes
 #define	ZIPSYSTEM
 #include "Vzipsystem.h"
+
+#ifdef	ROOT_VERILATOR
+#include "Vzipsystem___024root.h"
+#endif
+
 #define	SIMCLASS	Vzipsystem
 #endif
 
@@ -107,17 +119,25 @@
 
 #ifdef	ROOT_VERILATOR
 
-  #ifdef	ZIPBONES
-    #include "Vzipbones___024root.h"
-    #define VVAR(A) rootp->zipbones__DOT_ ##A
-  #else
-    #include "Vzipsystem___024root.h"
-    #define VVAR(A) rootp->zipsystem__DOT_ ##A
-  #endif
+  #ifdef ZIPBONES
+     #ifdef	VM_COVERAGE
+      #define	VVAR(A)	rootp->zipbones__DOT____Vtogcov_ ## A
+     #else
+      #define	VVAR(A)	rootp->zipbones__DOT_ ## A
+     #endif // VM_COVERAGE
+   #else // Not ZIPBONES, but still under ROOT_VERILATOR
+     #ifdef	VM_COVERAGE
+      #define	VVAR(A)	rootp->zipsystem__DOT____Vtogcov_ ## A
+     #else
+      #define	VVAR(A)	rootp->zipsystem__DOT_ ## A
+     #endif // VM_COVERAGE
+   #endif // ZIPBONES
 
 #elif	defined(NEW_VERILATOR)
-
-  #ifdef	ZIPBONES
+#ifdef	ZIPBONES
+ #ifdef	VM_COVERAGE
+  #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
+ #else
   #define	VVAR(A)	zipbones__DOT_ ## A
    #ifdef	VM_COVERAGE
     #define	VVAR(A)	zipbones__DOT____Vtogcov_ ## A
@@ -299,8 +319,13 @@
 #define	op_break	CPUVAR(_r_op_break)
 #define	op_F		CPUVAR(_op_F)
 //
-#define	regset		CPUVAR(_regset.m_storage)
-#define	cpu_regs	regset
+#ifdef	ROOT_VERILATOR
+  #define	regset		VVAR(_thecpu__DOT__regset.m_storage)
+  #define	cpu_regs	VVAR(_thecpu__DOT__regset.m_storage)
+#else
+  #define	regset		VVAR(_thecpu__DOT__regset)
+  #define	cpu_regs	VVAR(_thecpu__DOT__regset)
+#endif
 
 
 #ifdef	OPT_CIS

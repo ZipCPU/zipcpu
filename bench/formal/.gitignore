@@ -1,5 +1,5 @@
-old
-#
+## Bus property sets, not included in repo
+##
 faxi_addr.v
 faxi_slave.v
 faxi_master.v
@@ -8,41 +8,53 @@ faxi_wstrb.v
 #
 faxil_slave.v
 faxil_master.v
-#
-axiicache_*/
-axidcache_*/
-axilfetch_*/
-axilops_*/
-axilperiphs_*/
-axilpipe_*/
-axiops_*/
-axipipe_*/
-busdelay_*/
-cpuops_*/
-dblfetch_*/
-dcache_*/
-div_*/
-icontrol_*/
-idecode_*/
-memops_*/
-pfcache_*/
-pipefetch_*/
-pipemem_*/
-prefetch_*/
-wbdmac_*/
-wbdblpriarb_*/
-wbpriarbiter_*/
-wbwatchdog_*/
+
+## Wrappers
 zipaxi_*/
-zipaxil_*/
 zipbones_*/
-zipcounter_*/
+zipaxil_*/
+
+## Core
 zipcore_*/
 zipcpu_*/
+
+## Fetch
+axilfetch_*/
+axiicache_*/
+dblfetch_*/
+pfcache_*/
+prefetch_*/
+
+## Memory
+dcache_*/
+axiops_*/
+axilops_*/
+axilpipe_*/
+axidcache_*/
+axipipe_*/
+memops_*/
+pipemem_*/
+
+## Peripherals
+axilperiphs_*/
+zipcounter_*/
+ziptimer_*/
+zipjiffies_*/
+icontrol_*/
+wbwatchdog_*/
+
+## ZipDMA
 zipdma_mm2s_*/
 zipdma_rxgears_*/
 zipdma_txgears_*/
 zipdma_s2mm_*/
-ziptimer_*/
-zipjiffies_*/
+wbdmac_*/
+
+## Other
+div_*/
+idecode_*/
+busdelay_*/
+cpuops_*/
+wbdblpriarb_*/
+wbpriarbiter_*/
 zipmmu_*/
