@@ -338,7 +338,7 @@ module zipdma #(
 		// }}}
 	) u_s2mm (
 		// {{{
-		.i_clk(i_clk), .i_reset(i_reset),
+		.i_clk(i_clk), .i_reset(i_reset || dma_abort),
 		// S2MM configuration
 		// {{{
 		.i_request(s2mm_request),
