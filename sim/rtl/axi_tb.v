@@ -197,9 +197,9 @@ module	axi_tb #(
 	wire	[31:0]	cpu_trace;
 
 	wire	cpu_reset;
-	wire	cpu_halted;
-	wire	cpu_gie;
-	wire	cpu_op_stall, cpu_pf_stall, cpu_i_count;
+	wire	[OPT_SMP-1:0]	cpu_halted;
+	wire	[OPT_SMP-1:0]	cpu_gie;
+	wire	[OPT_SMP-1:0]	cpu_op_stall, cpu_pf_stall, cpu_i_count;
 
 	wire	pic_interrupt, watchdog_reset;
 
@@ -1066,11 +1066,11 @@ module	axi_tb #(
 			// Accounting outputs
 			// {{{
 			.o_cmd_reset(cpu_reset),
-			.o_halted(   cpu_halted),
-			.o_gie(      cpu_gie),
-			.o_op_stall( cpu_op_stall),
-			.o_pf_stall( cpu_pf_stall),
-			.o_i_count(  cpu_i_count),
+			.o_halted(   cpu_halted[0]),
+			.o_gie(      cpu_gie[0]),
+			.o_op_stall( cpu_op_stall[0]),
+			.o_pf_stall( cpu_pf_stall[0]),
+			.o_i_count(  cpu_i_count[0]),
 			// }}}
 			// (Optional) Profiler
 			// {{{
@@ -1393,11 +1393,11 @@ module	axi_tb #(
 			// Accounting outputs
 			// {{{
 			.o_cmd_reset(cpu_reset),
-			.o_halted(   cpu_halted),
-			.o_gie(      cpu_gie),
-			.o_op_stall( cpu_op_stall),
-			.o_pf_stall( cpu_pf_stall),
-			.o_i_count(  cpu_i_count),
+			.o_halted(   cpu_halted[0]),
+			.o_gie(      cpu_gie[0]),
+			.o_op_stall( cpu_op_stall[0]),
+			.o_pf_stall( cpu_pf_stall[0]),
+			.o_i_count(  cpu_i_count[0]),
 			// }}}
 			// (Optional) Profiler
 			// {{{
@@ -1764,11 +1764,11 @@ module	axi_tb #(
 				// Accounting outputs
 				// {{{
 				.o_cmd_reset(cpu_reset),
-				.o_halted(   cpu_halted),
-				.o_gie(      cpu_gie),
-				.o_op_stall( cpu_op_stall),
-				.o_pf_stall( cpu_pf_stall),
-				.o_i_count(  cpu_i_count),
+				.o_halted(   cpu_halted[gk]),
+				.o_gie(      cpu_gie[gk]),
+				.o_op_stall( cpu_op_stall[gk]),
+				.o_pf_stall( cpu_pf_stall[gk]),
+				.o_i_count(  cpu_i_count[gk]),
 				// }}}
 				// (Optional) Profiler
 				// {{{
@@ -2090,11 +2090,11 @@ module	axi_tb #(
 				// Accounting outputs
 				// {{{
 				.o_cmd_reset(cpu_reset),
-				.o_halted(   cpu_halted),
-				.o_gie(      cpu_gie),
-				.o_op_stall( cpu_op_stall),
-				.o_pf_stall( cpu_pf_stall),
-				.o_i_count(  cpu_i_count),
+				.o_halted(   cpu_halted[gk]),
+				.o_gie(      cpu_gie[gk]),
+				.o_op_stall( cpu_op_stall[gk]),
+				.o_pf_stall( cpu_pf_stall[gk]),
+				.o_i_count(  cpu_i_count[gk]),
 				// }}}
 				// (Optional) Profiler
 				// {{{
@@ -2114,7 +2114,9 @@ module	axi_tb #(
 		assign	unused_smp = &{ 1'b0, smp_prof_stb, smp_prof_addr,
 					smpfull_awaddr[gk*AW+8 +: (AW-8)],
 					smpfull_araddr[gk*AW+8 +: (AW-8)],
-					smp_prof_ticks, smp_trace };
+					smp_prof_ticks, smp_trace,
+					cpu_gie[gk], cpu_op_stall[gk],
+					cpu_pf_stall[gk], cpu_i_count[gk] };
 		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate
@@ -2657,11 +2659,11 @@ module	axi_tb #(
 		.S_AXI_RRESP( axilp_rresp),
 		// }}}
 		.i_cpu_reset(cpu_reset),
-		.i_cpu_halted(cpu_halted),
-		.i_cpu_gie(cpu_gie),
-		.i_cpu_pfstall(cpu_pf_stall),
-		.i_cpu_opstall(cpu_op_stall),
-		.i_cpu_icount(cpu_i_count),
+		.i_cpu_halted(cpu_halted[0]),
+		.i_cpu_gie(cpu_gie[0]),
+		.i_cpu_pfstall(cpu_pf_stall[0]),
+		.i_cpu_opstall(cpu_op_stall[0]),
+		.i_cpu_icount(cpu_i_count[0]),
 		.i_ivec({ scope_int, i_sim_int }),
 		.o_interrupt(pic_interrupt),
 		.o_watchdog_reset(watchdog_reset)
@@ -2931,7 +2933,7 @@ module	axi_tb #(
 	end
 
 	always @(posedge i_aclk)
-	if (i_aresetn && cpu_halted)
+	if (i_aresetn && (&cpu_halted))
 	begin
 		$display("\nCPU Halted without error: PASS\n");
 		$finish;
