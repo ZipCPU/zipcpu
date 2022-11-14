@@ -262,7 +262,7 @@ sub simline($) {
 
 			$vcddump=0;
 			$vcdfile="";
-			printf("CFG-HASH=%s\n", $cfghash{$config});
+			## printf("CFG-HASH=%s\n", $cfghash{$config});
 			if ($cfghash{$config} =~ /DUMP_TO_VCD=(\d+)/) {
 				$vcddump=$1;
 			} if ($cfghash{$config} =~ /VCD_FILE=.(\S+).$/) {
@@ -378,7 +378,10 @@ sub simline($) {
 			system "cd $vobjd; make -f $tstname.mk";
 			$errB = $?;
 			if ($errB == 0 and $lint_only == 0) {
-				$bldcmd = "g++ -Wall -g -Og -DROOT_VERILATOR -faligned-new";
+				$bldcmd = "g++ -Wall";
+				# $bldcmd = $bldcmd . " -g -Og";
+				$bldcmd = $bldcmd . " -O3";
+				$bldcmd = $bldcmd . " -DROOT_VERILATOR -faligned-new";
 				if ($vcddump) {
 					$bldcmd = $bldcmd . " -DVCD_FILE=\\\"$vcdfile\\\"";
 				}
@@ -409,11 +412,14 @@ sub simline($) {
 				$bldcmd = $bldcmd . " -I$vobjd";
 				$bldcmd = $bldcmd . " $verilatord/include/verilated.cpp";
 				$bldcmd = $bldcmd . " $verilatord/include/verilated_vcd_c.cpp";
+				$bldcmd = $bldcmd . " $verilatord/include/verilated_threads.cpp";
 				if ($coverage_flag) {
 					$bldcmd = $bldcmd . " $verilatord/include/verilated_cov.cpp";
 				}
 				$bldcmd = $bldcmd . " -DBASE=$tstname";
-				$bldcmd = $bldcmd . " verilator/vbare_tb.cpp $vobjd/$tstname" . "__ALL.a -o $testd/$tstname";
+				$bldcmd = $bldcmd . " verilator/vbare_tb.cpp $vobjd/$tstname" . "__ALL.a";
+				$bldcmd = $bldcmd . " -lpthread";
+				$bldcmd = $bldcmd . " -o $testd/$tstname";
 
 				system "echo $bldcmd";
 				system $bldcmd;
