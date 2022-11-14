@@ -145,7 +145,7 @@ module	wbxbar #(
 		output	wire	[NM-1:0]	o_mstall,
 		output	wire	[NM-1:0]	o_mack,
 		output	reg	[NM*DW-1:0]	o_mdata,
-		output	reg	[NM-1:0]	o_merr,
+		output	wire	[NM-1:0]	o_merr,
 		//
 		//
 		// Here are the output ports, used to control each of the
@@ -565,6 +565,7 @@ module	wbxbar #(
 
 			// r_reindex
 			// {{{
+			// Verilator lint_off BLKSEQ
 			always @(r_regrant, regrant)
 			begin
 				r_reindex = 0;
@@ -574,6 +575,7 @@ module	wbxbar #(
 				if (regrant == 0)
 					r_reindex = r_mindex;
 			end
+			// Verilator lint_on  BLKSEQ
 			// }}}
 
 			always @(posedge i_clk)
@@ -897,11 +899,7 @@ module	wbxbar #(
 
 			assign	o_mack[N] = r_mack[N];
 
-			always @(*)
-			if (!OPT_STARVATION_TIMEOUT || i_mcyc[N])
-				o_merr[N] = r_merr[N];
-			else
-				o_merr[N] = 1'b0;
+			assign	o_merr[N] = (!OPT_STARVATION_TIMEOUT || i_mcyc[N]) && r_merr[N];
 
 		end
 		// }}}
@@ -910,14 +908,14 @@ module	wbxbar #(
 		// {{{
 		for(N=0; N<NM; N=N+1)
 		begin : FOREACH_MASTER_PORT
-			reg	r_mack;
+			reg	r_mack, r_merr;
 
 			always @(*)
 			begin
 				m_stall[N] = !mgrant[N] || s_stall[0]
 					|| (m_stb[N] && !request[N][0]);
 				r_mack     =  mgrant[N] && i_sack[0];
-				o_merr[N]  =  mgrant[N] && i_serr[0];
+				r_merr     =  mgrant[N] && i_serr[0];
 				o_mdata[N*DW +: DW]  = (!mgrant[N] && OPT_LOWPOWER)
 					? 0 : i_sdata;
 
@@ -928,24 +926,25 @@ module	wbxbar #(
 				begin
 					m_stall[N] = 1'b0;
 					r_mack     = 1'b0;
-					o_merr[N]  = 1'b1;
+					r_merr     = 1'b1;
 				end
 
 				if (grant[N][NS] && m_stb[N])
 				begin
 					m_stall[N] = 1'b0;
 					r_mack     = 1'b0;
-					o_merr[N]  = 1'b1;
+					r_merr     = 1'b1;
 				end
 
 				if (!m_cyc[N])
 				begin
 					r_mack = 1'b0;
-					o_merr[N] = 1'b0;
+					r_merr = 1'b0;
 				end
 			end
 
 			assign	o_mack[N] = r_mack;
+			assign	o_merr[N] = r_merr;
 		end
 		// }}}
 	end else begin : SINGLE_BUFFER_STALL
@@ -954,13 +953,13 @@ module	wbxbar #(
 		begin : FOREACH_MASTER_PORT
 			// initial	o_mstall[N] = 0;
 			// initial	o_mack[N]   = 0;
-			reg	r_mack;
+			reg	r_mack, r_merr;
 
 			always @(*)
 			begin
 				m_stall[N] = 1;
 				r_mack     = mgrant[N] && s_ack[mindex[N]];
-				o_merr[N]  = mgrant[N] && s_err[mindex[N]];
+				r_merr     = mgrant[N] && s_err[mindex[N]];
 				if (OPT_LOWPOWER && !mgrant[N])
 					o_mdata[N*DW +: DW] = 0;
 				else
@@ -978,17 +977,18 @@ module	wbxbar #(
 				begin
 					m_stall[N] = 1'b0;
 					r_mack     = 1'b0;
-					o_merr[N]  = 1'b1;
+					r_merr     = 1'b1;
 				end
 
 				if (!m_cyc[N])
 				begin
 					r_mack    = 1'b0;
-					o_merr[N] = 1'b0;
+					r_merr     = 1'b0;
 				end
 			end
 
 			assign	o_mack[N] = r_mack;
+			assign	o_merr[N] = r_merr;
 		end
 		// }}}
 	end endgenerate
