@@ -196,7 +196,7 @@ module	axi_tb #(
 	wire		scope_int;
 	wire	[31:0]	cpu_trace;
 
-	wire	cpu_reset;
+	wire	[OPT_SMP-1:0]	cpu_reset;
 	wire	[OPT_SMP-1:0]	cpu_halted;
 	wire	[OPT_SMP-1:0]	cpu_gie;
 	wire	[OPT_SMP-1:0]	cpu_op_stall, cpu_pf_stall, cpu_i_count;
@@ -1065,7 +1065,7 @@ module	axi_tb #(
 			.o_cpu_debug(cpu_trace),
 			// Accounting outputs
 			// {{{
-			.o_cmd_reset(cpu_reset),
+			.o_cmd_reset(cpu_reset[0]),
 			.o_halted(   cpu_halted[0]),
 			.o_gie(      cpu_gie[0]),
 			.o_op_stall( cpu_op_stall[0]),
@@ -1392,7 +1392,7 @@ module	axi_tb #(
 			.o_cpu_debug(cpu_trace),
 			// Accounting outputs
 			// {{{
-			.o_cmd_reset(cpu_reset),
+			.o_cmd_reset(cpu_reset[0]),
 			.o_halted(   cpu_halted[0]),
 			.o_gie(      cpu_gie[0]),
 			.o_op_stall( cpu_op_stall[0]),
@@ -1763,7 +1763,7 @@ module	axi_tb #(
 				.o_cpu_debug(smp_trace),
 				// Accounting outputs
 				// {{{
-				.o_cmd_reset(cpu_reset),
+				.o_cmd_reset(cpu_reset[gk]),
 				.o_halted(   cpu_halted[gk]),
 				.o_gie(      cpu_gie[gk]),
 				.o_op_stall( cpu_op_stall[gk]),
@@ -2089,7 +2089,7 @@ module	axi_tb #(
 				.o_cpu_debug(smp_trace),
 				// Accounting outputs
 				// {{{
-				.o_cmd_reset(cpu_reset),
+				.o_cmd_reset(cpu_reset[gk]),
 				.o_halted(   cpu_halted[gk]),
 				.o_gie(      cpu_gie[gk]),
 				.o_op_stall( cpu_op_stall[gk]),
@@ -2115,6 +2115,7 @@ module	axi_tb #(
 					smpfull_awaddr[gk*AW+8 +: (AW-8)],
 					smpfull_araddr[gk*AW+8 +: (AW-8)],
 					smp_prof_ticks, smp_trace,
+					cpu_reset[gk],
 					cpu_gie[gk], cpu_op_stall[gk],
 					cpu_pf_stall[gk], cpu_i_count[gk] };
 		// Verilator lint_on  UNUSED
@@ -2658,7 +2659,7 @@ module	axi_tb #(
 		.S_AXI_RDATA( axilp_rdata),
 		.S_AXI_RRESP( axilp_rresp),
 		// }}}
-		.i_cpu_reset(cpu_reset),
+		.i_cpu_reset(cpu_reset[0]),
 		.i_cpu_halted(cpu_halted[0]),
 		.i_cpu_gie(cpu_gie[0]),
 		.i_cpu_pfstall(cpu_pf_stall[0]),
