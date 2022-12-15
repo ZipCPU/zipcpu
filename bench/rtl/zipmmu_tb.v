@@ -94,7 +94,7 @@ module zipmmu_tb(i_clk, i_reset, i_ctrl_cyc_stb, i_wbm_cyc, i_wbm_stb, i_wb_we,
 			// Slave access
 			i_ctrl_cyc_stb, i_wb_we, i_wb_addr[(LGTBL+1):0],
 				i_wb_data,
-				mmus_ack, mmus_stall, mmus_data,
+				mmus_stall, mmus_ack, mmus_data,
 			i_wbm_cyc, i_wbm_stb, i_wb_we, i_exe,
 				i_wb_addr, i_wb_data, i_wb_sel, i_gie,
 			mem_cyc, mem_stb, mem_we, mem_addr, mem_idata, mem_sel,

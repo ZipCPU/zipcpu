@@ -168,7 +168,7 @@ DHRYSTONEF := ../asm/zipdhry.z
 
 $(OBJDIR)/%.o: %.cpp
 	$(mk-objdir)
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -c $< -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) -c $< -o $@
 
 $(OBJDIR)/zipsys_tb.o: zipcpu_tb.cpp
 	$(mk-objdir)

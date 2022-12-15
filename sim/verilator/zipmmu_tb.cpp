@@ -45,6 +45,7 @@
 #include <verilated_vcd_c.h>
 #include "testb.h"
 #include "Vzipmmu_tb.h"
+#include "Vzipmmu_tb___024root.h"
 
 #define	MMUFLAG_RONW	8 // Read only (not writeable)
 #define	MMUFLAG_EXE	4 // Page may be executed
@@ -59,23 +60,23 @@
 #define	setup_ack	o_rtn_ack
 #define	setup_stall	o_rtn_stall
 #define	setup_data	o_rtn_data
-#define	mem_cyc		v__DOT__mem_cyc
-#define	mem_stb		v__DOT__mem_stb
-#define	mem_we		v__DOT__mem_we
-#define	mem_r_we	v__DOT__mut__DOT__r_we
-#define	mem_r_valid	v__DOT__mut__DOT__r_valid
-#define	mem_addr	v__DOT__mem_addr
-#define	mem_err		v__DOT__mem_err
-#define	wr_vtable	v__DOT__mut__DOT__wr_vtable
-#define	wr_ptable	v__DOT__mut__DOT__wr_ptable
-#define	wr_control	v__DOT__mut__DOT__wr_control
+#define	mem_cyc		zipmmu_tb__DOT__mem_cyc
+#define	mem_stb		zipmmu_tb__DOT__mem_stb
+#define	mem_we		zipmmu_tb__DOT__mem_we
+#define	mem_r_we	zipmmu_tb__DOT__mut__DOT__r_we
+#define	mem_r_valid	zipmmu_tb__DOT__mut__DOT__r_valid
+#define	mem_addr	zipmmu_tb__DOT__mem_addr
+#define	mem_err		zipmmu_tb__DOT__mem_err
+#define	wr_vtable	zipmmu_tb__DOT__mut__DOT__wr_vtable
+#define	wr_ptable	zipmmu_tb__DOT__mut__DOT__wr_ptable
+#define	wr_control	zipmmu_tb__DOT__mut__DOT__wr_control
 #define	z_context	__PVT__mut__DOT__z_context
-#define	context_word	v__DOT__mut__DOT__r_context_word
-#define	r_pending	v__DOT__mut__DOT__r_pending
-#define	r_we		v__DOT__mut__DOT__r_we
-#define	r_valid		v__DOT__mut__DOT__r_valid
-#define	r_addr		v__DOT__mut__DOT__r_addr
-#define	r_data		v__DOT__mut__DOT__r_data
+#define	context_word	zipmmu_tb__DOT__mut__DOT__r_context_word
+#define	r_pending	zipmmu_tb__DOT__mut__DOT__r_pending
+#define	r_we		zipmmu_tb__DOT__mut__DOT__r_we
+#define	r_valid		zipmmu_tb__DOT__mut__DOT__r_valid
+#define	r_addr		zipmmu_tb__DOT__mut__DOT__r_addr
+#define	r_data		zipmmu_tb__DOT__mut__DOT__r_data
 
 #define	R_CONTROL		0
 #define	R_STATUS		4
@@ -108,7 +109,7 @@ public:
 		bool	writeout = true;
 
 		if ((m_debug)&&(writeout)) {
-			printf("%08lx-MMU: ", m_tickcount);
+			printf("%08lx-MMU: ", TESTB<Vzipmmu_tb>::m_tickcount);
 			printf("(%s%s%s%s%s%s) %08x (%s%s%s)%08x%s %s %08x/%08x %s%s%s%s",
 				(m_core->setup_stb)?"CT":"  ",
 				(m_core->i_wbm_cyc)?"CYC":"   ",
@@ -117,44 +118,44 @@ public:
 				(m_core->i_gie)?"IE":"  ",
 				(m_core->i_exe)?"EX":"  ",
 				(m_core->i_wb_addr),
-				(m_core->mem_cyc)?"CYC":"   ",
-				(m_core->mem_stb)?"STB":"   ",
-				(m_core->mem_we)?"WE":"  ",
-				(m_core->mem_addr),
-				(m_core->mem_err)?"ER":"  ",
+				(m_core->rootp->mem_cyc)?"CYC":"   ",
+				(m_core->rootp->mem_stb)?"STB":"   ",
+				(m_core->rootp->mem_we)?"WE":"  ",
+				(m_core->rootp->mem_addr),
+				(m_core->rootp->mem_err)?"ER":"  ",
 				(m_core->i_wb_we)?"<-":"->",
 				(m_core->i_wb_we)?m_core->i_wb_data:m_core->o_rtn_data,
-				(m_core->mem_we)?m_core->r_data:m_core->v__DOT__mem_odata,
+				(m_core->rootp->mem_we)?m_core->rootp->r_data:m_core->rootp->zipmmu_tb__DOT__mem_odata,
 				(m_core->o_rtn_stall)?"STALL":"     ",
 				(m_core->o_rtn_ack )?"ACK":"   ",
 				(m_core->o_rtn_miss)?"MISS":"    ",
 				(m_core->o_rtn_err )?"ERR":"   ");
 
 			printf("[%c]",
-				(m_core->wr_control)?'C'
-				:(m_core->wr_vtable)?'V'
-				:(m_core->wr_ptable)?'P'
+				(m_core->rootp->wr_control)?'C'
+				:(m_core->rootp->wr_vtable)?'V'
+				:(m_core->rootp->wr_ptable)?'P'
 				:'-');
 			printf("[%c,%04x]",
-				(m_core->v__DOT__mut__DOT__kernel_context)?'K'
-				:(m_core->v__DOT__mut__DOT__z_context)?'Z':'-',
-				m_core->v__DOT__mut__DOT__r_context_word);
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__kernel_context)?'K'
+				:(m_core->rootp->zipmmu_tb__DOT__mut__DOT__z_context)?'Z':'-',
+				m_core->rootp->zipmmu_tb__DOT__mut__DOT__r_context_word);
 			printf(" %s[%s%s@%08x,%08x]",
-				(m_core->r_pending)?"R":" ",
-				(m_core->r_we)?"W":" ",
-				(m_core->r_valid)?"V":" ",
-				(m_core->r_addr),
-				(m_core->r_data));
+				(m_core->rootp->r_pending)?"R":" ",
+				(m_core->rootp->r_we)?"W":" ",
+				(m_core->rootp->r_valid)?"V":" ",
+				(m_core->rootp->r_addr),
+				(m_core->rootp->r_data));
 			printf("@%2x[%s%s%s][%s%s%s%s%s]",
-				(m_core->v__DOT__mut__DOT__s_tlb_addr),
-				(m_core->v__DOT__mut__DOT__s_pending)?"P":" ",
-				(m_core->v__DOT__mut__DOT__s_tlb_hit)?"HT":"  ",
-				(m_core->v__DOT__mut__DOT__s_tlb_miss)?"MS":"  ",
-				(m_core->v__DOT__mut__DOT__ro_flag)?"RO":"  ",
-				(m_core->v__DOT__mut__DOT__simple_miss)?"SM":"  ",
-				(m_core->v__DOT__mut__DOT__ro_miss)?"RM":"  ",
-				(m_core->v__DOT__mut__DOT__exe_miss)?"EX":"  ",
-				(m_core->v__DOT__mut__DOT__table_err)?"TE":"  ");
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__s_tlb_addr),
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__s_pending)?"P":" ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__s_tlb_hit)?"HT":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__s_tlb_miss)?"MS":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__ro_flag)?"RO":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__simple_miss)?"SM":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__ro_miss)?"RM":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__exe_miss)?"EX":"  ",
+				(m_core->rootp->zipmmu_tb__DOT__mut__DOT__table_err)?"TE":"  ");
 				//(m_core->v__DOT__mut__DOT__cachable)?"CH":"  ");
 			/*
 			printf(" M[%016lx]",
@@ -162,11 +163,11 @@ public:
 			*/
 			printf(" P[%3d%c] = 0x%03x, V=0x%03x, C=0x%04x, CTXT=%04x",
 				m_last_tlb_index,
-				((m_core->v__DOT__mut__DOT__tlb_valid>>m_last_tlb_index)&1)?'V':'u',
-				m_core->v__DOT__mut__DOT__tlb_pdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__tlb_vdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__tlb_cdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__r_context_word);
+				((m_core->rootp->zipmmu_tb__DOT__mut__DOT__tlb_valid>>m_last_tlb_index)&1)?'V':'u',
+				m_core->rootp->zipmmu_tb__DOT__mut__DOT__tlb_pdata[m_last_tlb_index],
+				m_core->rootp->zipmmu_tb__DOT__mut__DOT__tlb_vdata[m_last_tlb_index],
+				m_core->rootp->zipmmu_tb__DOT__mut__DOT__tlb_cdata[m_last_tlb_index],
+				m_core->rootp->zipmmu_tb__DOT__mut__DOT__r_context_word);
 			printf("\n");
 		}
 	}
@@ -198,7 +199,7 @@ public:
 		assert((a&3)==0);
 		a = (a>>2)&(msk);
 // printf("OP[] ----> %08x\n", a);
-		return m_core->v__DOT__ram__DOT__mem[a];
+		return m_core->rootp->zipmmu_tb__DOT__ram__DOT__mem[a];
 	}
 
 	unsigned setup_read(unsigned a) {
