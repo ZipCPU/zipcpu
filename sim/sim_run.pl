@@ -261,7 +261,7 @@ sub simline($) {
 			}
 
 			$vcddump=0;
-			$vcdfile="";
+			$vcdfile= $testd . "/" . $tstname . ".vcd";
 			## printf("CFG-HASH=%s\n", $cfghash{$config});
 			if ($cfghash{$config} =~ /DUMP_TO_VCD=(\d+)/) {
 				$vcddump=$1;
@@ -375,6 +375,7 @@ sub simline($) {
 		$errB = $?;
 
 		if ($errB == 0 and $verilator_flag) {
+			## {{{
 			system "cd $vobjd; make -f $tstname.mk";
 			$errB = $?;
 			if ($errB == 0 and $lint_only == 0) {
@@ -425,6 +426,7 @@ sub simline($) {
 				system $bldcmd;
 				$errB = $?;
 			}
+			## }}}
 		}
 		## }}}
 
@@ -470,24 +472,32 @@ sub simline($) {
 			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
 			}
 			if ($errE == 0 or $errA == 0 or $errF == 0) {
+				## {{{
 				## ERRORs found
 				print SUM "ERRORS    $msg\n";
 				print     "ERRORS    $msg\n";
 				push @failed,$tstname;
+				## }}}
 			} elsif ($warnW == 0) {
+				## {{{
 				print SUM "Warnings! $msg\n";
 				print     "Warnings! $msg\n";
 				push @passed,$tstname;
+				## }}}
 			# } elsif ($errS != 0) {
 				## TEST SUCCESS message not found
 			} elsif ($coverage_flag) {
+				## {{{
 				print SUM "COVERED   $msg\n";
 				print     "COVERED   $msg\n";
 				push @passed,$tstname;
+				## }}}
 			} else {
+				## {{{
 				print SUM "PASSED    $msg\n";
 				print     "PASSED    $msg\n";
 				push @passed,$tstname;
+				## }}}
 			}
 			## }}}
 			## }}}
