@@ -557,9 +557,8 @@ module	zipsystem #(
 	//
 	//
 
-	assign	dbg_cpu_write = OPT_DBGPORT && (dbg_stb && dbg_we)
-				&& (dbg_addr[6:5] == DBG_ADDR_CPU)
-				&& dbg_sel == 4'hf;
+	assign	dbg_cpu_write = OPT_DBGPORT && (dbg_stb && dbg_we
+				&& (dbg_addr[6:5] == DBG_ADDR_CPU) && dbg_sel == 4'hf);
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)
 					&&(dbg_addr[6:5] == DBG_ADDR_CTRL);
 	assign	dbg_cmd_data = dbg_idata;
@@ -664,7 +663,7 @@ module	zipsystem #(
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
-		if (dbg_cpu_write && dbg_cmd_strb == 4'hf)
+		if (dbg_cpu_write)
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
