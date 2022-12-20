@@ -103,14 +103,14 @@ module	slowmpy #(
 		o_done <= 0;
 		o_busy <= 0;
 		// }}}
-	end else if ((!o_busy)&&(i_stb))
+	end else if (!o_busy)
 	begin
 		// {{{
 		o_done <= 0;
-		o_busy <= 1;
-		aux    <= i_aux;
+		o_busy <= i_stb;
+		aux    <= (!OPT_LOWPOWER || i_stb) ? i_aux : 0;
 		// }}}
-	end else if ((o_busy)&&(almost_done))
+	end else if (almost_done)
 	begin
 		// {{{
 		o_done <= 1;
