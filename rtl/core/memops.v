@@ -913,64 +913,6 @@ module	memops #(
 	begin
 		// On a write, assert o_wb_we should be true
 		assert( $past(i_op[0]) == o_wb_we);
-
-		// Word write
-		/*
-		if ($past(i_op[2:1]) == 2'b01)
-		begin
-			`ASSERT(o_wb_sel == 4'hf);
-			`ASSERT(o_wb_data == $past(i_data));
-		end
-		*/
-
-		// Halfword (short) write
-		/*
-		if ($past(i_op[2:1]) == 2'b10)
-		begin
-			if (!OPT_LITTLE_ENDIAN && !$past(i_addr[1]))
-			begin
-				`ASSERT(o_wb_sel == 4'hc);
-				`ASSERT(o_wb_data[31:16] == $past(i_data[15:0]));
-			end else if (!OPT_LITTLE_ENDIAN && $past(i_addr[1]))
-			begin
-				`ASSERT(o_wb_sel == 4'h3);
-				`ASSERT(o_wb_data[15:0] == $past(i_data[15:0]));
-			end else if (!$past(i_addr[1]))
-			begin
-				`ASSERT(o_wb_sel == 4'h3);
-				`ASSERT(o_wb_data[15:0] == $past(i_data[15:0]));
-			end else if ($past(i_addr[1]))
-			begin
-				`ASSERT(o_wb_sel == 4'hc);
-				`ASSERT(o_wb_data[31:16] == $past(i_data[31:16]));
-			end
-		end
-
-		if (!OPT_LITTLE_ENDIAN && $past(i_op[2:1]) == 2'b11)
-		begin
-			if ($past(i_addr[1:0])==2'b00)
-			begin
-				`ASSERT(o_wb_sel == 4'h8);
-				`ASSERT(o_wb_data[31:24] == $past(i_data[7:0]));
-			end
-
-			if ($past(i_addr[1:0])==2'b01)
-			begin
-				`ASSERT(o_wb_sel == 4'h4);
-				`ASSERT(o_wb_data[23:16] == $past(i_data[7:0]));
-			end
-			if ($past(i_addr[1:0])==2'b10)
-			begin
-				`ASSERT(o_wb_sel == 4'h2);
-				`ASSERT(o_wb_data[15:8] == $past(i_data[7:0]));
-			end
-			if ($past(i_addr[1:0])==2'b11)
-			begin
-				`ASSERT(o_wb_sel == 4'h1);
-				`ASSERT(o_wb_data[7:0] == $past(i_data[7:0]));
-			end
-		end
-		*/
 	end
 
 	always @(posedge i_clk)
@@ -1060,7 +1002,6 @@ module	memops #(
 	assign	unused = &{ 1'b0, f_nacks, f_addr_reg };
 	// Verilator lint_on  UNUSED
 	// }}}
-
 `endif
 // }}}
 endmodule

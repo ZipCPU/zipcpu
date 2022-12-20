@@ -2515,6 +2515,7 @@ module	zipcore #(
 			||((!alu_gie)&&(div_error))
 			||((!alu_gie)&&(fpu_error))
 			||((!alu_gie)&&(alu_illegal)&&(!clear_pipeline));
+
 `ifdef	FORMAL
 	// Can I assume that, if break_pending is true, that we're either
 	// in supervisor mode, or that break_en is set?  If so, can I
