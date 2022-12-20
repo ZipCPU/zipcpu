@@ -310,6 +310,7 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 	wire		op_stall, dcd_ce, dcd_phase;
 	wire	[3:0]	dcd_opn;
 	wire	[4:0]	dcd_A, dcd_B, dcd_R, dcd_preA, dcd_preB;
+	wire	[6:0]	full_dcd_R, full_dcd_A, full_dcd_B;
 	wire		dcd_Acc, dcd_Bcc, dcd_Apc, dcd_Bpc, dcd_Rcc, dcd_Rpc;
 	wire	[3:0]	dcd_F;
 	wire		dcd_wR, dcd_rA, dcd_rB,
@@ -783,9 +784,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 			pf_instruction_pc, pf_valid, pf_illegal,
 			dcd_valid, dcd_phase,
 			dcd_illegal, dcd_pc,
-			{ dcd_Rcc, dcd_Rpc, dcd_R },
-			{ dcd_Acc, dcd_Apc, dcd_A },
-			{ dcd_Bcc, dcd_Bpc, dcd_B },
+			full_dcd_R, // { dcd_Rcc, dcd_Rpc, dcd_R },
+			full_dcd_A, // { dcd_Acc, dcd_Apc, dcd_A },
+			full_dcd_B, // { dcd_Bcc, dcd_Bpc, dcd_B },
 			dcd_preA, dcd_preB,
 			dcd_I, dcd_zI, dcd_F, dcd_wF, dcd_opn,
 			dcd_ALU, dcd_M, dcd_DIV, dcd_FP, dcd_break, dcd_lock,
@@ -799,6 +800,9 @@ module	zipcpu(i_clk, i_reset, i_interrupt,
 `endif
 			);
 	assign	dcd_gie = pf_gie;
+	assign	{ dcd_Rcc, dcd_Rpc, dcd_R } = full_dcd_R;
+	assign	{ dcd_Acc, dcd_Apc, dcd_A } = full_dcd_A;
+	assign	{ dcd_Bcc, dcd_Bpc, dcd_B } = full_dcd_B;
 	//}}}
 
 	//

@@ -186,9 +186,9 @@
 #endif
 #define	early_branch_pc VVAR(_thecpu__DOT__instruction_decoder__DOT__GEN_EARLY_BRANCH_LOGIC__DOT__r_branch_pc)
 
-#define	dcdRmx		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber15)
-#define	dcdA		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber15)
-#define	dcdB		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber16)
+// #define	dcdRmx		VVAR(_thecpu__DOT____Vcellout__instruction_decoder____pinNumber15)
+#define	dcdA		VVAR(_thecpu__DOT__full_dcd_A)
+#define	dcdB		VVAR(_thecpu__DOT__full_dcd_B)
 
 #define	new_pc		VVAR(_thecpu__DOT__new_pc)
 #define	cpu_ipc		VVAR(_thecpu__DOT__ipc)
@@ -225,9 +225,9 @@
 #define	dcd_opn		VVAR(_thecpu__DOT__dcd_opn)
 #define	dcd_rA		VVAR(_thecpu__DOT__dcd_rA)
 #define	dcd_rB		VVAR(_thecpu__DOT__dcd_rB)
-#define	dcdR		VVAR(_thecpu__DOT__instruction_decoder__DOT__w_dcdR)
-#define	dcdRpc		VVAR(_thecpu__DOT__instruction_decoder__DOT__w_dcdR_pc)
-#define	dcdRcc		VVAR(_thecpu__DOT__instruction_decoder__DOT__w_dcdR_cc)
+#define	dcdR		VVAR(_thecpu__DOT__dcd_preA)
+// #define	dcdRpc		VVAR(_thecpu__DOT__dcd_preA)&0x10
+// #define	dcdRcc		VVAR(_thecpu__DOT__dcd_preA)&0x20
 #define	dcd_wR		VVAR(_thecpu__DOT__dcd_wR)
 #define	dcd_pc		VVAR(_thecpu__DOT__dcd_pc)
 #define	dcd_wF		VVAR(_thecpu__DOT__dcd_wF)
@@ -302,7 +302,7 @@
 
 #define	master_ce	VVAR(_thecpu__DOT__master_ce)
 #define	op_break	VVAR(_thecpu__DOT__r_op_break)
-#define	op_F		VVAR(_thecpu__DOT__op_F)
+#define	op_F		VVAR(_thecpu__DOT__r_op_F)
 //
 #ifdef	ROOT_VERILATOR
   #define	regset		VVAR(_thecpu__DOT__regset.m_storage)

@@ -128,7 +128,8 @@ CXX	:= g++
 # in the rtl directory
 # CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64 -DVM_COVERAGE=1
 #
-CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64
+.DELETE_ON_ERROR:
+CFLAGS	:= -Wall -faligned-new -Og -g -D__WORDSIZE=64
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
@@ -152,7 +153,7 @@ SIMSRCS := memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
-VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
+VLSRCS	:= verilated.cpp verilated_vcd_c.cpp verilated_threads.cpp
 #
 # Use the verilated_cov.cpp source when you want to run Verilator coverage
 # (The CPU is covered better by the formal proofs ...)
@@ -187,27 +188,27 @@ $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(SYSOBJS) $(VLOBJS) $(SYSLIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(SYSOBJS) $(VLOBJS) $(SYSLIBS) -lpthread -o $@
 
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -lpthread -o $@
 
 div_tb: $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
 
 mpy_tb: $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
 
 zipmmu_tb: $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -lpthread -o $@
 
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
 pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
 
 pdump: $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
-	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -lpthread -o $@
 
 .PHONY: stest
 stest: zipsys_tb
