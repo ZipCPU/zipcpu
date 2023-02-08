@@ -96,10 +96,12 @@ module wbdown #(
 
 		// Keep Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused;
 		assign	unused = &{ 1'b0, i_clk, i_reset };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 		// }}}
 	end else if (OPT_LOWLOGIC)
@@ -173,8 +175,10 @@ module wbdown #(
 				<= r_addr[$clog2(WIDE_DW/SMALL_DW)-1:0] + 1;
 			if (OPT_LITTLE_ENDIAN)
 			begin
+				// Verilator coverage_off
 				s_data <= s_data >> SMALL_DW;
 				s_sel  <= s_sel >> (SMALL_DW/8);
+				// Verilator coverage_on
 			end else begin
 				s_data <= s_data << SMALL_DW;
 				s_sel  <= s_sel << (SMALL_DW/8);
@@ -189,8 +193,10 @@ module wbdown #(
 
 		if (OPT_LITTLE_ENDIAN)
 		begin
+			// Verilator coverage_off
 			assign	o_data = s_data[SMALL_DW-1:0];
 			assign	o_sel  = s_sel[SMALL_DW/8-1:0];
+			// Verilator coverage_on
 		end else begin
 			assign	o_data =s_data[WIDE_DW-1:WIDE_DW-SMALL_DW];
 			assign	o_sel  =s_sel[WIDE_DW/8-1:(WIDE_DW-SMALL_DW)/8];
@@ -229,7 +235,9 @@ module wbdown #(
 		else if (i_ack)
 		begin
 			if (OPT_LITTLE_ENDIAN)
+				// Verilator coverage_off
 				r_data<= { i_data, r_data[WIDE_DW-1:SMALL_DW] };
+				// Verilator coverage_on
 			else
 				r_data<={r_data[WIDE_DW-SMALL_DW-1:0], i_data };
 		end
@@ -261,10 +269,12 @@ module wbdown #(
 		assign	o_wstall = (r_stb && (fifo_full || i_stall))
 					|| (s_count > 1);
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused;
 		assign	unused = &{ 1'b0, ign_fifo_fill, ign_fifo_empty };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
@@ -494,7 +504,9 @@ module wbdown #(
 
 		always @(*)
 		if (OPT_LITTLE_ENDIAN)
+			// Verilator coverage_off
 			f_mask = {(WIDE_DW/8){1'b1}} >> (o_addr[WBLSB-1:0] * SMALL_DW/8);
+			// Verilator coverage_on
 		else
 			f_mask = {(WIDE_DW/8){1'b1}} << (o_addr[WBLSB-1:0] * SMALL_DW/8);
 
@@ -589,10 +601,12 @@ module wbdown #(
 
 			if (OPT_LITTLE_ENDIAN)
 			begin
+				// Verilator coverage_off
 				s_data <= i_wdata >> (i_subaddr * SMALL_DW);
 				s_sel  <= i_nxtsel;
 				if (i_nxtsel[WIDE_DW/8-1:SMALL_DW/8] == 0)
 					s_count <= 1;
+				// Verilator coverage_on
 			end else begin
 				s_data <= i_wdata << (i_subaddr * SMALL_DW);
 				s_sel  <= i_nxtsel;
@@ -611,10 +625,12 @@ module wbdown #(
 			r_addr[WBLSB-1:0] <= r_addr[WBLSB-1:0] + s_subaddr;
 			if (OPT_LITTLE_ENDIAN)
 			begin
+				// Verilator coverage_off
 				s_data <= s_data >> (s_subaddr *SMALL_DW);
 				s_sel  <= s_nxtsel;
 				if (s_count > 1 && s_nxtsel[WIDE_DW/8-1:SMALL_DW/8] == 0)
 					s_count <= 1;
+				// Verilator coverage_on
 			end else begin
 				s_data <= s_data << (s_subaddr *SMALL_DW);
 				s_sel  <= s_nxtsel;
@@ -677,11 +693,13 @@ module wbdown #(
 			begin
 				if (OPT_LITTLE_ENDIAN)
 				begin
+					// Verilator coverage_off
 					nxt_mask = { {(WIDE_DW-SMALL_DW){1'b0}}, {(SMALL_DW){1'b1}} };
 					nxt_mask = nxt_mask << (fifo_addr * SMALL_DW);
 					nxt_mask = ~nxt_mask;
 					nxt_data = (nxt_data & nxt_mask)
 						| ({ {(WIDE_DW-SMALL_DW){1'b0}}, i_data } << (fifo_addr * SMALL_DW));
+					// Verilator coverage_on
 				end else begin
 					nxt_mask = { {(SMALL_DW){1'b1}}, {(WIDE_DW-SMALL_DW){1'b0}} };
 					nxt_mask = nxt_mask >> (fifo_addr * SMALL_DW);
@@ -739,8 +757,10 @@ module wbdown #(
 				fm = WIDE_DW/SMALL_DW-1-fnk;
 				if (OPT_LITTLE_ENDIAN)
 				begin
+					// Verilator coverage_off
 					if (sel[fm*SMALL_DW/8 +: SMALL_DW/8] != 0)
 						subaddr_fn = fm[WBLSB-1:0];
+					// Verilator coverage_on
 				end else begin
 					if (sel[fnk*SMALL_DW/8 +: SMALL_DW/8] != 0)
 						subaddr_fn = fm[WBLSB-1:0];
@@ -751,10 +771,12 @@ module wbdown #(
 
 		// Keep Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused;
 		assign	unused = &{ 1'b0, ign_fifo_fill, fifo_empty };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////

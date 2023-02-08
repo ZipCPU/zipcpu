@@ -23,7 +23,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -61,7 +61,7 @@ module	zipaxi #(
 		localparam	AXILSB = $clog2(C_AXI_DATA_WIDTH/8),
 		parameter	OPT_LGICACHE = 0,
 		parameter	OPT_LGDCACHE = 0,
-		parameter	[0:0]	OPT_PIPELINED = 1'b1,
+		parameter	[0:0]	OPT_PIPELINED = (OPT_LGICACHE>0),
 		parameter [ADDRESS_WIDTH-1:0] RESET_ADDRESS={(ADDRESS_WIDTH){1'b0}},
 		parameter [0:0]	START_HALTED = 1'b0,
 		parameter [0:0]	OPT_WRAP   = 1'b1,
@@ -255,7 +255,7 @@ module	zipaxi #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
-	//		 5 DBG Catch -- Catch exceptions/fautls w/ debugger
+	//		 5 DBG Catch -- Catch exceptions/faults w/ debugger
 	//		 4 Clear cache
 	//		 3 RESET_FLAG
 	//		 2 STEP	(W=1 steps, and returns to halted)
@@ -380,7 +380,7 @@ module	zipaxi #(
 	// {{{
 	initial	dbg_write_valid = 0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_write_valid <= 1'b0;
 	else if (!dbg_write_stall)
 		dbg_write_valid <= dbg_cpu_write;
@@ -557,7 +557,7 @@ module	zipaxi #(
 			assert(reset_hold == (reset_counter != 0));
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_RESET_HOLD
 
 		assign reset_hold = 0;
 
@@ -1342,7 +1342,7 @@ module	zipaxi #(
 			M_INSN_BVALID, M_INSN_BID, M_INSN_BRESP
 		};
 	generate if (32 > ADDRESS_WIDTH)
-	begin
+	begin : UNUSED_ADDR
 		wire	unused_addr;
 		assign	unused_addr = &{ 1'b0, mem_cpu_addr[31:ADDRESS_WIDTH] };
 	end endgenerate

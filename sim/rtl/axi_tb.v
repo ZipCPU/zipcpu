@@ -146,8 +146,8 @@ module	axi_tb #(
 	parameter [OPT_SMP*AW-1:0]	SMP_ADDR= SMP_ADDR_fn(MIN_SMP);
 	parameter [OPT_SMP*AW-1:0]	SMP_MASK= SMP_MASK_fn(MIN_SMP);
 
-	// Verilator lint_off UNUSED
-	function [OPT_SMP*AW-1:0]	SMP_ADDR_fn(input integer min_smp);
+	// Verilator coverage_off
+	function automatic [OPT_SMP*AW-1:0] SMP_ADDR_fn(input integer min_smp);
 		// {{{
 		integer	ik, offset;
 	begin
@@ -163,7 +163,7 @@ module	axi_tb #(
 	end endfunction
 	// }}}
 
-	function [OPT_SMP*AW-1:0]	SMP_MASK_fn(input integer min_smp);
+	function automatic [OPT_SMP*AW-1:0] SMP_MASK_fn(input integer min_smp);
 		// {{{
 		integer	ik;
 	begin
@@ -177,7 +177,7 @@ module	axi_tb #(
 
 	end endfunction
 	// }}}
-	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 	// localparam	LGFIFO = 4;
 
@@ -190,11 +190,13 @@ module	axi_tb #(
 `else
 	localparam	[0:0]	OPT_PROFILER = 1'b0;
 `endif
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire		cpu_int;
 	// Verilator lint_on  UNUSED
 	wire		scope_int;
 	wire	[31:0]	cpu_trace;
+	// Verilator coverage_on
 
 	wire	[OPT_SMP-1:0]	cpu_reset;
 	wire	[OPT_SMP-1:0]	cpu_halted;
@@ -864,14 +866,17 @@ module	axi_tb #(
 		assign	simfull_arvalid = simsub_arvalid && !rfif_full;
 		assign	simsub_arready  = !rfif_full && simfull_arready;
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_rfif;
 		assign	unused_rfif = &{ 1'b0, rfif_fill, rfif_empty,
 					shifted_rdata[BUS_WIDTH-1:32] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end endgenerate
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_sim;
 	assign	unused_sim = &{ 1'b0,
@@ -881,6 +886,7 @@ module	axi_tb #(
 				dbg_awaddr[AW:8], dbg_araddr[AW:8]
 			};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 `else
 	// If we aren't using Verilator, then there's no external bus driver.
 	// Cap off the debug port therefore.
@@ -1477,6 +1483,7 @@ module	axi_tb #(
 
 	// Keep Verilator happy for this set
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_base_smp;
 	assign	unused_base_smp = &{ 1'b0,
@@ -1492,6 +1499,7 @@ module	axi_tb #(
 			smpfull_arprot[2:0],    smpfull_arqos[3:0]
 			};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 
 	// }}}
@@ -2109,6 +2117,7 @@ module	axi_tb #(
 
 		// Keep Verilator happy with our unused ports
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_smp;
 		assign	unused_smp = &{ 1'b0, smp_prof_stb, smp_prof_addr,
@@ -2119,6 +2128,7 @@ module	axi_tb #(
 					cpu_gie[gk], cpu_op_stall[gk],
 					cpu_pf_stall[gk], cpu_i_count[gk] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end endgenerate
 
@@ -2390,12 +2400,14 @@ module	axi_tb #(
 	if (ram_rd)
 		ram_rdata_swap <= ram[ram_raddr];
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_mem;
 	assign	unused_mem = &{ 1'b0,
 			mem_awaddr[AW-1:LGMEMSZ], mem_araddr[AW-1:LGMEMSZ]
 			};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 
 	// }}}
@@ -2526,6 +2538,7 @@ module	axi_tb #(
 		// }}}
 	);
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_con;
 	assign	unused_con = &{ 1'b0,
@@ -2533,6 +2546,7 @@ module	axi_tb #(
 			conl_awaddr[AW-4:4],   conl_araddr[AW-4:4]
 			};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -2671,6 +2685,7 @@ module	axi_tb #(
 		// }}}
 	);
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_axip;
 	assign	unused_axip = &{ 1'b0,
@@ -2678,6 +2693,7 @@ module	axi_tb #(
 			axilp_awaddr[AW-4:4],   axilp_araddr[AW-4:4]
 			};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -2876,6 +2892,7 @@ module	axi_tb #(
 		assign	scope_int = 1'b0;
 		// }}}
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_scope;
 		assign	unused_scope = &{ 1'b0,
@@ -2885,6 +2902,7 @@ module	axi_tb #(
 				scope_araddr, scope_arlen, scope_arlock, scope_arburst, scope_arsize, scope_arcache, scope_arprot, scope_arqos
 				};
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	end endgenerate
 
 	// }}}

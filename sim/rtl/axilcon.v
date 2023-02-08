@@ -271,7 +271,11 @@ module	axilcon #(
 	if (axil_write_ready && awskd_addr == UART_TXREG && wskd_strb[0])
 	begin
 		if (CONSOLE_FILE != 0)
+		begin
 			$fwrite(sim_console, "%1s", wskd_data[7:0]);
+			if (wskd_data[7:0] == 8'h0a)
+				$fflush(sim_console);
+		end
 		$write("%1s", wskd_data[7:0]);
 	end
 

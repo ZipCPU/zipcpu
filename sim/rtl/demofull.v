@@ -126,6 +126,7 @@ module demofull #(
 		// Memory type. This signal indicates how transactions
 		// are required to progress through a system.
 		input wire [3 : 0] S_AXI_AWCACHE,
+		// Verilator coverage_off
 		// Protection type. This signal indicates the privilege
 		// and security level of the transaction, and whether
 		// the transaction is a data access or an instruction access.
@@ -133,8 +134,7 @@ module demofull #(
 		// Quality of Service, QoS identifier sent for each
 		// write transaction.
 		input wire [3 : 0] S_AXI_AWQOS,
-		// Region identifier. Permits a single physical interface
-		// on a slave to be used for multiple logical interfaces.
+		// Verilator coverage_on
 		// Write address valid. This signal indicates that
 		// the channel is signaling valid write address and
 		// control information.
@@ -203,6 +203,8 @@ module demofull #(
 		// Memory type. This signal indicates how transactions
 		// are required to progress through a system.
 		input wire [3 : 0] S_AXI_ARCACHE,
+		//
+		// Verilator coverage_off
 		// Protection type. This signal indicates the privilege
 		// and security level of the transaction, and whether
 		// the transaction is a data access or an instruction access.
@@ -210,9 +212,8 @@ module demofull #(
 		// Quality of Service, QoS identifier sent for each
 		// read transaction.
 		input wire [3 : 0] S_AXI_ARQOS,
-		// Region identifier. Permits a single physical interface
-		// on a slave to be used for multiple logical interfaces.
-		// Optional User-defined signal in the read address channel.
+		// Verilator coverage_on
+		//
 		// Write address valid. This signal indicates that
 		// the channel is signaling valid read address and
 		// control information.
@@ -962,21 +963,25 @@ module demofull #(
 		// {{{
 
 		assign	write_lock_valid = 1'b0;
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_lock;
 		assign	unused_lock = &{ 1'b0, S_AXI_ARLOCK, S_AXI_AWLOCK };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end endgenerate
 	// }}}
 
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWCACHE, S_AXI_AWPROT, S_AXI_AWQOS,
 		S_AXI_ARCACHE, S_AXI_ARPROT, S_AXI_ARQOS };
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

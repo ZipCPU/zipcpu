@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -178,7 +178,9 @@ module	zipcore #(
 	reg		ibus_err_flag;
 	wire		ubus_err_flag;
 	wire		idiv_err_flag, udiv_err_flag;
+	// Verilator coverage_off
 	wire		ifpu_err_flag, ufpu_err_flag;
+	// Verilator coverage_on
 	wire		ihalt_phase, uhalt_phase;
 
 	// The master chip enable
@@ -316,9 +318,11 @@ module	zipcore #(
 	wire	[31:0]	div_result;
 	wire	[3:0]	div_flags;
 
+	// Verilator coverage_off
 	wire		fpu_ce, fpu_error, fpu_busy, fpu_valid;
 	wire	[31:0]	fpu_result;
 	wire	[3:0]	fpu_flags;
+	// Verilator coverage_on
 	reg		adf_ce_unconditional;
 
 
@@ -609,7 +613,8 @@ module	zipcore #(
 	if (OPT_PIPELINED)
 		adf_ce_unconditional =
 			(!master_stall)&&(!op_valid_mem)&&(!i_mem_rdbusy)
-			&&(!i_mem_busy || !op_wR || op_R[4:1] != { gie, 3'h7});
+			&&(!i_mem_busy || !op_wR
+				|| op_R[4:0] != { gie, CPU_CC_REG });
 	else
 		adf_ce_unconditional = (!master_stall)&&(op_valid)&&(!op_valid_mem);
 	// }}}
@@ -689,9 +694,9 @@ module	zipcore #(
 		// }}}
 	);
 
-	assign	{ dcd_Rcc, dcd_Rpc, dcd_R } = dcd_full_R;
-	assign	{ dcd_Acc, dcd_Apc, dcd_A } = dcd_full_A;
-	assign	{ dcd_Bcc, dcd_Bpc, dcd_B } = dcd_full_B;
+	assign	{ dcd_Rcc, dcd_Rpc, dcd_R } = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? dcd_full_R : 7'h0;
+	assign	{ dcd_Acc, dcd_Apc, dcd_A } = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? dcd_full_A : 7'h0;
+	assign	{ dcd_Bcc, dcd_Bpc, dcd_B } = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? dcd_full_B : 7'h0;
 	assign	dcd_gie = pf_gie;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -705,7 +710,7 @@ module	zipcore #(
 	// op_pipe
 	// {{{
 	generate if (OPT_PIPELINED_BUS_ACCESS)
-	begin : GEN_OP_PIPE
+	begin : GEN_OP_PIPE // Memory pipelining
 		reg		r_op_pipe;
 
 		// To be a pipeable operation, there must be
@@ -750,12 +755,12 @@ module	zipcore #(
 		if (OPT_USERMODE)
 		begin : GEN_FULL_REGSET
 
-			assign	w_op_Av = regset[dcd_A];
-			assign	w_op_Bv = regset[dcd_B];
+			assign	w_op_Av = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? regset[dcd_A] : 32'h0;
+			assign	w_op_Bv = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? regset[dcd_B] : 32'h0;
 
 		end else begin : GEN_NO_USERREGS
-			assign	w_op_Av = regset[dcd_A[3:0]];
-			assign	w_op_Bv = regset[dcd_B[3:0]];
+			assign	w_op_Av = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? regset[dcd_A[3:0]] : 32'h0;
+			assign	w_op_Bv = (!OPT_LOWPOWER || dcd_valid || !OPT_PIPELINED) ? regset[dcd_B[3:0]] : 32'h0;
 		end
 
 		// verilator coverage_off
@@ -1504,10 +1509,16 @@ module	zipcore #(
 		// }}}
 	) doalu(
 	// {{{
-			i_clk, ((i_reset)||(clear_pipeline)),
-			alu_ce, op_opn, op_Av, op_Bv,
-			alu_result, alu_flags, alu_valid, alu_busy);
+		.i_clk(i_clk), .i_reset((i_reset)||(clear_pipeline)),
+		.i_stb(alu_ce),
+		.i_op((!OPT_LOWPOWER || alu_ce) ? op_opn : 4'h0),
+		.i_a( (!OPT_LOWPOWER || alu_ce) ? op_Av  : 32'h0),
+		.i_b( (!OPT_LOWPOWER || alu_ce) ? op_Bv  : 32'h0),
+		.o_c(alu_result), .o_f(alu_flags),
+		.o_valid(alu_valid),
+		.o_busy(alu_busy)
 	// }}}
+	);
 
 	// Divide
 	// {{{
@@ -1531,7 +1542,7 @@ module	zipcore #(
 			// }}}
 		);
 
-	end else begin
+	end else begin : NO_DIVIDE
 		// {{{
 		assign	div_error = 1'b0; // Can't be high unless div_valid
 		assign	div_busy  = 1'b0;
@@ -1598,9 +1609,10 @@ module	zipcore #(
 			// alu_reg <= op_R;
 			alu_wR  <= (op_wR)&&(set_cond)&&(!op_illegal);
 			alu_wF  <= (op_wF)&&(set_cond)&&(!op_illegal);
-		end else if (!alu_busy) begin
-			// These are strobe signals, so clear them if not
-			// set for any particular clock
+		end else if (!alu_busy)
+		begin
+			// These are strobe signals, so clear them if they
+			// aren't going to be set for any particular clock
 			alu_wR <= (r_halted)&&(OPT_DBGPORT && i_dbg_we && !o_dbg_stall);
 			alu_wF <= 1'b0;
 		end
@@ -1907,10 +1919,10 @@ module	zipcore #(
 	// This logic is now managed outside the ZipCore
 	//
 	assign	o_mem_ce   = mem_ce && set_cond;
-	assign	o_mem_op   = op_opn[2:0];
-	assign	o_mem_data = op_Av;
-	assign	o_mem_addr = op_Bv;
-	assign	o_mem_reg  = op_R;
+	assign	o_mem_op   = ((mem_ce && set_cond) || !OPT_LOWPOWER) ? op_opn[2:0] : 3'h0;
+	assign	o_mem_data = ((mem_ce && set_cond) || !OPT_LOWPOWER) ? op_Av : 32'h0;
+	assign	o_mem_addr = ((mem_ce && set_cond) || !OPT_LOWPOWER) ? op_Bv : 32'h0;
+	assign	o_mem_reg  = ((mem_ce && set_cond) || !OPT_LOWPOWER) ? op_R : 5'h0;
 
 	// }}}
 
@@ -3317,7 +3329,11 @@ module	zipcore #(
 		always @(*)
 		begin
 			debug_pc = 0;
-			if (i_dbg_rreg[4])
+			if (!OPT_DBGPORT)
+			begin
+				// Empty block--if there's no debug port, we'll
+				// leave this valu at zero to reduce power
+			end else if (i_dbg_rreg[4])
 				// User mode
 				debug_pc[(AW+1):0]
 					= { upc[(AW+1):2], uhalt_phase, 1'b0 };
@@ -3332,6 +3348,7 @@ module	zipcore #(
 		always @(*)
 		begin
 			debug_pc = 0;
+			if (OPT_DBGPORT)
 			debug_pc[(AW+1):0] = { ipc[AW+1:2], ihalt_phase, 1'b0 };
 		end
 		// }}}
@@ -3341,7 +3358,7 @@ module	zipcore #(
 	// o_dbg_reg
 	// {{{
 	generate if (!OPT_DBGPORT)
-	begin
+	begin : NO_DBGPORT
 
 		assign	o_dbg_reg = 0;
 
@@ -3517,11 +3534,15 @@ module	zipcore #(
 
 	generate if (OPT_TRACE_PORT)
 	begin : GEN_DEBUG_PORT
+		localparam [1:0]
+				DBGSRC_FLAGS	= 2'b00,
+				DBGSRC_WRITEBACK = 2'b01,
+				DBGSRC_JUMP	= 2'b10;
 
 		reg	[31:0]	r_debug;
 		reg		debug_trigger, dbg_mem_we;
-		wire	[31:0]	debug_flags;
-		reg	[2:0]	dbgsrc;
+		wire	[27:0]	debug_flags;
+		reg	[1:0]	dbgsrc;
 		// Verilator lint_off UNUSED
 		wire	[27:0]	dbg_pc, dbg_wb_addr;
 		// Verilator lint_on  UNUSED
@@ -3535,8 +3556,7 @@ module	zipcore #(
 		if (o_mem_ce)
 			dbg_mem_we <= o_mem_op[0];
 
-		assign debug_flags = { debug_trigger, 3'b101,
-				master_ce, i_halt, o_break, sleep,
+		assign debug_flags = { master_ce, i_halt, o_break, sleep,
 				gie, ibus_err_flag, trap, ill_err_i,
 				o_clear_icache, i_pf_valid, i_pf_illegal, dcd_ce,
 				dcd_valid, dcd_stalled, op_ce, op_valid,
@@ -3561,25 +3581,28 @@ module	zipcore #(
 		begin
 			dbgsrc <= 0;
 			if ((i_halt)||(!master_ce)||(debug_trigger)||(o_break))
-				dbgsrc <= 3'b000;
+				dbgsrc <= DBGSRC_FLAGS;
 			else if ((i_mem_valid)||((!clear_pipeline)&&(!alu_illegal)
 					&&(((alu_wR)&&(alu_valid))
 						||(div_valid)||(fpu_valid))))
-				dbgsrc <= 3'b001;
+				dbgsrc <= DBGSRC_WRITEBACK;
 			else if (clear_pipeline)
-				dbgsrc <= 3'b010;
+				dbgsrc <= DBGSRC_JUMP;
 			else
-				dbgsrc <= 3'b100;
+				dbgsrc <= DBGSRC_FLAGS;
 		end
 
 		always @(posedge i_clk)
 		casez(dbgsrc)
-		3'b000: r_debug <= debug_flags;
-		3'b001: r_debug <= { debug_trigger, 1'b0, wr_reg_id[3:0],
-							wr_gpreg_vl[25:0]};
-		3'b010: r_debug <= { debug_trigger, 3'b100, dbg_pc };
-		3'b011: r_debug <= 32'h0;
-		3'b1??: r_debug <= debug_flags;
+		DBGSRC_FLAGS:
+			r_debug <= { debug_trigger, 3'b101,
+				debug_flags };
+		DBGSRC_WRITEBACK:
+			r_debug <= { debug_trigger, 1'b0,
+				wr_reg_id[3:0], wr_gpreg_vl[25:0]};
+		DBGSRC_JUMP: r_debug <= { debug_trigger, 3'b100,
+				dbg_pc };
+		default: r_debug <= 32'h0;
 		endcase
 
 		assign	o_debug = r_debug;
@@ -4275,8 +4298,8 @@ module	zipcore #(
 			&&(!clear_pipeline))
 	begin
 		`ASSERT((!OPT_PIPELINED)||(dcd_valid));
-		`ASSERT($stable(f_dcd_data));
-		`ASSERT($stable(f_dcd_insn_word));
+		`ASSERT((!dcd_valid && OPT_LOWPOWER) || $stable(f_dcd_data));
+		`ASSERT((!dcd_valid && OPT_LOWPOWER) || $stable(f_dcd_insn_word));
 	end
 
 	always @(*)

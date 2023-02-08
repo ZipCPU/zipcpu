@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020-2022, Gisselquist Technology, LLC
+// Copyright (C) 2020-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -649,11 +649,15 @@ module	axiops #(
 		genvar	gw, gb;
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
-		for(gb=0; gb<32/8; gb=gb+1)
-		always @(*)
 		begin
-			M_AXI_WDATA[32*gw + 8*gb +: 8] = axi_wdata[32*gw+8*(3-gb) +: 8];
-			M_AXI_WSTRB[4*gw + gb] = axi_wstrb[4*gw+(3-gb)];
+			for(gb=0; gb<32/8; gb=gb+1)
+			begin
+				always @(*)
+				begin
+					M_AXI_WDATA[32*gw + 8*gb +: 8] = axi_wdata[32*gw+8*(3-gb) +: 8];
+					M_AXI_WSTRB[4*gw + gb] = axi_wstrb[4*gw+(3-gb)];
+				end
+			end
 		end
 		// }}}
 	end else begin : KEEP_WRITE_DATA_STRB
@@ -865,9 +869,13 @@ module	axiops #(
 		genvar	gw, gb;
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
-		for(gb=0; gb<32/8; gb=gb+1)
-			assign	endian_swapped_rdata[gw*32+gb*8 +: 8]
+		begin
+			for(gb=0; gb<32/8; gb=gb+1)
+			begin
+				assign	endian_swapped_rdata[gw*32+gb*8 +: 8]
 					= M_AXI_RDATA[gw*32+(3-gb)*8 +: 8];
+			end
+		end
 	end else begin : KEEP_RDATA
 		assign	endian_swapped_rdata = M_AXI_RDATA;
 	end endgenerate

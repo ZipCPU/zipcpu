@@ -5,21 +5,14 @@
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This RTL file specifies how instructions are to be decoded
-//		into their underlying meanings.  This is specifically a version
-//	designed to support a "Next Generation", or "Version 2" instruction
-//	set as (currently) activated by the OPT_NEW_INSTRUCTION_SET option
-//	in cpudefs.v.
-//
-//	I expect to (eventually) retire the old instruction set, at which point
-//	this will become the default instruction set decoder.
-//
+//		into their underlying meanings.
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -410,7 +403,7 @@ module	idecode #(
 		// When no instruction is in the pipe, phase is zero
 		initial	r_phase = 1'b0;
 		always @(posedge i_clk)
-		if ((i_reset)||(w_ljmp_dly))
+		if (i_reset || w_ljmp_dly)
 			r_phase <= 1'b0;
 		else if ((i_ce)&&(pf_valid))
 		begin

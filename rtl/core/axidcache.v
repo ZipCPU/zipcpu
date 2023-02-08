@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020-2022, Gisselquist Technology, LLC
+// Copyright (C) 2020-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -741,7 +741,7 @@ module	axidcache #(
 
 			if (SWAP_WSTRB)
 			begin
-				axi_araddr[AXILSB-1:0] <= ~i_addr[AXILSB-1:0];
+				// axi_araddr[AXILSB-1:0] <= ~i_addr[AXILSB-1:0];
 				axi_araddr[1:0] <= 0;
 				axi_arsize <= 3'b010;
 			end

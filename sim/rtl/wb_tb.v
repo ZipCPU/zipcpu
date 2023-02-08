@@ -606,6 +606,7 @@ module	wb_tb #(
 	assign	smpw_idata[BUS_WIDTH-1:0] = {(BUS_WIDTH){1'b0}};
 	assign	smpw_err[0]   = r_smp_err;
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_smpw;
 	assign	unused_smpw = &{ 1'b0, smpw_cyc[0], smpw_we[0],
@@ -614,6 +615,7 @@ module	wb_tb #(
 				smpw_sel[BUS_WIDTH/8-1:0]
 				};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 
 	generate for (gk=1; gk<OPT_SMP; gk=gk+1)
@@ -795,13 +797,16 @@ module	wb_tb #(
 				// }}}
 			);
 
+			// Verilator coverage_off
 			// Verilator lint_off UNUSED
 			wire	unused_zipsys;
 			assign	unused_zipsys = &{ 1'b0, pic_int };
 			// Verilator lint_on  UNUSED
+			// Verilator coverage_on
 
 		end
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_smp;
 		assign	unused_smp = &{ 1'b0, smp_prof_stb, smp_prof_addr,
@@ -810,6 +815,7 @@ module	wb_tb #(
 				smpw_addr[gk*WAW + (9-WBLSB) +: (WAW-(9-WBLSB))]
 				};
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	end endgenerate
 
 	// }}}
@@ -1217,10 +1223,12 @@ module	wb_tb #(
 			// }}}
 		);
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_dmac;
 		assign	unused_dmac = &{ 1'b0, ign_dmac_stall, ign_dmac_ack };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end else begin : NO_EXTERNAL_DMA
 
@@ -1234,6 +1242,7 @@ module	wb_tb #(
 
 	end endgenerate
 
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_zsys;
 	assign	unused_zsys = &{ 1'b0, pic_stall, pic_ack,
@@ -1243,6 +1252,7 @@ module	wb_tb #(
 			jiffies_stall, jiffies_ack
 		};
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1330,11 +1340,13 @@ module	wb_tb #(
 
 		assign	scope_int = 1'b0;
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_scope;
 		assign	unused_scope = &{ 1'b0, scopew_cyc, scopew_we,
 					scopew_data, scopew_sel, cpu_trace };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 
 		// }}}
 	end endgenerate
@@ -1387,6 +1399,7 @@ module	wb_tb #(
 
 	// Keep Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0,
@@ -1402,5 +1415,6 @@ module	wb_tb #(
 		timer_a_stall, timer_b_stall, timer_c_stall, jiffies_stall,
 			scope_int };
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 endmodule

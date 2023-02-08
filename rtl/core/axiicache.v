@@ -36,7 +36,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -422,10 +422,14 @@ module	axiicache #(
 		genvar	gw, gb;	// Word count, byte count
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/32; gw=gw+1)
-		for(gb=0; gb<4; gb=gb+1)
-		always @(*)
-			swapped_data[gw*32+(3-gb)*8 +: 8]
+		begin
+			for(gb=0; gb<4; gb=gb+1)
+			begin
+				always @(*)
+				swapped_data[gw*32+(3-gb)*8 +: 8]
 					= M_AXI_RDATA[gw*32+gb*8 +: 8];
+			end
+		end
 
 		always @(posedge S_AXI_ACLK)
 		if (M_AXI_RVALID && M_AXI_RREADY)

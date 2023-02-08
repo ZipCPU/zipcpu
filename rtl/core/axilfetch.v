@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020-2022, Gisselquist Technology, LLC
+// Copyright (C) 2020-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -297,11 +297,15 @@ module	axilfetch #(
 		genvar	gw, gb;	// Word count, byte count
 
 		for(gw=0; gw<C_AXI_DATA_WIDTH/INSN_WIDTH; gw=gw+1) // For each bus word
-		for(gb=0; gb<(INSN_WIDTH/8); gb=gb+1) // For each bus byte
-		always @(*)
-			endian_swapped_rdata[gw*INSN_WIDTH
-					+ ((INSN_WIDTH/8)-1-gb)*8 +: 8]
+		begin
+			for(gb=0; gb<(INSN_WIDTH/8); gb=gb+1) // For each bus byte
+			begin
+				always @(*)
+					endian_swapped_rdata[gw*INSN_WIDTH
+						+ ((INSN_WIDTH/8)-1-gb)*8 +: 8]
 				= M_AXI_RDATA[gw*INSN_WIDTH+gb*8 +: 8];
+			end
+		end
 		// }}}
 	end else begin : NO_ENDIAN_SWAP
 		// {{{
