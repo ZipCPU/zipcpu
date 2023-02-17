@@ -1,5 +1,45 @@
 #!/usr/bin/perl
+################################################################################
+##
+## Filename:	genreport.pl
+## {{{
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+##
+## Purpose:	To direct the formal verification of particular components of
+##		the ZipCPU.
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+## }}}
+## Copyright (C) 2023, Gisselquist Technology, LLC
+## {{{
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of  the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+## }}}
 
+## Variable declarations
+## {{{
 $dir = ".";
 @proofs = (
 	"axidcache",
@@ -35,7 +75,13 @@ $dir = ".";
 	"zipmmu",
 	"ziptimer"
 	);
+## }}}
 
+## getstatus subroutine
+## {{{
+# This subroutine runs make, to see if a proof is up to date, or otherwise
+# checks the logfile to see what the status was the last time the proof was
+# run.
 sub getstatus($) {
 	my $based = shift;
 	my $log = "$based/logfile.txt";
@@ -119,22 +165,36 @@ sub getstatus($) {
 		"Unknown";
 	}
 }
+## }}}
 
+## Start the HTML output
+## {{{
 print <<"EOM";
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
 <TABLE border>
 <TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH></TR>
 EOM
+## }}}
 
+## Look up all directory entries
+## {{{
+# We'll use this result to look for subdirectories that might contain
+# log files.
 opendir(DIR, $dir) or die "Cannot open directory for reading";
 my @dirent = readdir(DIR);
 closedir(DIR);
 
 # print "@dirent";
+## }}}
 
+# Lookup each components proof
 foreach $prf (sort @proofs) {
+
+	# Find each subproof of the component
 	foreach $dent (@dirent) {
+		## Filter out the wrong directories
+		## {{{
 		# print("<TR><TD>DIR $dent</TD></TR>\n");
 		# Only look at subdirectories
 		next if (! -d $dent);
@@ -142,8 +202,14 @@ foreach $prf (sort @proofs) {
 		next if ($dent !~ /$prf(_\S+)/);
 			$subprf = $1;
 		# print("<TR><TD>$dent matches $prf</TD></TR>\n");
+		## }}}
+
+		## Get the resulting status
 		$st = getstatus($dent);
 		# print("<TR><TD>STATUS = $st</TD></TR>\n");
+
+		## Fill out one entry of our table
+		## {{{
 		my $tail = "</TD><TD>$prf</TD><TD>$subprf</TD></TR>\n";
 		if ($st =~ /PASS/) {
 			print "<TR><TD bgcolor=#caeec8>Pass$tail";
@@ -164,13 +230,14 @@ foreach $prf (sort @proofs) {
 		} else {
 			print "<TR><TD bgcolor=#e5e5e5>Unknown$tail";
 		}
+		## }}}
 	}
 }
 
+## Finish the HTML log file
+## {{{
 print <<"EOM";
 </TABLE>
 </BODY></HTML>
 EOM
-
-
-
+## }}}
