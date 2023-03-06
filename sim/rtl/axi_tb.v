@@ -27,7 +27,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022, Gisselquist Technology, LLC
+// Copyright (C) 2022-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -147,6 +147,7 @@ module	axi_tb #(
 	parameter [OPT_SMP*AW-1:0]	SMP_MASK= SMP_MASK_fn(MIN_SMP);
 
 	// Verilator coverage_off
+	// Verilator lint_off UNUSED
 	function automatic [OPT_SMP*AW-1:0] SMP_ADDR_fn(input integer min_smp);
 		// {{{
 		integer	ik, offset;
@@ -178,6 +179,7 @@ module	axi_tb #(
 	end endfunction
 	// }}}
 	// Verilator coverage_on
+	// Verilator lint_on  UNUSED
 
 	// localparam	LGFIFO = 4;
 
@@ -1677,7 +1679,7 @@ module	axi_tb #(
 				.OPT_LOCK(OPT_LOCK),
 				.OPT_CIS(OPT_CIS),
 				.OPT_USERMODE(OPT_USERMODE),
-				.OPT_DBGPORT(OPT_DBGPORT),
+				.OPT_DBGPORT(1'b1 || OPT_DBGPORT),
 				.OPT_TRACE_PORT(OPT_TRACE_PORT),
 				.OPT_PROFILER(OPT_PROFILER),
 				.OPT_LOWPOWER(OPT_LOWPOWER),
@@ -1967,7 +1969,7 @@ module	axi_tb #(
 				.OPT_LOCK(OPT_LOCK),
 				.OPT_CIS(OPT_CIS),
 				.OPT_USERMODE(OPT_USERMODE),
-				.OPT_DBGPORT(OPT_DBGPORT),
+				.OPT_DBGPORT(1'b1 || OPT_DBGPORT),
 				.OPT_TRACE_PORT(OPT_TRACE_PORT),
 				.OPT_PROFILER(OPT_PROFILER),
 				.OPT_LOWPOWER(OPT_LOWPOWER),

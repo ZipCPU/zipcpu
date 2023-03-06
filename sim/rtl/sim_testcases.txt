@@ -184,6 +184,46 @@ wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ## {{{
 ##
 ##
-wbzipdmacach  WBCACHE  dmatest.hex wbzdma-out.txt
+wbzipdmacach  WBCACHE  dmatest.hex wbzdma-out.txt DUMP_TO_VCD=1 VCD_FILE="wbzipdmacach.vcd"
 wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
+## }}}
+################################################################################
+################################################################################
+##
+## Step control
+## {{{
+##
+##
+
+## AXLPIPE
+axlstepc        AXLPIPE stepchk.hex   axlstepc-out.txt      OPT_SMP=1
+axlstepc64      AXLPIPE stepchk64.hex axlstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axlstepcsmp     AXLPIPE stepchk.hex   axlstepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axlstepcsmp.vcd"
+axlstepc64smp   AXLPIPE stepchk64.hex axlstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## WBCACHE
+wbstepc         WBCACHE stepchk.hex   wbzstp-out.txt      OPT_SMP=1 # DUMP_TO_VCD=1 VCD_FILE="wbstepc.vcd"
+wbstepc64       WBCACHE stepchk64.hex wbzstp64-out.txt	  OPT_SMP=1 BUS_WIDTH=64
+wbstepcsmp      WBCACHE stepchk.hex   wbzstpc-out.txt     OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="wbstepcsmp.vcd"
+wbstepc64smp    WBCACHE stepchk64.hex wbzstp64c-out.txt	  OPT_SMP=2 BUS_WIDTH=64
+
+## WBBLPWR
+wbblpstepc      WBBLPWR stepchk.hex   wbblpstp-out.txt    OPT_SMP=1 DUMP_TO_VCD=1 VCD_FILE="wbblpstepc.vcd"
+wbblpstepc64    WBBLPWR  stepchk64.hex wbblpstp64-out.txt  OPT_SMP=1 BUS_WIDTH=64
+wbblpstepcsmp   WBBLPWR stepchk.hex   wbblpstpc-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmp.vcd"
+wbblpstepc64smp WBBLPWR stepchk64.hex  wbblpstp64c-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## AXCACHE
+axistepc        AXCACHE stepchk.hex   axistepc-out.txt      OPT_SMP=1
+axistepc64      AXCACHE stepchk64.hex axistepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axistepcsmp     AXCACHE stepchk.hex   axistepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axistepcsmp.vcd"
+axistepc64smp   AXCACHE stepchk64.hex axistepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## AXLPWR
+axlpstepc        AXLPWR  stepchk.hex   axlpstepc-out.txt      OPT_SMP=1
+axlpstepc64      AXLPWR  stepchk64.hex axlpstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axlpstepcsmp     AXLPWR  stepchk.hex   axlpstepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axlpstepcsmp.vcd"
+axlpstepc64smp   AXLPWR  stepchk64.hex axlpstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+
 ## }}}

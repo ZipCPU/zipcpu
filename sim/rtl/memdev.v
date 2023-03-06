@@ -18,7 +18,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -85,9 +85,8 @@ module	memdev #(
 
 	// Delay request if necessary
 	// {{{
-	generate
-	if (EXTRACLOCK == 0)
-	begin : GEN_EXTRA_CLK
+	generate if (EXTRACLOCK == 0)
+	begin : NO_EXTRA_CLOCK
 		// {{{
 		assign	w_wstb = (i_wb_stb)&&(i_wb_we);
 		assign	w_stb  = i_wb_stb;
@@ -95,14 +94,18 @@ module	memdev #(
 		assign	w_data = i_wb_data;
 		assign	w_sel  = i_wb_sel;
 		// }}}
-	end else begin : NO_EXTRA_CLK
+	end else begin : EXTRA_MEM_CLOCK_CYCLE
 		// {{{
-		reg		last_wstb, last_stb;
+		reg			last_wstb, last_stb;
 		reg	[(AW-1):0]	last_addr;
 		reg	[(DW-1):0]	last_data;
 		reg	[(DW/8-1):0]	last_sel;
 
+		initial	last_wstb = 0;
 		always @(posedge i_clk)
+		if (i_reset)
+			last_wstb <= 0;
+		else
 			last_wstb <= (i_wb_stb)&&(i_wb_we);
 
 		initial	last_stb = 1'b0;
@@ -128,31 +131,38 @@ module	memdev #(
 	end endgenerate
 	// }}}
 
+	// Read from memory
+	// {{{
 	always @(posedge i_clk)
 		o_wb_data <= mem[w_addr];
+	// }}}
 
-	// Write to memory
+	// Write to memory (if not a ROM)
 	// {{{
 	generate if (!OPT_ROM)
 	begin : WRITE_TO_MEMORY
+		// {{{
 		integer	ik;
 
 		always @(posedge i_clk)
 		if (w_wstb)
-		for(ik=0; ik < DW/8; ik=ik+1)
-		if (w_sel[ik])
-			mem[w_addr][ik * 8 +: 8] <= w_data[ik*8 +: 8];
+		begin
+			for(ik=0; ik<DW/8; ik=ik+1)
+			if (w_sel[ik])
+				mem[w_addr][ik*8 +: 8] <= w_data[ik*8 +: 8];
+		end
 `ifdef	VERILATOR
 	end else begin : VERILATOR_ROM
 
 		// Make Verilator happy
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
-		wire	[DW+DW/8:0]	rom_unused;
-		assign	rom_unused = { w_wstb, w_data, w_sel };
+		wire	rom_unused;
+		assign	rom_unused = &{ 1'b0, w_wstb, w_data, w_sel };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
 `endif
+		// }}}
 	end endgenerate
 	// }}}
 
@@ -264,11 +274,11 @@ module	memdev #(
 
 	always @(*)
 		assert(mem[f_addr] == f_data);
-	
+
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(OPT_ROM))
 		assert($stable(f_data));
-	
+
 `endif
 // }}}
 endmodule

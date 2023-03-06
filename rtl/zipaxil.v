@@ -105,7 +105,9 @@ module	zipaxil #(
 		input	wire		S_DBG_AWVALID,
 		output	wire		S_DBG_AWREADY,
 		input	wire	[C_DBG_ADDR_WIDTH-1:0]	S_DBG_AWADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_DBG_AWPROT,
+		// Verilator coverage_on
 		//
 		input	wire		S_DBG_WVALID,
 		output	wire		S_DBG_WREADY,
@@ -114,21 +116,28 @@ module	zipaxil #(
 		//
 		output	reg		S_DBG_BVALID,
 		input	wire		S_DBG_BREADY,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_DBG_BRESP,
+		// Verilator coverage_on
 		//
 		input	wire		S_DBG_ARVALID,
 		output	wire		S_DBG_ARREADY,
 		input	wire	[7:0]	S_DBG_ARADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_DBG_ARPROT,
+		// Verilator coverage_on
 		//
 		output	reg		S_DBG_RVALID,
 		input	wire		S_DBG_RREADY,
 		output	reg	[31:0]	S_DBG_RDATA,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_DBG_RRESP,
+		// Verilator coverage_on
 		//
 		// }}}
 		// Instruction bus (master)
 		// {{{
+		// Verilator coverage_off
 		output	wire				M_INSN_AWVALID,
 		input	wire				M_INSN_AWREADY,
 		output	wire	[ADDRESS_WIDTH-1:0]	M_INSN_AWADDR,
@@ -142,6 +151,7 @@ module	zipaxil #(
 		input	wire				M_INSN_BVALID,
 		output	wire				M_INSN_BREADY,
 		input	wire	[1:0]			M_INSN_BRESP,
+		// Verilator coverage_on
 		//
 		output	wire				M_INSN_ARVALID,
 		input	wire				M_INSN_ARREADY,
@@ -158,7 +168,9 @@ module	zipaxil #(
 		output	wire				M_DATA_AWVALID,
 		input	wire				M_DATA_AWREADY,
 		output	wire [ADDRESS_WIDTH-1:0]	M_DATA_AWADDR,
+		// Verilator coverage_off
 		output	wire	[2:0]			M_DATA_AWPROT,
+		// Verilator coverage_on
 		//
 		output	wire				M_DATA_WVALID,
 		input	wire				M_DATA_WREADY,
@@ -172,7 +184,9 @@ module	zipaxil #(
 		output	wire				M_DATA_ARVALID,
 		input	wire				M_DATA_ARREADY,
 		output	wire [ADDRESS_WIDTH-1:0]	M_DATA_ARADDR,
+		// Verilator coverage_off
 		output	wire	[2:0]			M_DATA_ARPROT,
+		// Verilator coverage_on
 		//
 		input	wire				M_DATA_RVALID,
 		output	wire				M_DATA_RREADY,
@@ -189,6 +203,91 @@ module	zipaxil #(
 		//
 		output	wire	[31:0]	o_cpu_debug,
 		//
+`ifdef	VBENCH_TB
+		// {{{
+		// output	wire			cpu_halt,
+		//				cmd_reset,
+		//				cmd_step,
+		output	wire			early_branch,
+		output	wire	[31:0]		early_branch_pc,
+		output	wire	[6:0]		dcdA, dcdB,
+		output	wire			new_pc,
+		output	wire	[31:0]		cpu_ipc, cpu_upc, pf_pc,
+		// output	wire			pf_cyc, pf_stb, pf_we,
+		// output	wire	[31:0]		pf_addr,
+		// output	wire			pf_ack,
+		output	wire			pf_valid, pf_illegal,
+		// pf_vmask, pf_r_v, pf_tagsrc, pf_tagipc, pf_tagvallst,
+		// output	wire	[31:0]		pf_lastpc,
+		output	wire	[31:0]		pf_instruction,
+		output	wire	[31:0]		pf_instruction_pc,
+		//
+		output	wire			dcd_ce, dcd_stalled, dcd_gie,
+						dcd_valid, dcd_illegal,
+						dcd_phase, dcd_break, dcd_pipe,
+		output	wire	[3:0]		dcd_opn,
+		output	wire			dcd_rA, dcd_rB, dcd_wR, dcd_wF,
+		output	wire	[4:0]		dcdR,
+		output	wire			dcdRpc, dcdRcc,
+		output	wire	[31:0]		dcd_pc,
+		output	wire			dcd_M,
+		//
+		output	wire			op_ce, op_illegal, op_valid,
+						op_valid_mem, op_valid_alu,
+						op_stall, op_wR, op_wF,
+						op_phase, op_gie,
+		output	wire	[4:0]		op_R, op_Aid, op_Bid,
+		output	wire	[31:0]		op_Av, op_Bv, op_pc,
+		output	wire			master_stall,
+		//
+		output	wire			alu_ce, adf_ce_unconditional,
+						alu_valid, alu_wR, alu_wF,
+						alu_pc_valid, alu_illegal,
+						alu_gie,
+						set_cond, alu_phase,
+		output	wire	[3:0]		alu_flags,
+		output	wire	[31:0]		alu_pc,
+		//
+		output	wire			mem_valid, mem_pc_valid, mem_ce,
+						mem_busy, mem_rdbusy,
+		output	wire	[4:0]		mem_wreg,
+		//
+		output	wire			div_valid, div_ce, div_busy,
+		//
+		output	wire	[4:0]		wr_reg_id,
+		output	wire			wr_reg_ce, wr_flags_ce,
+		output	wire	[31:0]		wr_gpreg_vl, wr_spreg_vl,
+		output	wire	[15:0]		w_iflags, w_uflags,
+		//
+		output	wire			cpu_sim,
+						r_sleep, master_ce, op_break,
+						r_gie,
+		output	wire	[22:0]		cpu_sim_immv,
+		output	wire	[7:0]		op_F,
+		//
+		//
+		// ZipSystem peripherals
+		output	wire	[31:0]		watchbus, watchdog, pic_data,
+						wdbus_data,
+		output	wire	[15:0]		int_state, alt_int_state,
+		output	wire	[31:0]		timer_a,
+						timer_b, timer_c, jiffies,
+						utc_data, uoc_data, uic_data,
+						upc_data, mtc_data, moc_data,
+						mpc_data, mic_data,
+		output	wire	[31:0]		mem_data, mem_addr, mem_result,
+		output	wire			op_pipe,
+						// op_A_alu, op_B_alu,
+						// op_A_mem, op_B_mem,
+		output	wire	[3:0]		op_opn,
+		output	wire	[31:0]		alu_result,
+		output	wire			alu_busy,
+		output	wire	[4:0]		alu_reg,
+		output	wire			switch_to_interrupt,
+						release_from_interrupt,
+						break_en,
+		// }}}
+`endif
 		output	wire		o_prof_stb,
 		output	wire [ADDRESS_WIDTH-1:0] o_prof_addr,
 		output	wire	[31:0]	o_prof_ticks
@@ -238,6 +337,7 @@ module	zipaxil #(
 	wire	[31:0]	wskd_data;
 	wire	[3:0]	wskd_strb;
 	reg		dbg_write_valid, dbg_read_valid;
+	wire		dbg_blkram_stall;
 	reg	[4:0]	dbg_write_reg;
 	wire	[4:0]	dbg_read_reg;
 	reg	[31:0]	dbg_write_data;
@@ -250,6 +350,7 @@ module	zipaxil #(
 	wire	cpu_clken, cpu_clock, clk_gate;
 	wire	reset_request, release_request, halt_request, step_request,
 		clear_cache_request;
+	wire	cpu_has_halted;
 
 
 	// CPU control registers
@@ -265,22 +366,26 @@ module	zipaxil #(
 	// {{{
 	wire		pf_new_pc, clear_icache, pf_ready;
 	wire [AW+1:0]	pf_request_address;
+`ifndef	VBENCH_TB
 	wire	[31:0]	pf_instruction;
 	wire [AW+1:0]	pf_instruction_pc;
 	wire		pf_valid, pf_illegal;
+`endif
 	// }}}
 	// Memory
 	// {{{
-	wire		clear_dcache, mem_ce, bus_lock;
+	wire		clear_dcache, bus_lock;
 	wire	[2:0]	mem_op;
 	wire	[31:0]	mem_cpu_addr;
 	wire	[AW+1:0]	mem_lock_pc;
 	wire	[31:0]	mem_wdata;
 	wire	[4:0]	mem_reg;
-	wire		mem_busy, mem_rdbusy, mem_pipe_stalled, mem_valid,
-			mem_bus_err;
+	wire		mem_pipe_stalled, mem_bus_err;
+`ifndef	VBENCH_TB
+	wire		mem_ce, mem_valid, mem_busy, mem_rdbusy;
 	wire	[4:0]	mem_wreg;
 	wire	[31:0]	mem_result;
+`endif
 	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -329,7 +434,7 @@ module	zipaxil #(
 	);
 
 	assign	dbg_write_ready = awskd_valid && wskd_valid
-			&& ((wskd_strb==0) || awskd_addr[5]
+			&& ((wskd_strb==0) || awskd_addr[5] != DBG_ADDR_CPU
 			   || !dbg_write_stall)
 			&& (!S_DBG_BVALID || S_DBG_BREADY);
 
@@ -337,7 +442,7 @@ module	zipaxil #(
 	// {{{
 	initial	dbg_write_valid = 0;
 	always @(posedge S_AXI_ACLK)
-	if (!S_AXI_ARESETN)
+	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_write_valid <= 1'b0;
 	else if (!dbg_write_stall)
 		dbg_write_valid <= dbg_cpu_write;
@@ -405,7 +510,7 @@ module	zipaxil #(
 		// }}}
 	);
 
-	assign	dbg_read_ready = arskd_valid && !dbg_read_valid
+	assign	dbg_read_ready = arskd_valid && !dbg_blkram_stall
 				&& (!S_DBG_RVALID || S_DBG_RREADY);
 
 	assign	dbg_read_reg = (OPT_LOWPOWER && !dbg_read_ready)
@@ -413,13 +518,30 @@ module	zipaxil #(
 
 	// dbg_read_valid
 	// {{{
+	reg	[1:0]	r_blkram_stall;
+
+	initial	r_blkram_stall = 0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN || !OPT_DBGPORT)
+		r_blkram_stall <= 0;
+	else if (dbg_read_ready && arskd_addr[5] == DBG_ADDR_CPU)
+		r_blkram_stall <= 2 + (OPT_DISTRIBUTED_REGS ? 0:1);
+	else if (r_blkram_stall > 0)
+		r_blkram_stall <= r_blkram_stall - 1;
+
 	initial	dbg_read_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_read_valid <= 0;
 	else
-		dbg_read_valid <= dbg_read_ready
-					&& arskd_addr[5] == DBG_ADDR_CPU;
+		dbg_read_valid <= (r_blkram_stall == 1);
+
+	assign	dbg_blkram_stall = (r_blkram_stall != 0);
+`ifdef	FORMAL
+	always @(*)
+	if (S_AXI_ARESETN && (dbg_read_valid || dbg_blkram_stall))
+		assert(!S_DBG_RVALID);
+`endif
 	// }}}
 
 	// S_DBG_RVALID
@@ -514,7 +636,7 @@ module	zipaxil #(
 			assert(reset_hold == (reset_counter != 0));
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_RESET_HOLD
 
 		assign reset_hold = 0;
 
@@ -550,11 +672,11 @@ module	zipaxil #(
 		cmd_halt <= START_HALTED;
 	else begin
 		// {{{
-		// When shall we release from a halt?  Only if we have come to
-		// a full and complete stop.  Even then, we only release if we
-		// aren't being given a command to step the CPU.
+		// When shall we release from a halt?  Only if we have
+		// come to a full and complete stop.  Even then, we only
+		// release if we aren't being given a command to step the CPU.
 		//
-		if (!dbg_write_valid && !cpu_dbg_stall && dbg_cmd_write
+		if (!dbg_write_valid && cpu_has_halted && dbg_cmd_write
 				&& (release_request || step_request))
 			cmd_halt <= 1'b0;
 
@@ -577,14 +699,14 @@ module	zipaxil #(
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
-		if (cmd_step)
+		if (cmd_step && !step_request)
 			cmd_halt <= 1'b1;
 
-		// 4. Halt following any clear cache
+		// 5. Halt following any clear cache
 		if (cmd_clear_cache)
 			cmd_halt <= 1'b1;
 
-		// 5. Halt on any clear cache bit--independent of any step bit
+		// 6. Halt on any clear cache bit--independent of any step bit
 		if (clear_cache_request)
 			cmd_halt <= 1'b1;
 		// }}}
@@ -609,10 +731,21 @@ module	zipaxil #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
-	else if (step_request)
-		cmd_step <= 1'b1;
-	else if (!cpu_dbg_stall)
+	else if (cmd_reset || cpu_break
+			|| reset_request
+			|| clear_cache_request || cmd_clear_cache
+			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
+	else if (!dbg_write_valid && cpu_has_halted && step_request)
+		cmd_step <= 1'b1;
+	else // if (cpu_dbg_stall)
+		cmd_step <= 1'b0;
+`ifdef	FORMAL
+	// While STEP is true, we can't halt
+	always @(*)
+	if (S_AXI_ARESETN && cmd_step)
+		assert(!cmd_halt);
+`endif
 	// }}}
 
 	// dbg_catch
@@ -673,7 +806,7 @@ module	zipaxil #(
 	(* anyseq *) reg [2:0]	f_cpu_dbg_cc;
 	(* anyseq *) reg [2:0]	f_cpu_dbg_read_data;
 
-	assign	cpu_dbg_stall	= f_cpu_stall;
+	assign	cpu_dbg_stall = f_cpu_stall && !f_cpu_halted;
 	assign	cpu_break	= f_cpu_break;
 	assign	cpu_dbg_cc	= f_cpu_dbg_cc;
 	assign	dbg_read_data	= f_cpu_dbg_read_data;
@@ -782,8 +915,9 @@ module	zipaxil #(
 `endif
 	assign	o_cmd_reset	= cmd_reset;
 	assign	o_gie		= cpu_dbg_cc[1];
-	assign	o_halted	= !cpu_dbg_stall;
-	assign	dbg_write_stall	= dbg_write_valid&&(cpu_dbg_stall || !clk_gate);
+	assign	dbg_write_stall	= dbg_write_valid && cpu_dbg_stall;
+	assign	cpu_has_halted  = !cpu_dbg_stall;
+	assign	o_halted	= cpu_has_halted;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1028,7 +1162,8 @@ module	zipaxil #(
 		if (!S_AXI_ARESETN)
 			gatep <= 1'b1;
 		else
-			gatep <= cpu_clken;
+			gatep <= cpu_clken || arskd_valid || dbg_write_valid
+						|| dbg_blkram_stall;
 
 		always @(negedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN)
@@ -1046,9 +1181,180 @@ module	zipaxil #(
 
 	end endgenerate
 	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Simulation only accesses, to make the simulation display work
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+`ifdef	VBENCH_TB
+	assign	early_branch = core.dcd_early_branch;
+	assign	early_branch_pc = core.dcd_branch_pc;
 
+	assign	dcdA = core.dcd_full_A;
+	assign	dcdB = core.dcd_full_B;
+
+	assign	new_pc = core.new_pc;
+	assign	cpu_ipc= core.ipc;
+	assign	cpu_upc= core.upc;
+	assign	pf_pc  = core.pf_pc;
+
+	// assign	pf_cyc = thecpu.pf_cyc;
+	// assign	pf_stb = thecpu.pf_stb;
+	// assign	pf_we  = thecpu.pf_we;
+	// assign	pf_addr= { thecpu.pf_addr, 2'b00 };
+	// assign	pf_ack = thecpu.pf_ack;
+	// assign	pf_valid = core.i_pf_valid;
+	// assign	pf_illegal = core.i_pf_illegal;
+	// assign	cpu_idata  = core.i_wb_data;
+	// assign	pf_instruction = core.i_pf_instruction;
+	// assign	pf_instruction_pc = core.i_pf_instruction_pc;
+	//
+	// Peeking into the decode stage
+	// {{{
+	assign	dcd_ce      = core.dcd_ce;
+	assign	dcd_stalled = core.dcd_stalled;
+	assign	dcd_gie     = core.dcd_gie;
+	assign	dcd_valid   = core.dcd_valid;
+	assign	dcd_illegal = core.dcd_illegal;
+	assign	dcd_phase   = core.dcd_phase;
+	assign	dcd_break   = core.dcd_break;
+	assign	dcd_pipe    = core.dcd_pipe;
+		//
+	assign	dcd_opn     = core.dcd_opn;
+	assign	dcd_rA      = core.dcd_rA;
+	assign	dcd_rB      = core.dcd_rB;
+	assign	dcd_wR      = core.dcd_wR;
+	assign	dcd_wF      = core.dcd_wF;
+	assign	dcdR        = core.instruction_decoder.w_dcdR;
+	assign	dcdRpc      = core.instruction_decoder.w_dcdR_pc;
+	assign	dcdRcc      = core.instruction_decoder.w_dcdR_cc;
+	assign	dcd_pc      = core.dcd_pc;
+	assign	dcd_M       = core.dcd_M;
+	// }}}
+	// Peeking into the op stage
+	// {{{
+	assign	op_ce        = core.op_ce;
+	assign	op_illegal   = core.op_illegal;
+	assign	op_valid     = core.op_valid;
+	assign	op_valid_mem = core.op_valid_mem;
+	assign	op_valid_alu = core.op_valid_alu;
+	assign	op_stall     = core.op_stall;
+	assign	op_wR        = core.op_wR;
+	assign	op_wF        = core.op_wF;
+	assign	op_phase     = core.op_phase;
+	assign	op_gie       = core.op_gie;
+	assign	op_pipe      = core.op_pipe;
+	assign	op_R         = core.op_R;
+	assign	op_Aid       = core.op_Aid;
+	assign	op_Bid       = core.op_Bid;
+	assign	op_Av        = core.op_Av;
+	assign	op_Bv        = core.op_Bv;
+	assign	op_pc        = core.op_pc;
+	assign	master_stall = core.master_stall;
+
+	assign	op_F         = core.op_F;
+	assign	op_pipe      = core.op_pipe;
+	assign	op_opn       = core.op_opn;
+	// }}}
+	// Peeking into the ALU stage
+	// {{{
+	assign	alu_ce   = core.alu_ce;
+	assign	adf_ce_unconditional   = core.adf_ce_unconditional;
+	assign	alu_valid      = core.alu_valid;
+	assign	alu_wR         = core.alu_wR;
+	assign	alu_wF         = core.alu_wF;
+	assign	alu_pc_valid   = core.alu_pc_valid;
+	assign	alu_illegal    = core.alu_illegal;
+	assign	alu_gie        = core.alu_gie;
+	assign	set_cond       = core.set_cond;
+	assign	alu_phase      = core.alu_phase;
+	assign	alu_flags      = core.alu_flags;
+	assign	alu_pc         = core.alu_pc;
+
+	assign	alu_result     = core.alu_result;
+	assign	alu_busy       = core.alu_busy;
+	assign	alu_reg        = core.alu_reg;
+	// }}}
+	// Peeking into the MEM stage
+	// {{{
+	//
+	// assign	mem_valid    = core.i_mem_valid;
+	assign	mem_pc_valid = core.mem_pc_valid;
+	// assign	mem_ce       = core.o_mem_ce;
+	// assign	mem_busy     = core.i_mem_busy;
+	// assign	mem_rdbusy   = core.i_mem_rdbusy;
+	// assign	mem_wreg     = core.i_mem_wreg;
+	// }}}
+	// Peeking into the divide stage
+	// {{{
+	assign	div_valid = core.div_valid;
+	assign	div_ce    = core.div_ce;
+	assign	div_busy  = core.div_busy;
+	// }}}
+	// Writeback stage
+	// {{{
+	assign	wr_reg_id = core.wr_reg_id;
+	assign	wr_reg_ce = core.wr_reg_ce;
+	assign	wr_flags_ce = core.wr_flags_ce;
+	assign	wr_gpreg_vl = core.wr_gpreg_vl;
+	assign	wr_spreg_vl = core.wr_spreg_vl;
+	assign	w_iflags    = core.w_iflags;
+	assign	w_uflags    = core.w_uflags;
+	// }}}
+	// Miscellaneous
+	// {{{
+	assign	cpu_sim      = core.cpu_sim;
+	assign	cpu_sim_immv = core.op_sim_immv;
+	assign	r_sleep      = core.sleep;
+	assign	master_ce    = core.master_ce;
+	assign	op_break     = core.op_break;
+	assign	r_gie        = core.gie;
+	// }}}
+	//
+	// ZipSystem peripherals
+	// {{{
+	assign	watchbus = 32'h0;
+	assign	watchdog = 32'h0;
+	assign	timer_a = 32'h0;
+	assign	timer_b = 32'h0;
+	assign	timer_c = 32'h0;
+	assign	jiffies = 32'h0;
+	assign	wdbus_data = 32'h0;
+	assign	pic_data = 32'h0;
+	assign	utc_data = 32'h0;
+	assign	uoc_data = 32'h0;
+	assign	upc_data = 32'h0;
+	assign	uic_data = 32'h0;
+	assign	mtc_data = 32'h0;
+	assign	moc_data = 32'h0;
+	assign	mpc_data = 32'h0;
+	assign	mic_data = 32'h0;
+	//
+	assign	int_state = 16'h0;
+	assign	alt_int_state = 16'h0;
+	// assign	wb_cyc_gbl = mem_cyc_gbl;
+	// assign	wb_stb_gbl = mem_stb_gbl;
+	// assign	wb_cyc_lcl = mem_cyc_lcl;
+	// assign	wb_stb_lcl = mem_stb_lcl;
+	// assign	mem_stb_gbl = mem_stb_gbl;
+	// assign	mem_stb_lcl = mem_stb_lcl;
+	// assign	mem_we     = mem_we;
+	// assign	mem_ack    = mem_ack;
+	// assign	mem_stall  = mem_stall;
+	assign	mem_data   = mem_wdata;
+	assign	mem_addr   = { core.o_mem_addr };
+	// assign	mem_result = core.i_mem_result;
+	assign	switch_to_interrupt = core.w_switch_to_interrupt;
+	assign	release_from_interrupt = core.w_release_from_interrupt;
+	assign	break_en = core.break_en;
+	// }}}
+`endif
+	// }}}
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, cpu_clken, cpu_dbg_cc[2],
@@ -1065,6 +1371,7 @@ module	zipaxil #(
 		assign	unused_addr = &{ 1'b0, mem_cpu_addr[31:ADDRESS_WIDTH] };
 	end endgenerate
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

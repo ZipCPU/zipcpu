@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2018-2022, Gisselquist Technology, LLC
+// Copyright (C) 2018-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -158,16 +158,21 @@ module	f_idecode #(
 	assign	w_sto    = (w_mem)&&( w_cis_op[0]);
 	assign	w_div    = (!iword[CISBIT])&&(w_op[4:1] == 4'h7);
 	assign	w_fpu    = (!iword[CISBIT])&&(w_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
+				&&(w_dcdR[3:1] != 3'h7)
+				&&(w_op[2:1] != 2'b00);
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
-	assign	w_special= (!iword[CISBIT])&&((!OPT_FPU)||(w_dcdR[3:1]==3'h7))
+	assign	w_special= (!iword[CISBIT])&&(w_dcdR[3:1]==3'h7)
 			&&(w_op[4:2] == 3'b111);
 	assign	w_break = (w_special)&&(w_op[4:0]==5'h1c);
 	assign	w_lock  = (w_special)&&(w_op[4:0]==5'h1d);
 	assign	w_sim   = (w_special)&&(w_op[4:0]==5'h1e);
 	assign	w_noop  = (w_special)&&(w_op[4:1]==4'hf); // Must include w_sim
+`ifdef	FORMAL
+	always @(*)
+		assert(!w_special || !w_fpu);
+`endif
 	// }}}
 
 	// w_dcdR, w_dcdA
@@ -216,7 +221,7 @@ module	f_idecode #(
 	// rA - do we need to read register A?
 	// {{{
 	assign	w_rA = // Floating point reads reg A
-			((w_fpu)&&(OPT_FPU))
+			(w_fpu)
 			// Divide's read A
 			||(w_div)
 			// ALU ops read A,
@@ -253,7 +258,7 @@ module	f_idecode #(
 	// wF -- do we write flags when we are done?
 	// {{{
 	assign	w_wF     = (w_cmptst)
-			||((w_cond[3])&&(((w_fpu)&&(OPT_FPU))||(w_div)
+			||((w_cond[3])&&(w_fpu||w_div
 				||((w_ALU)&&(!w_mov)&&(!w_ldilo)&&(!w_brev)
 					&&(w_dcdR[3:1] != 3'h7))));
 	// }}}
@@ -350,7 +355,7 @@ module	f_idecode #(
 			o_illegal = 1'b1;
 
 
-		if ((!OPT_FPU)&&(w_fpu))
+		if (!OPT_FPU && w_fpu)
 			o_illegal = 1'b1;
 
 		if ((!OPT_SIM)&&(w_sim))

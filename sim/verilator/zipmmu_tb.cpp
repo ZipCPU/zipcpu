@@ -15,7 +15,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -60,23 +60,36 @@
 #define	setup_ack	o_rtn_ack
 #define	setup_stall	o_rtn_stall
 #define	setup_data	o_rtn_data
-#define	mem_cyc		v__DOT__mem_cyc
-#define	mem_stb		v__DOT__mem_stb
-#define	mem_we		v__DOT__mem_we
-#define	mem_r_we	v__DOT__mut__DOT__r_we
-#define	mem_r_valid	v__DOT__mut__DOT__r_valid
-#define	mem_addr	v__DOT__mem_addr
-#define	mem_err		v__DOT__mem_err
-#define	wr_vtable	v__DOT__mut__DOT__wr_vtable
-#define	wr_ptable	v__DOT__mut__DOT__wr_ptable
-#define	wr_control	v__DOT__mut__DOT__wr_control
-#define	z_context	__PVT__mut__DOT__z_context
-#define	context_word	v__DOT__mut__DOT__r_context_word
-#define	r_pending	v__DOT__mut__DOT__r_pending
-#define	r_we		v__DOT__mut__DOT__r_we
-#define	r_valid		v__DOT__mut__DOT__r_valid
-#define	r_addr		v__DOT__mut__DOT__r_addr
-#define	r_data		v__DOT__mut__DOT__r_data
+#ifdef	ROOT_VERILATOR
+#include "Vzipmmu_tb___024root.h"
+  #define VVAR(A)	rootp->zipmmu_tb__DOT_## A
+  #define ram_mem	rootp->zipmmu_tb__DOT__ram__DOT__mem.m_storage
+#elif defined(NEW_VERILATOR)
+  #define VVAR(A)	zipmmu_tb__DOT_## A
+  #define ram_mem	zipmmu_tb__DOT__ram__DOT__mem
+#else
+  #define VVAR(A)	v__DOT_## A
+  #define ram_mem	v__DOT__ram__DOT__mem
+#endif
+
+// #define	mem_odata	VVAR(_mem_odata)
+// #define	mem_cyc		VVAR(_mem_cyc)
+// #define	mem_stb		VVAR(_mem_stb)
+// #define	mem_we		VVAR(_mem_we)
+// #define	mem_r_we	VVAR(_mut__DOT__r_we)
+// #define	mem_r_valid	VVAR(_mut__DOT__r_valid)
+// #define	mem_addr	VVAR(_mem_addr)
+// #define	mem_err		VVAR(_mem_err)
+// #define	wr_vtable	VVAR(_mut__DOT__wr_vtable)
+// #define	wr_ptable	VVAR(_mut__DOT__wr_ptable)
+// #define	wr_control	VVAR(_mut__DOT__wr_control)
+// #define	z_context	__PVT__mut__DOT__z_context
+// #define	context_word	VVAR(_mut__DOT__r_context_word)
+// #define	r_pending	VVAR(_mut__DOT__r_pending)
+// #define	r_we		VVAR(_mut__DOT__r_we)
+// #define	r_valid		VVAR(_mut__DOT__r_valid)
+// #define	r_addr		VVAR(_mut__DOT__r_addr)
+// #define	r_data		VVAR(_mut__DOT__r_data)
 
 #define	R_CONTROL		0
 #define	R_STATUS		4
@@ -103,7 +116,7 @@ public:
 	}
 
 	void	tick(void) {
-
+		// {{{
 		TESTB<Vzipmmu_tb>::tick();
 
 		bool	writeout = true;
@@ -125,7 +138,7 @@ public:
 				(m_core->mem_err)?"ER":"  ",
 				(m_core->i_wb_we)?"<-":"->",
 				(m_core->i_wb_we)?m_core->i_wb_data:m_core->o_rtn_data,
-				(m_core->mem_we)?m_core->r_data:m_core->v__DOT__mem_odata,
+				(m_core->mem_we)?m_core->r_data:m_core->mem_odata,
 				(m_core->o_rtn_stall)?"STALL":"     ",
 				(m_core->o_rtn_ack )?"ACK":"   ",
 				(m_core->o_rtn_miss)?"MISS":"    ",
@@ -137,9 +150,9 @@ public:
 				:(m_core->wr_ptable)?'P'
 				:'-');
 			printf("[%c,%04x]",
-				(m_core->v__DOT__mut__DOT__kernel_context)?'K'
-				:(m_core->v__DOT__mut__DOT__z_context)?'Z':'-',
-				m_core->v__DOT__mut__DOT__r_context_word);
+				(m_core->kernel_context)?'K'
+				:(m_core->z_context)?'Z':'-',
+				m_core->r_context_word);
 			printf(" %s[%s%s@%08x,%08x]",
 				(m_core->r_pending)?"R":" ",
 				(m_core->r_we)?"W":" ",
@@ -147,15 +160,15 @@ public:
 				(m_core->r_addr),
 				(m_core->r_data));
 			printf("@%2x[%s%s%s][%s%s%s%s%s]",
-				(m_core->v__DOT__mut__DOT__s_tlb_addr),
-				(m_core->v__DOT__mut__DOT__s_pending)?"P":" ",
-				(m_core->v__DOT__mut__DOT__s_tlb_hit)?"HT":"  ",
-				(m_core->v__DOT__mut__DOT__s_tlb_miss)?"MS":"  ",
-				(m_core->v__DOT__mut__DOT__ro_flag)?"RO":"  ",
-				(m_core->v__DOT__mut__DOT__simple_miss)?"SM":"  ",
-				(m_core->v__DOT__mut__DOT__ro_miss)?"RM":"  ",
-				(m_core->v__DOT__mut__DOT__exe_miss)?"EX":"  ",
-				(m_core->v__DOT__mut__DOT__table_err)?"TE":"  ");
+				(m_core->s_tlb_addr),
+				(m_core->s_pending)?"P":" ",
+				(m_core->s_tlb_hit)?"HT":"  ",
+				(m_core->s_tlb_miss)?"MS":"  ",
+				(m_core->ro_flag)?"RO":"  ",
+				(m_core->simple_miss)?"SM":"  ",
+				(m_core->ro_miss)?"RM":"  ",
+				(m_core->exe_miss)?"EX":"  ",
+				(m_core->table_err)?"TE":"  ");
 				//(m_core->v__DOT__mut__DOT__cachable)?"CH":"  ");
 			/*
 			printf(" M[%016lx]",
@@ -163,16 +176,18 @@ public:
 			*/
 			printf(" P[%3d%c] = 0x%03x, V=0x%03x, C=0x%04x, CTXT=%04x",
 				m_last_tlb_index,
-				((m_core->v__DOT__mut__DOT__tlb_valid>>m_last_tlb_index)&1)?'V':'u',
-				m_core->v__DOT__mut__DOT__tlb_pdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__tlb_vdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__tlb_cdata[m_last_tlb_index],
-				m_core->v__DOT__mut__DOT__r_context_word);
+				((m_core->tlb_valid>>m_last_tlb_index)&1)?'V':'u',
+				m_core->tlb_pdata,
+				m_core->tlb_vdata,
+				m_core->tlb_cdata,
+				m_core->r_context_word);
 			printf("\n");
 		}
 	}
+	// }}}
 
 	void reset(void) {
+		// {{{
 		m_core->i_reset    = 1;
 		m_core->i_ctrl_cyc_stb = 0;
 		m_core->i_gie      = 0;
@@ -182,8 +197,10 @@ public:
 		tick();
 		m_core->i_reset  = 0;
 	}
+	// }}}
 
 	void wb_tick(void) {
+		// {{{
 		m_core->i_reset  = 0;
 		m_core->i_ctrl_cyc_stb = 0;
 		m_core->i_wbm_cyc  = 0;
@@ -192,17 +209,21 @@ public:
 		assert(!m_core->o_rtn_ack);
 		assert(!m_core->o_rtn_err);
 	}
+	// }}}
 
 	unsigned operator[](unsigned a) {
+		// {{{
 		unsigned	msk = (1<<LGMEMSIZE)-1;
 // printf("OP[] Reading from %08x\n", a);
 		assert((a&3)==0);
 		a = (a>>2)&(msk);
 // printf("OP[] ----> %08x\n", a);
-		return m_core->v__DOT__ram__DOT__mem[a];
+		return m_core->ram_mem[a];
 	}
+	// }}}
 
 	unsigned setup_read(unsigned a) {
+		// {{{
 		int		errcount = 0;
 		unsigned	result;
 		m_miss = false; m_err = false;
@@ -254,8 +275,10 @@ public:
 
 		return result;
 	}
+	// }}}
 
 	void setup_write(unsigned a, unsigned v) {
+		// {{{
 		int		errcount = 0;
 		m_miss = false; m_err = false;
 
@@ -309,8 +332,10 @@ public:
 		assert(!m_core->o_rtn_err);
 		assert(!m_core->o_rtn_stall);
 	}
+	// }}}
 
 	unsigned wb_read(unsigned a, bool *err) {
+		// {{{
 		int		errcount = 0;
 		unsigned	result;
 		if (err)	*err = false;
@@ -382,8 +407,10 @@ public:
 
 		return result;
 	}
+	// }}}
 
 	void	wb_read(unsigned a, int len, unsigned *buf, bool *err) {
+		// {{{
 		int		errcount = 0;
 		int		THISBOMBCOUNT = BOMBCOUNT * len;
 		int		cnt, rdidx, inc;
@@ -468,8 +495,10 @@ public:
 		assert(!m_core->o_rtn_err);
 		assert(!m_core->o_rtn_stall);
 	}
+	// }}}
 
 	void	wb_write(unsigned a, unsigned v, bool *err) {
+		// {{{
 		int errcount = 0;
 
 		if (err)	*err = false;
@@ -549,10 +578,13 @@ public:
 		assert(!m_core->o_rtn_err);
 		assert(!m_core->o_rtn_stall);
 	}
+	// }}}
 
-	void	wb_write(unsigned a, unsigned int ln, unsigned *buf, bool *err) {
+	void	wb_write(unsigned a, unsigned int ln, unsigned *buf, bool *err){
+		// {{{
 		unsigned errcount = 0, nacks = 0;
-		if (err)	*err = false;
+		if (err)
+			*err = false;
 
 		printf("WB-WRITEM(%08x, %d, ...)\n", a, ln);
 		m_core->i_ctrl_cyc_stb = 0;
@@ -628,6 +660,7 @@ public:
 		assert(!m_core->o_rtn_err);
 		assert(!m_core->o_rtn_stall);
 	}
+	// }}}
 
 	bool	miss(void) {
 		return m_miss;
@@ -642,6 +675,7 @@ public:
 };
 
 void	uload(unsigned len, unsigned *buf) {
+	// {{{
 	FILE	*fp = fopen("/dev/urandom", "r");
 
 	if ((NULL == fp)||(len != fread(buf, sizeof(unsigned), len, fp))) {
@@ -650,8 +684,10 @@ void	uload(unsigned len, unsigned *buf) {
 	} if (NULL == fp)
 		fclose(fp);
 }
+// }}}
 
 void	install_page(ZIPMMU_TB *tb, int idx, unsigned va, unsigned pa, int flags) {
+	// {{{
 	int	LGTBL, LGPGSZ, LGCTXT;
 	int	c;
 	unsigned base;
@@ -680,13 +716,23 @@ void	install_page(ZIPMMU_TB *tb, int idx, unsigned va, unsigned pa, int flags) {
 	tb->tick();
 	tb->m_core->i_gie = 1;
 }
+// }}}
 
 int main(int  argc, char **argv) {
+	// {{{
 	Verilated::commandArgs(argc, argv);
 	ZIPMMU_TB	*tb = new ZIPMMU_TB;
 	unsigned 	*rdbuf; // *mbuf;
 	unsigned	mlen = (1<<LGMEMSIZE), c, blen;
 	const unsigned	CONTEXT = 0x0fef7;
+
+	printf(
+"WARNING: This version of the ZipMMU is *DEPRECATED*.  It has never been\n"
+"integrated into the CPU, while the CPU has changed.  As a result, the\n"
+"environment it would integrate into has changed so significantly this\n"
+"component will need a complete redesign before it can be integrated.\n"
+"It remains in the repository until a replacement can be written (and\n"
+"hopefully) integrated as well.\n\n");
 
 	tb->opentrace("zipmmu_tb.vcd");
 	printf("Giving the core 2 cycles to start up\n");
@@ -889,3 +935,4 @@ test_failure:
 	printf("TEST FAILED\n");
 	exit(-1);
 }
+// }}}

@@ -75,6 +75,41 @@ $dir = ".";
 	"zipmmu",
 	"ziptimer"
 	);
+
+%desc = (
+	"axidcache"	=> "AXI Data cache",
+	"axiicache"	=> "AXI Instruction cache",
+	"axilfetch"	=> "AXI-Lite instruction fetch",
+	"axilops"	=> "Simple AXI-Lite data controller",
+	"axilpipe"	=> "AXI-Lite pipelined memory controller",
+	"axiops"	=> "Simple AXI data controller",
+	"axipipe"	=> "AXI pipelined memory controller",
+	"busdelay"	=> "A bus delay",
+	"cpuops"	=> "CPU ALU",
+	"dblfetch"	=> "WB Instruction fetch, fetches two insns at a time",
+	"dcache"	=> "WB Data cache",
+	"div"		=> "ODDR, used in reference clock generation",
+	"icontrol"	=> "Interrupt controller",
+	"idecode"	=> "Instruction decoder",
+	"memops"	=> "Simple WB memory controller",
+	"pfcache"	=> "WB instruction fetch and cache",
+	"pipemem"	=> "WB Pipelined memory controller",
+	"prefetch"	=> "Simple WB instruction fetch",
+	"wbdblpriarb"	=> "WB double priority arbiter, for global and local buses",
+	"wbwatchdog"	=> "WB Watchdog controller",
+	"zipaxil"	=> "AXI-Lite ZipCPU wrapper",
+	"zipaxi"	=> "AXI ZipCPU wrapper",
+	"zipbones"	=> "Simpler Wishbone wrapper",
+	"zipcore"	=> "Core ZipCPU",
+	"zipcounter"	=> "A simpler peripheral counter",
+	"zipdma_mm2s"	=> "WB ZipDMA read half",
+	"zipdma_s2mm"	=> "WB ZipDMA write half",
+	"zipdma_rxgears"=> "WB ZipDMA incoming gearbox",
+	"zipdma_txgears"=> "WB ZipDMA outgoing gearbox",
+	"zipjiffies"	=> "ZipCPU Jiffies peripheral",
+	"zipmmu"	=> "Zip MMU (deprecated)",
+	"ziptimer"	=> "Peripheral timer"
+	);
 ## }}}
 
 ## getstatus subroutine
@@ -153,14 +188,14 @@ sub getstatus($) {
 		} else {
 			"PASS";
 		}
-	} elsif ($terminated) {
-		"Terminated";
 	} elsif ($FAIL) {
 		"FAIL";
 	} elsif ($ERR) {
 		"ERROR";
 	} elsif (($ind == 0 || $UNK != 0) && $bmc > 0) {
 		"BMC $bmc";
+	} elsif ($terminated) {
+		"Terminated";
 	} else {
 		"Unknown";
 	}
@@ -173,7 +208,7 @@ print <<"EOM";
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
 <TABLE border>
-<TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH></TR>
+<TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 EOM
 ## }}}
 
@@ -190,6 +225,17 @@ closedir(DIR);
 
 # Lookup each components proof
 foreach $prf (sort @proofs) {
+	my $ndirs=0;
+	foreach $dent (@dirent) {
+		next if (! -d $dent);
+		next if ($dent =~ /^\./);
+		next if ($dent !~ /$prf(_\S+)/);
+			$subprf = $1;
+
+		$ndirs = $ndirs+1;
+	}
+
+	my $firstd = 1;
 
 	# Find each subproof of the component
 	foreach $dent (@dirent) {
@@ -210,7 +256,14 @@ foreach $prf (sort @proofs) {
 
 		## Fill out one entry of our table
 		## {{{
-		my $tail = "</TD><TD>$prf</TD><TD>$subprf</TD></TR>\n";
+		my $tail;
+		if ($firstd) {
+			print "<TR></TR>\n";
+			$tail = "</TD><TD>$prf</TD><TD>$subprf</TD><TD rowspan=$ndirs>$desc{$prf}</TD></TR>\n";
+			$firstd = 0;
+		} else {
+			$tail = "</TD><TD>$prf</TD><TD>$subprf</TD></TR>\n";
+		}
 		if ($st =~ /PASS/) {
 			print "<TR><TD bgcolor=#caeec8>Pass$tail";
 		} elsif ($st =~ /Cover\s+(\d+)/) {
@@ -231,6 +284,8 @@ foreach $prf (sort @proofs) {
 			print "<TR><TD bgcolor=#e5e5e5>Unknown$tail";
 		}
 		## }}}
+	} if ($myfirstd != 0) {
+		print "<TR><TD bgcolor=#e5e5e5>Not found</TD><TD>$prf</TD><TD>&nbsp;</TD><TD rowspan=$ndirs>$desc{$prf}</TD></TR>\n";
 	}
 }
 

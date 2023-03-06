@@ -95,7 +95,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2015-2022, Gisselquist Technology, LLC
+## Copyright (C) 2015-2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
@@ -120,7 +120,7 @@
 ################################################################################
 ##
 ## }}}
-all: mkhex pdump div_tb mpy_tb pfcache_tb
+all: mkhex pdump div_tb mpy_tb pfcache_tb zipsys_tb zipbones_tb
 ##
 ## The following are now obsolete.  (They were structurally unable to test
 ## multiple design configurations.)  They may be re-enabled later:
@@ -134,7 +134,7 @@ CXX	:= g++
 # in the rtl directory
 # CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64 -DVM_COVERAGE=1
 #
-CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64
+CFLAGS	:= -Wall -Og -g -D__WORDSIZE=64 -faligned-new
 OBJDIR  := obj-pc
 ZASM	:= ../../sw/zasm
 RTLD	:= ../../rtl
@@ -159,7 +159,7 @@ SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
 AXLOBJS := $(OBJDIR)/zipaxil_tb.o  $(SIMOBJS)
-VLSRCS	:= verilated.cpp verilated_vcd_c.cpp
+VLSRCS	:= verilated.cpp verilated_vcd_c.cpp verilated_threads.cpp
 #
 # Use the verilated_cov.cpp source when you want to run Verilator coverage
 # (The CPU is covered better by the formal proofs ...)
@@ -200,30 +200,30 @@ $(OBJDIR)/%.o: $(VROOT)/include/%.cpp
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
 
 zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(SYSOBJS) $(VLOBJS) $(SYSLIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(SYSOBJS) $(VLOBJS) $(SYSLIBS) -lpthread -o $@
 
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -lpthread -o $@
 
 zipaxil_tb: $(AXLOBJS) $(VLOBJS) $(RAWAXLLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -lpthread -o $@
 
-div_tb: div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -o $@
+div_tb: div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
 
-mpy_tb: mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -o $@
+mpy_tb: mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
 
-zipmmu_tb: zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -o $@
+zipmmu_tb: zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -lpthread -o $@
 
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
-pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -o $@
+pfcache_tb: $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
 
 pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
-	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -o $@
+	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -lpthread -o $@
 
 .PHONY: stest
 atest: zipsys_tb

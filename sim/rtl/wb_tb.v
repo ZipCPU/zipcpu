@@ -27,7 +27,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022, Gisselquist Technology, LLC
+// Copyright (C) 2022-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -160,6 +160,11 @@ module	wb_tb #(
 	// }}}
 
 	wire	[OPT_SMP-1:0]	cpu_int;
+	// Verilator lint_off UNUSED
+	wire	[OPT_SMP-1:0]	cpu_halted, cpu_op_stall, cpu_pf_stall,
+				cpu_i_count, cpu_gie;
+	// Verilator lint_on  UNUSED
+
 	wire			scope_int;
 	wire	[31:0]		cpu_trace;
 
@@ -510,6 +515,12 @@ module	wb_tb #(
 			// }}}
 		);
 
+		assign	cpu_halted[0]   = u_cpu.cpu_has_halted;
+		assign	cpu_op_stall[0] = u_cpu.cpu_op_stall;
+		assign	cpu_pf_stall[0] = u_cpu.cpu_pf_stall;
+		assign	cpu_i_count[0]  = u_cpu.cpu_i_count;
+		assign	cpu_gie[0]      = u_cpu.cpu_dbg_cc[1];
+
 	end else begin : GEN_ZIPSYSTEM
 
 		zipsystem #(
@@ -573,6 +584,13 @@ module	wb_tb #(
 			// }}}
 			// }}}
 		);
+
+		assign	cpu_halted[0]   = u_cpu.cpu_has_halted;
+		assign	cpu_op_stall[0] = u_cpu.cpu_op_stall;
+		assign	cpu_pf_stall[0] = u_cpu.cpu_pf_stall;
+		assign	cpu_i_count[0]  = u_cpu.cpu_i_count;
+		assign	cpu_gie[0]      = u_cpu.cpu_gie;
+
 
 		// Verilator lint_off UNUSED
 		wire	unused_zipsys;
@@ -731,6 +749,12 @@ module	wb_tb #(
 				// }}}
 			);
 
+			assign	cpu_halted[gk]   = u_smp.cpu_has_halted;
+			assign	cpu_op_stall[gk] = u_smp.cpu_op_stall;
+			assign	cpu_pf_stall[gk] = u_smp.cpu_pf_stall;
+			assign	cpu_i_count[gk]  = u_smp.cpu_i_count;
+			assign	cpu_gie[gk]      = u_smp.cpu_dbg_cc[1];
+
 		end else begin : GEN_ZIPSYSTEM
 
 			zipsystem #(
@@ -762,7 +786,7 @@ module	wb_tb #(
 				.OPT_ACCOUNTING(1'b1),
 				.EXTERNAL_INTERRUPTS(1)
 				// }}}
-			) u_cpu (
+			) u_smp (
 				// {{{
 				.i_clk(i_clk), .i_reset(i_reset),
 				// Master bus
@@ -796,6 +820,12 @@ module	wb_tb #(
 				// }}}
 				// }}}
 			);
+
+			assign	cpu_halted[gk]   = u_smp.cpu_has_halted;
+			assign	cpu_op_stall[gk] = u_smp.cpu_op_stall;
+			assign	cpu_pf_stall[gk] = u_smp.cpu_pf_stall;
+			assign	cpu_i_count[gk]  = u_smp.cpu_i_count;
+			assign	cpu_gie[gk]      = u_smp.cpu_gie;
 
 			// Verilator coverage_off
 			// Verilator lint_off UNUSED
@@ -1023,6 +1053,23 @@ module	wb_tb #(
 			jiffies_data;	// Jiffies
 	wire	[31:0]	dma_slv_data;
 
+	wire	[31:0]	mtc_data, moc_data, mpc_data, mic_data;
+	wire	[31:0]	utc_data, uoc_data, upc_data, uic_data;
+
+	// Verilator lint_off UNUSED
+	wire		ign_mtc_stall, ign_moc_stall,
+			ign_mpc_stall, ign_mic_stall;
+	wire		ign_utc_stall, ign_uoc_stall,
+			ign_upc_stall, ign_uic_stall;
+	wire		ign_mtc_ack, ign_moc_ack,
+			ign_mpc_ack, ign_mic_ack;
+	wire		ign_utc_ack, ign_uoc_ack,
+			ign_upc_ack, ign_uic_ack;
+
+	wire		mtc_int, moc_int, mpc_int, mic_int;
+	wire		utc_int, uoc_int, upc_int, uic_int;
+	// Verilator lint_on  UNUSED
+
 	reg		zsys_stb_d;
 	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 
@@ -1071,6 +1118,153 @@ module	wb_tb #(
 	assign	zsys_idata = 32'h0;
 	assign	zsys_err   = 1'b0;
 
+	// SMP[0] Master counters
+	// {{{
+	zipcounter
+	mtask_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(!cpu_halted[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h8),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_mtc_stall),
+		.o_wb_ack(ign_mtc_ack),
+		.o_wb_data(mtc_data),
+		.o_int(mtc_int)
+		// }}}
+	);
+
+	/*
+	zipcounter
+	mmstall_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(!halt),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h8),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_mtc_stall),
+		.o_wb_ack(ign_mtc_ack),
+		.o_wb_data(mtc_data),
+		.o_int(mtc_int)
+		// }}}
+	);
+	*/
+	assign { ign_moc_ack, ign_moc_stall, moc_int, moc_data } = 35'h0;
+
+	/*
+	zipcounter
+	mpstall_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(!halt),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'h8),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_mtc_stall),
+		.o_wb_ack(ign_mtc_ack),
+		.o_wb_data(mtc_data),
+		.o_int(mtc_int)
+		// }}}
+	);
+	*/
+	assign { ign_mpc_ack, ign_mpc_stall, mpc_int, mpc_data } = 35'h0;
+
+	zipcounter
+	mins_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(cpu_i_count[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'hb),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_mic_stall),
+		.o_wb_ack(ign_mic_ack),
+		.o_wb_data(mic_data),
+		.o_int(mic_int)
+		// }}}
+	);
+	// }}}
+
+	// SMP[0] User counters
+	// {{{
+	zipcounter
+	utask_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(!cpu_halted[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'hc),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_utc_stall),
+		.o_wb_ack(ign_utc_ack),
+		.o_wb_data(utc_data),
+		.o_int(utc_int)
+		// }}}
+	);
+
+	/*
+	zipcounter
+	umstall_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(cpu_op_stall[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'hd),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_uoc_stall),
+		.o_wb_ack(ign_uoc_ack),
+		.o_wb_data(uoc_data),
+		.o_int(uoc_int)
+		// }}}
+	);
+	*/
+	assign { ign_uoc_ack, ign_uoc_stall, uoc_int, uoc_data } = 35'h0;
+
+	/*
+	zipcounter
+	mpstall_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(cpu_pf_stall[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'he),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_mpc_stall),
+		.o_wb_ack(ign_mpc_ack),
+		.o_wb_data(mpc_data),
+		.o_int(mpc_int)
+		// }}}
+	);
+	*/
+	assign { ign_upc_ack, ign_upc_stall, upc_int, upc_data } = 35'h0;
+
+	zipcounter
+	uins_ctr (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_event(cpu_gie[0] && cpu_i_count[0]),
+		.i_wb_cyc(zsys_cyc),
+		.i_wb_stb(zsys_stb && zsys_addr[4:0] == 5'hf),
+		.i_wb_we(zsys_we),
+		.i_wb_data(zsys_data),
+		.o_wb_stall(ign_uic_stall),
+		.o_wb_ack(ign_uic_ack),
+		.o_wb_data(uic_data),
+		.o_int(uic_int)
+		// }}}
+	);
+	// }}}
+
+
 	always @(posedge i_clk)
 	if (zsys_stb_d)
 	begin
@@ -1084,14 +1278,14 @@ module	wb_tb #(
 		 5: r_zsys_data <= timer_b_data;	// Timer B
 		 6: r_zsys_data <= timer_c_data;	// Timer C
 		 7: r_zsys_data <= jiffies_data;	// Jiffies
-		 8: begin end
-		 9: begin end
-		10: begin end
-		11: begin end
-		12: begin end
-		13: begin end
-		14: begin end
-		15: begin end
+		 8: r_zsys_data <= mtc_data;
+		 9: r_zsys_data <= moc_data;
+		10: r_zsys_data <= mpc_data;
+		11: r_zsys_data <= mic_data;
+		12: r_zsys_data <= utc_data;
+		13: r_zsys_data <= uoc_data;
+		14: r_zsys_data <= upc_data;
+		15: r_zsys_data <= uic_data;
 		16: r_zsys_data <= dma_slv_data;
 		17: r_zsys_data <= dma_slv_data;
 		18: r_zsys_data <= dma_slv_data;

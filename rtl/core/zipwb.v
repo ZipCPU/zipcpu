@@ -143,6 +143,7 @@ module	zipwb #(
 		input	wire	[4:0]		i_dbg_rreg,
 		// Debug interface -- outputs
 		output	wire			o_dbg_stall,
+		output	wire			o_halted,
 		output	wire [DATA_WIDTH-1:0]	o_dbg_reg,
 		output	wire	[2:0]		o_dbg_cc,
 		output	wire			o_break,
@@ -301,6 +302,7 @@ module	zipwb #(
 	);
 
 	assign	o_dbg_stall = w_dbg_stall || !clk_gate;
+	assign	o_halted    = !w_dbg_stall;
 	// }}}
 	// o_debug -- the debugging bus input
 	// {{{

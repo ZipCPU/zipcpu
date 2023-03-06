@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2019-2022, Gisselquist Technology, LLC
+// Copyright (C) 2019-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -35,7 +35,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -55,6 +55,7 @@
 #define	MEMLEN	0x04000000
 
 int	nextlg(unsigned vl) {
+	// {{{
 	int		nb = 0;
 	unsigned	r;
 
@@ -62,8 +63,10 @@ int	nextlg(unsigned vl) {
 		nb++;
 	return nb;
 }
+// }}}
 
 void	usage(void) {
+	// {{{
 	printf("USAGE: mkfile [-hv] <zip-program-file>\n");
 	printf("\n"
 "\t-h\tDisplay this usage statement\n"
@@ -71,8 +74,10 @@ void	usage(void) {
 "\nThis program will produce a hex file suitable for using with memdev\n"
 "as a boot ROM\n");
 }
+// }}}
 
 int main(int argc, char **argv) {
+	// {{{
 	int		skp=0;
 	bool		verbose = false;
 	unsigned	entry = 0, buswidth=32;
@@ -230,4 +235,5 @@ int main(int argc, char **argv) {
 	fclose(fpimg);
 	return EXIT_SUCCESS;
 }
+// }}}
 

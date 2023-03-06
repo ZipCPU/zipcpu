@@ -1,7 +1,7 @@
 /*******************************************************************************
 **
 ** Filename: 	zasm.y
-**
+** {{{
 ** Project:	Zip CPU -- a small, lightweight, RISC CPU core
 **
 ** Purpose:	The parser for the Zip Assembler.  This is actually not just
@@ -11,9 +11,9 @@
 **		Gisselquist Technology, LLC
 **
 ********************************************************************************
-**
-** Copyright (C) 2015, Gisselquist Technology, LLC
-**
+** }}}
+** Copyright (C) 2015-2023, Gisselquist Technology, LLC
+** {{{
 ** This program is free software (firmware): you can redistribute it and/or
 ** modify it under the terms of  the GNU General Public License as published
 ** by the Free Software Foundation, either version 3 of the License, or (at
@@ -32,7 +32,7 @@
 ** License:	GPL, v3, as defined and found on www.gnu.org,
 **		http://www.gnu.org/licenses/gpl.html
 **
-**
+** }}}
 *******************************************************************************/
 
 %{

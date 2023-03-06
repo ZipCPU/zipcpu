@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2017-2022, Gisselquist Technology, LLC
+## Copyright (C) 2017-2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -799,6 +799,10 @@ $(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
 ## }}}
 
 ## }}}
+
+.PHONY: report
+report:
+	+perl genreport.pl > report.html
 
 .PHONY: clean
 ## {{{

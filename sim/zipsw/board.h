@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2017-2022, Gisselquist Technology, LLC
+// Copyright (C) 2017-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -70,11 +70,11 @@ typedef	struct	ZIPSYS	AXILP;
 // SMP access
 // {{{
 typedef struct  SMP_S {
-	unsigned	c_control;
-	unsigned	c_unused_0[31];
-	unsigned	c_sreg[16];
-	unsigned	c_ureg[16];
-	unsigned	c_unused_1[64];
+	volatile unsigned	c_control;
+	volatile unsigned	c_unused_0[31];
+	volatile unsigned	c_sreg[16];
+	volatile unsigned	c_ureg[16];
+	volatile unsigned	c_unused_1[64];
 } SMP;
 
 // }}}

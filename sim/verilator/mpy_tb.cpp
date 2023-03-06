@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -51,19 +51,7 @@
 #include "verilated.h"
 #include "Vcpuops.h"
 
-#ifdef	ROOT_VERILATOR
-#include "Vcpuops___024root.h"
-
-#define	VVAR(A)	rootp->cpuops__DOT_ ## A
-#elif	defined(NEW_VERILATOR)
-#define	VVAR(A)	cpuops__DOT_ ## A
-#else
-#define	VVAR(A)	v__DOT_ ## A
-#endif
-
-
 #include "testb.h"
-#include "cpudefs.h"
 // #include "twoc.h"
 
 // class CPUOPS_TB declaration
@@ -132,40 +120,12 @@ public:
 			(m_core->o_busy)?"B":" ");
 		s = &outstr[strlen(outstr)];
 
-#if(OPT_MULTIPLY==1)
-#define	mpy_result	VVAR(_mpy_result)
-		sprintf(s, "1,MPY[][][%016lx]",
-			(unsigned long)m_core->mpy_result);
-		s = &outstr[strlen(outstr)];
-#elif(OPT_MULTIPLY==2)
-		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
-#define	MPY2VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPY2CK__DOT_ ## A)
-#define	r_mpy_a_input	MPY2VAR(_r_mpy_a_input)
-#define	r_mpy_b_input	MPY2VAR(_r_mpy_b_input)
-#define	mpy_result	VVAR(_mpy_result)
-			m_core->r_mpy_a_input,
-			m_core->r_mpy_b_input,
-			m_core->mpy_result);
-		s = &outstr[strlen(outstr)];
-#elif(OPT_MULTIPLY==3)
-#define	MPY3VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPN2__DOT__MPY3CK__DOT_ ## A)
-#define	r_mpy_a_input	MPY3VAR(_r_mpy_a_input)
-#define	r_mpy_b_input	MPY3VAR(_r_mpy_b_input)
-#define	r_smpy_result	MPY3VAR(_r_smpy_result)
-#define	mpypipe		MPY3VAR(_mpypipe)
-		sprintf(s, "3,MPY[%08x][%08x][%016llx], P[%d]",
-			m_core->r_mpy_a_input,
-			m_core->r_mpy_b_input,
-			(long long)m_core->r_smpy_result,
-			m_core->mpypipe);
+		sprintf(s, "MPY[%08x][%08x][%016llx], P[%d]",
+			m_core->mpy_a_input,
+			m_core->mpy_b_input,
+			(long long)m_core->mpy_output,
+			m_core->mpy_pipe);
 
-#endif
-
-#if(OPT_MULTIPLY != 1)
-#define	this_is_a_multiply_op	((m_core->i_stb)&&(((m_core->i_op&0xe) == 5)||((m_core->i_op&0x0f)==0xc))) // VVAR(_this_is_a_multiply_op)
-		if (this_is_a_multiply_op)
-			strcat(s, " MPY-OP");
-#endif
 		puts(outstr);
 	}
 	// }}}
@@ -176,7 +136,7 @@ public:
 	//
 	// This is a bit unusual compared to other tick() functions I have in
 	// my simulators in that there are a lot of calls to eval() with clk==0.
-	// This is because the multiply logic for OPT_MULTIPLY < 3 depends upon
+	// This is because the multiply logic for m_core->OPT_MULTIPLY < 3 depends upon
 	// it to be valid.  I assume any true Xilinx, or even higher level,
 	// implementation wouldn't have this problem.
 	//
@@ -217,14 +177,14 @@ public:
 	// This is a fairly generic CPU operation call.  What makes it less
 	// than generic are two things: 1) the ALU is cleared before any
 	// new instruction, and 2) the tick count at the end is compared
-	// against the tick count OPT_MULTIPLY says we should be getting.
+	// against the tick count m_core->OPT_MULTIPLY says we should be getting.
 	// A third difference between this call in simulation and a real
 	// call within the CPU is that we never set the reset mid-call, whereas
 	// the CPU may need to do that if a jump is made and the pipeline needs
 	// to be cleared.
 	//
 	uint32_t	op(int op, int a, int b) {
-		// Make sure we start witht he core idle
+		// Make sure we start with the core idle
 		if (m_core->o_valid)
 			clear_ops();
 
@@ -252,9 +212,9 @@ public:
 		// Check that we used the number of clock ticks we said we'd
 		// be using.  OPT_MULTIPLY is *supposed* to be equal to this
 		// number.
-		if((m_tickcount - now)!=OPT_MULTIPLY) {
+		if((m_tickcount - now)!=m_core->OPT_MULTIPLY) {
 			printf("%lld ticks seen, %d ticks expected\n",
-				(unsigned long long)(m_tickcount-now), OPT_MULTIPLY);
+				(unsigned long long)(m_tickcount-now), m_core->OPT_MULTIPLY);
 			dbgdump();
 			printf("TEST-FAILURE!\n");
 			closetrace();

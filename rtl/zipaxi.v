@@ -115,7 +115,9 @@ module	zipaxi #(
 		input	wire		S_DBG_AWVALID,
 		output	wire		S_DBG_AWREADY,
 		input	wire	[C_DBG_ADDR_WIDTH-1:0]	S_DBG_AWADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_DBG_AWPROT,
+		// Verilator coverage_on
 		//
 		input	wire		S_DBG_WVALID,
 		output	wire		S_DBG_WREADY,
@@ -124,21 +126,28 @@ module	zipaxi #(
 		//
 		output	reg		S_DBG_BVALID,
 		input	wire		S_DBG_BREADY,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_DBG_BRESP,
+		// Verilator coverage_on
 		//
 		input	wire		S_DBG_ARVALID,
 		output	wire		S_DBG_ARREADY,
 		input	wire	[7:0]	S_DBG_ARADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_DBG_ARPROT,
+		// Verilator coverage_on
 		//
 		output	reg		S_DBG_RVALID,
 		input	wire		S_DBG_RREADY,
 		output	reg	[31:0]	S_DBG_RDATA,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_DBG_RRESP,
+		// Verilator coverage_on
 		//
 		// }}}
 		// Instruction bus (master)
 		// {{{
+		// Verilator coverage_off
 		output	wire				M_INSN_AWVALID,
 		input	wire				M_INSN_AWREADY,
 		output	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_AWID,
@@ -161,6 +170,7 @@ module	zipaxi #(
 		output	wire				M_INSN_BREADY,
 		input	wire	[C_AXI_ID_WIDTH-1:0]	M_INSN_BID,
 		input	wire	[1:0]			M_INSN_BRESP,
+		// Verilator coverage_on
 		//
 		output	wire				M_INSN_ARVALID,
 		input	wire				M_INSN_ARREADY,
@@ -192,7 +202,9 @@ module	zipaxi #(
 		output	wire	[1:0]			M_DATA_AWBURST,
 		output	wire				M_DATA_AWLOCK,
 		output	wire	[3:0]			M_DATA_AWCACHE,
+		// Verilator coverage_off
 		output	wire	[2:0]			M_DATA_AWPROT,
+		// Verilator coverage_on
 		output	wire	[3:0]			M_DATA_AWQOS,
 		//
 		output	wire				M_DATA_WVALID,
@@ -215,7 +227,9 @@ module	zipaxi #(
 		output	wire	[1:0]			M_DATA_ARBURST,
 		output	wire				M_DATA_ARLOCK,
 		output	wire	[3:0]			M_DATA_ARCACHE,
+		// Verilator coverage_off
 		output	wire	[2:0]			M_DATA_ARPROT,
+		// Verilator coverage_on
 		output	wire	[3:0]			M_DATA_ARQOS,
 		//
 		input	wire				M_DATA_RVALID,
@@ -281,6 +295,7 @@ module	zipaxi #(
 	wire	[31:0]	wskd_data;
 	wire	[3:0]	wskd_strb;
 	reg		dbg_write_valid, dbg_read_valid;
+	wire		dbg_blkram_stall;
 	reg	[4:0]	dbg_write_reg;
 	wire	[4:0]	dbg_read_reg;
 	reg	[31:0]	dbg_write_data;
@@ -293,6 +308,7 @@ module	zipaxi #(
 	wire	cpu_clken, cpu_clock, clk_gate;
 	wire	reset_request, release_request, halt_request, step_request,
 		clear_cache_request;
+	wire	cpu_has_halted;
 
 
 	// CPU control registers
@@ -372,7 +388,7 @@ module	zipaxi #(
 	);
 
 	assign	dbg_write_ready = awskd_valid && wskd_valid
-			&& ((wskd_strb==0) || awskd_addr[5]
+			&& ((wskd_strb==0) || awskd_addr[5] != DBG_ADDR_CPU
 			   || !dbg_write_stall)
 			&& (!S_DBG_BVALID || S_DBG_BREADY);
 
@@ -448,21 +464,37 @@ module	zipaxi #(
 		// }}}
 	);
 
-	assign	dbg_read_ready = arskd_valid && !dbg_read_valid
+	assign	dbg_read_ready = arskd_valid && !dbg_blkram_stall
 				&& (!S_DBG_RVALID || S_DBG_RREADY);
 
 	assign	dbg_read_reg = (OPT_LOWPOWER && !dbg_read_ready)
 					? 5'h0 : arskd_addr[4:0];
 
 	// dbg_read_valid
+	reg	[1:0]	r_blkram_stall;
+
+	initial	r_blkram_stall = 0;
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN || !OPT_DBGPORT)
+		r_blkram_stall <= 0;
+	else if (dbg_read_ready && arskd_addr[5] == DBG_ADDR_CPU)
+		r_blkram_stall <= 2 + (OPT_DISTRIBUTED_REGS ? 0:1);
+	else if (r_blkram_stall > 0)
+		r_blkram_stall <= r_blkram_stall - 1;
 	// {{{
 	initial	dbg_read_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_read_valid <= 0;
 	else
-		dbg_read_valid <= dbg_read_ready
-					&& arskd_addr[5] == DBG_ADDR_CPU;
+		dbg_read_valid <= (r_blkram_stall == 1);
+
+	assign	dbg_blkram_stall = (r_blkram_stall != 0);
+`ifdef	FORMAL
+	always @(*)
+	if (S_AXI_ARESETN && (dbg_read_valid || dbg_blkram_stall))
+		assert(!S_DBG_RVALID);
+`endif
 	// }}}
 
 	// S_DBG_RVALID
@@ -593,11 +625,11 @@ module	zipaxi #(
 		cmd_halt <= START_HALTED;
 	else begin
 		// {{{
-		// When shall we release from a halt?  Only if we have come to
-		// a full and complete stop.  Even then, we only release if we
-		// aren't being given a command to step the CPU.
+		// When shall we release from a halt?  Only if we have
+		// come to a full and complete stop.  Even then, we only
+		// release if we aren't being given a command to step the CPU.
 		//
-		if (!dbg_write_valid && !cpu_dbg_stall && dbg_cmd_write
+		if (!dbg_write_valid && cpu_has_halted && dbg_cmd_write
 				&& (release_request || step_request))
 			cmd_halt <= 1'b0;
 
@@ -620,14 +652,14 @@ module	zipaxi #(
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
-		if (cmd_step)
+		if (cmd_step && !step_request)
 			cmd_halt <= 1'b1;
 
-		// 4. Halt following any clear cache
+		// 5. Halt following any clear cache
 		if (cmd_clear_cache)
 			cmd_halt <= 1'b1;
 
-		// 5. Halt on any clear cache bit--independent of any step bit
+		// 6. Halt on any clear cache bit--independent of any step bit
 		if (clear_cache_request)
 			cmd_halt <= 1'b1;
 		// }}}
@@ -652,10 +684,21 @@ module	zipaxi #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
-	else if (step_request)
-		cmd_step <= 1'b1;
-	else if (!cpu_dbg_stall)
+	else if (cmd_reset || cpu_break
+			|| reset_request
+			|| clear_cache_request || cmd_clear_cache
+			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
+	else if (!dbg_write_valid && cpu_has_halted && step_request)
+		cmd_step <= 1'b1;
+	else // if (cpu_dbg_stall)
+		cmd_step <= 1'b0;
+`ifdef	FORMAL
+	// While STEP is true, we can't halt
+	always @(*)
+	if (S_AXI_ARESETN && cmd_step)
+		assert(!cmd_halt);
+`endif
 	// }}}
 
 	// dbg_catch
@@ -716,7 +759,7 @@ module	zipaxi #(
 	(* anyseq *) reg [2:0]	f_cpu_dbg_cc;
 	(* anyseq *) reg [2:0]	f_cpu_dbg_read_data;
 
-	assign	cpu_dbg_stall	= f_cpu_stall;
+	assign	cpu_dbg_stall = f_cpu_stall && !f_cpu_halted;
 	assign	cpu_break	= f_cpu_break;
 	assign	cpu_dbg_cc	= f_cpu_dbg_cc;
 	assign	dbg_read_data	= f_cpu_dbg_read_data;
@@ -827,8 +870,9 @@ module	zipaxi #(
 `endif
 	assign	o_cmd_reset	= cmd_reset;
 	assign	o_gie		= cpu_dbg_cc[1];
-	assign	o_halted	= !cpu_dbg_stall;
-	assign	dbg_write_stall	= dbg_write_valid&&(cpu_dbg_stall || !clk_gate);
+	assign	dbg_write_stall	= dbg_write_valid && cpu_dbg_stall;
+	assign	cpu_has_halted  = !cpu_dbg_stall;
+	assign	o_halted	= cpu_has_halted;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -945,10 +989,12 @@ module	zipaxi #(
 		// PROT
 		assign	M_INSN_ARQOS   = 4'h0;
 
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_insn_axi;
 		assign	unused_insn_axi = &{ 1'b0, M_INSN_RID, M_INSN_RLAST };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 	end endgenerate
 `endif
 
@@ -1191,10 +1237,12 @@ module	zipaxi #(
 
 		// Make Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_pipe;
 		assign	unused_pipe = &{ 1'b0, clear_dcache };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end else begin : BARE_MEM
 
@@ -1285,10 +1333,12 @@ module	zipaxi #(
 
 		// Make Verilator happy
 		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_bare;
 		assign	unused_bare = &{ 1'b0, clear_dcache };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
 		// }}}
 	end endgenerate
 `endif
@@ -1311,7 +1361,8 @@ module	zipaxi #(
 		if (!S_AXI_ARESETN)
 			gatep <= 1'b1;
 		else
-			gatep <= cpu_clken;
+			gatep <= cpu_clken || arskd_valid || dbg_write_valid
+						|| dbg_blkram_stall;
 
 		always @(negedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN)
@@ -1332,6 +1383,7 @@ module	zipaxi #(
 
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, cpu_clken, cpu_dbg_cc[2],
@@ -1347,6 +1399,7 @@ module	zipaxi #(
 		assign	unused_addr = &{ 1'b0, mem_cpu_addr[31:ADDRESS_WIDTH] };
 	end endgenerate
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

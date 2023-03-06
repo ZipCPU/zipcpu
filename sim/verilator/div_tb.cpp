@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -112,16 +112,16 @@ public:
 			m_core->r_bit,
 			(m_core->last_bit)?"=":"!");
 		s = &outstr[strlen(outstr)];
-		sprintf(s, "%s\n%10s %40s",s, "Div","");
+		sprintf(s, "\n%10s %40s", "Div","");
 			s = &s[strlen(s)];
 		bprint( s, 32, m_core->r_dividend);
 			s=&s[strlen(s)];
-		sprintf(s, "%s\n%10s ",s, "Div"); s = &s[strlen(s)];
+		sprintf(s, "\n%10s ", "Div"); s = &s[strlen(s)];
 		bprint( s, 64, m_core->r_divisor);
 			s=&s[strlen(s)];
-		sprintf(s, "%s\n%10s %40s",s, "Q",""); s=&s[strlen(s)];
+		sprintf(s, "\n%10s %40s", "Q",""); s=&s[strlen(s)];
 		bprint( s, 32, m_core->o_quotient); s = &s[strlen(s)];
-		sprintf(s, "%s\n%10s %38s",s, "Diff","");
+		sprintf(s, "\n%10s %38s", "Diff","");
 			s=&s[strlen(s)];
 		bprint( s, 33, m_core->vdiff); s = &s[strlen(s)];
 		strcat(s, "\n");

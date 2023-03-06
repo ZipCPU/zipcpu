@@ -1,47 +1,50 @@
 ################################################################################
-#
-# Filename:	Makefile
-#
-# Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
-#
-# Purpose:	This makefile builds an assembler preprocessor (zpp), an
-#		assembler (zasm) and a disassembler (zdump).  Make with no
-#		arguments will produce these files.  Other targets include:
-#
-#	make clean
-#	make test
-#		Assembles a test file and then produces a disassembly of it.
-#	make depends
-#		Doesn't work.  Dependencies are currently all hand coded.
-#	make tags
-#	make install
-#		Attempts to copy zasm, zpp and zdump to the install directory, 
-#		defined herein
-#
-#
-# Creator:	Dan Gisselquist, Ph.D.
-#		Gisselquist Technology, LLC
-#
+##
+## Filename:	Makefile
+## {{{
+## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
+##
+## Purpose:	This makefile builds an assembler preprocessor (zpp), an
+##		assembler (zasm) and a disassembler (zdump).  Make with no
+##	arguments will produce these files.  Other targets include:
+##
+##	make clean
+##	make test
+##		Assembles a test file and then produces a disassembly of it.
+##	make depends
+##		Doesn't work.  Dependencies are currently all hand coded.
+##	make tags
+##	make install
+##		Attempts to copy zasm, zpp and zdump to the install directory, 
+##		defined herein
+##
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
 ################################################################################
-#
-# Copyright (C) 2015, Gisselquist Technology, LLC
-#
-# This program is free software (firmware): you can redistribute it and/or
-# modify it under the terms of  the GNU General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or (at
-# your option) any later version.
-#
-# This program is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# for more details.
-#
-# License:	GPL, v3, as defined and found on www.gnu.org,
-#		http://www.gnu.org/licenses/gpl.html
-#
-#
+## }}}
+## Copyright (C) 2015-2023, Gisselquist Technology, LLC
+## {{{
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+## }}}
+## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
+##		http://www.gnu.org/licenses/gpl.html
+##
 ################################################################################
-#
+##
+## }}}
+## Make definitions
+## {{{
 OBJDIR=	obj-pc
 CXX=	g++
 CC=	gcc
@@ -57,13 +60,13 @@ CFILES= asmdata.cpp twoc.cpp zdump.cpp zopcodes.cpp zparser.cpp
 HFILES= asmdata.h twoc.h zopcodes.h zparser.h
 
 .PHONY: programs
+## }}}
 all:	$(OBJDIR)/ programs
+programs:	$(PROGRAMS)
 
 install: zasm zdump zpp
 	bash -c "if [[ ! -e $(INSTALLD) ]]; then mkdir -p $(INSTALLD); fi"
 	cp $^ $(INSTALLD)/
-
-programs:	$(PROGRAMS)
 
 $(OBJDIR)/zpp.cpp: zpp.l
 	$(LEX) -o $@ $^
@@ -102,12 +105,23 @@ $(OBJDIR)/:
 	@bash -c "if [ ! -e $(OBJDIR) ]; then mkdir -p $(OBJDIR); fi"
 
 .PHONY: test
+## {{{
 test:	dumpd.txt
 z.out:	test.S sys.i zasm zdump zpp 
 	./zasm test.S -o z.out
 dumpd.txt:	z.out zdump
 	./zdump z.out > dumpd.txt
+## }}}
 
+## C-Tags
+## {{{
+tags: $(SOURCES) $(HEADERS)
+	@echo "Generating tags"
+	@ctags $(CFILES) $(HFILES) # $(SOURCES) $(HEADERS)
+## }}}
+
+## Dependency handling
+## {{{
 define	build-depends
 	@echo "Building dependency file(s)"
 	@$(CXX) -I $(OBJDIR)/ $(CCFLAGS) -MM $(CFILES) > xd.txt
@@ -117,21 +131,18 @@ define	build-depends
 	@rm xd.txt
 endef
 
-tags: $(SOURCES) $(HEADERS)
-	@echo "Generating tags"
-	@ctags $(CFILES) $(HFILES) # $(SOURCES) $(HEADERS)
-
 .PHONY: depends
 depends: tags
 	$(build-depends)
 
 $(OBJDIR)/depends.txt: $(OBJDIR)/ $(SOURCES) $(HEADERS)
 	$(build-depends)
+## }}}
 
 .PHONY: clean
+## {{{
 clean:
 	rm -rf $(OBJDIR) $(PROGRAMS) z.out dumpd.txt
+## }}}
 
 -include $(OBJDIR)/depends.txt
-
-

@@ -4,16 +4,16 @@
 * {{{
 * Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 *
-* Purpose:	This script provides a description of the memory on the Arty,
-*		for the purposes of where to place programs in memory during
-*	linking.
+* Purpose:	This linker script provides a memory layout used by some
+*		of the ZipCPU's tests.  It is not expected to be the desired
+*	memory layout for FPGA builds.
 *
 * Creator:	Dan Gisselquist, Ph.D.
 *		Gisselquist Technology, LLC
 *
 ********************************************************************************
 * }}}
-* Copyright (C) 2017-2022, Gisselquist Technology, LLC
+* Copyright (C) 2017-2023, Gisselquist Technology, LLC
 * {{{
 * This program is free software (firmware): you can redistribute it and/or
 * modify it under the terms of  the GNU General Public License as published

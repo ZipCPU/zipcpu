@@ -80,7 +80,7 @@
 // }}}
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2019-2022, Gisselquist Technology, LLC
+// Copyright (C) 2019-2023, Gisselquist Technology, LLC
 // {{{
 // This file is part of the WB2AXIP project.
 //

@@ -40,7 +40,7 @@
 // }}}
 module	cpuops #(
 		// {{{
-		parameter		OPT_MPY = 0,
+		parameter		OPT_MPY = 3,	// == 0 (no mpy),1-4,36
 		parameter	[0:0]	OPT_SHIFTS = 1'b1,
 		parameter	[0:0]	OPT_LOWPOWER = 1'b1
 		// }}}
@@ -52,6 +52,19 @@ module	cpuops #(
 		output	reg	[31:0]	o_c,
 		output	wire	[3:0]	o_f,
 		output	reg		o_valid,
+`ifdef	VMPY_TB
+		// {{{
+		// Define some wires used to peek at internal values during
+		// simulation.  These are *ONLY* used by the ZipCPU mpy_tb
+		// simulation testbench.  They are *NOT* used during synthesis,
+		// and not intended to be used outside of the ZipCPU setup.
+		// 
+		output	wire	[5:0]	OPT_MULTIPLY,
+		output	wire	[31:0]	mpy_a_input, mpy_b_input,
+		output	wire	[63:0]	mpy_output,
+		output	wire	[2:0]	mpy_pipe,
+		// }}}
+`endif
 		output	wire		o_busy
 		// }}}
 	);
@@ -225,6 +238,44 @@ module	cpuops #(
 	else
 		o_valid <=((i_stb)&&(!this_is_a_multiply_op))||(mpydone);
 	// }}}
+
+`ifdef	VMPY_TB
+// {{{
+	assign	OPT_MULTIPLY = OPT_MPY;
+	generate if (OPT_MPY == 0)
+	begin
+		assign	mpy_a_input = 0;
+		assign	mpy_b_input = 0;
+		assign	mpy_pipe = 1'b0;
+	end else if (OPT_MPY == 1)
+	begin
+		assign	mpy_a_input = thempy.IMPY.MPY1CK.w_mpy_a_input[31:0];
+		assign	mpy_b_input = thempy.IMPY.MPY1CK.w_mpy_b_input[31:0];
+		assign	mpy_pipe = 3'b0;
+	end else if (OPT_MPY == 2)
+	begin
+		assign	mpy_a_input = thempy.IMPY.MPN1.MPY2CK.r_mpy_a_input[31:0];
+		assign	mpy_b_input = thempy.IMPY.MPN1.MPY2CK.r_mpy_b_input[31:0];
+		assign	mpy_pipe = { 2'b0, thempy.IMPY.MPN1.MPY2CK.mpypipe };
+	end else if (OPT_MPY == 3)
+	begin
+		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPY3CK.r_mpy_a_input;
+		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPY3CK.r_mpy_b_input;
+		assign	mpy_pipe = { 1'b0, thempy.IMPY.MPN1.MPN2.MPY3CK.mpypipe };
+	end else if (OPT_MPY == 4)
+	begin
+		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.r_mpy_a_input;
+		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.r_mpy_b_input;
+		assign	mpy_pipe = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.mpypipe;
+	end else begin
+		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPN3.MPYSLOW.slowmpyi.i_a[31:0];
+		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPN3.MPYSLOW.slowmpyi.i_b[31:0];
+		assign	mpy_pipe = {(3){mpybusy}};
+	end endgenerate
+
+	assign	mpy_output = mpy_result;
+// }}}
+`endif
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

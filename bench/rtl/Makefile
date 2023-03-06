@@ -15,7 +15,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2015-2022, Gisselquist Technology, LLC
+## Copyright (C) 2015-2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -44,7 +44,7 @@ VFLAGS    := -Wall -MMD -trace -y $(PRPHD) -cc
 SUBMAKE   := $(MAKE) --no-print-directory -C
 
 $(VOBJ)/Vzipmmu_tb.cpp: $(PRPHD)/zipmmu.v zipmmu_tb.v memdev.v
-	$(VERILATOR) $(VFLAGS) zipmmu_tb.v
+	$(VERILATOR) $(VFLAGS) -DVZIPMMU_TB zipmmu_tb.v
 $(VOBJ)/Vzipmmu_tb.h: $(VOBJ)/Vzipmmu_tb.cpp
 
 $(VOBJ)/Vzipmmu_tb__ALL.a: $(VOBJ)/Vzipmmu_tb.cpp $(VOBJ)/Vzipmmu_tb.h

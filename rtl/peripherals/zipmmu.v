@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename: 	zipmmu.v
-//
+// {{{
 // Project:	Zip CPU backend for the GNU Compiler Collection
 //
 // Purpose:	To provide a "bump-in-the-line" wishbone memory management
@@ -179,15 +179,28 @@
 //		you've stalled by both clocks, you'll not stall again during
 //		any pipeline operation.
 //
+// Status:
+//	At one point, this MMU was partially integrated into the ZipCPU.  That
+//	is, it was integrated far enough into the ZipSystem that a test might
+//	have been written, but never into any of the other wrappers.  Since
+//	then, the ZipCPU has been refactored so that it can support multiple
+//	bus structures and a parameterized bus width.  This MMU now needs to
+//	be similarly refactored to match, so that it can integrate into the
+//	ZipCPU *between* the ZipCore and its memory access components--whether
+//	instruction or data memory access.  This refactor has not (yet) taken
+//	place, and until it does so this MMU implementation should be
+//	considered ...
+//
+//	*DEPRECATED*.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2016-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -216,7 +229,7 @@
 `define	EXEFLG	2	// No-execute flag (invalid for I-cache)
 `define	CHFLAG	1	// Cachable flag
 `define	AXFLAG	0	// Accessed flag
-//
+// }}}
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				i_wbs_data, o_wbs_stall, o_wbs_ack, o_wbs_data,
 		i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_exe,

@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2015-2022, Gisselquist Technology, LLC
+## Copyright (C) 2015-2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -188,7 +188,7 @@ VERILATE=$(VERILATOR) $(VFLAGS)
 
 .PHONY: zipsystem sysasm systrap sysmin syspipe syscache syslp
 ## {{{
-zipsystem: sysasm systrap sysmin syspipe syscache syslp
+zipsystem: sysasm systrap sysmin syspipe syscache syslp zipsys
 
 sysasm: $(VOBJ)/Vsysasm__ALL.a
 $(VOBJ)/Vsysasm.h: $(VOBJ)/Vsysasm.cpp
@@ -231,11 +231,18 @@ $(VOBJ)/Vsyslp.cpp: $(SYSSRC)
 	$(VERILATE) $(LWPWR) --prefix Vsyslp -cc zipsystem.v
 $(VOBJ)/Vsyslp__ALL.a: $(VOBJ)/Vsyslp.cpp $(VOBJ)/Vsyslp.h
 	$(SUBMAKE) Vsyslp.mk
+
+zipsys: $(VOBJ)/Vzipsystem__ALL.a
+$(VOBJ)/Vzipsystem.h: $(VOBJ)/Vzipsystem.cpp
+$(VOBJ)/Vzipsystem.cpp: $(SYSSRC)
+	$(VERILATE) -DVBENCH_TB $(LWPWR) --prefix Vzipsystem -cc zipsystem.v
+$(VOBJ)/Vzipsystem__ALL.a: $(VOBJ)/Vzipsystem.cpp $(VOBJ)/Vzipsystem.h
+	$(SUBMAKE) Vzipsystem.mk
 ## }}}
 
 .PHONY: zipbones bonesasm bonestrap bonesmin bonespipe bonescache boneslp
 ## {{{
-zipbones:  bonesasm bonestrap bonesmin bonespipe bonescache boneslp
+zipbones:  bonesasm bonestrap bonesmin bonespipe bonescache boneslp zipbone
 
 bonesasm: $(VOBJ)/Vbonesasm__ALL.a
 $(VOBJ)/Vbonesasm.h: $(VOBJ)/Vbonesasm.cpp
@@ -278,11 +285,18 @@ $(VOBJ)/Vboneslp.cpp: $(BONSRC)
 	$(VERILATE) $(LWPWR) --prefix Vboneslp -cc zipbones.v
 $(VOBJ)/Vboneslp__ALL.a: $(VOBJ)/Vboneslp.cpp $(VOBJ)/Vboneslp.h
 	$(SUBMAKE) Vboneslp.mk
+
+zipbone: $(VOBJ)/Vzipbones__ALL.a
+$(VOBJ)/Vzipbones.h: $(VOBJ)/Vzipbones.cpp
+$(VOBJ)/Vzipbones.cpp: $(BONSRC)
+	$(VERILATE) -DVBENCH_TB $(LWPWR) --prefix Vzipbones -cc zipbones.v
+$(VOBJ)/Vzipbones__ALL.a: $(VOBJ)/Vzipbones.cpp $(VOBJ)/Vzipbones.h
+	$(SUBMAKE) Vzipbones.mk
 ## }}}
 
-.PHONY: zipaxil axilasm axiltrap axilmin axilpipe
+.PHONY: zipaxil axilasm axiltrap axilmin axilpipe axilbench
 ## {{{
-zipaxil: axilasm axiltrap axilmin axilpipe
+zipaxil: axilasm axiltrap axilmin axilpipe axilbench
 
 axilasm: $(VOBJ)/Vaxilasm__ALL.a
 $(VOBJ)/Vaxilasm.h: $(VOBJ)/Vaxilasm.cpp
@@ -311,6 +325,13 @@ $(VOBJ)/Vaxilpipe.cpp: $(AXLSRC)
 	$(VERILATE) $(PIPECFG) --prefix Vaxilpipe -cc zipaxil.v
 $(VOBJ)/Vaxilpipe__ALL.a: $(VOBJ)/Vaxilpipe.cpp $(VOBJ)/Vaxilpipe.h
 	$(SUBMAKE) Vaxilpipe.mk
+
+axilbench: $(VOBJ)/Vzipaxil__ALL.a
+$(VOBJ)/Vzipaxil.h: $(VOBJ)/Vzipaxil.cpp
+$(VOBJ)/Vzipaxil.cpp: $(AXLSRC)
+	$(VERILATE) $(PIPECFG) -DVBENCH_TB --prefix Vzipaxil -cc zipaxil.v
+$(VOBJ)/Vzipaxil__ALL.a: $(VOBJ)/Vzipaxil.cpp $(VOBJ)/Vzipaxil.h
+	$(SUBMAKE) Vzipaxil.mk
 ## }}}
 
 .PHONY: zipaxi axiasm axitrap aximin axipipe axicache axilp
@@ -376,7 +397,7 @@ $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
 cpuops: $(VOBJ)/Vcpuops__ALL.a
 $(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
 $(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
-	$(VERILATE) $(CORED)/cpuops.v
+	$(VERILATE) -DVMPY_TB $(CORED)/cpuops.v
 $(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
 	$(SUBMAKE) Vcpuops.mk
 ## }}}

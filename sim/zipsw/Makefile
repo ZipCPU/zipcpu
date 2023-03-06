@@ -11,7 +11,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2016-2022, Gisselquist Technology, LLC
+## Copyright (C) 2016-2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
@@ -36,7 +36,7 @@
 ##
 ## }}}
 .PHONY: all
-PROGRAMS := hello cputest hellostep lockcheck hellosim dmatest
+PROGRAMS := hello cputest hellostep lockcheck hellosim dmatest stepchk
 all:	$(PROGRAMS) hex
 #
 #
@@ -101,6 +101,9 @@ cputest: $(OBJDIR)/cputestcis.o board.ld $(LIB)
 clkgatechk: $(OBJDIR)/clkgatechk.o $(OBJDIR)/txfns.o board.ld $(LIB)
 	$(CC) $(CFLAGS) $(LFLAGS) $< $(OBJDIR)/txfns.o $(LIBS) -o $@
 
+stepchk: $(OBJDIR)/stepchk.o $(OBJDIR)/txfns.o board.ld $(LIB)
+	$(CC) $(CFLAGS) $(LFLAGS) $< $(OBJDIR)/txfns.o $(LIBS) -o $@
+
 $(OBJDIR)/contest.o: contest.c
 	$(mk-objdir)
 	$(CC) $(CFLAGS) -c -fno-builtin $< -o $@
@@ -134,7 +137,10 @@ dmatest: $(OBJDIR)/dmatest.o board.ld $(LIB)
 ## Convert executables to hex
 ##
 .PHONY: hex
-hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex hello.hex hello64.hex hellosim.hex hellosim64.hex hellostep.hex hellostep64.hex clkgatechk.hex dmatest.hex dmatest64.hex
+hex: cputest.hex cputest64.hex lockcheck.hex lockcheck64.hex
+hex: hello.hex hello64.hex hellosim.hex hellosim64.hex
+hex: hellostep.hex hellostep64.hex clkgatechk.hex dmatest.hex dmatest64.hex
+hex: stepchk.hex stepchk64.hex
 
 cputest.hex: cputest
 	$(MKHEX) cputest -o $@
@@ -174,6 +180,12 @@ dmatest.hex: dmatest
 
 dmatest64.hex: dmatest
 	$(MKHEX) dmatest -w 64 -o $@
+
+stepchk.hex: stepchk
+	$(MKHEX) stepchk -o $@
+
+stepchk64.hex: stepchk
+	$(MKHEX) stepchk -w 64 -o $@
 
 
 .PHONY: iftttt

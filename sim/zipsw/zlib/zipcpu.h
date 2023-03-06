@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2022, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -64,7 +64,7 @@
 // extern void	zip_break(void);
 #define	zip_break()		asm("BREAK\n")
 // #define	BREAK(ID)	asm("BREAK " ##ID "\n")
-#define	GETUREG(A,ID)	asm("MOV " ID ",%0" : "=r"(A))
+#define	GETUREG(A,ID)	asm volatile ("MOV " ID ",%0" : "=r"(A))
 #define	SETUREG(A,ID)	asm("MOV %0," ID : : "r"(A))
 #define	NSTR(A)		asm("NSTR \"" A "\\n\"")
 #define	NVAL(V)		do { unsigned tmp = (unsigned)(V); asm volatile("NDUMP %0":"=r"(tmp):"0"(tmp)); } while(0)

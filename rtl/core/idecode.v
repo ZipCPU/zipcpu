@@ -217,16 +217,21 @@ module	idecode #(
 	assign	w_sto    = (w_mem)&&( w_cis_op[0]);
 	assign	w_div    = (!iword[CISBIT])&&(w_op[4:1] == 4'h7);
 	assign	w_fpu    = (!iword[CISBIT])&&(w_op[4:3] == 2'b11)
-				&&(w_dcdR[3:1] != 3'h7)&&(w_op[2:1] != 2'b00);
+				&&(w_dcdR[3:1] != 3'h7)
+				&&(w_op[2:1] != 2'b00);
 	// If the result register is either CC or PC, and this would otherwise
 	// be a floating point instruction with floating point opcode of 0,
 	// then this is a NOOP.
-	assign	w_special= (!iword[CISBIT])&&((!OPT_FPU)||(w_dcdR[3:1]==3'h7))
+	assign	w_special= (!iword[CISBIT])&&(w_dcdR[3:1]==3'h7)
 			&&(w_op[4:2] == 3'b111);
 	assign	w_break = (w_special)&&(w_op[4:0]==5'h1c);
 	assign	w_lock  = (w_special)&&(w_op[4:0]==5'h1d);
 	assign	w_sim   = (w_special)&&(w_op[4:0]==5'h1e);
 	assign	w_noop  = (w_special)&&(w_op[4:1]==4'hf); // Must include w_sim
+`ifdef	FORMAL
+	always @(*)
+		assert(!w_special || !w_fpu);
+`endif
 	// }}}
 
 	// w_dcdR, w_dcdA
@@ -277,7 +282,7 @@ module	idecode #(
 	// rA - do we need to read register A?
 	// {{{
 	assign	w_rA = // Floating point reads reg A
-			((w_fpu)&&(OPT_FPU))
+			(w_fpu)
 			// Divide's read A
 			||(w_div)
 			// ALU ops read A,
@@ -314,7 +319,7 @@ module	idecode #(
 	// wF -- do we write flags when we are done?
 	// {{{
 	assign	w_wF     = (w_cmptst)
-			||((w_cond[3])&&(((w_fpu)&&(OPT_FPU))||(w_div)
+			||((w_cond[3])&&(w_fpu||w_div
 				||((w_ALU)&&(!w_mov)&&(!w_ldilo)&&(!w_brev)
 					&&(w_dcdR[3:1] != 3'h7))));
 	// }}}
@@ -1551,7 +1556,7 @@ module	idecode #(
 	// FPU -- Floating point instructions
 	// {{{
 	always @(*)
-	if ((!iword[CISBIT])&&(OPT_FPU)&&(
+	if ((!iword[CISBIT])&&(
 			(w_cis_op[4:1] == 4'hd)
 			||(w_cis_op[4:1] == 4'he)
 			||(w_cis_op[4:1] == 4'hf))
@@ -1572,8 +1577,9 @@ module	idecode #(
 		if ((w_cis_op == 5'he)||(w_cis_op == 5'hf))
 		begin
 			`ASSERT(!w_rA);
-		end else
+		end else begin
 			`ASSERT(w_rA);
+		end
 		`ASSERT(!w_special);
 		`ASSERT(w_rB == iword[IMMSEL]);
 		`ASSERT(w_dcdA[4] == i_gie);
@@ -1585,10 +1591,10 @@ module	idecode #(
 
 		`ASSERT(w_cond[3] == (iword[21:19] == 3'b000));
 		`ASSERT(w_cond[2:0] == iword[21:19]);
-		`ASSERT((w_wF == w_cond[3])||(w_dcdA[3:1]==3'b111));
+		`ASSERT((w_wF == w_cond[3])||(w_dcdA[3:1]==3'b111));	// !!!
 		// }}}
 	end else
-		`ASSERT((!w_fpu)||(!OPT_FPU));
+		`ASSERT(!w_fpu);
 	// }}}
 
 	// Special instructions
@@ -1599,7 +1605,7 @@ module	idecode #(
 			||(w_cis_op == 5'h1d)
 			||(w_cis_op == 5'h1e)
 			||(w_cis_op == 5'h1f))
-			&&((iword[30:28] == 3'h7)||(!OPT_FPU)))
+			&&(iword[30:28] == 3'h7))
 	begin
 		// {{{
 		`ASSERT(w_special);

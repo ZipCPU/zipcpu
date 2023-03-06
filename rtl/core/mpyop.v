@@ -44,6 +44,16 @@ module	mpyop #(
 		// {{{
 		// The following parameter selects which multiply algorithm we
 		// use.  Timing performance is strictly dependent upon it.
+		//	OPY_MPY
+		//	------
+		//	   0	No multiply
+		//	   1	Single op multiply, same timing as an ADD
+		//	   2	Two clock multiply
+		//	   3	Three clock multiply, standard Xlnx DSP timing
+		//	   4	Three clock multiply, Xilinx Spartan DSP timing
+		//	(Anything else)	-- low logic slow multiply
+		//	  36	Required setting for the TB to work on the low
+		//		logic slow multiply
 		parameter	OPT_MPY = 1,
 		parameter [0:0]	OPT_LOWPOWER  = 1'b0
 		// }}}
@@ -400,10 +410,13 @@ module	mpyop #(
 		// verilator coverage_on
 		// }}}
 
-		slowmpy #(.LGNA(6), .NA(33)) slowmpyi(i_clk, i_reset, i_stb,
+		slowmpy #(.LGNA(6), .NA(33)
+		) slowmpyi(
+			i_clk, i_reset, i_stb,
 			{ (i_op[0])&(i_a[31]), i_a },
 			{ (i_op[0])&(i_b[31]), i_b }, 1'b0, o_busy,
-				o_valid, full_result, unused_aux);
+				o_valid, full_result, unused_aux
+		);
 
 		assign	o_result = full_result[63:0];
 
