@@ -45,6 +45,18 @@ const unsigned	ZIPDMA_BUSY = 0x80000000,
 		ZIPDMA_DINC = 0x00400000,
 		ZIPDMA_SINC = 0x00040000,
 		ZIPDMA_TLEN = 0x0000ffff,
+		//
+		DMACMD_FIXSRC   = 0x0400000,
+		DMACMD_SRCBYTE  = 0x0300000,
+		DMACMD_SRC16B   = 0x0200000,
+		DMACMD_SRC32B   = 0x0100000,
+		DMACMD_BUSSRC   = 0,
+		//
+		DMACMD_FIXDST   = 0x0040000,
+		DMACMD_DSTBYTE  = 0x0030000,
+		DMACMD_DST16B   = 0x0020000,
+		DMACMD_DST32B   = 0x0010000,
+		DMACMD_BUSDST   = 0,
 		DMACMD_MEMCPY= 0;
 
 typedef	struct	ZIPDMA_S {
@@ -57,7 +69,28 @@ typedef	struct	ZIPDMA_S {
 static	volatile	ZIPDMA *const _zipdma = ((ZIPDMA *)0xff000040);
 const int	TESTLEN = 4096;
 
-void	dma_memcpy(void *d, void *s, unsigned len) {
+int	dma_memcpy_sz(void *d, void *s, unsigned len, unsigned sz) {
+	// {{{
+	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
+		printf("ERR: DMA is already busy\n");
+	} else {
+		_zipdma->d_src = s;
+		_zipdma->d_dst = d;
+		_zipdma->d_len = len;
+
+		_zipdma->d_ctrl = DMACMD_MEMCPY | sz;
+	}
+
+	while(_zipdma->d_ctrl & ZIPDMA_BUSY) {
+		asm("NOOP");
+	} CLEAR_DCACHE;
+
+	return (_zipdma->d_ctrl & ZIPDMA_ERR) ? 1:0;
+}
+// }}}
+
+int	dma_memcpy(void *d, void *s, unsigned len) {
+	// {{{
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
 		printf("ERR: DMA is already busy\n");
 	} else {
@@ -71,11 +104,16 @@ void	dma_memcpy(void *d, void *s, unsigned len) {
 	while(_zipdma->d_ctrl & ZIPDMA_BUSY) {
 		asm("NOOP");
 	} CLEAR_DCACHE;
+
+	return (_zipdma->d_ctrl & ZIPDMA_ERR) ? 1:0;
 }
+// }}}
 
 int	main(int argc, char **argv) {
+	const unsigned	SZBYTE = DMACMD_DSTBYTE | DMACMD_SRCBYTE;
+	const unsigned	SZHALF = DMACMD_DST16B  | DMACMD_SRC16B;
 	char	*src, *dst;
-	int	fail = 0;
+	int	fail = 0, err;
 
 	src = malloc(TESTLEN+8);
 	dst = malloc(TESTLEN+8);
@@ -102,8 +140,15 @@ int	main(int argc, char **argv) {
 		src[i] = rand();
 
 	printf("Basic MEMCPY: ");
-	dma_memcpy(dst, src, TESTLEN);
-	if (memcmp(dst, src, TESTLEN) != 0) {
+	err = dma_memcpy(dst, src, TESTLEN);
+	if (err || memcmp(dst, src, TESTLEN) != 0) {
+		printf("FAIL!\n"); fail = 1;
+	} else
+		printf("PASS\n");
+
+	printf("Basic MEMCPY( 8b): ");
+	err = dma_memcpy_sz(dst, src, TESTLEN, SZBYTE);
+	if (err || memcmp(dst, src, TESTLEN) != 0) {
 		printf("FAIL!\n"); fail = 1;
 	} else
 		printf("PASS\n");
@@ -117,8 +162,8 @@ int	main(int argc, char **argv) {
 			printf("SubLen #%d MEMCPY: ", ln);
 			if (ln + s >= TESTLEN)
 				s = 0;
-			dma_memcpy(dst, src+s, ln);
-			if (memcmp(dst, src+s, ln) != 0) {
+			err = dma_memcpy(dst, src+s, ln);
+			if (err || memcmp(dst, src+s, ln) != 0) {
 				printf("FAIL!\n"); fail = 1;
 			} else
 				printf("PASS\n");
@@ -128,7 +173,47 @@ int	main(int argc, char **argv) {
 	}
 	// }}}
 
-	// All offsets test
+	// Sublen test : Can we do other lengths, 8b at a time?
+	// {{{
+	{
+		unsigned s = 0;
+		for(unsigned ln=1; ln<32 && !fail; ln++) {
+
+			printf("SubLen #%d MEMCPY, 8b: ", ln);
+			if (ln + s >= TESTLEN)
+				s = 0;
+			err = dma_memcpy_sz(dst, src+s, ln, SZBYTE);
+			if (err || memcmp(dst, src+s, ln) != 0) {
+				printf("FAIL!\n"); fail = 1;
+			} else
+				printf("PASS\n");
+
+			s += ln;
+		}
+	}
+	// }}}
+
+	// Sublen test : Can we do other lengths, 16b at a time?
+	// {{{
+	{
+		unsigned s = 0;
+		for(unsigned ln=2; ln<32 && !fail; ln+=2) {
+
+			printf("SubLen #%d MEMCPY, 16b: ", ln);
+			if (ln + s >= TESTLEN)
+				s = 0;
+			err = dma_memcpy_sz(dst, src+s, ln, SZHALF);
+			if (err || memcmp(dst, src+s, ln) != 0) {
+				printf("FAIL!\n"); fail = 1;
+			} else
+				printf("PASS\n");
+
+			s += ln;
+		}
+	}
+	// }}}
+
+	// All offsets test : bus width
 	// {{{
 	for(int s=0; s<8 && !fail; s++) {
 		for(int d=0; d<8 && !fail; d++) {
@@ -136,8 +221,8 @@ int	main(int argc, char **argv) {
 
 			for(unsigned ln1=1; ln1<8; ln1++) {
 				printf("Offset #%d/#%3d MEMCPY #%d: ", s,TESTLEN-d-ln1,ln1);
-				dma_memcpy(dst+TESTLEN-d-ln1, src+s, ln1);
-				if (memcmp(dst+TESTLEN-d-ln1, src+s, ln1) != 0) {
+				err = dma_memcpy(dst+TESTLEN-d-ln1, src+s, ln1);
+				if (err || memcmp(dst+TESTLEN-d-ln1, src+s, ln1) != 0) {
 					printf("FAIL!\n"); fail = 1;
 				} else
 					printf("PASS\n");
@@ -145,8 +230,8 @@ int	main(int argc, char **argv) {
 
 			printf("Offset #%d/#%3d MEMCPY: ", s, d);
 			ln = (d > s) ? (TESTLEN-d):(TESTLEN-s);
-			dma_memcpy(dst+d, src+s, ln);
-			if (memcmp(dst+d, src+s, ln) != 0) {
+			err = dma_memcpy(dst+d, src+s, ln);
+			if (err || memcmp(dst+d, src+s, ln) != 0) {
 				printf("FAIL!\n"); fail = 1;
 			} else
 				printf("PASS\n");
@@ -189,6 +274,58 @@ int	main(int argc, char **argv) {
 	} if (0x08 != dst[3]) {
 		printf("dst[3] = %02x (FAIL)\n", dst[3]);fail=1;
 	}
+
+	// All offsets test : 8b
+	// {{{
+	for(int s=0; s<8 && !fail; s++) {
+		for(int d=0; d<8 && !fail; d++) {
+			unsigned	ln, ln1;
+
+			for(unsigned ln1=1; ln1<8; ln1++) {
+				printf("Offset #%d/#%3d MEMCPY #%d, 8b: ", s,TESTLEN-d-ln1,ln1);
+				err = dma_memcpy_sz(dst+TESTLEN-d-ln1, src+s, ln1, SZBYTE);
+				if (err || memcmp(dst+TESTLEN-d-ln1, src+s, ln1) != 0) {
+					printf("FAIL!\n"); fail = 1;
+				} else
+					printf("PASS\n");
+			}
+
+			printf("Offset #%d/#%3d MEMCPY, 8b: ", s, d);
+			ln = (d > s) ? (TESTLEN-d):(TESTLEN-s);
+			err = dma_memcpy_sz(dst+d, src+s, ln, SZBYTE);
+			if (err || memcmp(dst+d, src+s, ln) != 0) {
+				printf("FAIL!\n"); fail = 1;
+			} else
+				printf("PASS\n");
+		}
+	}
+	// }}}
+
+	// All even offsets test : 16b
+	// {{{
+	for(int s=0; s<8 && !fail; s+=2) {
+		for(int d=0; d<8 && !fail; d+=2) {
+			unsigned	ln, ln1;
+
+			for(unsigned ln1=2; ln1<8; ln1+=2) {
+				printf("Offset #%d/#%3d MEMCPY #%d, 16b: ", s,TESTLEN-d-ln1,ln1);
+				err = dma_memcpy_sz(dst+TESTLEN-d-ln1, src+s, ln1, SZHALF);
+				if (err || memcmp(dst+TESTLEN-d-ln1, src+s, ln1) != 0) {
+					printf("FAIL!\n"); fail = 1;
+				} else
+					printf("PASS\n");
+			}
+
+			printf("Offset #%d/#%3d MEMCPY, 16b: ", s, d);
+			ln = (d > s) ? (TESTLEN-d):(TESTLEN-s);
+			err = dma_memcpy_sz(dst+d, src+s, ln, SZHALF);
+			if (err || memcmp(dst+d, src+s, ln) != 0) {
+				printf("FAIL!\n"); fail = 1;
+			} else
+				printf("PASS\n");
+		}
+	}
+	// }}}
 
 	// printf("Final   ptrs: SRC = 0x%08x, DST = 0x%08x\n", src, dst);
 

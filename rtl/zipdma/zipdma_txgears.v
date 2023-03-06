@@ -105,12 +105,14 @@ module	zipdma_txgears #(
 			{ sreg, fill } <= 0;
 		else if (OPT_LITTLE_ENDIAN)
 		begin
+			// Verilator coverage_off
 			case(i_size)
 			SZ_BYTE: begin sreg <= sreg >>  8; fill <= fill - 1; end
 			SZ_16B:  begin sreg <= sreg >> 16; fill <= fill - 2; end
 			SZ_32B:  begin sreg <= sreg >> 32; fill <= fill - 4; end
 			SZ_BUS:  begin sreg <= 0; fill <= 0; end
 			endcase
+			// Verilator coverage_on
 		end else begin
 			case(i_size)
 			SZ_BYTE: begin sreg <= sreg <<  8; fill <= fill - 1; end

@@ -204,7 +204,9 @@ module	zipdma_fsm #(
 			end
 		end end
 		// }}}
+	// Verilator coverage_off
 	default: begin end
+	// Verilator coverage_on
 	endcase
 
 	assign	o_s2mm_transferlen = r_transferlen;

@@ -65,9 +65,13 @@ module	zipdma_mm2s #(
 		// Wishbone master interface
 		// {{{
 		output	reg			o_rd_cyc, o_rd_stb,
+		// Verilator coverage_off
 		output	wire			o_rd_we,
+		// Verilator coverage_on
 		output	reg	[AW-1:0]	o_rd_addr,
+		// Verilator coverage_off
 		output	wire	[DW-1:0]	o_rd_data,
+		// Verilator coverage_on
 		output	reg	[DW/8-1:0]	o_rd_sel,
 		input	wire			i_rd_stall,
 		input	wire			i_rd_ack,
@@ -351,6 +355,7 @@ module	zipdma_mm2s #(
 			if (OPT_LITTLE_ENDIAN)
 			begin
 				// {{{
+				// Verilator coverage_off
 				case(i_size)
 				SZ_BYTE: first_sel = {{(DW/8-1){1'b0}}, 1'b1} << i_addr[WBLSB-1:0];
 				SZ_16B: first_sel = {{(DW/8-2){1'b0}}, 1'b1,i_addr[0]} << {i_addr[WBLSB-1:1], 1'b0 };
@@ -362,6 +367,7 @@ module	zipdma_mm2s #(
 					endcase
 				SZ_BUS: first_sel = {(DW/8){1'b1}} << i_addr[WBLSB-1:0];
 				endcase
+				// Verilator coverage_on
 				// }}}
 			end else begin
 				// {{{
@@ -686,10 +692,12 @@ module	zipdma_mm2s #(
 
 	// Keep Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, M_READY, last_request_addr[0] };
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

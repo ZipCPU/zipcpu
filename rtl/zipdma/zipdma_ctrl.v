@@ -116,13 +116,13 @@ module zipdma_ctrl #(
 		w_control_reg[29]    = int_trigger;
 		w_control_reg[28:24] = int_sel;
 		//
-		w_control_reg[22]    = !o_s2mm_inc;
-		w_control_reg[21:20] = o_s2mm_size;
-		//
-		w_control_reg[19]    = !o_mm2s_inc;
-		w_control_reg[18:17] = o_mm2s_size;
-		//
 		w_control_reg[LGMEMLEN:0] = o_transferlen;
+		//
+		w_control_reg[22]    = !o_s2mm_inc;
+		w_control_reg[21:20] =  o_s2mm_size;
+		//
+		w_control_reg[18]    = !o_mm2s_inc;
+		w_control_reg[17:16] =  o_mm2s_size;
 	end
 	// }}}
 
