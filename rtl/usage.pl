@@ -157,10 +157,6 @@ my $axdcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam OPT_LOWPOWER        0";
 ## }}}
 
-my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
-		. " -chparam LGMEMLEN      32"
-		. " -chparam DW            32";
-
 ## Instruction fetch configs
 ## {{{
 my $wbprefetchconfig = " -chparam ADDRESS_WIDTH   30"
@@ -194,6 +190,13 @@ my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 		. " -chparam LGCACHESZ		 12"
 		. " -chparam LGLINESZ		  3"
 		. " -chparam OPT_LOWPOWER         0";
+## }}}
+
+## DMA configurations
+## {{{
+my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
+		. " -chparam LGMEMLEN      32"
+		. " -chparam DW            32";
 
 my $zipdmaconfig =" -chparam BUS_WIDTH           64"
 		. " -chparam ADDRESS_WIDTH       30"
