@@ -410,29 +410,58 @@ module	zipdma_mm2s #(
 
 	// nxtstb_sel
 	// {{{
-	always @(*)
-	if (OPT_LITTLE_ENDIAN)
-	begin
-		case(r_size)
-		SZ_BYTE: nxtstb_sel = { base_sel[DW/8-2:0], base_sel[DW/8-1] };
-		SZ_16B:  nxtstb_sel = { base_sel[DW/8-3:0], base_sel[DW/8-1:DW/8-2] };
-		SZ_32B:  nxtstb_sel = { base_sel[DW/8-5:0], base_sel[DW/8-1:DW/8-4] };
-		SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
-		endcase
+	generate if (DW == 32)
+	begin : GEN_NXTSTB_SEL
+		// {{{
+		always @(*)
+		if (OPT_LITTLE_ENDIAN)
+		begin
+			case(r_size)
+			SZ_BYTE: nxtstb_sel = { base_sel[DW/8-2:0], base_sel[DW/8-1] };
+			SZ_16B:  nxtstb_sel = { base_sel[DW/8-3:0], base_sel[DW/8-1:DW/8-2] };
+			default:
+				nxtstb_sel = {(DW/8){1'b1}};
+			endcase
 
-		if (!r_inc)
-			nxtstb_sel = base_sel;
-	end else begin
-		case(r_size)
-		SZ_BYTE: nxtstb_sel = { base_sel[0:0], base_sel[DW/8-1:1] };
-		SZ_16B:  nxtstb_sel = { base_sel[1:0], base_sel[DW/8-1:2] };
-		SZ_32B:  nxtstb_sel = { base_sel[3:0], base_sel[DW/8-1:4] };
-		SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
-		endcase
+			if (!r_inc)
+				nxtstb_sel = base_sel;
+		end else begin
+			case(r_size)
+			SZ_BYTE: nxtstb_sel = { base_sel[0:0], base_sel[DW/8-1:1] };
+			SZ_16B:  nxtstb_sel = { base_sel[1:0], base_sel[DW/8-1:2] };
+			default:
+				nxtstb_sel = {(DW/8){1'b1}};
+			endcase
 
-		if (!r_inc)
-			nxtstb_sel = base_sel;
-	end
+			if (!r_inc)
+				nxtstb_sel = base_sel;
+		end
+		// }}}
+	end else begin : GEN_WIDE_NXTSTB_SEL
+		always @(*)
+		if (OPT_LITTLE_ENDIAN)
+		begin
+			case(r_size)
+			SZ_BYTE: nxtstb_sel = { base_sel[DW/8-2:0], base_sel[DW/8-1] };
+			SZ_16B:  nxtstb_sel = { base_sel[DW/8-3:0], base_sel[DW/8-1:DW/8-2] };
+			SZ_32B:  nxtstb_sel = { base_sel[DW/8-5:0], base_sel[DW/8-1:DW/8-4] };
+			SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
+			endcase
+
+			if (!r_inc)
+				nxtstb_sel = base_sel;
+		end else begin
+			case(r_size)
+			SZ_BYTE: nxtstb_sel = { base_sel[0:0], base_sel[DW/8-1:1] };
+			SZ_16B:  nxtstb_sel = { base_sel[1:0], base_sel[DW/8-1:2] };
+			SZ_32B:  nxtstb_sel = { base_sel[3:0], base_sel[DW/8-1:4] };
+			SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
+			endcase
+
+			if (!r_inc)
+				nxtstb_sel = base_sel;
+		end
+	end endgenerate
 	// }}}
 
 	// first_sel
