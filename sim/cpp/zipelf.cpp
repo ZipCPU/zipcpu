@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	zipelf.cpp
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	
@@ -11,9 +11,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -28,15 +28,14 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
-
+// }}}
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -50,6 +49,8 @@
 #include <string.h>
 
 #include "zipelf.h"
+
+const	bool	ELFDEBUG = false;
 
 bool
 iself(const char *fname)
@@ -76,7 +77,7 @@ void	elfread(const char *fname, unsigned &entry, ELFSECTION **&sections)
 	Elf_Kind	ek;
 	GElf_Ehdr	ehdr;
 	GElf_Phdr	phdr;
-	const	bool	dbg = false;
+	const	bool	dbg = ELFDEBUG;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		fprintf(stderr, "ELF library initialization err, %s\n", elf_errmsg(-1));

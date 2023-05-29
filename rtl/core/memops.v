@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	memops.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A memory unit to support a CPU.
@@ -11,18 +11,19 @@
 //	before it completes the last one.  Unpredictable results might then
 //	occurr.
 //
-//	20150919 -- Added support for handling BUS ERR's (i.e., the WB
-//		error signal).
+//	BIG ENDIAN
+//		Note that this core assumes a big endian bus, with the MSB
+//		of the bus word being the least bus address
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -35,87 +36,117 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-module	memops(i_clk, i_reset, i_stb, i_lock,
-		i_op, i_addr, i_data, i_oreg,
-			o_busy, o_valid, o_err, o_wreg, o_result,
-		o_wb_cyc_gbl, o_wb_cyc_lcl,
-			o_wb_stb_gbl, o_wb_stb_lcl,
-			o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-		i_wb_stall, i_wb_ack, i_wb_err, i_wb_data
+// }}}
+module	memops #(
+		// {{{
+		parameter	ADDRESS_WIDTH=28,
+		parameter	DATA_WIDTH=32,	// CPU's register width
+		parameter	BUS_WIDTH=32,
+		parameter [0:0]	OPT_LOCK=1'b1,
+				WITH_LOCAL_BUS=1'b1,
+				OPT_ALIGNMENT_ERR=1'b1,
+				OPT_LOWPOWER=1'b0,
+				OPT_LITTLE_ENDIAN = 1'b0,
+		localparam	AW=ADDRESS_WIDTH
 `ifdef	FORMAL
-		, f_nreqs, f_nacks, f_outstanding
+		, parameter	F_LGDEPTH = 2
 `endif
-		);
-	parameter	ADDRESS_WIDTH=30;
-	parameter [0:0]	IMPLEMENT_LOCK=1'b1,
-			WITH_LOCAL_BUS=1'b1,
-			OPT_ALIGNMENT_ERR=1'b1,
-			OPT_ZERO_ON_IDLE=1'b0;
-	localparam	AW=ADDRESS_WIDTH;
-	input	wire		i_clk, i_reset;
-	input	wire		i_stb, i_lock;
-	// CPU interface
-	input	wire	[2:0]	i_op;
-	input	wire	[31:0]	i_addr;
-	input	wire	[31:0]	i_data;
-	input	wire	[4:0]	i_oreg;
-	// CPU outputs
-	output	wire		o_busy;
-	output	reg		o_valid;
-	output	reg		o_err;
-	output	reg	[4:0]	o_wreg;
-	output	reg	[31:0]	o_result;
-	// Wishbone outputs
-	output	wire		o_wb_cyc_gbl;
-	output	reg		o_wb_stb_gbl;
-	output	wire		o_wb_cyc_lcl;
-	output	reg		o_wb_stb_lcl;
-	output	reg		o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	reg	[31:0]	o_wb_data;
-	output	reg	[3:0]	o_wb_sel;
-	// Wishbone inputs
-	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[31:0]	i_wb_data;
-// Formal
-	parameter	F_LGDEPTH = 2;
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		// CPU interface
+		// {{{
+		input	wire			i_stb, i_lock,
+		input	wire	[2:0]		i_op,
+		input	wire	[31:0]		i_addr,
+		input	wire [DATA_WIDTH-1:0]	i_data,
+		input	wire	[4:0]		i_oreg,
+		// CPU outputs
+		output	wire			o_busy,
+		output	reg			o_rdbusy,
+		output	reg			o_valid,
+		output	reg			o_err,
+		output	reg	[4:0]		o_wreg,
+		output	reg [DATA_WIDTH-1:0]	o_result,
+		// }}}
+		// Wishbone
+		// {{{
+		output	wire			o_wb_cyc_gbl,
+		output	wire			o_wb_cyc_lcl,
+		output	reg			o_wb_stb_gbl,
+		output	reg			o_wb_stb_lcl,
+		output	reg			o_wb_we,
+		output	reg	[AW-1:0]	o_wb_addr,
+		output	reg	[BUS_WIDTH-1:0]	o_wb_data,
+		output	reg [BUS_WIDTH/8-1:0]	o_wb_sel,
+		// Wishbone inputs
+		input	wire			i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[BUS_WIDTH-1:0]	i_wb_data
+		// }}}
+		// }}}
+	);
+
+	// Declarations
+	// {{{
+	localparam	WBLSB = $clog2(BUS_WIDTH/8);
 `ifdef	FORMAL
-	output	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 `endif
 
-	reg	misaligned;
+	wire		misaligned;
+	reg		r_wb_cyc_gbl, r_wb_cyc_lcl;
+	reg	[2+WBLSB-1:0]	r_op;
+	wire		lock_gbl, lock_lcl;
+	wire		lcl_bus, gbl_stb, lcl_stb;
 
+	reg	[BUS_WIDTH/8-1:0]	oword_sel;
+	wire	[BUS_WIDTH/8-1:0]	pre_sel;
+	wire	[BUS_WIDTH-1:0]		pre_result;
+
+	wire	[1:0]		oshift2;
+	wire	[WBLSB-1:0]	oshift;
+
+	// }}}
+
+	// misaligned
+	// {{{
 	generate if (OPT_ALIGNMENT_ERR)
 	begin : GENERATE_ALIGNMENT_ERR
+		reg	r_misaligned;
+
 		always @(*)
 		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01?1: misaligned = i_stb; // Words must be halfword aligned
-		4'b0110: misaligned = i_stb; // Words must be word aligned
-		4'b10?1: misaligned = i_stb; // Halfwords must be aligned
-		// 4'b11??: misaligned <= 1'b0; Byte access are never misaligned
-		default: misaligned = 1'b0;
+		4'b01?1: r_misaligned = i_stb; // Words must be halfword aligned
+		4'b0110: r_misaligned = i_stb; // Words must be word aligned
+		4'b10?1: r_misaligned = i_stb; // Halfwords must be aligned
+		// 4'b11??: r_misaligned <= 1'b0; Byte access are never misaligned
+		default: r_misaligned = 1'b0;
 		endcase
+
+		assign	misaligned = r_misaligned;
 	end else
-		always @(*)	misaligned = 1'b0;
+		assign	misaligned = 1'b0;
 	endgenerate
+	// }}}
 
-	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
-	wire	gbl_stb, lcl_stb;
-	assign	lcl_stb = (i_stb)&&(WITH_LOCAL_BUS!=0)&&(i_addr[31:24]==8'hff)
-				&&(!misaligned);
-	assign	gbl_stb = (i_stb)&&((WITH_LOCAL_BUS==0)||(i_addr[31:24]!=8'hff))
-				&&(!misaligned);
+	// lcl_stb, gbl_stb
+	// {{{
+	assign	lcl_bus = (WITH_LOCAL_BUS)&&(i_addr[31:24]==8'hff);
+	assign	lcl_stb = (i_stb)&&( lcl_bus)&&(!misaligned);
+	assign	gbl_stb = (i_stb)&&(!lcl_bus)&&(!misaligned);
+	// }}}
 
+	// r_wb_cyc_gbl, r_wb_cyc_lcl
+	// {{{
 	initial	r_wb_cyc_gbl = 1'b0;
 	initial	r_wb_cyc_lcl = 1'b0;
 	always @(posedge i_clk)
@@ -135,31 +166,87 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		r_wb_cyc_lcl <= (lcl_stb);
 		r_wb_cyc_gbl <= (gbl_stb);
 	end
+	// }}}
+
+	// o_wb_stb_gbl
+	// {{{
 	initial	o_wb_stb_gbl = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		o_wb_stb_gbl <= 1'b0;
 	else if ((i_wb_err)&&(r_wb_cyc_gbl))
 		o_wb_stb_gbl <= 1'b0;
+	else if (gbl_stb)
+		o_wb_stb_gbl <= 1'b1;
 	else if (o_wb_cyc_gbl)
 		o_wb_stb_gbl <= (o_wb_stb_gbl)&&(i_wb_stall);
-	else
-		// Grab wishbone on any new transaction to the gbl bus
-		o_wb_stb_gbl <= (gbl_stb);
+	//  }}}
 
+	// o_wb_stb_lcl
+	// {{{
 	initial	o_wb_stb_lcl = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		o_wb_stb_lcl <= 1'b0;
 	else if ((i_wb_err)&&(r_wb_cyc_lcl))
 		o_wb_stb_lcl <= 1'b0;
+	else if (lcl_stb)
+		o_wb_stb_lcl <= 1'b1;
 	else if (o_wb_cyc_lcl)
 		o_wb_stb_lcl <= (o_wb_stb_lcl)&&(i_wb_stall);
-	else
-		// Grab wishbone on any new transaction to the lcl bus
-		o_wb_stb_lcl  <= (lcl_stb);
+	// }}}
 
-	reg	[3:0]	r_op;
+	// o_wb_we, o_wb_data, o_wb_sel
+	// {{{
+	always @(*)
+	begin
+		oword_sel = 0;
+
+		casez({ OPT_LITTLE_ENDIAN, i_op[2:1], i_addr[1:0] })
+		5'b00???: oword_sel[3:0] = 4'b1111;
+		5'b0100?: oword_sel[3:0] = 4'b1100;
+		5'b0101?: oword_sel[3:0] = 4'b0011;
+		5'b01100: oword_sel[3:0] = 4'b1000;
+		5'b01101: oword_sel[3:0] = 4'b0100;
+		5'b01110: oword_sel[3:0] = 4'b0010;
+		5'b01111: oword_sel[3:0] = 4'b0001;
+		//
+		// verilator coverage_off
+		5'b10???: oword_sel[3:0] = 4'b1111;
+		5'b1100?: oword_sel[3:0] = 4'b0011;
+		5'b1101?: oword_sel[3:0] = 4'b1100;
+		5'b11100: oword_sel[3:0] = 4'b0001;
+		5'b11101: oword_sel[3:0] = 4'b0010;
+		5'b11110: oword_sel[3:0] = 4'b0100;
+		5'b11111: oword_sel[3:0] = 4'b1000;
+		// verilator coverage_on
+		//
+		default: oword_sel[3:0] = 4'b1111;
+		endcase
+	end
+
+	// pre_sel
+	// {{{
+	generate if (BUS_WIDTH == 32)
+	begin : COPY_PRESEL
+		assign	pre_sel = oword_sel;
+	end else if (OPT_LITTLE_ENDIAN)
+	begin : GEN_LILPRESEL
+		wire	[WBLSB-3:0]	shift;
+
+		assign	shift = i_addr[WBLSB-1:2];
+		assign	pre_sel = oword_sel << (4 * i_addr[WBLSB-1:2]);
+	end else begin : GEN_PRESEL
+		wire	[WBLSB-3:0]	shift;
+
+		assign	shift = {(WBLSB-2){1'b1}} ^ i_addr[WBLSB-1:2];
+		assign	pre_sel = oword_sel << (4 * shift);
+	end endgenerate
+	// }}}
+
+	assign	oshift  = i_addr[WBLSB-1:0];
+	assign	oshift2 = i_addr[1:0];
+
 	initial	o_wb_we   = 1'b0;
 	initial	o_wb_data = 0;
 	initial	o_wb_sel  = 0;
@@ -167,44 +254,67 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	if (i_stb)
 	begin
 		o_wb_we   <= i_op[0];
-		if (OPT_ZERO_ON_IDLE)
+		if (OPT_LOWPOWER)
 		begin
-			casez({ i_op[2:1], i_addr[1:0] })
-			4'b100?: o_wb_data <= { i_data[15:0], 16'h00 };
-			4'b101?: o_wb_data <= { 16'h00, i_data[15:0] };
-			4'b1100: o_wb_data <= {         i_data[7:0], 24'h00 };
-			4'b1101: o_wb_data <= {  8'h00, i_data[7:0], 16'h00 };
-			4'b1110: o_wb_data <= { 16'h00, i_data[7:0],  8'h00 };
-			4'b1111: o_wb_data <= { 24'h00, i_data[7:0] };
-			default: o_wb_data <= i_data;
-			endcase
+			if (lcl_bus)
+			begin
+				// {{{
+				o_wb_data <= 0;
+				casez({ OPT_LITTLE_ENDIAN, i_op[2:1] })
+				3'b010: o_wb_data[31:0] <= { i_data[15:0], {(16){1'b0}} } >> (8*oshift2);
+				3'b011: o_wb_data[31:0] <= { i_data[ 7:0], {(24){1'b0}} } >> (8*oshift2);
+				3'b00?: o_wb_data[31:0] <= i_data[31:0];
+				//
+				// verilator coverage_off
+				3'b110: o_wb_data <= { {(BUS_WIDTH-16){1'b0}}, i_data[15:0] } << (8*oshift2);
+				3'b111: o_wb_data <= { {(BUS_WIDTH-8){1'b0}},  i_data[ 7:0] } << (8*oshift2);
+				3'b10?: o_wb_data <= { {(BUS_WIDTH-32){1'b0}}, i_data[31:0] } << (8*oshift2);
+				// verilator coverage_on
+				//
+				endcase
+				// }}}
+			end else begin
+				// {{{
+				casez({ OPT_LITTLE_ENDIAN, i_op[2:1] })
+				3'b010: o_wb_data <= { i_data[15:0], {(BUS_WIDTH-16){1'b0}} } >> (8*oshift);
+				3'b011: o_wb_data <= { i_data[ 7:0], {(BUS_WIDTH- 8){1'b0}} } >> (8*oshift);
+				3'b00?: o_wb_data <= { i_data[31:0], {(BUS_WIDTH-32){1'b0}} } >> (8*oshift);
+				//
+				3'b110: o_wb_data <= { {(BUS_WIDTH-16){1'b0}}, i_data[15:0] } << (8*oshift);
+				3'b111: o_wb_data <= { {(BUS_WIDTH-8){1'b0}},  i_data[ 7:0] } << (8*oshift);
+				3'b10?: o_wb_data <= { {(BUS_WIDTH-32){1'b0}}, i_data[31:0] } << (8*oshift);
+				//
+				endcase
+				// }}}
+			end
 		end else
-			casez({ i_op[2:1], i_addr[1:0] })
-			4'b10??: o_wb_data <= { (2){ i_data[15:0] } };
-			4'b11??: o_wb_data <= { (4){ i_data[7:0] } };
-			default: o_wb_data <= i_data;
+			casez({ i_op[2:1] })
+			2'b10: o_wb_data <= { (BUS_WIDTH/16){ i_data[15:0] } };
+			2'b11: o_wb_data <= { (BUS_WIDTH/ 8){ i_data[7:0] } };
+			default: o_wb_data <= {(BUS_WIDTH/32){i_data}};
 			endcase
 
-		o_wb_addr <= i_addr[(AW+1):2];
-		casez({ i_op[2:1], i_addr[1:0] })
-		4'b01??: o_wb_sel <= 4'b1111;
-		4'b100?: o_wb_sel <= 4'b1100;
-		4'b101?: o_wb_sel <= 4'b0011;
-		4'b1100: o_wb_sel <= 4'b1000;
-		4'b1101: o_wb_sel <= 4'b0100;
-		4'b1110: o_wb_sel <= 4'b0010;
-		4'b1111: o_wb_sel <= 4'b0001;
-		default: o_wb_sel <= 4'b1111;
-		endcase
-		r_op <= { i_op[2:1] , i_addr[1:0] };
-	end else if ((OPT_ZERO_ON_IDLE)&&(!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
+		if (lcl_bus)
+		begin
+			o_wb_addr <= i_addr[2 +: (AW+2>32 ? (32-2) : AW)];
+			o_wb_sel <= oword_sel;
+		end else begin
+			o_wb_addr <= i_addr[WBLSB +: (AW+WBLSB>32 ? (32-WBLSB) : AW)];
+			o_wb_sel <= pre_sel;
+		end
+
+		r_op <= { i_op[2:1] , i_addr[WBLSB-1:0] };
+	end else if ((OPT_LOWPOWER)&&(!o_wb_cyc_gbl)&&(!o_wb_cyc_lcl))
 	begin
 		o_wb_we   <= 1'b0;
 		o_wb_addr <= 0;
-		o_wb_data <= 32'h0;
-		o_wb_sel  <= 4'h0;
+		o_wb_data <= {(BUS_WIDTH){1'b0}};
+		o_wb_sel  <= {(BUS_WIDTH/8){1'b0}};
 	end
+	// }}}
 
+	// o_valid
+	// {{{
 	initial	o_valid = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -212,6 +322,10 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	else
 		o_valid <= (((o_wb_cyc_gbl)||(o_wb_cyc_lcl))
 				&&(i_wb_ack)&&(!o_wb_we));
+	// }}}
+
+	// o_err
+	// {{{
 	initial	o_err = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -222,78 +336,147 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		o_err <= misaligned;
 	else
 		o_err <= 1'b0;
+	// }}}
 
 	assign	o_busy = (r_wb_cyc_gbl)||(r_wb_cyc_lcl);
+
+	// o_rdbusy
+	// {{{
+	initial	o_rdbusy = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset|| ((o_wb_cyc_gbl || o_wb_cyc_lcl)&&(i_wb_err || i_wb_ack)))
+		o_rdbusy <= 1'b0;
+	else if (i_stb && !i_op[0] && !misaligned)
+		o_rdbusy <= 1'b1;
+	else if (o_valid)
+		o_rdbusy <= 1'b0;
+	// }}}
 
 	always @(posedge i_clk)
 	if (i_stb)
 		o_wreg    <= i_oreg;
+
+	// o_result
+	// {{{
+	generate if (OPT_LITTLE_ENDIAN)
+	begin : LILEND_RESULT
+
+		assign	pre_result = i_wb_data >> (8*r_op[$clog2(BUS_WIDTH/8)-1:0]);
+
+	end else begin : BIGEND_RESULT
+
+		assign	pre_result = i_wb_data << (8*r_op[$clog2(BUS_WIDTH/8)-1:0]);
+
+	end endgenerate
+
 	always @(posedge i_clk)
-	if ((OPT_ZERO_ON_IDLE)&&(!i_wb_ack))
+	if ((OPT_LOWPOWER)&&(!i_wb_ack))
 		o_result <= 32'h0;
-	else begin
-		casez(r_op)
-		4'b01??: o_result <= i_wb_data;
-		4'b100?: o_result <= { 16'h00, i_wb_data[31:16] };
-		4'b101?: o_result <= { 16'h00, i_wb_data[15: 0] };
-		4'b1100: o_result <= { 24'h00, i_wb_data[31:24] };
-		4'b1101: o_result <= { 24'h00, i_wb_data[23:16] };
-		4'b1110: o_result <= { 24'h00, i_wb_data[15: 8] };
-		4'b1111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
-		default: o_result <= i_wb_data;
+	else if (o_wb_cyc_lcl && (BUS_WIDTH != 32))
+	begin
+		// The Local bus is naturally (and only) a 32-bit bus
+		casez({ OPT_LITTLE_ENDIAN, r_op[WBLSB +: 2], r_op[1:0] })
+		5'b?01??: o_result <= i_wb_data[31:0];
+		//
+		// Big endian
+		5'b0100?: o_result <= { 16'h00, i_wb_data[31:16] };
+		5'b0101?: o_result <= { 16'h00, i_wb_data[15: 0] };
+		5'b01100: o_result <= { 24'h00, i_wb_data[31:24] };
+		5'b01101: o_result <= { 24'h00, i_wb_data[23:16] };
+		5'b01110: o_result <= { 24'h00, i_wb_data[15: 8] };
+		5'b01111: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+		//
+		// Little endian : Same bus result, just grab a different bits
+		//   from the bus return to send back to the CPU.
+		// verilator coverage_off
+		5'b1100?: o_result <= { 16'h00, i_wb_data[15: 0] };
+		5'b1101?: o_result <= { 16'h00, i_wb_data[31:16] };
+		5'b11100: o_result <= { 24'h00, i_wb_data[ 7: 0] };
+		5'b11101: o_result <= { 24'h00, i_wb_data[15: 8] };
+		5'b11110: o_result <= { 24'h00, i_wb_data[23:16] };
+		5'b11111: o_result <= { 24'h00, i_wb_data[31:24] };
+		// verilator coverage_on
+		default: o_result <= i_wb_data[31:0];
+		endcase
+	end else begin
+		casez({ OPT_LITTLE_ENDIAN, r_op[$clog2(BUS_WIDTH/8) +: 2] })
+		// Word
+		//
+		// Big endian
+		3'b00?: o_result <= pre_result[BUS_WIDTH-1:BUS_WIDTH-32];
+		3'b010: o_result <= { 16'h00, pre_result[BUS_WIDTH-1:BUS_WIDTH-16] };
+		3'b011: o_result <= { 24'h00, pre_result[BUS_WIDTH-1:BUS_WIDTH-8] };
+		//
+		// Little endian : Same bus result, just grab a different bits
+		//   from the bus return to send back to the CPU.
+		// verilator coverage_off
+		3'b10?: o_result <= pre_result[31: 0];
+		3'b110: o_result <= { 16'h00, pre_result[15: 0] };
+		3'b111: o_result <= { 24'h00, pre_result[ 7: 0] };
+		// verilator coverage_on
+		//
+		// Just to have an (unused) default
+		// default: o_result <= pre_result[31:0]; (Messes w/ coverage)
 		endcase
 	end
+	// }}}
 
-	reg	lock_gbl, lock_lcl;
-
+	// lock_gbl and lock_lcl
+	// {{{
 	generate
-	if (IMPLEMENT_LOCK != 0)
+	if (OPT_LOCK)
 	begin
+		// {{{
+		reg	r_lock_gbl, r_lock_lcl;
 
-		initial	lock_gbl = 1'b0;
-		initial	lock_lcl = 1'b0;
+		initial	r_lock_gbl = 1'b0;
+		initial	r_lock_lcl = 1'b0;
 
 		always @(posedge i_clk)
 		if (i_reset)
 		begin
-			lock_gbl <= 1'b0;
-			lock_lcl <= 1'b0;
+			r_lock_gbl <= 1'b0;
+			r_lock_lcl <= 1'b0;
 		end else if (((i_wb_err)&&((r_wb_cyc_gbl)||(r_wb_cyc_lcl)))
 				||(misaligned))
 		begin
 			// Kill the lock if
 			//	there's a bus error, or
 			//	User requests a misaligned memory op
-			lock_gbl <= 1'b0;
-			lock_lcl <= 1'b0;
+			r_lock_gbl <= 1'b0;
+			r_lock_lcl <= 1'b0;
 		end else begin
 			// Kill the lock if
 			//	i_lock goes down
 			//	User starts on the global bus, then switches
 			//	  to local or vice versa
-			lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
+			r_lock_gbl <= (i_lock)&&((r_wb_cyc_gbl)||(lock_gbl))
 					&&(!lcl_stb);
-			lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
+			r_lock_lcl <= (i_lock)&&((r_wb_cyc_lcl)||(lock_lcl))
 					&&(!gbl_stb);
 		end
 
+		assign	lock_gbl = r_lock_gbl;
+		assign	lock_lcl = r_lock_lcl;
+
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl)||(lock_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl)||(lock_lcl);
-	end else begin
-
+		// }}}
+	end else begin : NO_LOCK
+		// {{{
 		assign	o_wb_cyc_gbl = (r_wb_cyc_gbl);
 		assign	o_wb_cyc_lcl = (r_wb_cyc_lcl);
 
-		always @(*)
-			{ lock_gbl, lock_lcl } = 2'b00;
+		assign	{ lock_gbl, lock_lcl } = 2'b00;
 
 		// Make verilator happy
 		// verilator lint_off UNUSED
 		wire	[2:0]	lock_unused;
 		assign	lock_unused = { i_lock, lock_gbl, lock_lcl };
 		// verilator lint_on  UNUSED
-
+		// }}}
 	end endgenerate
+	// }}}
 
 `ifdef	VERILATOR
 	always @(posedge i_clk)
@@ -303,7 +486,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 
 	// Make verilator happy
+	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, pre_result };
 	generate if (AW < 22)
 	begin : TOO_MANY_ADDRESS_BITS
 
@@ -312,7 +499,17 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 
 	end endgenerate
 	// verilator lint_on  UNUSED
-
+	// verilator coverage_on
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
 `define	ASSERT	assert
 `ifdef	MEMOPS
@@ -320,33 +517,50 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 `else
 `define	ASSUME	assert
 `endif
-
 	reg	f_past_valid;
+
+	reg	[2:0]		fcpu_op;
+	reg	[31:0]		fcpu_addr, fcpu_data;;
+	reg	[BUS_WIDTH-1:0]	fbus_data, fpre_data;
+	reg [$clog2(BUS_WIDTH/8)-1:0] fcpu_shift;
+	reg			fcpu_local, fcpu_misaligned;
+	reg	[BUS_WIDTH/8-1:0]	fbus_sel, fpre_sel;
+
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
-		f_past_valid = 1'b1;
+		f_past_valid <= 1'b1;
+
 	always @(*)
-		if (!f_past_valid)
-			`ASSUME(i_reset);
+	if (!f_past_valid)
+		`ASSUME(i_reset);
+
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	initial	`ASSUME(!i_stb);
 
 	wire	f_cyc, f_stb;
 	assign	f_cyc = (o_wb_cyc_gbl)||(o_wb_cyc_lcl);
 	assign	f_stb = (o_wb_stb_gbl)||(o_wb_stb_lcl);
 
-`ifdef	MEMOPS
-`define	MASTER	fwb_master
-`else
-`define	MASTER	fwb_counter
-`endif
-
-	fwb_master #(.AW(AW), .F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_RMW_BUS_OPTION(IMPLEMENT_LOCK),
-			.F_OPT_DISCONTINUOUS(IMPLEMENT_LOCK))
-		f_wb(i_clk, i_reset,
-			f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
-			i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
-			f_nreqs, f_nacks, f_outstanding);
+	fwb_master #(
+		// {{{
+		.AW(AW), .F_LGDEPTH(F_LGDEPTH), .DW(BUS_WIDTH),
+		.F_OPT_RMW_BUS_OPTION(OPT_LOCK),
+		.F_OPT_DISCONTINUOUS(OPT_LOCK)
+		// }}}
+	) f_wb(
+		// {{{
+		i_clk, i_reset,
+		f_cyc, f_stb, o_wb_we, o_wb_addr, o_wb_data, o_wb_sel,
+		i_wb_ack, i_wb_stall, i_wb_data, i_wb_err,
+		f_nreqs, f_nacks, f_outstanding
+		// }}}
+	);
 
 
 	// Rule: Only one of the two CYC's may be valid, never both
@@ -360,87 +574,144 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	// Rule: if WITH_LOCAL_BUS is ever false, neither the local STB nor CYC
 	// may be valid
 	always @(*)
-		if (!WITH_LOCAL_BUS)
-		begin
-			`ASSERT(!o_wb_cyc_lcl);
-			`ASSERT(!o_wb_stb_lcl);
-		end
+	if (!WITH_LOCAL_BUS)
+	begin
+		`ASSERT(!o_wb_cyc_lcl);
+		`ASSERT(!o_wb_stb_lcl);
+	end
 
 	// Rule: If the global CYC is ever true, the LCL one cannot be true
 	// on the next clock without an intervening idle of both
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(r_wb_cyc_gbl)))
-			`ASSERT(!r_wb_cyc_lcl);
+	if ((f_past_valid)&&($past(r_wb_cyc_gbl)))
+		`ASSERT(!r_wb_cyc_lcl);
 
 	// Same for if the LCL CYC is true
 	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(r_wb_cyc_lcl)))
-			`ASSERT(!r_wb_cyc_gbl);
+	if ((f_past_valid)&&($past(r_wb_cyc_lcl)))
+		`ASSERT(!r_wb_cyc_gbl);
 
 	// STB can never be true unless CYC is also true
 	always @(posedge i_clk)
-		if (o_wb_stb_gbl)
-			`ASSERT(r_wb_cyc_gbl);
+	if (o_wb_stb_gbl)
+		`ASSERT(r_wb_cyc_gbl);
+
 	always @(posedge i_clk)
-		if (o_wb_stb_lcl)
-			`ASSERT(r_wb_cyc_lcl);
+	if (o_wb_stb_lcl)
+		`ASSERT(r_wb_cyc_lcl);
 
 	// This core only ever has zero or one outstanding transaction(s)
 	always @(posedge i_clk)
-		if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
-			`ASSERT(f_outstanding == 0);
-		else
-			`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
+	if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
+	begin
+		`ASSERT(f_outstanding == 0);
+	end else
+		`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
 
 	// The LOCK function only allows up to two transactions (at most)
 	// before CYC must be dropped.
 	always @(posedge i_clk)
-		if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
-		begin
-			if (IMPLEMENT_LOCK)
-				`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
-			else
-				`ASSERT(f_nreqs <= 1);
-		end
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(o_busy))
+	if ((o_wb_stb_gbl)||(o_wb_stb_lcl))
 	begin
-
-		// If i_stb doesn't change, then neither do any of the other
-		// inputs
-		if (($past(i_stb))&&(i_stb))
+		if (OPT_LOCK)
 		begin
-			`ASSUME($stable(i_op));
-			`ASSUME($stable(i_addr));
-			`ASSUME($stable(i_data));
-			`ASSUME($stable(i_oreg));
-			`ASSUME($stable(i_lock));
-		end
-
-
-		// No strobe's are allowed if a request is outstanding, either
-		// having been accepted by the bus or waiting to be accepted
-		// by the bus.
-		if ((f_outstanding != 0)||(f_stb))
-			`ASSUME(!i_stb);
-		/*
-		if (o_busy)
-			assert( (!i_stb)
-				||((!o_wb_stb_gbl)&&(!o_wb_stb_lcl)&&(i_lock)));
-
-		if ((f_cyc)&&($past(f_cyc)))
-			assert($stable(r_op));
-		*/
+			`ASSERT((f_outstanding == 0)||(f_outstanding == 1));
+		end else
+			`ASSERT(f_nreqs <= 1);
 	end
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// CPU properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+	reg				f_done;
+	wire	[(F_LGDEPTH-1):0]	cpu_outstanding;
+	wire				f_pc, f_rdbusy, f_gie, f_read_cycle;
+	wire	[4:0]			f_last_reg;
+	wire	[4:0]			f_addr_reg;
+	// Verilator lint_off UNDRIVEN
+	(* anyseq *)	reg	[4:0]	f_areg;
+	// Verilator lint_on  UNDRIVEN
+
+	assign	f_rdbusy = f_cyc && (f_stb || f_outstanding > 0) && !o_wb_we;
+
+	initial	f_done = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset)
+		f_done <= 1'b0;
+	else
+		f_done <= ((o_wb_cyc_gbl)||(o_wb_cyc_lcl))&&(i_wb_ack);
+
+	fmem #(
+		// {{{
+		.F_LGDEPTH(F_LGDEPTH),
+		.OPT_LOCK(OPT_LOCK),
+		.OPT_MAXDEPTH(1)
+		// }}}
+	) fmemi(
+		// {{{
+		.i_clk(i_clk),
+		.i_sys_reset(i_reset),
+		.i_cpu_reset(i_reset),
+		.i_stb(i_stb),
+		.i_pipe_stalled(o_busy),
+		.i_clear_cache(1'b0),
+		.i_lock(i_lock),
+		.i_op(i_op), .i_addr(i_addr), .i_data(i_data), .i_oreg(i_oreg),
+		.i_areg(f_areg),
+		.i_busy(o_busy),
+		.i_rdbusy(f_rdbusy),
+		.i_valid(o_valid), .i_done(f_done), .i_err(o_err),
+		.i_wreg(o_wreg), .i_result(o_result),
+		.f_outstanding(cpu_outstanding),
+		.f_pc(f_pc),
+		.f_gie(f_gie),
+		.f_read_cycle(f_read_cycle),
+		.f_last_reg(f_last_reg), .f_addr_reg(f_addr_reg)
+		// }}}
+	);
 
 	always @(*)
-		if (!IMPLEMENT_LOCK)
-			`ASSUME(!i_lock);
+	if (!o_err)
+		assert(cpu_outstanding == f_outstanding + (f_stb ? 1:0)
+					+ ((f_done || o_err) ? 1:0));
 
-	always @(posedge i_clk)
-		if ((f_past_valid)&&($past(f_cyc))&&($past(!i_lock)))
-			`ASSUME(!i_lock);
+	always @(*)
+		assert(cpu_outstanding <= 1);
+
+	always @(*)
+	if (f_pc)
+	begin
+		assert(o_wreg[3:1] == 3'h7);
+	end else if (f_rdbusy)
+		assert(o_wreg[3:1] != 3'h7);
+
+	always @(*)
+	if (o_busy)
+		assert(o_wreg[4] == f_gie);
+
+	always @(*)
+	if (!o_err)
+		assert(f_rdbusy == o_rdbusy);
+
+	always @(*)
+	if (o_busy)
+		assert(o_wb_we == !f_read_cycle);
+
+	always @(*)
+	if (cpu_outstanding > 0)
+		assert(f_last_reg == o_wreg);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Tying the two together
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	// Following any i_stb request, assuming we are idle, immediately
 	// begin a bus transaction
@@ -460,9 +731,13 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		end
 	end
 
-	always @(posedge i_clk)
-	if (o_busy)
-		`ASSUME(!i_stb);
+//	always @(posedge i_clk)
+//	if (o_busy)
+//		`ASSUME(!i_stb);
+
+	always @(*)
+	if (o_err || o_valid)
+		`ASSERT(!o_busy);
 
 	always @(posedge i_clk)
 	if (o_wb_cyc_gbl)
@@ -473,51 +748,164 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		`ASSERT((o_busy)||(lock_lcl));
 
 	always @(posedge i_clk)
-		if (f_outstanding > 0)
-			`ASSERT(o_busy);
+	if (f_outstanding > 0)
+		`ASSERT(o_busy);
 
 	// If a transaction ends in an error, send o_err on the output port.
 	always @(posedge i_clk)
-		if (f_past_valid)
+	if (f_past_valid && !$past(i_reset))
+	begin
+		if (($past(f_cyc))&&($past(i_wb_err)))
 		begin
-			if ($past(i_reset))
-				`ASSERT(!o_err);
-			else if (($past(f_cyc))&&($past(i_wb_err)))
-				`ASSERT(o_err);
-			else if ($past(misaligned))
-				`ASSERT(o_err);
-		end
+			`ASSERT(o_err);
+		end else if ($past(misaligned))
+			`ASSERT(o_err);
+	end
 
 	// Always following a successful ACK, return an O_VALID value.
 	always @(posedge i_clk)
-		if (f_past_valid)
+	if (f_past_valid && !$past(i_reset))
+	begin
+		if(($past(f_cyc))&&($past(i_wb_ack))
+				&&(!$past(o_wb_we)))
 		begin
-			if ($past(i_reset))
-				`ASSERT(!o_valid);
-			else if(($past(f_cyc))&&($past(i_wb_ack))
-					&&(!$past(o_wb_we)))
-				`ASSERT(o_valid);
-			else if ($past(misaligned))
-				`ASSERT((!o_valid)&&(o_err));
-			else
-				`ASSERT(!o_valid);
+			`ASSERT(o_valid);
+		end else if ($past(misaligned))
+		begin
+			`ASSERT((!o_valid)&&(o_err));
+		end else
+			`ASSERT(!o_valid);
+	end
+
+	always @(posedge i_clk)
+	if (i_stb)
+	begin
+		fcpu_op   <= i_op;
+		fcpu_addr <= i_addr;
+		fcpu_data <= i_data;
+	end
+
+	always @(*)
+	begin
+		fcpu_local = (&fcpu_addr[31:24]) && WITH_LOCAL_BUS;
+
+		if (OPT_LITTLE_ENDIAN)
+		begin
+			// {{{
+			casez(fcpu_op[2:1])
+			2'b11: fpre_sel = { {(BUS_WIDTH/8-1){1'b0}}, 1'b1 };
+			2'b10: fpre_sel = { {(BUS_WIDTH/8-2){1'b0}}, 2'b11 };
+			2'b0?: fpre_sel = { {(BUS_WIDTH/8-4){1'b0}}, 4'b1111 };
+			endcase
+
+			casez(fcpu_op[2:1])
+			2'b11: fpre_data = { {(BUS_WIDTH- 8){1'b0}}, fcpu_data[ 7:0] };
+			2'b10: fpre_data = { {(BUS_WIDTH-16){1'b0}}, fcpu_data[15:0] };
+			2'b0?: fpre_data = { {(BUS_WIDTH-32){1'b0}}, fcpu_data[31:0] };
+			endcase
+			// }}}
+		end else if (fcpu_local)
+		begin
+			// {{{
+			fpre_sel = 0;
+			casez(fcpu_op[2:1])
+			2'b11: fpre_sel[3:0] = 4'b1000;
+			2'b10: fpre_sel[3:0] = 4'b1100;
+			2'b0?: fpre_sel[3:0] = 4'b1111;
+			endcase
+
+			fpre_data = 0;
+			casez(fcpu_op[2:1])
+			2'b11: fpre_data[31:0] = { fcpu_data[ 7:0], {(24){1'b0}} };
+			2'b10: fpre_data[31:0] = { fcpu_data[15:0], {(16){1'b0}} };
+			2'b0?: fpre_data[31:0] = fcpu_data[31:0];
+			endcase
+			// }}}
+		end else begin
+			// {{{
+			casez(fcpu_op[2:1])
+			2'b11: fpre_sel = { 1'b1,    {(BUS_WIDTH/8-1){1'b0}} };
+			2'b10: fpre_sel = { 2'b11,   {(BUS_WIDTH/8-2){1'b0}} };
+			2'b0?: fpre_sel = { 4'b1111, {(BUS_WIDTH/8-4){1'b0}} };
+			endcase
+
+			casez(fcpu_op[2:1])
+			2'b11: fpre_data = { fcpu_data[ 7:0], {(BUS_WIDTH- 8){1'b0}} };
+			2'b10: fpre_data = { fcpu_data[15:0], {(BUS_WIDTH-16){1'b0}} };
+			2'b0?: fpre_data = { fcpu_data[31:0], {(BUS_WIDTH-32){1'b0}} };
+			endcase
+			// }}}
 		end
 
-	//always @(posedge i_clk)
-	//	if ((f_past_valid)&&($past(f_cyc))&&(!$past(o_wb_we))&&($past(i_wb_ack)))
 
-	/*
-	input	wire	[2:0]	i_op;
-	input	wire	[31:0]	i_addr;
-	input	wire	[31:0]	i_data;
-	input	wire	[4:0]	i_oreg;
-	// CPU outputs
-	output	wire		o_busy;
-	output	reg		o_valid;
-	output	reg		o_err;
-	output	reg	[4:0]	o_wreg;
-	output	reg	[31:0]	o_result;
-	*/
+		casez({ fcpu_op[2:1], fcpu_addr[1:0] })
+		4'b01?1: fcpu_misaligned = 1'b1; // Words must be halfword aligned
+		4'b0110: fcpu_misaligned = 1'b1; // Words must be word aligned
+		4'b10?1: fcpu_misaligned = 1'b1; // Halfwords must be aligned
+		// 4'b11??: fcpu_misaligned <= 1'b0; Byte access are never misaligned
+		default: fcpu_misaligned = 1'b0;
+		endcase
+
+		if (fcpu_local)
+		begin
+			fcpu_shift = fcpu_addr[1:0];
+			if (OPT_LITTLE_ENDIAN)
+			begin
+				fbus_sel   = fpre_sel  << fcpu_shift;
+				fbus_data  = fpre_data << (8*fcpu_shift);
+			end else begin
+				fbus_sel   = fpre_sel  >> (fcpu_shift + (DATA_WIDTH/8-4));
+				fbus_data  = fpre_data >> (8*(fcpu_shift + (DATA_WIDTH/8-4)));
+			end
+		end else begin
+			fcpu_shift = fcpu_addr[WBLSB-1:0];
+			if (OPT_LITTLE_ENDIAN)
+			begin
+				fbus_sel  = fpre_sel  << fcpu_shift;
+				fbus_data = fpre_data << (8*fcpu_shift);
+			end else begin
+				fbus_sel  = fpre_sel  >> fcpu_shift;
+				fbus_data = fpre_data >> (8*fcpu_shift);
+			end
+		end
+
+		if (!OPT_LOWPOWER)
+		casez(fcpu_op[2:1])
+		2'b11: fbus_data = {(BUS_WIDTH/ 8){fcpu_data[ 7:0] } };
+		2'b10: fbus_data = {(BUS_WIDTH/16){fcpu_data[15:0] } };
+		2'b0?: fbus_data = {(BUS_WIDTH/32){fcpu_data[31:0] } };
+		endcase
+	end
+
+	always @(*)
+	if (OPT_ALIGNMENT_ERR && fcpu_misaligned)
+		assert(!o_valid && !f_cyc);
+
+	always @(*)
+	if (f_stb)
+	begin
+		if (fcpu_local)
+		begin
+			assert(o_wb_stb_lcl);
+			assert(o_wb_addr == fcpu_addr[AW+1:2]);
+		end else begin
+			assert(o_wb_stb_gbl);
+			assert(o_wb_addr == fcpu_addr[WBLSB +: AW]);
+		end
+
+		if (fcpu_op[0])
+		begin
+			`ASSERT(o_wb_we);
+			`ASSERT(fcpu_misaligned || o_wb_sel  == fbus_sel);
+			`ASSERT(fcpu_misaligned || o_wb_data == fbus_data);
+		end else begin
+			`ASSERT(!o_wb_we);
+		end
+	end
+
+	always @(*)
+	if (f_cyc)
+		assert(o_wb_cyc_lcl == fcpu_local);
 
 	initial	o_wb_we = 1'b0;
 	always @(posedge i_clk)
@@ -525,99 +913,36 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	begin
 		// On a write, assert o_wb_we should be true
 		assert( $past(i_op[0]) == o_wb_we);
-
-		// Word write
-		if ($past(i_op[2:1]) == 2'b01)
-		begin
-			`ASSERT(o_wb_sel == 4'hf);
-			`ASSERT(o_wb_data == $past(i_data));
-		end
-
-		// Halfword (short) write
-		if ($past(i_op[2:1]) == 2'b10)
-		begin
-			if (!$past(i_addr[1]))
-			begin
-				`ASSERT(o_wb_sel == 4'hc);
-				`ASSERT(o_wb_data[31:16] == $past(i_data[15:0]));
-			end else begin
-				`ASSERT(o_wb_sel == 4'h3);
-				`ASSERT(o_wb_data[15:0] == $past(i_data[15:0]));
-			end
-		end
-
-		if ($past(i_op[2:1]) == 2'b11)
-		begin
-			if ($past(i_addr[1:0])==2'b00)
-			begin
-				`ASSERT(o_wb_sel == 4'h8);
-				`ASSERT(o_wb_data[31:24] == $past(i_data[7:0]));
-			end
-
-			if ($past(i_addr[1:0])==2'b01)
-			begin
-				`ASSERT(o_wb_sel == 4'h4);
-				`ASSERT(o_wb_data[23:16] == $past(i_data[7:0]));
-			end
-			if ($past(i_addr[1:0])==2'b10)
-			begin
-				`ASSERT(o_wb_sel == 4'h2);
-				`ASSERT(o_wb_data[15:8] == $past(i_data[7:0]));
-			end
-			if ($past(i_addr[1:0])==2'b11)
-			begin
-				`ASSERT(o_wb_sel == 4'h1);
-				`ASSERT(o_wb_data[7:0] == $past(i_data[7:0]));
-			end
-		end
-
-		`ASSUME($past(i_op[2:1] != 2'b00));
 	end
 
-	// This logic is fixed in the definitions of the lock(s) above
-	// i.e., the user cna be stupid and this will still work
-	/*
 	always @(posedge i_clk)
-		if ((i_lock)&&(i_stb)&&(WITH_LOCAL_BUS))
-		begin
-			restrict((lock_gbl)||(i_addr[31:24] ==8'hff));
-			restrict((lock_lcl)||(i_addr[31:24]!==8'hff));
-		end
-	*/
+	if (o_wb_stb_lcl)
+		`ASSERT(fcpu_local);
 
 	always @(posedge i_clk)
-		if (o_wb_stb_lcl)
-			`ASSERT(o_wb_addr[29:22] == 8'hff);
+	if ((f_past_valid)&&(!$past(i_reset))&&($past(misaligned)))
+	begin
+		`ASSERT(!o_wb_cyc_gbl);
+		`ASSERT(!o_wb_cyc_lcl);
+		`ASSERT(!o_wb_stb_gbl);
+		`ASSERT(!o_wb_stb_lcl);
+		`ASSERT(o_err);
+	end
+
+//	always @(posedge i_clk)
+//	if ((!f_past_valid)||($past(i_reset)))
+//		`ASSUME(!i_stb);
 
 	always @(posedge i_clk)
-		if ((f_past_valid)&&(!$past(i_reset))&&($past(misaligned)))
-		begin
-			`ASSERT(!o_wb_cyc_gbl);
-			`ASSERT(!o_wb_cyc_lcl);
-			`ASSERT(!o_wb_stb_gbl);
-			`ASSERT(!o_wb_stb_lcl);
-			`ASSERT(o_err);
-			//OPT_ALIGNMENT_ERR=1'b0,
-			//OPT_ZERO_ON_IDLE=1'b0;
-		end
-
-	always @(posedge i_clk)
-	if ((!f_past_valid)||($past(i_reset)))
-		`ASSUME(!i_stb);
-	always @(*)
-	if (o_busy)
-		`ASSUME(!i_stb);
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
-		&&(!$past(i_reset))&&(!$past(i_wb_err))
-		&&(!$past(misaligned))
-		&&(!$past(lcl_stb))
-		&&($past(i_lock))&&($past(lock_gbl)))
+	if ((f_past_valid)&&(OPT_LOCK)
+			&&(!$past(i_reset))&&(!$past(i_wb_err))
+			&&(!$past(misaligned))
+			&&(!$past(lcl_stb))
+			&&($past(i_lock))&&($past(lock_gbl)))
 		assert(lock_gbl);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+	if ((f_past_valid)&&(OPT_LOCK)
 			&&(!$past(i_reset))&&(!$past(i_wb_err))
 			&&(!$past(misaligned))
 			&&(!$past(lcl_stb))
@@ -626,16 +951,20 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 		assert(o_wb_cyc_gbl);
 
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(IMPLEMENT_LOCK)
+	if ((f_past_valid)&&(OPT_LOCK)
 			&&(!$past(i_reset))&&(!$past(i_wb_err))
 			&&(!$past(misaligned))
 			&&(!$past(gbl_stb))
 			&&($past(o_wb_cyc_lcl))&&($past(i_lock))
 			&&($past(lock_lcl)))
 		assert(o_wb_cyc_lcl);
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	//
 	always @(posedge i_clk)
 		cover(i_wb_ack);
@@ -648,6 +977,11 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 	always @(posedge i_clk)
 		cover((o_wb_stb_gbl)&&(i_wb_ack));
 
+	always @(posedge i_clk)
+		cover(f_done);
+
+	always @(posedge i_clk)
+		cover(f_done && !o_busy);
 
 	generate if (WITH_LOCAL_BUS)
 	begin
@@ -659,8 +993,17 @@ module	memops(i_clk, i_reset, i_stb, i_lock,
 			cover((o_wb_stb_lcl)&&(i_wb_ack));
 
 	end endgenerate
+	// }}}
 
+	// Make Verilator happy
+	// {{{
+	// Verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, f_nacks, f_addr_reg };
+	// Verilator lint_on  UNUSED
+	// }}}
 `endif
+// }}}
 endmodule
 //
 //

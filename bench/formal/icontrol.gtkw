@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
 [*] Sat Mar 30 19:34:36 2019
 [*]
-[dumpfile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/icontrol_cvr/engine_0/trace0.vcd"
-[dumpfile_mtime] "Sat Mar 30 18:59:05 2019"
-[dumpfile_size] 2614
-[savefile] "/home/dan/jericho/work/rnd/zipcpu/trunk/bench/formal/icontrol.gtkw"
 [timestart] 0
 [size] 1809 1016
 [pos] -810 -417

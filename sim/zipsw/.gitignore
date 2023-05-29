@@ -1,0 +1,11 @@
+*.hex
+cputest
+dmatest
+hello
+hellosim
+hellpsmp
+hellostep
+lockcheck
+locksmp
+clkgatechk
+*.txt

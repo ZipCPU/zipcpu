@@ -30,7 +30,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2015-2021, Gisselquist Technology, LLC
+## Copyright (C) 2015-2022, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of  the GNU General Public License as published
@@ -46,8 +46,9 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
 ##
 ##
@@ -67,6 +68,13 @@ doc:
 	+@$(SUBMAKE) doc/
 ## }}}
 
+.PHONY: formal
+## {{{
+rtl:
+	@echo "Running formal proofs";
+	+@$(SUBMAKE) bench/formal/
+## }}}
+
 .PHONY: rtl
 ## {{{
 rtl:
@@ -81,7 +89,7 @@ sw:
 	+@$(SUBMAKE) sw/
 ## }}}
 
-.PHONY: sim cppsim vsim
+.PHONY: sim
 ## {{{
 sim:	cppsim vsim
 
@@ -97,12 +105,13 @@ vsim: rtl
 .PHONY: clean
 ## {{{
 clean:
-	+@$(SUBMAKE) rtl clean
-	+@$(SUBMAKE) sw clean
-	+@$(SUBMAKE) sim/cpp clean
-	+@$(SUBMAKE) sim/verilator clean
-	+@$(SUBMAKE) bench/asm clean
-	+@$(SUBMAKE) bench/cpp clean
+	+@$(SUBMAKE) --directory=rtl           clean
+	+@$(SUBMAKE) --directory=sw            clean
+	+@$(SUBMAKE) --directory=sim/cpp       clean
+	+@$(SUBMAKE) --directory=sim/verilator clean
+	+@$(SUBMAKE) --directory=bench/asm     clean
+	+@$(SUBMAKE) --directory=bench/cpp     clean
+	+@$(SUBMAKE) --directory=bench/formal  clean
 ## }}}
 
 .PHONY: bench

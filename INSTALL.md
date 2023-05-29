@@ -1,5 +1,5 @@
 # Welcome to the ZipCPU!
-## Installation overview
+## Installation instructions
 
 The ZipCPU repository contains a couple of very basic cabilities, some very necessary to any user, some only necessary to the hard core users, some not so much.
 

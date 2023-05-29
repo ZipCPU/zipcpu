@@ -8,7 +8,7 @@
 //		A very, _very_ simple counter.  It's purpose doesn't really
 //	include rollover, but it will interrupt on rollover.  It can be set,
 //	although my design concept is that it can be reset.  It cannot be
-//	halted.  It will always produce interrupts--whether or not they are 
+//	halted.  It will always produce interrupts--whether or not they are
 //	handled interrupts is another question--that's up to the interrupt
 //	controller.
 //
@@ -17,7 +17,7 @@
 //	each task by resetting the counter at the beginning of every task
 //	interval, and reading the result at the end of the interval.  As long
 //	as the interval is less than 2^32 clocks, there should be no problem.
-//	Similarly, this can be used to measure CPU wishbone bus stalls, 
+//	Similarly, this can be used to measure CPU wishbone bus stalls,
 //	prefetch stalls, or other CPU stalls (i.e. stalling as part of a JMP
 //	instruction, or a read from the condition codes following a write).
 //
@@ -27,10 +27,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -103,10 +103,12 @@ module	zipcounter #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = i_wb_cyc;
+	assign	unused = &{ 1'b0, i_wb_cyc };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

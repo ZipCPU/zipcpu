@@ -1,37 +1,44 @@
 [*]
-[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
-[*] Tue Oct  8 13:56:41 2019
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Thu Nov 25 20:02:50 2021
 [*]
-[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dblfetch/engine_0/trace.vcd"
-[dumpfile_mtime] "Tue Oct  8 13:53:41 2019"
-[dumpfile_size] 9071
-[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/dblfetch.gtkw"
+[dumpfile_mtime] "Thu Nov 25 20:02:41 2021"
+[dumpfile_size] 11901
 [timestart] 0
-[size] 1920 1054
-[pos] 1919 -1
-*-4.386335 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
-[sst_width] 196
-[signals_width] 230
+[size] 1920 1021
+[pos] -1 -1
+*-3.910860 40 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] dblfetch.
+[sst_width] 270
+[signals_width] 280
 [sst_expanded] 1
-[sst_vpaned_height] 315
+[sst_vpaned_height] 290
 @28
-dblfetch.i_reset
 dblfetch.i_clk
+dblfetch.i_reset
 @200
 -
 @28
-dblfetch.i_new_pc
 dblfetch.i_clear_cache
+dblfetch.i_new_pc
 @22
-dblfetch.i_pc[31:0]
+dblfetch.i_pc[29:0]
+@28
+dblfetch.o_valid
+dblfetch.i_ready
+dblfetch.o_illegal
+@22
+dblfetch.o_pc[29:0]
+dblfetch.o_insn[7:0]
 @200
 -
 @28
 dblfetch.o_wb_cyc
 dblfetch.o_wb_stb
+@29
 dblfetch.o_wb_we
 @22
-dblfetch.o_wb_addr[29:0]
+dblfetch.o_wb_addr[27:0]
 dblfetch.o_wb_data[31:0]
 @28
 dblfetch.i_wb_stall
@@ -43,43 +50,135 @@ dblfetch.i_wb_err
 @200
 -
 @28
-dblfetch.o_valid
-dblfetch.i_stall_n
-@22
-dblfetch.o_pc[31:0]
-dblfetch.o_insn[31:0]
-@29
-dblfetch.o_illegal
-@200
--
-@28
-dblfetch.cache_illegal
 dblfetch.cache_valid
 @22
 dblfetch.cache_word[31:0]
+@28
+[color] 1
+dblfetch.cache_illegal
+@200
+-
+@28
+dblfetch.f_outstanding[1:0]
+[color] 3
+dblfetch.GEN_SUBSHIFT.rg_valid
+dblfetch.GEN_SUBSHIFT.r_count[2:0]
+dblfetch.GEN_SUBSHIFT.r_shift[1:0]
+@22
+dblfetch.GEN_SUBSHIFT.rg_insn[31:0]
+@200
+-
+@c00022
 dblfetch.f_const_addr[29:0]
+@28
+(0)dblfetch.f_const_addr[29:0]
+(1)dblfetch.f_const_addr[29:0]
+(2)dblfetch.f_const_addr[29:0]
+(3)dblfetch.f_const_addr[29:0]
+(4)dblfetch.f_const_addr[29:0]
+(5)dblfetch.f_const_addr[29:0]
+(6)dblfetch.f_const_addr[29:0]
+(7)dblfetch.f_const_addr[29:0]
+(8)dblfetch.f_const_addr[29:0]
+(9)dblfetch.f_const_addr[29:0]
+(10)dblfetch.f_const_addr[29:0]
+(11)dblfetch.f_const_addr[29:0]
+(12)dblfetch.f_const_addr[29:0]
+(13)dblfetch.f_const_addr[29:0]
+(14)dblfetch.f_const_addr[29:0]
+(15)dblfetch.f_const_addr[29:0]
+(16)dblfetch.f_const_addr[29:0]
+(17)dblfetch.f_const_addr[29:0]
+(18)dblfetch.f_const_addr[29:0]
+(19)dblfetch.f_const_addr[29:0]
+(20)dblfetch.f_const_addr[29:0]
+(21)dblfetch.f_const_addr[29:0]
+(22)dblfetch.f_const_addr[29:0]
+(23)dblfetch.f_const_addr[29:0]
+(24)dblfetch.f_const_addr[29:0]
+(25)dblfetch.f_const_addr[29:0]
+(26)dblfetch.f_const_addr[29:0]
+(27)dblfetch.f_const_addr[29:0]
+(28)dblfetch.f_const_addr[29:0]
+(29)dblfetch.f_const_addr[29:0]
+@1401200
+-group_end
+@22
+dblfetch.f_const_bus_addr[27:0]
+dblfetch.f_const_bus_word[31:0]
 @28
 dblfetch.f_const_illegal
 @22
-dblfetch.f_const_insn[31:0]
-dblfetch.f_cpu_delay[4:0]
+dblfetch.f_const_insn[7:0]
+dblfetch.f_address[29:0]
+dblfetch.cpu.fc_pc[29:0]
 @28
-dblfetch.f_nacks[1:0]
-dblfetch.f_nreqs[1:0]
-dblfetch.f_outstanding[1:0]
-dblfetch.f_past_clear_cache
-dblfetch.f_past_o_valid
-dblfetch.f_past_reset
-dblfetch.f_past_stall_n
-dblfetch.f_past_valid
-dblfetch.f_this_insn
 dblfetch.f_this_pc
 dblfetch.f_this_return
-dblfetch.inflight[1:0]
-dblfetch.invalid_bus_cycle
-dblfetch.last_stb
 @22
-dblfetch.next_pc_address[29:0]
-dblfetch.this_return_address[29:0]
+[color] 3
+dblfetch.this_return_address[27:0]
+@c00022
+[color] 3
+dblfetch.next_pc_address[27:0]
+@28
+[color] 3
+(0)dblfetch.next_pc_address[27:0]
+[color] 3
+(1)dblfetch.next_pc_address[27:0]
+[color] 3
+(2)dblfetch.next_pc_address[27:0]
+[color] 3
+(3)dblfetch.next_pc_address[27:0]
+[color] 3
+(4)dblfetch.next_pc_address[27:0]
+[color] 3
+(5)dblfetch.next_pc_address[27:0]
+[color] 3
+(6)dblfetch.next_pc_address[27:0]
+[color] 3
+(7)dblfetch.next_pc_address[27:0]
+[color] 3
+(8)dblfetch.next_pc_address[27:0]
+[color] 3
+(9)dblfetch.next_pc_address[27:0]
+[color] 3
+(10)dblfetch.next_pc_address[27:0]
+[color] 3
+(11)dblfetch.next_pc_address[27:0]
+[color] 3
+(12)dblfetch.next_pc_address[27:0]
+[color] 3
+(13)dblfetch.next_pc_address[27:0]
+[color] 3
+(14)dblfetch.next_pc_address[27:0]
+[color] 3
+(15)dblfetch.next_pc_address[27:0]
+[color] 3
+(16)dblfetch.next_pc_address[27:0]
+[color] 3
+(17)dblfetch.next_pc_address[27:0]
+[color] 3
+(18)dblfetch.next_pc_address[27:0]
+[color] 3
+(19)dblfetch.next_pc_address[27:0]
+[color] 3
+(20)dblfetch.next_pc_address[27:0]
+[color] 3
+(21)dblfetch.next_pc_address[27:0]
+[color] 3
+(22)dblfetch.next_pc_address[27:0]
+[color] 3
+(23)dblfetch.next_pc_address[27:0]
+[color] 3
+(24)dblfetch.next_pc_address[27:0]
+[color] 3
+(25)dblfetch.next_pc_address[27:0]
+[color] 3
+(26)dblfetch.next_pc_address[27:0]
+[color] 3
+(27)dblfetch.next_pc_address[27:0]
+@1401200
+-group_end
 [pattern_trace] 1
 [pattern_trace] 0

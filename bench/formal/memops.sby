@@ -1,10 +1,27 @@
 [tasks]
-cover
-proof
+cvr              bus32
+prf              bus32
+prflp        prf bus32  opt_lowpower
+prflck       prf bus32               opt_lock
+prflcklp     prf bus32  opt_lowpower opt_lock
+prflcl       prf bus32                        opt_local
+prflplcl     prf bus32  opt_lowpower          opt_local
+prflcklcl    prf bus32               opt_lock opt_local
+prflcklplcl  prf bus32  opt_lowpower opt_lock opt_local
+prf64        prf bus64
+prf64lcl     prf bus64
+prf64lp      prf bus64  opt_lowpower          opt_local
+prf64lplcl   prf bus64  opt_lowpower          opt_local
+prf128       prf bus128
+prf128lp     prf bus128
+prf128lck    prf bus128              op_lock
+prf128lcl    prf bus128 opt_lowpower          op_local
+prf128lplcl  prf bus128 opt_lowpower          op_local
 
 [options]
-proof: mode prove
-cover: mode cover
+prf: mode prove
+prf: depth 3
+cvr: mode cover
 
 [engines]
 smtbmc
@@ -12,9 +29,29 @@ smtbmc
 [script]
 read -define MEMOPS
 read -formal memops.v
+read -formal fmem.v
 read -formal fwb_master.v
+--pycode-begin--
+cmd  = "hierarchy -top memops"
+cmd += " -chparam OPT_LOCK %d"    % (1 if "opt_lock"     in tags else 0)
+cmd += " -chparam WITH_LOCAL_BUS %d"    % (1 if "opt_local"    in tags else 0)
+cmd += " -chparam OPT_LOWPOWER %d"      % (1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam OPT_ALIGNMENT_ERR %d" % (1 if "opt_aligned" in tags else 0)
+if ("bus32" in tags):
+	cmd += " -chparam BUS_WIDTH 32"
+elif ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
+elif ("bus256" in tags):
+	cmd += " -chparam BUS_WIDTH 256"
+elif ("bus512" in tags):
+	cmd += " -chparam BUS_WIDTH 512"
+output(cmd)
+--pycode-end--
 prep -top memops
 
 [files]
 ../../rtl/core/memops.v
 ../../rtl/ex/fwb_master.v
+fmem.v

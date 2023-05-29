@@ -1,0 +1,34 @@
+                 iCE40  X7-s
+Wrapper   Config  4LUT  6LUT
+----------------------------
+ZipBones  ASM:    1103   575
+ZipBones  TRAP:   1606   977
+ZipBones  MIN:    2662  1442
+ZipBones  PIPE:   3527  1934
+ZipBones  CACHE:  5163  2713
+ZipBones  LWPWR:  5178  2716
+ZipSystem ASM:    3346  1657
+ZipSystem TRAP:   4050  2152
+ZipSystem MIN:    5137  2628
+ZipSystem PIPE:   6309  3258
+ZipSystem CACHE:  7909  4204
+ZipSystem LWPWR:  7955  4253
+ZipAXI-L  ASM:    1490   821
+ZipAXI-L  TRAP:   2200  1218
+ZipAXI-L  MIN:    3143  1675
+ZipAXI-L  PIPE:   4185  2228
+ZipAXI    ASM:    1485   842
+ZipAXI    TRAP:   2055  1229
+ZipAXI    MIN:    3073  1664
+ZipAXI    PIPE:   4152  2244
+ZipAXI    CACHE:  4936  2829
+ZipAXI    LWPWR:  5053  2820
+ WB-MEMOPS   :    94    68
+ WB-PIPEMEM  :   228    88
+ WB-DCACHE   :  1311   652
+AXI-DCACHE   :   974   642
+ WB-DMA      :  1310   556
+ WB-PREFETCH :   122    66
+ WB-DBLFETCH :   204   106
+ WB-ICACHE   :  3024  1725
+AXI-ICACHE   :   652   464

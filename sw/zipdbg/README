@@ -2,7 +2,8 @@
 
 This directory contains the Zip System Debugger.  If you wish to use it,
 you'll need to define something that implements the DEVBUS interface,
-as found in devbus.h.  Basically, the debugger expects to interact with the
+as found in devbus.h.  You'll also need to provide your own bus address file,
+found here in regdefs.h.  Basically, the debugger expects to interact with the
 Zip System across a 32-bit bus.  Since this interaction is hardware system
 specific, the implementation for your system isn't provided here.
 
@@ -21,5 +22,4 @@ breakpoints to the debugger.
 Contact me if you need help building such a capability for your system.
 My current implementation transforms a UART signal into 32-bit wishbone
 bus interactions which then support this CPU.
-
 

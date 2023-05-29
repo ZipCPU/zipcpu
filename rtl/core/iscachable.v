@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	iscachable.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A helper function to both dcache and its formal properties,
@@ -12,11 +12,11 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2018-2019, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2018-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -24,26 +24,30 @@
 // ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 // for more details.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-module	iscachable(i_addr, o_cachable);
-	parameter	ADDRESS_WIDTH=30;
-	localparam	AW = ADDRESS_WIDTH; // Just for ease of notation below
-	parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0;
-	parameter [AW-1:0] 	BKRAM_ADDR = 30'h4000000,
-				BKRAM_MASK = 30'h4000000;
-	parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0;
-
-	input	wire	[AW-1:0]	i_addr;
-	output	reg			o_cachable;
+// }}}
+module	iscachable #(
+		// {{{
+		parameter	ADDRESS_WIDTH=32,
+		localparam	AW = ADDRESS_WIDTH, // Just for ease of notation below
+		parameter [AW-1:0] 	SDRAM_ADDR  = 0, SDRAM_MASK = 0,
+		parameter [AW-1:0] 	BKRAM_ADDR = 32'h10000000,
+					BKRAM_MASK = 32'h10000000,
+		parameter [AW-1:0] 	FLASH_ADDR  = 0, FLASH_MASK  = 0
+		// }}}
+	) (
+		// {{{
+		input	wire	[AW-1:0]	i_addr,
+		output	reg			o_cachable
+		// }}}
+	);
 
 
 	always @(*)

@@ -1,0 +1,153 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sat Apr  3 12:28:25 2021
+[*]
+[dumpfile_mtime] "Sat Apr  3 12:24:54 2021"
+[dumpfile_size] 112565
+[timestart] 0
+[size] 1628 843
+[pos] -1 -1
+*-4.910860 60 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 210
+[sst_expanded] 1
+[sst_vpaned_height] 228
+@28
+axidcache.S_AXI_ACLK
+axidcache.S_AXI_ARESETN
+@200
+-
+-
+@28
+axidcache.state[1:0]
+@c00200
+-CPU Interface
+@28
+[color] 3
+axidcache.i_cpu_reset
+[color] 3
+axidcache.i_clear
+[color] 3
+axidcache.i_pipe_stb
+[color] 2
+axidcache.o_pipe_stalled
+@22
+[color] 3
+axidcache.i_addr[31:0]
+[color] 3
+axidcache.i_data[31:0]
+@28
+[color] 3
+axidcache.i_op[2:0]
+@22
+[color] 3
+axidcache.i_oreg[4:0]
+@200
+-
+@28
+axidcache.o_valid
+axidcache.o_busy
+axidcache.o_rdbusy
+axidcache.o_err
+@22
+axidcache.o_data[31:0]
+axidcache.o_wreg[4:0]
+@28
+axidcache.i_lock
+@22
+axidcache.i_caddr[5:0]
+@28
+axidcache.i_cline[2:0]
+@22
+axidcache.i_ctag[23:0]
+@1401200
+-CPU Interface
+@800200
+-AXI Writes
+@28
+[color] 2
+axidcache.M_AXI_AWVALID
+[color] 3
+axidcache.M_AXI_AWREADY
+@22
+[color] 2
+axidcache.M_AXI_AWADDR[31:0]
+[color] 2
+axidcache.M_AXI_AWLEN[7:0]
+@28
+[color] 2
+axidcache.M_AXI_AWBURST[1:0]
+[color] 2
+axidcache.M_AXI_AWSIZE[2:0]
+[color] 2
+axidcache.M_AXI_AWPROT[2:0]
+@22
+[color] 2
+axidcache.M_AXI_AWCACHE[3:0]
+@200
+-
+@28
+[color] 2
+axidcache.M_AXI_WVALID
+[color] 3
+axidcache.M_AXI_WREADY
+@22
+[color] 2
+axidcache.M_AXI_WDATA[31:0]
+[color] 2
+axidcache.M_AXI_WSTRB[3:0]
+@28
+[color] 2
+axidcache.M_AXI_WLAST
+@200
+-
+@28
+[color] 3
+axidcache.M_AXI_BVALID
+[color] 2
+axidcache.M_AXI_BREADY
+[color] 3
+axidcache.M_AXI_BRESP[1:0]
+@1000200
+-AXI Writes
+@c00200
+-AXI Reads
+@28
+[color] 2
+axidcache.M_AXI_ARVALID
+[color] 3
+axidcache.M_AXI_ARREADY
+@22
+[color] 2
+axidcache.M_AXI_ARADDR[31:0]
+[color] 2
+axidcache.M_AXI_ARLEN[7:0]
+@28
+[color] 2
+axidcache.M_AXI_ARSIZE[2:0]
+[color] 2
+axidcache.M_AXI_ARBURST[1:0]
+[color] 2
+axidcache.M_AXI_ARPROT[2:0]
+@22
+[color] 2
+axidcache.M_AXI_ARCACHE[3:0]
+@200
+-
+@28
+[color] 3
+axidcache.M_AXI_RVALID
+[color] 2
+axidcache.M_AXI_RREADY
+@22
+[color] 3
+axidcache.M_AXI_RDATA[31:0]
+@28
+[color] 3
+axidcache.M_AXI_RLAST
+[color] 3
+axidcache.M_AXI_RRESP[1:0]
+@1401200
+-AXI Reads
+[pattern_trace] 1
+[pattern_trace] 0

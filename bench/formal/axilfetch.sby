@@ -1,0 +1,56 @@
+[tasks]
+prf				bus32
+cvr				bus32
+prfdbl	 prf	opt_double	bus32
+cvrdbl	 cvr	opt_double	bus32
+prff	 prf	opt_fifo	bus32
+cvrf	 cvr	opt_fifo	bus32
+prf64	 prf			bus64
+cvr64	 cvr			bus64
+prfdbl64 prf	opt_double	bus64
+cvrdbl64 cvr	opt_double	bus64
+prff64	 prf	opt_fifo	bus64
+cvrf64	 cvr	opt_fifo	bus64
+
+[options]
+prf: mode prove
+prf: depth 5
+opt_fifo: depth 6
+cvr: mode cover
+cvr: depth 30
+
+[engines]
+prf: smtbmc
+cvr: smtbmc
+
+[script]
+read -define AXILOPS
+read -formal axilfetch.v
+read -formal sfifo.v
+read -formal faxil_master.v
+read -formal ffetch.v
+--pycode-begin--
+cmd = "hierarchy -top axilfetch"
+
+if ("bus64" in tags):
+	cmd +=" -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd +=" -chparam C_AXI_DATA_WIDTH 32"
+
+if ("opt_double" in tags):
+	cmd +=" -chparam FETCH_LIMIT 2"
+elif ("opt_fifo" in tags):
+	cmd +=" -chparam FETCH_LIMIT 8"
+else:
+	cmd +=" -chparam FETCH_LIMIT 1"
+
+output(cmd)
+--pycode-end--
+
+prep -top axilfetch
+
+[files]
+../../rtl/core/axilfetch.v
+faxil_master.v
+../../../../opencores/wb2axip/trunk/rtl/sfifo.v
+ffetch.v

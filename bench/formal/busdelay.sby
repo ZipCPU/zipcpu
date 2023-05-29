@@ -1,5 +1,11 @@
+[tasks]
+prf
+prfd prf opt_delay_stall
+prflp  prf                 opt_lowpower
+prfdlp prf opt_delay_stall opt_lowpower
+
 [options]
-mode prove
+prf: mode prove
 depth 14
 
 [engines]
@@ -9,6 +15,12 @@ smtbmc
 read -formal -D BUSDELAY busdelay.v
 read -formal -D BUSDELAY fwb_slave.v
 read -formal -D BUSDELAY fwb_master.v
+--pycode-begin--
+cmd = "hierarchy -top busdelay"
+cmd += " -chparam OPT_LOWPOWER %d" % (1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam DELAY_STALL  %d" % (1 if "opt_delay_stall" in tags else 0)
+output(cmd)
+--pycode-end--
 prep -top busdelay
 
 [files]

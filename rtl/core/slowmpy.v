@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename: 	slowmpy.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This is a signed (OPT_SIGNED=1) or unsigned (OPT_SIGNED=0)
@@ -15,11 +15,11 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2018-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2018-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -32,72 +32,98 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-//
-module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
-		o_done, o_p, o_aux);
-	parameter			LGNA = 6;
-	parameter	[LGNA:0]	NA = 33;
-	parameter	[0:0]		OPT_SIGNED = 1'b1;
-	localparam	NB = NA;	// Must be = NA for OPT_SIGNED to work
-	//
-	input	wire	i_clk, i_reset;
-	//
-	input	wire	i_stb;
-	input	wire	signed	[(NA-1):0]	i_a;
-	input	wire	signed	[(NB-1):0]	i_b;
-	input	wire				i_aux;
-	output	reg				o_busy, o_done;
-	output	reg	signed	[(NA+NB-1):0]	o_p;
-	output	reg				o_aux;
+// }}}
+module	slowmpy #(
+		// {{{
+		parameter			LGNA = 6,
+		parameter	[LGNA:0]	NA = 33,
+		parameter	[0:0]		OPT_SIGNED = 1'b1,
+		parameter	[0:0]		OPT_LOWPOWER = 1'b0,
+		localparam	NB = NA // Must be = NA for OPT_SIGNED to work
+		// }}}
+	) (
+		// {{{
+		input	wire				i_clk, i_reset,
+		//
+		input	wire				i_stb,
+		input	wire	signed	[(NA-1):0]	i_a,
+		input	wire	signed	[(NB-1):0]	i_b,
+		// verilator coverage_off
+		input	wire				i_aux,
+		// verilator coverage_on
+		output	reg				o_busy, o_done,
+		output	reg	signed	[(NA+NB-1):0]	o_p,
+		// verilator coverage_off
+		output	reg				o_aux
+		// verilator coverage_on
+		// }}}
+	);
 
+	// Declarations
+	// {{{
 	reg	[LGNA-1:0]	count;
 	reg	[NA-1:0]	p_a;
 	reg	[NB-1:0]	p_b;
 	reg	[NA+NB-1:0]	partial;
+	// verilator coverage_off
 	reg			aux;
+	// verilator coverage_on
+	reg			almost_done;
+	wire			pre_done;
+	wire	[NA-1:0]	pwire;
+	// }}}
 
-	reg	almost_done;
-
-	wire	pre_done;
 	assign	pre_done = (count == 0);
+
+	// almost_done
+	// {{{
 	initial	almost_done = 1'b0;
 	always @(posedge i_clk)
 		almost_done <= (!i_reset)&&(o_busy)&&(pre_done);
+	// }}}
 
+	// aux, o_done, o_busy
+	// {{{
 	initial	aux    = 0;
 	initial	o_done = 0;
 	initial	o_busy = 0;
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
+		// {{{
 		aux    <= 0;
 		o_done <= 0;
 		o_busy <= 0;
-	end else if ((!o_busy)&&(i_stb))
+		// }}}
+	end else if (!o_busy)
 	begin
+		// {{{
 		o_done <= 0;
-		o_busy <= 1;
-		aux    <= i_aux;
-	end else if ((o_busy)&&(almost_done))
+		o_busy <= i_stb;
+		aux    <= (!OPT_LOWPOWER || i_stb) ? i_aux : 0;
+		// }}}
+	end else if (almost_done)
 	begin
+		// {{{
 		o_done <= 1;
 		o_busy <= 0;
+		// }}}
 	end else
 		o_done <= 0;
+	// }}}
 
-	wire	[NA-1:0]	pwire;
 	assign	pwire = (p_b[0] ? p_a : 0);
 
+	// count, partial, p_a, p_b
+	// {{{
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
@@ -105,6 +131,12 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 		partial <= 0;
 		p_a <= i_a;
 		p_b <= i_b;
+
+		if (OPT_LOWPOWER && !i_stb)
+		begin
+			p_a <= 0;
+			p_b <= 0;
+		end
 	end else begin
 		p_b <= (p_b >> 1);
 		// partial[NA+NB-1:NB] <= partial[NA+NB
@@ -120,19 +152,33 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 				+ ((p_b[0]) ? {1'b0,p_a} : 0);
 		count <= count - 1;
 	end
+	// }}}
 
+	// o_p, o_aux
+	// {{{
 	always @(posedge i_clk)
 	if (almost_done)
 	begin
 		if (OPT_SIGNED)
 			o_p   <= partial[NA+NB-1:0]
-				+ {1'b1,{(NA-2){1'b0}},1'b1, {(NB){1'b0}}};
+				+ { 1'b1, {(NA-2){1'b0}}, 1'b1, {(NB){1'b0}} };
 		else
 			o_p   <= partial[NA+NB-1:0];
 		o_aux <= aux;
 	end
-
+	// }}}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+//
+// Formal properties
+// {{{
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// Declarations and reset
+	// {{{
 `define	ASSERT	assert
 `ifdef	SLOWMPY
 `define	ASSUME	assume
@@ -141,13 +187,16 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 `endif
 
 	reg	f_past_valid;
+
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
+
 	initial	assume(i_reset);
 	always @(*)
 	if (!f_past_valid)
 		`ASSUME(i_reset);
+	// }}}
 
 	always @(posedge i_clk)
 	if ((!f_past_valid)||($past(i_reset)))
@@ -169,7 +218,7 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 
 	//
 	// For now, just formally verify our internal signaling
-	//
+	// {{{
 
 	always @(posedge i_clk)
 		`ASSERT(almost_done == (o_busy&&(&count)));
@@ -197,21 +246,30 @@ module	slowmpy(i_clk, i_reset, i_stb, i_a, i_b, i_aux, o_busy,
 	if (o_done)
 	begin
 		if ((f_a == 0)||(f_b == 0))
+		begin
 			`ASSERT(o_p == 0);
-		else
+		end else
 			`ASSERT(o_p[NA+NB-1] == f_a[NA-1] ^ f_b[NA-1]);
 	end
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Cover properties
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
 	always @(posedge i_clk)
 		cover(o_done);
 
-	reg	f_past_done;
-	initial	f_past_done = 1'b0;
+	reg	cvr_past_done;
+	initial	cvr_past_done = 1'b0;
 	always @(posedge i_clk)
 	if (o_done)
-		f_past_done = 1'b1;
+		cvr_past_done <= 1'b1;
 
 	always @(posedge i_clk)
-		cover((o_done)&&(f_past_done));
+		cover((o_done)&&(cvr_past_done));
+	// }}}
 `endif
+// }}}
 endmodule

@@ -1,0 +1,76 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Wed Sep 28 15:50:30 2022
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1741 792
+[pos] -1 -1
+*-4.379821 45 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 343
+[signals_width] 166
+[sst_expanded] 1
+[sst_vpaned_height] 233
+@28
+zipdma_txgears.i_clk
+zipdma_txgears.i_reset
+zipdma_txgears.i_size[1:0]
+@200
+-
+@28
+zipdma_txgears.S_VALID
+zipdma_txgears.S_READY
+@22
+zipdma_txgears.S_DATA[63:0]
+zipdma_txgears.S_BYTES[3:0]
+@28
+zipdma_txgears.S_LAST
+@200
+-
+@28
+zipdma_txgears.M_VALID
+zipdma_txgears.M_READY
+@22
+zipdma_txgears.M_DATA[63:0]
+zipdma_txgears.M_BYTES[3:0]
+@28
+zipdma_txgears.M_LAST
+@200
+-
+@28
+zipdma_txgears.r_last
+@22
+zipdma_txgears.fill[3:0]
+zipdma_txgears.sreg[63:0]
+@28
+zipdma_txgears.r_next
+zipdma_txgears.f_mid_packet[1:0]
+@200
+-
+@28
+zipdma_txgears.fc_check
+@22
+zipdma_txgears.fc_posn[15:0]
+zipdma_txgears.fc_byte[7:0]
+@200
+-
+@28
+zipdma_txgears.fs_check
+@22
+zipdma_txgears.f_rcvd[15:0]
+@28
+zipdma_txgears.fs_shift[2:0]
+@22
+zipdma_txgears.fs_shifted[63:0]
+@200
+-
+@28
+zipdma_txgears.fm_check
+@22
+zipdma_txgears.f_sent[15:0]
+@28
+zipdma_txgears.fm_shift[2:0]
+@23
+zipdma_txgears.fm_shifted[63:0]
+[pattern_trace] 1
+[pattern_trace] 0

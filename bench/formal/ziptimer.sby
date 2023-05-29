@@ -1,13 +1,20 @@
+[tasks]
+prf
+prfr prf opt_reload
+
 [options]
-mode prove
-depth 5
+prf: mode prove
+depth 3
 
 [engines]
 smtbmc
+smtbmc boolector
 
 [script]
 read -formal -DZIPTIMER ziptimer.v
 read -formal -DZIPTIMER fwb_slave.v
+opt_reload:  hierarchy -top ziptimer -chparam RELOADABLE 1
+~opt_reload: hierarchy -top ziptimer -chparam RELOADABLE 0
 prep -top ziptimer
 
 [files]

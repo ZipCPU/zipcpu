@@ -1,0 +1,27 @@
+[tasks]
+prf
+# cvr
+
+[options]
+prf: mode prove
+# cvr: mode cover
+depth 10
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipaxi.v
+read -formal fdebug.v
+read -formal skidbuffer.v
+# read -formal axilfetch.v
+read -formal faxil_slave.v
+hierarchy -top zipaxi -chparam OPT_CLKGATE 0
+prep -top zipaxi
+
+[files]
+cpudefs.v ../../rtl/cpudefs.v
+../../rtl/zipaxi.v
+../../rtl/ex/skidbuffer.v
+faxil_slave.v
+fdebug.v

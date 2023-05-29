@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	fwb_counter.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:
@@ -10,11 +10,11 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2017-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -27,16 +27,16 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype none
-//
+// }}}
 module	fwb_counter(i_clk, i_reset,
 		// The Wishbone bus
 		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
@@ -107,8 +107,14 @@ module	fwb_counter(i_clk, i_reset,
 	// Bus requests
 	//
 	//
-
+	////////////////////////////////////////////////////////////////////////
 	//
+	// Count outstanding requests vs acknowledgments
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	// Count the number of requests that have been received
 	//
 	initial	f_nreqs = 0;
@@ -136,5 +142,5 @@ module	fwb_counter(i_clk, i_reset,
 	// the number of requests and the number of acknowledgements
 	//
 	assign	f_outstanding = (i_wb_cyc) ? (f_nreqs - f_nacks):0;
-
+	// }}}
 endmodule

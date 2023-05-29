@@ -1,0 +1,85 @@
+[tasks]
+piped		prf lock pipelined mpy div cis pipelined earlybranching
+pipedbk		prf lock pipelined mpy div cis pipelined earlybranching bkregs
+nopipe		prf lock nopipe            cis
+lowlogic	prf lock nopipe		
+ice40		prf lock nopipe    mpy div cis bkregs
+
+pipedlp		piped prf lock pipelined mpy div cis earlybranching opt_lowpower
+nopipelp	nopipe prf lock nopipe            cis opt_lowpower
+lowlogiclp	lowlogic prf lock nopipe opt_lowpower
+
+pipedlpck	piped prf lock pipelined mpy div cis earlybranching opt_lowpower opt_ckgate
+pipedlpckh	piped prf lock pipelined mpy div cis earlybranching opt_lowpower opt_halted opt_ckgate
+pipedckh	piped prf lock pipelined mpy div cis earlybranching opt_halted opt_ckgate
+lowlogiclpck	lowlogic prf lock nopipe opt_lowpower opt_ckgate
+lowlogiclpckh	lowlogic prf lock nopipe opt_lowpower opt_ckgate opt_halted
+
+cvr		    lock pipelined mpy div cis earlybranching opt_lock
+
+[options]
+prf: mode prove
+cvr: mode cover
+depth 18
+piped:    depth  5
+nopipe:   depth  4
+lowlogic: depth  4
+ice40:    depth  5
+pipedbk:  depth  5
+cvr: depth 35
+
+[engines]
+smtbmc boolector
+
+[script]
+read -define -DZIPCPU
+#
+read -formal -D ZIPCPU cpuops.v
+read -formal -D ZIPCPU fmem.v
+read -formal -D ZIPCPU iscachable.v
+read -formal -D ZIPCPU idecode.v
+#
+read -formal -D ZIPCPU f_idecode.v
+read -formal -D ZIPCPU ffetch.v
+read -formal -D ZIPCPU abs_div.v
+read -formal -D ZIPCPU abs_mpy.v
+read -formal -D ZIPCPU fdebug.v
+#
+read -formal zipcore.v
+--pycode-begin--
+cmd = "hierarchy -top zipcore"
+cmd += " -chparam IMPLEMENT_FPU 0"
+cmd += " -chparam OPT_LOCK       %d"   % ( 1 if "lock"           in tags else 0)
+cmd += " -chparam OPT_MPY        %d"   % ( 1 if "mpy"            in tags else 0)
+cmd += " -chparam OPT_DIV        %d" % ( 1 if "div"            in tags else 0)
+cmd += " -chparam OPT_CIS          %d" % ( 1 if "cis"            in tags else 0)
+cmd += " -chparam OPT_PIPELINED    %d" % ( 1 if "pipelined"      in tags else 0)
+cmd += " -chparam OPT_EARLY_BRANCHING  %d" % ( 1 if "earlybranching" in tags else 0)
+cmd += " -chparam OPT_LOWPOWER    %d" % ( 1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam OPT_CLKGATE     %d" % ( 1 if "opt_ckgate"   in tags else 0)
+cmd += " -chparam OPT_START_HALTED %d" % (1 if "opt_halted"   in tags else 0)
+cmd += " -chparam OPT_DISTRIBUTED_REGS %d" % (0 if "bkregs"  in tags else 1)
+output(cmd)
+--pycode-end--
+
+prep -top zipcore
+
+[files]
+../../rtl/core/zipcore.v
+../../rtl/core/cpuops.v
+../../rtl/core/iscachable.v
+../../rtl/core/idecode.v
+../../rtl/ex/wbdblpriarb.v
+#
+../../rtl/ex/fwb_counter.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/fwb_slave.v
+#
+../../rtl/cpudefs.v
+f_idecode.v
+ffetch.v
+fmem.v
+fdebug.v
+abs_div.v
+abs_mpy.v
+#

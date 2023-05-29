@@ -1,7 +1,7 @@
 ################################################################################
 ##
 ## Filename:	Makefile
-##
+## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
 ## Purpose:	This makefile builds the final verilator simulation of the
@@ -94,9 +94,9 @@
 ##		Gisselquist Technology, LLC
 ##
 ################################################################################
-##
-## Copyright (C) 2015-2017, Gisselquist Technology, LLC
-##
+## }}}
+## Copyright (C) 2015-2023, Gisselquist Technology, LLC
+## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
@@ -111,15 +111,21 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
 ##
 ##
 ################################################################################
 ##
+## }}}
+all: mkhex pdump div_tb mpy_tb pfcache_tb zipsys_tb zipbones_tb
 ##
-all: zipsys_tb zipbones_tb pdump div_tb mpy_tb pfcache_tb # zipmmu_tb
+## The following are now obsolete.  (They were structurally unable to test
+## multiple design configurations.)  They may be re-enabled later:
+##
+# all: zipsys_tb zipbones_tb zipaxil_tb # zipmmu_tb
 
 CXX	:= g++
 #
@@ -149,10 +155,14 @@ ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
 SOURCES := $(ZLIBSRCS) pdump.cpp zipcpu_tb.cpp memsim.cpp
 ZDSMSRCS:= zopcodes.cpp
 ZOBJS   := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(ZLIBSRCS) $(ZDSMSRCS)))
-SIMSRCS := memsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
+SIMSRCS := memsim.cpp axilmemsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
+<<<<<<< HEAD
+=======
+AXLOBJS := $(OBJDIR)/zipaxil_tb.o  $(SIMOBJS)
+>>>>>>> zipcore
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp verilated_threads.cpp
 #
 # Use the verilated_cov.cpp source when you want to run Verilator coverage
@@ -162,8 +172,10 @@ VLOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(VLSRCS)))
 VLIB	:= $(addprefix $(VROOT)/include/,$(VLSRCS))
 RAWSYSLIB := $(RTLOBJD)/Vzipsystem__ALL.a
 RAWBONLIB := $(RTLOBJD)/Vzipbones__ALL.a
+RAWAXLLIB := $(RTLOBJD)/Vzipaxil__ALL.a
 SYSLIBS	:= $(RAWSYSLIB) -lncurses -lelf
 BONLIBS	:= $(RAWBONLIB) -lncurses -lelf
+AXLLIBS	:= $(RAWAXLLIB) -lncurses -lelf
 TESTF	:= ../../bench/asm/simtest
 DHRYSTONEF := ../asm/zipdhry.z
 
@@ -179,6 +191,10 @@ $(OBJDIR)/zipbones_tb.o: zipcpu_tb.cpp
 	$(mk-objdir)
 	$(CXX) -DZIPBONES $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
 
+$(OBJDIR)/zipaxil_tb.o: zipaxil_tb.cpp
+	$(mk-objdir)
+	$(CXX) $(VDEFS) $(CFLAGS) $(INCS) -c $< -o $@
+
 $(OBJDIR)/%.o: $(ZASM)/%.cpp
 	$(mk-objdir)
 	$(CXX) $(CFLAGS) $(INCS) -c $< -o $@
@@ -192,6 +208,7 @@ zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
 
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
 	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -lpthread -o $@
+<<<<<<< HEAD
 
 div_tb: $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
@@ -205,10 +222,35 @@ zipmmu_tb: $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
 pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
+=======
 
-pdump: $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
+zipaxil_tb: $(AXLOBJS) $(VLOBJS) $(RAWAXLLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -lpthread -o $@
+
+div_tb: div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
+
+mpy_tb: mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
+
+zipmmu_tb: zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -lpthread -o $@
+
+pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
+pfcache_tb: $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
+>>>>>>> zipcore
+
+pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
 	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -lpthread -o $@
+<<<<<<< HEAD
+=======
+
+.PHONY: stest
+atest: zipsys_tb
+	./zipsys_tb -a $(TESTF)
+>>>>>>> zipcore
 
 .PHONY: stest
 stest: zipsys_tb
@@ -218,9 +260,35 @@ stest: zipsys_tb
 itest: zipsys_tb
 	./zipsys_tb $(TESTF)
 
+.PHONY: atestaxil
+atestaxil: zipaxil_tb
+	./zipaxil_tb -a $(TESTF)
+
+.PHONY: stestaxil
+stestaxil: zipaxil_tb
+	./zipaxil_tb -s $(TESTF)
+
+.PHONY: itestaxil
+itestaxil: zipaxil_tb
+	./zipaxil_tb $(TESTF)
+
+.PHONY: atestb
+atestb: zipbones_tb
+	./zipbones_tb -a $(TESTF)
+
+.PHONY: stestb
+stestb: zipbones_tb
+	./zipbones_tb -s $(TESTF)
+
+.PHONY: itestb
+itestb: zipbones_tb
+	./zipbones_tb $(TESTF)
+
 .PHONY: test
-test: zipsys_tb stest
-	./zipsys_tb -a $(TESTF)
+test: zipsys_tb atest stest atestb stestb atestaxil stestaxil
+
+mkhex: mkhex.cpp zipelf.cpp zipelf.h
+	g++ -Wall -g mkhex.cpp zipelf.cpp -lelf -o mkhex
 
 .PHONY: dhrystone
 dhrystone: zipsys_tb
@@ -243,7 +311,7 @@ tags: $(VLIB) $(SOURCES)
 	@ctags $(SOURCES) $(VLIB)
 
 .PHONY: depends
-depends: tags $(OBJDIR)/
+depends: $(OBJDIR)/
 	$(build-depends)
 
 define	mk-objdir
@@ -258,4 +326,4 @@ clean:
 	rm -rf ./zipsys_tb ./zipbones_tb pdump div_tb mpy_tb
 	rm -rf pfcache_tb
 
--include $(OBJDIR)/depends.txt
+# -include $(OBJDIR)/depends.txt

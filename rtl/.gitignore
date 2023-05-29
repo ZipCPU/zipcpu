@@ -1,4 +1,6 @@
 zipsys_coverage/
-cpudefs.h
 pipefetch.m
 export
+*.log
+usage.ys
+yosys.ys

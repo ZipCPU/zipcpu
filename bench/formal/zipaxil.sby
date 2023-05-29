@@ -1,0 +1,26 @@
+[tasks]
+prf
+# cvr
+
+[options]
+prf: mode prove
+# cvr: mode cover
+depth 10
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipaxil.v
+read -formal fdebug.v
+read -formal skidbuffer.v
+# read -formal axilfetch.v
+read -formal faxil_slave.v
+prep -top zipaxil
+
+[files]
+cpudefs.v ../../rtl/cpudefs.v
+../../rtl/zipaxil.v
+../../rtl/ex/skidbuffer.v
+faxil_slave.v
+fdebug.v

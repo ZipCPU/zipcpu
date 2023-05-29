@@ -1,0 +1,33 @@
+[tasks]
+prf
+# cvr
+
+[options]
+prf: mode prove
+prf: depth 5
+# cvr: mode cover
+# cvr: depth 20
+
+[engines]
+prf: smtbmc
+# cvr: smtbmc
+
+[script]
+read -formal ziptimer.v
+read -formal zipjiffies.v
+read -formal icontrol.v
+read -formal skidbuffer.v
+read -formal faxil_slave.v
+read -formal fwb_slave.v
+read -formal axilperiphs.v
+prep -top axilperiphs
+
+[files]
+../../rtl/peripherals/axilperiphs.v
+../../rtl/peripherals/ziptimer.v
+../../rtl/peripherals/icontrol.v
+../../rtl/peripherals/zipjiffies.v
+faxil_slave.v
+../../rtl/ex/fwb_slave.v
+../../rtl/ex/skidbuffer.v
+../../rtl/ex/sfifo.v

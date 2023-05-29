@@ -1,0 +1,43 @@
+                 iCE40  X7-s   RAW
+Wrapper   Config  4LUT  6LUT  NANDs
+-----------------------------------
+ZipBones  ASM:    1149   583   3680
+ZipBones  TRAP:   1687   993   5994
+ZipBones  MIN:    2829  1467   9434
+ZipBones  PIPE:   3703  2072  10519
+ZipBones  CACHE:  5614  3252 243447
+ZipBones  LWPWR:  6068  3497 233854
+ZipSystem ASM:    4429  2380  22147
+ZipSystem TRAP:   5180  2699  24645
+ZipSystem MIN:    6293  3233  28681
+ZipSystem PIPE:   7488  3840  30445
+ZipSystem CACHE:  9454  5151 265246
+ZipSystem LWPWR:  9802  5320 258776
+ZipAXI-L  ASM:    1545   867   4111
+ZipAXI-L  TRAP:   2209  1173   6772
+ZipAXI-L  MIN:    3291  1665  10505
+ZipAXI-L  PIPE:   4331  2225  12155
+ZipAXI    ASM:    1538   861   4015
+ZipAXI    TRAP:   2140  1262   6410
+ZipAXI    MIN:    3253  1750  10279
+ZipAXI    PIPE:   4313  2472  11971
+ZipAXI    CACHE:  5609  2962 202244
+ZipAXI    LWPWR:  5772  3280 177519
+   WB-MEMOPS   :   131    77    219
+   WB-PIPEMEM  :   227    89    341
+   WB-DCACHE   :  1457   837 114961
+ AXIL-OPS      :   269   129    328
+  AXI-OPS      :   345   205    554
+ AXIL-PIPE     :   386   159    637
+  AXI-PIPE     :   436   148    678
+  AXI-DCACHE   :  1219   694 111466
+   WB-DMA      :   853   366  62152
+   WB-PREFETCH :   122    66    208
+   WB-DBLFETCH :   204   106    325
+   WB-ICACHE   :   934   610 109144
+  AXILFETCH-BSC:   233    90    316
+  AXILFETCH-PIP:   284   128    443
+  AXI-ICACHE   :   817   534  52625
+  ZIP-DMA/ 32  :  1962  1026  20207
+  ZIP-DMA/ 64  :  2917  1736  20657
+  ZIP-DMA/512  : 17666 12369  36300

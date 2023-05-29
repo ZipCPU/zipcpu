@@ -1,0 +1,27 @@
+[tasks]
+prf
+prfw prf bus64
+cvr
+
+[options]
+prf: mode prove
+prf: depth 4
+cvr: mode cover
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipdma_rxgears.v
+--pycode-begin--
+cmd = "hierarchy -top zipdma_rxgears"
+if ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+else:
+	cmd += " -chparam BUS_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top zipdma_rxgears
+
+[files]
+../../rtl/zipdma/zipdma_rxgears.v

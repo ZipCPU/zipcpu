@@ -1,0 +1,229 @@
+## A list of test cases, with the following format:
+##
+## TestCaseName TestConfig MemFile ConsoleFile [Parameter=Value pairs]*
+## ------------|----------|-------|-----------|--------------------------
+##
+## Test configs start with either AX or WB, for AXI or Wishbone support
+## respectively.  An optional [L] may follow the AX to use the AXI-Lite core,
+## or [B] may follow the WB to use the ZipBones core.  There are several canned
+## configs:
+##
+## AXLASM, AXASM, WBBASM, WBASM:
+##	All options off, bare minimum CPU configuration (doesn't support shifts)
+##
+## AXLTRAP, AXTRAP, WBTRAP, WBBTRAP:
+##	User mode enabled, supports shifts and locks but no multiplies or
+##	divides, and simplest memory models only
+##
+## AXLMIN, AXMIN, WBMIN, WBBMIN:
+##	Full CPU functionality, supports all instructions, yet all
+##	optimizations are turned off.  Simplest memory models only.  No
+##	pipelining.
+##
+## AXLPIPE, AXPIPE, WBPIPE, WBBPIPE:
+##	A pipelined version of AXMIN/WBMIN.  Memory models are pipelined
+##	models, but still without caches or caching.
+##
+## AXCACHE, WBCACHE, WBBCACHE:
+##	Adding a high speed cache to the pipelined models above.  There is no
+##	AXI-Lite support (currently) for any of the cache configurations.
+##
+## AXLPWR, WBLPWR, WBBLPWR:
+##	Low power configuration, still using the cache.  Unused values are now
+##	clipped to zero.  The CPU will now also turn its clock off when waiting
+##	for an interrupt.  As with the *CACHE option above, there is no AXI-Lite
+##	equivalent to this test case.
+##
+##
+## Not all parameters are controlled via the test case configuration name listed
+## above.  Chief among these is the bus width parameter.  For this reason,
+## configuration lines may end with a list of parameter value pairs.
+##
+## VCD generation is, by default, turned off--to keep multiple tests from
+## stepping on the same VCD file if they are all run at once.  Turning on
+## VCD generation requires adding parameters, such as:
+##    "DUMP_TO_VCD=1 VCD_FILE=\"dump.vcd\""
+## You'll see examples of this below.
+##
+## To succeed, a test case must place either PASS or SUCCESS in its last line.
+##
+## TestCaseName TestConfig MemFile ConsoleFile [Parameter=Value pairs]*
+## ------------|----------|-------|-----------|--------------------------
+axlmincheck    AXLMIN cputest.hex axlmin-out.txt	# DUMP_TO_VCD=1 VCD_FILE="test/trace.vcd"
+axmincheck     AXMIN  cputest.hex axmin-out.txt
+wbbmincheck    WBBMIN cputest.hex wbbmin-out.txt
+wbmincheck     WBMIN  cputest.hex wbmin-out.txt		# DUMP_TO_VCD=1 VCD_FILE="test/wbmintrace.vcd"
+##
+axlminchklp    AXLMIN cputest.hex axlminlp-out.txt	OPT_LOWPOWER=1
+axminchklp     AXMIN  cputest.hex axminlp-out.txt	OPT_LOWPOWER=1
+wbbminchklp    WBBMIN cputest.hex wbbminlp-out.txt	OPT_LOWPOWER=1
+wbminchklp     WBMIN  cputest.hex wbminlp-out.txt	OPT_LOWPOWER=1
+##
+axlminchk64    AXLMIN cputest64.hex axlmin64-out.txt		BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axlmin64trace.vcd"
+axminchk64     AXMIN  cputest64.hex axmin64-out.txt		BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axmin64trace.vcd"
+wbbminchk64    WBBMIN cputest64.hex wbbmin64-out.txt		BUS_WIDTH=64
+wbminchk64     WBMIN  cputest64.hex wbmin64-out.txt		BUS_WIDTH=64
+##
+wbminchklp64   WBMIN  cputest64.hex wbminlp64-out.txt	OPT_LOWPOWER=1 BUS_WIDTH=64
+##
+axlpipecheck   AXLPIPE cputest.hex axlpipe-out.txt	# DUMP_TO_VCD=1 VCD_FILE="test/axlpipetrace.vcd"
+axpipecheck    AXPIPE  cputest.hex axpipe-out.txt
+wbbpipecheck   WBBPIPE cputest.hex wbbpipe-out.txt
+wbpipecheck    WBPIPE  cputest.hex wbpipe-out.txt
+##
+axlpipechklp   AXLPIPE cputest.hex axlpipelp-out.txt	OPT_LOWPOWER=1
+axpipechklp    AXPIPE  cputest.hex axpipelp-out.txt	OPT_LOWPOWER=1
+wbbpipechklp   WBBPIPE cputest.hex wbbpipelp-out.txt	OPT_LOWPOWER=1
+##
+axlpipechk64   AXLPIPE cputest64.hex axlpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+axpipechk64    AXPIPE  cputest64.hex axpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+wbbpipechk64   WBBPIPE cputest64.hex wbbpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3
+wbpipechk64    WBPIPE  cputest64.hex wbpip64-out.txt	BUS_WIDTH=64 OPT_SMP=3 # DUMP_TO_VCD=1 VCD_FILE="test/wbpip64trace.vcd"
+##
+axcachecheck   AXCACHE  cputest.hex axcache-out.txt
+axcachenowrap  AXCACHE  cputest.hex axchnwrap-out.txt	OPT_WRAP=0
+wbbcachecheck  WBBCACHE cputest.hex wbbcache-out.txt
+wbcachecheck   WBCACHE  cputest.hex wbcache-out.txt
+##
+axcachechk64   AXCACHE  cputest64.hex axcach64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axcch64trace.vcd"
+axcch64nwrap   AXCACHE  cputest64.hex axch64nwr-out.txt	BUS_WIDTH=64 OPT_WRAP=0
+wbbcachechk64  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64
+wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64
+##
+axlpwrcheck    AXLPWR  cputest.hex axlpwr-out.txt
+wbblpwrcheck   WBBLPWR cputest.hex wblpwr-out.txt
+wblpwrcheck    WBLPWR  cputest.hex wbblpwr-out.txt
+## Check various multiplies
+wblpwrcheck0   WBLPWR  cputest.hex wbblpwr0-out.txt	OPT_MPY=0 # (No MPY)
+wblpwrcheck1   WBLPWR  cputest.hex wbblpwr1-out.txt	OPT_MPY=1
+wblpwrcheck2   WBLPWR  cputest.hex wbblpwr2-out.txt	OPT_MPY=2
+wblpwrcheck3   WBLPWR  cputest.hex wbblpwr3-out.txt	OPT_MPY=3
+wblpwrcheck4   WBLPWR  cputest.hex wbblpwr4-out.txt	OPT_MPY=4
+wblpwrcheck5   WBLPWR  cputest.hex wbblpwr5-out.txt	OPT_MPY=5
+##
+################################################################################
+################################################################################
+##
+## Clock gate checking
+## {{{
+##
+axlminckgate   AXLMIN  clkgatechk.hex axlminint-out.txt		OPT_CLKGATE=1
+axminckgate    AXMIN   clkgatechk.hex axminint-out.txt		OPT_CLKGATE=1
+wbbminckgate   WBBMIN  clkgatechk.hex wbbminint-out.txt		OPT_CLKGATE=1
+wbminckgate    WBMIN   clkgatechk.hex wbminint-out.txt		OPT_CLKGATE=1
+##
+axlpipeckgate   AXLPIPE clkgatechk.hex axlpipeint-out.txt	OPT_CLKGATE=1 # DUMP_TO_VCD=1 VCD_FILE="test/axlpipeckgate.vcd"
+axpipeckgate    AXPIPE  clkgatechk.hex axpipeint-out.txt	OPT_CLKGATE=1
+wbbpipeckgate   WBBPIPE clkgatechk.hex wbbpipeint-out.txt	OPT_CLKGATE=1 # DUMP_TO_VCD=1 VCD_FILE="test/wbbpipeckgate.vcd"
+wbpipeckgate    WBPIPE  clkgatechk.hex wbpipeint-out.txt	OPT_CLKGATE=1
+##
+axcacheckgate   AXCACHE  clkgatechk.hex axcacheint-out.txt	OPT_CLKGATE=1 # DUMP_TO_VCD=1 VCD_FILE="test/axcchkgate.vcd"
+wbbcacheckgate  WBBCACHE clkgatechk.hex wbbcacheint-out.txt	OPT_CLKGATE=1
+wbcacheckgate   WBCACHE  clkgatechk.hex wbcacheint-out.txt	OPT_CLKGATE=1
+##
+axlpwrckgate   AXLPWR  clkgatechk.hex axlpwrint-out.txt		OPT_CLKGATE=1
+wbblpwrckgate  WBBLPWR clkgatechk.hex wbblpwrint-out.txt	OPT_CLKGATE=1
+wblpwrckgate   WBLPWR  clkgatechk.hex wblpwrint-out.txt		OPT_CLKGATE=1 # DUMP_TO_VCD=1 VCD_FILE="test/wblpwrckgate.vcd"
+## }}}
+################################################################################
+################################################################################
+##
+## Hello world stepped CPU checking
+## {{{
+##
+axlminhello   AXLMIN  hellostep.hex axlminhlout.txt
+axminhello    AXMIN   hellostep.hex axminhl-out.txt
+wbbminhello   WBBMIN  hellostep.hex wbbminhl-out.txt
+wbminhello    WBMIN   hellostep.hex wbminhl-out.txt
+##
+axlpipehello   AXLPIPE hellostep.hex axlpipehl-out.txt
+axpipehello    AXPIPE  hellostep.hex axpipehl-out.txt
+wbbpipehello   WBBPIPE hellostep.hex wbbpipehl-out.txt
+wbpipehello    WBPIPE  hellostep.hex wbpipehl-out.txt
+##
+axcachehello   AXCACHE  hellostep.hex axcachehl-out.txt
+wbbcachehello  WBBCACHE hellostep.hex wbbcachehl-out.txt
+wbcachehello   WBCACHE  hellostep.hex wbcachehl-out.txt
+##
+axlpwrhello   AXLPWR  hello.hex axlpwrhl-out.txt
+wbblpwrhello  WBBLPWR hello.hex wbblpwrhl-out.txt
+wblpwrhello   WBLPWR  hello.hex wblpwrhl-out.txt
+## }}}
+################################################################################
+################################################################################
+##
+## Lock checking
+## {{{
+## The lock checks take longer, so we'll place these here at the end to give
+## them special treatment--only after everything else has been tested.
+##
+##
+axlmincklock   AXLMIN lockcheck.hex axlminlk-out.txt
+axmincklock    AXMIN  lockcheck.hex axminlk-out.txt
+wbbmincklock   WBBMIN lockcheck.hex wbbminlk-out.txt
+wbmincklock    WBMIN  lockcheck.hex wbminlk-out.txt
+##
+axlpipecklock  AXLPIPE lockcheck.hex axlpiplk-out.txt	# DUMP_TO_VCD=1 VCD_FILE="test/axlpiplktrace.vcd"
+axpipecklock   AXPIPE  lockcheck.hex axpiplk-out.txt
+wbbpipecklock  WBBPIPE lockcheck.hex wbbpiplk-out.txt
+wbpipecklock   WBPIPE  lockcheck.hex wbpiplk-out.txt
+##
+axcachecklock  AXCACHE  lockcheck.hex axcachlk-out.txt
+wbbcachecklock WBBCACHE lockcheck.hex wbbcachlk-out.txt
+wbcachecklock  WBCACHE  lockcheck.hex wbcachlk-out.txt
+##
+axlpwrcklock   AXLPWR  lockcheck.hex axlpwrlk-out.txt
+wbblpwrcklock  WBBLPWR lockcheck.hex wbblpwrlk-out.txt
+wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
+##
+## }}}
+################################################################################
+################################################################################
+##
+## ZipDMA
+## {{{
+##
+##
+wbzipdmacach  WBCACHE  dmatest.hex wbzdma-out.txt DUMP_TO_VCD=1 VCD_FILE="wbzipdmacach.vcd"
+wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
+## }}}
+################################################################################
+################################################################################
+##
+## Step control
+## {{{
+##
+##
+
+## AXLPIPE
+axlstepc        AXLPIPE stepchk.hex   axlstepc-out.txt      OPT_SMP=1
+axlstepc64      AXLPIPE stepchk64.hex axlstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axlstepcsmp     AXLPIPE stepchk.hex   axlstepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axlstepcsmp.vcd"
+axlstepc64smp   AXLPIPE stepchk64.hex axlstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## WBCACHE
+wbstepc         WBCACHE stepchk.hex   wbzstp-out.txt      OPT_SMP=1 # DUMP_TO_VCD=1 VCD_FILE="wbstepc.vcd"
+wbstepc64       WBCACHE stepchk64.hex wbzstp64-out.txt	  OPT_SMP=1 BUS_WIDTH=64
+wbstepcsmp      WBCACHE stepchk.hex   wbzstpc-out.txt     OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="wbstepcsmp.vcd"
+wbstepc64smp    WBCACHE stepchk64.hex wbzstp64c-out.txt	  OPT_SMP=2 BUS_WIDTH=64
+
+## WBBLPWR
+wbblpstepc      WBBLPWR stepchk.hex   wbblpstp-out.txt    OPT_SMP=1 DUMP_TO_VCD=1 VCD_FILE="wbblpstepc.vcd"
+wbblpstepc64    WBBLPWR  stepchk64.hex wbblpstp64-out.txt  OPT_SMP=1 BUS_WIDTH=64
+wbblpstepcsmp   WBBLPWR stepchk.hex   wbblpstpc-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmp.vcd"
+wbblpstepc64smp WBBLPWR stepchk64.hex  wbblpstp64c-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## AXCACHE
+axistepc        AXCACHE stepchk.hex   axistepc-out.txt      OPT_SMP=1
+axistepc64      AXCACHE stepchk64.hex axistepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axistepcsmp     AXCACHE stepchk.hex   axistepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axistepcsmp.vcd"
+axistepc64smp   AXCACHE stepchk64.hex axistepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+## AXLPWR
+axlpstepc        AXLPWR  stepchk.hex   axlpstepc-out.txt      OPT_SMP=1
+axlpstepc64      AXLPWR  stepchk64.hex axlpstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
+axlpstepcsmp     AXLPWR  stepchk.hex   axlpstepcsmp-out.txt   OPT_SMP=2 DUMP_TO_VCD=1 VCD_FILE="axlpstepcsmp.vcd"
+axlpstepc64smp   AXLPWR  stepchk64.hex axlpstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
+
+
+## }}}

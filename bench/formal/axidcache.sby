@@ -1,0 +1,69 @@
+[tasks]
+prf
+prflk    prf                           opt_lock
+prflp    prf                           opt_lowpower
+prflplk  prf                           opt_lowpower opt_lock
+prf64    prf bus64
+prf64lk  prf bus64                                opt_lock
+prfs     prf         swap_wstrb
+prfs64   prf bus64   swap_wstrb
+prfsw    prf         swap_wstrb          opt_wrap
+prfs64w  prf bus64   swap_wstrb          opt_wrap
+cvr
+prfp       prf                  opt_pipe
+prfplk     prf                  opt_pipe          opt_lock
+prfplp     prf                  opt_pipe opt_lowpower
+prf64p     prf bus64            opt_pipe
+prfsp      prf       swap_wstrb opt_pipe
+prfs64p    prf bus64 swap_wstrb opt_pipe
+prfspw     prf       swap_wstrb opt_pipe opt_wrap
+prfs64pw   prf bus64 swap_wstrb opt_pipe opt_wrap
+prfspwlk   prf       swap_wstrb opt_pipe opt_wrap opt_lock
+prfs64pwlk prf bus64 swap_wstrb opt_pipe opt_wrap opt_lock
+cvrp     cvr                  opt_pipe
+
+[options]
+prf: mode prove
+prf: depth  7
+cvr: mode cover
+cvr: depth 35
+
+[engines]
+# prf: smtbmc
+smtbmc boolector
+
+[script]
+read -formal faxi_valaddr.v
+read -formal faxi_wstrb.v
+read -formal faxi_addr.v
+read -formal faxi_master.v
+read -formal fmem.v
+read -formal axidcache.v
+read -formal iscachable.v
+--pycode-begin--
+cmd = "hierarchy -top axidcache"
+cmd += " -chparam LGCACHELEN %d" % (7 if "bus64" in tags else 6)
+cmd += " -chparam LGNLINES %d" % (3 if "cvr" in tags else 3)
+cmd += " -chparam SWAP_WSTRB %d" % (1 if "swap_wstrb" in tags else 0)
+cmd += " -chparam OPT_SIGN_EXTEND %d" % (1 if "sign_extend" in tags else 0)
+cmd += " -chparam OPT_PIPE %d" % (1 if "opt_pipe" in tags else 0)
+cmd += " -chparam OPT_WRAP %d" % (1 if "opt_wrap" in tags else 0)
+cmd += " -chparam OPT_LOCK %d" % (1 if "opt_lock" in tags else 0)
+cmd += " -chparam OPT_LOWPOWER %d" % (1 if "opt_lowpower" in tags else 0)
+if ("bus64" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd += " -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axidcache
+
+[files]
+ffetch.v
+../../rtl/core/axidcache.v
+../../rtl/core/iscachable.v
+fmem.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+faxi_addr.v

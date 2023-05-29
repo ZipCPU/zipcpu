@@ -1,0 +1,101 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Tue Nov 17 20:36:17 2020
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1625 600
+[pos] -1 -1
+*-4.190785 46 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] zipbones.
+[sst_width] 196
+[signals_width] 190
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@28
+zipbones.i_reset
+zipbones.i_clk
+zipbones.cmd_reset
+@c00200
+-Debug interface
+@28
+zipbones.i_dbg_cyc
+zipbones.i_dbg_stb
+zipbones.i_dbg_we
+@22
+zipbones.i_dbg_addr[5:0]
+zipbones.i_dbg_data[31:0]
+zipbones.i_dbg_sel[3:0]
+@28
+zipbones.o_dbg_stall
+zipbones.o_dbg_ack
+@c00022
+zipbones.o_dbg_data[31:0]
+@28
+(0)zipbones.o_dbg_data[31:0]
+(1)zipbones.o_dbg_data[31:0]
+(2)zipbones.o_dbg_data[31:0]
+(3)zipbones.o_dbg_data[31:0]
+(4)zipbones.o_dbg_data[31:0]
+(5)zipbones.o_dbg_data[31:0]
+(6)zipbones.o_dbg_data[31:0]
+(7)zipbones.o_dbg_data[31:0]
+(8)zipbones.o_dbg_data[31:0]
+(9)zipbones.o_dbg_data[31:0]
+(10)zipbones.o_dbg_data[31:0]
+(11)zipbones.o_dbg_data[31:0]
+(12)zipbones.o_dbg_data[31:0]
+(13)zipbones.o_dbg_data[31:0]
+(14)zipbones.o_dbg_data[31:0]
+(15)zipbones.o_dbg_data[31:0]
+(16)zipbones.o_dbg_data[31:0]
+(17)zipbones.o_dbg_data[31:0]
+(18)zipbones.o_dbg_data[31:0]
+(19)zipbones.o_dbg_data[31:0]
+(20)zipbones.o_dbg_data[31:0]
+(21)zipbones.o_dbg_data[31:0]
+(22)zipbones.o_dbg_data[31:0]
+(23)zipbones.o_dbg_data[31:0]
+(24)zipbones.o_dbg_data[31:0]
+(25)zipbones.o_dbg_data[31:0]
+(26)zipbones.o_dbg_data[31:0]
+(27)zipbones.o_dbg_data[31:0]
+(28)zipbones.o_dbg_data[31:0]
+(29)zipbones.o_dbg_data[31:0]
+(30)zipbones.o_dbg_data[31:0]
+(31)zipbones.o_dbg_data[31:0]
+@1401200
+-group_end
+-Debug interface
+@28
+zipbones.i_ext_int
+zipbones.o_ext_int
+@c00200
+-Wishbone (unused)
+@28
+zipbones.o_wb_cyc
+zipbones.o_wb_stb
+zipbones.o_wb_we
+@22
+zipbones.o_wb_addr[29:0]
+zipbones.o_wb_data[31:0]
+zipbones.o_wb_sel[3:0]
+@28
+zipbones.i_wb_stall
+zipbones.i_wb_ack
+@22
+zipbones.i_wb_data[31:0]
+@28
+zipbones.i_wb_err
+@1401200
+-Wishbone (unused)
+@28
+zipbones.cpu_break
+zipbones.f_cpu_break
+zipbones.cmd_halt
+zipbones.cpu_halt
+zipbones.cmd_clear_cache
+@29
+zipbones.fdbg.i_dbg_we
+[pattern_trace] 1
+[pattern_trace] 0

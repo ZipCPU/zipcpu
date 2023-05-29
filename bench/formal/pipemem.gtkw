@@ -1,0 +1,64 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Wed Jun 10 11:33:14 2020
+[*]
+[timestart] 0
+[size] 1920 1021
+[pos] -919 -417
+*-4.075490 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 180
+[sst_expanded] 1
+[sst_vpaned_height] 290
+@28
+pipemem.i_clk
+pipemem.i_reset
+@200
+-
+@28
+pipemem.i_pipe_stb
+pipemem.o_pipe_stalled
+@22
+pipemem.i_addr[31:0]
+pipemem.i_data[31:0]
+@28
+pipemem.i_lock
+pipemem.i_op[2:0]
+@22
+pipemem.i_oreg[4:0]
+@28
+pipemem.o_busy
+pipemem.o_valid
+@22
+pipemem.o_wreg[4:0]
+pipemem.o_result[31:0]
+@28
+pipemem.o_err
+@200
+-
+@28
+pipemem.o_wb_cyc_gbl
+pipemem.o_wb_stb_gbl
+pipemem.o_wb_cyc_lcl
+pipemem.o_wb_stb_lcl
+@22
+pipemem.o_wb_addr[29:0]
+pipemem.o_wb_data[31:0]
+pipemem.o_wb_sel[3:0]
+@28
+pipemem.o_wb_we
+@29
+pipemem.i_wb_stall
+pipemem.i_wb_ack
+@23
+pipemem.i_wb_data[31:0]
+@29
+pipemem.i_wb_err
+@201
+-
+@28
+pipemem.r_wb_cyc_gbl
+pipemem.r_wb_cyc_lcl
+pipemem.misaligned
+[pattern_trace] 1
+[pattern_trace] 0

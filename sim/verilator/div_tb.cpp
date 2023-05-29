@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -33,6 +33,7 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
+//
 ////////////////////////////////////////////////////////////////////////////////
 //
 // }}}
@@ -51,7 +52,7 @@
 #include "Vdiv___024root.h"
 
 #define	VVAR(A)	rootp->div__DOT_ ## A
-#elif   defined(NEW_VERILATOR)
+#elif	defined(NEW_VERILATOR)
 #define	VVAR(A)	div__DOT_ ## A
 #else
 #define	VVAR(A)	v__DOT_ ## A
@@ -111,16 +112,16 @@ public:
 			m_core->r_bit,
 			(m_core->last_bit)?"=":"!");
 		s = &outstr[strlen(outstr)];
-		sprintf(s, "%s\n%10s %40s",s, "Div","");
+		sprintf(s, "\n%10s %40s", "Div","");
 			s = &s[strlen(s)];
 		bprint( s, 32, m_core->r_dividend);
 			s=&s[strlen(s)];
-		sprintf(s, "%s\n%10s ",s, "Div"); s = &s[strlen(s)];
+		sprintf(s, "\n%10s ", "Div"); s = &s[strlen(s)];
 		bprint( s, 64, m_core->r_divisor);
 			s=&s[strlen(s)];
-		sprintf(s, "%s\n%10s %40s",s, "Q",""); s=&s[strlen(s)];
+		sprintf(s, "\n%10s %40s", "Q",""); s=&s[strlen(s)];
 		bprint( s, 32, m_core->o_quotient); s = &s[strlen(s)];
-		sprintf(s, "%s\n%10s %38s",s, "Diff","");
+		sprintf(s, "\n%10s %38s", "Diff","");
 			s=&s[strlen(s)];
 		bprint( s, 33, m_core->vdiff); s = &s[strlen(s)];
 		strcat(s, "\n");
@@ -282,8 +283,16 @@ int	main(int argc, char **argv) {
 	Verilated::commandArgs(argc, argv);
 	DIV_TB	*tb = new DIV_TB();
 
+	/* Randomize the seed?
+	time_t	current_time;
+
+	time(&current_time);
+	srand((unsigned int)current_time);
+	printf("Random seed: %08x\n", (unsigned int)current_time);
+	*/
+
 	tb->reset();
-	// tb->opentrace("div_tb.vcd");
+	tb->opentrace("div_tb.vcd");
 
 	// Now we're ready.  All we need to do to test the divide of two
 	// numbers is to call the respective divide(), divs(), or divu()
@@ -308,6 +317,17 @@ int	main(int argc, char **argv) {
 	tb->tick();
 	tb->divs((1u<<30),0);
 	tb->tick();
+
+	tb->divs( 15, 1); tb->tick();
+	tb->divs( 15,-1); tb->tick();
+	tb->divs(-15,-1); tb->tick();
+	tb->divs(-15, 1); tb->tick();
+
+	tb->divs( 15, 4); tb->tick();
+	tb->divs( 15,-4); tb->tick();
+	tb->divs(-15,-4); tb->tick();
+	tb->divs(-15, 4); tb->tick();
+
 	//
 	// Now we switch to a more thorough test set.  It's not complete, just
 	// ... more thorough.

@@ -1,8 +1,13 @@
-*.check
-*.smt2
-*.yslog
-*.blif
-old
+## Bus property sets, not included in repo
+##
+faxi_addr.v
+faxi_slave.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+#
+faxil_slave.v
+faxil_master.v
 
 ## Wrappers
 zipaxi_*/
@@ -18,7 +23,7 @@ axilfetch_*/
 axiicache_*/
 dblfetch_*/
 pfcache_*/
-prefetch
+prefetch_*/
 
 ## Memory
 dcache_*/
@@ -32,18 +37,24 @@ pipemem_*/
 
 ## Peripherals
 axilperiphs_*/
-zipcounter
-ziptimer
-zipjiffies
+zipcounter_*/
+ziptimer_*/
+zipjiffies_*/
 icontrol_*/
-wbdmac
-wbwatchdog
+wbwatchdog_*/
+
+## ZipDMA
+zipdma_mm2s_*/
+zipdma_rxgears_*/
+zipdma_txgears_*/
+zipdma_s2mm_*/
+wbdmac_*/
 
 ## Other
-div
+div_*/
 idecode_*/
-busdelay
-cpuops
-wbdblpriarb
-wbpriarbiter
-zipmmu
+busdelay_*/
+cpuops_*/
+wbdblpriarb_*/
+wbpriarbiter_*/
+zipmmu_*/

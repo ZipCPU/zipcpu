@@ -1,0 +1,54 @@
+[tasks]
+prf
+prf64  prf bus64
+prfw   prf       opt_wrap
+prfw64 prf bus64 opt_wrap
+cvr
+cvrw   cvr       opt_wrap
+
+[options]
+prf: mode prove
+prf:    depth 10
+prfw:   depth 17	# Requires SEDA Suite for this depth
+prfw64: depth 16	# Requires SEDA Suite for this depth
+cvr: mode cover
+cvr:    depth 40
+cvrw:   depth 28
+
+[engines]
+smtbmc yices
+## ~cvr: smtbmc boolector
+
+[script]
+read -formal faxi_valaddr.v
+read -formal faxi_wstrb.v
+read -formal faxi_addr.v
+read -formal faxi_master.v
+read -formal ffetch.v
+read -formal axiicache.v
+--pycode-begin--
+cmd = "hierarchy -top axiicache"
+cmd += " -chparam LGCACHESZ 9"
+cmd += " -chparam LGLINESZ  2"
+cmd += " -chparam OPT_WRAP %d" % (1 if "opt_wrap" in tags else 0)
+if ("bus64" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 128"
+elif ("bus256" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 256"
+elif ("bus512" in tags):
+	cmd += " -chparam C_AXI_DATA_WIDTH 512"
+else:
+	cmd += " -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axiicache
+
+[files]
+ffetch.v
+../../rtl/core/axiicache.v
+faxi_master.v
+faxi_valaddr.v
+faxi_wstrb.v
+faxi_addr.v

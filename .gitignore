@@ -4,6 +4,7 @@ xilinx
 obj_dir
 obj-pc
 obj-zip
+a.out
 *.o
 *.a
 *.vcd
@@ -16,9 +17,16 @@ svn-commit*
 *dbg.txt
 *dump.txt
 *debug.txt
+stmp
 tags
 cpudefs.h
 legal.txt
+build-gas
+build-gcc
+install
+binutils-2.25
+gcc-5.3.0-zip
+gcc-6.2.0-zip
 bitrev.v
 flashcache.v
 oldtimer.v
@@ -30,3 +38,8 @@ genzipops
 doc/gfx/*.dia
 doc/gfx/*.json
 doc/gfx/*.svg
+coverage.dat
+coverage_lcov.dat
+verilated_cov_2_lcov.py
+coverage.lcov.dat
+annotated/

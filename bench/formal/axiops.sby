@@ -1,0 +1,56 @@
+[tasks]
+cvr                          bus32
+prf                          bus32
+prfs     prf                 bus32 swap_strb
+prfu     prf opt_realignment bus32
+prfsu    prf opt_realignment bus32 swap_strb
+cvr64    cvr                 bus64 opt_lowpower
+prf64    prf                 bus64
+prfs64   prf                 bus64 swap_strb
+prfu64   prf opt_realignment bus64
+prfsu64  prf opt_realignment bus64 swap_strb
+prflp    prf                 bus32 opt_lowpower
+prfulp   prf opt_realignment bus32 opt_lowpower
+prf64lp  prf                 bus64 opt_lowpower
+prfu64lp prf opt_realignment bus64 opt_lowpower
+
+[options]
+prf: mode prove
+prf:   depth 7
+cvr: mode cover
+cvr: depth 40
+
+[engines]
+cvr: smtbmc
+# prf: abc pdr
+prf: smtbmc
+
+[script]
+read -define AXIOPS
+read -formal axiops.v
+read -formal faxi_master.v
+read -formal faxi_wstrb.v
+read -formal faxi_valaddr.v
+read -formal faxi_addr.v
+read -formal fmem.v
+--pycode-begin--
+cmd = "hierarchy -top axiops"
+cmd +=" -chparam OPT_LOCK 1"
+cmd +=" -chparam OPT_LOWPOWER %d"      % (1 if "opt_lowpower" in tags else 0)
+cmd +=" -chparam OPT_ALIGNMENT_ERR %d" % (0 if "opt_realignment" in tags else 1)
+cmd +=" -chparam SWAP_WSTRB %d"        % (1 if "swap_wstrb" in tags else 0)
+if ("bus64" in tags):
+	cmd +=" -chparam C_AXI_DATA_WIDTH 64"
+else:
+	cmd +=" -chparam C_AXI_DATA_WIDTH 32"
+output(cmd)
+--pycode-end--
+prep -top axiops
+
+[files]
+../../rtl/core/axiops.v
+faxi_master.v
+faxi_wstrb.v
+faxi_valaddr.v
+faxi_addr.v
+fmem.v

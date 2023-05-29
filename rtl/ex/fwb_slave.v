@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	fwb_slave.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This file describes the rules of a wishbone interaction from the
@@ -36,11 +36,11 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2017-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2017-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -53,83 +53,87 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
 //
 `default_nettype none
-//
-module	fwb_slave(i_clk, i_reset,
+// }}}
+module	fwb_slave #(
+		// {{{
+		parameter		AW=32, DW=32,
+		parameter		F_MAX_STALL = 0,
+					F_MAX_ACK_DELAY = 0,
+		parameter		F_LGDEPTH = 4,
+		parameter [(F_LGDEPTH-1):0] F_MAX_REQUESTS = 0,
+		// OPT_BUS_ABORT: If true, the master can drop CYC at any time
+		// and must drop CYC following any bus error
+		parameter [0:0]		OPT_BUS_ABORT = 1'b1,
+		//
+		// If true, allow the bus to be kept open when there are no
+		// outstanding requests.  This is useful for any master that
+		// might execute a read modify write cycle, such as an atomic
+		// add.
+		parameter [0:0]		F_OPT_RMW_BUS_OPTION = 1,
+		//
+		//
+		// If true, allow the bus to issue multiple discontinuous
+		// requests.
+		// Unlike F_OPT_RMW_BUS_OPTION, these requests may be issued
+		// while other requests are outstanding
+		parameter	[0:0]	F_OPT_DISCONTINUOUS = 1,
+		//
+		//
+		// If true, insist that there be a minimum of a single clock
+		// delay between request and response.  This defaults to off
+		// since the wishbone specification specifically doesn't
+		// require this.  However, some interfaces do, so we allow it
+		// as an option here.
+		parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0,
+		//
+		//
+		//
+		localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING
+						= {(F_LGDEPTH){1'b1}},
+		localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
+				? F_MAX_STALL : F_MAX_ACK_DELAY,
+		localparam	DLYBITS= (MAX_DELAY < 4) ? 2
+				: (MAX_DELAY >= 65536) ? 32
+				: $clog2(MAX_DELAY+1)
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
 		// The Wishbone bus
-		i_wb_cyc, i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel,
-			i_wb_ack, i_wb_stall, i_wb_idata, i_wb_err,
+		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
+		input	wire	[(AW-1):0]	i_wb_addr,
+		input	wire	[(DW-1):0]	i_wb_data,
+		input	wire	[(DW/8-1):0]	i_wb_sel,
+		//
+		input	wire			i_wb_ack,
+		input	wire			i_wb_stall,
+		input	wire	[(DW-1):0]	i_wb_idata,
+		input	wire			i_wb_err,
 		// Some convenience output parameters
-		f_nreqs, f_nacks, f_outstanding);
-	parameter		AW=32, DW=32;
-	parameter		F_MAX_STALL = 0,
-				F_MAX_ACK_DELAY = 0;
-	parameter		F_LGDEPTH = 4;
-	parameter [(F_LGDEPTH-1):0] F_MAX_REQUESTS = 0;
-	//
-	// If true, allow the bus to be kept open when there are no outstanding
-	// requests.  This is useful for any master that might execute a
-	// read modify write cycle, such as an atomic add.
-	parameter [0:0]		F_OPT_RMW_BUS_OPTION = 1;
-	//
-	// 
-	// If true, allow the bus to issue multiple discontinuous requests.
-	// Unlike F_OPT_RMW_BUS_OPTION, these requests may be issued while other
-	// requests are outstanding
-	parameter	[0:0]	F_OPT_DISCONTINUOUS = 1;
-	//
-	//
-	// If true, insist that there be a minimum of a single clock delay
-	// between request and response.  This defaults to off since the
-	// wishbone specification specifically doesn't require this.  However,
-	// some interfaces do, so we allow it as an option here.
-	parameter	[0:0]	F_OPT_MINCLOCK_DELAY = 0;
-	//
-	//
-	localparam [(F_LGDEPTH-1):0] MAX_OUTSTANDING = {(F_LGDEPTH){1'b1}};
-	localparam	MAX_DELAY = (F_MAX_STALL > F_MAX_ACK_DELAY)
-				? F_MAX_STALL : F_MAX_ACK_DELAY;
-	localparam	DLYBITS= (MAX_DELAY < 4) ? 2
-				: ((MAX_DELAY <    16) ? 4
-				: ((MAX_DELAY <    64) ? 6
-				: ((MAX_DELAY <   256) ? 8
-				: ((MAX_DELAY <  1024) ? 10
-				: ((MAX_DELAY <  4096) ? 12
-				: ((MAX_DELAY < 16384) ? 14
-				: ((MAX_DELAY < 65536) ? 16
-				: 32)))))));
-	//
-	input	wire			i_clk, i_reset;
-	// Input/master bus
-	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
-	input	wire	[(AW-1):0]	i_wb_addr;
-	input	wire	[(DW-1):0]	i_wb_data;
-	input	wire	[(DW/8-1):0]	i_wb_sel;
-	//
-	input	wire			i_wb_ack;
-	input	wire			i_wb_stall;
-	input	wire	[(DW-1):0]	i_wb_idata;
-	input	wire			i_wb_err;
-	//
-	output	reg	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks;
-	output	wire	[(F_LGDEPTH-1):0]	f_outstanding;
+		output	reg	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks,
+		output	wire	[(F_LGDEPTH-1):0]	f_outstanding
+		// }}}
+	);
 
 `define	SLAVE_ASSUME	assume
 `define	SLAVE_ASSERT	assert
 	//
 	// Let's just make sure our parameters are set up right
-	//
+	// {{{
 	initial	assert(F_MAX_REQUESTS < {(F_LGDEPTH){1'b1}});
+	// }}}
 
-	//
+	// f_request
+	// {{{
 	// Wrap the request line in a bundle.  The top bit, named STB_BIT,
 	// is the bit indicating whether the request described by this vector
 	// is a valid request or not.
@@ -137,20 +141,26 @@ module	fwb_slave(i_clk, i_reset,
 	localparam	STB_BIT = 2+AW+DW+DW/8-1;
 	wire	[STB_BIT:0]	f_request;
 	assign	f_request = { i_wb_stb, i_wb_we, i_wb_addr, i_wb_data, i_wb_sel };
+	// }}}
 
-	//
+	// f_past_valid and i_reset
+	// {{{
 	// A quick register to be used later to know if the $past() operator
 	// will yield valid result
 	reg	f_past_valid;
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
+
 	always @(*)
 	if (!f_past_valid)
 		`SLAVE_ASSUME(i_reset);
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Assertions regarding the initial (and reset) state
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -187,18 +197,29 @@ module	fwb_slave(i_clk, i_reset,
 	always @(*)
 	if (!f_past_valid)
 		`SLAVE_ASSUME(!i_wb_cyc);
-
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus requests
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
 	// Following any bus error, the CYC line should be dropped to abort
 	// the transaction
 	always @(posedge i_clk)
-	if ((f_past_valid)&&($past(i_wb_err))&&($past(i_wb_cyc)))
+	if (f_past_valid && OPT_BUS_ABORT && $past(i_wb_err)&& $past(i_wb_cyc))
 		`SLAVE_ASSUME(!i_wb_cyc);
+
+	always @(*)
+	if (!OPT_BUS_ABORT && !i_reset && (f_nreqs != f_nacks))
+		`SLAVE_ASSUME(i_wb_cyc);
+
+	always @(posedge i_clk)
+	if (f_past_valid && !OPT_BUS_ABORT
+			&& $past(!i_reset && i_wb_stb && i_wb_stall))
+		`SLAVE_ASSUME(i_wb_cyc);
 
 	// STB can only be true if CYC is also true
 	always @(*)
@@ -233,14 +254,25 @@ module	fwb_slave(i_clk, i_reset,
 		`SLAVE_ASSUME(i_wb_we == $past(i_wb_we));
 
 	// Write requests must also set one (or more) of i_wb_sel
+	//
+	// This test has been removed since down-sizers (taking bus from width
+	// DW to width dw < DW) might actually create empty requests that this
+	// would prevent.  Re-enabling it would also complicate AXI to WB
+	// transfers, since AXI explicitly allows WSTRB == 0.  Finally, this
+	// criteria isn't found in the WB spec--so while it might be a good
+	// idea to check, in hind sight there are too many exceptions to be
+	// dogmatic about it.
+	//
 	// always @(*)
 	// if ((i_wb_stb)&&(i_wb_we))
 	//	`SLAVE_ASSUME(|i_wb_sel);
 
-
-	//
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus responses
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 
@@ -282,7 +314,14 @@ module	fwb_slave(i_clk, i_reset,
 	// ACK and ERR may never both be true at the same time
 	always @(*)
 		`SLAVE_ASSERT((!i_wb_ack)||(!i_wb_err));
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Stall checking
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	generate if (F_MAX_STALL > 0)
 	begin : MXSTALL
 		//
@@ -303,6 +342,14 @@ module	fwb_slave(i_clk, i_reset,
 		if (i_wb_cyc)
 			`SLAVE_ASSERT(f_stall_count < F_MAX_STALL);
 	end endgenerate
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Maximum delay in any response
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	generate if (F_MAX_ACK_DELAY > 0)
 	begin : MXWAIT
@@ -328,8 +375,15 @@ module	fwb_slave(i_clk, i_reset,
 					&&(f_outstanding > 0))
 			`SLAVE_ASSERT(f_ackwait_count < F_MAX_ACK_DELAY);
 	end endgenerate
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
+	// Count outstanding requests vs acknowledgments
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
 	// Count the number of requests that have been received
 	//
 	initial	f_nreqs = 0;
@@ -362,8 +416,9 @@ module	fwb_slave(i_clk, i_reset,
 	if ((i_wb_cyc)&&(F_MAX_REQUESTS > 0))
 	begin
 		if (i_wb_stb)
+		begin
 			`SLAVE_ASSUME(f_nreqs < F_MAX_REQUESTS);
-		else
+		end else
 			`SLAVE_ASSUME(f_nreqs <= F_MAX_REQUESTS);
 		`SLAVE_ASSERT(f_nacks <= f_nreqs);
 		assert(f_outstanding < (1<<F_LGDEPTH)-1);
@@ -392,7 +447,14 @@ module	fwb_slave(i_clk, i_reset,
 		`SLAVE_ASSERT(!i_wb_ack);
 		`SLAVE_ASSERT(!i_wb_err);
 	end
-
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus direction
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 	generate if (!F_OPT_RMW_BUS_OPTION)
 	begin
 		// If we aren't waiting for anything, and we aren't issuing
@@ -407,6 +469,14 @@ module	fwb_slave(i_clk, i_reset,
 		// transactions, even though nothing is outstanding.  For
 		// these busses, turn F_OPT_RMW_BUS_OPTION on.
 	end endgenerate
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Discontinuous request checking
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
 
 	generate if ((!F_OPT_DISCONTINUOUS)&&(!F_OPT_RMW_BUS_OPTION))
 	begin : INSIST_ON_NO_DISCONTINUOUS_STBS
@@ -422,5 +492,7 @@ module	fwb_slave(i_clk, i_reset,
 		if ((f_past_valid)&&($past(i_wb_cyc))&&(!$past(i_wb_stb)))
 			`SLAVE_ASSUME(!i_wb_stb);
 	end endgenerate
-
+	// }}}
 endmodule
+`undef	SLAVE_ASSUME
+`undef	SLAVE_ASSERT

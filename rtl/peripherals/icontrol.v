@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename:	icontrol.v
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	An interrupt controller, for managing many interrupt sources.
@@ -51,11 +51,11 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015,2017-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -68,41 +68,47 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
-//
-module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
-			i_wb_sel,
-		o_wb_stall, o_wb_ack, o_wb_data,
-		i_brd_ints, o_interrupt);
-	parameter	IUSED = 12, DW=32;
-	input	wire			i_clk, i_reset;
-	input	wire			i_wb_cyc, i_wb_stb, i_wb_we;
-	input	wire	[DW-1:0]	i_wb_data;
-	input	wire	[DW/8-1:0]	i_wb_sel;
-	output	wire			o_wb_stall, o_wb_ack;
-	output	reg	[DW-1:0]	o_wb_data;
-	input	wire	[(IUSED-1):0]	i_brd_ints;
-	output	reg			o_interrupt;
+// }}}
+module	icontrol #(
+		// {{{
+		parameter	IUSED = 12, DW=32
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset,
+		input	wire			i_wb_cyc, i_wb_stb, i_wb_we,
+		input	wire	[DW-1:0]	i_wb_data,
+		input	wire	[DW/8-1:0]	i_wb_sel,
+		output	wire			o_wb_stall, o_wb_ack,
+		output	reg	[DW-1:0]	o_wb_data,
+		input	wire	[(IUSED-1):0]	i_brd_ints,
+		output	reg			o_interrupt
+		// }}}
+	);
 
+	// Local declarations
+	// {{{
 	reg	[(IUSED-1):0]	r_int_state;
 	reg	[(IUSED-1):0]	r_int_enable;
 	reg			r_mie;
 	wire			w_any;
 
 	wire			wb_write, enable_ints, disable_ints;
+	// }}}
 	assign	wb_write     = (i_wb_stb)&&(i_wb_we);
 	assign	enable_ints  = (wb_write)&&( i_wb_data[15]);
 	assign	disable_ints = (wb_write)&&(!i_wb_data[15]);
 
-	//
+	// r_int_state
+	// {{{
 	// First step: figure out which interrupts have triggered.  An
 	// interrupt "triggers" when the incoming interrupt wire is high, and
 	// stays triggered until cleared by the bus.
@@ -115,8 +121,10 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 			| (r_int_state & (~i_wb_data[(IUSED-1):0]));
 	else
 		r_int_state <= (r_int_state | i_brd_ints);
+	// }}}
 
-	//
+	// r_int_enable
+	// {{{
 	// Second step: determine which interrupts are enabled.
 	// Only interrupts that are enabled will be propagated forward on
 	// the global interrupt line.
@@ -128,9 +136,11 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		r_int_enable <= r_int_enable | i_wb_data[16 +: IUSED];
 	else if (disable_ints)
 		r_int_enable <= r_int_enable & (~ i_wb_data[16 +: IUSED]);
+	// }}}
 
-	//
-	// Third step: The global interrupt enable bit.
+	// r_mie
+	// {{{
+	// Third step: The master (global) interrupt enable bit.
 	initial	r_mie = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
@@ -139,11 +149,14 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		r_mie <= 1'b1;
 	else if (disable_ints && i_wb_data[DW-1])
 		r_mie <= 1'b0;
+	// }}}
 
 	//
 	// Have "any" enabled interrupts triggered?
 	assign	w_any = ((r_int_state & r_int_enable) != 0);
 
+	// o_interrupt
+	// {{{
 	// How then shall the interrupt wire be set?
 	initial	o_interrupt = 1'b0;
 	always @(posedge i_clk)
@@ -151,8 +164,10 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		o_interrupt <= 1'b0;
 	else
 		o_interrupt <= (r_mie)&&(w_any);
+	// }}}
 
-	//
+	// o_wb_data
+	// {{{
 	// Create the output data.  Place this into the next clock, to keep
 	// it synchronous with w_any.
 	initial	o_wb_data = 0;
@@ -165,36 +180,38 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		o_wb_data[16 +: IUSED] <= r_int_enable;
 		o_wb_data[ 0 +: IUSED] <= r_int_state;
 	end
-
-	// Make verilator happy
-	generate if (IUSED < 15)
-	begin
-		// verilator lint_off UNUSED
-		wire	unused;
-		assign	unused = &{ 1'b0, i_wb_data[32-2:(16+IUSED)],
-				i_wb_data[16-2:IUSED] };
-		// verilator lint_on  UNUSED
-
-	end endgenerate
+	// }}}
 
 	assign	o_wb_ack = i_wb_stb;
 	assign	o_wb_stall = 1'b0;
 
-	// Verilator lint_off UNUSED
+	// Make verilator happy
+	// {{{
+	// verilator coverage_off
+	// verilator lint_off UNUSED
+	generate if (IUSED < 15)
+	begin : UNUSED_INTS
+		wire	unused_int;
+		assign	unused_int = &{ 1'b0, i_wb_data[32-2:(16+IUSED)],
+				i_wb_data[16-2:IUSED] };
+	end endgenerate
+
 	wire	unused;
 	assign	unused = &{ 1'b0, i_wb_cyc, i_wb_sel };
 	// verilator lint_on  UNUSED
-
+	// verilator coverage_on
+	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
-//
+////////////////////////////////////////////////////////////////////////////////
 //
 // Formal properties section
-//
-//
+// {{{
+////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+	// {{{
 `ifdef	ICONTROL
 `define	ASSUME	assume
 `else
@@ -206,12 +223,12 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 	initial	f_past_valid = 1'b0;
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
-
-	////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Reset handling
-	//
-	////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	initial	`ASSUME(i_reset);
@@ -228,11 +245,11 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		assert(o_interrupt == 0);
 		assert(r_mie == 0);
 	end
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Formal contract
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
@@ -292,16 +309,15 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 	always @(posedge i_clk)
 	if ((f_past_valid) && (!$past(i_reset)) && (!$past(wb_write)))
 		assert($stable({r_mie, r_int_enable}));
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Bus properties
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	wire	[1:0]	f_nreqs, f_nacks, f_outstanding;
 	reg		past_stb;
-	(* anyseq *) wire		i_wb_cyc;
 
 	always @(*)
 	if (i_wb_stb)
@@ -322,11 +338,11 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 
 	always @(*)
 		assert(f_outstanding == 0);
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Other consistency logic
-	//
+	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Without a write or a reset, past interrupts should remain
@@ -343,12 +359,12 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(w_any)))
 		assert(!o_interrupt);
-
-	////////////////////////////////////////
+	// }}}
+	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover properties
-	//
-	////////////////////////////////////////
+	// {{{
+	////////////////////////////////////////////////////////////////////////
 	//
 	//
 	always @(posedge i_clk)
@@ -364,6 +380,7 @@ module	icontrol(i_clk, i_reset, i_wb_cyc, i_wb_stb, i_wb_we, i_wb_data,
 		cover(!o_interrupt && $past(w_any));
 		cover(!o_interrupt && $past(r_mie) && $past(|r_int_state));
 	end
-
+	// }}}
 `endif
+// }}}
 endmodule

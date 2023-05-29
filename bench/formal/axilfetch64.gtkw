@@ -1,0 +1,66 @@
+[*]
+[*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
+[*] Thu Jun 11 14:48:45 2020
+[*]
+[timestart] 0
+[size] 1111 600
+[pos] -1 -1
+*-5.654441 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 196
+[signals_width] 174
+[sst_expanded] 1
+[sst_vpaned_height] 155
+@28
+axilfetch.S_AXI_ACLK
+axilfetch.S_AXI_ARESETN
+@200
+-
+@800200
+-CPU Interface
+@28
+axilfetch.i_cpu_reset
+axilfetch.i_new_pc
+axilfetch.i_clear_cache
+@22
+axilfetch.i_pc[31:0]
+@28
+[color] 2
+axilfetch.o_valid
+axilfetch.i_ready
+@22
+[color] 2
+axilfetch.o_pc[31:0]
+[color] 2
+axilfetch.o_insn[31:0]
+@28
+[color] 2
+axilfetch.o_illegal
+@1000200
+-CPU Interface
+@800200
+-AXI-Lite
+@28
+[color] 2
+axilfetch.M_AXI_ARVALID
+[color] 3
+axilfetch.M_AXI_ARREADY
+@22
+[color] 2
+axilfetch.M_AXI_ARADDR[31:0]
+@200
+-
+@28
+[color] 3
+axilfetch.M_AXI_RVALID
+[color] 2
+axilfetch.M_AXI_RREADY
+@22
+[color] 3
+axilfetch.M_AXI_RDATA[63:0]
+@28
+[color] 3
+axilfetch.M_AXI_RRESP[1:0]
+@1000200
+-AXI-Lite
+[pattern_trace] 1
+[pattern_trace] 0

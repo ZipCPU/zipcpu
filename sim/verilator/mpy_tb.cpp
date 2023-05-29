@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
@@ -35,6 +35,7 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
+//
 ////////////////////////////////////////////////////////////////////////////////
 //
 // }}}
@@ -50,21 +51,11 @@
 #include "verilated.h"
 #include "Vcpuops.h"
 
-#ifdef	ROOT_VERILATOR
-#include "Vcpuops___024root.h"
-
-#define	VVAR(A)	rootp->cpuops__DOT_ ## A
-#elif	defined(NEW_VERILATOR)
-#define	VVAR(A)	cpuops__DOT_ ## A
-#else
-#define	VVAR(A)	v__DOT_ ## A
-#endif
-
-
 #include "testb.h"
-#include "cpudefs.h"
 // #include "twoc.h"
 
+// class CPUOPS_TB declaration
+// {{{
 class	CPUOPS_TB : public TESTB<Vcpuops> {
 public:
 	// Nothing special to do in a startup.
@@ -72,7 +63,8 @@ public:
 
 	// ~CPUOPS_TB(void) {}
 
-	//
+	// reset
+	// {{{
 	// Calls TESTB<>::reset to reset the core.  Makes sure the i_stb line
 	// is low during this reset.
 	//
@@ -82,10 +74,10 @@ public:
 
 		TESTB<Vcpuops>::reset();
 	}
+	// }}}
 
-	//
 	// dbgdump();
-	//
+	// {{{
 	// Just before the positive edge of every clock, we call this function
 	// (if the debug flag is set).  This prints out a line of information
 	// telling us what is going on within the logic, allowing us access
@@ -128,51 +120,23 @@ public:
 			(m_core->o_busy)?"B":" ");
 		s = &outstr[strlen(outstr)];
 
-#if(OPT_MULTIPLY==1)
-#define	mpy_result	VVAR(_mpy_result)
-		sprintf(s, "1,MPY[][][%016lx]",
-			(unsigned long)m_core->mpy_result);
-		s = &outstr[strlen(outstr)];
-#elif(OPT_MULTIPLY==2)
-		sprintf(s, "2,MPY[%016lx][%016lx][%016lx]",
-#define	MPY2VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPY2CK__DOT_ ## A)
-#define	r_mpy_a_input	MPY2VAR(_r_mpy_a_input)
-#define	r_mpy_b_input	MPY2VAR(_r_mpy_b_input)
-#define	mpy_result	VVAR(_mpy_result)
-			m_core->r_mpy_a_input,
-			m_core->r_mpy_b_input,
-			m_core->mpy_result);
-		s = &outstr[strlen(outstr)];
-#elif(OPT_MULTIPLY==3)
-#define	MPY3VAR(A)	VVAR(_thempy__DOT__IMPY__DOT__MPN1__DOT__MPN2__DOT__MPY3CK__DOT_ ## A)
-#define	r_mpy_a_input	MPY3VAR(_r_mpy_a_input)
-#define	r_mpy_b_input	MPY3VAR(_r_mpy_b_input)
-#define	r_smpy_result	MPY3VAR(_r_smpy_result)
-#define	mpypipe		MPY3VAR(_mpypipe)
-		sprintf(s, "3,MPY[%08x][%08x][%016llx], P[%d]",
-			m_core->r_mpy_a_input,
-			m_core->r_mpy_b_input,
-			(long long)m_core->r_smpy_result,
-			m_core->mpypipe);
+		sprintf(s, "MPY[%08x][%08x][%016llx], P[%d]",
+			m_core->mpy_a_input,
+			m_core->mpy_b_input,
+			(long long)m_core->mpy_output,
+			m_core->mpy_pipe);
 
-#endif
-
-#if(OPT_MULTIPLY != 1)
-#define	this_is_a_multiply_op	((m_core->i_stb)&&(((m_core->i_op&0xe) == 5)||((m_core->i_op&0x0f)==0xc))) // VVAR(_this_is_a_multiply_op)
-		if (this_is_a_multiply_op)
-			strcat(s, " MPY-OP");
-#endif
 		puts(outstr);
 	}
+	// }}}
 
-	//
 	// tick()
-	//
+	// {{{
 	// Call this to step the processor.
 	//
 	// This is a bit unusual compared to other tick() functions I have in
 	// my simulators in that there are a lot of calls to eval() with clk==0.
-	// This is because the multiply logic for OPT_MULTIPLY < 3 depends upon
+	// This is because the multiply logic for m_core->OPT_MULTIPLY < 3 depends upon
 	// it to be valid.  I assume any true Xilinx, or even higher level,
 	// implementation wouldn't have this problem.
 	//
@@ -189,10 +153,10 @@ public:
 		if (debug)
 			dbgdump();
 	}
+	// }}}
 
-	//
-	// clear_ops
-	//
+	// clear_ops()
+	// {{{
 	// Runs enough clocks through the device until it is neither busy nor
 	// valid.  At this point, the ALU should be thoroughly clear.  Then
 	// we tick things once more.
@@ -206,19 +170,21 @@ public:
 		} while((m_core->o_busy)||(m_core->o_valid));
 		tick();
 	}
+	// }}}
 
-	//
+	// op(op, a, b)
+	// {{{
 	// This is a fairly generic CPU operation call.  What makes it less
 	// than generic are two things: 1) the ALU is cleared before any
 	// new instruction, and 2) the tick count at the end is compared
-	// against the tick count OPT_MULTIPLY says we should be getting.
+	// against the tick count m_core->OPT_MULTIPLY says we should be getting.
 	// A third difference between this call in simulation and a real
 	// call within the CPU is that we never set the reset mid-call, whereas
 	// the CPU may need to do that if a jump is made and the pipeline needs
 	// to be cleared.
 	//
 	uint32_t	op(int op, int a, int b) {
-		// Make sure we start witht he core idle
+		// Make sure we start with the core idle
 		if (m_core->o_valid)
 			clear_ops();
 
@@ -246,9 +212,9 @@ public:
 		// Check that we used the number of clock ticks we said we'd
 		// be using.  OPT_MULTIPLY is *supposed* to be equal to this
 		// number.
-		if((m_tickcount - now)!=OPT_MULTIPLY) {
+		if((m_tickcount - now)!=m_core->OPT_MULTIPLY) {
 			printf("%lld ticks seen, %d ticks expected\n",
-				(unsigned long long)(m_tickcount-now), OPT_MULTIPLY);
+				(unsigned long long)(m_tickcount-now), m_core->OPT_MULTIPLY);
 			dbgdump();
 			printf("TEST-FAILURE!\n");
 			closetrace();
@@ -257,8 +223,10 @@ public:
 
 		return m_core->o_c;
 	}
+	// }}}
 
-	//
+	// test(a,b)
+	// {{{
 	// Here's our testing function.  Pardon the verbosity of the error
 	// messages within it, but ...  well, hopefully you won't ever encounter
 	// any of those errors. ;)
@@ -268,16 +236,18 @@ public:
 	// against a local multiply on the local (host) machine.  If there's
 	// any mismatch, an error message is printed and the test fails.
 	void	mpy_test(int a, int b) {
+		// {{{
 		const	int OP_MPY = 0x0c, OP_MPYSHI=0xb, OP_MPYUHI=0x0a;
 		const	bool	debug = false;
 		int64_t		ia, ib, sv;
 		uint64_t	ua, ub, uv;
 		unsigned	r, s, u;
+		// }}}
 
 		clear_ops();
 
 		if (debug)
-		printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
+			printf("MPY-TEST: 0x%08x x 0x%08x\n", a, b);
 
 		ia = (long)a; ib = (long)b; sv = ia * ib;
 		ua = ((uint64_t)a)&0x0ffffffffu;
@@ -290,6 +260,7 @@ public:
 		tick();
 
 		// Let's check our answers, and see if we got the right results
+		// {{{
 		if ((r ^ sv)&0x0ffffffffu) {
 			printf("TEST FAILURE(MPY), MPY #1\n");
 			printf("Comparing 0x%08x to 0x%016llx\n", r, (long long)sv);
@@ -317,10 +288,14 @@ public:
 			closetrace();
 			exit(EXIT_FAILURE);
 		}
+		// }}}
 	}
+	// }}}
 };
+// }}}
 
 void	usage(void) {
+// {{{
 	printf("USAGE: mpy_tb [a b]\n");
 	printf("\n");
 	printf(
@@ -336,6 +311,7 @@ void	usage(void) {
 "If the two arguments a and b are given, they will be interpreted according\n"
 "to the form of strtol, and the test will only involve testing those two\n"
 "parameters\n\n");
+// }}}
 }
 
 int	main(int argc, char **argv) {
@@ -346,28 +322,35 @@ int	main(int argc, char **argv) {
 	int	rcode = EXIT_SUCCESS;
 	// tb->opentrace("mpy_tb.vcd");
 
-	// Get us started by a couple of clocks past reset.  This isn't that
-	// unreasonable, since the CPU needs to load up the pipeline before
-	// any first instruction will be executed.
+	// Get us started by a couple of clocks past reset.
+	// {{{
+	// This isn't that unreasonable, since the CPU needs to load up the
+	//  pipeline before any first instruction will be executed.
 	tb->reset();
 	tb->tick();
 	tb->tick();
 	tb->tick();
+	// }}}
 
-	// Look for options, such as '-h'.  Trap those here, and produce a usage
-	// statement.
+	// Look for options, such as '-h'.
+	// {{{
+	// Trap those here, and produce a usage statement.
 	if ((argc > 1)&&(argv[1][0]=='-')&&(isalpha(argv[1][1]))) {
 		usage();
 		exit(EXIT_SUCCESS);
 	}
+	// }}}
 
 	if (argc == 3) {
 		// Were we given enough arguments to run a user-specified test?
+		// {{{
 		tb->mpy_test(
 			strtol(argv[1], NULL, 0),
 			strtol(argv[2], NULL, 0));
+		// }}}
 	} else {
 		// Otherwise we run through a canned set of tests.
+		// {{{
 		tb->mpy_test(0,0);
 		tb->mpy_test(-1,0);
 		tb->mpy_test(-1,-1);
@@ -381,6 +364,7 @@ int	main(int argc, char **argv) {
 
 		for(int a=0; ((a&0x80000000)==0); a+=0x197e2)
 			tb->mpy_test(0xf97e27ab, a);
+		// }}}
 	}
 
 	printf("SUCCESS!\n");

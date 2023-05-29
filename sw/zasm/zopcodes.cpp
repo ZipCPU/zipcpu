@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	zopcodes.cpp
-//
+// Filename: 	zopcodes.cpp	(Mostly deprecated, still used by the debugger)
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU core
 //
 // Purpose:	A simple program to handle the disassembly and definition
@@ -15,9 +15,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2017-2019, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2017-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -32,14 +32,14 @@
 // with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <stdio.h>
 #include <strings.h>
 #include <string.h>
@@ -257,7 +257,7 @@ static const ZOPCODE	zip_oplist_raw[] = {
 	//
 	//	16-bit instructions, high side
 	//
-	// 
+	//
 	//	1.1111.00010.xcc.0iiii.xxxx.xxxxx.xxxxx
 	//	1111.1000.10xc.c0ii.iixx.xxxx.xxxx.xxxx
 	// Mask, val, result, Ra, Rb, I, condition (no conditions for OP_UNDER_TEST)
@@ -296,9 +296,9 @@ static const ZOPCODE	zip_oplist_raw[] = {
 	// 1.rrrr.100.1.rrrrsss
 	{ "LW", 0x87800000, 0x84000000,  ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_SP,            ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
 	{ "LW", 0x87800000, 0x84800000,  ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_REGFIELD(19),  ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
-	// 1.rrrr.101.ssssssss
+	// 1.rrrr.101.0sssssss
 	{ "SW", 0x87800000, 0x85000000,  ZIP_OPUNUSED,     ZIP_REGFIELD(27), ZIP_SP,            ZIP_IMMFIELD(7,16), ZIP_OPUNUSED },
-	// 1.rrrr.110.0.sssssss
+	// 1.rrrr.110.1.sssssss
 	{ "SW", 0x87800000, 0x85800000,  ZIP_OPUNUSED,     ZIP_REGFIELD(27), ZIP_REGFIELD(19),  ZIP_IMMFIELD(3,16), ZIP_OPUNUSED },
 	// 1.rrrr.110.iiiiiiii
 	{ "LDI", 0x87000000, 0x86000000, ZIP_REGFIELD(27), ZIP_OPUNUSED,     ZIP_OPUNUSED,      ZIP_IMMFIELD(8,16), ZIP_OPUNUSED },
@@ -473,7 +473,7 @@ POSSIBLE_TWOWORD_BEGINNING(uint32_t iword) {
 	// Any BREV command could be the beginning of a twoword instruction
 	//
 	// Of course, the point here is to determine whether we should (or need
-	// to) read a second word from our read-memory function.  Reading a 
+	// to) read a second word from our read-memory function.  Reading a
 	// second word, given that the first is a BREV, isn't a problem since a
 	// program can't end on/with a BREV instruction.
 	//
@@ -532,13 +532,14 @@ zipi_to_halfstring(const uint32_t addr, const ZIPI ins, char *line, const ZOPCOD
 		int	dv = zip_getbits(ins, ZIP_REGFIELD(27));
 		int	iv = zip_sbits(ins, 13);
 		uint32_t	ref;
+		char	opcode[128];
 
 		ref = (iv<<2) + addr + 4;
 
-		sprintf(line, "%s%s", "MOV", zip_ccstr[cv]);
-		sprintf(line, "%-11s", line);
-		sprintf(line, "%s0x%08x", line, ref);
-		sprintf(line, "%s,%s", line, zip_regstr[dv]);
+		sprintf(opcode, "%s%s", "MOV", zip_ccstr[cv]);
+		sprintf(line, "%-11s", opcode);
+		sprintf(opcode, "%s0x%08x", line, ref);
+		sprintf(line, "%s,%s", opcode, zip_regstr[dv]);
 
 		return;
 	} else if (TWOWORD_CIS_JSR(ins)) {
@@ -569,11 +570,12 @@ zipi_to_halfstring(const uint32_t addr, const ZIPI ins, char *line, const ZOPCOD
 			// zip_oplist[i].s_mask, zip_oplist[i].s_val);
 		if ((ins & listp[i].s_mask) == listp[i].s_val) {
 			// Write the opcode onto our line
-			sprintf(line, "%s", listp[i].s_opstr);
+			char	opcode[128];
+			sprintf(opcode, "%s", listp[i].s_opstr);
 			if (listp[i].s_cf != ZIP_OPUNUSED) {
 				int bv = zip_getbits(ins, listp[i].s_cf);
-				strcat(line, zip_ccstr[bv]);
-			} sprintf(line, "%-11s", line); // Pad it to 11 chars
+				strcat(opcode, zip_ccstr[bv]);
+			} sprintf(line, "%-11s", opcode); // Pad it to 11 chars
 
 			int	ra = -1, rb = -1, rr = -1, imv = 0;
 
@@ -595,7 +597,7 @@ zipi_to_halfstring(const uint32_t addr, const ZIPI ins, char *line, const ZOPCOD
 				||(strncasecmp("SB",listp[i].s_opstr, 2)==0)) {
 				strcat(line, zip_regstr[ra]);
 				strcat(line, ",");
-					
+
 				if (listp[i].s_i != ZIP_OPUNUSED) {
 					if (listp[i].s_rb == ZIP_OPUNUSED)
 						sprintf(&line[strlen(line)],
@@ -616,7 +618,7 @@ zipi_to_halfstring(const uint32_t addr, const ZIPI ins, char *line, const ZOPCOD
 				&&(strcasecmp(listp[i].s_opstr,"BRK")!=0)
 				&&(addr != 0)) {
 				// Branch instruction: starts with B and isn't
-				// BREV (bit reverse), BRK (break), or 
+				// BREV (bit reverse), BRK (break), or
 				// BUSY
 				uint32_t target = addr;
 

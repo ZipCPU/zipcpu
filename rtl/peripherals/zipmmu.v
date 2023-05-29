@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename: 	zipmmu.v
-//
+// {{{
 // Project:	Zip CPU backend for the GNU Compiler Collection
 //
 // Purpose:	To provide a "bump-in-the-line" wishbone memory management
@@ -179,17 +179,30 @@
 //		you've stalled by both clocks, you'll not stall again during
 //		any pipeline operation.
 //
+// Status:
+//	At one point, this MMU was partially integrated into the ZipCPU.  That
+//	is, it was integrated far enough into the ZipSystem that a test might
+//	have been written, but never into any of the other wrappers.  Since
+//	then, the ZipCPU has been refactored so that it can support multiple
+//	bus structures and a parameterized bus width.  This MMU now needs to
+//	be similarly refactored to match, so that it can integrate into the
+//	ZipCPU *between* the ZipCore and its memory access components--whether
+//	instruction or data memory access.  This refactor has not (yet) taken
+//	place, and until it does so this MMU implementation should be
+//	considered ...
+//
+//	*DEPRECATED*.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2016-2020, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2016-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -216,7 +229,7 @@
 `define	EXEFLG	2	// No-execute flag (invalid for I-cache)
 `define	CHFLAG	1	// Cachable flag
 `define	AXFLAG	0	// Accessed flag
-//
+// }}}
 module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 				i_wbs_data, o_wbs_stall, o_wbs_ack, o_wbs_data,
 		i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_exe,
@@ -566,7 +579,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// Second clock: know which buffer entry this belong in.
 	// If we don't already know, then the pipeline must be stalled for a
 	// while ...
-	genvar k;
+	genvar k; // s;
 	generate
 	for(k=0; k<TBL_SIZE; k = k + 1)
 		assign r_tlb_match[k] =
@@ -839,30 +852,44 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	// physical half of the interaction.  It is artificially limited here
 	// in order to limit the amount of proof time required.
 	//
-	fwb_slave #(.F_MAX_STALL(F_MAX_STALL+(F_MAX_WAIT*F_MAX_REQ)+2),
+	fwb_slave #(
+		// {{{
+		.F_MAX_STALL(F_MAX_STALL+(F_MAX_WAIT*F_MAX_REQ)+2),
 			.AW(DW-2),
 			.F_MAX_ACK_DELAY(F_MAX_STALL+F_MAX_WAIT+5),
 			.F_MAX_REQUESTS(F_MAX_REQ),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_MINCLOCK_DELAY(0))
-		busslave(i_clk, i_reset,
+			.F_OPT_MINCLOCK_DELAY(0)
+		// }}}
+	) busslave(
+		// {{{
+		i_clk, i_reset,
 				i_wbm_cyc, i_wbm_stb, i_wbm_we, i_wbm_addr,
 					i_wbm_data, i_wbm_sel,
 				o_rtn_ack, o_rtn_stall, o_rtn_data,
 					o_rtn_err|o_rtn_miss,
-				fv_nreqs, fv_nacks, fv_outstanding);
+				fv_nreqs, fv_nacks, fv_outstanding
+		// }}}
+	);
 
-	fwb_master #(.F_MAX_STALL(F_MAX_STALL),
+	fwb_master #(
+		// {{{
+		.F_MAX_STALL(F_MAX_STALL),
 			.AW(ADDRESS_WIDTH),
 			.F_MAX_ACK_DELAY(F_MAX_WAIT),
 			.F_MAX_REQUESTS(F_MAX_REQ),
 			.F_LGDEPTH(F_LGDEPTH),
-			.F_OPT_MINCLOCK_DELAY(0))
-		busmaster(i_clk, i_reset,
-				o_cyc, o_stb, o_we, o_addr,
-					o_data, o_sel,
-				i_ack, i_stall, i_data, i_err,
-				fp_nreqs, fp_nacks, fp_outstanding);
+			.F_OPT_MINCLOCK_DELAY(0)
+		// }}}
+	) busmaster(
+		// {{{
+		i_clk, i_reset,
+			o_cyc, o_stb, o_we, o_addr,
+				o_data, o_sel,
+			i_ack, i_stall, i_data, i_err,
+			fp_nreqs, fp_nacks, fp_outstanding
+		// }}}
+	);
 
 	always @(*)
 		assert((!o_cyc)||(fp_outstanding == bus_outstanding));
@@ -883,33 +910,33 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	always @(*)
 	if (!i_wbm_cyc)
 	begin
-		f_ex_nreqs <= 0;
-		f_ex_nacks <= 0;
-		f_expected <= 0;
+		f_ex_nreqs = 0;
+		f_ex_nacks = 0;
+		f_expected = 0;
 	end else if (OPT_DELAY_RETURN)
 	begin
 		if (r_pending)
 		begin
-			f_ex_nreqs <= fp_nreqs + 1'b1;
-			f_ex_nacks <= fp_nacks + o_rtn_ack;
-			f_expected <= fp_outstanding + 1'b1
+			f_ex_nreqs = fp_nreqs + 1'b1;
+			f_ex_nacks = fp_nacks + o_rtn_ack;
+			f_expected = fp_outstanding + 1'b1
 						+ o_rtn_ack;
 		end else begin
-			f_expected <= fp_outstanding + (o_stb)
+			f_expected = fp_outstanding + (o_stb)
 				+ (o_rtn_ack);
-			f_ex_nreqs <= fp_nreqs + o_stb;
-			f_ex_nacks <= fp_nacks + o_rtn_ack;
+			f_ex_nreqs = fp_nreqs + o_stb;
+			f_ex_nacks = fp_nacks + o_rtn_ack;
 		end
 	end else begin
 		if (r_pending)
 		begin
-			f_ex_nreqs <= fp_nreqs + 1'b1;
-			f_ex_nacks <= fp_nacks;
-			f_expected <= fp_outstanding + 1'b1;
+			f_ex_nreqs = fp_nreqs + 1'b1;
+			f_ex_nacks = fp_nacks;
+			f_expected = fp_outstanding + 1'b1;
 		end else begin
-			f_ex_nreqs <= fp_nreqs + o_stb;
-			f_ex_nacks <= fp_nacks;
-			f_expected <= fp_outstanding + (o_stb);
+			f_ex_nreqs = fp_nreqs + o_stb;
+			f_ex_nacks = fp_nacks;
+			f_expected = fp_outstanding + (o_stb);
 		end
 	end
 

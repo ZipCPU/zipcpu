@@ -1,0 +1,44 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Fri Aug 26 01:42:34 2022
+[*]
+[dumpfile] "(null)"
+[timestart] 0
+[size] 1455 600
+[pos] -1 -1
+*-5.294694 41 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 296
+[signals_width] 142
+[sst_expanded] 1
+[sst_vpaned_height] 160
+@28
+zipdma_rxgears.i_clk
+zipdma_rxgears.i_reset
+zipdma_rxgears.S_VALID
+zipdma_rxgears.S_READY
+@22
+zipdma_rxgears.S_DATA[63:0]
+zipdma_rxgears.S_BYTES[3:0]
+@28
+zipdma_rxgears.S_LAST
+@200
+-
+@28
+zipdma_rxgears.M_VALID
+zipdma_rxgears.M_READY
+@22
+zipdma_rxgears.M_DATA[63:0]
+zipdma_rxgears.M_BYTES[3:0]
+@28
+zipdma_rxgears.M_LAST
+@200
+-
+@28
+zipdma_rxgears.r_last
+@22
+zipdma_rxgears.next_fill[4:0]
+zipdma_rxgears.fill[4:0]
+@23
+zipdma_rxgears.f_rcvd[15:0]
+[pattern_trace] 1
+[pattern_trace] 0

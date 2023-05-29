@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Filename: 	byteswap.cpp
-//
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	To convert between little endian and big endian byte orders,
@@ -13,9 +13,9 @@
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015-2016, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of  the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
@@ -37,13 +37,13 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
+// }}}
 #include <stdint.h>
 #include "byteswap.h"
 
 /*
  * byteswap
- *
+ * {{{
  * Given a big (or little) endian word, return a little (or big) endian word.
  */
 uint32_t
@@ -60,11 +60,11 @@ byteswap(uint32_t v) {
 
 	return r;
 }
-
+// }}}
 
 /*
  * byteswapbuf
- *
+ * {{{
  * To swap from the byte order of every 32-bit word in the given buffer.
  */
 void
@@ -72,10 +72,11 @@ byteswapbuf(int ln, uint32_t *buf) {
 	for(int i=0; i<ln; i++)
 		buf[i] = byteswap(buf[i]);
 }
+// }}}
 
 /*
  * buildword
- *
+ * {{{
  * Given a pointer within an array of characters, build a 32-bit big-endian
  * word from those characters.  Does not require the character pointer to be
  * aligned.
@@ -91,10 +92,11 @@ buildword(const unsigned char *p) {
 
 	return r;
 }
+// }}}
 
 /*
  * buildswap
- *
+ * {{{
  * Same as buildword, except that we build a little endian word from the
  * characters given to us.  Hence the first character is the low order octet
  * of the word.
@@ -110,5 +112,5 @@ buildswap(const unsigned char *p) {
 
 	return r;
 }
-
+// }}}
 

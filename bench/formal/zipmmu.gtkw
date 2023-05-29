@@ -2,10 +2,6 @@
 [*] GTKWave Analyzer v3.3.66 (w)1999-2015 BSI
 [*] Mon Aug 27 21:59:16 2018
 [*]
-[dumpfile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/zipmmu.vcd"
-[dumpfile_mtime] "Mon Aug 27 21:57:47 2018"
-[dumpfile_size] 29996
-[savefile] "/home/dan/work/rnd/zipcpu/trunk/bench/formal/zipmmu.gtkw"
 [timestart] 0
 [size] 1431 1028
 [pos] -1 -1

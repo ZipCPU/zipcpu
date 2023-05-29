@@ -1,27 +1,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	zparser.h
-//
+// Filename: 	zparser.h	(DEPRECATED)
+// {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU core
 //
 // Purpose:	This file is really mis-named.  At one time it was going to
 //		be header file for the parser for the Zip Assembler, zasm. 
-//		Since then, I discovered Flex and Bison and have written a
-//		parser using those tools.  The true parser may therefore be
-//		found in zasm.y.  This file, however, still declares some
-//		very valuable tools.  In particular, all of the routines used
-//		to build instructions from the appropriate fields are declared
-//		in this file. 
+//	Since then, I discovered Flex and Bison and have written a parser using
+//	those tools.  The true parser may therefore be found in zasm.y.  This
+//	file, however, still declares some very valuable tools.  In particular,
+//	all of the routines used to build instructions from the appropriate
+//	fields are declared in this file. 
+//
+//	That said, the instructions built here are likely to be a generation
+//	or two out of date.  Just sayin'
 //
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
-// Copyright (C) 2015, Gisselquist Technology, LLC
-//
+// }}}
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -34,13 +36,13 @@
 // with this program.  (It's in the $(ROOT)/doc directory, run make with no
 // target there if the PDF file isn't present.)  If not, see
 // <http://www.gnu.org/licenses/> for a copy.
-//
+// }}}
 // License:	GPL, v3, as defined and found on www.gnu.org,
+// {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
-
+// }}}
 #ifndef	ZPARSER_H
 #define	ZPARSER_H
 

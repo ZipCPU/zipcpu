@@ -1,0 +1,24 @@
+[tasks]
+prf
+cvr
+
+[options]
+prf: mode prove
+prf: depth 8
+cvr: mode cover
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipdma_s2mm.v
+read -formal fwb_master.v
+--pycode-begin--
+cmd = "hierarchy -top zipdma_s2mm"
+output(cmd)
+--pycode-end--
+prep -top zipdma_s2mm
+
+[files]
+../../rtl/ex/fwb_master.v
+../../rtl/zipdma/zipdma_s2mm.v

@@ -37,10 +37,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2021, Gisselquist Technology, LLC
+// Copyright (C) 2015-2023, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -59,7 +59,6 @@
 //		http://www.gnu.org/licenses/gpl.html
 //
 ////////////////////////////////////////////////////////////////////////////////
-//
 //
 `default_nettype	none
 // }}}
@@ -463,11 +462,13 @@ module	busdelay #(
 	if ((DELAY_STALL)&&(f_past_valid)&&(!$past(i_reset) && i_wb_cyc && !o_wb_err))
 	begin
 		if (!$past(i_wb_cyc))
+		begin
 			assert((!f_pending[STB_BIT])
 				&&(!f_wpending[STB_BIT]));
-		else if (($past(f_dly_busy))&&($past(f_wb_busy)))
+		end else if (($past(f_dly_busy))&&($past(f_wb_busy)))
+		begin
 			assert(f_pending == f_wpending);
-		else if(($past(f_dly_busy))&&($past(f_pending[STB_BIT])))
+		end else if(($past(f_dly_busy))&&($past(f_pending[STB_BIT])))
 			assert(f_pending == f_wpending);
 	end
 
@@ -503,8 +504,9 @@ module	busdelay #(
 			&&($past(f_pending[STB_BIT])))
 	begin
 		if ($past(i_dly_err))
+		begin
 			assert(!o_dly_stb);
-		else
+		end else
 			assert(o_dly_stb);
 	end
 	// }}}
