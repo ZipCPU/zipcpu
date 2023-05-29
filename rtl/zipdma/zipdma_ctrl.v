@@ -264,6 +264,10 @@ module zipdma_ctrl #(
 			// }}}
 		endcase
 		// }}}
+	end else if (i_dma_busy)
+	begin
+		o_src_addr <= i_current_src;
+		o_dst_addr <= i_current_dst;
 	end
 	// }}}
 
