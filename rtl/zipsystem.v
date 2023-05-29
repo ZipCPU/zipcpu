@@ -889,7 +889,7 @@ module	zipsystem #(
 
 	// cmd_read
 	// {{{
-	reg	[2:0]	cmd_read_ack;
+	reg	cmd_read_ack;
 
 	initial	cmd_read = 0;
 	always @(posedge i_clk)
@@ -897,17 +897,26 @@ module	zipsystem #(
 		cmd_read <= 1'b0;
 	else if (dbg_cpu_read)
 		cmd_read <= 1'b1;
-	else if (cmd_read_ack == 1)
+	else if (cmd_read) // cmd_read_ack == 1)
 		cmd_read <= 1'b0;
 
-	initial	cmd_read_ack = 0;
-	always @(posedge i_clk)
-	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-		cmd_read_ack <= 0;
-	else if (dbg_cpu_read)
-		cmd_read_ack <= 1 + (OPT_DISTRIBUTED_REGS ? 1:0);
-	else if (cmd_read_ack > 0)
-		cmd_read_ack <= cmd_read_ack - 1;
+	generate if (OPT_DISTRIBUTED_REGS)
+	begin : GEN_CMD_READ_ACK
+
+		initial	cmd_read_ack = 0;
+		always @(posedge i_clk)
+		if (i_reset || !dbg_cyc || !OPT_DBGPORT)
+			cmd_read_ack <= 0;
+		else if (dbg_cpu_read)
+			cmd_read_ack <= 1;
+		else if (cmd_read_ack != 0)
+			cmd_read_ack <= 0;
+
+	end else begin
+		always @(*)
+			cmd_read_ack = cmd_read;
+
+	end endgenerate
 	// }}}
 
 	// cmd_waddr, cmd_wdata
@@ -1763,7 +1772,7 @@ module	zipsystem #(
 	if (i_reset || !dbg_cyc)
 		dbg_ack <= 1'b0;
 	else
-		dbg_ack <= dbg_pre_ack || (cmd_read_ack == 1);
+		dbg_ack <= dbg_pre_ack || cmd_read_ack;
 
 	always @(posedge i_clk)
 	if (!OPT_LOWPOWER || (dbg_cyc && (dbg_pre_ack || cmd_read)))
