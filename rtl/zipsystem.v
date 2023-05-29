@@ -1178,6 +1178,7 @@ module	zipsystem #(
 		zipdma	#(
 			// {{{
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), .LGMEMLEN(DMA_LGMEM),
+			.OPT_REGISTER_RAM(!OPT_DISTRIBUTED_REGS),
 			.BUS_WIDTH(DW), .OPT_LITTLE_ENDIAN(1'b0)
 			// }}}
 		) dma_controller(
