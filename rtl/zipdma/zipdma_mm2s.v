@@ -466,7 +466,7 @@ module	zipdma_mm2s #(
 
 	// first_sel
 	generate if (BUS_WIDTH > 32)
-	begin : GEN_STRB
+	begin : GEN_FIRST_SEL
 		// {{{
 		always @(*)
 		begin
@@ -507,7 +507,7 @@ module	zipdma_mm2s #(
 			end
 		end
 		// }}}
-	end else begin : MIN_STRB
+	end else begin : MIN_FIRST_SEL
 		// {{{
 		always @(*)
 		begin
