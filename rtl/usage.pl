@@ -195,8 +195,8 @@ my $axpfcacheconfig =" -chparam C_AXI_DATA_WIDTH 32"
 ## DMA configurations
 ## {{{
 my $wbdmaconfig = " -chparam ADDRESS_WIDTH 30"
-		. " -chparam LGMEMLEN      32"
-		. " -chparam DW            32";
+		. " -chparam LGMEMLEN      10"
+		. " -chparam BUS_WIDTH     32";
 
 my $zipdmaconfig =" -chparam BUS_WIDTH           64"
 		. " -chparam ADDRESS_WIDTH       30"
@@ -448,17 +448,17 @@ print USAGE $dcch;
 print USAGE $icch;
 
 $dmaz = sprintf("  ZIP-DMA/ 32  : %5d %5d %6d\n",
-		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",""),
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32 -chparam OPT_REGISTER_RAM 1",""),
 		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",""),
 		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",$asicpost));
 
 $dmaz = $dmaz . sprintf("  ZIP-DMA/ 64  : %5d %5d %6d\n",
-		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",""),
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64 -chparam OPT_REGISTER_RAM 1",""),
 		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",""),
 		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 64",$asicpost));
 
 $dmaz = $dmaz . sprintf("  ZIP-DMA/512  : %5d %5d %6d\n",
-		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",""),
+		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512 -chparam OPT_REGISTER_RAM 1",""),
 		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",""),
 		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 512",$asicpost));
 
