@@ -88,7 +88,7 @@ $dir = ".";
 	"cpuops"	=> "CPU ALU",
 	"dblfetch"	=> "WB Instruction fetch, fetches two insns at a time",
 	"dcache"	=> "WB Data cache",
-	"div"		=> "ODDR, used in reference clock generation",
+	"div"		=> "Divide unit",
 	"icontrol"	=> "Interrupt controller",
 	"idecode"	=> "Instruction decoder",
 	"memops"	=> "Simple WB memory controller",
@@ -229,7 +229,7 @@ foreach $prf (sort @proofs) {
 	foreach $dent (@dirent) {
 		next if (! -d $dent);
 		next if ($dent =~ /^\./);
-		next if ($dent !~ /$prf(_\S+)/);
+		next if ($dent !~ /^$prf(_\S+)/);
 			$subprf = $1;
 
 		$ndirs = $ndirs+1;
@@ -245,7 +245,7 @@ foreach $prf (sort @proofs) {
 		# Only look at subdirectories
 		next if (! -d $dent);
 		next if ($dent =~ /^\./);
-		next if ($dent !~ /$prf(_\S+)/);
+		next if ($dent !~ /^$prf(_\S+)/);
 			$subprf = $1;
 		# print("<TR><TD>$dent matches $prf</TD></TR>\n");
 		## }}}

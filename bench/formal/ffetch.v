@@ -262,7 +262,7 @@ module	ffetch #(
 		`CPU_ASSUME(f_address == pf_pc);
 
 	always @(posedge i_clk)
-	if (f_past_valid && !i_reset && !cpu_new_pc)
+	if (f_past_valid && !i_reset && !cpu_new_pc && !need_new_pc)
 		`CPU_ASSERT(f_next_address == cpu_pc);
 	// }}}
 	////////////////////////////////////////////////////////////////////////

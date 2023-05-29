@@ -101,8 +101,7 @@ module	idecode #(
 
 	wire	[4:0]	w_op;
 	wire		w_ldi, w_mov, w_cmptst, w_ldilo, w_ALU, w_brev,
-			w_noop, w_lock, w_sim, w_break, w_special, w_add,
-			w_mpy;
+			w_noop, w_lock, w_sim, w_break, w_special, w_add, w_mpy;
 	wire	[4:0]	w_dcdR, w_dcdB, w_dcdA;
 	wire		w_dcdR_pc, w_dcdR_cc;
 	wire		w_dcdA_pc, w_dcdA_cc;
@@ -183,10 +182,10 @@ module	idecode #(
 		if (!iword[CISBIT])
 			w_cis_op = iword[26:22];
 		else case(iword[26:24])
-		3'h0: w_cis_op = 5'h00;	// ADD
+		3'h0: w_cis_op = 5'h00;	// SUB
 		3'h1: w_cis_op = 5'h01;	// AND
-		3'h2: w_cis_op = 5'h02;	// SUB
-		3'h3: w_cis_op = 5'h10;	// BREV
+		3'h2: w_cis_op = 5'h02;	// ADD
+		3'h3: w_cis_op = 5'h10;	// CMP
 		3'h4: w_cis_op = 5'h12;	// LW
 		3'h5: w_cis_op = 5'h13;	// SW
 		3'h6: w_cis_op = 5'h18;	// LDI
@@ -652,10 +651,10 @@ module	idecode #(
 	generate if (OPT_EARLY_BRANCHING)
 	begin : GEN_EARLY_BRANCH_LOGIC
 		// {{{
-		reg			r_early_branch,
-					r_early_branch_stb,
+		reg			r_early_branch, r_early_branch_stb,
 					r_ljmp;
 		reg	[(AW+1):0]	r_branch_pc;
+		wire			w_add_to_pc;
 
 		initial r_ljmp = 1'b0;
 		always @(posedge i_clk)
@@ -678,6 +677,13 @@ module	idecode #(
 		end
 		assign	o_ljmp = r_ljmp;
 
+		assign	w_add_to_pc = (!o_phase
+				&& (!OPT_CIS || !i_instruction[CISBIT])
+				&& (i_instruction[30:27]==CPU_PC_REG)	// Rd=PC
+				&& (i_instruction[26:22] == 5'h02)	// ADD
+				&& (i_instruction[21:19]==3'h0)		// NONE
+				&& !i_instruction[IMMSEL]);
+
 		initial	r_early_branch     = 1'b0;
 		initial	r_early_branch_stb = 1'b0;
 		always @(posedge i_clk)
@@ -685,36 +691,29 @@ module	idecode #(
 		begin
 			r_early_branch     <= 1'b0;
 			r_early_branch_stb <= 1'b0;
-		end else if ((i_ce)&&(pf_valid))
+		end else if (i_ce && pf_valid)
 		begin
 			if (r_ljmp)
 			begin
 				// LW (PC),PC
 				r_early_branch     <= 1'b1;
 				r_early_branch_stb <= 1'b1;
-			end else if ((!iword[CISBIT])&&(iword[30:27]==CPU_PC_REG)
-					&&(w_cond[3]))
+			end else if (w_add_to_pc)
 			begin
-				if ((w_add)&&(!iword[IMMSEL]))
-				begin
-					// Add x,PC
-					r_early_branch     <= 1'b1;
-					r_early_branch_stb <= (!OPT_SUPPRESS_NULL_BRANCHES) || !w_Iz;
-				end else begin
-					r_early_branch     <= 1'b0;
-					r_early_branch_stb <= 1'b0;
-				end
+				// Add x,PC
+				r_early_branch     <= 1'b1;
+				r_early_branch_stb <= (!OPT_SUPPRESS_NULL_BRANCHES)
+					|| (i_instruction[IMMSEL-1:0] != 0);
 			// LDI #x,PC is no longer supported
 			end else begin
 				r_early_branch <= 1'b0;
 				r_early_branch_stb <= 1'b0;
 			end
-		end else if (i_ce)
-		begin
-			r_early_branch     <= 1'b0;
+		end else begin
 			r_early_branch_stb <= 1'b0;
-		end else
-			r_early_branch_stb <= 1'b0;
+			if (i_ce)
+				r_early_branch     <= 1'b0;
+		end
 
 		initial	r_branch_pc = 0;
 		always @(posedge i_clk)
@@ -725,13 +724,12 @@ module	idecode #(
 			if (r_ljmp)
 				r_branch_pc <= { iword[(AW+1):2],
 						2'b00 };
-			else if (!OPT_LOWPOWER
-				|| (!iword[CISBIT]&&(iword[30:27]==CPU_PC_REG)
-					&&w_cond[3]&& w_add && !iword[IMMSEL]))
+			else if (!OPT_LOWPOWER || w_add_to_pc)
 			begin
 				// Add x,PC
 				r_branch_pc[AW+1:2] <= i_pc[AW+1:2]
-					+ {{(AW-15){iword[17]}},iword[16:2]}
+					+ {{(AW-15){i_instruction[17]}},
+							i_instruction[16:2]}
 					+ {{(AW-1){1'b0}},1'b1};
 				r_branch_pc[1:0] <= 2'b00;
 			end else if (OPT_LOWPOWER)
@@ -911,7 +909,7 @@ module	idecode #(
 	// verilator lint_off  UNUSED
 	wire	possibly_unused;
 	assign	possibly_unused = &{ 1'b0, w_lock, w_ljmp, w_ljmp_dly,
-			insn_is_pipeable, w_cis_ljmp, i_pc[1:0] };
+			insn_is_pipeable, w_cis_ljmp, i_pc[1:0], w_add };
 	// verilator lint_on  UNUSED
 	// verilator coverage_on
 	// }}}

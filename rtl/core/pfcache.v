@@ -153,7 +153,7 @@ module	pfcache #(
 	// initial	o_i = 32'h76_00_00_00;	// A NOOP instruction
 	// initial	o_pc = 0;
 	reg	[BUSW-1:0]	r_pc_cache, r_last_cache;
-	reg	[AW+WBLSB-1:0]	r_pc, r_lastpc;
+	reg	[AW+WBLSB-1:0]	r_pc;
 	reg			isrc;
 	reg	[1:0]		delay;
 	reg			svmask, last_ack, needload, last_addr,
@@ -177,7 +177,6 @@ module	pfcache #(
 	// i_pc contains the address we want, the second is the value we'd read
 	// if lastpc (i.e. $past(i_pc)) was the address we wanted.
 	initial	r_pc = 0;
-	initial	r_lastpc = 0;
 	always @(posedge i_clk)
 	begin
 		// We don't have the logic to select what to read, we must
@@ -207,16 +206,18 @@ module	pfcache #(
 		r_pc_cache <= cache[i_pc[WBLSB +: CW]];
 		r_last_cache <= cache[lastpc[WBLSB +: CW]];
 		//
-		// Let's also register(delay) the r_pc and r_lastpc values
-		// for the next clock, so we can accurately report the address
-		// of the cache value we just looked up.
-		r_pc <= i_pc;
-		r_lastpc <= lastpc;
+		// Let's also register(delay) the r_pc value for the next
+		// clock, so we can accurately report the address of the cache
+		// value we just looked up.
+		if (w_advance)
+			r_pc <= i_pc;
+		else
+			r_pc <= lastpc;
 	end
 
 	// On our next clock, our result with either be the registered i_pc
 	// value from the last clock (if isrc), otherwise r_lastpc
-	assign	o_pc  = (isrc) ? r_pc : r_lastpc;
+	assign	o_pc  = r_pc;
 	// The same applies for determining what the next output instruction
 	// will be.  We just read it in the last clock, now we just need to
 	// select between the two possibilities we just read.
@@ -231,8 +232,7 @@ module	pfcache #(
 		wire	[BUS_WIDTH-1:0]		shifted;
 		wire	[WBLSB-INLSB-1:0]	shift;
 
-		assign	shift = (isrc) ? r_pc[WBLSB-1:INLSB]
-					: r_lastpc[WBLSB-1:INLSB];
+		assign	shift = r_pc[WBLSB-1:INLSB];
 
 		if (OPT_LITTLE_ENDIAN)
 		begin
@@ -844,11 +844,7 @@ module	pfcache #(
 					&& !o_illegal && !i_new_pc
 			&& !i_clear_cache)
 	begin
-		if (isrc)
-		begin
-			assert(lastpc == r_pc);
-		end else
-			assert(f_next_lastpc == r_pc);
+		assert(lastpc == r_pc);
 	end
 
 	always @(posedge i_clk)
