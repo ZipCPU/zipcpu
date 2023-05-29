@@ -289,8 +289,8 @@ void	_bootloader(void) {
 			// NSTR("BSS");
 			_zip->z_pic = SYSINT_DMAC;
 			_zip->z_dma.d_len = bsend - ramend;
-			_zip->z_dma.d_rd  = (unsigned *)&zero;
-			_zip->z_dma.d_wr  = ramend;
+			_zip->z_dma.d_rd  = (char *)&zero;
+			_zip->z_dma.d_wr  = (char *)ramend;
 			_zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC;
 
 // _zipscope->s_ctrl = 0x88000040;
@@ -323,13 +323,13 @@ void	_bootloader(void) {
 	// Copy to Kernel RAM
 	// {{{
 	if (NOTNULL(_kram)) {
-		_zip->z_dma.d_rd  = _kram_start; // Flash memory ptr
-		_zip->z_dma.d_wr  = (_kram) ? _kram : _ram;
+		_zip->z_dma.d_rd  = (char *)_kram_start; // Flash memory ptr
+		_zip->z_dma.d_wr  = (char *)((_kram) ? _kram : _ram);
 		if (_kram_start != _kram_end) {
 			// NSTR("KRAM");
 			_zip->z_pic = SYSINT_DMAC;
-			_zip->z_dma.d_len = _kram_end - _kram;
-			_zip->z_dma.d_wr  = _kram;
+			_zip->z_dma.d_len = 4*(_kram_end - _kram);
+			_zip->z_dma.d_wr  = (char *)_kram;
 			_zip->z_dma.d_ctrl= DMACCOPY;
 
 			while((_zip->z_pic & SYSINT_DMAC)==0)
@@ -338,14 +338,14 @@ void	_bootloader(void) {
 	} else {
 		// NSTR("No-KRAM");
 		// Continue writing to the RAM device from where we left off
-		_zip->z_dma.d_rd = _ram_image_start; // ROM (flash) memory
+		_zip->z_dma.d_rd = (char *)_ram_image_start; // ROM (flash) memory
 	}
 	// }}}
 
 	// Copy to external or regular RAM
 	// {{{
-	_zip->z_dma.d_wr = _ram;
-	_zip->z_dma.d_len = ramend - _ram;
+	_zip->z_dma.d_wr = (char *)_ram;
+	_zip->z_dma.d_len = 4*(ramend - _ram);
 	if (_zip->z_dma.d_len>0) {
 		// NSTR("RAM");
 		_zip->z_pic = SYSINT_DMAC;
@@ -363,10 +363,10 @@ void	_bootloader(void) {
 
 		// NSTR("BSS");
 		_zip->z_pic = SYSINT_DMAC;
-		_zip->z_dma.d_len = bsend - ramend;
-		_zip->z_dma.d_rd  = (unsigned *)&zero;
+		_zip->z_dma.d_len = 4*(bsend - ramend);
+		_zip->z_dma.d_rd  = (char *)&zero;
 		// _zip->z_dma.wr // Keeps the same value
-		_zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC;
+		_zip->z_dma.d_ctrl = DMACCOPY|DMA_CONSTSRC|DMA_SRCWORD;
 
 		while((_zip->z_pic & SYSINT_DMAC)==0)
 			;
