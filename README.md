@@ -6,7 +6,7 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 - A RISC CPU.  Instructions nominally complete in one cycle each, with exceptions for multiplies, divides, memory accesses, and (eventually) floating point instructions.
 
-  (Note that the ZipCPU is *not* a RISC-V CPU, nor does it copy any other instruction set but its own.)
+  (Note that the ZipCPU is *not* a RISC-V CPU, nor does it copy from any other instruction set but its own.)
 
 - A load/store architecture.  Only load and store instructions may access
   memory.
@@ -17,12 +17,9 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
   The Wishbone wrappers share buses for instructions and data, the AXI4-Lite and AXI4 wrappers have separate bus interfaces for each.  The address space itself, however, needs to be common.
 
-- A pipelined architecture, having stages for prefetch, decode, read-operand(s),
-  a combined stage containing the ALU, memory, divide, and floating point units,
-  and then the final write-back stage.
+- A pipelined architecture, having stages for prefetch, decode, read-operand(s), a combined stage containing the ALU, memory, divide, and floating point units, and then the final write-back stage.
 
-- A two mode machine: supervisor and user, with each mode having a different
-  access level.
+- A two mode machine: supervisor and user, with each mode having a different access level.
 
 - Completely open source, licensed under the GPLv3.
 
@@ -34,7 +31,7 @@ The Zip CPU is a small, light-weight, RISC CPU.  Specific design goals include:
 
 - The CPU makes heavy use of pipelining wherever and whenever it can.  Hence, when using a pipelined memory core, loading two vaues in a row may cost only one clock more than just loading the one value.
 
-- The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An [interrupt peripheral](rtl/peripherals/icontrol.v) handles the combining of multiple interrupts into a single interrupt line.
+- The CPU has no interrupt vectors, but rather two register sets.  On any interrupt, the CPU just switches from the user register set to the supervisor register set.  This simplifies interrupt handling, since the CPU automatically saves, preserves, and restores the supervisor's context between enabling interrupts and receiving the next interrupt.  An optional [interrupt peripheral](rtl/peripherals/icontrol.v) may be used to combine multiple external interrupts into a single interrupt line.
 
 ## Getting Started
 
@@ -64,16 +61,14 @@ that repository, you can either tweak the distro
 [board.h](https://github.com/ZipCPU/zbasic/blob/master/sw/zlib/board.h),
 [board.ld](https://github.com/ZipCPU/zbasic/blob/master/sw/board/board.ld)) to
 add the peripherals you want to use the CPU with, or you can use
-[autofpga](https://github.com/ZipCPU/autofpga)
+[AutoFPGA](https://github.com/ZipCPU/autofpga)
 to adjust your RAM size, add or remove peripherals and so forth while
 maintaining (creating, really) all of these files for you.
 
-Even more than that,
-the [ZBasic distribution](https://github.com/ZipCPU/zbasic) has complete
-[Verilator support](https://github.com/ZipCPU/zbasic/tree/master/sim/verilated)
-so that you can build your design, and simulate it, from
-power on reset through bootloader through ... well, however far you'd like to
-simulate and your disk has space for.
+The [sim/](sim/) subdirectory also contains a version of the ZipCPU in a
+usable environment for simulation purposes.  This includes the CPU, possibly
+more CPU's for a multiprocessor environment, bus interconnect, memory,
+a simulated serial port, and a couple more peripherals.
 
 If you aren't interested in simulating the CPU, there is an assembly level
 [debugger](https://github.com/ZipCPU/zbasic/blob/master/sw/host/zipdbg.cpp)
@@ -85,15 +80,15 @@ you can use to get traces from within the design while it is running.
 ## Need help?
 
 If you'd like to use the ZipCPU, and don't know where to begin, feel free
-to find me on IRC as ZipCPU.  I've created a #zipcpu channel on Freenode's
-IRC server that I tend to inhabit.  If you get stuck, feel free to drop by
+to find me on IRC as ZipCPU.  I've created a #zipcpu channel on several
+IRC servers that I tend to inhabit.  If you get stuck, feel free to drop by
 and ask for help.  You can also drop by just to say hi.  Either way, please
 introduce yourself and give me some time to respond.
 
 ## Current Status
 
-I've recently blogged about the ZipCPU at [zipcpu.com](http://zipcpu.com)!
-Articles you might find valuable include:
+You can also read about the ZipCPU via several blog articles posted at
+[zipcpu.com](http://zipcpu.com)!  Articles you might find valuable include:
 
 - [An overview of the ZipCPU's ISA](http://zipcpu.com/zipcpu/2018/01/01/zipcpu-isa.html)
 - [How-to build the tool-chain, and test the CPU](http://zipcpu.com/zipcpu/2018/01/31/cpu-build.html)
