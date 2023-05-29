@@ -262,7 +262,7 @@ module	zipdma_s2mm #(
 `endif
 	// }}}
 
-	// crc, stb, o_wr_addr, o_wr_data, o_wr_sel, o_busy, o_err, subaddr
+	// crc, stb, o_wr_addr, o_wr_sel, o_busy, o_err, subaddr
 	// {{{
 	initial	o_wr_cyc = 1'b0;
 	initial	o_wr_stb = 1'b0;
@@ -275,14 +275,10 @@ module	zipdma_s2mm #(
 		o_wr_cyc  <= 0;
 		o_wr_stb  <= 0;
 		o_wr_addr <= 0;
-		o_wr_data <= 0;
-		o_wr_sel  <= 0;
 
 		o_busy <= 1'b0;
 		o_err  <= 1'b0;
 		{ o_wr_addr, subaddr } <= {(ADDRESS_WIDTH){1'b0}};
-		{ r_data, o_wr_data  } <= {(2*DW  ){1'b0}};
-		{ r_sel,  o_wr_sel   } <= {(2*DW/8){1'b0}};
 		r_last <= 1'b0;
 		// }}}
 	end else if (!o_busy || o_err || (o_wr_cyc && i_wr_err))
@@ -291,8 +287,6 @@ module	zipdma_s2mm #(
 		o_wr_cyc  <= 0;
 		o_wr_stb  <= 0;
 		o_wr_addr <= 0;
-		o_wr_data <= 0;
-		o_wr_sel  <= 0;
 
 		o_busy <= i_request && !o_busy;
 
@@ -302,8 +296,6 @@ module	zipdma_s2mm #(
 
 		o_wr_addr <= i_addr[ADDRESS_WIDTH-1:WBLSB];
 		subaddr   <= i_addr[WBLSB-1:0];
-		{ r_data, o_wr_data } <= {(2*DW  ){1'b0}};
-		{ r_sel,  o_wr_sel  } <= {(2*DW/8){1'b0}};
 		r_last <= 1'b0;
 		// }}}
 	end else if (!o_wr_stb || !i_wr_stall)
@@ -322,15 +314,6 @@ module	zipdma_s2mm #(
 			begin
 				// Need to flush our last result out
 				{ o_wr_cyc, o_wr_stb } <= 2'b11;
-
-				if (OPT_LITTLE_ENDIAN)
-				begin
-					{ r_data, o_wr_data } <= next_data;
-					{ r_sel,  o_wr_sel  } <= next_sel;
-				end else begin
-					{ o_wr_data, r_data } <= next_data;
-					{ o_wr_sel,  r_sel  } <= next_sel;
-				end
 
 			end else if (wb_outstanding + (o_wr_stb ? 1:0)
 							== (i_wr_ack ? 1:0))
@@ -379,6 +362,31 @@ module	zipdma_s2mm #(
 	if (!i_reset && !o_busy)
 		assert(!o_wr_cyc);
 `endif
+	// }}}
+
+	// o_wr_data, o_wr_sel
+	// {{{
+	always @(posedge i_clk)
+	if (!o_busy) // i_reset || !o_busy || o_err || (o_wr_cyc && i_wr_err))
+	begin
+		// {{{
+		{ r_data, o_wr_data  } <= {(2*DW  ){1'b0}};
+		{ r_sel,  o_wr_sel   } <= {(2*DW/8){1'b0}};
+		// }}}
+	end else if ((!o_wr_stb || !i_wr_stall) && !wb_pipeline_full
+					&& (r_last || S_VALID))
+	begin
+		// {{{
+		if (OPT_LITTLE_ENDIAN)
+		begin
+			{ r_data, o_wr_data } <= next_data;
+			{ r_sel,  o_wr_sel  } <= next_sel;
+		end else begin
+			{ o_wr_data, r_data } <= next_data;
+			{ o_wr_sel,  r_sel  } <= next_sel;
+		end
+		// }}}
+	end
 	// }}}
 
 	assign	S_READY = !r_last && o_busy && (!o_wr_stb || !i_wr_stall)

@@ -84,6 +84,10 @@ module	zipdma_rxgears #(
 					r_last, r_full;
 	reg	[WBLSB:0]		m_bytes;
 	reg	[WBLSB-1:0]		shift;
+
+	reg	[DW-1:0]	s_data;
+	integer			ik;
+
 	// }}}
 
 	// next_fill, next_last
@@ -192,9 +196,6 @@ module	zipdma_rxgears #(
 
 	// sreg
 	// {{{
-	reg	[DW-1:0]	s_data;
-	integer			ik;
-
 	always @(*)
 	begin
 		s_data = 0;
@@ -226,6 +227,7 @@ module	zipdma_rxgears #(
 		sreg <= 0;
 	else if (OPT_LITTLE_ENDIAN)
 	begin
+		// {{{
 		if (M_VALID && M_READY)
 		begin
 			if (S_VALID && S_READY)
@@ -237,6 +239,7 @@ module	zipdma_rxgears #(
 				sreg <= { {(DW){1'b0}}, sreg[2*DW-1:DW] };
 		end else if (S_VALID && S_READY)
 			sreg <= sreg | ({ {(DW){1'b0}}, s_data } << shift*8);
+		// }}}
 	end else begin
 		if (M_VALID && M_READY)
 		begin

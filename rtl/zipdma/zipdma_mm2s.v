@@ -100,13 +100,13 @@ module	zipdma_mm2s #(
 	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size;
 	reg	[ADDRESS_WIDTH-1:0]	next_addr, last_request_addr;
 	reg	[WBLSB-1:0]	subaddr, rdack_subaddr;
-	reg	[DW/8-1:0]	nxtstb_sel, first_sel;
+	reg	[DW/8-1:0]	nxtstb_sel, first_sel, base_sel, ibase_sel;
 	reg	[LGLENGTH:0]	wb_outstanding;
 
 	reg	[WBLSB+1:0]	fill, next_fill;
 
 	reg			m_valid, m_last;
-	reg	[2*DW-1:0]	sreg;
+	reg	[DW-1:0]	sreg;
 	reg	[WBLSB:0]	m_bytes;
 
 	reg	[LGLENGTH:0]	rdstb_len, rdack_len;
@@ -204,7 +204,8 @@ module	zipdma_mm2s #(
 			default: begin
 				// Verilator lint_off WIDTH
 				nxtstb_size = (DW/8);
-				if (DW/8 > rdstb_len - rdstb_size)
+				if ((rdstb_len[LGLENGTH:WBLSB+1] == 0)
+					    &&(rdstb_size + DW/8 > rdstb_len[WBLSB:0]))
 					nxtstb_size =
 						{ 1'b0, rdstb_len[WBLSB:0] }
 						-{ 1'b0, rdstb_size[WBLSB:0]};
@@ -314,8 +315,9 @@ module	zipdma_mm2s #(
 `ifdef	FORMAL
 	always @(*)
 	if (!o_busy)
+	begin
 		assert(!m_valid);
-	else if (m_valid && m_last)
+	end else if (m_valid && m_last)
 	begin
 		assert(rdack_len == 0);
 		assert(fill == m_bytes);
@@ -330,17 +332,106 @@ module	zipdma_mm2s #(
 	// o_rd_sel
 	// {{{
 
+	// ibase_sel
+	generate if (BUS_WIDTH > 32)
+	begin : GEN_STRB
+		// {{{
+		always @(*)
+		begin
+			ibase_sel = 0;
+
+			if (OPT_LITTLE_ENDIAN)
+			begin
+				// {{{
+				// Verilator coverage_off
+				case(i_size)
+				SZ_BYTE: ibase_sel = {{(DW/8-1){1'b0}}, 1'b1} << i_addr[WBLSB-1:0];
+				SZ_16B: ibase_sel = {{(DW/8-2){1'b0}}, 2'h3} << {i_addr[WBLSB-1:1], 1'b0 };
+				SZ_32B: ibase_sel = {{(DW/8-4){1'b0}}, 4'b1111} << {i_addr[WBLSB-1:2], 2'b0 };
+				SZ_BUS: ibase_sel = {(DW/8){1'b1}};
+				endcase
+				// Verilator coverage_on
+				// }}}
+			end else begin
+				// {{{
+				case(i_size)
+				SZ_BYTE: ibase_sel= {1'h1, {(DW/8-1){1'b0}} } >> i_addr[WBLSB-1:0];
+				SZ_16B: ibase_sel = {2'h3, {(DW/8-2){1'b0}} } >> {i_addr[WBLSB-1:1], 1'b0 };
+				SZ_32B: ibase_sel = {4'hf, {(DW/8-4){1'b0}} } >> {i_addr[WBLSB-1:2], 2'b0 };
+				SZ_BUS: ibase_sel = {(DW/8){1'b1}};
+				endcase
+				// }}}
+			end
+		end
+		// }}}
+	end else begin : MIN_STRB
+		// {{{
+		always @(*)
+		begin
+			ibase_sel = 0;
+
+			if (OPT_LITTLE_ENDIAN)
+			begin
+				// {{{
+				// Verilator coverage_off
+				case(i_size)
+				SZ_BYTE: ibase_sel = {{(DW/8-1){1'b0}}, 1'b1} << i_addr[WBLSB-1:0];
+				SZ_16B: ibase_sel = {{(DW/8-2){1'b0}}, 2'h3} << {i_addr[WBLSB-1:1], 1'b0 };
+				default: ibase_sel = {(DW/8){1'b1}};
+				endcase
+				// Verilator coverage_on
+				// }}}
+			end else begin
+				// {{{
+				case(i_size)
+				SZ_BYTE: ibase_sel= {1'h1, {(DW/8-1){1'b0}} } << i_addr[WBLSB-1:0];
+				SZ_16B: ibase_sel = {2'h3, {(DW/8-2){1'b0}} } << {i_addr[WBLSB-1:1], 1'b0 };
+				default: ibase_sel = {(DW/8){1'b1}};
+				endcase
+				// }}}
+			end
+		end
+		// }}}
+	end endgenerate
+
+	always @(posedge i_clk)
+	if (i_reset || (o_rd_cyc && i_rd_err))
+	begin
+		// {{{
+		base_sel <= 0;
+		// }}}
+	end else if (!o_busy)
+	begin
+		base_sel <= 0;
+		if (i_request || !OPT_LOWPOWER)
+			base_sel <= ibase_sel;
+	end else if (o_rd_stb && !i_rd_stall)
+		base_sel <= nxtstb_sel;
+
 	// nxtstb_sel
 	// {{{
 	always @(*)
 	if (OPT_LITTLE_ENDIAN)
 	begin
-		nxtstb_sel = ((1<<nxtstb_size)-1) << next_addr[WBLSB-1:0];
+		case(r_size)
+		SZ_BYTE: nxtstb_sel = { base_sel[DW/8-2:0], base_sel[DW/8-1] };
+		SZ_16B:  nxtstb_sel = { base_sel[DW/8-3:0], base_sel[DW/8-1:DW/8-2] };
+		SZ_32B:  nxtstb_sel = { base_sel[DW/8-5:0], base_sel[DW/8-1:DW/8-4] };
+		SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
+		endcase
+
+		if (!r_inc)
+			nxtstb_sel = base_sel;
 	end else begin
-		// Verilator lint_off WIDTH
-		nxtstb_sel = (((1<<nxtstb_size)-1) << (DW/8 - nxtstb_size))
-					>> next_addr[WBLSB-1:0];
-		// Verilator lint_on  WIDTH
+		case(r_size)
+		SZ_BYTE: nxtstb_sel = { base_sel[0:0], base_sel[DW/8-1:1] };
+		SZ_16B:  nxtstb_sel = { base_sel[1:0], base_sel[DW/8-1:2] };
+		SZ_32B:  nxtstb_sel = { base_sel[3:0], base_sel[DW/8-1:4] };
+		SZ_BUS:  nxtstb_sel = {(DW/8){1'b1}};
+		endcase
+
+		if (!r_inc)
+			nxtstb_sel = base_sel;
 	end
 	// }}}
 
@@ -483,6 +574,9 @@ module	zipdma_mm2s #(
 
 	// rdack_len
 	// {{{
+	// Total length remaining, from the perspective of the bus return.
+	// Hence, on any bus return, we drop by the number of bytes valid
+	// in that return, or minus rdack_size.
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
@@ -549,8 +643,8 @@ module	zipdma_mm2s #(
 		if ((!m_valid || !m_last) && rdack_len == 0 && fill > 0)
 			m_valid <= 1;
 		else if (o_rd_cyc && i_rd_ack)
-			m_valid <= ((next_fill >= DW/8)
-			|| (rdack_len <= { {(LGLENGTH-1){1'b0}}, rdack_size }));
+			m_valid <= 1'b1; // ((next_fill >= DW/8)
+			// || (rdack_len <= { {(LGLENGTH-1){1'b0}}, rdack_size }));
 		// Verilator lint_on  WIDTH
 	end
 	// }}}
@@ -561,23 +655,23 @@ module	zipdma_mm2s #(
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
+		pre_shift <= 0;
 		if (!OPT_LOWPOWER || i_request)
 			pre_shift <= i_addr[WBLSB-1:0];
 	end else if (o_rd_cyc && i_rd_ack)
 	begin
-		if (r_inc)
 		case(r_size)
-		SZ_BYTE: pre_shift <= pre_shift + 1;
+		SZ_BYTE: pre_shift <= pre_shift + (r_inc ? 1 : 0);
 		SZ_16B:  begin
 			// {{{
-			pre_shift <= pre_shift + 2;
+			pre_shift <= pre_shift + (r_inc ? 2 : 0);
 			pre_shift[0] <= 1'b0;
 			end
 			// }}}
 		SZ_32B:  begin
 			// {{{
 			// Verilator lint_off WIDTH
-			pre_shift <= pre_shift + 4;
+			pre_shift <= pre_shift + (r_inc ? 4 : 0);
 			// Verilator lint_on  WIDTH
 			pre_shift[1:0] <= 2'b0;
 			end
@@ -600,31 +694,13 @@ module	zipdma_mm2s #(
 	begin
 		// {{{
 		// Verilator lint_off WIDTH
-		if (OPT_LITTLE_ENDIAN)
-		begin
-			// {{{
-			if (m_valid)
-				sreg <= { {(DW){1'b0}}, sreg[2*DW-1:DW] }
-					| (pre_shifted_data << ((fill-DW/8)*8));
-			else
-				sreg <= sreg | (i_rd_data << (fill * 8));
-			// }}}
-		end else begin
-			if (m_valid)
-				sreg <= (sreg << DW)
-					| ({ pre_shifted_data, {(DW){1'b0}} } >> ((fill-DW/8)*8));
-			else
-				sreg <= sreg | ({ pre_shifted_data, {(DW){1'b0}} } >> (fill * 8));
-		end
+		sreg <= pre_shifted_data;
 		// Verilator lint_on  WIDTH
 		// }}}
 	end else if (m_valid)
 	begin
 		// {{{
-		if (OPT_LITTLE_ENDIAN)
-			sreg <= { {(DW){1'b0}}, sreg[2*DW-1:DW] };
-		else
-			sreg <= { sreg[DW-1:0], {(DW){1'b0}} };
+		sreg <= {(DW){1'b0}};
 		// }}}
 	end
 	// }}}
@@ -686,7 +762,7 @@ module	zipdma_mm2s #(
 	// }}}
 
 	assign	M_VALID = m_valid;
-	assign	M_DATA = (OPT_LITTLE_ENDIAN) ? sreg[DW-1:0] : sreg[2*DW-1:DW];
+	assign	M_DATA = sreg;
 	assign	M_BYTES= m_bytes;
 	assign	M_LAST = m_last;
 
@@ -987,8 +1063,9 @@ module	zipdma_mm2s #(
 	if (!i_reset && fm_check)
 	begin
 		if (OPT_LITTLE_ENDIAN)
+		begin
 			assert(fm_shifted[7:0] == fc_byte);
-		else
+		end else
 			assert(fm_shifted[2*DW-1:2*DW-8] == fc_byte);
 	end
 	// }}}

@@ -59,8 +59,8 @@ module zipdma #(
 		input	wire [SLV_WIDTH/8-1:0]	i_swb_sel,
 		// Slave/control wishbone outputs
 		output	wire			o_swb_stall,
-		output	reg			o_swb_ack,
-		output	reg	[SLV_WIDTH-1:0]	o_swb_data,
+		output	wire			o_swb_ack,
+		output	wire	[SLV_WIDTH-1:0]	o_swb_data,
 		// }}}
 		// Master/DMA port
 		// {{{
