@@ -162,7 +162,7 @@ module	zipcore #(
 	// as described herein will work, this just makes sure XST implements
 	// that logic.
 	//
-	(* ram_style = "distributed" *)
+	// (* ram_style = "distributed" *)
 	reg	[31:0]	regset	[0:(OPT_USERMODE)? 31:15];
 
 	// Condition codes
@@ -793,18 +793,21 @@ module	zipcore #(
 
 			always @(posedge i_clk)
 			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
-			begin
 				pre_op_Av <= regset[dcd_ce ? dcd_preA : dcd_A];
-				pre_op_Bv <= regset[dcd_ce ? dcd_preB : dcd_B];
-			end
 
-		end else begin : GEN_NO_USERREGS
 			always @(posedge i_clk)
 			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
-			begin
+				pre_op_Bv <= regset[dcd_ce ? dcd_preB : dcd_B];
+
+		end else begin : GEN_READ_ALLREGS
+
+			always @(posedge i_clk)
+			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
 				pre_op_Av <= regset[dcd_ce ? dcd_preA[3:0] : dcd_A[3:0]];
+
+			always @(posedge i_clk)
+			if (dcd_ce || (OPT_PIPELINED && dcd_valid))
 				pre_op_Bv <= regset[dcd_ce ? dcd_preB[3:0] : dcd_B[3:0]];
-			end
 		end
 
 		assign	w_op_Av = (pre_rewrite_flag_A) ? pre_rewrite_value : pre_op_Av;
