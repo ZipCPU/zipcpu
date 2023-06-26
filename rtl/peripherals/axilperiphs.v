@@ -629,7 +629,8 @@ module	axilperiphs #(
 
 	// apply_wstrb
 	// {{{
-	function [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
+	// Verilator coverage_off
+	function automatic [C_AXI_DATA_WIDTH-1:0]	apply_wstrb;
 		input	[C_AXI_DATA_WIDTH-1:0]		prior_data;
 		input	[C_AXI_DATA_WIDTH-1:0]		new_data;
 		input	[C_AXI_DATA_WIDTH/8-1:0]	wstrb;
@@ -641,12 +642,14 @@ module	axilperiphs #(
 				= wstrb[k] ? new_data[k*8 +: 8] : prior_data[k*8 +: 8];
 		end
 	endfunction
+	// Verilator coverage_on
 	// }}}
 
 	// }}}
 
 	// Make Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, S_AXI_AWPROT, S_AXI_ARPROT,
@@ -658,6 +661,7 @@ module	axilperiphs #(
 			tmra_stall, tmrb_stall, tmrc_stall, jif_stall,
 			tmra_ack, tmrb_ack, tmrc_ack, jif_ack };
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 `ifdef	FORMAL
 	////////////////////////////////////////////////////////////////////////
