@@ -159,10 +159,7 @@ SIMSRCS := memsim.cpp axilmemsim.cpp $(ZLIBSRCS) $(ZDMSRCS)
 SIMOBJS := $(addprefix $(OBJDIR)/,$(subst .cpp,.o,$(SIMSRCS) $(ZDSMSRCS)))
 SYSOBJS := $(OBJDIR)/zipsys_tb.o   $(SIMOBJS)
 BONOBJS := $(OBJDIR)/zipbones_tb.o $(SIMOBJS)
-<<<<<<< HEAD
-=======
 AXLOBJS := $(OBJDIR)/zipaxil_tb.o  $(SIMOBJS)
->>>>>>> zipcore
 VLSRCS	:= verilated.cpp verilated_vcd_c.cpp verilated_threads.cpp
 #
 # Use the verilated_cov.cpp source when you want to run Verilator coverage
@@ -208,49 +205,30 @@ zipsys_tb: $(SYSOBJS) $(VLOBJS) $(RAWSYSLIB)
 
 zipbones_tb: $(BONOBJS) $(VLOBJS) $(RAWBONLIB)
 	$(CXX) $(CFLAGS) $(INCS) $(BONOBJS) $(VLOBJS) $(BONLIBS) -lpthread -o $@
-<<<<<<< HEAD
+
+zipaxil_tb: $(AXLOBJS) $(VLOBJS) $(RAWAXLLIB)
+	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -lpthread -o $@
+
+mpy_tb: $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.o testb.h
+	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
 
 div_tb: $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a testb.h
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/div_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
-
-mpy_tb: $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) $(OBJDIR)/mpy_tb.o $(OBJDIR)/twoc.o $(VLIB) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
 
 zipmmu_tb: $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) $(OBJDIR)/zipmmu_tb.o $(VLIB) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -lpthread -o $@
 
 pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
-pfcache_tb: $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLIB) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
-=======
-
-zipaxil_tb: $(AXLOBJS) $(VLOBJS) $(RAWAXLLIB)
-	$(CXX) $(CFLAGS) $(INCS) $(AXLOBJS) $(VLOBJS) $(AXLLIBS) -lpthread -o $@
-
-div_tb: div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) div_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vdiv__ALL.a -lpthread -o $@
-
-mpy_tb: mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a testb.h
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) mpy_tb.cpp twoc.cpp $(VLOBJS) $(RTLOBJD)/Vcpuops__ALL.a -lpthread -o $@
-
-zipmmu_tb: zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a
-	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(BENCHOBJD) zipmmu_tb.cpp $(VLOBJS) $(BENCHOBJD)/Vzipmmu_tb__ALL.a -lpthread -o $@
-
-pfcache_tb: $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o
 pfcache_tb: $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a
 	$(CXX) $(CFLAGS) $(VDEFS) $(INCS) -I$(RTLOBJD) $(OBJDIR)/pfcache_tb.o $(OBJDIR)/memsim.o $(OBJDIR)/byteswap.o $(VLOBJS) $(RTLOBJD)/Vpfcache__ALL.a -lpthread -o $@
->>>>>>> zipcore
 
 pdump: pdump.cpp $(ZOBJS) $(OBJDIR)/zopcodes.o $(OBJDIR)/pdump.o
 pdump: $(ZASM)/zopcodes.h testb.h byteswap.h zipelf.h
 	$(CXX) $(CFLAGS) $(INCS) $(OBJDIR)/pdump.o $(ZOBJS) -lelf -lpthread -o $@
-<<<<<<< HEAD
-=======
 
 .PHONY: stest
 atest: zipsys_tb
 	./zipsys_tb -a $(TESTF)
->>>>>>> zipcore
 
 .PHONY: stest
 stest: zipsys_tb
