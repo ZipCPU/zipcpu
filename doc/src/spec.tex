@@ -146,6 +146,7 @@ a copy.
 \begin{revisionhistory}
 %% {{{
 % Revision History
+3.01 & 6/26/2022 & Gisselquist & Removed the last remains of the (unused) cpudefs macro file\\\hline
 3.0 & 6/18/2022 & Gisselquist & New ZipDMA, debug interface, multi-bus support and bus width independence\\\hline
 2.01 & 10/19/2019 & Gisselquist & Fixed CIS OpCode Table\\\hline
 2.0 & 1/18/2017 & Gisselquist & Switched from 32--bit to 8--bit bytes.\\\hline
@@ -3846,7 +3847,7 @@ counter just sets the current value, and it starts counting again from that
 value.
 
 Eight counters are implemented in the ZipSystem for process accounting if
-the {\tt INCLUDE\_ACCOUNTING\_COUNTERS} define is set within {\tt cpudefs.v}.
+the {\tt OPT\_ACCOUNTING} parameter is set within {\tt zipsystem.v}.
 Four of those measure the performance of the system as a whole, four are
 used for measuring user CPU usage.
 This may change in the future, as nothing as yet uses these counters.

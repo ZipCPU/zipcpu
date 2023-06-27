@@ -223,6 +223,7 @@ module	zipbones #(
 		output	wire			switch_to_interrupt,
 						release_from_interrupt,
 						break_en,
+		output	wire			pformem_owner,
 		// }}}
 `endif
 		output	wire			o_prof_stb,
@@ -742,6 +743,12 @@ module	zipbones #(
 	// assign	cpu_idata  = thecpu.i_wb_data;
 	assign	pf_instruction = thecpu.pf_instruction;
 	assign	pf_instruction_pc = thecpu.pf_instruction_pc;
+	generate if (OPT_PIPELINED)
+	begin
+		assign	pformem_owner = thecpu.PRIORITY_DATA.pformem.r_a_owner;
+	end else begin
+		assign	pformem_owner = thecpu.PRIORITY_PREFETCH.pformem.r_a_owner;
+	end endgenerate
 	//
 	// Peeking into the decode stage
 	// {{{

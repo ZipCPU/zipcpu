@@ -21,7 +21,6 @@ rtl/iscachable.v
 ../rtl/core/slowmpy.v
 ../rtl/core/zipcore.v
 ../rtl/core/zipwb.v
-../rtl/cpudefs.v
 ../rtl/ex/busdelay.v
 ../rtl/ex/fwb_counter.v
 ../rtl/ex/fwb_master.v

@@ -6,7 +6,7 @@
 //
 // Purpose:	Bench testing for the prefetch cache used within the ZipCPU
 //		when it is in pipelind mode.  Whether or not this module is
-//	used depends upon how the CPU is set up in cpudefs.v.
+//	used depends upon how the CPU is parameterized.
 //
 //
 // Creator:	Dan Gisselquist, Ph.D.
@@ -52,7 +52,6 @@
 #include "Vpfcache.h"
 
 #include "testb.h"
-#include "cpudefs.h"
 #include "memsim.h"
 
 #define	RAMBASE		(1<<20)

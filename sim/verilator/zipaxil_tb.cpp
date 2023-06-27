@@ -61,8 +61,6 @@
 #include "Vzipaxil.h"
 #define	SIMCLASS	Vzipaxil
 
-#include "cpudefs.h"
-
 #define	AXI_ACLK
 #include "testb.h"
 #include "zipelf.h"
@@ -135,183 +133,15 @@
 #define	cmd_reset	VVAR(_cmd_reset)
 #define	cmd_step	VVAR(_cmd_step)
 
-// #define	early_branch	CPUVAR(_instruction_decoder__DOT__GEN_EARLY_BRANCH_LOGIC__DOT__r_early_branch)
-// #define	early_branch_pc CPUVAR(_instruction_decoder__DOT__GEN_EARLY_BRANCH_LOGIC__DOT__r_branch_pc)
-
-// #define	dcdRmx		CPUVAR(_instruction_decoder____pinNumber15)
-// #define	dcdA		CPUVAR(_dcd_full_A)
-// #define	dcdB		CPUVAR(_dcd_full_B)
-
-// #define	new_pc		CPUVAR(_new_pc)
-// #define	cpu_ipc		CPUVAR(_ipc)
-// #define	cpu_upc		CPUVAR(_SET_USER_PC__DOT__r_upc)
-// #define	pf_pc		CPUVAR(_pf_pc)
-
 // PF
 #define	PFVAR(A) 	VVAR(_AXILFETCH__DOT__pf__DOT_ ##A)
 
-// #define	pf_cyc		VVAR(_thecpu__DOT__pf_cyc)
-// #define	pf_stb		VVAR(_thecpu__DOT__pf_stb)
-// #define	pf_we		VVAR(_thecpu__DOT__pf_we)
-// #define	pf_addr		VVAR(_thecpu__DOT__pf_addr)
-// #define	pf_ack		VVAR(_thecpu__DOT__pf_ack)
-// #define	pf_valid	VVAR(_pf_valid)
-// #define	pf_illegal	VVAR(_pf_illegal)
-// #define	pf_vmask	PFVAR(_valid_mask)
-// #define	pf_r_v		PFVAR(_r_v)
-// #define	pf_tagsrc	PFVAR(_rvsrc)
-// #define	pf_tagipc	PFVAR(_tagvalipc)
-// #define	pf_tagvallst	PFVAR(_tagvallst)
-// #define	pf_lastpc	PFVAR(_lastpc)
-// #define	pf_instruction		VVAR(_pf__DOT__out_data)
-// #define	pf_instruction_pc	VVAR(_pf_instruction_pc)
-
-// Decode
-// #ifdef	OPT_PIPELINED
-// #define	dcd_ce		CPUVAR(_dcd_ce)
-// #else
-// #define	dcd_ce		(CPUVAR(_dcd_stalled)^1)
-// #endif
-// #define	dcd_stalled	CPUVAR(_dcd_stalled)
-// #define	dcd_gie		CPUVAR(_SET_GIE__DOT__r_gie)
-// #define	dcd_illegal	CPUVAR(_dcd_illegal)
-// #define	dcd_valid	CPUVAR(_instruction_decoder__DOT__r_valid)
-// #define	dcd_opn		CPUVAR(_dcd_opn)
-// #define	dcd_rA		CPUVAR(_dcd_rA)
-// #define	dcd_rB		CPUVAR(_dcd_rB)
-// #define	dcdR		CPUVAR(_instruction_decoder__DOT__w_dcdR)
-// #define	dcdRpc		CPUVAR(_instruction_decoder__DOT__w_dcdR_pc)
-// #define	dcdRcc		CPUVAR(_instruction_decoder__DOT__w_dcdR_cc)
-// #define	dcd_wR		CPUVAR(_dcd_wR)
-// #define	dcd_pc		CPUVAR(_dcd_pc)
-// #define	dcd_wF		CPUVAR(_dcd_wF)
-// #define	dcd_M		CPUVAR(_dcd_M)
-
-// Op
-// #define	op_ce		CPUVAR(_op_ce)
-// #define	op_illegal	CPUVAR(_op_illegal)
-// #define	op_valid	CPUVAR(_op_valid)
-// #define	op_valid_mem	CPUVAR(_op_valid_mem)
-// #define	op_valid_alu	CPUVAR(_op_valid_alu)
-// #ifdef	OPT_PIPELINED
-// #define	op_R		CPUVAR(_op_R)
-// #define	op_stall	CPUVAR(_op_stall)
-// #else
-// #define	op_R		dcdR
-// #endif
-// #define	op_wR		CPUVAR(_op_wR)
-// #define	op_wF		CPUVAR(_op_wF)
-
-// #define	master_stall	CPUVAR(_master_stall)
-// ALU
-// #define	alu_ce		CPUVAR(_alu_ce)
-// #define	adf_ce_unconditional		CPUVAR(_adf_ce_unconditional)
-// #define	alu_valid	CPUVAR(_alu_valid)
-// // #define	alu_stall	CPUVAR(_alu_stall)
-// #define	alu_wF		CPUVAR(_alu_wF)
-// #define	alu_pc_valid	CPUVAR(_alu_pc_valid)
-// #define	alu_flags	CPUVAR(_alu_flags)
-// #define	alu_wR		CPUVAR(_alu_wR)
-// #ifdef	OPT_PIPELINED
-// #define	alu_illegal	CPUVAR(_SET_ALU_ILLEGAL__DOT__r_alu_illegal)
-// #else
-// #define	alu_illegal	op_illegal
-// #endif
-// #define	set_cond	CPUVAR(_set_cond)
-
-// MEM
-// #define	mem_valid	VVAR(_mem_valid)
-// #define	mem_pc_valid	CPUVAR(_mem_pc_valid)
-// #define	mem_ce		CPUVAR(_mem_ce)
-// #define	mem_rdbusy	CPUVAR(_mem_rdbusy)
-// #define	mem_wreg	VVAR(_mem_wreg)
-
-// DIV
-// #ifdef OPT_DIVIDE
-  // #define	div_valid	CPUVAR(_div_valid)
-  // #define	div_ce		CPUVAR(_div_ce)
-  // #define	div_busy	CPUVAR(_div_busy)
-// #endif
-
-//
-// #define	wr_reg_id	CPUVAR(_wr_reg_id)
-// #define	wr_reg_ce	CPUVAR(_wr_reg_ce)
-// #define	wr_gpreg_vl	CPUVAR(_wr_gpreg_vl)
-// #ifdef	OPT_DIVIDE
-// #define	wr_spreg_vl	CPUVAR(_wr_spreg_vl)
-// #else
-// #define	wr_spreg_vl	wr_gpreg_vl
-// #endif
-// #define	wr_reg_ce	CPUVAR(_wr_reg_ce)
-// #define	wr_flags_ce	CPUVAR(_wr_flags_ce)
-// #define	w_iflags	CPUVAR(_w_iflags)
-// #define	w_uflags	CPUVAR(_w_uflags)
-
-// Op-Sim instructions
-// #define	cpu_sim		CPUVAR(_op_sim)
-// #define	cpu_sim_immv	CPUVAR(_op_sim_immv)
-
-//
-// #define	r_sleep		CPUVAR(_sleep)
-
-// #define	master_ce	CPUVAR(_master_ce)
-// #define	op_break	CPUVAR(_r_op_break)
-// #define	op_F		CPUVAR(_op_F)
-//
 #define	regset		CPUVAR(_regset.m_storage)
 #define	cpu_regs	regset
 
-
-// #ifdef	OPT_CIS
-// #define	dcd_phase	CPUVAR(_dcd_phase)
-// #define	op_phase	CPUVAR(_OPT_CIS_OP_PHASE__DOT__r_op_phase)
-// #define	alu_phase	CPUVAR(_GEN_ALU_PHASE__DOT__r_alu_phase)
-// #endif
-
-
-// #ifdef	OPT_PIPELINED
-// #define	op_Av	CPUVAR(_op_Av)
-// #define	op_Bv	CPUVAR(_op_Bv)
-// #define	alu_gie	dcd_gie
-// #define	alu_pc	CPUVAR(_GEN_ALU_PC__DOT__r_alu_pc)
-// #define	op_Aid	CPUVAR(_op_Aid)
-// #define	op_Bid	CPUVAR(_op_Bid)
-// #else
-// #define	op_Av	CPUVAR(_r_op_Av)
-// #define	op_Bv	CPUVAR(_r_op_Bv)
-// #define	alu_gie	dcd_gie
-// #define	alu_pc	CPUVAR(_op_pc)
-// #endif
-// #define	op_gie	dcd_gie
-
-// #define	r_op_pc	CPUVAR(_op_pc)
-
-// #define	dbg_cyc		i_dbg_cyc
-// #define	dbg_stb		i_dbg_stb
-// #define	dbg_we		i_dbg_we
-// #define	dbg_idata	i_dbg_data
-// #define	cpu_stall	i_wb_stall
 #define	cpu_interrupt	i_interrupt
-// #define	cpu_idata	i_wb_data
 #define	tick_counter	tickcount()
 #define	dbg_addr	i_dbg_addr
-
-// #define	r_gie		CPUVAR(_SET_GIE__DOT__r_gie)
-
-// #define	op_pipe		CPUVAR(_GEN_OP_PIPE__DOT__r_op_pipe)
-// #define	dcd_pipe	CPUVAR(_instruction_decoder__DOT__GEN_OPIPE__DOT__r_pipe)
-// #define	op_A_alu	CPUVAR(_op_A_alu)
-// #define	op_B_alu	CPUVAR(_op_B_alu)
-// #define	op_A_mem	CPUVAR(_op_A_mem)
-// #define	op_B_mem	CPUVAR(_op_B_mem)
-// #define	op_opn		CPUVAR(_FWD_OPERATION__DOT__r_op_opn)
-// #define	alu_result	CPUVAR(_alu_result)
-// #define	alu_busy	CPUVAR(_doalu__DOT__r_busy)
-// #define	alu_reg		CPUVAR(_alu_reg)
-// #define	switch_to_interrupt	CPUVAR(_w_switch_to_interrupt)
-// #define	release_from_interrupt	CPUVAR(_w_release_from_interrupt)
-// #define	break_en	CPUVAR(_break_en)
-// #define	dcd_break	CPUVAR(_dcd_break)
 
 /*
 // We are just a raw CPU with memory.  There is no flash.

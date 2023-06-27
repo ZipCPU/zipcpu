@@ -120,7 +120,7 @@
 ################################################################################
 ##
 ## }}}
-all: mkhex pdump div_tb mpy_tb pfcache_tb zipsys_tb zipbones_tb
+all: mkhex pdump div_tb mpy_tb pfcache_tb zipsys_tb zipbones_tb zipaxil_tb
 ##
 ## The following are now obsolete.  (They were structurally unable to test
 ## multiple design configurations.)  They may be re-enabled later:

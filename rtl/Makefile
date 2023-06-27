@@ -142,7 +142,7 @@ VFLAGS := -Wall -MMD --trace $(VCOVERAGE) -cc -y $(CORED) -y $(PRPHD) -y $(EXD) 
 ## }}}
 ## Dependency suggestions
 ## {{{
-SYSSRC := zipsystem.v cpudefs.v					\
+SYSSRC := zipsystem.v						\
 		$(PRPHD)/wbdmac.v $(PRPHD)/icontrol.v		\
 		$(PRPHD)/zipcounter.v $(PRPHD)/zipjiffies.v	\
 		$(PRPHD)/ziptimer.v				\
@@ -155,7 +155,7 @@ SYSSRC := zipsystem.v cpudefs.v					\
 	$(EXD)/busdelay.v					\
 		$(EXD)/wbdblpriarb.v $(EXD)/wbpriarbiter.v	\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-BONSRC := zipbones.v cpudefs.v					\
+BONSRC := zipbones.v						\
 	$(CORED)/zipwb.v $(CORED)/zipcore.v			\
 		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/pipefetch.v $(CORED)/prefetch.v	\
@@ -164,14 +164,14 @@ BONSRC := zipbones.v cpudefs.v					\
 		$(CORED)/div.v					\
 	$(EXD)/busdelay.v $(EXD)/wbdblpriarb.v			\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-AXLSRC := zipaxil.v cpudefs.v $(CORED)/zipcore.v		\
+AXLSRC := zipaxil.v $(CORED)/zipcore.v				\
 		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/axilfetch.v $(CORED)/prefetch.v	\
 		$(CORED)/axilops.v $(CORED)/axilpipe.v		\
 		$(CORED)/axidcache.v				\
 		$(CORED)/div.v					\
 	$(CORED)/idecode.v $(CORED)/cpuops.v
-AXISRC := zipaxi.v cpudefs.v $(CORED)/zipcore.v			\
+AXISRC := zipaxi.v $(CORED)/zipcore.v				\
 		$(CORED)/cpuops.v $(CORED)/idecode.v		\
 		$(CORED)/axilfetch.v $(CORED)/axiicache.v	\
 		$(CORED)/axiops.v $(CORED)/axilpipe.v		\
@@ -396,7 +396,7 @@ $(VOBJ)/Vdiv__ALL.a: $(VOBJ)/Vdiv.cpp $(VOBJ)/Vdiv.h
 ## {{{
 cpuops: $(VOBJ)/Vcpuops__ALL.a
 $(VOBJ)/Vcpuops.h: $(VOBJ)/Vcpuops.cpp
-$(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v cpudefs.v
+$(VOBJ)/Vcpuops.cpp: $(CORED)/cpuops.v
 	$(VERILATE) -DVMPY_TB $(CORED)/cpuops.v
 $(VOBJ)/Vcpuops__ALL.a: $(VOBJ)/Vcpuops.cpp $(VOBJ)/Vcpuops.h
 	$(SUBMAKE) Vcpuops.mk

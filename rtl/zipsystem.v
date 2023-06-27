@@ -291,6 +291,17 @@ module	zipsystem #(
 		output	wire	[22:0]		cpu_sim_immv,
 		output	wire	[7:0]		op_F,
 		//
+		output	wire			dbg_cyc, dbg_stb, dbg_we,
+		output	wire	[6:0]		dbg_addr,
+		output	reg			dbg_ack,
+		output	wire [DBG_WIDTH-1:0]	dbg_idata,
+		output	wire			sys_cyc, sys_stb, sys_we,
+		output	wire	[7:0]		sys_addr,
+		output	wire	[DBG_WIDTH-1:0]	sys_data,
+		//
+		output	wire [BUS_WIDTH-1:0]	cpu_idata,
+		output	wire			cpu_stall,
+		output	wire			cpu_interrupt,
 		//
 		// ZipSystem peripherals
 		output	wire	[31:0]		watchbus, watchdog, pic_data,
@@ -316,6 +327,7 @@ module	zipsystem #(
 		output	wire			switch_to_interrupt,
 						release_from_interrupt,
 						break_en,
+		output	wire			pformem_owner,
 		// }}}
 `endif
 		output	wire			o_prof_stb,
@@ -409,10 +421,12 @@ module	zipsystem #(
 	wire			cpu_clken;
 	//
 	//
+`ifndef	VBENCH_TB
 	wire			sys_cyc, sys_stb, sys_we;
 	wire	[7:0]		sys_addr;
-	wire	[PAW-1:0]	cpu_addr;
 	wire	[DBG_WIDTH-1:0]	sys_data;
+`endif
+	wire	[PAW-1:0]	cpu_addr;
 	reg	[DBG_WIDTH-1:0]	sys_idata;
 	reg			sys_ack;
 	wire			sys_stall;
@@ -420,11 +434,14 @@ module	zipsystem #(
 	wire	sel_counter, sel_timer, sel_pic, sel_apic,
 		sel_watchdog, sel_bus_watchdog, sel_dmac, sel_mmus;
 
-	wire				dbg_cyc, dbg_stb, dbg_we, dbg_stall;
+`ifndef	VBENCH_TB
+	wire				dbg_cyc, dbg_stb, dbg_we;
 	wire	[6:0]			dbg_addr;
 	wire	[DBG_WIDTH-1:0]		dbg_idata;
-	reg	[DBG_WIDTH-1:0]		dbg_odata;
 	reg				dbg_ack;
+`endif
+	wire				dbg_stall;
+	reg	[DBG_WIDTH-1:0]		dbg_odata;
 	wire	[DBG_WIDTH/8-1:0]	dbg_sel;
 	wire				no_dbg_err;
 
@@ -444,9 +461,6 @@ module	zipsystem #(
 	wire			cpu_reset, cpu_halt,
 				cpu_has_halted;
 	wire			cpu_dbg_stall;
-`ifndef	VBENCH_TB
-	wire	[DBG_WIDTH-1:0]	pic_data;
-`endif
 	wire	[DBG_WIDTH-1:0]	cpu_status;
 	wire			cpu_gie;
 
@@ -455,6 +469,7 @@ module	zipsystem #(
 	reg			wdbus_ack;
 	reg	[PAW-1:0] 	r_wdbus_data;
 `ifndef	VBENCH_TB
+	wire	[DBG_WIDTH-1:0]	pic_data;
 	wire	[DBG_WIDTH-1:0]	wdbus_data;
 `endif
 	wire	reset_wdbus_timer, wdbus_int;
@@ -483,13 +498,18 @@ module	zipsystem #(
 	wire	[DBG_WIDTH-1:0]	tmc_data;
 	wire	[DBG_WIDTH-1:0]	jif_data;
 
-	wire		pic_interrupt, pic_stall, pic_ack;
+	wire			pic_stall, pic_ack;
 
 	wire		cpu_gbl_stb, cpu_lcl_cyc, cpu_lcl_stb,
 			cpu_we;
-	wire	[BUS_WIDTH-1:0]		cpu_data, cpu_idata;
+	wire	[BUS_WIDTH-1:0]		cpu_data;
 	wire	[BUS_WIDTH/8-1:0]	cpu_sel, mmu_sel;
-	wire		cpu_stall, cpu_ack, cpu_err;
+`ifndef	VBENCH_TB
+	wire	[BUS_WIDTH-1:0]		cpu_idata;
+	wire				cpu_stall;
+`endif
+	wire				pic_interrupt;
+	wire				cpu_ack, cpu_err;
 	wire	[DBG_WIDTH-1:0]	cpu_dbg_data;
 
 	wire			ext_stall, ext_ack;
@@ -1895,6 +1915,7 @@ module	zipsystem #(
 	assign	cpu_ipc= thecpu.core.ipc;
 	assign	cpu_upc= thecpu.core.upc;
 	assign	pf_pc  = thecpu.core.pf_pc;
+	assign	cpu_interrupt = pic_interrupt;
 
 	assign	pf_cyc = thecpu.pf_cyc;
 	assign	pf_stb = thecpu.pf_stb;
@@ -1906,6 +1927,13 @@ module	zipsystem #(
 	// assign	cpu_idata  = thecpu.i_wb_data;
 	assign	pf_instruction = thecpu.pf_instruction;
 	assign	pf_instruction_pc = thecpu.pf_instruction_pc;
+	generate if (OPT_PIPELINED)
+	begin
+		assign	pformem_owner = thecpu.PRIORITY_DATA.pformem.r_a_owner;
+	end else begin
+		assign	pformem_owner = thecpu.PRIORITY_PREFETCH.pformem.r_a_owner;
+	end endgenerate
+	//
 	//
 	// Peeking into the decode stage
 	// {{{

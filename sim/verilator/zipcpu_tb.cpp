@@ -79,8 +79,6 @@
 #define	SIMCLASS	Vzipsystem
 #endif
 
-#include "cpudefs.h"
-
 #include "testb.h"
 #include "zipelf.h"
 // #include "twoc.h"
@@ -186,15 +184,6 @@
 #endif
 
 #ifdef	ZIPSYSTEM
-#define	dbg_cyc		VVAR(_dbg_cyc)
-#define	dbg_stb		VVAR(_dbg_stb)
-#define	dbg_we		VVAR(_dbg_we)
-#define	dbg_idata	VVAR(_dbg_idata)
-#define	cpu_stall	VVAR(_cpu_stall)
-#define	cpu_interrupt	VVAR(_pic_interrupt)
-#define	cpu_idata	VVAR(_cpu_idata)
-#define	tick_counter	m_core->VVAR(_jiffies__DOT__r_counter)
-#define	dbg_addr	VVAR(_dbg_addr)
 #else
 #define	dbg_cyc		i_dbg_cyc
 #define	dbg_stb		i_dbg_stb
@@ -206,14 +195,6 @@
 #define	tick_counter	tickcount()
 #define	dbg_addr	i_dbg_addr
 #endif
-
-#define	r_gie		VVAR(_thecpu__DOT__core__DOT__SET_GIE__DOT__r_gie)
-#define	wdbus_data	VVAR(_r_wdbus_data)
-
-#define	r_wb_cyc_gbl	MEMVAR(_r_wb_cyc_gbl)
-#define	r_wb_cyc_lcl	MEMVAR(_r_wb_cyc_lcl)
-#define	r_wb_stb_gbl	VVAR(_thecpu__DOT__mem_stb_gbl)
-#define	r_wb_stb_lcl	VVAR(_thecpu__DOT__mem_stb_lcl)
 
 /*
 // We are just a raw CPU with memory.  There is no flash.
@@ -773,8 +754,8 @@ public:
 		// Data bus info
 		// {{{
 		mvprintw(ln, 0, "MEMBUS: %3s %3s %s @0x%08x[0x%08x] -> %s %s %08x",
-			(m_core->r_wb_cyc_gbl)?"GCY"
-				:((m_core->r_wb_cyc_lcl)?"LCY":"   "),
+			(m_core->wb_cyc_gbl)?"GCY"
+				:((m_core->wb_cyc_lcl)?"LCY":"   "),
 			(m_core->mem_stb_gbl)?"GSB"
 				:((m_core->mem_stb_lcl)?"LSB":"   "),
 			(m_core->mem_we )?"WE":"  ",
@@ -801,11 +782,6 @@ public:
 
 		// The outgoing bus info
 		// {{{
-#ifdef	OPT_PIPELINED
-#define	pformem_owner	VVAR(_thecpu__DOT__PRIORITY_DATA__DOT__pformem__DOT__r_a_owner)
-#else
-#define	pformem_owner	VVAR(_thecpu__DOT__PRIORITY_PREFETCH__DOT__pformem__DOT__r_a_owner)
-#endif
 		mvprintw(ln, 0, "SYSBS%c: %3s %3s %s @0x%08x[0x%08x] -> %s %s %08x %s",
 			(m_core->pformem_owner)?'M':'P',
 			(m_core->o_wb_cyc)?"CYC":"   ",
@@ -1388,21 +1364,14 @@ public:
 				(m_core->dcd_valid)?"DCDV ":"",
 				(m_core->op_valid)?"OPV ":"",
 				(m_core->pf_cyc)?"PCYC ":"",
-				(m_core->r_wb_cyc_gbl)?"GC":"  ",
-				(m_core->r_wb_cyc_lcl)?"LC":"  ",
+				(m_core->wb_cyc_gbl)?"GC":"  ",
+				(m_core->wb_cyc_lcl)?"LC":"  ",
 				(m_core->alu_wR)?"ALUW ":"",
 				(m_core->alu_ce)?"ALCE ":"",
 				(m_core->alu_valid)?"ALUV ":"",
 				(m_core->mem_valid)?"MEMV ":"");
 #ifdef	ZIPSYSTEM
 			fprintf(m_dbgfp, " SYS %s %s %s @0x%08x/%d[0x%08x] %s [0x%08x]\n",
-#define	sys_cyc		VVAR(_sys_cyc)
-#define	sys_stb		VVAR(_sys_stb)
-#define	sys_we		VVAR(_sys_we)
-#define	sys_addr	VVAR(_sys_addr)
-#define	sys_data	VVAR(_sys_data)
-#define	dbg_ack		VVAR(_dbg_ack)
-#define	dbg_addr	VVAR(_dbg_addr)
 				(m_core->sys_cyc)?"CYC":"   ",
 				(m_core->sys_stb)?"STB":"   ",
 				(m_core->sys_we)?"WE":"  ",
@@ -1747,8 +1716,8 @@ public:
 	// {{{
 	bool	mem_pipe_stalled(void) {
 		int	r = 0;
-		r = ((m_core->r_wb_cyc_gbl)
-		 ||(m_core->r_wb_cyc_lcl));
+		r = ((m_core->wb_cyc_gbl)
+		 ||(m_core->wb_cyc_lcl));
 		r = r && ((m_core->mem_stall)
 			||(
 				((!m_core->mem_stb_gbl)
