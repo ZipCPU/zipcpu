@@ -10,7 +10,7 @@ Here are the core files to the ZipCPU.  In here, you'll find not only the
     [axilfetch](axilfetch.v) offers a similar version of this prefetch, using
     the AXI-Lite bus protocol, as long as `FETCH_LIMIT <= 1`.
 
-  o [pipefetch.v](pipefetch.v), was first attempt at building a prefetch with
+  o [pipefetch.v](pipefetch.v), was my first attempt at building a prefetch with
     cache.  It took a rather unique approach to the cache, implementing it as
     a rolling window in memory.  This file is now abandonware.  It only
     remains as part of the repository for historical reasons, but not much more.
@@ -59,6 +59,12 @@ Here are the core files to the ZipCPU.  In here, you'll find not only the
 
 - [cpuops.v](./cpuops.v), the ALU unit
 
-The defines within [cpudefs.v](../cpudefs.v) will determine which of these
-modules gets linked into your CPU.
+- [mpyop.v](./mpyop.v), contains a variety of multiply implementations, each
+  designed for a different hardware support.  If no hardware support is
+  available, the [slowmpy.v](slowmpy.v) file is available to implement a
+  32x32 bit multiply in (roughly) 32 clock cycles.
 
+Finally, the Wishbone version of the ZipCPU contains a wrapper,
+[zipwb.v](./zipwb.v), to both instantiate the fetch and memory controllers
+and also to merge and arbitrate the two into a single outgoing memory
+port.
