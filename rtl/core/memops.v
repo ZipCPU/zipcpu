@@ -133,9 +133,9 @@ module	memops #(
 		endcase
 
 		assign	misaligned = r_misaligned;
-	end else
+	end else begin : NO_MISALIGNMENT_ERR
 		assign	misaligned = 1'b0;
-	endgenerate
+	end endgenerate
 	// }}}
 
 	// lcl_stb, gbl_stb
@@ -425,7 +425,7 @@ module	memops #(
 	// {{{
 	generate
 	if (OPT_LOCK)
-	begin
+	begin : GEN_LOCK
 		// {{{
 		reg	r_lock_gbl, r_lock_lcl;
 

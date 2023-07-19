@@ -573,7 +573,7 @@ module	axiicache #(
 		// }}}
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_WRAP_MODE
 		// {{{
 		assign	wrap_valid = 1'b0;
 
@@ -620,7 +620,7 @@ module	axiicache #(
 		// {{{
 		// Verilator lint_off UNUSED
 		if (DW > INSN_WIDTH)
-		begin
+		begin : GEN_UNUSED_WIDE
 			wire	unused_wide;
 			assign	unused_wide = &{ 1'b0, cache_word[DW-1:INSN_WIDTH] };
 		end
@@ -639,7 +639,7 @@ module	axiicache #(
 		// {{{
 		// Verilator lint_off UNUSED
 		if (DW > INSN_WIDTH)
-		begin
+		begin : GEN_UNUSED_WIDE
 			wire	unused_wide;
 			assign	unused_wide = &{ 1'b0, shifted[DW-1:INSN_WIDTH] };
 		end

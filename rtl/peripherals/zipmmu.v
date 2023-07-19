@@ -474,12 +474,20 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	//
 	generate
 		if (4+LGHCTX-1>4)
+		begin : PTABLE_REG_LIL
 			assign	w_ptable_reg[(4+LGHCTX-1):4] =  {
 				tlb_cdata[wr_tlb_addr][(LGCTXT-1):LGLCTX] };
+		end
+
 		if (LGPGSZB > LGLCTX+4)
+		begin : VTABLE_REG
 			assign	w_vtable_reg[(LGPGSZB-1):(LGLCTX+4)] = 0;
+		end
+
 		if (LGPGSZB > LGHCTX+4)
+		begin : PTABLE_REG
 			assign	w_ptable_reg[(LGPGSZB-1):(LGHCTX+4)] = 0;
+		end
 	endgenerate
 
 	//
@@ -719,7 +727,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	end
 
 	generate if (OPT_DELAY_RETURN)
-	begin
+	begin : GEN_DELAYED_RETURN
 		reg		r_rtn_ack;
 		reg	[31:0]	r_rtn_data;
 
@@ -737,7 +745,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 
 		assign	o_rtn_ack  = r_rtn_ack;
 		assign	o_rtn_data = r_rtn_data;
-	end else begin
+	end else begin : GEN_DIRECT_RETURN
 
 		assign	o_rtn_ack  = (i_ack)&&(o_cyc);
 		assign	o_rtn_data = i_data;
@@ -806,7 +814,7 @@ module zipmmu(i_clk, i_reset, i_wbs_cyc_stb, i_wbs_we, i_wbs_addr,
 	wire [(PAW-1):0]	unused;
 	assign	unused = r_ppage;
 	generate if (4+LGCTXT < LGPGSZB)
-	begin
+	begin : GEN_UNUSED
 		wire	unused_data;
 		assign	unused_data = { 1'b0, i_wbs_data[LGPGSZB-1:4+LGCTXT] };
 	end endgenerate

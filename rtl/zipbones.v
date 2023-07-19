@@ -365,7 +365,7 @@ module	zipbones #(
 			assert(reset_hold == (reset_counter != 0));
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_RESET_HOLD
 
 		assign reset_hold = 0;
 
@@ -744,9 +744,9 @@ module	zipbones #(
 	assign	pf_instruction = thecpu.pf_instruction;
 	assign	pf_instruction_pc = thecpu.pf_instruction_pc;
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_PFORMEM_OWNER_DATA
 		assign	pformem_owner = thecpu.PRIORITY_DATA.pformem.r_a_owner;
-	end else begin
+	end else begin : GEN_PFORMEM_OWNER_FETCH
 		assign	pformem_owner = thecpu.PRIORITY_PREFETCH.pformem.r_a_owner;
 	end endgenerate
 	//

@@ -235,11 +235,11 @@ module	pfcache #(
 		assign	shift = r_pc[WBLSB-1:INLSB];
 
 		if (OPT_LITTLE_ENDIAN)
-		begin
+		begin : GEN_LIL_ENDIAN_SHIFT
 			assign	shifted = cache_word >> (INSN_WIDTH*shift);
 			assign	o_insn= shifted[INSN_WIDTH-1:0];
 
-		end else begin
+		end else begin : BIG_ENDIAN_SHIFT
 
 			assign	shifted = cache_word << (INSN_WIDTH*shift);
 			assign o_insn=shifted[BUS_WIDTH-1:BUS_WIDTH-INSN_WIDTH];

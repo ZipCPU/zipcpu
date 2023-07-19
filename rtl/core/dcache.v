@@ -394,7 +394,7 @@ module	dcache #(
 	// o_wb_data
 	// {{{
 	generate if (DATA_WIDTH == BUS_WIDTH)
-	begin
+	begin : GEN_SAME_BUSWIDTH
 		// {{{
 		initial	o_wb_data = 0;
 		always @(posedge i_clk)
@@ -434,7 +434,7 @@ module	dcache #(
 		end else if (OPT_LOWPOWER && !i_wb_stall)
 			o_wb_data <= 0;
 		// }}}
-	end else begin
+	end else begin : GEN_WIDE_BUS
 		// {{{
 		reg	[DATA_WIDTH-1:0]	pre_shift;
 		reg	[BUS_WIDTH-1:0]		wide_preshift, shifted_data;
@@ -1261,7 +1261,7 @@ module	dcache #(
 	// logic on the output.
 	//
 	generate if (OPT_DUAL_READ_PORT)
-	begin
+	begin : GEN_DUAL_READ_PORT
 
 		always @(posedge i_clk)
 			cached_iword <= c_mem[i_caddr];
@@ -1269,7 +1269,7 @@ module	dcache #(
 		always @(posedge i_clk)
 			cached_rword <= c_mem[r_caddr];
 
-	end else begin
+	end else begin : GEN_SHARED_READ_PORT
 
 		always @(posedge i_clk)
 			cached_rword <= c_mem[(o_busy) ? r_caddr : i_caddr];

@@ -550,40 +550,41 @@ module	zipsystem #(
 	assign	main_int_vector[5:0] = { ctri_int, tma_int, tmb_int, tmc_int,
 					jif_int, dmac_int };
 	generate if (EXTERNAL_INTERRUPTS < 9)
+	begin : TRIM_MAIN_INTS
 		assign	main_int_vector[14:6] = { {(9-EXTERNAL_INTERRUPTS){1'b0}},
 					i_ext_int };
-	else
+	end else begin : NO_TRIM_MAIN_INTS
 		assign	main_int_vector[14:6] = i_ext_int[8:0];
-	endgenerate
+	end endgenerate
 	// }}}
 
 	// The alternate interrupt vector
 	// {{{
 	generate if (EXTERNAL_INTERRUPTS <= 9 && OPT_ACCOUNTING)
-	begin
+	begin : ALT_ACCOUNTING_INTS
 		assign	alt_int_vector = { 7'h00,
 					mtc_int, moc_int, mpc_int, mic_int,
 					utc_int, uoc_int, upc_int, uic_int };
 	end else if (EXTERNAL_INTERRUPTS <= 9) // && !OPT_ACCOUNTING
-	begin
+	begin : ALT_NO_INTS
 		assign	alt_int_vector = { 15'h00 };
 	end else if (OPT_ACCOUNTING && EXTERNAL_INTERRUPTS >= 15)
-	begin
+	begin : ALT_ACCT_PLUS_INTS
 		assign	alt_int_vector = { i_ext_int[14:8],
 					mtc_int, moc_int, mpc_int, mic_int,
 					utc_int, uoc_int, upc_int, uic_int };
 	end else if (OPT_ACCOUNTING)
-	begin
+	begin : ALT_ACCT_SOME_INTS
 
 		assign	alt_int_vector = { {(7-(EXTERNAL_INTERRUPTS-9)){1'b0}},
 					i_ext_int[(EXTERNAL_INTERRUPTS-1):9],
 					mtc_int, moc_int, mpc_int, mic_int,
 					utc_int, uoc_int, upc_int, uic_int };
 	end else if (!OPT_ACCOUNTING && EXTERNAL_INTERRUPTS >= 24)
-	begin
+	begin : ALT_NO_ACCOUNTING_INTS
 
 		assign	alt_int_vector = { i_ext_int[(EXTERNAL_INTERRUPTS-1):9] };
-	end else begin
+	end else begin : ALT_TRIM_INTS
 		assign	alt_int_vector = { {(15-(EXTERNAL_INTERRUPTS-9)){1'b0}},
 					i_ext_int[(EXTERNAL_INTERRUPTS-1):9] };
 
@@ -724,7 +725,7 @@ module	zipsystem #(
 			assert(reset_hold == (reset_counter != 0));
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_RESET_HOLD
 
 		assign reset_hold = 0;
 
@@ -932,7 +933,7 @@ module	zipsystem #(
 		else if (cmd_read_ack != 0)
 			cmd_read_ack <= 0;
 
-	end else begin
+	end else begin : GEN_FWD_CMDREAD_ACK
 		always @(*)
 			cmd_read_ack = cmd_read;
 
@@ -1928,9 +1929,9 @@ module	zipsystem #(
 	assign	pf_instruction = thecpu.pf_instruction;
 	assign	pf_instruction_pc = thecpu.pf_instruction_pc;
 	generate if (OPT_PIPELINED)
-	begin
+	begin : GEN_PFORMEM_OWNER_PIPE
 		assign	pformem_owner = thecpu.PRIORITY_DATA.pformem.r_a_owner;
-	end else begin
+	end else begin : GEN_PFORMEM_OWNER
 		assign	pformem_owner = thecpu.PRIORITY_PREFETCH.pformem.r_a_owner;
 	end endgenerate
 	//

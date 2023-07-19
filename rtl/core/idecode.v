@@ -857,7 +857,7 @@ module	idecode #(
 		//		&&(w_I[22]==r_I[22]);
 		assign o_pipe = r_pipe;
 		// }}}
-	end else begin
+	end else begin : GEN_NO_PIPE
 		// {{{
 		assign	o_pipe = 1'b0;
 		assign	insn_is_pipeable = 1'b0;

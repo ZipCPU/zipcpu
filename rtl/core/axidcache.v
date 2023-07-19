@@ -664,7 +664,7 @@ module	axidcache #(
 		assign	locked_read_in_cache = r_read_in_cache[2];
 		assign	axi_awlock = r_awlock;
 		assign	axi_arlock = r_arlock;
-	end else begin
+	end else begin : NO_LOCK
 		assign	axi_awlock = 1'b0;
 		assign	axi_arlock = 1'b0;
 		assign	locked_write_in_progress = 1'b0;
@@ -976,18 +976,19 @@ module	axidcache #(
 
 	genvar	gk;
 	generate if (!SWAP_WSTRB)
-	begin
+	begin : NO_SWAP_WSTRB
 		assign	M_AXI_WDATA = axi_wdata;
 		assign	M_AXI_WSTRB = axi_wstrb;
 
 		assign	axi_rdata   = M_AXI_RDATA;
-	end else for(gk=0; gk<C_AXI_DATA_WIDTH/32; gk=gk+1)
-	begin
+	end else begin : J
+	for(gk=0; gk<C_AXI_DATA_WIDTH/32; gk=gk+1)
+	begin : GEN_SWAP_WSTRB
 		assign	M_AXI_WDATA[32*gk +: 32] = axi_wdata[C_AXI_DATA_WIDTH - (gk+1)*32 +: 32];
 		assign	M_AXI_WSTRB[ 4*gk +:  4] = axi_wstrb[C_AXI_DATA_WIDTH/8 - (gk+1)*4 +: 4];
 
 		assign	axi_rdata[32*gk +: 32] = M_AXI_RDATA[C_AXI_DATA_WIDTH - (gk+1)*32 +: 32];
-	end endgenerate
+	end end endgenerate
 	// }}}
 	// }}}
 
@@ -1345,7 +1346,7 @@ module	axidcache #(
 
 		assign	restart_pc = r_pc;
 
-	end else begin
+	end else begin : NO_RESTART_PC
 		assign	restart_pc = 0;
 
 		// Verilator lint_off UNUSED
@@ -1390,7 +1391,7 @@ module	axidcache #(
 	// Read from the cache
 	// {{{
 	generate if (OPT_DUAL_READ_PORT)
-	begin
+	begin : GEN_DUALREAD
 		always @(posedge S_AXI_ACLK)
 		if (!OPT_LOWPOWER || (i_pipe_stb && !i_op[0]))
 			cached_iword <= cache_mem[i_caddr];
@@ -1398,7 +1399,7 @@ module	axidcache #(
 		always @(posedge S_AXI_ACLK)
 		if (!OPT_LOWPOWER || o_rdbusy)
 			cached_rword <= cache_mem[r_caddr];
-	end else begin
+	end else begin : GEN_SINGLE_READ_PORT
 
 		always @(posedge S_AXI_ACLK)
 			cached_rword <= cache_mem[(o_busy) ? r_caddr : i_caddr];

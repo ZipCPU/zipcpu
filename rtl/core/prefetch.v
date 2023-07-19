@@ -301,9 +301,9 @@ module	prefetch #(
 ;
 		assign	r_insn  = rg_insn;
 		if (OPT_LITTLE_ENDIAN)
-		begin
+		begin : GEN_LIL_ENDIAN_SHIFT
 			assign	i_wb_shifted = i_wb_data >> (r_shift * INSN_WIDTH);
-		end else begin
+		end else begin : GEN_BIG_ENDIAN_SHIFT
 			assign	i_wb_shifted = i_wb_data << (r_shift * INSN_WIDTH);
 		end
 

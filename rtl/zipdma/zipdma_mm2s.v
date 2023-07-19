@@ -176,7 +176,7 @@ module	zipdma_mm2s #(
 			endcase
 		end
 		// }}}
-	end else begin
+	end else begin : STD_NXTSTB_SIZE
 		// {{{
 		always @(*)
 		begin

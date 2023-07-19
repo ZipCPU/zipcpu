@@ -222,7 +222,7 @@ module	busdelay #(
 		// }}}
 `endif
 		// }}}
-	end else begin
+	end else begin : NO_SKIDBUFFER
 		// {{{
 		initial	o_dly_cyc   = 1'b0;
 		initial	o_dly_stb   = 1'b0;

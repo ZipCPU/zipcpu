@@ -243,31 +243,31 @@ module	cpuops #(
 // {{{
 	assign	OPT_MULTIPLY = OPT_MPY;
 	generate if (OPT_MPY == 0)
-	begin
+	begin : VGEN0
 		assign	mpy_a_input = 0;
 		assign	mpy_b_input = 0;
 		assign	mpy_pipe = 1'b0;
 	end else if (OPT_MPY == 1)
-	begin
+	begin : VGEN1
 		assign	mpy_a_input = thempy.IMPY.MPY1CK.w_mpy_a_input[31:0];
 		assign	mpy_b_input = thempy.IMPY.MPY1CK.w_mpy_b_input[31:0];
 		assign	mpy_pipe = 3'b0;
 	end else if (OPT_MPY == 2)
-	begin
+	begin : VGEN2
 		assign	mpy_a_input = thempy.IMPY.MPN1.MPY2CK.r_mpy_a_input[31:0];
 		assign	mpy_b_input = thempy.IMPY.MPN1.MPY2CK.r_mpy_b_input[31:0];
 		assign	mpy_pipe = { 2'b0, thempy.IMPY.MPN1.MPY2CK.mpypipe };
 	end else if (OPT_MPY == 3)
-	begin
+	begin : VGEN_NORMAL
 		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPY3CK.r_mpy_a_input;
 		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPY3CK.r_mpy_b_input;
 		assign	mpy_pipe = { 1'b0, thempy.IMPY.MPN1.MPN2.MPY3CK.mpypipe };
 	end else if (OPT_MPY == 4)
-	begin
+	begin : VGEN_PARTIAL
 		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.r_mpy_a_input;
 		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.r_mpy_b_input;
 		assign	mpy_pipe = thempy.IMPY.MPN1.MPN2.MPN3.MPY4CK.mpypipe;
-	end else begin
+	end else begin : VGEN_SLOW
 		assign	mpy_a_input = thempy.IMPY.MPN1.MPN2.MPN3.MPYSLOW.slowmpyi.i_a[31:0];
 		assign	mpy_b_input = thempy.IMPY.MPN1.MPN2.MPN3.MPYSLOW.slowmpyi.i_b[31:0];
 		assign	mpy_pipe = {(3){mpybusy}};

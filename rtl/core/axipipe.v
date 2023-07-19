@@ -850,7 +850,7 @@ module	axipipe #(
 	// }}}
 
 	generate if (OPT_ALIGNMENT_ERR)
-	begin
+	begin : GEN_ALIGNMENT_ERR
 		// {{{
 		// Generate an error on any misaligned request
 		assign	misaligned_request = 1'b0;
@@ -858,7 +858,7 @@ module	axipipe #(
 		assign	misaligned_aw_request = 1'b0;
 		assign	pending_err = 1'b0;
 		// }}}
-	end else begin
+	end else begin : GEN_REALIGNMENT
 		// {{{
 		reg	r_misaligned_request, r_misaligned_aw_request,
 			r_pending_err;
@@ -1175,14 +1175,14 @@ module	axipipe #(
 			none_outstanding };
 
 	generate if (SWAP_WSTRB)
-	begin
+	begin : GEN_UNUSED
 		wire	wide_unused;
 
 		if (SWAP_WSTRB)
-		begin
+		begin : GEN_UNUSED_SWAP
 			assign	wide_unused = &{ 1'b0,
 					wide_return[2*DW-32-1:0] };
-		end else begin
+		end else begin : GEN_UNUSED_WIDE
 			assign	wide_unused = &{ 1'b0, wide_return[2*DW-1:32] };
 		end
 	end endgenerate

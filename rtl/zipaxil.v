@@ -1366,7 +1366,7 @@ module	zipaxil #(
 			M_INSN_BVALID, M_INSN_BRESP
 		};
 	generate if (32 > ADDRESS_WIDTH)
-	begin
+	begin : GEN_UNUSED_ADDR
 		wire	unused_addr;
 		assign	unused_addr = &{ 1'b0, mem_cpu_addr[31:ADDRESS_WIDTH] };
 	end endgenerate

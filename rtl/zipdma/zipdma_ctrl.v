@@ -329,14 +329,14 @@ module zipdma_ctrl #(
 	wire	unused;
 	assign	unused = &{ 1'b0, i_cyc, next_tlen[SLV_WIDTH-1:LGMEMLEN] };
 	generate if (SLV_WIDTH > AW)
-	begin
+	begin : UNUSED_WIDE_ADDR
 		wire	unused_addr;
 		assign	unused_addr = &{ 1'b0,
 				next_src[SLV_WIDTH-1:AW],
 				next_dst[SLV_WIDTH-1:AW]
 				};
 	end if (SLV_WIDTH > LGDMALENGTH)
-	begin
+	begin : UNUSED_LEN
 		wire	unused_len;
 		assign	unused_len = &{ 1'b0,
 				next_len[SLV_WIDTH-1:LGDMALENGTH]

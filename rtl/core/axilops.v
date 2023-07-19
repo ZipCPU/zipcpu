@@ -568,7 +568,7 @@ module	axilops #(
 	// misaligned_[aw_|]request, pending_err, misaligned_response_pending
 	// {{{
 	generate if (OPT_ALIGNMENT_ERR)
-	begin
+	begin : GEN_ALIGNMENT_ERR
 		// {{{
 		assign	misaligned_request = 1'b0;
 
@@ -577,7 +577,7 @@ module	axilops #(
 		assign	misaligned_read = 1'b0;
 		assign	pending_err = 1'b0;
 		// }}}
-	end else begin
+	end else begin : GEN_REALIGNMENT
 		// {{{
 		reg	r_misaligned_request, r_misaligned_aw_request,
 			r_misaligned_response_pending, r_misaligned_read,
@@ -834,14 +834,14 @@ module	axilops #(
 	assign	unused = &{ 1'b0, i_lock, M_AXI_RRESP[0], M_AXI_BRESP[0] };
 
 	generate if (SWAP_WSTRB)
-	begin
+	begin : GEN_UNUSED_SWAP
 		wire	wide_unused;
 
 		if (SWAP_WSTRB)
-		begin
+		begin : UNUSED_SWAP_WSTRB
 			assign	wide_unused = &{ 1'b0,
 					wide_return[2*DW-32-1:0] };
-		end else begin
+		end else begin : UNUSED_NO_SWAP
 			assign	wide_unused = &{ 1'b0, wide_return[2*DW-1:32] };
 		end
 	end endgenerate
