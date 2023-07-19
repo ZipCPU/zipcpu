@@ -192,12 +192,12 @@ module wbdown #(
 		assign	o_addr= r_addr;
 
 		if (OPT_LITTLE_ENDIAN)
-		begin
+		begin : OPT_LILEND_DATA
 			// Verilator coverage_off
 			assign	o_data = s_data[SMALL_DW-1:0];
 			assign	o_sel  = s_sel[SMALL_DW/8-1:0];
 			// Verilator coverage_on
-		end else begin
+		end else begin : OPT_BIGEND_DATA
 			assign	o_data =s_data[WIDE_DW-1:WIDE_DW-SMALL_DW];
 			assign	o_sel  =s_sel[WIDE_DW/8-1:(WIDE_DW-SMALL_DW)/8];
 		end
@@ -558,11 +558,11 @@ module wbdown #(
 		assign	i_subaddr = subaddr_fn(i_wsel);
 
 		if (OPT_LITTLE_ENDIAN)
-		begin
+		begin : OPT_LILEND_SHIFT
 			assign	i_nxtsel = i_wsel >> (i_subaddr * SMALL_DW/8);
 			assign	s_subaddr= 1 + subaddr_fn({ {(SMALL_DW/8){1'b0}}, s_sel[WIDE_DW/8-1:SMALL_DW/8] });
 			assign	s_nxtsel = s_sel >> (s_subaddr * SMALL_DW/8);
-		end else begin
+		end else begin : OPT_BIGEND_SHIFT
 			assign	i_nxtsel = i_wsel << (i_subaddr * SMALL_DW/8);
 			assign	s_subaddr= 1 + subaddr_fn( { s_sel[WIDE_DW/8-SMALL_DW/8-1:0], {(SMALL_DW/8){1'b0}} } );
 			assign	s_nxtsel = s_sel << (s_subaddr * SMALL_DW/8);
@@ -647,10 +647,10 @@ module wbdown #(
 		assign	o_addr= r_addr;
 
 		if (OPT_LITTLE_ENDIAN)
-		begin
+		begin : OPT_LILODATA
 			assign	o_data = s_data[SMALL_DW-1:0];
 			assign	o_sel  = s_sel[SMALL_DW/8-1:0];
-		end else begin
+		end else begin : OPT_BIGODATA
 			assign	o_data =s_data[WIDE_DW-1:WIDE_DW-SMALL_DW];
 			assign	o_sel  =s_sel[WIDE_DW/8-1:(WIDE_DW-SMALL_DW)/8];
 		end

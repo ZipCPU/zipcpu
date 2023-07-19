@@ -41,19 +41,33 @@ use Cwd;
 $path_cnt = @ARGV;
 
 # Usage: sim_run all
-# 	sim_run <testcasename>
+# 	sim_run [cover|iverilog|verilator] [all|<testcasename>+]
 ## Setup
 ## {{{
-my $verilator_flag = 1;
+my $verilator_flag = 1;		# To run Icarus, run: perl sim_run.pl iverilog
 my $verilator_lint_only = 0;
-my $verilatord = "/usr/local/share/verilator";
 my $vobjd = "obj_dir";
 my $testd = "test";
 my $simd  = "rtl";
 my $rtld  = "../rtl/export";
 my $report= $testd . "/sim_report.txt";
+## To run coverage, run: perl sim_run.pl cover
 my $coverage_flag = 0;
 my $linestr="----------------------------------------";
+## Need to find the base verilator directory
+my $verilatord;
+if (-x "verilator") {
+	open(VDEF,"verilator -V |");
+	while($line = <VDEF>) {
+		if ($line =~ /VERILATOR_ROOT\s*=\s*(\S+)\s*$/) {
+			$verilatord = $1;
+			last;
+		}
+	} close VDEF;
+} else {
+	$verilator_flag = 0;
+	$verilatord = "";
+}
 ##
 ##
 my $asmconfig =" -POPT_PIPELINED=0"
@@ -217,11 +231,46 @@ if ($ARGV[0] eq "") {
 	close SUM;
 } elsif ($ARGV[0] eq "cover" or $ARGV[0] =~ /^cover/i) {
 	$all_run  =1;
+	if ($verilatord eq "" or ! -d $verilatord) {
+		die "No verilator install directory found at $verilatord";
+	}
 	$verilator_flag = 1;
 	$coverage_flag  = 1;
 	open(SUM,">> $report");
 	print(SUM "\nRunning all tests for cover:\n$linestr\n");
 	close SUM;
+} elsif (($ARGV[0] eq "icarus" or $ARGV eq "iverilog") and $ARGV[1] eq "all") {
+	$all_run  =1;
+	$verilator_flag = 0;
+	$coverage_flag  = 0;
+	open(SUM,">> $report");
+	print(SUM "\nRunning all tests using Icarus:\n$linestr\n");
+	close SUM;
+} elsif ($ARGV[0] =~ /^verilator/i and ($#ARGV eq 0 or $ARGV[1] eq "all")) {
+	$all_run  =1;
+	if ($verilatord eq "" or ! -d $verilatord) {
+		die "No verilator install directory found at $verilatord";
+	}
+	$verilator_flag = 1;
+	$coverage_flag  = 0;
+	open(SUM,">> $report");
+	print(SUM "\nRunning all tests with Verilator:\n$linestr\n");
+	close SUM;
+} elsif ($ARGV[0] eq "icarus" or $ARGV eq "iverilog") {
+	$verilator_flag = 0;
+	$coverage_flag  = 0;
+	@array = @ARGV;
+	# Remove the "Icarus" flag
+	splice(@array, 0, 1);
+} elsif ($ARGV[0] =~ /^verilator/i) {
+	if ($verilatord eq "" or ! -d $verilatord) {
+		die "No verilator install directory found at $verilatord";
+	}
+	$verilator_flag = 1;
+	$coverage_flag  = 0;
+	@array = @ARGV;
+	# Remove the "Verilator" flag
+	splice(@array, 0, 1);
 } else {
 	@array = @ARGV;
 }
@@ -412,6 +461,10 @@ sub simline($) {
 		system "bash -c \'$cmd\'";
 		$errB = $?;
 
+		if ($errB ne 0) {
+			die "Could not build test!";
+		}
+
 		if ($errB == 0 and $verilator_flag) {
 			## {{{
 			system "cd $vobjd; make -f $tstname.mk";
@@ -532,8 +585,8 @@ sub simline($) {
 				## }}}
 			} else {
 				## {{{
-				print SUM "PASSED    $msg\n";
-				print     "PASSED    $msg\n";
+				print SUM "Pass      $msg\n";
+				print     "Pass      $msg\n";
 				push @passed,$tstname;
 				## }}}
 			}
@@ -568,7 +621,7 @@ sub gettest($) {
 	my ($key)=@_;
 	my	$tstname;
 
-	open(GTL,"$simd/sim_testcases.txt");
+	open(GTL,"sim_testcases.txt");
 	while($line = <GTL>) {
 		next if ($line =~ /^\s*#/);
 		if ($line =~ /^\s*(\S+)\s/) {
@@ -592,7 +645,7 @@ if (! -d "$testd/") {
 }
 
 if ($all_run) {
-	open(TL,"$simd/sim_testcases.txt");
+	open(TL,"sim_testcases.txt");
 	while($line = <TL>) {
 		next if ($line =~ /^\s*#/);
 		# print "TEST LINE: $line";

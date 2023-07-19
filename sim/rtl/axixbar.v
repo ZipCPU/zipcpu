@@ -1108,7 +1108,7 @@ module	axixbar #(
 		// or a different master requests this slave, then the linger
 		// option is voided and the grant given up anyway.
 		if (OPT_LINGER == 0)
-		begin
+		begin : NO_LINGER
 			assign	linger = 0;
 		end else begin : WRITE_LINGER
 
@@ -1297,7 +1297,7 @@ module	axixbar #(
 		// or a different master requests this slave, then the linger
 		// option is voided and the grant given up anyway.
 		if (OPT_LINGER == 0)
-		begin
+		begin : NO_LONGER
 			always @(*)
 				linger = 0;
 		end else begin : READ_LINGER
@@ -1407,7 +1407,7 @@ module	axixbar #(
 		// master that has currently won write arbitration and so
 		// has permission to access this slave
 		if (NM <= 1)
-		begin
+		begin : SINGLE_MASTER
 
 			// If there's only ever one master, that index is
 			// always the index of the one master.
@@ -1438,7 +1438,7 @@ module	axixbar #(
 		end
 
 	end for (M=NS; M<NSFULL; M=M+1)
-	begin
+	begin : W4_UNUSED_MASTERS
 
 		assign	swindex[M] = 0;
 	// }}}
@@ -1452,7 +1452,7 @@ module	axixbar #(
 		// read arbitration to the given slave.
 
 		if (NM <= 1)
-		begin
+		begin : SINGLE_MASTER
 			// If there's only one master, srindex can always
 			// point to that master--no longic required
 			assign	srindex[M] = 0;
@@ -1481,7 +1481,7 @@ module	axixbar #(
 		end
 
 	end for (M=NS; M<NSFULL; M=M+1)
-	begin
+	begin : R4_UNUSED_MASTERS
 
 		assign	srindex[M] = 0;
 	// }}}

@@ -592,9 +592,9 @@ $(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE) $(RTL)/ex
 mm2s: $(MM2S)
 $(MM2S): $(MM2S)_prf/PASS
 $(MM2S)_prf/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
-	sbyx.pl $(MM2S).sby prf
+	sby $(MM2S).sby prf
 $(MM2S)_cvr/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
-	sbyx.pl $(MM2S).sby cvr
+	sby $(MM2S).sby cvr
 ## }}}
 
 .PHONY: rxgears $(RXGEARS)
@@ -603,11 +603,11 @@ rxgears: $(RXGEARS)
 $(RXGEARS): $(RXGEARS)_prf/PASS $(RXGEARS)_prfw/PASS
 $(RXGEARS): $(RXGEARS)_cvr/PASS
 $(RXGEARS)_prf/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
-	sbyx.pl $(RXGEARS).sby prf
+	sby -f $(RXGEARS).sby prf
 $(RXGEARS)_prfw/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
-	sbyx.pl $(RXGEARS).sby prfw
+	sby -f $(RXGEARS).sby prfw
 $(RXGEARS)_cvr/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
-	sbyx.pl $(RXGEARS).sby cvr
+	sby -f $(RXGEARS).sby cvr
 ## }}}
 
 .PHONY: txgears $(TXGEARS)
@@ -709,7 +709,7 @@ $(CPU): $(CPU)_pipedlpckh/PASS
 $(CPU): $(CPU)_cvr/PASS
 CPUDEPS:= $(CPU).sby $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v		\
 	$(RTL)/core/idecode.v $(RTL)/ex/wbdblpriarb.v			\
-	$(RTL)/ex/fwb_counter.v $(RTL)/cpudefs.v			\
+	$(RTL)/ex/fwb_counter.v						\
 	f_idecode.v abs_div.v abs_mpy.v $(MASTER) $(SLAVE)		\
 	$(FMEM) $(IFETCH) $(FDBG)
 

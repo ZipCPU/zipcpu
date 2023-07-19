@@ -17,7 +17,6 @@ read -formal fwb_slave.v
 prep -top zipbones
 
 [files]
-cpudefs.v ../../rtl/cpudefs.v
 ../../rtl/zipbones.v
 ../../rtl/ex/fwb_slave.v
 fdebug.v

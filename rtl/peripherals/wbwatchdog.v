@@ -95,7 +95,7 @@ module	wbwatchdog #(
 	reg	f_past_valid;
 
 	initial	f_past_valid = 1'b0;
-	always @(posedge f_past_valid)
+	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
 	////////////////////////////////////////////////////////////////////////

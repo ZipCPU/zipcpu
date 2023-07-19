@@ -70,9 +70,10 @@ doc:
 
 .PHONY: formal
 ## {{{
-rtl:
+formal:
 	@echo "Running formal proofs";
 	+@$(SUBMAKE) bench/formal/
+	+@$(SUBMAKE) bench/formal/ report
 ## }}}
 
 .PHONY: rtl
@@ -122,8 +123,8 @@ bench: rtl sw
 
 .PHONY: test
 ## {{{
-test: bench sim
-	@echo "Running simulation tests"; $(SUBMAKE) sim/verilator test
+test: bench sim formal
+	@echo "Running simulation test suite"; $(SUBMAKE) sim/ test
 ## }}}
 
 # .PHONY: dhrystone

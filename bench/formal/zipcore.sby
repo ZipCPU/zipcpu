@@ -61,7 +61,7 @@ cmd += " -chparam OPT_START_HALTED %d" % (1 if "opt_halted"   in tags else 0)
 cmd += " -chparam OPT_DISTRIBUTED_REGS %d" % (0 if "bkregs"  in tags else 1)
 output(cmd)
 --pycode-end--
-
+proc -norom
 prep -top zipcore
 
 [files]
@@ -75,7 +75,6 @@ prep -top zipcore
 ../../rtl/ex/fwb_master.v
 ../../rtl/ex/fwb_slave.v
 #
-../../rtl/cpudefs.v
 f_idecode.v
 ffetch.v
 fmem.v

@@ -348,6 +348,7 @@ module	axilxbar #(
 		skidbuffer #(
 			// {{{
 			.DW(AW+3), .OPT_OUTREG(OPT_SKID_INPUT)
+			// }}}
 		) awskid(
 			// {{{
 			S_AXI_ACLK, !S_AXI_ARESETN,
@@ -386,6 +387,7 @@ module	axilxbar #(
 		skidbuffer #(
 			// {{{
 			.DW(DW+DW/8), .OPT_OUTREG(OPT_SKID_INPUT)
+			// }}}
 		) wskid
 			// {{{
 			(S_AXI_ACLK, !S_AXI_ARESETN,
@@ -469,6 +471,7 @@ module	axilxbar #(
 		skidbuffer #(
 			// {{{
 			.DW(AW+3), .OPT_OUTREG(OPT_SKID_INPUT)
+			// }}}
 		) arskid(
 			// {{{
 			S_AXI_ACLK, !S_AXI_ARESETN,
@@ -681,7 +684,7 @@ module	axilxbar #(
 
 		wire	linger;
 		if (OPT_LINGER == 0)
-		begin
+		begin : NO_LINGER
 			// {{{
 			assign	linger = 0;
 			// }}}
@@ -830,7 +833,7 @@ module	axilxbar #(
 
 		wire	linger;
 		if (OPT_LINGER == 0)
-		begin
+		begin : NO_LINGER
 			// {{{
 			assign	linger = 0;
 			// }}}
@@ -934,7 +937,7 @@ module	axilxbar #(
 		// }}}
 		// }}}
 	end for (N=NM; N<NMFULL; N=N+1)
-	begin
+	begin : UNUSED_SRINDEX
 		// {{{
 		assign	srindex[N] = 0;
 		// }}}
@@ -945,7 +948,7 @@ module	axilxbar #(
 	begin : SLAVE_WRITE_INDEX
 		// {{{
 		if (NM <= 1)
-		begin
+		begin : SINGLE_MASTER
 			// {{{
 			assign mwindex[M] = 0;
 			// }}}
@@ -972,7 +975,7 @@ module	axilxbar #(
 		end
 		// }}}
 	end for (M=NS; M<NSFULL; M=M+1)
-	begin
+	begin : NO_WINDEX
 		// {{{
 		assign	mwindex[M] = 0;
 		// }}}
@@ -983,7 +986,7 @@ module	axilxbar #(
 	begin : SLAVE_READ_INDEX
 		// {{{
 		if (NM <= 1)
-		begin
+		begin : SINGLE_MASTER
 			// {{{
 			assign mrindex[M] = 0;
 			// }}}

@@ -391,7 +391,7 @@ module	axilperiphs #(
 			// }}}
 		);
 
-	end else begin
+	end else begin : NO_APIC
 
 		assign	apic_data  = 0;
 		assign	apic_stall = 0;

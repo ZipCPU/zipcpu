@@ -20,7 +20,6 @@ hierarchy -top zipaxi -chparam OPT_CLKGATE 0
 prep -top zipaxi
 
 [files]
-cpudefs.v ../../rtl/cpudefs.v
 ../../rtl/zipaxi.v
 ../../rtl/ex/skidbuffer.v
 faxil_slave.v

@@ -439,12 +439,12 @@ module axilscope #(
 
 	generate
 	if (SYNCHRONOUS > 0)
-	begin
+	begin : GEN_SYNCHRONOUS
 		assign	dw_reset = bw_reset_request;
 		assign	dw_manual_trigger = bw_manual_trigger;
 		assign	dw_disable_trigger = bw_disable_trigger;
 		assign	bw_reset_complete = bw_reset_request;
-	end else begin
+	end else begin : GEN_ASYNC
 		reg		r_reset_complete;
 		(* ASYNC_REG = "TRUE" *) reg	[2:0]	q_iflags, r_iflags;
 
@@ -625,10 +625,11 @@ module axilscope #(
 	// address.
 	generate
 	if (STOPDELAY == 0)
+	begin : GEN_NOSTOP_DELAY
 		// No delay ... just assign the wires to our input lines
 		assign	wr_piped_data = i_data;
-	else if (STOPDELAY == 1)
-	begin
+	end else if (STOPDELAY == 1)
+	begin : GEN_SINGLESTOP_DELAY
 		//
 		// Delay by one means just register this once
 		reg	[(BUSW-1):0]	data_pipe;
@@ -637,7 +638,7 @@ module axilscope #(
 			data_pipe <= i_data;
 
 		assign	wr_piped_data = data_pipe;
-	end else begin
+	end else begin : GEN_PRG_STOP_DELAY
 		// Arbitrary delay ... use a longer pipe
 		reg	[(STOPDELAY*BUSW-1):0]	data_pipe;
 
@@ -746,8 +747,9 @@ module axilscope #(
 	// {{{
 	assign full_holdoff[(HOLDOFFBITS-1):0] = br_holdoff;
 	generate if (HOLDOFFBITS < 20)
+	begin : ZERO_HOLDOFFS
 		assign full_holdoff[19:(HOLDOFFBITS)] = 0;
-	endgenerate
+	end endgenerate
 	// }}}
 
 	assign		bw_lgmem = LGMEM;
@@ -806,12 +808,12 @@ module axilscope #(
 	// verilator lint_on UNUSED
 `ifdef	FORMAL
 	generate if (SYNCHRONOUS)
-	begin
+	begin : ASSUME_CLK
 
 		always @(*)
 			assume(i_data_clk == S_AXI_ACLK);
 
-	end else begin
+	end else begin : ASSUME_ASYN
 		localparam	CKSTEP_BITS = 3;
 		localparam [CKSTEP_BITS-1:0]
 				MAX_STEP = { 1'b0, {(CKSTEP_BITS-1){1'b1}} };

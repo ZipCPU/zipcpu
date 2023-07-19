@@ -147,7 +147,7 @@ module	addrdecode #(
 		// {{{
 		assign request[0] = i_valid;
 		// }}}
-	end else begin
+	end else begin : LCL_NOSEL
 		// {{{
 		reg	[NS-1:0]	r_request;
 
@@ -167,7 +167,7 @@ module	addrdecode #(
 	// request[NS]
 	// {{{
 	generate if (OPT_NONESEL)
-	begin
+	begin : OPT_NONESEL_REQUEST
 		reg	r_request_NS, r_none_sel;
 
 		always @(*)
@@ -188,7 +188,7 @@ module	addrdecode #(
 		end
 
 		assign request[NS] = r_request_NS;
-	end else begin
+	end else begin : NO_NONESEL_REQUEST
 		assign request[NS] = 1'b0;
 	end endgenerate
 	// }}}
@@ -196,7 +196,7 @@ module	addrdecode #(
 	// o_valid, o_addr, o_data, o_decode, o_stall
 	// {{{
 	generate if (OPT_REGISTERED)
-	begin
+	begin : GEN_REGISTERED_OUTS
 
 		// o_valid
 		// {{{
@@ -247,7 +247,7 @@ module	addrdecode #(
 		always @(*)
 			o_stall = (o_valid && i_stall);
 		// }}}
-	end else begin
+	end else begin : COMB_OUTPUTS
 
 		always @(*)
 		begin

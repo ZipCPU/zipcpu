@@ -21,7 +21,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
-//
 `default_nettype	none
 // }}}
 module sfifo #(
@@ -47,6 +46,18 @@ module sfifo #(
 		input	wire		i_rd,
 		output	reg [(BW-1):0]	o_data,
 		output	wire		o_empty	// True if FIFO is empty
+`ifdef	FORMAL
+`ifdef	F_PEEK
+		, output wire	[LGFLEN:0]	f_first_addr,
+		output	wire	[LGFLEN:0]	f_second_addr,
+		output	reg	[BW-1:0]	f_first_data, f_second_data,
+
+		output	reg			f_first_in_fifo,
+						f_second_in_fifo,
+		output	reg	[LGFLEN:0]	f_distance_to_first,
+						f_distance_to_second
+`endif
+`endif
 		// }}}
 	);
 
@@ -56,7 +67,6 @@ module sfifo #(
 	reg			r_full, r_empty;
 	reg	[(BW-1):0]	mem[0:(FLEN-1)];
 	reg	[LGFLEN:0]	wr_addr, rd_addr;
-	reg	[LGFLEN-1:0]	rd_next;
 
 	wire	w_wr = (i_wr && !o_full);
 	wire	w_rd = (i_rd && !o_empty);
@@ -132,9 +142,6 @@ module sfifo #(
 		rd_addr <= rd_addr + 1;
 	// }}}
 
-	always @(*)
-		rd_next = rd_addr[LGFLEN-1:0] + 1;
-
 	// r_empty, o_empty
 	// {{{
 	initial	r_empty = 1'b1;
@@ -174,6 +181,10 @@ module sfifo #(
 		// {{{
 		reg		bypass_valid;
 		reg [BW-1:0]	bypass_data, rd_data;
+		reg [LGFLEN-1:0]	rd_next;
+
+		always @(*)
+			rd_next = rd_addr[LGFLEN-1:0] + 1;
 
 		// Memory read, bypassing it if we must
 		// {{{
@@ -181,21 +192,25 @@ module sfifo #(
 		always @(posedge i_clk)
 		if (i_reset)
 			bypass_valid <= 0;
-		else begin
-			bypass_valid <= 1'b0;
+		else if (r_empty || i_rd)
+		begin
 			if (!i_wr)
 				bypass_valid <= 1'b0;
 			else if (r_empty || (i_rd && (o_fill == 1)))
 				bypass_valid <= 1'b1;
+			else
+				bypass_valid <= 1'b0;
 		end
 
 		always @(posedge i_clk)
+		if (r_empty || i_rd)
 			bypass_data <= i_data;
 
 		initial mem[0] = 0;
 		initial rd_data = 0;
 		always @(posedge i_clk)
-			rd_data <= mem[(w_rd)?rd_next : rd_addr[LGFLEN-1:0]];
+		if (w_rd)
+			rd_data <= mem[rd_next];
 
 		always @(*)
 		if (OPT_READ_ON_EMPTY && r_empty)
@@ -208,16 +223,6 @@ module sfifo #(
 		// }}}
 	end endgenerate
 	// }}}
-	// }}}
-
-	// Make Verilator happy
-	// {{{
-	// verilator coverage_off
-	// verilator lint_off UNUSED
-	wire	unused;
-	assign	unused = &{ 1'b0, rd_next };
-	// verilator lint_on  UNUSED
-	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +273,6 @@ module sfifo #(
 
 		assert(r_full  == (f_fill == {1'b1, {(LGFLEN){1'b0}} }));
 		assert(r_empty == (f_fill == 0));
-		assert(rd_next == f_next[LGFLEN-1:0]);
 
 		if (!OPT_WRITE_ON_FULL)
 		begin
@@ -320,17 +324,20 @@ module sfifo #(
 	//
 
 	// Verilator lint_off UNDRIVEN
-	(* anyconst *)	reg	[LGFLEN:0]	f_first_addr;
+	(* anyconst *)	reg	[LGFLEN:0]	fw_first_addr;
 	// Verilator lint_on  UNDRIVEN
-			reg	[LGFLEN:0]	f_second_addr;
+`ifndef	F_PEEK
+			wire	[LGFLEN:0]	f_first_addr;
+			wire	[LGFLEN:0]	f_second_addr;
 			reg	[BW-1:0]	f_first_data, f_second_data;
 
-	reg	f_first_addr_in_fifo,  f_first_in_fifo;
-	reg	f_second_addr_in_fifo, f_second_in_fifo;
+	reg	f_first_in_fifo, f_second_in_fifo;
 	reg	[LGFLEN:0]	f_distance_to_first, f_distance_to_second;
+`endif
+	reg	f_first_addr_in_fifo, f_second_addr_in_fifo;
 
-	always @(*)
-		f_second_addr = f_first_addr + 1;
+	assign f_first_addr  = fw_first_addr;
+	assign f_second_addr = f_first_addr + 1;
 
 	always @(*)
 	begin
@@ -368,6 +375,14 @@ module sfifo #(
 
 	always @(*)
 		f_second_in_fifo = (f_second_addr_in_fifo && (mem[f_second_addr[LGFLEN-1:0]] == f_second_data));
+
+	always @(*)
+	if (f_first_in_fifo && (o_fill == 1 || f_distance_to_first == 0))
+		assert(o_data == f_first_data);
+
+	always @(*)
+	if (f_second_in_fifo && (o_fill == 1 || f_distance_to_second == 0))
+		assert(o_data == f_second_data);
 
 	always @(posedge i_clk)
 	if (f_past_valid && !$past(i_reset))

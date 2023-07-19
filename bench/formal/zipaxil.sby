@@ -19,7 +19,6 @@ read -formal faxil_slave.v
 prep -top zipaxil
 
 [files]
-cpudefs.v ../../rtl/cpudefs.v
 ../../rtl/zipaxil.v
 ../../rtl/ex/skidbuffer.v
 faxil_slave.v

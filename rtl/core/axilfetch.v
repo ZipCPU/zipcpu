@@ -106,6 +106,12 @@ module	axilfetch #(
 	reg [FILLBITS:0]	out_fill;
 	reg	[C_AXI_DATA_WIDTH-1:0]	out_data;
 	reg	[C_AXI_DATA_WIDTH-1:0]	endian_swapped_rdata;
+`ifdef	FORMAL
+	wire				f_cache_valid;
+	wire	[C_AXI_DATA_WIDTH-1:0]	f_cache_data;
+	wire				f_cache_illegal;
+	wire	[LGFIFO:0]		f_cache_distance;
+`endif
 	// }}}
 
 	assign	fifo_reset = i_cpu_reset || i_clear_cache || i_new_pc;
@@ -334,6 +340,11 @@ module	axilfetch #(
 		always @(*)
 		if (M_AXI_RVALID || M_AXI_ARVALID || outstanding > 0)
 			assert(!o_valid);
+
+		assign	f_cache_valid   = 1'b0;
+		assign	f_cache_data    = 0;
+		assign	f_cache_illegal = 1'b0;
+		assign	f_cache_distance= 0;
 `endif
 		// }}}
 	end else if (FETCH_LIMIT == 2)
@@ -364,10 +375,26 @@ module	axilfetch #(
 		always @(posedge S_AXI_ACLK)
 		if (M_AXI_RVALID)
 			cache_data <= { M_AXI_RRESP[1], endian_swapped_rdata };
+`ifdef	FORMAL
+		assign	f_cache_valid = cache_valid;
+		assign	{ f_cache_illegal, f_cache_data }  = cache_data;
+		assign	f_cache_distance= 0;
+`endif
 		// }}}
 	end else begin : FIFO_FETCH
 		// {{{
 		// FIFO cache
+`ifdef	FORMAL
+		wire	[LGFIFO:0]	f_first_addr;
+		wire	[LGFIFO:0]	f_second_addr;
+		wire	[C_AXI_DATA_WIDTH:0]	f_first_data, f_second_data;
+
+		wire			f_first_in_fifo,
+					f_second_in_fifo;
+		wire	[LGFIFO:0]	f_distance_to_first,
+					f_distance_to_second;
+`endif
+
 
 		// Verilator lint_off CMPCONST
 		//	out_fill will only capture 0 or 1 if DATA_WIDTH == 32
@@ -385,8 +412,27 @@ module	axilfetch #(
 			.i_data({M_AXI_RRESP[1], endian_swapped_rdata }),
 			.o_full(ign_fifo_full), .o_fill(ign_fifo_fill),
 			.i_rd(fifo_rd),.o_data(fifo_data),.o_empty(fifo_empty)
+`ifdef	FORMAL
+			// {{{
+			, .f_first_addr(f_first_addr),
+			.f_second_addr(f_second_addr),
+			.f_first_data(f_first_data),
+			.f_second_data(f_second_data),
+
+			.f_first_in_fifo(f_first_in_fifo),
+			.f_second_in_fifo(f_second_in_fifo),
+			.f_distance_to_first(f_distance_to_first),
+			.f_distance_to_second(f_distance_to_second)
+			// }}}
+`endif
 			// }}}
 		);
+
+`ifdef	FORMAL
+		assign	{ f_cache_illegal, f_cache_data } = f_first_data;
+		assign	f_cache_distance = f_distance_to_first;
+		assign	f_cache_valid = f_first_in_fifo;
+`endif
 		// }}}
 	end endgenerate
 
@@ -951,8 +997,8 @@ module	axilfetch #(
 	begin : F_CACHE_CHECK
 		// {{{
 		reg	[AW-1:0]		f_cache_addr;
-		wire	[C_AXI_DATA_WIDTH-1:0]	f_cache_data;
-		wire				f_cache_illegal;
+		wire	[C_AXI_DATA_WIDTH-1:0]	f_cache_insn;
+		// wire				f_cache_illegal;
 		reg				f_cache_check;
 
 		always @(*)
@@ -962,15 +1008,14 @@ module	axilfetch #(
 
 			f_cache_check = (fc_pc[AW-1:AXILLSB]
 						== f_cache_addr[AW-1:AXILLSB]);
-			if (!DBLFETCH.cache_valid)
+			if (!f_cache_valid)
 				f_cache_check = 1'b0;
 		end
 
 		if (INSN_WIDTH == C_AXI_DATA_WIDTH)
 		begin : F_CACHEDATA
 
-			assign f_cache_data=DBLFETCH.cache_data[INSN_WIDTH-1:0];
-			assign f_cache_illegal= DBLFETCH.cache_data[INSN_WIDTH];
+			assign	f_cache_insn = f_cache_data;
 
 		end else begin : F_CACHEDATA_SHIFT
 
@@ -979,28 +1024,27 @@ module	axilfetch #(
 			always @(*)
 				ashift = (fc_pc - f_cache_addr) >> INSN_LSB;
 
-			assign	f_cache_data = DBLFETCH.cache_data >> (ashift * INSN_WIDTH);
-			assign f_cache_illegal= DBLFETCH.cache_data[C_AXI_DATA_WIDTH];
+			assign	f_cache_insn = f_cache_data >> (ashift * INSN_WIDTH);
 		end
 
 		always @(*)
 		if (f_cache_check && !o_illegal)
 		begin
-			assert(f_cache_data[INSN_WIDTH-1:0] == fc_insn);
+			assert(f_cache_insn[INSN_WIDTH-1:0] == fc_insn);
 			assert(f_cache_illegal == fc_illegal);
 		end
 		// }}}
 	end else begin : F_FIFO_CHECK
 		// {{{
 		reg	[AW-1:0]		f_cache_addr, f_fifo_addr;
-		reg	[C_AXI_DATA_WIDTH-1:0]	f_cache_data, f_cache_subdata,
+		reg	[C_AXI_DATA_WIDTH-1:0]	f_cache_subdata,
 						f_fifo_subdata;
-		reg				f_cache_illegal;
-		reg				f_cache_check, f_cache_valid;
-		reg	[LGFIFO:0]		f_cache_distance;
+		reg				f_cache_check;
+		// reg	[LGFIFO:0]		f_cache_distance;
 		reg				f_cache_assume;
 
 
+		/*
 		always @(*)
 			{ f_cache_illegal, f_cache_data }
 						= { FIFO_FETCH.fcache.f_first_data };
@@ -1010,6 +1054,7 @@ module	axilfetch #(
 
 		always @(*)
 			f_cache_valid = FIFO_FETCH.fcache.f_first_in_fifo;
+		*/
 
 		always @(*)
 		begin

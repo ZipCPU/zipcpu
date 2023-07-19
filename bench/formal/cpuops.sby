@@ -18,7 +18,6 @@ prep -top cpuops
 [files]
 ../../rtl/core/cpuops.v
 ../../rtl/core/mpyop.v
-../../rtl/cpudefs.v
 abs_mpy.v
 
 

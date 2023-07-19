@@ -57,7 +57,7 @@ elif ("bus512" in tags):
 	cmd += " -chparam BUS_WIDTH 512"
 output(cmd)
 --pycode-end--
-
+proc -norom
 prep -top dcache
 
 [files]

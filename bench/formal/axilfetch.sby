@@ -25,6 +25,7 @@ cvr: smtbmc
 
 [script]
 read -define AXILOPS
+read -define F_PEEK
 read -formal axilfetch.v
 read -formal sfifo.v
 read -formal faxil_master.v
