@@ -144,7 +144,7 @@ BENCHOBJD:= ../../bench/rtl/obj_dir
 ifneq ($(VERILATOR_ROOT),)
 VERILATOR:=$(VERILATOR_ROOT)/bin/verilator
 else
-VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | head -1 | sed -e " s/^.*=\s*//"')
+VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | tail -1 | sed -e " s/^.*=\s*//"')
 endif
 export	$(VERILATOR)
 VROOT   := $(VERILATOR_ROOT)
