@@ -162,9 +162,9 @@ module wbscope #(
 
 	assign	i_bus_data = i_wb_data;
 	assign	o_wb_stall = 1'b0;
-	assign	read_from_data = (i_wb_stb)&&(!i_wb_we)&&(i_wb_addr);
+	assign	read_from_data = i_wb_stb && !i_wb_we && i_wb_addr && (&i_wb_sel);
 	assign	write_stb = (i_wb_stb)&&(i_wb_we);
-	assign	write_to_control = (write_stb)&&(!i_wb_addr);
+	assign	write_to_control = write_stb && !i_wb_addr && (&i_wb_sel);
 
 	always @(posedge bus_clock)
 		read_address <= i_wb_addr;
