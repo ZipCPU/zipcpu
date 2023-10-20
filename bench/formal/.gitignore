@@ -23,6 +23,7 @@ axilfetch_*/
 axiicache_*/
 dblfetch_*/
 pfcache_*/
+pffifo_*/
 prefetch_*/
 
 ## Memory

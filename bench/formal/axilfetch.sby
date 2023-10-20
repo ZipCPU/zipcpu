@@ -53,5 +53,5 @@ prep -top axilfetch
 [files]
 ../../rtl/core/axilfetch.v
 faxil_master.v
-../../../../opencores/wb2axip/trunk/rtl/sfifo.v
+../../rtl/ex/sfifo.v
 ffetch.v
