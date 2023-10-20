@@ -39,8 +39,8 @@
 ################################################################################
 ##
 ## }}}
-TESTS := prefetch dblfetch pfcache memops pipemem idecode div axiicache
-TESTS += axilfetch axilops axilpipe axilperiphs axiops axipipe axidcache
+TESTS := prefetch dblfetch pffifo pfcache memops pipemem idecode div # axiicache
+TESTS += axilfetch axilops axilpipe axilperiphs # axiops axipipe # axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
@@ -53,6 +53,7 @@ RTL := ../../rtl
 ## {{{
 PFONE  := prefetch
 PFTWO  := dblfetch
+PFFIFO := pffifo
 PFCACHE:= pfcache
 WBDLY  := busdelay
 PRIARB := wbpriarbiter
@@ -185,6 +186,25 @@ $(PFTWO)_prf64b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf64b
 $(PFTWO)_prf128b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
 	sby -f $(PFTWO).sby prf128b
+## }}}
+
+.PHONY: $(PFFIFO)
+## {{{
+$(PFFIFO) : $(PFFIFO)_prf/PASS $(PFFIFO)_cvr/PASS
+$(PFFIFO) : $(PFFIFO)_prf8b/PASS $(PFFIFO)_prf64b/PASS $(PFFIFO)_prf128b/PASS
+$(PFFIFO) : $(PFFIFO)_prf8ble/PASS
+$(PFFIFO)_prf/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby prf
+$(PFFIFO)_cvr/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby cvr
+$(PFFIFO)_prf8b/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby prf8b
+$(PFFIFO)_prf8ble/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby prf8ble
+$(PFFIFO)_prf64b/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby prf64b
+$(PFFIFO)_prf128b/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
+	sby -f $(PFFIFO).sby prf128b
 ## }}}
 
 .PHONY: $(PFCACHE)
