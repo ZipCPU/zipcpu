@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2022-2023, Gisselquist Technology, LLC
+## Copyright (C) 2022-2024, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
@@ -61,7 +61,8 @@ if (-x "verilator") {
 	while($line = <VDEF>) {
 		if ($line =~ /VERILATOR_ROOT\s*=\s*(\S+)\s*$/) {
 			$verilatord = $1;
-			last;
+			# Don't end here, wait for the last VERILATOR_ROOT
+			# last;
 		}
 	} close VDEF;
 } else {
@@ -239,7 +240,7 @@ if ($ARGV[0] eq "") {
 	open(SUM,">> $report");
 	print(SUM "\nRunning all tests for cover:\n$linestr\n");
 	close SUM;
-} elsif (($ARGV[0] eq "icarus" or $ARGV eq "iverilog") and $ARGV[1] eq "all") {
+} elsif (($ARGV[0] eq "icarus" or $ARGV[0] eq "iverilog") and $ARGV[1] eq "all") {
 	$all_run  =1;
 	$verilator_flag = 0;
 	$coverage_flag  = 0;

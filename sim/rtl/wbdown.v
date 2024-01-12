@@ -6,13 +6,12 @@
 //
 // Purpose:	Downconvert a Wishbone bus from a wider width to a smaller one.
 //
-//
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -269,12 +268,15 @@ module wbdown #(
 		assign	o_wstall = (r_stb && (fifo_full || i_stall))
 					|| (s_count > 1);
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused;
 		assign	unused = &{ 1'b0, ign_fifo_fill, ign_fifo_empty };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////

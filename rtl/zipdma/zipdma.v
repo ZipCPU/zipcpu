@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -364,7 +364,7 @@ module zipdma #(
 		//
 		.i_wr_stall(s2mm_wr_stall),
 		.i_wr_ack(s2mm_wr_ack),
-		.i_wr_data(wb_idata),
+		.i_wr_data({(BUS_WIDTH){1'b0}}),
 		.i_wr_err(s2mm_wr_err)
 		// }}}
 		// }}}

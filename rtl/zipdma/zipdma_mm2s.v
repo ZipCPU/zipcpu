@@ -648,7 +648,7 @@ module	zipdma_mm2s #(
 	begin
 		next_fill = fill;
 		if (M_VALID)
-			next_fill = next_fill - M_BYTES;
+			next_fill = 0; // next_fill - M_BYTES;
 		if (i_rd_ack)
 			next_fill = next_fill + { 1'b0, rdack_size };
 	end

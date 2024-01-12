@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -1589,7 +1589,7 @@ module	idecode #(
 
 		`ASSERT(w_cond[3] == (iword[21:19] == 3'b000));
 		`ASSERT(w_cond[2:0] == iword[21:19]);
-		`ASSERT((w_wF == w_cond[3])||(w_dcdA[3:1]==3'b111));	// !!!
+		`ASSERT((w_wF == w_cond[3])||(w_dcdA[3:1]==3'b111));
 		// }}}
 	end else
 		`ASSERT(!w_fpu);

@@ -67,7 +67,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -625,11 +625,11 @@ module axilscope #(
 	// address.
 	generate
 	if (STOPDELAY == 0)
-	begin : GEN_NOSTOP_DELAY
+	begin : NO_STOPDLY
 		// No delay ... just assign the wires to our input lines
 		assign	wr_piped_data = i_data;
 	end else if (STOPDELAY == 1)
-	begin : GEN_SINGLESTOP_DELAY
+	begin : GEN_ONE_STOPDLY
 		//
 		// Delay by one means just register this once
 		reg	[(BUSW-1):0]	data_pipe;
@@ -638,7 +638,7 @@ module axilscope #(
 			data_pipe <= i_data;
 
 		assign	wr_piped_data = data_pipe;
-	end else begin : GEN_PRG_STOP_DELAY
+	end else begin : GEN_STOPDELAY
 		// Arbitrary delay ... use a longer pipe
 		reg	[(STOPDELAY*BUSW-1):0]	data_pipe;
 
@@ -747,7 +747,7 @@ module axilscope #(
 	// {{{
 	assign full_holdoff[(HOLDOFFBITS-1):0] = br_holdoff;
 	generate if (HOLDOFFBITS < 20)
-	begin : ZERO_HOLDOFFS
+	begin : GEN_FULL_HOLDOFF
 		assign full_holdoff[19:(HOLDOFFBITS)] = 0;
 	end endgenerate
 	// }}}
@@ -778,6 +778,7 @@ module axilscope #(
 		else // if (i_wb_addr) // Read from FIFO memory
 			o_bus_data <= nxt_mem; // mem[raddr+waddr];
 	end
+	// }}}
 
 	assign	S_AXI_RDATA = o_bus_data;
 	// }}}
@@ -799,6 +800,8 @@ module axilscope #(
 					&&(!br_level_interrupt);
 	// }}}
 
+	// Make verilator happy
+	// {{{
 	// verilator lint_off UNUSED
 	// Make verilator happy
 	wire		unused;
@@ -806,6 +809,7 @@ module axilscope #(
 		axi_awaddr[ADDR_LSBS-1:0],
 		i_bus_data[30:28], i_bus_data[25:0] };
 	// verilator lint_on UNUSED
+	// }}}
 `ifdef	FORMAL
 	generate if (SYNCHRONOUS)
 	begin : ASSUME_CLK
