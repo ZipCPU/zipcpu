@@ -882,7 +882,7 @@ module	zipaxi #(
 	//
 
 `ifndef	FORMAL
-	generate if (OPT_LGICACHE > 3)
+	generate if (OPT_LGICACHE > 4)
 	begin : INSN_CACHE
 
 		axiicache #(

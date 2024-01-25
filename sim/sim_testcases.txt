@@ -66,6 +66,18 @@ wbminchk64     WBMIN  cputest64.hex wbmin64-out.txt		BUS_WIDTH=64
 ##
 wbminchklp64   WBMIN  cputest64.hex wbminlp64-out.txt	OPT_LOWPOWER=1 BUS_WIDTH=64
 ##
+## Base the DBL-prefetch tests on the pipeline version
+axldblchk     AXLPIPE cputest.hex axldbl-out.txt	OPT_LGICACHE=1
+axdblchk      AXPIPE  cputest.hex axdbl-out.txt		OPT_LGICACHE=1
+wbbdblcheck   WBBPIPE cputest.hex wbbdbl-out.txt	OPT_LGICACHE=2
+wbdblcheck    WBPIPE  cputest.hex wbdbl-out.txt		OPT_LGICACHE=2
+##
+## Base the FIFO-prefetch tests on the pipeline version
+axlpfifchk     AXLPIPE cputest.hex axlpfif-out.txt	OPT_LGICACHE=4
+axpfifchk      AXPIPE  cputest.hex axpfif-out.txt	OPT_LGICACHE=4
+wbbpfifcheck   WBBPIPE cputest.hex wbbpfif-out.txt	OPT_LGICACHE=4
+wbpfifcheck    WBPIPE  cputest.hex wbpfif-out.txt	OPT_LGICACHE=4
+##
 axlpipecheck   AXLPIPE cputest.hex axlpipe-out.txt	# DUMP_TO_VCD=1 VCD_FILE="test/axlpipetrace.vcd"
 axpipecheck    AXPIPE  cputest.hex axpipe-out.txt
 wbbpipecheck   WBBPIPE cputest.hex wbbpipe-out.txt

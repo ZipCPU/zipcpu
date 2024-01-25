@@ -468,7 +468,7 @@ sub simline($) {
 
 		if ($errB == 0 and $verilator_flag) {
 			## {{{
-			system "cd $vobjd; make -f $tstname.mk";
+			system "cd $vobjd; make -j 12 -f $tstname.mk";
 			$errB = $?;
 			if ($errB == 0 and $lint_only == 0) {
 				$bldcmd = "g++ -Wall";

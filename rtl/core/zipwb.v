@@ -393,7 +393,7 @@ module	zipwb #(
 		pffifo #(
 			// {{{
 			.AW(ADDRESS_WIDTH),
-			.DATA_WIDTH(BUS_WIDTH),
+			.BUS_WIDTH(BUS_WIDTH),
 			.INSN_WIDTH(INSN_WIDTH),
 			.OPT_LOWPOWER(OPT_LOWPOWER),
 			.OPT_LITTLE_ENDIAN(1'b0)
