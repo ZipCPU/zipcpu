@@ -46,6 +46,7 @@ $path_cnt = @ARGV;
 ## {{{
 my $verilator_flag = 1;		# To run Icarus, run: perl sim_run.pl iverilog
 my $verilator_lint_only = 0;
+my $verilatord = "/home/sukruuzun/Downloads/oss-cad-suite/share/verilator";
 my $vobjd = "obj_dir";
 my $testd = "test";
 my $simd  = "rtl";
@@ -55,13 +56,14 @@ my $report= $testd . "/sim_report.txt";
 my $coverage_flag = 0;
 my $linestr="----------------------------------------";
 ## Need to find the base verilator directory
-my $verilatord;
+#my $verilatord;
 if (-x "verilator") {
 	open(VDEF,"verilator -V |");
 	while($line = <VDEF>) {
 		if ($line =~ /VERILATOR_ROOT\s*=\s*(\S+)\s*$/) {
 			$verilatord = $1;
-			last;
+			#die "verilator = $verilatord";
+			#last;
 		}
 	} close VDEF;
 } else {
