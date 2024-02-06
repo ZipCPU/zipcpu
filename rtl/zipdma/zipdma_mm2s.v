@@ -105,7 +105,7 @@ module	zipdma_mm2s #(
 				SZ_32B  = 2'b01,
 				SZ_BUS  = 2'b00;
 	localparam	WBLSB = $clog2(DW/8);
-	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size;
+	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size, second_size;
 	reg	[ADDRESS_WIDTH-1:0]	next_addr, last_request_addr;
 	reg	[WBLSB-1:0]	subaddr, rdack_subaddr;
 	reg	[DW/8-1:0]	nxtstb_sel, first_sel, first_sel_no_shift, base_sel, ibase_sel;
@@ -166,6 +166,7 @@ module	zipdma_mm2s #(
 		always @(*)
 		begin
 			nxtstb_size = rdstb_size;
+			second_size = r_transferlen[2:0] - (4 - {0, r_addr[1:0]});
 
 			case(r_size)
 				SZ_BYTE: nxtstb_size = 1;
@@ -178,16 +179,23 @@ module	zipdma_mm2s #(
 						nxtstb_size = (rdstb_len == 3) ? 1 : 2;
 				end
 				// Verilator lint_off WIDTH
-				SZ_32B: nxtstb_size = (rdstb_len >= 4 && rdstb_len < 8)
-								? (rdstb_len - 4) : 4;
+				SZ_32B: begin
+					if (r_transferlen < 8) begin
+						if (r_transferlen[1:0] + r_addr[1:0] == 0)
+							nxtstb_size = 4;
+						else
+							nxtstb_size = (second_size[2] == 1'b1) ? 4 : second_size;
+					end else begin
+						nxtstb_size = (rdstb_len >= 4 && rdstb_len < 8)
+									? (rdstb_len - 4) : 4;
+					end
+				end
 				SZ_BUS: begin
 					nxtstb_size = (DW/8);
 					if (DW/8 > rdstb_len - rdstb_size)
 						nxtstb_size =
 							{ 1'b0, rdstb_len[WBLSB:0] }
 							-{ 1'b0, rdstb_size[WBLSB:0]};
-					// if (o_rd_stb && nxtstb_size > (DW/8)-subaddr)
-					//	nxtstb_size = (DW/8)-subaddr;
 					end
 				// Verilator lint_on  WIDTH
 			endcase
@@ -913,7 +921,7 @@ module	zipdma_mm2s #(
 
 	always @(*) begin
 		assume(f_cfg_len > 0);
-		assume(f_cfg_size == 2'b10);	// Delete this line
+		assume(f_cfg_size == 2'b01);	// Delete this line
 		if (i_request && !o_busy)
 		begin
 			assume(i_inc  == f_cfg_inc);
