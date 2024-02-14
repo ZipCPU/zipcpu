@@ -105,7 +105,7 @@ module	zipdma_mm2s #(
 				SZ_32B  = 2'b01,
 				SZ_BUS  = 2'b00;
 	localparam	WBLSB = $clog2(DW/8);
-	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size, second_size;
+	reg	[WBLSB:0]	nxtstb_size, rdstb_size, rdack_size, first_size, last_size;
 	reg	[ADDRESS_WIDTH-1:0]	next_addr, last_request_addr;
 	reg	[WBLSB-1:0]	subaddr, rdack_subaddr;
 	reg	[DW/8-1:0]	nxtstb_sel, first_sel, first_sel_no_shift, base_sel, ibase_sel;
@@ -166,7 +166,7 @@ module	zipdma_mm2s #(
 		always @(*)
 		begin
 			nxtstb_size = rdstb_size;
-			second_size = r_transferlen[2:0] - (4 - {0, r_addr[1:0]});
+			last_size = r_addr[WBLSB-1:0] + r_transferlen[WBLSB-1:0];
 
 			case(r_size)
 				SZ_BYTE: nxtstb_size = 1;
@@ -180,11 +180,12 @@ module	zipdma_mm2s #(
 				end
 				// Verilator lint_off WIDTH
 				SZ_32B: begin
+					last_size[WBLSB:2] = 0;
 					if (r_transferlen < 8) begin
 						if (r_transferlen[1:0] + r_addr[1:0] == 0)
 							nxtstb_size = 4;
 						else
-							nxtstb_size = (second_size[2] == 1'b1) ? 4 : second_size;
+							nxtstb_size = (4 > rdstb_len - rdstb_size) ? last_size : 4;
 					end else begin
 						nxtstb_size = (rdstb_len >= 4 && rdstb_len < 8)
 									? (rdstb_len - 4) : 4;
@@ -877,11 +878,9 @@ module	zipdma_mm2s #(
 	reg [DW/8-1:0] 		f_base_sel;
 	reg	[F_LGCOUNT-1:0]	f_rcvd, f_sent;
 	reg	[WBLSB:0]	f_ack_size, f_stb_size;
-	//reg	[LGLENGTH:0]	r_transferlen;
-	//reg	[ADDRESS_WIDTH-1:0]	r_addr;
 	reg [F_LGCOUNT-1:0] f_outstanding_bytes;
 	reg f_stb_first, f_stb_last, f_ack_first, f_ack_last;
-	reg [WBLSB-1:0] f_excess_last_return;
+	(* keep *) reg [WBLSB-1:0] f_excess_last_return, lower_len_bits;
 
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
@@ -911,13 +910,6 @@ module	zipdma_mm2s #(
 		assume($stable(i_addr));
 		assume($stable(i_transferlen));
 	end
-
-	//always @(posedge i_clk)
-	//if (!o_busy && (!OPT_LOWPOWER || i_request))
-	//begin
-	//	r_transferlen <= i_transferlen;
-	//	r_addr <= i_addr;
-	//end
 
 	always @(*) begin
 		assume(f_cfg_len > 0);
@@ -964,6 +956,21 @@ module	zipdma_mm2s #(
 			end
 		end
 	end
+
+	always @(*)
+		if (!i_reset && o_busy && !o_err) begin
+			begin
+				case(r_size)
+					SZ_BYTE: assert(first_size == 1);
+					SZ_16B:  assert(first_size == (f_cfg_addr[0]) ? 1 : 2);
+					SZ_32B:  assert(first_size == 4 - f_cfg_addr[1:0]);
+					SZ_BUS:  assert(first_size == (DW/8) - f_cfg_addr[WBLSB-1:0]);
+				endcase
+
+				if (first_size > f_cfg_len)
+					assert(first_size == f_cfg_len);
+			end
+		end
 
 	always @(*) begin
 		if(!i_reset && o_busy && !o_err) begin
@@ -1079,7 +1086,7 @@ module	zipdma_mm2s #(
 	end
 
 	always @(*)
-	if (!i_reset && f_past_valid && o_rd_stb && r_inc)	// ??? Recap the below always block
+	if (!i_reset && f_past_valid && o_rd_stb && r_inc && !f_stb_last)	// ??? Recap the below always block
 	begin
 		assert(o_rd_sel != 0);
 
@@ -1267,20 +1274,22 @@ module	zipdma_mm2s #(
 		if (!i_reset && o_busy && !o_err && o_rd_cyc) begin
 			if (!f_stb_first) begin
 				case(r_size)	// Check the rdstb_len whether is odd or even
-					SZ_16B: begin 
-						if (f_cfg_len > 2 && rdstb_len != 0) begin	
-							assert(rdstb_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]) ? 1'b1 : 1'b0);
-						end 
+					SZ_16B: begin
+						if (f_cfg_len > 2 && rdstb_len != 0) begin
+							assert(rdstb_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]));
+						end
 					end
-					SZ_32B: begin 
-						if (f_cfg_len > 4 && rdstb_len != 0) begin	
-							assert(rdstb_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]) ? 1'b1 : 1'b0);
-						end 
+					SZ_32B: begin
+						if (f_cfg_len > 4 && rdstb_len != 0) begin
+							lower_len_bits = f_cfg_len - (4 - f_cfg_addr[1:0]);
+							assert(rdstb_len[1:0] == ((f_cfg_addr[1:0] == 2'b00) ? f_cfg_len[1:0] : lower_len_bits[1:0]));
+						end
 					end
-					SZ_BUS: begin 
-						if (f_cfg_len > DW/8 && rdstb_len != 0) begin	
-							assert(rdstb_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]) ? 1'b1 : 1'b0);
-						end 
+					SZ_BUS: begin
+						if (f_cfg_len > DW/8 && rdstb_len != 0) begin
+							lower_len_bits = f_cfg_len - (DW/8 - f_cfg_addr[WBLSB-1:0]);
+							assert(rdstb_len[WBLSB-1:0] == ((f_cfg_addr[WBLSB-1:0] == 0) ? f_cfg_len[WBLSB-1:0] : lower_len_bits[WBLSB-1:0]));
+						end
 					end
 				endcase
 				if (f_stb_last) begin
@@ -1294,7 +1303,7 @@ module	zipdma_mm2s #(
 			end
 			if (!f_ack_first) begin
 				if (r_size != 2'b11) begin
-					assert(rdack_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]) ? 1'b1 : 1'b0);
+					assert(rdack_len[0] == (f_cfg_addr[0] ^ f_cfg_len[0]));
 				end
 				if (f_ack_last) begin
 					case(r_size)
@@ -1353,8 +1362,8 @@ module	zipdma_mm2s #(
 			case(r_size)
 				SZ_BYTE: f_rcvd <= f_rcvd + 1;
 				SZ_16B:  f_rcvd <= f_rcvd + (f_cfg_len < 2) ? 1 : (2 - f_cfg_addr[0]);
-				SZ_32B:  f_rcvd <= f_rcvd + (f_cfg_len < 4) ? f_cfg_len : (4 - f_cfg_addr[1:0]);
-				SZ_BUS:  f_rcvd <= f_rcvd + (f_cfg_len < DW/8) ? f_cfg_len : (DW/8 - f_cfg_addr[WBLSB-1:0]);
+				SZ_32B:  f_rcvd <= f_rcvd + (f_cfg_len < (4 - f_cfg_addr[1:0])) ? f_cfg_len : (4 - f_cfg_addr[1:0]);
+				SZ_BUS:  f_rcvd <= f_rcvd + (f_cfg_len < (DW/8 - f_cfg_addr[WBLSB-1:0])) ? f_cfg_len : (DW/8 - f_cfg_addr[WBLSB-1:0]);
 			endcase
 		end else if (f_ack_last)
 		begin
