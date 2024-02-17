@@ -913,7 +913,7 @@ module	zipdma_mm2s #(
 
 	always @(*) begin
 		assume(f_cfg_len > 0);
-		assume(f_cfg_size == 2'b01);	// Delete this line
+		assume(f_cfg_size == 2'b00);	// Delete this line
 		if (i_request && !o_busy)
 		begin
 			assume(i_inc  == f_cfg_inc);
@@ -1053,14 +1053,26 @@ module	zipdma_mm2s #(
 				SZ_BYTE: f_base_sel = { {(DW/8-1){1'b0}}, 1'h1 } << subaddr;
 				SZ_16B:  f_base_sel = { {(DW/8-2){1'b0}}, 2'h3 } << { subaddr[WBLSB-1:1], 1'b0 };
 				SZ_32B:  f_base_sel = { {(DW/8-4){1'b0}}, 4'hf } << { subaddr[WBLSB-1:1], 2'b00 };
-				SZ_BUS:  f_base_sel = { (DW/8){1'b1} } << subaddr;
+				SZ_BUS: begin
+					if (r_inc || (!r_inc && f_stb_first)) begin
+						f_base_sel = { (DW/8){1'b1} } << subaddr;
+					end else begin
+						f_base_sel = { (DW/8){1'b1} };
+					end
+				end
 			endcase
 		end else begin
 			case(r_size)
 				SZ_BYTE: f_base_sel = { 1'h1, {(DW/8-1){1'b0}} } >> subaddr;
 				SZ_16B:  f_base_sel = { 2'h3, {(DW/8-2){1'b0}} } >> { subaddr[WBLSB-1:1], 1'b0 };
 				SZ_32B:  f_base_sel = { 4'hf, {(DW/8-4){1'b0}} } >> { subaddr[WBLSB-1:2], 2'b00 };
-				SZ_BUS:  f_base_sel = { (DW/8){1'b1} } >> subaddr;
+				SZ_BUS: begin
+					if (r_inc || (!r_inc && f_stb_first)) begin
+						f_base_sel = { (DW/8){1'b1} } >> subaddr;
+					end else begin
+						f_base_sel = { (DW/8){1'b1} };
+					end
+				end
 			endcase
 		end
 	end
@@ -1082,7 +1094,11 @@ module	zipdma_mm2s #(
 
 	always @(posedge i_clk)
 	if (!i_reset && $past(o_busy) && o_busy && !o_err && rdstb_len > 0) begin
-		assert(base_sel == f_base_sel);
+		if (r_size == 2'b00) begin
+			assert(base_sel == { (DW/8){1'b1} });
+		end else begin
+			assert(base_sel == f_base_sel);
+		end
 	end
 
 	always @(*)
@@ -1117,7 +1133,7 @@ module	zipdma_mm2s #(
 					end
 				end
 				SZ_BUS: begin
-					if (f_cfg_len < 8) begin
+					if (f_cfg_len < DW/8) begin
 						assert(o_rd_sel == { (DW/8){1'b1} } << (DW/8 - f_cfg_len));
 					end else if (rdstb_len == f_cfg_len) begin
 						assert(o_rd_sel == { (DW/8){1'b1} } << subaddr);
@@ -1164,7 +1180,7 @@ module	zipdma_mm2s #(
 					end
 				end
 				SZ_BUS: begin
-					if (f_cfg_len < 8) begin
+					if (f_cfg_len < DW/8) begin
 						if (i_addr[WBLSB-1:0] == 0) begin
 							assert(o_rd_sel == { (DW/8){1'b1} } >> (DW/8 - f_cfg_len - subaddr));
 						end else begin
@@ -1558,13 +1574,12 @@ module	zipdma_mm2s #(
 		fm_shifted = sreg << (8*fm_shift);
 
 	always @(*)
-	if (!i_reset && fm_check)
-	begin
-		if (OPT_LITTLE_ENDIAN)
-		begin
+	if (!i_reset && fm_check) begin
+		if (OPT_LITTLE_ENDIAN) begin
 			assert(fm_shifted[7:0] == fc_byte);
-		end else
+		end else begin
 			assert(fm_shifted[DW-1:DW-8] == fc_byte);
+		end
 	end
 `endif
 	// }}}
