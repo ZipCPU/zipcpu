@@ -41,7 +41,7 @@
 // }}}
 module	zipdma_mm2s #(
 		// {{{
-		parameter [0:0] CONTRACT = 1'b0,
+		parameter [0:0] CONTRACT = 1'b1,
 		parameter	ADDRESS_WIDTH = 30,
 		parameter	BUS_WIDTH = 64,
 		parameter	LGLENGTH = 10,
@@ -913,7 +913,7 @@ module	zipdma_mm2s #(
 
 	always @(*) begin
 		assume(f_cfg_len > 0);
-		assume(f_cfg_size == 2'b00);	// Delete this line
+		//assume(f_cfg_size == 2'b00);	// Delete this line
 		if (i_request && !o_busy)
 		begin
 			assume(i_inc  == f_cfg_inc);
