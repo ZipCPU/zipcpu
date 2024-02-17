@@ -1,21 +1,21 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Mon Jan 29 09:32:16 2024
+[*] Wed Feb 14 18:39:41 2024
 [*]
-[dumpfile] "/home/sukruuzun/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s_prf/engine_0/trace.vcd"
-[dumpfile_mtime] "Mon Jan 29 09:22:32 2024"
-[dumpfile_size] 47468
-[savefile] "/home/sukruuzun/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s.gtkw"
+[dumpfile] "/home/sukru/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s_prf/engine_0/trace.vcd"
+[dumpfile_mtime] "Wed Feb 14 18:35:18 2024"
+[dumpfile_size] 46189
+[savefile] "/home/sukru/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s.gtkw"
 [timestart] 0
-[size] 1920 1006
+[size] 1920 1123
 [pos] -1 -1
-*-2.989852 50 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-4.137919 50 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] zipdma_mm2s.
 [treeopen] zipdma_mm2s.fwb.
-[sst_width] 276
+[sst_width] 297
 [signals_width] 334
 [sst_expanded] 1
-[sst_vpaned_height] 309
+[sst_vpaned_height] 351
 @28
 zipdma_mm2s.i_clk
 zipdma_mm2s.i_reset
@@ -138,6 +138,12 @@ zipdma_mm2s.M_DATA[63:0]
 @24
 zipdma_mm2s.f_excess_last_return[2:0]
 @28
+zipdma_mm2s.lower_bits[2:0]
+@22
+zipdma_mm2s.first_size[3:0]
+@24
+zipdma_mm2s.last_size[1:0]
+@28
 zipdma_mm2s.f_stb_first
 zipdma_mm2s.f_stb_last
 zipdma_mm2s.f_ack_first
@@ -165,12 +171,41 @@ zipdma_mm2s.wb_outstanding[10:0]
 zipdma_mm2s.f_outstanding_bytes[10:0]
 @200
 -
-@24
+@c00025
 zipdma_mm2s.f_cfg_len[10:0]
+@29
+(0)zipdma_mm2s.f_cfg_len[10:0]
+(1)zipdma_mm2s.f_cfg_len[10:0]
+(2)zipdma_mm2s.f_cfg_len[10:0]
+(3)zipdma_mm2s.f_cfg_len[10:0]
+(4)zipdma_mm2s.f_cfg_len[10:0]
+(5)zipdma_mm2s.f_cfg_len[10:0]
+(6)zipdma_mm2s.f_cfg_len[10:0]
+(7)zipdma_mm2s.f_cfg_len[10:0]
+(8)zipdma_mm2s.f_cfg_len[10:0]
+(9)zipdma_mm2s.f_cfg_len[10:0]
+(10)zipdma_mm2s.f_cfg_len[10:0]
+@1401201
+-group_end
 @22
 zipdma_mm2s.rdstb_size[3:0]
-@24
+@c00024
 zipdma_mm2s.rdstb_len[10:0]
+@28
+(0)zipdma_mm2s.rdstb_len[10:0]
+(1)zipdma_mm2s.rdstb_len[10:0]
+(2)zipdma_mm2s.rdstb_len[10:0]
+(3)zipdma_mm2s.rdstb_len[10:0]
+(4)zipdma_mm2s.rdstb_len[10:0]
+(5)zipdma_mm2s.rdstb_len[10:0]
+(6)zipdma_mm2s.rdstb_len[10:0]
+(7)zipdma_mm2s.rdstb_len[10:0]
+(8)zipdma_mm2s.rdstb_len[10:0]
+(9)zipdma_mm2s.rdstb_len[10:0]
+(10)zipdma_mm2s.rdstb_len[10:0]
+@1401200
+-group_end
+@24
 zipdma_mm2s.rdack_size[3:0]
 zipdma_mm2s.rdack_len[10:0]
 @200
