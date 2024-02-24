@@ -297,7 +297,7 @@ module	zipdma_mm2s #(
 		rdstb_len  <= 0;
 		if (!OPT_LOWPOWER || i_request)
 		begin
-			if(i_transferlen + i_addr >= (1 << ADDRESS_WIDTH)) begin
+			if({ 20'h00000, i_transferlen } + i_addr >= (1 << ADDRESS_WIDTH)) begin
 				o_err <= 1'b1;
 				o_rd_cyc <= 1'b0;
 				o_rd_stb <= 1'b0;
@@ -891,13 +891,9 @@ module	zipdma_mm2s #(
 		assume(i_reset);
 
 	////////////////////////////////////////////////////////////////////////
-	//
 	// Configuration properties
-	// {{{
 	////////////////////////////////////////////////////////////////////////
-	//
-	//
-
+	// {{{
 	always @(posedge i_clk)
 	if (!f_past_valid || $past(i_reset) || $past(o_err))
 	begin
@@ -928,7 +924,12 @@ module	zipdma_mm2s #(
 			assert(r_transferlen == f_cfg_len);
 		end
 	end
+	// }}}
 
+	////////////////////////////////////////////////////////////////////////
+	// f_stb_first, f_stb_last, f_ack_first, f_ack_last
+	////////////////////////////////////////////////////////////////////////
+	// {{{
 	always @(*) begin
 		if (!i_reset && o_busy && !o_err) begin
 			f_stb_first <= (rdstb_len == f_cfg_len);
@@ -956,7 +957,33 @@ module	zipdma_mm2s #(
 			end
 		end
 	end
+	// }}}
 
+	////////////////////////////////////////////////////////////////////////
+	// f_excess_last_return
+	////////////////////////////////////////////////////////////////////////
+	// {{{
+	always @(*) begin
+		f_excess_last_return = f_cfg_addr + f_cfg_len;
+		case(r_size)
+			SZ_BYTE: f_excess_last_return = 0;
+			SZ_16B:  begin
+				f_excess_last_return = 2 - f_excess_last_return[0];
+				f_excess_last_return[WBLSB-1:1] = 0;
+			end
+			SZ_32B:  begin
+				f_excess_last_return = 4 - f_excess_last_return[1:0];
+				f_excess_last_return[WBLSB-1:2] = 0;
+			end
+			SZ_BUS:  f_excess_last_return = (DW/8) - f_excess_last_return[WBLSB-1:0];
+		endcase
+	end
+	// }}}
+
+	////////////////////////////////////////////////////////////////////////
+	// first_size
+	////////////////////////////////////////////////////////////////////////
+	// {{{
 	always @(*)
 		if (!i_reset && o_busy && !o_err) begin
 			begin
@@ -971,7 +998,12 @@ module	zipdma_mm2s #(
 					assert(first_size == f_cfg_len);
 			end
 		end
+	// }}}
 
+	////////////////////////////////////////////////////////////////////////
+	// o_rd_addr, subaddr
+	////////////////////////////////////////////////////////////////////////
+	// {{{
 	always @(*) begin
 		if(!i_reset && o_busy && !o_err) begin
 			if (!r_inc)
@@ -984,24 +1016,22 @@ module	zipdma_mm2s #(
 	end
 
 	always @(*) begin
-		if (!i_reset && o_busy && r_inc)
-			assert( {1'b0, f_cfg_addr} + f_rcvd <= { 1'b1, { (ADDRESS_WIDTH){1'b0} }});
+		if (!i_reset && o_busy && !o_err)
+			if(r_inc && r_size == SZ_BUS && (wb_outstanding > 0 || f_rcvd > 0) && rdstb_len != 0)
+				assert(subaddr == 0);
 	end
 
 	always @(*) begin
-		if (!i_reset && o_busy && !o_err && !M_VALID)
-		assert(fill == 0);
+		if (!i_reset && o_busy && r_inc)
+			assert( {1'b0, f_cfg_addr} + f_rcvd <= { 1'b1, { (ADDRESS_WIDTH){1'b0} }});
 	end
-
 	// }}}
+
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Wishbone properties
 	// {{{
 	////////////////////////////////////////////////////////////////////////
-	//
-	//
-
 	fwb_master #(
 		// {{{
 		.AW(AW), .DW(DW), .F_LGDEPTH(F_LGDEPTH),
@@ -1034,15 +1064,61 @@ module	zipdma_mm2s #(
 	always @(*)
 		assert(!o_rd_we);
 
-	always @(posedge i_clk) begin
-		if (!i_reset && $past(o_busy) && o_busy && !o_err)
-			assert(base_sel != 0);
+	always @(*) begin
+		if (!i_reset && !o_busy)
+			assert(!o_rd_cyc);
+	end
+	// }}}
+
+	////////////////////////////////////////////////////////////////////////
+	// wb_outstanding
+	////////////////////////////////////////////////////////////////////////
+	// {{{
+	always @(*)
+	if (!i_reset && f_past_valid && o_rd_cyc)
+		assert(fwb_outstanding == wb_outstanding);
+
+	always @(*) begin
+		if (wb_outstanding == 0)
+			f_outstanding_bytes = 0;
+		else begin
+			case(r_size)
+				SZ_BYTE: f_outstanding_bytes = wb_outstanding;
+				SZ_16B: begin
+					if (!f_ack_first)
+						f_outstanding_bytes = wb_outstanding * 2;
+					else
+						f_outstanding_bytes = wb_outstanding * 2 - f_cfg_addr[0];
+				end
+				SZ_32B: begin
+					if (!f_ack_first)
+						f_outstanding_bytes = wb_outstanding * 4;
+					else
+						f_outstanding_bytes = wb_outstanding * 4 - f_cfg_addr[1:0];
+				end
+				SZ_BUS: begin
+					if (!f_ack_first)
+						f_outstanding_bytes = wb_outstanding * (DW/8);
+					else
+						f_outstanding_bytes = wb_outstanding * (DW/8) - f_cfg_addr[WBLSB-1:0];
+				end
+			endcase
+		end
 	end
 
 	always @(*) begin
 		if (!i_reset && o_busy && !o_err)
-			if(r_inc && r_size == SZ_BUS && (wb_outstanding > 0 || f_rcvd > 0) && rdstb_len != 0)
-				assert(subaddr == 0);
+			assert(f_outstanding_bytes <= f_cfg_len + ((rdstb_len == 0) ? f_excess_last_return : 0));
+	end
+	// }}}
+
+	////////////////////////////////////////////////////////////////////////
+	// base_sel
+	////////////////////////////////////////////////////////////////////////
+	// {{{
+	always @(posedge i_clk) begin
+		if (!i_reset && $past(o_busy) && o_busy && !o_err)
+			assert(base_sel != 0);
 	end
 
 	always @(*)
@@ -1077,6 +1153,20 @@ module	zipdma_mm2s #(
 		end
 	end
 
+	always @(posedge i_clk)
+	if (!i_reset && $past(o_busy) && o_busy && !o_err && rdstb_len > 0) begin
+		if (r_size == 2'b00) begin
+			assert(base_sel == { (DW/8){1'b1} });
+		end else begin
+			assert(base_sel == f_base_sel);
+		end
+	end
+	// }}}
+
+	////////////////////////////////////////////////////////////////////////
+	// o_rd_sel
+	////////////////////////////////////////////////////////////////////////
+	// {{{
 	always @(*) begin
 		if (!i_reset && o_busy && !o_err) begin
 			assert(fill < (DW/8) + (M_VALID ? DW/8 : 0));
@@ -1089,15 +1179,6 @@ module	zipdma_mm2s #(
 					SZ_32B:  assert(o_rd_sel == (f_cfg_len < 4) ? first_sel : base_sel);
 					SZ_BUS:  assert(o_rd_sel == (f_cfg_len < DW/8) ? first_sel : base_sel);
 				endcase
-		end
-	end
-
-	always @(posedge i_clk)
-	if (!i_reset && $past(o_busy) && o_busy && !o_err && rdstb_len > 0) begin
-		if (r_size == 2'b00) begin
-			assert(base_sel == { (DW/8){1'b1} });
-		end else begin
-			assert(base_sel == f_base_sel);
 		end
 	end
 
@@ -1199,8 +1280,11 @@ module	zipdma_mm2s #(
 			endcase
 		end
 	end
+	// }}}
 
-	// f_stb_size
+	////////////////////////////////////////////////////////////////////////
+	// rdstb_size
+	////////////////////////////////////////////////////////////////////////
 	// {{{
 	always @(*)
 	begin
@@ -1219,7 +1303,6 @@ module	zipdma_mm2s #(
 				SZ_BUS:  f_stb_size = (DW/8 - r_addr[WBLSB-1:0]);
 			endcase
 	end
-	// }}}
 
 	always @(*)
 	if (!i_reset && o_busy && !o_err && o_rd_cyc && o_rd_stb)
@@ -1234,58 +1317,54 @@ module	zipdma_mm2s #(
 	end
 
 	always @(*) begin
-		if (!i_reset && !o_busy)
-			assert(!o_rd_cyc);
+		if(!i_reset && o_busy && !o_err)
+			if (rdstb_len > 0)
+				assert(rdstb_size <= rdstb_len);
+	end
+	// }}}
+
+	////////////////////////////////////////////////////////////////////////
+	// rdack_size
+	////////////////////////////////////////////////////////////////////////
+	// {{{
+	always @(*)
+	begin
+		case(r_size)
+			SZ_BYTE: f_ack_size = 1;
+			SZ_16B:  f_ack_size = 2;
+			SZ_32B:  f_ack_size = 4;
+			SZ_BUS:  f_ack_size = DW/8;
+		endcase
+
+		if (f_rcvd == 0)
+			case(r_size)
+				SZ_BYTE: f_ack_size =  1;
+				SZ_16B:  f_ack_size = (2 - r_addr[  0]);
+				SZ_32B:  f_ack_size = (4 - r_addr[1:0]);
+				SZ_BUS:  f_ack_size = (DW/8 - r_addr[WBLSB-1:0]);
+			endcase
+
+		if (f_rcvd + f_ack_size > r_transferlen)
+			f_ack_size = r_transferlen - f_rcvd;
 	end
 
 	always @(*)
-	if (!i_reset && f_past_valid && o_rd_cyc)
-		assert(fwb_outstanding == wb_outstanding);
-
-	always @(*) begin
-		if (wb_outstanding == 0)
-			f_outstanding_bytes = 0;
-		else begin
-			case(r_size)
-				SZ_BYTE: f_outstanding_bytes = wb_outstanding;
-				SZ_16B: begin
-					if (!f_ack_first)
-						f_outstanding_bytes = wb_outstanding * 2;
-					else
-						f_outstanding_bytes = wb_outstanding * 2 - f_cfg_addr[0];
-				end
-				SZ_32B: begin
-					if (!f_ack_first)
-						f_outstanding_bytes = wb_outstanding * 4;
-					else
-						f_outstanding_bytes = wb_outstanding * 4 - f_cfg_addr[1:0];
-				end
-				SZ_BUS: begin
-					if (!f_ack_first)
-						f_outstanding_bytes = wb_outstanding * (DW/8);
-					else
-						f_outstanding_bytes = wb_outstanding * (DW/8) - f_cfg_addr[WBLSB-1:0];
-				end
-			endcase
+	if (!i_reset && o_busy && !o_err && o_rd_cyc)
+	begin
+		if (f_ack_first && f_ack_last) begin	// means that packet is one word only
+			assert(rdack_size == f_cfg_len);
+		end else if (f_ack_last) begin
+			assert(rdack_size == rdack_len);
+		end else begin
+			assert(rdack_size == f_ack_size);
 		end
 	end
+	// }}}
 
-	always @(*) begin
-		f_excess_last_return = f_cfg_addr + f_cfg_len;
-		case(r_size)
-			SZ_BYTE: f_excess_last_return = 0;
-			SZ_16B:  begin
-				f_excess_last_return = 2 - f_excess_last_return[0];
-				f_excess_last_return[WBLSB-1:1] = 0;
-			end
-			SZ_32B:  begin
-				f_excess_last_return = 4 - f_excess_last_return[1:0];
-				f_excess_last_return[WBLSB-1:2] = 0;
-			end
-			SZ_BUS:  f_excess_last_return = (DW/8) - f_excess_last_return[WBLSB-1:0];
-		endcase
-	end
-
+	////////////////////////////////////////////////////////////////////////
+	// rdstb_len, rdack_len
+	////////////////////////////////////////////////////////////////////////
+	// {{{
 	always @(*) begin
 		if (!i_reset && o_busy && !o_err && o_rd_cyc) begin
 			if (!f_stb_first) begin
@@ -1334,11 +1413,6 @@ module	zipdma_mm2s #(
 	end
 
 	always @(*) begin
-		if (!i_reset && o_busy && !o_err)
-			assert(f_outstanding_bytes <= f_cfg_len + ((rdstb_len == 0) ? f_excess_last_return : 0));
-	end
-
-	always @(*) begin
 		if(!i_reset && o_busy && !o_err && !f_ack_first) begin
 			assert(f_rcvd <= f_cfg_len + DW/8 - 1);
 			if(rdstb_len != 0) begin
@@ -1360,12 +1434,15 @@ module	zipdma_mm2s #(
 	end
 
 	always @(*) begin
-		if(!i_reset && o_busy && !o_err)
-			if (rdstb_len > 0)
-				assert(rdstb_size <= rdstb_len);
+		if(!i_reset && o_busy && !o_err) begin
+			assert(rdstb_len != 0 || !o_rd_stb);
+		end
 	end
+	// }}}
 
+	////////////////////////////////////////////////////////////////////////
 	// f_rcvd
+	////////////////////////////////////////////////////////////////////////
 	// {{{
 	initial	f_rcvd = 0;
 	always @(posedge i_clk)
@@ -1406,49 +1483,6 @@ module	zipdma_mm2s #(
 	end
 	// }}}
 
-	// f_ack_size
-	// {{{
-	always @(*)
-	begin
-		case(r_size)
-			SZ_BYTE: f_ack_size = 1;
-			SZ_16B:  f_ack_size = 2;
-			SZ_32B:  f_ack_size = 4;
-			SZ_BUS:  f_ack_size = DW/8;
-		endcase
-
-		if (f_rcvd == 0)
-			case(r_size)
-				SZ_BYTE: f_ack_size =  1;
-				SZ_16B:  f_ack_size = (2 - r_addr[  0]);
-				SZ_32B:  f_ack_size = (4 - r_addr[1:0]);
-				SZ_BUS:  f_ack_size = (DW/8 - r_addr[WBLSB-1:0]);
-			endcase
-
-		if (f_rcvd + f_ack_size > r_transferlen)
-			f_ack_size = r_transferlen - f_rcvd;
-	end
-	// }}}
-
-	always @(*)
-	if (!i_reset && o_busy && !o_err && o_rd_cyc)
-	begin
-		if (f_ack_first && f_ack_last) begin	// means that packet is one word only
-			assert(rdack_size == f_cfg_len);
-		end else if (f_ack_last) begin
-			assert(rdack_size == rdack_len);
-		end else begin
-			assert(rdack_size == f_ack_size);
-		end
-	end
-
-	always @(*) begin
-		if(!i_reset && o_busy && !o_err) begin
-			assert(rdstb_len != 0 || !o_rd_stb);
-		end
-	end
-
-	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Outgoing stream properties
@@ -1459,6 +1493,11 @@ module	zipdma_mm2s #(
 	if (!f_past_valid || $past(i_reset))
 	begin
 		assert(!M_VALID);
+	end
+
+	always @(*) begin
+		if (!i_reset && o_busy && !o_err && !M_VALID)
+		assert(fill == 0);
 	end
 
 	always @(*)
