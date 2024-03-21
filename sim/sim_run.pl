@@ -232,12 +232,15 @@ if ($ARGV[0] eq "") {
 	print(SUM "\nRunning all tests:\n$linestr\n");
 	close SUM;
 } elsif ($ARGV[0] eq "cover" or $ARGV[0] =~ /^cover/i) {
-	$all_run  =1;
+	$all_run = ($ARGV[1] eq "all" or $ARGV[1] eq "") ? 1 : 0;
 	if ($verilatord eq "" or ! -d $verilatord) {
 		die "No verilator install directory found at $verilatord";
 	}
 	$verilator_flag = 1;
 	$coverage_flag  = 1;
+	@array = @ARGV;
+	# Remove the "Cover" flag
+	splice(@array, 0, 1);
 	open(SUM,">> $report");
 	print(SUM "\nRunning all tests for cover:\n$linestr\n");
 	close SUM;
