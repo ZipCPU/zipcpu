@@ -970,7 +970,6 @@ module	zipaxil #(
 	// Assign values to the (unused) M_INSN_* write ports
 	// {{{
 	assign	M_INSN_AWVALID = 0;
-	assign	M_INSN_AWVALID = 0;
 	assign	M_INSN_AWADDR  = 0;
 	assign	M_INSN_AWPROT  = 0;
 	//
