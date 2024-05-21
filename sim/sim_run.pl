@@ -649,6 +649,7 @@ if ($all_run) {
 	open(TL,"sim_testcases.txt");
 	while($line = <TL>) {
 		next if ($line =~ /^\s*#/);
+		next if ($line =~ /^\s*$/);
 		# print "TEST LINE: $line";
 		simline($line);
 	}

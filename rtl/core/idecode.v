@@ -80,8 +80,8 @@ module	idecode #(
 		output	wire	[(AW+1):0]	o_branch_pc,
 		output	wire		o_ljmp,
 		output	wire		o_pipe,
-		output	reg		o_sim	   /* verilator public_flat */,
-		output	reg	[22:0]	o_sim_immv /* verilator public_flat */
+		output	reg		o_sim,
+		output	reg	[22:0]	o_sim_immv
 `ifdef	FORMAL
 		, output	reg	[31:0]	f_insn_word,
 		output	reg		f_insn_gie,

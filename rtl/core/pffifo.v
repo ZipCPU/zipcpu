@@ -49,11 +49,11 @@ module	pffifo #(
 		parameter	LGFIFO = 4,
 		parameter	AW = 30,
 		parameter	BUS_WIDTH = 128, // Num data bits on the bus
+		parameter	INSN_WIDTH = 32,
 		parameter [0:0]	OPT_LITTLE_ENDIAN = 1'b0,
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
 		parameter [0:0]	OPT_ASYNC_READ = (BUS_WIDTH != INSN_WIDTH),
 		localparam	BUSW = BUS_WIDTH,
-		parameter	INSN_WIDTH = 32,
 		localparam	WBLSB = $clog2(BUS_WIDTH/8),
 		localparam	ADDRESS_WIDTH=AW + WBLSB
 		// }}}
