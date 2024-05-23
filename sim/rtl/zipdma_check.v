@@ -73,7 +73,6 @@ module zipdma_check #(
     reg [DW-1:0] lfsr_state;
 
     reg stb_reg;
-    reg [DW-1:0] rd_data;
     wire rd_data_en, wr_data_en;
     reg [11:0] rd_count, wr_count;
     reg [11:0] rd_count_reg, wr_count_reg;
@@ -85,7 +84,7 @@ module zipdma_check #(
     // Wishbone outputs
     assign o_wb_stall = 1'b0;
     assign o_wb_err   = 1'b0;
-    assign o_wb_data  = rd_data;
+    assign o_wb_data  = lfsr_state;
 
     assign o_st_stall = 1'b0;
     assign o_st_err   = 1'b0;
@@ -123,24 +122,13 @@ module zipdma_check #(
         end
     end
 
-    // rd_data
-    initial rd_data = {(DW){1'b0}};
-    always @(posedge i_clk) begin
-        if (i_reset)
-            rd_data <= {(DW){1'b0}};
-        else begin
-            if (rd_data_en)
-                rd_data <= lfsr_state;
-        end
-    end
-
     // o_wb_ack
     initial	stb_reg = 1'b0;
-	always @(posedge i_clk) begin
+    always @(posedge i_clk) begin
         if (i_reset)
             stb_reg <= 0;
         else
-		    stb_reg <= i_wb_stb && !o_wb_stall;
+            stb_reg <= i_wb_stb && !o_wb_stall;
     end
 
 	assign o_wb_ack = stb_reg;
@@ -188,11 +176,13 @@ module zipdma_check #(
                     if (i_wb_sel[i]) begin
                         if (i_wb_data[(i*8)+:8] != lfsr_state[(i*8)+:8])
                             o_st_data[0] <= 1'b1;
+                        else
+                            o_st_data[0] <= 1'b0;
                     end
                 end
             end
 
-            if (o_st_data[0] == 1'b1)
+            if (i_st_stb && i_st_we)
                 o_st_data[0] <= 1'b0;
         end
     end
@@ -201,19 +191,5 @@ module zipdma_check #(
 	wire unused;
 	assign unused = &{ 1'b0, i_wb_cyc, i_st_cyc, i_st_addr, i_wb_addr };
 	// verilator lint_on UNUSED
-
-`ifdef FORMAL
-
-    reg f_past_valid;
-
-    initial	f_past_valid = 0;
-	always @(posedge i_clk)
-		f_past_valid <= 1;
-
-	always @(*)
-	if (!f_past_valid)
-		assume(i_reset);
-
-`endif
 
 endmodule
