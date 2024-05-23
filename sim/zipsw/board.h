@@ -103,9 +103,16 @@ typedef struct  SCOPE_S {
 // (Optional) ZipDMA_Check
 // {{{
 typedef struct  ZDMACHECK_S {
-	unsigned	z_data0;
-	unsigned	z_data1;
+	char		z_data0;
+	short		z_data1;
+	unsigned	z_data2;
 } ZDMACHECK;
+
+typedef struct  ZDMACHECKST_S {
+	char		z_data0;
+	short		z_data1;
+	unsigned	z_data2;
+} ZDMACHECKST;
 
 #define	SCOPE_NO_RESET	0x80000000u
 #define	SCOPE_STOPPED	0x40000000u
@@ -123,7 +130,7 @@ static volatile SCOPE   *const _scope = ((SCOPE   *)0x01000000);
 static volatile CONSOLE *const _uart  = ((CONSOLE *)0x02000000);
 static volatile SMP     *const _smp   = ((SMP     *)0x03000000);
 static volatile ZDMACHECK *const _zdmacheck = ((ZDMACHECK     *)0x05000000);
-static volatile unsigned *const _zdmastcheck  = ((unsigned     *)0x06000000);
+static volatile ZDMACHECKST *const _zdmastcheck  = ((ZDMACHECKST     *)0x06000000);
 static volatile AXILP   *const _axilp = ((AXILP   *)0xff000000);
 // static volatile ZIPSYS  *const _zip   = ((ZIPSYS   *)0xff000000);
 #define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS
