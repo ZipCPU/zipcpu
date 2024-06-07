@@ -39,7 +39,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 const unsigned	ZIPDMA_BUSY = 0x80000000,
 		ZIPDMA_ERR  = 0x40000000,
@@ -69,40 +68,35 @@ typedef	struct	ZIPDMA_S {
 
 #define ZIPDMA_BASE_ADDRESS 0xff000040
 static volatile ZIPDMA *const _zipdma = ((ZIPDMA *)ZIPDMA_BASE_ADDRESS);
-const int	TESTLEN = 31;
+const int	TESTLEN = 32;
 
-#define DW	32
+#define DW	64
 
-#define err_detect() (_zdmastcheck->z_data2) & 0x1
-#define read_lfsr_char() (_zdmacheck->z_data0)
-#define read_lfsr_short() (_zdmacheck->z_data1)
-#define read_lfsr_int() (_zdmacheck->z_data2)
+#define err_detect() 		(_zdmastcheck->z_data2[0]) & 0x1
+#define read_lfsr_char() 	(_zdmacheck->z_data0[0])
+#define read_lfsr_short() 	(_zdmacheck->z_data1[0])
+#define read_lfsr_int() 	(_zdmacheck->z_data2[0])
 
-#define char_to_u64(val) ((uint64_t)(*(val)))
-#define short_to_u64(val) ((uint64_t)(*(val)))
-#define int_to_u64(val) ((uint64_t)(*(val)))
+#define char_to_u64(val) 	((uint64_t)(*(val)))
+#define short_to_u64(val) 	((uint64_t)(*(val)))
+#define int_to_u64(val) 	((uint64_t)(*(val)))
 
-#define to_char(val, out) (out = (char)((val & 0xFF000000) >> 24))
-#define to_short(val, out) (out = (short)(val & 0xFFFF))
-#define to_int(val, out) (out = (unsigned int)(val & 0xFFFFFFFF))
-
-#define swap32(val) \
-    (((val & 0x000000FF) << 24) | \
-     ((val & 0x0000FF00) << 8)  | \
-     ((val & 0x00FF0000) >> 8)  | \
-     ((val & 0xFF000000) >> 24))
+#define to_char(val, out) 	(out = (char)((val & 0xFF00000000000000) >> 56))
+#define to_short(val, out) 	(out = (short)((val & 0xFFFF000000000000) >> 48))
+#define to_int(val, out) 	(out = (unsigned int)((val & 0xFFFFFFFF00000000) >> 32))
 
 enum sizes {
 	S_BYTE,
 	S_SHORT,
-	S_INT
+	S_INT,
+	S_BUS
 };
 
-typedef union {
-    volatile char *charValue;
-    volatile short *shortValue;
-    volatile unsigned int *intValue;
-} LfsrValue;
+//typedef union {
+//    volatile char * __attribute__((aligned(8))) charValue;
+//    volatile short * __attribute__((aligned(4))) shortValue;
+//    volatile unsigned int * __attribute__((aligned(2))) intValue;
+//} LfsrValue;
 
 int	dma_memcpy(void *des, void *src, unsigned len) {
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
@@ -173,38 +167,41 @@ int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
 	return 0;
 }
 
-LfsrValue read_lfsr_value(unsigned size) {
-    LfsrValue value;
-    
-    switch(size) {
-        case S_BYTE:
-            value.charValue = &_zdmacheck->z_data0;
-            break;
-        case S_SHORT:
-            value.shortValue = &_zdmacheck->z_data1;
-            break;
-        case S_INT:
-            value.intValue = &_zdmacheck->z_data2;
-            break;
-        default:
-            printf("ERR: Invalid size\n");
-            value.intValue = NULL; 	// return null value in case an error situation
-            break;
-    }
-
-    return value;
-}
+//LfsrValue read_lfsr_value(unsigned size) {
+//    LfsrValue value;
+//
+//    switch(size) {
+//        case S_BYTE:
+//            value.charValue = _zdmacheck->z_data0;
+//            break;
+//        case S_SHORT:
+//            value.shortValue = _zdmacheck->z_data1;
+//            break;
+//        case S_INT:
+//            value.intValue = _zdmacheck->z_data2;
+//            break;
+//        default:
+//            printf("ERR: Invalid size\n");
+//            value.intValue = NULL; 	// return null value in case an error situation
+//            break;
+//    }
+//
+//    return value;
+//}
 
 void init_lfsr(void *init_value, unsigned size) {
     switch(size) {
         case S_BYTE:
-            _zdmastcheck->z_data0 = (*(char *)init_value);
+            _zdmastcheck->z_data0[0] = (*(char *)init_value);
             break;
         case S_SHORT:
-            _zdmastcheck->z_data1 = (*(short *)init_value);
+            _zdmastcheck->z_data1[0] = (*(short *)init_value);
             break;
         case S_INT:
-            _zdmastcheck->z_data2 = (*(unsigned *)init_value);
+            _zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
+            break;
+		case S_BUS:
+            _zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
             break;
         default:
             printf("ERR: Invalid size\n");
@@ -215,13 +212,16 @@ void init_lfsr(void *init_value, unsigned size) {
 void cmp_lfsr(void *cmp_value, unsigned size) {
     switch(size) {
         case S_BYTE:
-            _zdmacheck->z_data0 = (*(char *)cmp_value);
+            _zdmacheck->z_data0[0] = (*(char *)cmp_value);
             break;
         case S_SHORT:
-            _zdmacheck->z_data1 = (*(short *)cmp_value);
+            _zdmacheck->z_data1[0] = (*(short *)cmp_value);
             break;
         case S_INT:
-            _zdmacheck->z_data2 = (*(unsigned *)cmp_value);
+            _zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
+            break;
+		case S_BUS:
+            _zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
             break;
         default:
             printf("ERR: Invalid size\n");
@@ -229,11 +229,11 @@ void cmp_lfsr(void *cmp_value, unsigned size) {
     }
 }
 
-uint32_t lfsr_shift(uint32_t state) {
-    uint32_t feedback = (state >> (DW-1)) ^ (state >> (DW-2));
-    uint32_t new_bit = feedback & 1;
+uint64_t lfsr_shift(uint64_t state) {
+	uint64_t feedback = (state >> (DW-1)) ^ (state >> (DW-2));
+    uint64_t new_bit = feedback & 0x1;
 
-    uint32_t result = ((state << 1) | new_bit);
+    uint64_t result = ((state << 1) | new_bit);
 
     return result;
 }
@@ -247,12 +247,13 @@ int	main(int argc, char **argv) {
 	unsigned cmp_err;
 	char *src, *dst, *lfsr_state_hw_0;
 	short *src_1, *dst_1, *lfsr_state_hw_1;
-	unsigned *src_2, *dst_2, lfsr_state, *lfsr_state_hw_2;
+	unsigned *src_2, *dst_2, *lfsr_state_hw_2;
+	uint64_t lfsr_state;
 	unsigned offset_addr;
 	unsigned transfer_len, transfer_len1;
 
 	enum sizes s_size;
-	LfsrValue lfsrVal;
+	//LfsrValue lfsrVal;
 
 	src = malloc(sizeof(char) * (TESTLEN+8));
 	dst = malloc(sizeof(char) * (TESTLEN+8));
@@ -272,9 +273,9 @@ int	main(int argc, char **argv) {
     }
 
 	// initilaize pointers
-    lfsrVal.charValue = lfsr_state_hw_0;
-    lfsrVal.shortValue = lfsr_state_hw_1;
-    lfsrVal.intValue = lfsr_state_hw_2;
+    //lfsrVal.charValue = lfsr_state_hw_0;
+    //lfsrVal.shortValue = lfsr_state_hw_1;
+    //lfsrVal.intValue = lfsr_state_hw_2;
 
 	*src++ = 0x01;
 	*src++ = 0x02;
@@ -296,33 +297,28 @@ int	main(int argc, char **argv) {
 	// 8b test
 	// -----------
 	printf("Basic MEMCPY( 8b): \n");
-	//err = dma_memcpy_size(dst, src, TESTLEN, SZBYTE);
-	//if (err || memcmp(dst, src, TESTLEN) != 0) {
-	//	printf("FAIL!\n"); 
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
 
 	// compare hw-sw lfsr values for 8 bit
 	s_size = S_BYTE;
-	lfsr_state = 0xaf000000;	// big endian for cpu
+	lfsr_state = 0x00000000f1000000;	// big endian for cpu
 	init_lfsr(&lfsr_state, s_size);
-	//lfsr_state = 0xaf;
-	for(int i = 0; i < TESTLEN; i++) {
+	for(int i = 0; i < 2; i++) {
 		lfsr_state = lfsr_shift(lfsr_state);
 		to_char(lfsr_state, src[i]);
 		lfsr_state_hw_0[i] = read_lfsr_char();
 		//lfsrVal = read_lfsr_value(s_size);
-		//printf("(char) LFSR_SW State: 0x%x\n", src[i]);
+		//printf("----------\n");
+		//printf("%d\n", i);
+		//printf("(char) LFSR_SW State: 0x%lx\n", lfsr_state);
 		//printf("(char) LFSR_HW State: 0x%x\n", lfsr_state_hw_0[i]);
 	}
+
 	cmp_lfsr(&src[TESTLEN-1], s_size);
 	cmp_err = err_detect();
 	printf("(char) Error: 0x%x\n", cmp_err);
-
 	// data copy from sw lfsr to destination for 8 bit
 	err = dma_memcpy_size(dst, src, TESTLEN, SZBYTE);
-	
+
 	// compare hw-sw lfsr values for 8 bit
 	if (cmp_err || err || memcmp(lfsr_state_hw_0, dst, TESTLEN) != 0) {
 		printf("(char) No match between sw and hw lfsr values!\n");
@@ -333,7 +329,7 @@ int	main(int argc, char **argv) {
 
 	err = dma_memcpy_noninc(dst, src, 1, SZBYTE);
 	if (err || memcmp(dst, src, 1) != 0) {
-		printf("FAIL!\n"); 
+		printf("FAIL!\n");
 		fail = 1;
 	} else
 		printf("PASS\n");
@@ -342,19 +338,11 @@ int	main(int argc, char **argv) {
 	// 16b test
 	// -----------
 	printf("Basic MEMCPY( 16b): \n");
-	//err = dma_memcpy_size(dst, src + offset_addr, TESTLEN, SZHALF);
-	//if (err || memcmp(dst + offset_addr, src + offset_addr, TESTLEN) != 0) {
-	//	printf("FAIL!\n"); 
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
 
 	// compare hw-sw lfsr values for 16 bit
 	s_size = S_SHORT;
-	lfsr_state = 0xbeaf0000;
+	lfsr_state = 0xbeaf000000000000;
 	init_lfsr(&lfsr_state, s_size);
-	lfsr_state = 0xbeaf;
-	//lfsr_state = swap32(lfsr_state);
 	for(int i = 0; i < TESTLEN; i++) {
 		lfsr_state = lfsr_shift(lfsr_state);
 		to_short(lfsr_state, src_1[i]);
@@ -367,7 +355,7 @@ int	main(int argc, char **argv) {
 	printf("(short) Error: 0x%x\n", cmp_err);
 
 	// data copy from sw lfsr to destination for 16 bit
-	err = dma_memcpy_size(dst_1, src_1, TESTLEN, SZBYTE);
+	err = dma_memcpy_size(dst_1, src_1, TESTLEN, SZHALF);
 
 	// compare hw-sw lfsr values for 16 bit
 	if (cmp_err || err || memcmp(lfsr_state_hw_1, dst_1, TESTLEN) != 0) {
@@ -378,7 +366,7 @@ int	main(int argc, char **argv) {
 
 	err = dma_memcpy_noninc(dst_1, src_1, 2, SZHALF);
 	if (err || memcmp(dst_1, src_1, 2) != 0) {
-		printf("FAIL!\n"); 
+		printf("FAIL!\n");
 		fail = 1;
 	} else
 		printf("PASS\n");
@@ -388,7 +376,7 @@ int	main(int argc, char **argv) {
 	for(transfer_len = 1; transfer_len < 4 && !fail; transfer_len++) {
 		err = dma_memcpy_size(dst_1, src_1 + offset_addr, transfer_len, SZHALF);
 		if (err || memcmp(dst_1, src_1 + offset_addr, transfer_len) != 0) {
-			printf("FAIL!\n"); 
+			printf("FAIL!\n");
 			fail = 1;
 		} else
 			printf("PASS\n");
@@ -400,16 +388,10 @@ int	main(int argc, char **argv) {
 	// 32b test
 	// -----------
 	printf("Basic MEMCPY( 32b): \n");
-	//err = dma_memcpy_size(dst, src + offset_addr, TESTLEN, SZ32);
-	//if (err || memcmp(dst, src + offset_addr, TESTLEN) != 0) {
-	//	printf("FAIL!\n");
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
 
 	// compare hw-sw lfsr values for 32 bit
 	s_size = S_INT;
-	lfsr_state = 0xdeadbeaf;
+	lfsr_state = 0xdeadbeaf00000000;
 	init_lfsr(&lfsr_state, s_size);
 	for(int i = 0; i < TESTLEN; i++) {
 		lfsr_state = lfsr_shift(lfsr_state);
@@ -423,8 +405,8 @@ int	main(int argc, char **argv) {
 	printf("(int) Error: 0x%x\n", cmp_err);
 
 	// data copy from sw lfsr to destination for 32 bit
-	err = dma_memcpy_size(dst_2, src_2, TESTLEN, SZBYTE);
-	
+	err = dma_memcpy_size(dst_2, src_2, TESTLEN, SZ32);
+
 	// compare hw-sw lfsr values for 32 bit
 	if (cmp_err || err || memcmp(lfsr_state_hw_2, dst_2, TESTLEN) != 0) {
 		printf("(int) No match between sw and hw lfsr values!\n");
@@ -435,17 +417,17 @@ int	main(int argc, char **argv) {
 
 	err = dma_memcpy_noninc(dst_2, src_2, 4, SZ32);
 	if (err || memcmp(dst_2, src_2, 4) != 0) {
-		printf("FAIL!\n"); 
+		printf("FAIL!\n");
 		fail = 1;
 	} else
 		printf("PASS\n");
 
 	// 32b edge casez: transfer_len = 1, 2, .., 15
 	offset_addr = 8;
-	for(transfer_len = 1; transfer_len < 16 && !fail; transfer_len++) {		
+	for(transfer_len = 1; transfer_len < 16 && !fail; transfer_len++) {
 		err = dma_memcpy_size(dst_2, src_2 + offset_addr, transfer_len, SZ32);
 		if (err || memcmp(dst_2, src_2 + offset_addr, transfer_len) != 0) {
-			printf("FAIL!\n"); 
+			printf("FAIL!\n");
 			fail = 1;
 		} else
 			printf("PASS\n");
@@ -453,53 +435,74 @@ int	main(int argc, char **argv) {
 		offset_addr++;
 	}
 
-#if 0
 	// -----------
 	// Bus width test
 	// -----------
-	//printf("Basic MEMCPY( BUS): ");
-	//err = dma_memcpy(dst, src + offset_addr, TESTLEN);
-	//if (err || memcmp(dst, src + offset_addr, TESTLEN) != 0) {
-	//	printf("FAIL!\n"); 
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
-//
-	//err = dma_memcpy_noninc(dst, src, 8, SZBUS);
-	//if (err || memcmp(dst, src, 8) != 0) {
-	//	printf("FAIL!\n"); 
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
+	printf("Basic MEMCPY( BUS): \n");
+
+	// compare hw-sw lfsr values for 64 bit
+	s_size = S_BUS;
+	lfsr_state = 0xdeadbeaf00000000;
+	init_lfsr(&lfsr_state, s_size);
+	for(int i = 0; i < TESTLEN; i++) {
+		lfsr_state = lfsr_shift(lfsr_state);
+		to_int(lfsr_state, src_2[i]);
+		lfsr_state_hw_2[i] = read_lfsr_int();
+		//printf("(bus) LFSR_SW State: 0x%x\n", src_2[i]);
+		//printf("(bus) LFSR_HW State: 0x%x\n", lfsr_state_hw_2[i]);
+	}
+	cmp_lfsr(&src_2[TESTLEN-1], s_size);
+	cmp_err = err_detect();
+	printf("(bus) Error: 0x%x\n", cmp_err);
+
+	// data copy from sw lfsr to destination for 32 bit
+	err = dma_memcpy_size(dst_2, src_2, TESTLEN, SZBUS);
+
+	// compare hw-sw lfsr values for 32 bit
+	if (cmp_err || err || memcmp(lfsr_state_hw_2, dst_2, TESTLEN) != 0) {
+		printf("(bus) No match between sw and hw lfsr values!\n");
+		return -1;
+	}
+	 else
+		printf("(bus) Matched lfsr values\n");
+
+	err = dma_memcpy_noninc(dst_2, src_2, 8, SZBUS);
+	if (err || memcmp(dst_2, src_2, 8) != 0) {
+		printf("FAIL!\n");
+		fail = 1;
+	} else
+		printf("PASS\n");
 
 	// Bus width edge casez: transfer_len = 1, 2, .., 32
-	//for(transfer_len = 1; transfer_len < 32 && !fail; transfer_len++) {
-	//	err = dma_memcpy(dst, src + offset_addr, transfer_len);
-	//	if (err || memcmp(dst, src + offset_addr, transfer_len) != 0) {
-	//		printf("FAIL!\n"); 
-	//		fail = 1;
-	//	} else
-	//		printf("PASS\n");
-//
-	//	offset_addr += transfer_len;
-	//}
+	offset_addr = 8;
+	for(transfer_len = 1; transfer_len < 32 && !fail; transfer_len++) {
+		err = dma_memcpy(dst_2, src_2 + offset_addr, transfer_len);
+		if (err || memcmp(dst_2, src_2 + offset_addr, transfer_len) != 0) {
+			printf("FAIL!\n");
+			fail = 1;
+		} else
+			printf("PASS\n");
+
+		offset_addr++;
+	}
 
 	// -----------
 	// obtain valid error signal
 	// -----------
-	//src = NULL;
-	//dst = NULL;
-//
-	//err = dma_memcpy(dst, src, TESTLEN);
-	//if (err == 0) {
-	//	printf("FAIL!\n"); 
-	//	fail = 1;
-	//} else
-	//	printf("PASS\n");
-//
-	//if (fail)
-	//	printf("TEST FAILURE!\n");
-	//else
-	//	printf("SUCCESS! All tests pass\n");
+	src = NULL;
+	dst = NULL;
+
+	err = dma_memcpy(dst, src, TESTLEN);
+	if (err == 0) {
+		printf("FAIL!\n");
+		fail = 1;
+	} else
+		printf("PASS\n");
+
+	if (fail)
+		printf("TEST FAILURE!\n");
+	else
+		printf("SUCCESS! All tests pass\n");
+#if 0
 #endif
 }

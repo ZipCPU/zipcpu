@@ -273,9 +273,9 @@ module	wb_tb #(
 
 	wire	zdmacstw_cyc, zdmacstw_stb, zdmacstw_we, zdmacstw_ack, zdmacstw_stall,
 		zdmacstw_err;
-	wire	[ADDRESS_WIDTH-$clog2(32/8)-1:0]	zdmacstw_addr;
-	wire	[31:0]	zdmacstw_data, zdmacstw_idata;
-	wire	[3:0]	zdmacstw_sel;
+	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	zdmacstw_addr;
+	wire	[BUS_WIDTH-1:0]	zdmacstw_data, zdmacstw_idata;
+	wire	[BUS_WIDTH/8-1:0]	zdmacstw_sel;
 	// }}}
 
 	// }}}
@@ -1761,7 +1761,7 @@ module	wb_tb #(
 		timer_a_ack, timer_b_ack, timer_c_ack, jiffies_ack,
 		timer_a_stall, timer_b_stall, timer_c_stall, jiffies_stall,
 		scope_int, zdmacst_addr[ADDRESS_WIDTH-3-$clog2(32/8)-1:1], 
-		zdmacstw_addr[ADDRESS_WIDTH-$clog2(32/8)-1-:3] };
+		zdmacstw_addr[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1-:3] };
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
 	// }}}

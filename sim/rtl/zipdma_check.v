@@ -68,7 +68,12 @@ module zipdma_check #(
 
     localparam	DW = BUS_WIDTH;
     localparam	AW = ADDRESS_WIDTH-$clog2(DW/8);
-    localparam BW = DW/8;   // BIT_WIDTH
+    localparam  BW = DW/8;   // BIT_WIDTH
+
+    // State encoding
+    //localparam [1:0] IDLE = 2'b00,
+    //                 S_32 = 2'b01,
+    //                 S_64 = 2'b10;
 
     reg [DW-1:0] lfsr_state;
 
@@ -89,7 +94,47 @@ module zipdma_check #(
     assign o_st_stall = 1'b0;
     assign o_st_err   = 1'b0;
 
-    // LFSR reset, o_st_ack
+    // State and next state variables
+    //reg [1:0] state, next_state;
+
+    // State transition logic
+    //always @(posedge i_clk) begin
+    //    if (i_reset) begin
+    //        state <= IDLE;
+    //    end else begin
+    //        state <= next_state;
+    //    end
+    //end
+
+    // Next state logic
+    //always @(*) begin
+    //    next_state = state; // Default to hold state
+    //    o_st_ack = 1'b0; // Default to deassert ACK
+//
+    //    case (state)
+    //        IDLE: begin
+    //            if (i_st_stb)
+    //                next_state = S_32;
+    //        end
+    //        S_32: begin
+    //            if (!i_st_stb) begin
+    //                o_st_ack = 1'b1; // Assert ACK for one clock cycle
+    //                next_state = IDLE;
+    //            end else begin
+    //                next_state = S_64;
+    //            end
+    //        end
+    //        S_64: begin
+    //            if (!i_st_stb) begin
+    //                o_st_ack = 1'b1; // Assert ACK for one clock cycle
+    //                next_state = IDLE;
+    //            end
+    //        end
+    //        default: begin end
+    //    endcase
+    //end
+
+    // o_st_ack
     always @(posedge i_clk) begin
         if (i_reset) begin
             o_st_ack <= 1'b0;
@@ -112,7 +157,7 @@ module zipdma_check #(
                 lfsr_state <= 0;
                 for (int i = 0; i < 4; i++) begin
                     if (i_st_sel[i])
-                        lfsr_state[(i*8)+:8] <= i_st_data[(i*8)+:8];
+                        lfsr_state[(DW-32) + (i*8) +: 8] <= i_st_data[(i*8) +: 8];
                 end
             end
 

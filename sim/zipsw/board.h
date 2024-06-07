@@ -38,7 +38,7 @@
 // }}}
 #ifndef	BOARD_H
 #define	BOARD_H
-
+#include <stdint.h>
 ////////////////////////////////////////////////////////////////////////////////
 //
 // ZipCPU defines and macros
@@ -102,16 +102,16 @@ typedef struct  SCOPE_S {
 
 // (Optional) ZipDMA_Check
 // {{{
-typedef struct  ZDMACHECK_S {
-	char		z_data0;
-	short		z_data1;
-	unsigned	z_data2;
+typedef struct __attribute__((packed)) ZDMACHECK_S {
+	char		z_data0[8];
+	short		z_data1[4];
+	unsigned	z_data2[2];
 } ZDMACHECK;
 
-typedef struct  ZDMACHECKST_S {
-	char		z_data0;
-	short		z_data1;
-	unsigned	z_data2;
+typedef struct __attribute__((packed)) ZDMACHECKST_S {
+	char		z_data0[8];
+	short		z_data1[4];
+	unsigned	z_data2[2];
 } ZDMACHECKST;
 
 #define	SCOPE_NO_RESET	0x80000000u
