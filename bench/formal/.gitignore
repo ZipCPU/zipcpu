@@ -35,6 +35,7 @@ axidcache_*/
 axipipe_*/
 memops_*/
 pipemem_*/
+memdev_*/
 
 ## Peripherals
 axilperiphs_*/

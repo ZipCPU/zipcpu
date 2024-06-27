@@ -1,0 +1,26 @@
+[tasks]
+mem
+extra	opt_extra
+rom	opt_rom
+
+[options]
+mode prove
+depth 5
+
+[engines]
+smtbmc
+
+[script]
+read -formal fwb_slave.v
+read -formal memdev.v
+--pycode-begin--
+cmd = "hierarchy -top memdev"
+cmd += " -chparam OPT_ROM %d "    % (1 if "opt_rom"   in tags else 0)
+cmd += " -chparam EXTRACLOCK %d " % (1 if "opt_extra" in tags else 0)
+output(cmd)
+--pycode-end--
+prep
+
+[files]
+../../sim/rtl/memdev.v
+../../rtl/ex/fwb_slave.v
