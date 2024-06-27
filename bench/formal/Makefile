@@ -44,7 +44,7 @@ TESTS += axilfetch axilops axilpipe axilperiphs # axiops axipipe # axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
-TESTS += txgears rxgears s2mm
+TESTS += txgears rxgears s2mm mm2s memdev
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
