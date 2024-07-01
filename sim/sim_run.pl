@@ -13,7 +13,7 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2022-2023, Gisselquist Technology, LLC
+## Copyright (C) 2022-2024, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
 ## modify it under the terms of the GNU General Public License as published
@@ -46,7 +46,6 @@ $path_cnt = @ARGV;
 ## {{{
 my $verilator_flag = 1;		# To run Icarus, run: perl sim_run.pl iverilog
 my $verilator_lint_only = 0;
-my $verilatord = "/home/sukruuzun/Downloads/oss-cad-suite/share/verilator";
 my $vobjd = "obj_dir";
 my $testd = "test";
 my $simd  = "rtl";
@@ -55,15 +54,13 @@ my $report= $testd . "/sim_report.txt";
 ## To run coverage, run: perl sim_run.pl cover
 my $coverage_flag = 0;
 my $linestr="----------------------------------------";
-## Need to find the base verilator directory
-#my $verilatord;
 if (-x "verilator") {
 	open(VDEF,"verilator -V |");
 	while($line = <VDEF>) {
 		if ($line =~ /VERILATOR_ROOT\s*=\s*(\S+)\s*$/) {
 			$verilatord = $1;
-			#die "verilator = $verilatord";
-			#last;
+			# Don't end here, wait for the last VERILATOR_ROOT
+			# last;
 		}
 	} close VDEF;
 } else {
@@ -232,19 +229,16 @@ if ($ARGV[0] eq "") {
 	print(SUM "\nRunning all tests:\n$linestr\n");
 	close SUM;
 } elsif ($ARGV[0] eq "cover" or $ARGV[0] =~ /^cover/i) {
-	$all_run = ($ARGV[1] eq "all" or $ARGV[1] eq "") ? 1 : 0;
+	$all_run  =1;
 	if ($verilatord eq "" or ! -d $verilatord) {
 		die "No verilator install directory found at $verilatord";
 	}
 	$verilator_flag = 1;
 	$coverage_flag  = 1;
-	@array = @ARGV;
-	# Remove the "Cover" flag
-	splice(@array, 0, 1);
 	open(SUM,">> $report");
 	print(SUM "\nRunning all tests for cover:\n$linestr\n");
 	close SUM;
-} elsif (($ARGV[0] eq "icarus" or $ARGV eq "iverilog") and $ARGV[1] eq "all") {
+} elsif (($ARGV[0] eq "icarus" or $ARGV[0] eq "iverilog") and $ARGV[1] eq "all") {
 	$all_run  =1;
 	$verilator_flag = 0;
 	$coverage_flag  = 0;
@@ -472,7 +466,7 @@ sub simline($) {
 
 		if ($errB == 0 and $verilator_flag) {
 			## {{{
-			system "cd $vobjd; make -f $tstname.mk";
+			system "cd $vobjd; make -j 12 -f $tstname.mk";
 			$errB = $?;
 			if ($errB == 0 and $lint_only == 0) {
 				$bldcmd = "g++ -Wall";
@@ -653,6 +647,7 @@ if ($all_run) {
 	open(TL,"sim_testcases.txt");
 	while($line = <TL>) {
 		next if ($line =~ /^\s*#/);
+		next if ($line =~ /^\s*$/);
 		# print "TEST LINE: $line";
 		simline($line);
 	}

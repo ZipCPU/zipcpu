@@ -15,10 +15,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
-// modify it under the terms of  the GNU General Public License as published
+// modify it under the terms of the GNU General Public License as published
 // by the Free Software Foundation, either version 3 of the License, or (at
 // your option) any later version.
 //
@@ -114,14 +114,14 @@ module	ffetch #(
 	begin
 		f_address[BW-1:INSN_LSB] <= f_address[BW-1:INSN_LSB] + 1'b1;
 		if (INSN_LSB > 0)
-			f_address[INSN_LSB-1:0] <= 0;
+			f_address[((INSN_LSB>0) ? INSN_LSB:1)-1:0] <= 0;
 	end
 
 	always @(*)
 	begin
 		f_next_address = f_address + (1<<INSN_LSB);
 		if (INSN_LSB > 0)
-			f_next_address[INSN_LSB-1:0] <= 0;
+			f_next_address[((INSN_LSB>0) ? INSN_LSB : 1)-1:0] <= 0;
 	end
 	// }}}
 
@@ -159,7 +159,7 @@ module	ffetch #(
 	// pf_pc, and cpu_pc alignment
 	// {{{
 	generate if (OPT_ALIGNED && INSN_LSB > 0)
-	begin
+	begin : F_CHECK_ALIGNMENT
 
 		always @(*)
 		if (cpu_new_pc)

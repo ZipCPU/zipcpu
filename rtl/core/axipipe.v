@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020-2023, Gisselquist Technology, LLC
+// Copyright (C) 2020-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -1357,7 +1357,7 @@ module	axipipe #(
 		.i_axi_rlast( M_AXI_RLAST),
 		// }}}
 		// Induction information
-		// 
+		//
 		.f_axi_awr_nbursts(faxi_awr_nbursts),
 		.f_axi_wr_pending(faxi_wr_pending),
 		.f_axi_rd_nbursts(faxi_rd_nbursts),
@@ -1408,7 +1408,7 @@ module	axipipe #(
 		.f_axi_exreq_size( faxi_exreq_size),
 		.f_axi_exreq_return( faxi_exlock_return)
 		// }}}
-		// 
+		//
 		// }}}
 	);
 
@@ -1967,7 +1967,7 @@ module	axipipe #(
 		begin
 			`BMC_ASSERT(cpu_read_cycle == f_this_read_cycle);
 		end
-		
+
 		if (f_fifo_fill > 1
 			&& (!f_first_in_fifo || f_penu_addr != f_first_addr)
 			&& (!f_next_in_fifo  || f_penu_addr != f_next_addr))
@@ -2041,7 +2041,7 @@ module	axipipe #(
 		if ((f_first_in_fifo && (f_first_return_reg == cpu_addr_reg) && !f_first_misaligned)
 			||(f_next_in_fifo && (f_next_return_reg == cpu_addr_reg) && !f_next_misaligned))
 			assert(!M_AXI_WVALID && !M_AXI_ARVALID);
-			
+
 		if ((rdaddr != f_last_written || M_AXI_WVALID || M_AXI_ARVALID)
 				&& !misaligned_response_pending
 				&& (cpu_outstanding > (o_valid ? 1:0))
@@ -2301,8 +2301,6 @@ module	axipipe #(
 			cover(cvr_unaligned_writes > (1<<LGPIPE));
 			cover(cvr_unaligned_reads  > (1<<LGPIPE));
 		end
-
-		
 	end endgenerate
 
 	// }}}

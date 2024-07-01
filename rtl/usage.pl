@@ -169,6 +169,11 @@ my $wbdblfetchconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam INSN_WIDTH           32"
 		. " -chparam OPT_LITTLE_ENDIAN     0";
 
+my $wbfiffetchconfig = " -chparam AW              30"
+		. " -chparam BUS_WIDTH            32"
+		. " -chparam INSN_WIDTH           32"
+		. " -chparam OPT_LITTLE_ENDIAN     0";
+
 my $wbpfcacheconfig = " -chparam ADDRESS_WIDTH   30"
 		. " -chparam LGCACHELEN          10"
 		. " -chparam LGLINES              7";
@@ -222,7 +227,7 @@ my @files = (
 	"core/div.v",
 	  ## WB memory cores
 	"core/zipwb.v",
-	"core/prefetch.v", "core/dblfetch.v", "core/pfcache.v",
+	"core/prefetch.v", "core/dblfetch.v", "core/pffifo.v", "core/pfcache.v",
 	"core/memops.v", "core/pipemem.v", "core/dcache.v",
 	  ## AXI-lite memory cores
 	"core/axilfetch.v",
@@ -369,7 +374,7 @@ open(USAGE, "> usage.txt");
 
 print USAGE $result;
 
-$dcch = sprintf("   WB-MEMOPS   : %5d %5d %6d\n",
+$dcch = "\n" . sprintf("   WB-MEMOPS   : %5d %5d %6d\n",
 		calcusage($ice40synth, "memops", $wbmemopsconfig,""),
 		calcusage($xilinxsynth,"memops", $wbmemopsconfig,""),
 		calcusage($asicsynth,  "memops", $wbmemopsconfig,$asicpost));
@@ -409,12 +414,7 @@ $dcch = $dcch . sprintf("  AXI-DCACHE   : %5d %5d %6d\n",
 		calcusage($xilinxsynth,"axidcache", $axdcacheconfig,""),
 		calcusage($asicsynth,  "axidcache", $axdcacheconfig,$asicpost));
 
-$dcch = $dcch . sprintf("   WB-DMA      : %5d %5d %6d\n",
-		calcusage($ice40synth, "wbdmac", $wbdmaconfig,""),
-		calcusage($xilinxsynth,"wbdmac", $wbdmaconfig,""),
-		calcusage($asicsynth,  "wbdmac", $wbdmaconfig,$asicpost));
-
-$icch = sprintf("   WB-PREFETCH : %5d %5d %6d\n",
+$icch = "\n" . sprintf("   WB-PREFETCH : %5d %5d %6d\n",
 		calcusage($ice40synth, "prefetch", $wbprefetchconfig,""),
 		calcusage($xilinxsynth,"prefetch", $wbprefetchconfig,""),
 		calcusage($asicsynth,  "prefetch", $wbprefetchconfig,$asicpost));
@@ -423,6 +423,11 @@ $icch = $icch . sprintf("   WB-DBLFETCH : %5d %5d %6d\n",
 		calcusage($ice40synth, "dblfetch", $wbdblfetchconfig,""),
 		calcusage($xilinxsynth,"dblfetch", $wbdblfetchconfig,""),
 		calcusage($asicsynth,  "dblfetch", $wbdblfetchconfig,$asicpost));
+
+$icch = $icch . sprintf("   WB-FIFOFETCH: %5d %5d %6d\n",
+		calcusage($ice40synth, "pffifo", $wbfiffetchconfig,""),
+		calcusage($xilinxsynth,"pffifo", $wbfiffetchconfig,""),
+		calcusage($asicsynth,  "pffifo", $wbfiffetchconfig,$asicpost));
 
 $icch = $icch . sprintf("   WB-ICACHE   : %5d %5d %6d\n",
 		calcusage($ice40synth, "pfcache", $wbpfcacheconfig,""),
@@ -447,7 +452,12 @@ $icch = $icch . sprintf("  AXI-ICACHE   : %5d %5d %6d\n",
 print USAGE $dcch;
 print USAGE $icch;
 
-$dmaz = sprintf("  ZIP-DMA/ 32  : %5d %5d %6d\n",
+$dmaz = "\n" . sprintf("   WB-DMAC(OLD): %5d %5d %6d\n",
+		calcusage($ice40synth, "wbdmac", $wbdmaconfig,""),
+		calcusage($xilinxsynth,"wbdmac", $wbdmaconfig,""),
+		calcusage($asicsynth,  "wbdmac", $wbdmaconfig,$asicpost));
+
+$dmaz = $dmaz . sprintf("  ZIP-DMA/ 32  : %5d %5d %6d\n",
 		calcusage($ice40synth, "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32 -chparam OPT_REGISTER_RAM 1",""),
 		calcusage($xilinxsynth,"zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",""),
 		calcusage($asicsynth,  "zipdma", $zipdmaconfig . " -chparam BUS_WIDTH 32",$asicpost));

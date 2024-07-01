@@ -73,7 +73,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -93,7 +93,6 @@
 // License:	GPL, v3, as defined and found on www.gnu.org,
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -191,6 +190,7 @@ module	zipwb #(
 	//
 	wire			pf_cyc, pf_stb, pf_stall, pf_ack, pf_err;
 	wire [AW-1:0]		pf_addr;
+	wire	[BUS_WIDTH/8-1:0]	pf_sel;
 	// verilator coverage_off
 	// Since we aren't writing, these values will be constants
 	wire			pf_we;
@@ -318,6 +318,7 @@ module	zipwb #(
 
 	generate if (OPT_LGICACHE <= 1)
 	begin : SINGLE_FETCH
+		assign	pf_sel = {(BUS_WIDTH/8){1'b1}};
 
 		prefetch	#(
 			// {{{
@@ -352,6 +353,7 @@ module	zipwb #(
 
 	end else if (OPT_LGICACHE <= 2)
 	begin : DBLFETCH
+		assign	pf_sel = {(BUS_WIDTH/8){1'b1}};
 
 		dblfetch #(
 			// {{{
@@ -384,7 +386,43 @@ module	zipwb #(
 			// }}}
 		);
 
+	end else if (OPT_LGICACHE <= 6)
+	begin : PFFIFO
+
+		pffifo #(
+			// {{{
+			.AW(ADDRESS_WIDTH),
+			.BUS_WIDTH(BUS_WIDTH),
+			.INSN_WIDTH(INSN_WIDTH),
+			.OPT_LOWPOWER(OPT_LOWPOWER),
+			.OPT_LITTLE_ENDIAN(1'b0)
+			// }}}
+		) pf (
+			// {{{
+			.i_clk(i_clk), .i_reset(i_reset),
+			// CPU signals
+			// {{{
+			.i_new_pc(pf_new_pc),
+			.i_clear_cache(clear_icache),
+			.i_ready(pf_ready && clk_gate),
+			.i_pc(pf_request_address),
+			.o_valid(pf_valid), .o_illegal(pf_illegal),
+				.o_insn(pf_instruction),
+				.o_pc(pf_instruction_pc),
+			// }}}
+			// Wishbone signals
+			// {{{
+			.o_wb_cyc(pf_cyc), .o_wb_stb(pf_stb), .o_wb_we(pf_we),
+				.o_wb_addr(pf_addr), .o_wb_data(pf_data),
+				.o_wb_sel(pf_sel),
+			.i_wb_stall(pf_stall), .i_wb_ack(pf_ack),
+				.i_wb_err(pf_err), .i_wb_data(i_wb_data)
+			// }}}
+			// }}}
+		);
+
 	end else begin : PFCACHE
+		assign	pf_sel = {(BUS_WIDTH/8){1'b1}};
 
 		pfcache #(
 			// {{{
@@ -575,7 +613,7 @@ module	zipwb #(
 				.i_b_stb_a(pf_stb), .i_b_stb_b(1'b0),
 				.i_b_we(pf_we), .i_b_adr(pf_addr),
 				.i_b_dat(mem_data),
-				.i_b_sel({(BUS_WIDTH/8){1'b1}}),
+				.i_b_sel(pf_sel),
 				.o_b_stall(pf_stall), .o_b_ack(pf_ack),
 				.o_b_err(pf_err),
 			// Common wires, in and out, of the arbiter
@@ -604,7 +642,7 @@ module	zipwb #(
 				.i_a_stb_a(pf_stb), .i_a_stb_b(1'b0),
 				.i_a_we(pf_we), .i_a_adr(pf_addr),
 				.i_a_dat(mem_data),
-				.i_a_sel({(BUS_WIDTH/8){1'b1}}),
+				.i_a_sel(pf_sel),
 				.o_a_stall(pf_stall), .o_a_ack(pf_ack),
 				.o_a_err(pf_err),
 			// Memory access to the arbiter

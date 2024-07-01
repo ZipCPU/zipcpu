@@ -17,7 +17,7 @@
 //	20150919 -- Fixed a nasty race condition whereby the pipefetch routine
 //		would produce either the same instruction twice, or skip
 //		an instruction.  This condition was dependent on the CPU stall
-//		condition, and would only take place if the pipeline wasn't 
+//		condition, and would only take place if the pipeline wasn't
 //		completely full throughout the stall.
 //
 //		Interface support was also added for trapping on illegal
@@ -30,7 +30,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023 Gisselquist Technology, LLC
+// Copyright (C) 2015-2024 Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

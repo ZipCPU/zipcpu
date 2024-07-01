@@ -10,51 +10,53 @@ faxil_slave.v
 faxil_master.v
 
 ## Wrappers
-zipaxi_*/
-zipbones_*/
-zipaxil_*/
+zipaxi*/
+zipbones*/
+zipaxil*/
 
 ## Core
-zipcore_*/
-zipcpu_*/
+zipcore*/
+zipcpu*/
 
 ## Fetch
-axilfetch_*/
-axiicache_*/
-dblfetch_*/
-pfcache_*/
-prefetch_*/
+axilfetch*/
+axiicache*/
+dblfetch*/
+pfcache*/
+pffifo*/
+prefetch*/
 
 ## Memory
-dcache_*/
-axiops_*/
-axilops_*/
-axilpipe_*/
-axidcache_*/
-axipipe_*/
-memops_*/
-pipemem_*/
+dcache*/
+axiops*/
+axilops*/
+axilpipe*/
+axidcache*/
+axipipe*/
+memops*/
+pipemem*/
+memdev*/
 
 ## Peripherals
-axilperiphs_*/
-zipcounter_*/
-ziptimer_*/
-zipjiffies_*/
-icontrol_*/
-wbwatchdog_*/
+axilperiphs*/
+zipcounter*/
+ziptimer*/
+zipjiffies*/
+icontrol*/
+wbwatchdog*/
 
 ## ZipDMA
-zipdma_mm2s_*/
-zipdma_rxgears_*/
-zipdma_txgears_*/
-zipdma_s2mm_*/
-wbdmac_*/
+zipdma_mm2s*/
+zipdma_rxgears*/
+zipdma_txgears*/
+zipdma_s2mm*/
+wbdmac*/
 
 ## Other
-div_*/
-idecode_*/
-busdelay_*/
-cpuops_*/
-wbdblpriarb_*/
-wbpriarbiter_*/
-zipmmu_*/
+div*/
+idecode*/
+busdelay*/
+cpuops*/
+wbdblpriarb*/
+wbpriarbiter*/
+zipmmu*/

@@ -1,96 +1,41 @@
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
+<H1 align=center>ZipCPU Verification Report</H1>
+<H2 align=center>20240627</H2>
 <TABLE border>
 <TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prf</TD><TD rowspan=22>AXI Data cache</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prflk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfplk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prf64lk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs64pw</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfspw</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfp</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfsw</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prflp</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfspwlk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prf64p</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfplp</TD></TR>
-<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>axidcache</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs64p</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs64w</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs64pwlk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfs</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prf64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prflplk</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axidcache</TD><TD>_prfsp</TD></TR>
-<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>axidcache</TD><TD>_cvrp</TD></TR>
-<TR></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiicache</TD><TD>_prfw64</TD><TD rowspan=6>AXI Instruction cache</TD></TR>
-<TR><TD bgcolor=#caeec8>10 Cover points</TD><TD>axiicache</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>12 Cover points</TD><TD>axiicache</TD><TD>_cvrw</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiicache</TD><TD>_prf</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiicache</TD><TD>_prfw</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiicache</TD><TD>_prf64</TD></TR>
-<TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prf</TD><TD rowspan=12>AXI-Lite instruction fetch</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvrdbl64</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvrdbl</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvrdbl64</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvrdbl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prfdbl64</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvr64</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvr64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prff</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvrf64</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvrf64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prff64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prfdbl</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>axilfetch</TD><TD>_cvrf</TD></TR>
+<TR><TD bgcolor=#caeec8>5 Cover points</TD><TD>axilfetch</TD><TD>_cvrf</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilfetch</TD><TD>_prf64</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prf</TD><TD rowspan=10>Simple AXI-Lite data controller</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prfu64</TD></TR>
-<TR><TD bgcolor=#caeec8>8 Cover points</TD><TD>axilops</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>10 Cover points</TD><TD>axilops</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prfu64lp</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prflp</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prfu</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prf64lp</TD></TR>
-<TR><TD bgcolor=#caeec8>8 Cover points</TD><TD>axilops</TD><TD>_cvr64</TD></TR>
+<TR><TD bgcolor=#caeec8>10 Cover points</TD><TD>axilops</TD><TD>_cvr64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prf64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilops</TD><TD>_prfulp</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilpipe</TD><TD>_prf</TD><TD rowspan=7>AXI-Lite pipelined memory controller</TD></TR>
-<TR><TD bgcolor=#caeec8>16 Cover points</TD><TD>axilpipe</TD><TD>_cvr64</TD></TR>
+<TR><TD bgcolor=#caeec8>22 Cover points</TD><TD>axilpipe</TD><TD>_cvr64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilpipe</TD><TD>_prfu</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilpipe</TD><TD>_prf64</TD></TR>
-<TR><TD bgcolor=#caeec8>16 Cover points</TD><TD>axilpipe</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>20 Cover points</TD><TD>axilpipe</TD><TD>_cvru</TD></TR>
+<TR><TD bgcolor=#caeec8>22 Cover points</TD><TD>axilpipe</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>26 Cover points</TD><TD>axilpipe</TD><TD>_cvru</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>axilpipe</TD><TD>_prfu64</TD></TR>
-<TR></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfs64</TD><TD rowspan=14>Simple AXI data controller</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfu64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prf64lp</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prf64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfulp</TD></TR>
-<TR><TD bgcolor=#caeec8>16 Cover points</TD><TD>axiops</TD><TD>_cvr64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prf</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfu64lp</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prflp</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfsu</TD></TR>
-<TR><TD bgcolor=#caeec8>14 Cover points</TD><TD>axiops</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfsu64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfu</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axiops</TD><TD>_prfs</TD></TR>
-<TR></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfs</TD><TD rowspan=11>AXI pipelined memory controller</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfsu</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfu64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfu</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prf64</TD></TR>
-<TR><TD bgcolor=#caeec8>16 Cover points</TD><TD>axipipe</TD><TD>_cvr</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfsu64</TD></TR>
-<TR><TD bgcolor=#caeec8>16 Cover points</TD><TD>axipipe</TD><TD>_cvr64</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prf</TD></TR>
-<TR><TD bgcolor=#caeec8>20 Cover points</TD><TD>axipipe</TD><TD>_cvru</TD></TR>
-<TR><TD bgcolor=#caeec8>Pass</TD><TD>axipipe</TD><TD>_prfs64</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>busdelay</TD><TD>_prfdlp</TD><TD rowspan=4>A bus delay</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>busdelay</TD><TD>_prf</TD></TR>
@@ -104,7 +49,7 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>dblfetch</TD><TD>_prf</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>dblfetch</TD><TD>_prf8ble</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>dblfetch</TD><TD>_prf128b</TD></TR>
-<TR><TD bgcolor=#caeec8>0 Cover points</TD><TD>dblfetch</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>2 Cover points</TD><TD>dblfetch</TD><TD>_cvr</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>dcache</TD><TD>_cover</TD><TD rowspan=12>WB Data cache</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>dcache</TD><TD>_prf64</TD></TR>
@@ -145,7 +90,7 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prflcklplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128lplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128lp</TD></TR>
-<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>memops</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>memops</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prflplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf64lp</TD></TR>
@@ -155,7 +100,14 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>pfcache</TD><TD>_prf</TD><TD rowspan=4>WB instruction fetch and cache</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>pfcache</TD><TD>_prf64</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>pfcache</TD><TD>_prf128</TD></TR>
-<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>pfcache</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>7 Cover points</TD><TD>pfcache</TD><TD>_cvr</TD></TR>
+<TR></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>pffifo</TD><TD>_prf8b</TD><TD rowspan=6>FIFO based WB instruction fetch</TD></TR>
+<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>pffifo</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>pffifo</TD><TD>_prf128b</TD></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>pffifo</TD><TD>_prf</TD></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>pffifo</TD><TD>_prf8ble</TD></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>pffifo</TD><TD>_prf64b</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>pipemem</TD><TD>_prf</TD><TD rowspan=10>WB Pipelined memory controller</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>pipemem</TD><TD>_lcl_noaligned_lock</TD></TR>
@@ -196,20 +148,23 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_pipedlpckh</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_lowlogic</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_piped</TD></TR>
-<TR><TD bgcolor=#caeec8>50 Cover points</TD><TD>zipcore</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>66 Cover points</TD><TD>zipcore</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_nopipelp</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcounter</TD><TD>_prf</TD><TD rowspan=1>A simpler peripheral counter</TD></TR>
+<TR></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_mm2s</TD><TD>_prf</TD><TD rowspan=2>WB ZipDMA read half</TD></TR>
+<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>zipdma_mm2s</TD><TD>_cvr</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_rxgears</TD><TD>_cvr</TD><TD rowspan=3>WB ZipDMA incoming gearbox</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_rxgears</TD><TD>_prfw</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_rxgears</TD><TD>_prf</TD></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8>10 Cover points</TD><TD>zipdma_s2mm</TD><TD>_cvr</TD><TD rowspan=2>WB ZipDMA write half</TD></TR>
+<TR><TD bgcolor=#caeec8>11 Cover points</TD><TD>zipdma_s2mm</TD><TD>_cvr</TD><TD rowspan=2>WB ZipDMA write half</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_s2mm</TD><TD>_prf</TD></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8>8 Cover points</TD><TD>zipdma_txgears</TD><TD>_cvrw</TD><TD rowspan=4>WB ZipDMA outgoing gearbox</TD></TR>
-<TR><TD bgcolor=#caeec8>8 Cover points</TD><TD>zipdma_txgears</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>11 Cover points</TD><TD>zipdma_txgears</TD><TD>_cvrw</TD><TD rowspan=4>WB ZipDMA outgoing gearbox</TD></TR>
+<TR><TD bgcolor=#caeec8>11 Cover points</TD><TD>zipdma_txgears</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_txgears</TD><TD>_prf</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_txgears</TD><TD>_prfw</TD></TR>
 <TR></TR>

@@ -25,7 +25,7 @@
 //	and the DELAY_STALL line can be set to non-zero to use it instead
 //	of the original logic.  Don't use it if you don't need it: it will
 //	consume resources and slow your bus down more, but if you do need
-//	it--don't be afraid to use it.  
+//	it--don't be afraid to use it.
 //
 //	Both versions of the bus delay will maintain a single access per
 //	clock when pipelined, they only delay the time between the strobe
@@ -37,7 +37,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -267,7 +267,7 @@ module	busdelay #(
 			{ o_dly_addr, o_dly_data, o_dly_sel } <= 0;
 		else if (!o_dly_stb || !i_dly_stall)
 		begin
-			{ o_dly_addr, o_dly_data, o_dly_sel }	
+			{ o_dly_addr, o_dly_data, o_dly_sel }
 				<= { i_wb_addr, i_wb_data, i_wb_sel };
 			if (OPT_LOWPOWER && !i_wb_stb)
 				{ o_dly_addr, o_dly_data, o_dly_sel } <= 0;

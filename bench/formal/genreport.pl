@@ -5,8 +5,8 @@
 ## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
-## Purpose:	To direct the formal verification of particular components of
-##		the ZipCPU.
+## Purpose:	Generates an HTML report documenting the success (or failure)
+##		of the various formal proofs contained in this repository.
 ##
 ## Creator:	Dan Gisselquist, Ph.D.
 ##		Gisselquist Technology, LLC
@@ -16,7 +16,7 @@
 ## Copyright (C) 2023, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
-## modify it under the terms of  the GNU General Public License as published
+## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
 ## your option) any later version.
 ##
@@ -29,10 +29,10 @@
 ## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 ## target there if the PDF file isn't present.)  If not, see
 ## <http://www.gnu.org/licenses/> for a copy.
-##
+## }}}
 ## License:	GPL, v3, as defined and found on www.gnu.org,
+## {{{
 ##		http://www.gnu.org/licenses/gpl.html
-##
 ##
 ################################################################################
 ##
@@ -56,8 +56,10 @@ $dir = ".";
 	"div",
 	"icontrol",
 	"idecode",
+	"memdev",
 	"memops",
 	"pfcache",
+	"pffifo",
 	"pipemem",
 	"prefetch",
 	"wbdblpriarb",
@@ -91,8 +93,10 @@ $dir = ".";
 	"div"		=> "Divide unit",
 	"icontrol"	=> "Interrupt controller",
 	"idecode"	=> "Instruction decoder",
+	"memdev"	=> "A basic block RAM controller",
 	"memops"	=> "Simple WB memory controller",
 	"pfcache"	=> "WB instruction fetch and cache",
+	"pffifo"	=> "FIFO based WB instruction fetch",
 	"pipemem"	=> "WB Pipelined memory controller",
 	"prefetch"	=> "Simple WB instruction fetch",
 	"wbdblpriarb"	=> "WB double priority arbiter, for global and local buses",
@@ -172,10 +176,8 @@ sub getstatus($) {
 				$bmc = $1;
 				# print "<TR><TD>basecase $bmc match</TD></TR>\n";
 			}
-		} if ($line =~ /engine_\d:.*Writing trace to VCD.*trace(\d+).vcd/) {
-			if ($1 > $ncvr) {
-				$ncvr = $1+1;
-			}
+		} if ($line =~ /engine_\d:.*Reached cover statement/) {
+			$ncvr = $ncvr+1;
 		}
 	}
 	close(LOG);
@@ -204,9 +206,17 @@ sub getstatus($) {
 
 ## Start the HTML output
 ## {{{
+## Grab a timestamp
+$now = time;
+($sc,$mn,$nhr,$ndy,$nmo,$nyr,$nwday,$nyday,$nisdst) = localtime($now);
+$nyr = $nyr+1900; $nmo = $nmo+1;
+$tstamp = sprintf("%04d%02d%02d",$nyr,$nmo,$ndy);
+
 print <<"EOM";
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
+<H1 align=center>ZipCPU Verification Report</H1>
+<H2 align=center>$tstamp</H2>
 <TABLE border>
 <TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 EOM
@@ -267,7 +277,12 @@ foreach $prf (sort @proofs) {
 		if ($st =~ /PASS/) {
 			print "<TR><TD bgcolor=#caeec8>Pass$tail";
 		} elsif ($st =~ /Cover\s+(\d+)/) {
+			my $cvr = $1;
+			if ($cvr < 1) {
+			print "<TR><TD bgcolor=#ffffca>$1 Cover points$tail";
+			} else {
 			print "<TR><TD bgcolor=#caeec8>$1 Cover points$tail";
+			}
 		} elsif ($st =~ /FAIL/) {
 			print "<TR><TD bgcolor=#ffa4a4>FAIL$tail";
 		} elsif ($st =~ /Terminated/) {
@@ -276,8 +291,13 @@ foreach $prf (sort @proofs) {
 			print "<TR><TD bgcolor=#ffa4a4>ERROR$tail";
 		} elsif ($st =~ /Out of date/) {
 			print "<TR><TD bgcolor=#ffffca>Out of date$tail";
-		} elsif ($st =~ /BMC\s+(\d)+/) {
-			print "<TR><TD bgcolor=#ffffca>$1 steps of BMC$tail";
+		} elsif ($st =~ /BMC\s+(\d+)/) {
+			my $bmc = $1;
+			if ($bmc < 2) {
+			print "<TR><TD bgcolor=#ffa4a4>$bmc steps of BMC$tail";
+			} else {
+			print "<TR><TD bgcolor=#ffffca>$bmc steps of BMC$tail";
+			}
 		} elsif ($st =~ /No log/) {
 			print "<TR><TD bgcolor=#e5e5e5>No log file found$tail";
 		} else {

@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -39,7 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+// }}}
 const unsigned	ZIPDMA_BUSY = 0x80000000,
 		ZIPDMA_ERR  = 0x40000000,
 		ZIPDMA_DINC = 0x00400000,
@@ -99,6 +99,7 @@ enum sizes {
 //} LfsrValue;
 
 int	dma_memcpy(void *des, void *src, unsigned len) {
+	// {{{
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
 		printf("ERR: DMA is already busy\n");
 	} else {
@@ -114,14 +115,16 @@ int	dma_memcpy(void *des, void *src, unsigned len) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
- 	   	printf("ERR: DMA transfer failed\n");
+		printf("ERR: DMA transfer failed\n");
 		return 1;
 	}
 
 	return 0;
 }
+// }}}
 
 int	dma_memcpy_size(void *des, void *src, unsigned len, unsigned size) {
+	// {{{
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
 		printf("ERR: DMA is already busy\n");
 	} else {
@@ -137,14 +140,16 @@ int	dma_memcpy_size(void *des, void *src, unsigned len, unsigned size) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
- 	   	printf("ERR: DMA transfer failed\n");
+		printf("ERR: DMA transfer failed\n");
 		return 1;
 	}
 
 	return 0;
 }
+// }}}
 
 int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
+	// {{{
 	if (_zipdma->d_ctrl & ZIPDMA_BUSY) {
 		printf("ERR: DMA is already busy\n");
 	} else {
@@ -160,14 +165,16 @@ int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
- 	   	printf("ERR: DMA transfer failed\n");
+		printf("ERR: DMA transfer failed\n");
 		return 1;
 	}
 
 	return 0;
 }
+// }}}
 
 //LfsrValue read_lfsr_value(unsigned size) {
+//	// {{{
 //    LfsrValue value;
 //
 //    switch(size) {
@@ -188,55 +195,61 @@ int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
 //
 //    return value;
 //}
+// }}}
 
 void init_lfsr(void *init_value, unsigned size) {
-    switch(size) {
-        case S_BYTE:
-            _zdmastcheck->z_data0[0] = (*(char *)init_value);
-            break;
-        case S_SHORT:
-            _zdmastcheck->z_data1[0] = (*(short *)init_value);
-            break;
-        case S_INT:
-            _zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
-            break;
-		case S_BUS:
-            _zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
-            break;
-        default:
-            printf("ERR: Invalid size\n");
-            break;
-    }
+	// {{{
+	switch(size) {
+	case S_BYTE:
+		_zdmastcheck->z_data0[0] = (*(char *)init_value);
+		break;
+	case S_SHORT:
+		_zdmastcheck->z_data1[0] = (*(short *)init_value);
+		break;
+	case S_INT:
+		_zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
+		break;
+	case S_BUS:
+		_zdmastcheck->z_data2[0] = (*(unsigned *)init_value);
+		break;
+	default:
+		printf("ERR: Invalid size\n");
+		break;
+	}
 }
+// }}}
 
 void cmp_lfsr(void *cmp_value, unsigned size) {
-    switch(size) {
-        case S_BYTE:
-            _zdmacheck->z_data0[0] = (*(char *)cmp_value);
-            break;
-        case S_SHORT:
-            _zdmacheck->z_data1[0] = (*(short *)cmp_value);
-            break;
-        case S_INT:
-            _zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
-            break;
-		case S_BUS:
-            _zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
-            break;
-        default:
-            printf("ERR: Invalid size\n");
-            break;
-    }
+	// {{{
+	switch(size) {
+	case S_BYTE:
+		_zdmacheck->z_data0[0] = (*(char *)cmp_value);
+		break;
+	case S_SHORT:
+		_zdmacheck->z_data1[0] = (*(short *)cmp_value);
+		break;
+	case S_INT:
+		_zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
+		break;
+	case S_BUS:
+		_zdmacheck->z_data2[0] = (*(unsigned *)cmp_value);
+		break;
+	default:
+		printf("ERR: Invalid size\n");
+		break;
+	}
 }
+// }}}
 
 uint64_t lfsr_shift(uint64_t state) {
+	// {{{
 	uint64_t feedback = (state >> (DW-1)) ^ (state >> (DW-2));
-    uint64_t new_bit = feedback & 0x1;
+	uint64_t new_bit = feedback & 0x1;
 
-    uint64_t result = ((state << 1) | new_bit);
-
-    return result;
+	uint64_t result = ((state << 1) | new_bit);
+	return result;
 }
+// }}}
 
 int	main(int argc, char **argv) {
 	const unsigned	SZBYTE = DMACMD_DSTBYTE | DMACMD_SRCBYTE;
@@ -267,15 +280,16 @@ int	main(int argc, char **argv) {
 	dst_2 = malloc(sizeof(int) * (TESTLEN+8));
 	lfsr_state_hw_2 = malloc(sizeof(int) * (TESTLEN+8));
 
-	if (lfsr_state_hw_0 == NULL || lfsr_state_hw_1 == NULL || lfsr_state_hw_2 == NULL) {
-        printf("Memory allocation failed\n");
-        return 1;
-    }
+	if (lfsr_state_hw_0 == NULL || lfsr_state_hw_1 == NULL
+					|| lfsr_state_hw_2 == NULL) {
+		printf("Memory allocation failed\n");
+		return 1;
+	}
 
 	// initilaize pointers
-    //lfsrVal.charValue = lfsr_state_hw_0;
-    //lfsrVal.shortValue = lfsr_state_hw_1;
-    //lfsrVal.intValue = lfsr_state_hw_2;
+	//lfsrVal.charValue = lfsr_state_hw_0;
+	//lfsrVal.shortValue = lfsr_state_hw_1;
+	//lfsrVal.intValue = lfsr_state_hw_2;
 
 	*src++ = 0x01;
 	*src++ = 0x02;
@@ -293,9 +307,10 @@ int	main(int argc, char **argv) {
 	dst[TESTLEN+0] = 0x0d; dst[TESTLEN+1] = 0x0e;
 	dst[TESTLEN+2] = 0x0f; dst[TESTLEN+3] = 0x00;
 
-	// -----------
+	////////////////////////////////////////////////////////////////////////
+	//
 	// 8b test
-	// -----------
+	// {{{
 	printf("Basic MEMCPY( 8b): \n");
 
 	// compare hw-sw lfsr values for 8 bit
@@ -323,8 +338,7 @@ int	main(int argc, char **argv) {
 	if (cmp_err || err || memcmp(lfsr_state_hw_0, dst, TESTLEN) != 0) {
 		printf("(char) No match between sw and hw lfsr values!\n");
 		return -1;
-	}
-	 else
+	} else
 		printf("(char) Matched lfsr values\n");
 
 	err = dma_memcpy_noninc(dst, src, 1, SZBYTE);
@@ -334,9 +348,11 @@ int	main(int argc, char **argv) {
 	} else
 		printf("PASS\n");
 
-	// -----------
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// 16b test
-	// -----------
+	// {{{
 	printf("Basic MEMCPY( 16b): \n");
 
 	// compare hw-sw lfsr values for 16 bit
@@ -383,10 +399,11 @@ int	main(int argc, char **argv) {
 
 		offset_addr++;
 	}
-
-	// -----------
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// 32b test
-	// -----------
+	// {{{
 	printf("Basic MEMCPY( 32b): \n");
 
 	// compare hw-sw lfsr values for 32 bit
@@ -411,8 +428,7 @@ int	main(int argc, char **argv) {
 	if (cmp_err || err || memcmp(lfsr_state_hw_2, dst_2, TESTLEN) != 0) {
 		printf("(int) No match between sw and hw lfsr values!\n");
 		return -1;
-	}
-	 else
+	} else
 		printf("(int) Matched lfsr values\n");
 
 	err = dma_memcpy_noninc(dst_2, src_2, 4, SZ32);
@@ -434,10 +450,11 @@ int	main(int argc, char **argv) {
 
 		offset_addr++;
 	}
-
-	// -----------
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// Bus width test
-	// -----------
+	// {{{
 	printf("Basic MEMCPY( BUS): \n");
 
 	// compare hw-sw lfsr values for 64 bit
@@ -462,8 +479,7 @@ int	main(int argc, char **argv) {
 	if (cmp_err || err || memcmp(lfsr_state_hw_2, dst_2, TESTLEN) != 0) {
 		printf("(bus) No match between sw and hw lfsr values!\n");
 		return -1;
-	}
-	 else
+	} else
 		printf("(bus) Matched lfsr values\n");
 
 	err = dma_memcpy_noninc(dst_2, src_2, 8, SZBUS);
@@ -485,10 +501,11 @@ int	main(int argc, char **argv) {
 
 		offset_addr++;
 	}
-
-	// -----------
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
 	// obtain valid error signal
-	// -----------
+	// {{{
 	src = NULL;
 	dst = NULL;
 
@@ -498,6 +515,7 @@ int	main(int argc, char **argv) {
 		fail = 1;
 	} else
 		printf("PASS\n");
+	// }}}
 
 	if (fail)
 		printf("TEST FAILURE!\n");

@@ -27,7 +27,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -276,6 +276,49 @@ module	wb_tb #(
 	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	zdmacstw_addr;
 	wire	[BUS_WIDTH-1:0]	zdmacstw_data, zdmacstw_idata;
 	wire	[BUS_WIDTH/8-1:0]	zdmacstw_sel;
+
+	wire		zdmacst_cyc, zdmacst_stb, zdmacst_we;
+	wire	[ADDRESS_WIDTH-3-$clog2(32/8)-1:0]	zdmacst_addr;
+	wire	[31:0]	zdmacst_data, zdmacst_idata;
+	wire	[3:0]	zdmacst_sel;
+	wire		zdmacst_stall, zdmacst_ack, zdmacst_err;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// ZipSystem replacement(s)
+	// {{{
+	wire		pic_stall, pic_ack;
+	wire	[31:0]	pic_data;
+
+	wire		timer_a_stall, timer_b_stall, timer_c_stall,
+			jiffies_stall;	// Jiffies
+
+	wire		timer_a_ack, timer_b_ack, timer_c_ack,
+			jiffies_ack;	// Jiffies
+
+	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
+			jiffies_data;	// Jiffies
+	wire	[31:0]	dma_slv_data;
+
+	wire	[31:0]	mtc_data, moc_data, mpc_data, mic_data;
+	wire	[31:0]	utc_data, uoc_data, upc_data, uic_data;
+
+	// Verilator lint_off UNUSED
+	wire		ign_mtc_stall, ign_moc_stall,
+			ign_mpc_stall, ign_mic_stall;
+	wire		ign_utc_stall, ign_uoc_stall,
+			ign_upc_stall, ign_uic_stall;
+	wire		ign_mtc_ack, ign_moc_ack,
+			ign_mpc_ack, ign_mic_ack;
+	wire		ign_utc_ack, ign_uoc_ack,
+			ign_upc_ack, ign_uic_ack;
+
+	wire		mtc_int, moc_int, mpc_int, mic_int;
+	wire		utc_int, uoc_int, upc_int, uic_int;
+	// Verilator lint_on  UNUSED
+
+	reg		zsys_stb_d;
+	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 	// }}}
 
 	// }}}
@@ -436,12 +479,17 @@ module	wb_tb #(
 		assign	wide_idata = simw_idata << (32*fifo_addr);
 		assign	sim_idata  = wide_idata[BUS_WIDTH-1:BUS_WIDTH-32];
 
+		// Keep Verilator happy
+		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_sim_expander;
 		assign	unused_sim_expander = &{ 1'b0,
 			fifo_fill, fifo_empty, wide_idata[BUS_WIDTH-32-1:0],
 			sim_addr[$clog2(BUS_WIDTH/32):0] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
+		// }}}
 		// }}}
 	end endgenerate
 `else
@@ -609,11 +657,15 @@ module	wb_tb #(
 		assign	cpu_i_count[0]  = u_cpu.cpu_i_count;
 		assign	cpu_gie[0]      = u_cpu.cpu_gie;
 
-
+		// Keep Verilator happy
+		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_zipsys;
 		assign	unused_zipsys = &{ 1'b0, pic_int };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
+		// }}}
 	end endgenerate
 
 	assign	dbg_err = 1'b0;
@@ -642,6 +694,8 @@ module	wb_tb #(
 	assign	smpw_idata[BUS_WIDTH-1:0] = {(BUS_WIDTH){1'b0}};
 	assign	smpw_err[0]   = r_smp_err;
 
+	// Keep Verilator happy
+	// {{{
 	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_smpw;
@@ -652,6 +706,7 @@ module	wb_tb #(
 				};
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
+	// }}}
 	// }}}
 
 	generate for (gk=1; gk<OPT_SMP; gk=gk+1)
@@ -845,15 +900,19 @@ module	wb_tb #(
 			assign	cpu_i_count[gk]  = u_smp.cpu_i_count;
 			assign	cpu_gie[gk]      = u_smp.cpu_gie;
 
+			// Keep Verilator happy
+			// {{{
 			// Verilator coverage_off
 			// Verilator lint_off UNUSED
 			wire	unused_zipsys;
 			assign	unused_zipsys = &{ 1'b0, pic_int };
 			// Verilator lint_on  UNUSED
 			// Verilator coverage_on
-
+			// }}}
 		end
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_smp;
@@ -864,6 +923,7 @@ module	wb_tb #(
 				};
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 	end endgenerate
 
 	// }}}
@@ -1061,39 +1121,6 @@ module	wb_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	wire		pic_stall, pic_ack;
-	wire	[31:0]	pic_data;
-
-	wire		timer_a_stall, timer_b_stall, timer_c_stall,
-			jiffies_stall;	// Jiffies
-
-	wire		timer_a_ack, timer_b_ack, timer_c_ack,
-			jiffies_ack;	// Jiffies
-
-	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
-			jiffies_data;	// Jiffies
-	wire	[31:0]	dma_slv_data;
-
-	wire	[31:0]	mtc_data, moc_data, mpc_data, mic_data;
-	wire	[31:0]	utc_data, uoc_data, upc_data, uic_data;
-
-	// Verilator lint_off UNUSED
-	wire		ign_mtc_stall, ign_moc_stall,
-			ign_mpc_stall, ign_mic_stall;
-	wire		ign_utc_stall, ign_uoc_stall,
-			ign_upc_stall, ign_uic_stall;
-	wire		ign_mtc_ack, ign_moc_ack,
-			ign_mpc_ack, ign_mic_ack;
-	wire		ign_utc_ack, ign_uoc_ack,
-			ign_upc_ack, ign_uic_ack;
-
-	wire		mtc_int, moc_int, mpc_int, mic_int;
-	wire		utc_int, uoc_int, upc_int, uic_int;
-	// Verilator lint_on  UNUSED
-
-	reg		zsys_stb_d;
-	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 
 	wbdown #(
 		// {{{
@@ -1439,12 +1466,15 @@ module	wb_tb #(
 			// }}}
 		);
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_dmac;
 		assign	unused_dmac = &{ 1'b0, ign_dmac_stall, ign_dmac_ack };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 		// }}}
 	end else begin : NO_EXTERNAL_DMA
 
@@ -1458,6 +1488,8 @@ module	wb_tb #(
 
 	end endgenerate
 
+	// Keep Verilator happy
+	// {{{
 	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_zsys;
@@ -1469,6 +1501,7 @@ module	wb_tb #(
 		};
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
+	// }}}
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1556,6 +1589,8 @@ module	wb_tb #(
 
 		assign	scope_int = 1'b0;
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_scope;
@@ -1563,10 +1598,11 @@ module	wb_tb #(
 					scopew_data, scopew_sel, cpu_trace };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 
 		// }}}
 	end endgenerate
-
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// (Optional) ZIPDMA_Check
@@ -1574,56 +1610,6 @@ module	wb_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	// {{{
-	//wire	zdmac_cyc, zdmac_stb, zdmac_we;
-	//wire	[ADDRESS_WIDTH-3-$clog2(BUS_WIDTH/8)-1:0]	zdmac_addr;
-	//wire	[BUS_WIDTH-1:0]	zdmac_data, zdmac_idata;
-	//wire	[$clog2(BUS_WIDTH/8):0]	zdmac_sel;
-	//wire		zdmac_stall, zdmac_ack, zdmac_err;
-
-	wire	zdmacst_cyc, zdmacst_stb, zdmacst_we;
-	wire	[ADDRESS_WIDTH-3-$clog2(32/8)-1:0]	zdmacst_addr;
-	wire	[31:0]	zdmacst_data, zdmacst_idata;
-	wire	[3:0]	zdmacst_sel;
-	wire		zdmacst_stall, zdmacst_ack, zdmacst_err;
-	
-	//wbdown #(
-	//	// {{{
-	//	.ADDRESS_WIDTH(ADDRESS_WIDTH-3),
-	//	.WIDE_DW(64), .SMALL_DW(BUS_WIDTH)
-	//	// }}}
-	//) u_zdmacdown (
-	//	// {{{
-	//	.i_clk(i_clk), .i_reset(i_reset),
-	//	// The "Wide" connection
-	//	// {{{
-	//	.i_wcyc(zdmacw_cyc), 
-	//	.i_wstb(zdmacw_stb), 
-	//	.i_wwe(zdmacw_we),
-	//	.i_waddr(zdmacw_addr[WAW-4:0]),
-	//	.i_wdata(zdmacw_data), 
-	//	.i_wsel(zdmacw_sel),
-	//	//
-	//	.o_wstall(zdmacw_stall), 
-	//	.o_wack(zdmacw_ack),
-	//	.o_wdata(zdmacw_idata), 
-	//	.o_werr(zdmacw_err),
-	//	// }}}
-	//	// The downsized connection
-	//	// {{{
-	//	.o_cyc(zdmac_cyc), 
-	//	.o_stb(zdmac_stb), 
-	//	.o_we(zdmac_we),
-	//	.o_addr(zdmac_addr), 
-	//	.o_data(zdmac_data),
-	//	.o_sel(zdmac_sel),
-	//	//
-	//	.i_stall(zdmac_stall), 
-	//	.i_ack(zdmac_ack),
-	//	.i_data(zdmac_idata), 
-	//	.i_err(zdmac_err)
-	//	// }}}
-	//);
 
 	wbdown #(
 		// {{{
@@ -1635,30 +1621,30 @@ module	wb_tb #(
 		.i_clk(i_clk), .i_reset(i_reset),
 		// The "Wide" connection
 		// {{{
-		.i_wcyc(zdmacstw_cyc), 
-		.i_wstb(zdmacstw_stb), 
+		.i_wcyc(zdmacstw_cyc),
+		.i_wstb(zdmacstw_stb),
 		.i_wwe(zdmacstw_we),
 		.i_waddr(zdmacstw_addr[WAW-4:0]),
-		.i_wdata(zdmacstw_data), 
+		.i_wdata(zdmacstw_data),
 		.i_wsel(zdmacstw_sel),
 		//
-		.o_wstall(zdmacstw_stall), 
+		.o_wstall(zdmacstw_stall),
 		.o_wack(zdmacstw_ack),
-		.o_wdata(zdmacstw_idata), 
+		.o_wdata(zdmacstw_idata),
 		.o_werr(zdmacstw_err),
 		// }}}
 		// The downsized connection
 		// {{{
-		.o_cyc(zdmacst_cyc), 
-		.o_stb(zdmacst_stb), 
+		.o_cyc(zdmacst_cyc),
+		.o_stb(zdmacst_stb),
 		.o_we(zdmacst_we),
-		.o_addr(zdmacst_addr), 
+		.o_addr(zdmacst_addr),
 		.o_data(zdmacst_data),
 		.o_sel(zdmacst_sel),
 		//
-		.i_stall(zdmacst_stall), 
+		.i_stall(zdmacst_stall),
 		.i_ack(zdmacst_ack),
-		.i_data(zdmacst_idata), 
+		.i_data(zdmacst_idata),
 		.i_err(zdmacst_err)
 		// }}}
 	);
@@ -1669,13 +1655,13 @@ module	wb_tb #(
 	) u_zipdma_check (
 		// {{{
 		.i_clk(i_clk),
-		.i_reset(i_reset), 
+		.i_reset(i_reset),
 		// mm2s, s2mm
-		.i_wb_cyc(zdmacw_cyc), 
+		.i_wb_cyc(zdmacw_cyc),
 		.i_wb_stb(zdmacw_stb),
-		.i_wb_we(zdmacw_we),   
+		.i_wb_we(zdmacw_we),
 		.i_wb_addr(zdmacw_addr),
-		.i_wb_data(zdmacw_data), 
+		.i_wb_data(zdmacw_data),
 		.i_wb_sel(zdmacw_sel),
 		//
 		.o_wb_stall(zdmacw_stall),
@@ -1683,11 +1669,11 @@ module	wb_tb #(
 		.o_wb_data(zdmacw_idata),
 		.o_wb_err(zdmacw_err),
 		// status
-		.i_st_cyc(zdmacst_cyc), 
+		.i_st_cyc(zdmacst_cyc),
 		.i_st_stb(zdmacst_stb),
-		.i_st_we(zdmacst_we),   
+		.i_st_we(zdmacst_we),
 		.i_st_addr(zdmacst_addr[0]),
-		.i_st_data(zdmacst_data), 
+		.i_st_data(zdmacst_data),
 		.i_st_sel(zdmacst_sel),
 		//
 		.o_st_stall(zdmacst_stall),
@@ -1760,7 +1746,7 @@ module	wb_tb #(
 		timer_a_int, timer_b_int, timer_c_int, jiffies_int,
 		timer_a_ack, timer_b_ack, timer_c_ack, jiffies_ack,
 		timer_a_stall, timer_b_stall, timer_c_stall, jiffies_stall,
-		scope_int, zdmacst_addr[ADDRESS_WIDTH-3-$clog2(32/8)-1:1], 
+		scope_int, zdmacst_addr[ADDRESS_WIDTH-3-$clog2(32/8)-1:1],
 		zdmacstw_addr[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1-:3] };
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on

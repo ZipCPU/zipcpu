@@ -11,7 +11,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -31,7 +31,6 @@
 // License:	GPL, v3, as defined and found on www.gnu.org,
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -59,7 +58,9 @@ module zipdma #(
 		input	wire	[SLV_WIDTH-1:0]	i_swb_data,
 		input	wire [SLV_WIDTH/8-1:0]	i_swb_sel,
 		// Slave/control wishbone outputs
+		// Verilator coverage_off
 		output	wire			o_swb_stall,
+		// Verilator coverage_on
 		output	wire			o_swb_ack,
 		output	wire	[SLV_WIDTH-1:0]	o_swb_data,
 		// }}}
@@ -364,7 +365,7 @@ module zipdma #(
 		//
 		.i_wr_stall(s2mm_wr_stall),
 		.i_wr_ack(s2mm_wr_ack),
-		.i_wr_data(wb_idata),
+		.i_wr_data({(BUS_WIDTH){1'b0}}),
 		.i_wr_err(s2mm_wr_err)
 		// }}}
 		// }}}
@@ -415,11 +416,13 @@ module zipdma #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, ign_sfifo_fill, mm2s_rd_data, rx_ready,
 				s2mm_transferlen };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

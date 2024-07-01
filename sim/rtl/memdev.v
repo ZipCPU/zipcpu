@@ -18,7 +18,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -257,23 +257,51 @@ module	memdev #(
 	always @(*)
 		assert(!o_wb_stall);
 
-	assign	f_addr = $anyconst;
-	initial	assume(mem[f_addr] == f_data);
+	(* anyconst *) wire	[(AW-1):0]	f_addr;
+	(* anyconst *) wire	[DW-1:0]	f_first;
+			reg	[DW-1:0]	f_data;
 
-	generate if (!OPT_ROM)
+	generate if (OPT_ROM)
 	begin : F_MATCH_WRITES
-		integer	ik;
+		// This just guarantees *something* drives f_data.  Otherwise
+		// it is held as 'x, and the assumptions below don't help us.
+		always @(posedge i_clk)
+		if (!f_past_valid)
+			f_data <= f_first;
+	end else if (EXTRACLOCK)
+	begin
+		integer	fk;
 
 		always @(posedge i_clk)
-		if (w_wstb && f_addr == w_addr)
-		for(ik=0; ik < DW/8; ik=ik+1)
-		if (w_sel[ik])
-			f_data[ik * 8 +: 8] <= w_data[ik*8 +: 8];
+		if (f_past_valid && !$past(i_reset)
+				&& $past(i_wb_stb && i_wb_we)
+					&& $past(i_wb_addr == f_addr))
+		begin
+			for(fk=0; fk<DW/8; fk=fk+1)
+			if ($past(i_wb_sel[fk]))
+				f_data[8*fk +: 8] <= $past(i_wb_data[8*fk +: 8]);
+		end
+	end else begin
+		integer	fk;
 
+		always @(posedge i_clk)
+		if (i_wb_stb && i_wb_we
+					&& i_wb_addr == f_addr)
+		begin
+			for(fk=0; fk<DW/8; fk=fk+1)
+			if (i_wb_sel[fk])
+				f_data[8*fk +: 8] <= i_wb_data[8*fk +: 8];
+		end
 	end endgenerate
 
 	always @(*)
+	if (!f_past_valid)
+	begin
+		assume(mem[f_addr] == f_data);
+		assume(f_data == f_first);
+	end else begin
 		assert(mem[f_addr] == f_data);
+	end
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(OPT_ROM))

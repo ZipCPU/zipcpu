@@ -16,7 +16,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -81,8 +81,10 @@ module	zipdma_s2mm #(
 		output	reg	[DW/8-1:0]	o_wr_sel,
 		input	wire			i_wr_stall,
 		input	wire			i_wr_ack,
-		input	wire	[DW-1:0]	i_wr_data,
+		// Verilator coverage_off
+		input	wire	[DW-1:0]	i_wr_data,	// UNUSED
 		input	wire			i_wr_err
+		// Verilator coverage_on
 		// }}}
 		// }}}
 	);
@@ -394,10 +396,12 @@ module	zipdma_s2mm #(
 
 	// Keep Verilator happy
 	// {{{
+	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, i_wr_data };
 	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

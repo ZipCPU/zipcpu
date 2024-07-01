@@ -36,205 +36,173 @@
 ////////////////////////////////////////////////////////////////////////////////
 `timescale 1ns/1ps
 `default_nettype none
-
-module zipdma_check #(
-        parameter ADDRESS_WIDTH = 30,
-        parameter BUS_WIDTH = 64
-    ) (
-        input   wire            i_clk, i_reset,
-        // data
-        input	wire		    i_wb_cyc, i_wb_stb,
-		input	wire			i_wb_we,
+// }}}
+module	zipdma_check #(
+		parameter ADDRESS_WIDTH = 30,
+		parameter BUS_WIDTH = 64
+	) (
+		// {{{
+		input	wire		i_clk, i_reset,
+		// High-speed, high width Wishbone test/data port
+		// {{{
+		input	wire		i_wb_cyc, i_wb_stb,
+		input	wire		i_wb_we,
 		input	wire [AW-1:0]	i_wb_addr,
 		input	wire [DW-1:0]	i_wb_data,
 		input	wire [DW/8-1:0]	i_wb_sel,
 		//
-        output	reg	    		o_wb_stall,
-		output	reg	    		o_wb_ack,
-		output	reg [DW-1:0]	o_wb_data,
-		output	reg 			o_wb_err,
-        // status
-        input	wire		    i_st_cyc, i_st_stb,
-		input	wire			i_st_we,
-		input	wire        	i_st_addr,
-		input	wire [31:0]	    i_st_data,
-		input	wire [3:0]	    i_st_sel,
+		// verilator coverage_off
+		output	wire		o_wb_stall,
+		// verilator coverage_on
+		output	reg		o_wb_ack,
+		output	wire [DW-1:0]	o_wb_data,
+		// verilator coverage_off
+		output	wire 		o_wb_err,
+		// verilator coverage_on
+		// }}}
+		// Wishbone status port
+		// {{{
+		input	wire		i_st_cyc, i_st_stb,
+		input	wire		i_st_we,
+		input	wire		i_st_addr,
+		input	wire [31:0]	i_st_data,
+		input	wire [3:0]	i_st_sel,
 		//
-        output	reg	    		o_st_stall,
-		output	reg	    		o_st_ack,
-		output	reg [31:0]  	o_st_data,
-		output	reg 			o_st_err
-    );
+		// verilator coverage_off
+		output	wire		o_st_stall,
+		// verilator coverage_on
+		output	reg		o_st_ack,
+		output	reg [31:0]	o_st_data,
+		// verilator coverage_off
+		output	wire		o_st_err
+		// verilator coverage_on
+		// }}}
+		// }}}
+	);
 
-    localparam	DW = BUS_WIDTH;
-    localparam	AW = ADDRESS_WIDTH-$clog2(DW/8);
-    localparam  BW = DW/8;   // BIT_WIDTH
+	// Local declarations
+	// {{{
+	localparam	DW = BUS_WIDTH;
+	localparam	AW = ADDRESS_WIDTH-$clog2(DW/8);
+	localparam	BW = DW/8;   // BIT_WIDTH
 
-    // State encoding
-    //localparam [1:0] IDLE = 2'b00,
-    //                 S_32 = 2'b01,
-    //                 S_64 = 2'b10;
+	reg [DW-1:0]	lfsr_state;
 
-    reg [DW-1:0] lfsr_state;
+	wire		rd_data_en, wr_data_en;
+	reg	[11:0]	rd_count, wr_count;
+	reg	[11:0]	rd_count_reg, wr_count_reg;
+	// }}}
 
-    reg stb_reg;
-    wire rd_data_en, wr_data_en;
-    reg [11:0] rd_count, wr_count;
-    reg [11:0] rd_count_reg, wr_count_reg;
+	// rd_data_en, wr_data_en
+	assign rd_data_en = i_wb_stb && !i_wb_we && (i_wb_sel != 0);
+	assign wr_data_en = i_wb_stb &&  i_wb_we && (i_wb_sel != 0);
 
-    // rd_en, wr_en
-    assign rd_data_en = i_wb_stb && !i_wb_we && (i_wb_sel != 0);
-    assign wr_data_en = i_wb_stb && i_wb_we && (i_wb_sel != 0);
+	// Wishbone outputs
+	assign o_wb_stall = 1'b0;
+	assign o_wb_err   = 1'b0;
+	assign o_wb_data  = lfsr_state;
 
-    // Wishbone outputs
-    assign o_wb_stall = 1'b0;
-    assign o_wb_err   = 1'b0;
-    assign o_wb_data  = lfsr_state;
+	assign o_st_stall = 1'b0;
+	assign o_st_err   = 1'b0;
 
-    assign o_st_stall = 1'b0;
-    assign o_st_err   = 1'b0;
+	// o_st_ack
+	always @(posedge i_clk)
+	if (i_reset)
+		o_st_ack <= 1'b0;
+	else
+		o_st_ack <= i_st_stb;
 
-    // State and next state variables
-    //reg [1:0] state, next_state;
+	// lfsr_state
+	// {{{
+	always @(posedge i_clk)
+	if (i_reset)
+		lfsr_state <= 0; // initial state
+	else begin
+		if (i_st_stb && i_st_we && (i_st_sel != 0))
+		begin // set an initial per-test state
+			lfsr_state <= 0;
+			for (int i = 0; i < 4; i++)
+			if (i_st_sel[i])
+				lfsr_state[(DW-32) + (i*8) +: 8] <= i_st_data[(i*8) +: 8];
+		end
 
-    // State transition logic
-    //always @(posedge i_clk) begin
-    //    if (i_reset) begin
-    //        state <= IDLE;
-    //    end else begin
-    //        state <= next_state;
-    //    end
-    //end
+		// feedback
+		if (rd_data_en)
+			lfsr_state <= {lfsr_state[DW-2:0], lfsr_state[DW-1] ^ lfsr_state[DW-2]};
+	end
+	// }}}
 
-    // Next state logic
-    //always @(*) begin
-    //    next_state = state; // Default to hold state
-    //    o_st_ack = 1'b0; // Default to deassert ACK
-//
-    //    case (state)
-    //        IDLE: begin
-    //            if (i_st_stb)
-    //                next_state = S_32;
-    //        end
-    //        S_32: begin
-    //            if (!i_st_stb) begin
-    //                o_st_ack = 1'b1; // Assert ACK for one clock cycle
-    //                next_state = IDLE;
-    //            end else begin
-    //                next_state = S_64;
-    //            end
-    //        end
-    //        S_64: begin
-    //            if (!i_st_stb) begin
-    //                o_st_ack = 1'b1; // Assert ACK for one clock cycle
-    //                next_state = IDLE;
-    //            end
-    //        end
-    //        default: begin end
-    //    endcase
-    //end
+	// o_wb_ack
+	// {{{
+	initial	o_wb_ack = 1'b0;
+	always @(posedge i_clk)
+	if (i_reset)
+		o_wb_ack <= 0;
+	else
+		o_wb_ack <= i_wb_stb && !o_wb_stall;
+	// }}}
 
-    // o_st_ack
-    always @(posedge i_clk) begin
-        if (i_reset) begin
-            o_st_ack <= 1'b0;
-        end
-        else begin
-            o_st_ack <= 1'b0;
-            if (i_st_stb) begin
-                o_st_ack <= 1'b1;
-            end
-        end
-    end
+	// rd_count, wr_count
+	// {{{
+	always @(*)
+	begin
+		rd_count = rd_count_reg;
+		wr_count = wr_count_reg;
 
-    // LFSR
-    always @(posedge i_clk) begin
-        if (i_reset)
-            lfsr_state <= 0; // initial state
-        else begin
-            // set initial state
-            if (i_st_stb && i_st_we && (i_st_sel != 0)) begin
-                lfsr_state <= 0;
-                for (int i = 0; i < 4; i++) begin
-                    if (i_st_sel[i])
-                        lfsr_state[(DW-32) + (i*8) +: 8] <= i_st_data[(i*8) +: 8];
-                end
-            end
+		// reset counter after lfsr initialization
+		if (i_st_stb && i_st_we && (i_st_sel != 0))
+		begin
+			rd_count = 0;
+			wr_count = 0;
+		end else for (int i = 0; i < BW; i++)
+		if (i_wb_sel[i])
+		begin
+			rd_count = rd_count + (rd_data_en ? 1 : 0);
+			wr_count = wr_count + (wr_data_en ? 1 : 0);
+		end
+	end
 
-            // feedback
-            if (rd_data_en)
-                lfsr_state <= {lfsr_state[DW-2:0], lfsr_state[DW-1] ^ lfsr_state[DW-2]};
-        end
-    end
+	always @(posedge i_clk)
+	if (i_reset)
+	begin
+		rd_count_reg <= 0;
+		wr_count_reg <= 0;
+	end else begin
+		rd_count_reg <= rd_count;
+		wr_count_reg <= wr_count;
+	end
+	// }}}
 
-    // o_wb_ack
-    initial	stb_reg = 1'b0;
-    always @(posedge i_clk) begin
-        if (i_reset)
-            stb_reg <= 0;
-        else
-            stb_reg <= i_wb_stb && !o_wb_stall;
-    end
+	// o_st_data: Error detectıon (might need more error flags)
+	// {{{
+	always @(posedge i_clk)
+	if (i_reset)
+		o_st_data <= 32'b0;
+	else begin
+		o_st_data[15:4]  <= rd_count;
+		o_st_data[31:20] <= wr_count;
 
-	assign o_wb_ack = stb_reg;
+		for (int i = 0; i < BW; i++)
+		if (wr_data_en && i_wb_sel[i])
+		begin
+			if (i_wb_data[(i*8)+:8] != lfsr_state[(i*8)+:8])
+				o_st_data[0] <= 1'b1;
+			else
+				o_st_data[0] <= 1'b0;
+		end
 
-    // rd_count, wr_count
-    always @(*) begin
-        rd_count = rd_count_reg;
-        wr_count = wr_count_reg;
+		if (i_st_stb && i_st_we)
+			o_st_data[0] <= 1'b0;
+	end
+	// }}}
 
-        // reset counter after lfsr initialization
-        if (i_st_stb && i_st_we && (i_st_sel != 0)) begin
-            rd_count = 0;
-            wr_count = 0;
-        end else begin
-            for (int i = 0; i < BW; i++) begin
-                if (i_wb_sel[i]) begin
-                    rd_count = rd_count + (rd_data_en ? 1 : 0);
-                    wr_count = wr_count + (wr_data_en ? 1 : 0);
-                end
-            end
-        end
-    end
-
-    always @(posedge i_clk) begin
-        if (i_reset) begin
-            rd_count_reg <= 0;
-            wr_count_reg <= 0;
-        end else begin
-            rd_count_reg <= rd_count;
-            wr_count_reg <= wr_count;
-        end
-    end
-
-    // o_wb_err
-    // Error detectıon (might need more error flags)
-    always @(posedge i_clk) begin
-        if (i_reset) begin
-            o_st_data <= 32'b0;
-        end
-        else begin
-            o_st_data[15:4]  <= rd_count;
-            o_st_data[31:20] <= wr_count;
-            if (wr_data_en) begin
-                for (int i = 0; i < BW; i++) begin
-                    if (i_wb_sel[i]) begin
-                        if (i_wb_data[(i*8)+:8] != lfsr_state[(i*8)+:8])
-                            o_st_data[0] <= 1'b1;
-                        else
-                            o_st_data[0] <= 1'b0;
-                    end
-                end
-            end
-
-            if (i_st_stb && i_st_we)
-                o_st_data[0] <= 1'b0;
-        end
-    end
-
-    // verilator lint_off UNUSED
-	wire unused;
-	assign unused = &{ 1'b0, i_wb_cyc, i_st_cyc, i_st_addr, i_wb_addr };
+	// Keep Verilator happy
+	// {{{
+	// verilator coverage_off
+	// verilator lint_off UNUSED
+	wire	unused;
+	assign	unused = &{ 1'b0, i_wb_cyc, i_st_cyc, i_st_addr, i_wb_addr };
 	// verilator lint_on UNUSED
-
+	// verilator coverage_on
+	// }}}
 endmodule

@@ -30,7 +30,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -298,7 +298,7 @@ module	prefetch #(
 		// }}}
 
 		assign	r_valid = rg_valid;
-;
+
 		assign	r_insn  = rg_insn;
 		if (OPT_LITTLE_ENDIAN)
 		begin : GEN_LIL_ENDIAN_SHIFT

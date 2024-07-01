@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2020-2023, Gisselquist Technology, LLC
+// Copyright (C) 2020-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -354,7 +354,9 @@ module	axilfetch #(
 		reg				cache_valid;
 		reg	[C_AXI_DATA_WIDTH:0]	cache_data;
 
+		// Verilator lint_off CMPCONST
 		assign	fifo_rd = !o_valid || (i_ready && (out_fill <= 1));
+		// Verilator lint_on  CMPCONST
 		assign	fifo_empty =(!M_AXI_RVALID && !cache_valid) || flushing;
 		assign	fifo_data = cache_valid ? cache_data
 					: ({ M_AXI_RRESP[1], endian_swapped_rdata });
@@ -375,6 +377,16 @@ module	axilfetch #(
 		always @(posedge S_AXI_ACLK)
 		if (M_AXI_RVALID)
 			cache_data <= { M_AXI_RRESP[1], endian_swapped_rdata };
+
+		// Keep Verilator happy
+		// {{{
+		// Verilator coverage_off
+		// Verilator lint_off UNUSED
+		wire	unused_dbl;
+		assign	unused_dbl = &{ 1'b0, fifo_wr };
+		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
+		// }}}
 `ifdef	FORMAL
 		assign	f_cache_valid = cache_valid;
 		assign	{ f_cache_illegal, f_cache_data }  = cache_data;
@@ -496,7 +508,7 @@ module	axilfetch #(
 	else if (!o_illegal && fifo_rd && !fifo_empty)
 		o_illegal <= fifo_data[C_AXI_DATA_WIDTH];
 	// }}}
-	
+
 	// Make verilator happy
 	// {{{
 	// Verilator coverage_off
@@ -798,10 +810,13 @@ module	axilfetch #(
 		// }}}
 	) ffetchi(
 		// {{{
-		S_AXI_ACLK, i_cpu_reset,
-		i_new_pc, i_clear_cache, i_pc,
-		o_valid, i_ready, o_pc, o_insn, o_illegal,
-		fc_pc, fc_illegal, fc_insn, f_address
+		.i_clk(S_AXI_ACLK), .i_reset(i_cpu_reset),
+		.cpu_new_pc(i_new_pc), .cpu_clear_cache(i_clear_cache),
+		.cpu_pc(i_pc), .pf_valid(o_valid),
+		.cpu_ready(i_ready), .pf_pc(o_pc),
+		.pf_insn(o_insn), .pf_illegal(o_illegal),
+		.fc_pc(fc_pc), .fc_illegal(fc_illegal), .fc_insn(fc_insn),
+			.f_address(f_address)
 		// }}}
 	);
 

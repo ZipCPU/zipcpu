@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2024, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -58,7 +58,7 @@ module	cpuops #(
 		// simulation.  These are *ONLY* used by the ZipCPU mpy_tb
 		// simulation testbench.  They are *NOT* used during synthesis,
 		// and not intended to be used outside of the ZipCPU setup.
-		// 
+		//
 		output	wire	[5:0]	OPT_MULTIPLY,
 		output	wire	[31:0]	mpy_a_input, mpy_b_input,
 		output	wire	[63:0]	mpy_output,
