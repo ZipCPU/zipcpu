@@ -412,7 +412,7 @@ module	axiicache #(
 	generate if (SWAP_ENDIANNESS)
 	begin : BIG_TO_LITTLE_ENDIAN
 		// {{{
-		// 
+		//
 		// The ZipCPU is originally a big endian machine.  Bytes on the
 		// AXI bus are by nature little endian.  The following little
 		// snippet rearranges bytes so that they have the proper bus
@@ -528,7 +528,7 @@ module	axiicache #(
 			// We can be valid if there's one more in the buffer
 			// than we've read so far.
 			r_valid <=(r_count >
-				((r_valid&&(!o_valid||i_ready)) ? 1:0) 
+				((r_valid&&(!o_valid||i_ready)) ? 1:0)
 				+ (o_valid ? 1:0));
 			// We can also be valid if another one has just been
 			//   read--as long as it's not due to a bus error.
@@ -586,7 +586,7 @@ module	axiicache #(
 		// }}}
 	end endgenerate
 	// }}}
-	
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1348,7 +1348,7 @@ module	axiicache #(
 	always @(*)
 	if (f_always_illegal && o_valid)
 		assert(o_illegal);
-	
+
 	always @(*)
 	if (f_always_illegal)
 		assert(cache_valid == 0);
@@ -1361,7 +1361,7 @@ module	axiicache #(
 	if (f_never_illegal)
 		assert(!o_illegal);
 	// }}}
-	
+
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Constraining assumptions
@@ -1372,7 +1372,7 @@ module	axiicache #(
 
 	// None currently
 
-	// }}}	
+	// }}}
 `endif	// FORMAL
 // }}}
 endmodule

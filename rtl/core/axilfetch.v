@@ -508,7 +508,7 @@ module	axilfetch #(
 	else if (!o_illegal && fifo_rd && !fifo_empty)
 		o_illegal <= fifo_data[C_AXI_DATA_WIDTH];
 	// }}}
-	
+
 	// Make verilator happy
 	// {{{
 	// Verilator coverage_off

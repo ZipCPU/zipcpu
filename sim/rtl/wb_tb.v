@@ -120,6 +120,8 @@ module	wb_tb #(
 	parameter [WAW-1:0]	SCOPE_ADDR   = { 4'b0001, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	CONSOLE_ADDR = { 4'b0010, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	SMP_BASE_ADDR = { 4'b0011, {(WAW-4){1'b0}} };
+	parameter [WAW-1:0]	ZDMA_CHECK_ADDR = { 4'b0101, {(WAW-4){1'b0}} };
+	parameter [WAW-1:0]	ZDMA_CHECKST_ADDR = { 4'b0110, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	ZSYS_ADDR = { {(ADDRESS_WIDTH-24){1'b1}}, {(24-WBLSB){1'b0}} };
 	parameter [WAW-1:0]	MEMORY_ADDR  = { 2'b01, {(WAW-2){1'b0}} };
 	localparam	LGFIFO = 4;
@@ -258,6 +260,65 @@ module	wb_tb #(
 	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	scopew_addr;
 	wire	[BUS_WIDTH-1:0]		scopew_data, scopew_idata;
 	wire	[BUS_WIDTH/8-1:0]	scopew_sel;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Optional ZIPDMA_Check
+	// {{{
+	wire	zdmacw_cyc, zdmacw_stb, zdmacw_we, zdmacw_ack, zdmacw_stall,
+		zdmacw_err;
+	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	zdmacw_addr;
+	wire	[BUS_WIDTH-1:0]		zdmacw_data, zdmacw_idata;
+	wire	[BUS_WIDTH/8-1:0]	zdmacw_sel;
+
+	wire	zdmacstw_cyc, zdmacstw_stb, zdmacstw_we, zdmacstw_ack, zdmacstw_stall,
+		zdmacstw_err;
+	wire	[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1:0]	zdmacstw_addr;
+	wire	[BUS_WIDTH-1:0]	zdmacstw_data, zdmacstw_idata;
+	wire	[BUS_WIDTH/8-1:0]	zdmacstw_sel;
+
+	wire		zdmacst_cyc, zdmacst_stb, zdmacst_we;
+	wire	[ADDRESS_WIDTH-3-$clog2(32/8)-1:0]	zdmacst_addr;
+	wire	[31:0]	zdmacst_data, zdmacst_idata;
+	wire	[3:0]	zdmacst_sel;
+	wire		zdmacst_stall, zdmacst_ack, zdmacst_err;
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// ZipSystem replacement(s)
+	// {{{
+	wire		pic_stall, pic_ack;
+	wire	[31:0]	pic_data;
+
+	wire		timer_a_stall, timer_b_stall, timer_c_stall,
+			jiffies_stall;	// Jiffies
+
+	wire		timer_a_ack, timer_b_ack, timer_c_ack,
+			jiffies_ack;	// Jiffies
+
+	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
+			jiffies_data;	// Jiffies
+	wire	[31:0]	dma_slv_data;
+
+	wire	[31:0]	mtc_data, moc_data, mpc_data, mic_data;
+	wire	[31:0]	utc_data, uoc_data, upc_data, uic_data;
+
+	// Verilator lint_off UNUSED
+	wire		ign_mtc_stall, ign_moc_stall,
+			ign_mpc_stall, ign_mic_stall;
+	wire		ign_utc_stall, ign_uoc_stall,
+			ign_upc_stall, ign_uic_stall;
+	wire		ign_mtc_ack, ign_moc_ack,
+			ign_mpc_ack, ign_mic_ack;
+	wire		ign_utc_ack, ign_uoc_ack,
+			ign_upc_ack, ign_uic_ack;
+
+	wire		mtc_int, moc_int, mpc_int, mic_int;
+	wire		utc_int, uoc_int, upc_int, uic_int;
+	// Verilator lint_on  UNUSED
+
+	reg		zsys_stb_d;
+	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 	// }}}
 
 	// }}}
@@ -418,12 +479,17 @@ module	wb_tb #(
 		assign	wide_idata = simw_idata << (32*fifo_addr);
 		assign	sim_idata  = wide_idata[BUS_WIDTH-1:BUS_WIDTH-32];
 
+		// Keep Verilator happy
+		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_sim_expander;
 		assign	unused_sim_expander = &{ 1'b0,
 			fifo_fill, fifo_empty, wide_idata[BUS_WIDTH-32-1:0],
 			sim_addr[$clog2(BUS_WIDTH/32):0] };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
+		// }}}
 		// }}}
 	end endgenerate
 `else
@@ -591,11 +657,15 @@ module	wb_tb #(
 		assign	cpu_i_count[0]  = u_cpu.cpu_i_count;
 		assign	cpu_gie[0]      = u_cpu.cpu_gie;
 
-
+		// Keep Verilator happy
+		// {{{
+		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_zipsys;
 		assign	unused_zipsys = &{ 1'b0, pic_int };
 		// Verilator lint_on  UNUSED
+		// Verilator coverage_on
+		// }}}
 	end endgenerate
 
 	assign	dbg_err = 1'b0;
@@ -624,6 +694,8 @@ module	wb_tb #(
 	assign	smpw_idata[BUS_WIDTH-1:0] = {(BUS_WIDTH){1'b0}};
 	assign	smpw_err[0]   = r_smp_err;
 
+	// Keep Verilator happy
+	// {{{
 	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_smpw;
@@ -634,6 +706,7 @@ module	wb_tb #(
 				};
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
+	// }}}
 	// }}}
 
 	generate for (gk=1; gk<OPT_SMP; gk=gk+1)
@@ -827,15 +900,19 @@ module	wb_tb #(
 			assign	cpu_i_count[gk]  = u_smp.cpu_i_count;
 			assign	cpu_gie[gk]      = u_smp.cpu_gie;
 
+			// Keep Verilator happy
+			// {{{
 			// Verilator coverage_off
 			// Verilator lint_off UNUSED
 			wire	unused_zipsys;
 			assign	unused_zipsys = &{ 1'b0, pic_int };
 			// Verilator lint_on  UNUSED
 			// Verilator coverage_on
-
+			// }}}
 		end
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_smp;
@@ -846,6 +923,7 @@ module	wb_tb #(
 				};
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 	end endgenerate
 
 	// }}}
@@ -864,15 +942,19 @@ module	wb_tb #(
 `else
 		.NM(1+OPT_SMP),
 `endif
-		.NS(4+OPT_SMP),
+		.NS(6+OPT_SMP),
 		.AW(ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)), .DW(BUS_WIDTH),
 		.SLAVE_ADDR({ ZSYS_ADDR, SMP_ADDR,
+			ZDMA_CHECKST_ADDR,
+			ZDMA_CHECK_ADDR,
 			CONSOLE_ADDR,
 			SCOPE_ADDR,
 			MEMORY_ADDR }),
 		.SLAVE_MASK({
 			{ {(ADDRESS_WIDTH-24){1'b1}},{(24-WBLSB){1'b0}} }, // ZipSys
 			SMP_MASK,	// SMP
+			{ 4'b1111, {(WAW-4){1'b0}} },	// ZDMA_Check
+			{ 4'b1111, {(WAW-4){1'b0}} },	// ZDMA_Check Status
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Console
 			{ 4'b1111, {(WAW-4){1'b0}} },	// Scope
 			{ 2'b11,   {(WAW-2){1'b0}} } })	// Memory
@@ -910,17 +992,17 @@ module	wb_tb #(
 		// }}}
 		// Master port ... to control the slaves w/in this design
 		// {{{
-		.o_scyc({   zsysw_cyc,  smpw_cyc,  conw_cyc,  scopew_cyc,  mem_cyc  }),
-		.o_sstb({   zsysw_stb,  smpw_stb,  conw_stb,  scopew_stb,  mem_stb  }),
-		.o_swe({    zsysw_we,   smpw_we,   conw_we,   scopew_we,   mem_we   }),
-		.o_saddr({  zsysw_addr, smpw_addr, conw_addr, scopew_addr, mem_addr }),
-		.o_sdata({  zsysw_data, smpw_data, conw_data, scopew_data, mem_data }),
-		.o_ssel({   zsysw_sel,  smpw_sel,  conw_sel,  scopew_sel,  mem_sel  }),
+		.o_scyc({   zsysw_cyc,  smpw_cyc,  zdmacstw_cyc,  zdmacw_cyc,  conw_cyc,  scopew_cyc,  mem_cyc  }),
+		.o_sstb({   zsysw_stb,  smpw_stb,  zdmacstw_stb,  zdmacw_stb,  conw_stb,  scopew_stb,  mem_stb  }),
+		.o_swe({    zsysw_we,   smpw_we,   zdmacstw_we,   zdmacw_we,   conw_we,   scopew_we,   mem_we   }),
+		.o_saddr({  zsysw_addr, smpw_addr, zdmacstw_addr, zdmacw_addr, conw_addr, scopew_addr, mem_addr }),
+		.o_sdata({  zsysw_data, smpw_data, zdmacstw_data, zdmacw_data, conw_data, scopew_data, mem_data }),
+		.o_ssel({   zsysw_sel,  smpw_sel,  zdmacstw_sel,  zdmacw_sel,  conw_sel,  scopew_sel,  mem_sel  }),
 		//
-		.i_sstall({ zsysw_stall,smpw_stall,conw_stall, scopew_stall, mem_stall }),
-		.i_sack({   zsysw_ack,  smpw_ack,  conw_ack,   scopew_ack,   mem_ack   }),
-		.i_sdata({  zsysw_idata,smpw_idata,conw_idata, scopew_idata, mem_idata }),
-		.i_serr({   zsysw_err,  smpw_err,  conw_err,   scopew_err,   mem_err   })
+		.i_sstall({ zsysw_stall,smpw_stall, zdmacstw_stall, zdmacw_stall, conw_stall, scopew_stall, mem_stall }),
+		.i_sack({   zsysw_ack,  smpw_ack,   zdmacstw_ack,   zdmacw_ack,   conw_ack,   scopew_ack,   mem_ack   }),
+		.i_sdata({  zsysw_idata,smpw_idata, zdmacstw_idata, zdmacw_idata, conw_idata, scopew_idata, mem_idata }),
+		.i_serr({   zsysw_err,  smpw_err,   zdmacstw_err,   zdmacw_err,   conw_err,   scopew_err,   mem_err   })
 		// }}}
 		// }}}
 	);
@@ -1039,39 +1121,6 @@ module	wb_tb #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	wire		pic_stall, pic_ack;
-	wire	[31:0]	pic_data;
-
-	wire		timer_a_stall, timer_b_stall, timer_c_stall,
-			jiffies_stall;	// Jiffies
-
-	wire		timer_a_ack, timer_b_ack, timer_c_ack,
-			jiffies_ack;	// Jiffies
-
-	wire	[31:0]	timer_a_data, timer_b_data, timer_c_data,
-			jiffies_data;	// Jiffies
-	wire	[31:0]	dma_slv_data;
-
-	wire	[31:0]	mtc_data, moc_data, mpc_data, mic_data;
-	wire	[31:0]	utc_data, uoc_data, upc_data, uic_data;
-
-	// Verilator lint_off UNUSED
-	wire		ign_mtc_stall, ign_moc_stall,
-			ign_mpc_stall, ign_mic_stall;
-	wire		ign_utc_stall, ign_uoc_stall,
-			ign_upc_stall, ign_uic_stall;
-	wire		ign_mtc_ack, ign_moc_ack,
-			ign_mpc_ack, ign_mic_ack;
-	wire		ign_utc_ack, ign_uoc_ack,
-			ign_upc_ack, ign_uic_ack;
-
-	wire		mtc_int, moc_int, mpc_int, mic_int;
-	wire		utc_int, uoc_int, upc_int, uic_int;
-	// Verilator lint_on  UNUSED
-
-	reg		zsys_stb_d;
-	reg	[WAW+WBLSB-$clog2(32/8)-5:0]	zsys_addr_d;
 
 	wbdown #(
 		// {{{
@@ -1417,12 +1466,15 @@ module	wb_tb #(
 			// }}}
 		);
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_dmac;
 		assign	unused_dmac = &{ 1'b0, ign_dmac_stall, ign_dmac_ack };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 		// }}}
 	end else begin : NO_EXTERNAL_DMA
 
@@ -1436,6 +1488,8 @@ module	wb_tb #(
 
 	end endgenerate
 
+	// Keep Verilator happy
+	// {{{
 	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_zsys;
@@ -1447,6 +1501,7 @@ module	wb_tb #(
 		};
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
+	// }}}
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1534,6 +1589,8 @@ module	wb_tb #(
 
 		assign	scope_int = 1'b0;
 
+		// Keep Verilator happy
+		// {{{
 		// Verilator coverage_off
 		// Verilator lint_off UNUSED
 		wire	unused_scope;
@@ -1541,9 +1598,91 @@ module	wb_tb #(
 					scopew_data, scopew_sel, cpu_trace };
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
+		// }}}
 
 		// }}}
 	end endgenerate
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// (Optional) ZIPDMA_Check
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	wbdown #(
+		// {{{
+		.ADDRESS_WIDTH(ADDRESS_WIDTH-3),
+		.WIDE_DW(BUS_WIDTH), .SMALL_DW(32)
+		// }}}
+	) u_zdmacstdown (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset),
+		// The "Wide" connection
+		// {{{
+		.i_wcyc(zdmacstw_cyc),
+		.i_wstb(zdmacstw_stb),
+		.i_wwe(zdmacstw_we),
+		.i_waddr(zdmacstw_addr[WAW-4:0]),
+		.i_wdata(zdmacstw_data),
+		.i_wsel(zdmacstw_sel),
+		//
+		.o_wstall(zdmacstw_stall),
+		.o_wack(zdmacstw_ack),
+		.o_wdata(zdmacstw_idata),
+		.o_werr(zdmacstw_err),
+		// }}}
+		// The downsized connection
+		// {{{
+		.o_cyc(zdmacst_cyc),
+		.o_stb(zdmacst_stb),
+		.o_we(zdmacst_we),
+		.o_addr(zdmacst_addr),
+		.o_data(zdmacst_data),
+		.o_sel(zdmacst_sel),
+		//
+		.i_stall(zdmacst_stall),
+		.i_ack(zdmacst_ack),
+		.i_data(zdmacst_idata),
+		.i_err(zdmacst_err)
+		// }}}
+	);
+
+	zipdma_check #(
+		.ADDRESS_WIDTH(ADDRESS_WIDTH),
+		.BUS_WIDTH(BUS_WIDTH)
+	) u_zipdma_check (
+		// {{{
+		.i_clk(i_clk),
+		.i_reset(i_reset),
+		// mm2s, s2mm
+		.i_wb_cyc(zdmacw_cyc),
+		.i_wb_stb(zdmacw_stb),
+		.i_wb_we(zdmacw_we),
+		.i_wb_addr(zdmacw_addr),
+		.i_wb_data(zdmacw_data),
+		.i_wb_sel(zdmacw_sel),
+		//
+		.o_wb_stall(zdmacw_stall),
+		.o_wb_ack(zdmacw_ack),
+		.o_wb_data(zdmacw_idata),
+		.o_wb_err(zdmacw_err),
+		// status
+		.i_st_cyc(zdmacst_cyc),
+		.i_st_stb(zdmacst_stb),
+		.i_st_we(zdmacst_we),
+		.i_st_addr(zdmacst_addr[0]),
+		.i_st_data(zdmacst_data),
+		.i_st_sel(zdmacst_sel),
+		//
+		.o_st_stall(zdmacst_stall),
+		.o_st_ack(zdmacst_ack),
+		.o_st_data(zdmacst_idata),
+		.o_st_err(zdmacst_err)
+		// }}}
+	);
+	// }}}
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1607,7 +1746,8 @@ module	wb_tb #(
 		timer_a_int, timer_b_int, timer_c_int, jiffies_int,
 		timer_a_ack, timer_b_ack, timer_c_ack, jiffies_ack,
 		timer_a_stall, timer_b_stall, timer_c_stall, jiffies_stall,
-			scope_int };
+		scope_int, zdmacst_addr[ADDRESS_WIDTH-3-$clog2(32/8)-1:1],
+		zdmacstw_addr[ADDRESS_WIDTH-$clog2(BUS_WIDTH/8)-1-:3] };
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
 	// }}}

@@ -3768,16 +3768,16 @@ module	zipcore #(
 			if (o_mem_reg[4] && !o_mem_op[0])
 			begin
 				case(o_mem_op[2:1])
-				// 3'b000: 
-				// 3'b001: 
+				// 3'b000:
+				// 3'b001:
 				2'b01: $display("MEM: %8d LW uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
 				2'b10: $display("MEM: %8d LH uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
 				2'b11: $display("MEM: %8d LB uR%1d         <- @%08x", nstime, o_mem_reg[3:0], o_mem_addr);
 				default: $display("MEM: %8d Unknown MEM op: %d\n", nstime, o_mem_op);
 			endcase
 			end else case(o_mem_op[2:0])
-			// 3'b000: 
-			// 3'b001: 
+			// 3'b000:
+			// 3'b001:
 			3'b010: $display("MEM: %8d LW sR%1d         <- @%08x", nstime, o_mem_reg, o_mem_addr);
 			3'b011: $display("MEM: %8d SW 0x%08x -> @%08x", nstime, o_mem_data, o_mem_addr);
 			3'b100: $display("MEM: %8d LH sR%1d         <- @%08x", nstime, o_mem_reg, o_mem_addr);
@@ -5932,7 +5932,7 @@ module	zipcore #(
 	always @(posedge i_clk)
 	begin
 		cover(!i_reset);
-		cover(!i_halt);	
+		cover(!i_halt);
 		cover(!i_reset && !i_halt);
 	end
 

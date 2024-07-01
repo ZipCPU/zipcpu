@@ -32,7 +32,6 @@
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
 //
-//
 ////////////////////////////////////////////////////////////////////////////////
 //
 `default_nettype none
@@ -59,7 +58,9 @@ module zipdma #(
 		input	wire	[SLV_WIDTH-1:0]	i_swb_data,
 		input	wire [SLV_WIDTH/8-1:0]	i_swb_sel,
 		// Slave/control wishbone outputs
+		// Verilator coverage_off
 		output	wire			o_swb_stall,
+		// Verilator coverage_on
 		output	wire			o_swb_ack,
 		output	wire	[SLV_WIDTH-1:0]	o_swb_data,
 		// }}}
@@ -415,11 +416,13 @@ module zipdma #(
 
 	// Make verilator happy
 	// {{{
+	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
 	assign	unused = &{ 1'b0, ign_sfifo_fill, mm2s_rd_data, rx_ready,
 				s2mm_transferlen };
 	// verilator lint_on  UNUSED
+	// verilator coverage_on
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////

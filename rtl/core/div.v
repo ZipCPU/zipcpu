@@ -585,31 +585,3 @@ module	div #(
 `endif
 // }}}
 endmodule
-//
-// How much logic will this divide use, now that it's been updated to
-// a different (long division) algorithm?
-//
-// iCE40 stats			(Updated)	(Original)
-//   Number of cells:                700	820
-//     SB_CARRY                      125	125
-//     SB_DFF                          1	  
-//     SB_DFFE                        33	  1
-//     SB_DFFESR                      37
-//     SB_DFFESS                      31
-//     SB_DFFSR                       40	 40
-//     SB_LUT4                       433	553
-// 
-// Xilinx stats			(Updated)	(Original)
-//   Number of cells:                758	831
-//     FDRE                          142	142
-//     LUT1                           97	 97
-//     LUT2                           69	174
-//     LUT3                            6	  5
-//     LUT4                            1	  6
-//     LUT5                           68	 35
-//     LUT6                           94	 98
-//     MUXCY                         129	129
-//     MUXF7                          12	  8
-//     MUXF8                           6	  3
-//     XORCY                         134	134
-

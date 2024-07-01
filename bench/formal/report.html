@@ -1,7 +1,7 @@
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
 <H1 align=center>ZipCPU Verification Report</H1>
-<H2 align=center>20240116</H2>
+<H2 align=center>20240627</H2>
 <TABLE border>
 <TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 <TR></TR>
@@ -90,7 +90,7 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prflcklplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128lplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128lp</TD></TR>
-<TR><TD bgcolor=#caeec8>7 Cover points</TD><TD>memops</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>6 Cover points</TD><TD>memops</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prflplcl</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf128</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>memops</TD><TD>_prf64lp</TD></TR>
@@ -148,10 +148,13 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_pipedlpckh</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_lowlogic</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_piped</TD></TR>
-<TR><TD bgcolor=#caeec8>69 Cover points</TD><TD>zipcore</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8>66 Cover points</TD><TD>zipcore</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcore</TD><TD>_nopipelp</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipcounter</TD><TD>_prf</TD><TD rowspan=1>A simpler peripheral counter</TD></TR>
+<TR></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_mm2s</TD><TD>_prf</TD><TD rowspan=2>WB ZipDMA read half</TD></TR>
+<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>zipdma_mm2s</TD><TD>_cvr</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_rxgears</TD><TD>_cvr</TD><TD rowspan=3>WB ZipDMA incoming gearbox</TD></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipdma_rxgears</TD><TD>_prfw</TD></TR>

@@ -1571,7 +1571,7 @@ module	axilpipe #(
 		begin
 			`BMC_ASSERT(cpu_read_cycle == f_this_read_cycle);
 		end
-		
+
 		if (f_fifo_fill > 1
 			&& (!f_first_in_fifo || f_penu_addr != f_first_addr)
 			&& (!f_next_in_fifo  || f_penu_addr != f_next_addr))
@@ -1632,7 +1632,7 @@ module	axilpipe #(
 		if ((f_first_in_fifo && (f_first_return_reg == cpu_addr_reg) && !f_first_misaligned)
 			||(f_next_in_fifo && (f_next_return_reg == cpu_addr_reg) && !f_next_misaligned))
 			assert(!M_AXI_WVALID && !M_AXI_ARVALID);
-			
+
 		if ((rdaddr != f_last_written || M_AXI_WVALID || M_AXI_ARVALID)
 				&& !misaligned_response_pending
 				&& (cpu_outstanding > (o_valid ? 1:0))
@@ -1816,8 +1816,6 @@ module	axilpipe #(
 			cover(cvr_unaligned_writes > (1<<LGPIPE));
 			cover(cvr_unaligned_reads  > (1<<LGPIPE));
 		end
-
-		
 	end endgenerate
 
 	// }}}

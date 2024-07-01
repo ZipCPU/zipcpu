@@ -17,7 +17,7 @@
 //	20150919 -- Fixed a nasty race condition whereby the pipefetch routine
 //		would produce either the same instruction twice, or skip
 //		an instruction.  This condition was dependent on the CPU stall
-//		condition, and would only take place if the pipeline wasn't 
+//		condition, and would only take place if the pipeline wasn't
 //		completely full throughout the stall.
 //
 //		Interface support was also added for trapping on illegal

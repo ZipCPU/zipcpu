@@ -15,6 +15,7 @@ rtl/iscachable.v
 ../rtl/core/memops.v
 ../rtl/core/mpyop.v
 ../rtl/core/pfcache.v
+../rtl/core/pffifo.v
 ../rtl/core/pipefetch.v
 ../rtl/core/pipemem.v
 ../rtl/core/prefetch.v

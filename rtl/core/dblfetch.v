@@ -774,7 +774,7 @@ module	dblfetch #(
 				>> (f_const_addr[$clog2(DW/8)-1:$clog2(IW/8)] * IW);
 			always @(*)
 				assume(f_shifted_insn[IW-1:0] == f_const_insn);
-			
+
 		end else begin
 			assign  f_shifted_insn = f_const_bus_word
 				<< (f_const_addr[$clog2(DW/8)-1:$clog2(IW/8)] * IW);

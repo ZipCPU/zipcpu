@@ -647,7 +647,7 @@ module	pfcache #(
 
 		always @(*)
 			assume(f_insn_check == f_const_insn);
-		
+
 	end endgenerate
 
 	//

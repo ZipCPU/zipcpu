@@ -114,14 +114,14 @@ module	ffetch #(
 	begin
 		f_address[BW-1:INSN_LSB] <= f_address[BW-1:INSN_LSB] + 1'b1;
 		if (INSN_LSB > 0)
-			f_address[INSN_LSB-1:0] <= 0;
+			f_address[((INSN_LSB>0) ? INSN_LSB:1)-1:0] <= 0;
 	end
 
 	always @(*)
 	begin
 		f_next_address = f_address + (1<<INSN_LSB);
 		if (INSN_LSB > 0)
-			f_next_address[INSN_LSB-1:0] <= 0;
+			f_next_address[((INSN_LSB>0) ? INSN_LSB : 1)-1:0] <= 0;
 	end
 	// }}}
 
@@ -159,7 +159,7 @@ module	ffetch #(
 	// pf_pc, and cpu_pc alignment
 	// {{{
 	generate if (OPT_ALIGNED && INSN_LSB > 0)
-	begin
+	begin : F_CHECK_ALIGNMENT
 
 		always @(*)
 		if (cpu_new_pc)

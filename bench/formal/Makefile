@@ -44,11 +44,12 @@ TESTS += axilfetch axilops axilpipe axilperiphs # axiops axipipe # axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
-TESTS += txgears rxgears s2mm
+TESTS += txgears rxgears s2mm mm2s memdev
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
 
+NOJOBSERVER := MAKEFLAGS=
 ## Proofs
 ## {{{
 PFONE  := prefetch
@@ -123,15 +124,15 @@ fmem:   memops pipemem dcache axilops axiops axidcache
 $(PFONE) : $(PFONE)_prf/PASS $(PFONE)_prf64b/PASS $(PFONE)_prf128b/PASS
 $(PFONE) : $(PFONE)_prf8b/PASS $(PFONE)_prf8ble/PASS
 $(PFONE)_prf/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
-	sby -f $(PFONE).sby prf
+	$(NOJOBSERVER) sby -f $(PFONE).sby prf
 $(PFONE)_prf8b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
-	sby -f $(PFONE).sby prf8b
+	$(NOJOBSERVER) sby -f $(PFONE).sby prf8b
 $(PFONE)_prf8ble/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
-	sby -f $(PFONE).sby prf8ble
+	$(NOJOBSERVER) sby -f $(PFONE).sby prf8ble
 $(PFONE)_prf64b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
-	sby -f $(PFONE).sby prf64b
+	$(NOJOBSERVER) sby -f $(PFONE).sby prf64b
 $(PFONE)_prf128b/PASS: $(PFONE).sby $(RTL)/core/$(PFONE).v $(MASTER) $(IFETCH)
-	sby -f $(PFONE).sby prf128b
+	$(NOJOBSERVER) sby -f $(PFONE).sby prf128b
 ## }}}
 
 .PHONY: $(AXILPF)
@@ -144,29 +145,29 @@ $(AXILPF) : $(AXILPF)_prfdbl64/PASS $(AXILPF)_cvrdbl64/PASS
 $(AXILPF) : $(AXILPF)_prff64/PASS   $(AXILPF)_cvrf64/PASS
 AXILPFDEPS := $(AXILPF).sby $(RTL)/core/$(AXILPF).v $(AXIL) $(IFETCH) $(RTL)/ex/sfifo.v
 $(AXILPF)_prf/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prf
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prf
 $(AXILPF)_cvr/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvr
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvr
 $(AXILPF)_prfdbl/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prfdbl
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prfdbl
 $(AXILPF)_cvrdbl/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvrdbl
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvrdbl
 $(AXILPF)_prff/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prff
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prff
 $(AXILPF)_cvrf/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvrf
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvrf
 $(AXILPF)_prf64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prf64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prf64
 $(AXILPF)_cvr64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvr64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvr64
 $(AXILPF)_prfdbl64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prfdbl64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prfdbl64
 $(AXILPF)_cvrdbl64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvrdbl64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvrdbl64
 $(AXILPF)_prff64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby prff64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby prff64
 $(AXILPF)_cvrf64/PASS: $(AXILPFDEPS)
-	sby -f $(AXILPF).sby cvrf64
+	$(NOJOBSERVER) sby -f $(AXILPF).sby cvrf64
 ## }}}
 
 .PHONY: $(PFTWO)
@@ -175,17 +176,17 @@ $(PFTWO) : $(PFTWO)_prf/PASS $(PFTWO)_cvr/PASS
 $(PFTWO) : $(PFTWO)_prf8b/PASS $(PFTWO)_prf64b/PASS $(PFTWO)_prf128b/PASS
 $(PFTWO) : $(PFTWO)_prf8ble/PASS
 $(PFTWO)_prf/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby prf
+	$(NOJOBSERVER) sby -f $(PFTWO).sby prf
 $(PFTWO)_cvr/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby cvr
+	$(NOJOBSERVER) sby -f $(PFTWO).sby cvr
 $(PFTWO)_prf8b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby prf8b
+	$(NOJOBSERVER) sby -f $(PFTWO).sby prf8b
 $(PFTWO)_prf8ble/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby prf8ble
+	$(NOJOBSERVER) sby -f $(PFTWO).sby prf8ble
 $(PFTWO)_prf64b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby prf64b
+	$(NOJOBSERVER) sby -f $(PFTWO).sby prf64b
 $(PFTWO)_prf128b/PASS: $(PFTWO).sby $(RTL)/core/$(PFTWO).v $(MASTER) $(IFETCH)
-	sby -f $(PFTWO).sby prf128b
+	$(NOJOBSERVER) sby -f $(PFTWO).sby prf128b
 ## }}}
 
 .PHONY: $(PFFIFO)
@@ -194,17 +195,17 @@ $(PFFIFO) : $(PFFIFO)_prf/PASS $(PFFIFO)_cvr/PASS
 $(PFFIFO) : $(PFFIFO)_prf8b/PASS $(PFFIFO)_prf64b/PASS $(PFFIFO)_prf128b/PASS
 $(PFFIFO) : $(PFFIFO)_prf8ble/PASS
 $(PFFIFO)_prf/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby prf
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby prf
 $(PFFIFO)_cvr/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby cvr
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby cvr
 $(PFFIFO)_prf8b/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby prf8b
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby prf8b
 $(PFFIFO)_prf8ble/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby prf8ble
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby prf8ble
 $(PFFIFO)_prf64b/PASS: $(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby prf64b
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby prf64b
 $(PFFIFO)_prf128b/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
-	sby -f $(PFFIFO).sby prf128b
+	$(NOJOBSERVER) sby -f $(PFFIFO).sby prf128b
 ## }}}
 
 .PHONY: $(PFCACHE)
@@ -212,13 +213,13 @@ $(PFFIFO)_prf128b/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
 $(PFCACHE): $(PFCACHE)_prf/PASS   $(PFCACHE)_cvr/PASS
 $(PFCACHE): $(PFCACHE)_prf64/PASS $(PFCACHE)_prf128/PASS
 $(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
-	sby -f $(PFCACHE).sby prf
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf
 $(PFCACHE)_prf64/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
-	sby -f $(PFCACHE).sby prf64
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf64
 $(PFCACHE)_prf128/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
-	sby -f $(PFCACHE).sby prf128
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf128
 $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
-	sby -f $(PFCACHE).sby cvr
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby cvr
 ## }}}
 
 .PHONY: $(AXIICC)
@@ -226,17 +227,17 @@ $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 $(AXIICC): $(AXIICC)_prf/PASS  $(AXIICC)_prf64/PASS  $(AXIICC)_cvr/PASS
 $(AXIICC): $(AXIICC)_prfw/PASS $(AXIICC)_prfw64/PASS $(AXIICC)_cvrw/PASS
 $(AXIICC)_prf/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby prf
+	$(NOJOBSERVER) sby -f $(AXIICC).sby prf
 $(AXIICC)_prf64/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby prf64
+	$(NOJOBSERVER) sby -f $(AXIICC).sby prf64
 $(AXIICC)_prfw/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby prfw
+	$(NOJOBSERVER) sby -f $(AXIICC).sby prfw
 $(AXIICC)_prfw64/PASS: $(AXIICC).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby prfw64
+	$(NOJOBSERVER) sby -f $(AXIICC).sby prfw64
 $(AXIICC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby cvr
+	$(NOJOBSERVER) sby -f $(AXIICC).sby cvr
 $(AXIICC)_cvrw/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
-	sby -f $(AXIICC).sby cvrw
+	$(NOJOBSERVER) sby -f $(AXIICC).sby cvrw
 ## }}}
 ## }}}
 
@@ -246,7 +247,7 @@ $(AXIICC)_cvrw/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIICC).v $(AXI) $(IFETCH)
 ## {{{
 $(DBL): $(DBL)_prf/PASS
 $(DBL)_prf/PASS: $(DBL).sby $(RTL)/ex/$(DBL).v $(MASTER) $(SLAVE) $(DBL).ys
-	sby -f $(DBL).sby prf
+	$(NOJOBSERVER) sby -f $(DBL).sby prf
 ## }}}
 
 .PHONY: $(MEM)
@@ -262,41 +263,41 @@ $(MEM): $(MEM)_prf128lcl/PASS $(MEM)_prf128lplcl/PASS
 $(MEM): $(MEM)_prf128lck/PASS
 $(MEM): $(MEM)_cvr/PASS
 $(MEM)_prf/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf
+	$(NOJOBSERVER) sby -f $(MEM).sby prf
 $(MEM)_prflp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflp
+	$(NOJOBSERVER) sby -f $(MEM).sby prflp
 $(MEM)_prf64/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf64
+	$(NOJOBSERVER) sby -f $(MEM).sby prf64
 $(MEM)_prf64lp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf64lp
+	$(NOJOBSERVER) sby -f $(MEM).sby prf64lp
 $(MEM)_prf128/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf128
+	$(NOJOBSERVER) sby -f $(MEM).sby prf128
 $(MEM)_prf128lp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf128lp
+	$(NOJOBSERVER) sby -f $(MEM).sby prf128lp
 $(MEM)_prflck/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflck
+	$(NOJOBSERVER) sby -f $(MEM).sby prflck
 $(MEM)_prflcklp/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflcklp
+	$(NOJOBSERVER) sby -f $(MEM).sby prflcklp
 $(MEM)_prf128lck/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf128lck
+	$(NOJOBSERVER) sby -f $(MEM).sby prf128lck
 $(MEM)_prflcklcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflcklcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prflcklcl
 $(MEM)_prflcklplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflcklplcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prflcklplcl
 $(MEM)_prflcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prflcl
 $(MEM)_prflplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prflplcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prflplcl
 $(MEM)_prf64lcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf64lcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prf64lcl
 $(MEM)_prf64lplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf64lplcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prf64lplcl
 $(MEM)_prf128lcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf128lcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prf128lcl
 $(MEM)_prf128lplcl/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby prf128lplcl
+	$(NOJOBSERVER) sby -f $(MEM).sby prf128lplcl
 $(MEM)_cvr/PASS: $(MEM).sby $(RTL)/core/$(MEM).v $(MASTER) $(FMEM)
-	sby -f $(MEM).sby cvr
+	$(NOJOBSERVER) sby -f $(MEM).sby cvr
 ## }}}
 
 .PHONY: $(AXILMEM)
@@ -307,21 +308,21 @@ $(AXILMEM): $(AXILMEM)_prflp/PASS   $(AXILMEM)_prfulp/PASS
 $(AXILMEM): $(AXILMEM)_prf64lp/PASS $(AXILMEM)_prfu64lp/PASS
 AXILMEMDEPS:= $(AXILMEM).sby $(RTL)/core/$(AXILMEM).v $(AXIL) $(FMEM)
 $(AXILMEM)_prf/PASS:      $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prf
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prf
 $(AXILMEM)_prfu/PASS:     $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prfu
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prfu
 $(AXILMEM)_prf64/PASS:    $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prf64
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prf64
 $(AXILMEM)_prfu64/PASS:   $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prfu64
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prfu64
 $(AXILMEM)_prflp/PASS:    $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prflp
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prflp
 $(AXILMEM)_prfulp/PASS:   $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prfulp
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prfulp
 $(AXILMEM)_prf64lp/PASS:  $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prf64lp
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prf64lp
 $(AXILMEM)_prfu64lp/PASS: $(AXILMEMDEPS)
-	sby -f $(AXILMEM).sby prfu64lp
+	$(NOJOBSERVER) sby -f $(AXILMEM).sby prfu64lp
 
 $(AXILMEM)_cvr/PASS: $(AXILMEMDEPS)
 	sby -f $(AXILMEM).sby cvr
@@ -339,34 +340,34 @@ $(AXIMEM): $(AXIMEM)_prflp/PASS   $(AXIMEM)_prfulp/PASS
 $(AXIMEM): $(AXIMEM)_prf64lp/PASS $(AXIMEM)_prfu64lp/PASS
 AXIMEMDEPS:= $(AXIMEM).sby $(RTL)/core/$(AXIMEM).v $(AXI) $(FMEM)
 $(AXIMEM)_prf/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prf
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prf
 $(AXIMEM)_prfu/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfu
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfu
 $(AXIMEM)_prf64/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prf64
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prf64
 $(AXIMEM)_prfu64/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfu64
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfu64
 $(AXIMEM)_prfs/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfs
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfs
 $(AXIMEM)_prfsu/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfsu
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfsu
 $(AXIMEM)_prfs64/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfs64
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfs64
 $(AXIMEM)_prfsu64/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfsu64
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfsu64
 $(AXIMEM)_prflp/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prflp
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prflp
 $(AXIMEM)_prfulp/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfulp
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfulp
 $(AXIMEM)_prf64lp/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prf64lp
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prf64lp
 $(AXIMEM)_prfu64lp/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby prfu64lp
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby prfu64lp
 
 $(AXIMEM)_cvr/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby cvr
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby cvr
 $(AXIMEM)_cvr64/PASS: $(AXIMEMDEPS)
-	sby -f $(AXIMEM).sby cvr64
+	$(NOJOBSERVER) sby -f $(AXIMEM).sby cvr64
 
 ## }}}
 
@@ -376,19 +377,19 @@ $(AXLPIPE): $(AXLPIPE)_cvr/PASS   $(AXLPIPE)_prf/PASS   $(AXLPIPE)_prfu/PASS
 $(AXLPIPE): $(AXLPIPE)_cvr64/PASS $(AXLPIPE)_prf64/PASS $(AXLPIPE)_prfu64/PASS
 $(AXLPIPE): $(AXLPIPE)_cvru/PASS
 $(AXLPIPE)_prf/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby prf
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby prf
 $(AXLPIPE)_prf64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby prf64
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby prf64
 $(AXLPIPE)_prfu/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby prfu
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby prfu
 $(AXLPIPE)_prfu64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby prfu64
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby prfu64
 $(AXLPIPE)_cvr/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby cvr
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby cvr
 $(AXLPIPE)_cvru/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby cvru
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby cvru
 $(AXLPIPE)_cvr64/PASS: $(AXLPIPE).sby $(RTL)/core/$(AXLPIPE).v $(AXIL) $(FMEM)
-	sby -f $(AXLPIPE).sby cvr64
+	$(NOJOBSERVER) sby -f $(AXLPIPE).sby cvr64
 ## }}}
 
 .PHONY: $(AXIPIPE)
@@ -399,27 +400,27 @@ $(AXIPIPE): $(AXIPIPE)_prfs/PASS   $(AXIPIPE)_prfsu/PASS
 $(AXIPIPE): $(AXIPIPE)_prfs64/PASS $(AXIPIPE)_prfsu64/PASS
 $(AXIPIPE): $(AXIPIPE)_cvru/PASS
 $(AXIPIPE)_prf/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prf
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prf
 $(AXIPIPE)_prf64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prf64
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prf64
 $(AXIPIPE)_prfu/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfu
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfu
 $(AXIPIPE)_prfu64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfu64
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfu64
 $(AXIPIPE)_prfs/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfs
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfs
 $(AXIPIPE)_prfs64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfs64
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfs64
 $(AXIPIPE)_prfsu/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfsu
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfsu
 $(AXIPIPE)_prfsu64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby prfsu64
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby prfsu64
 $(AXIPIPE)_cvr/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby cvr
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby cvr
 $(AXIPIPE)_cvru/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby cvru
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby cvru
 $(AXIPIPE)_cvr64/PASS: $(AXIPIPE).sby $(RTL)/core/$(AXIPIPE).v $(AXI) $(FMEM)
-	sby -f $(AXIPIPE).sby cvr64
+	$(NOJOBSERVER) sby -f $(AXIPIPE).sby cvr64
 ## }}}
 
 .PHONY: $(WBPIPE)
@@ -435,25 +436,25 @@ $(WBPIPE): $(WBPIPE)_nolcl_noaligned_nolock/PASS
 $(WBPIPE): $(WBPIPE)_prf64/PASS $(WBPIPE)_prf128/PASS
 PIPEDEPS := $(WBPIPE).sby $(RTL)/core/$(WBPIPE).v $(MASTER) $(FMEM)
 $(WBPIPE)_prf/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prf
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prf
 $(WBPIPE)_prflck/PASS:     $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prflck
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prflck
 $(WBPIPE)_prflcl/PASS:     $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prflcl
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prflcl
 $(WBPIPE)_prflcllck/PASS:       $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prflcllck
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prflcllck
 $(WBPIPE)_lcl_noaligned_lock/PASS:     $(PIPEDEPS)
-	sby -f $(WBPIPE).sby lcl_noaligned_lock
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby lcl_noaligned_lock
 $(WBPIPE)_lcl_noaligned_nolock/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby lcl_noaligned_nolock
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby lcl_noaligned_nolock
 $(WBPIPE)_nolcl_noaligned_lock/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby nolcl_noaligned_lock
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby nolcl_noaligned_lock
 $(WBPIPE)_nolcl_noaligned_nolock/PASS: $(PIPEDEPS)
-	sby -f $(WBPIPE).sby nolcl_noaligned_nolock
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby nolcl_noaligned_nolock
 $(WBPIPE)_prf64/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prf64
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prf64
 $(WBPIPE)_prf128/PASS:   $(PIPEDEPS)
-	sby -f $(WBPIPE).sby prf128
+	$(NOJOBSERVER) sby -f $(WBPIPE).sby prf128
 ## }}}
 
 .PHONY: $(AXIDCC)
@@ -471,50 +472,50 @@ $(AXIDCC): $(AXIDCC)_prfsp/PASS    $(AXIDCC)_prfs64p/PASS
 $(AXIDCC): $(AXIDCC)_prfspw/PASS   $(AXIDCC)_prfs64pw/PASS
 $(AXIDCC): $(AXIDCC)_prfspwlk/PASS $(AXIDCC)_prfs64pwlk/PASS
 $(AXIDCC)_prf/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prf
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prf
 $(AXIDCC)_prf64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prf64
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prf64
 $(AXIDCC)_prflp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prflp
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prflp
 $(AXIDCC)_prflk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prflk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prflk
 $(AXIDCC)_prflplk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prflplk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prflplk
 $(AXIDCC)_prf64lk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prf64lk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prf64lk
 $(AXIDCC)_prfs/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs
 $(AXIDCC)_prfs64/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs64
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs64
 $(AXIDCC)_prfsw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfsw
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfsw
 $(AXIDCC)_prfs64w/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs64w
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs64w
 $(AXIDCC)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby cvr
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby cvr
 ## Pipelined
 $(AXIDCC)_prfp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfp
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfp
 $(AXIDCC)_prf64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prf64p
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prf64p
 $(AXIDCC)_prfplk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfplk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfplk
 $(AXIDCC)_prfplp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfplp
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfplp
 $(AXIDCC)_prfsp/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfsp
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfsp
 $(AXIDCC)_prfs64p/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs64p
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs64p
 $(AXIDCC)_prfspw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfspw
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfspw
 $(AXIDCC)_prfs64pw/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs64pw
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs64pw
 $(AXIDCC)_prfspwlk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfspwlk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfspwlk
 $(AXIDCC)_prfs64pwlk/PASS: $(AXIDCC).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby prfs64pwlk
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby prfs64pwlk
 $(AXIDCC)_cvrp/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
-	sby -f $(AXIDCC).sby cvrp
+	$(NOJOBSERVER) sby -f $(AXIDCC).sby cvrp
 ## }}}
 ## }}}
 
@@ -524,9 +525,9 @@ $(AXIDCC)_cvrp/PASS: $(PFCACHE).sby $(RTL)/core/$(AXIDCC).v $(AXI) $(FMEM)
 ## {{{
 $(TMR): $(TMR)_prf/PASS $(TMR)_prfr/PASS
 $(TMR)_prf/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
-	sby -f $(TMR).sby prf
+	$(NOJOBSERVER) sby -f $(TMR).sby prf
 $(TMR)_prfr/PASS: $(TMR).sby $(RTL)/peripherals/$(TMR).v $(SLAVE) $(TMR).ys
-	sby -f $(TMR).sby prfr
+	$(NOJOBSERVER) sby -f $(TMR).sby prfr
 ## }}}
 
 .PHONY: $(CNT)
@@ -610,11 +611,11 @@ $(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE) $(RTL)/ex
 .PHONY: mm2s $(MM2S)
 ## {{{
 mm2s: $(MM2S)
-$(MM2S): $(MM2S)_prf/PASS
+$(MM2S): $(MM2S)_prf/PASS $(MM2S)_cvr/PASS
 $(MM2S)_prf/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
-	sby $(MM2S).sby prf
+	$(NOJOBSERVER) sby -f $(MM2S).sby prf
 $(MM2S)_cvr/PASS: $(MM2S).sby $(RTL)/zipdma/$(MM2S).v $(MASTER)
-	sby $(MM2S).sby cvr
+	$(NOJOBSERVER) sby -f $(MM2S).sby cvr
 ## }}}
 
 .PHONY: rxgears $(RXGEARS)
@@ -623,9 +624,9 @@ rxgears: $(RXGEARS)
 $(RXGEARS): $(RXGEARS)_prf/PASS $(RXGEARS)_prfw/PASS
 $(RXGEARS): $(RXGEARS)_cvr/PASS
 $(RXGEARS)_prf/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
-	sby -f $(RXGEARS).sby prf
+	$(NOJOBSERVER) sby -f $(RXGEARS).sby prf
 $(RXGEARS)_prfw/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
-	sby -f $(RXGEARS).sby prfw
+	$(NOJOBSERVER) sby -f $(RXGEARS).sby prfw
 $(RXGEARS)_cvr/PASS: $(RXGEARS).sby $(RTL)/zipdma/$(RXGEARS).v
 	sby -f $(RXGEARS).sby cvr
 ## }}}
@@ -636,13 +637,13 @@ txgears: $(TXGEARS)
 $(TXGEARS): $(TXGEARS)_prf/PASS $(TXGEARS)_prfw/PASS
 $(TXGEARS): $(TXGEARS)_cvr/PASS $(TXGEARS)_cvrw/PASS
 $(TXGEARS)_prf/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
-	sby -f $(TXGEARS).sby prf
+	$(NOJOBSERVER) sby -f $(TXGEARS).sby prf
 $(TXGEARS)_prfw/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
-	sby -f $(TXGEARS).sby prfw
+	$(NOJOBSERVER) sby -f $(TXGEARS).sby prfw
 $(TXGEARS)_cvr/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
-	sby -f $(TXGEARS).sby cvr
+	$(NOJOBSERVER) sby -f $(TXGEARS).sby cvr
 $(TXGEARS)_cvrw/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
-	sby -f $(TXGEARS).sby cvrw
+	$(NOJOBSERVER) sby -f $(TXGEARS).sby cvrw
 ## }}}
 
 .PHONY: s2mm $(S2MM)
@@ -650,9 +651,9 @@ $(TXGEARS)_cvrw/PASS: $(TXGEARS).sby $(RTL)/zipdma/$(TXGEARS).v
 s2mm: $(S2MM)
 $(S2MM): $(S2MM)_prf/PASS $(S2MM)_cvr/PASS
 $(S2MM)_prf/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
-	sby -f $(S2MM).sby prf
+	$(NOJOBSERVER) sby -f $(S2MM).sby prf
 $(S2MM)_cvr/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
-	sby -f $(S2MM).sby cvr
+	$(NOJOBSERVER) sby -f $(S2MM).sby cvr
 ## }}}
 ## }}}
 
@@ -662,7 +663,7 @@ $(S2MM)_cvr/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
 ## {{{
 $(ALU): $(ALU)_prf/PASS
 $(ALU)_prf/PASS: $(ALU).sby $(RTL)/core/$(ALU).v abs_mpy.v
-	sby -f $(ALU).sby prf
+	$(NOJOBSERVER) sby -f $(ALU).sby prf
 ## }}}
 
 .PHONY: $(DCACHE)
@@ -675,37 +676,37 @@ $(DCACHE) : $(DCACHE)_piped/PASS  $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
 $(DCACHE) : $(DCACHE)_prf64/PASS  $(DCACHE)_prf64lp/PASS
 $(DCACHE) : $(DCACHE)_prf128/PASS $(DCACHE)_prf128lp/PASS
 $(DCACHE)_full/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby full
+	$(NOJOBSERVER) sby -f $(DCACHE).sby full
 $(DCACHE)_full_single/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby full_single
+	$(NOJOBSERVER) sby -f $(DCACHE).sby full_single
 
 $(DCACHE)_bare/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby bare
+	$(NOJOBSERVER) sby -f $(DCACHE).sby bare
 
 $(DCACHE)_nolock_nolocal/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby nolock_nolocal
+	$(NOJOBSERVER) sby -f $(DCACHE).sby nolock_nolocal
 
 $(DCACHE)_nolock_system/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby nolock_system
+	$(NOJOBSERVER) sby -f $(DCACHE).sby nolock_system
 
 $(DCACHE)_piped/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby piped
+	$(NOJOBSERVER) sby -f $(DCACHE).sby piped
 
 $(DCACHE)_prf64/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby prf64
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf64
 $(DCACHE)_prf64lp/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby prf64lp
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf64lp
 
 $(DCACHE)_prf128/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby prf128
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf128
 $(DCACHE)_prf128lp/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby prf128lp
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf128lp
 
 $(DCACHE)_cover/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby cover
+	$(NOJOBSERVER) sby -f $(DCACHE).sby cover
 
 $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
-	sby -f $(DCACHE).sby cover_pipe
+	$(NOJOBSERVER) sby -f $(DCACHE).sby cover_pipe
 ## }}}
 
 .PHONY: $(DIV)
@@ -713,9 +714,9 @@ $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
 $(DIV) : $(DIV)_prf/PASS
 $(DIV) : $(DIV)_prflp/PASS
 $(DIV)_prf/PASS: $(DIV).sby $(RTL)/core/div.v
-	sby -f $(DIV).sby prf
+	$(NOJOBSERVER) sby -f $(DIV).sby prf
 $(DIV)_prflp/PASS: $(DIV).sby $(RTL)/core/div.v
-	sby -f $(DIV).sby prflp
+	$(NOJOBSERVER) sby -f $(DIV).sby prflp
 ## }}}
 
 .PHONY: $(CPU)
@@ -734,33 +735,33 @@ CPUDEPS:= $(CPU).sby $(RTL)/core/$(CPU).v $(RTL)/core/cpuops.v		\
 	$(FMEM) $(IFETCH) $(FDBG)
 
 $(CPU)_piped/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby piped
+	$(NOJOBSERVER) sby -f $(CPU).sby piped
 $(CPU)_nopipe/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby nopipe
+	$(NOJOBSERVER) sby -f $(CPU).sby nopipe
 $(CPU)_pipedbk/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby pipedbk
+	$(NOJOBSERVER) sby -f $(CPU).sby pipedbk
 $(CPU)_lowlogic/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby lowlogic
+	$(NOJOBSERVER) sby -f $(CPU).sby lowlogic
 $(CPU)_ice40/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby ice40
+	$(NOJOBSERVER) sby -f $(CPU).sby ice40
 $(CPU)_pipedlp/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby pipedlp
+	$(NOJOBSERVER) sby -f $(CPU).sby pipedlp
 $(CPU)_nopipelp/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby nopipelp
+	$(NOJOBSERVER) sby -f $(CPU).sby nopipelp
 $(CPU)_lowlogiclp/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby lowlogiclp
+	$(NOJOBSERVER) sby -f $(CPU).sby lowlogiclp
 $(CPU)_pipedckh/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby pipedckh
+	$(NOJOBSERVER) sby -f $(CPU).sby pipedckh
 $(CPU)_pipedlpck/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby pipedlpck
+	$(NOJOBSERVER) sby -f $(CPU).sby pipedlpck
 $(CPU)_pipedlpckh/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby pipedlpckh
+	$(NOJOBSERVER) sby -f $(CPU).sby pipedlpckh
 $(CPU)_lowlogiclpck/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby lowlogiclpck
+	$(NOJOBSERVER) sby -f $(CPU).sby lowlogiclpck
 $(CPU)_lowlogiclpckh/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby lowlogiclpckh
+	$(NOJOBSERVER) sby -f $(CPU).sby lowlogiclpckh
 $(CPU)_cvr/PASS: $(CPUDEPS)
-	sby -f $(CPU).sby cvr
+	$(NOJOBSERVER) sby -f $(CPU).sby cvr
 ## }}}
 ## }}}
 
@@ -770,21 +771,21 @@ $(CPU)_cvr/PASS: $(CPUDEPS)
 ## {{{
 $(BONES): $(BONES)_prf/PASS
 $(BONES)_prf/PASS: $(BONES).sby $(RTL)/$(BONES).v $(FDBG) $(SLAVE)
-	sby -f $(BONES).sby prf
+	$(NOJOBSERVER) sby -f $(BONES).sby prf
 ## }}}
 
 .PHONY: $(ZAXIL)
 ## {{{
 $(ZAXIL): $(ZAXIL)_prf/PASS
 $(ZAXIL)_prf/PASS: $(ZAXIL).sby $(RTL)/$(ZAXIL).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuffer.v
-	sby -f $(ZAXIL).sby prf
+	$(NOJOBSERVER) sby -f $(ZAXIL).sby prf
 ## }}}
 
 .PHONY: $(ZAXI)
 ## {{{
 $(ZAXI): $(ZAXI)_prf/PASS
 $(ZAXI)_prf/PASS: $(ZAXI).sby $(RTL)/$(ZAXI).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuffer.v
-	sby -f $(ZAXI).sby prf
+	$(NOJOBSERVER) sby -f $(ZAXI).sby prf
 ## }}}
 ## }}}
 
@@ -794,7 +795,7 @@ $(ZAXI)_prf/PASS: $(ZAXI).sby $(RTL)/$(ZAXI).v $(FDBG) $(AXIL) $(RTL)/ex/skidbuf
 ## {{{
 $(MMU): $(MMU)_prf/PASS
 $(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
-	sby -f $(MMU).sby prf
+	$(NOJOBSERVER) sby -f $(MMU).sby prf
 ## }}}
 
 .PHONY: $(WBDLY)
@@ -802,20 +803,20 @@ $(MMU)_prf/PASS: $(MMU).sby $(RTL)/peripherals/$(MMU).v $(MASTER) $(SLAVE)
 $(WBDLY): $(WBDLY)_prf/PASS   $(WBDLY)_prfd/PASS
 $(WBDLY): $(WBDLY)_prflp/PASS $(WBDLY)_prfdlp/PASS
 $(WBDLY)_prf/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby prf
+	$(NOJOBSERVER) sby -f $(WBDLY).sby prf
 $(WBDLY)_prfd/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby prfd
+	$(NOJOBSERVER) sby -f $(WBDLY).sby prfd
 $(WBDLY)_prflp/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby prflp
+	$(NOJOBSERVER) sby -f $(WBDLY).sby prflp
 $(WBDLY)_prfdlp/PASS: $(WBDLY).sby $(RTL)/ex/$(WBDLY).v $(MASTER) $(SLAVE)
-	sby -f $(WBDLY).sby prfdlp
+	$(NOJOBSERVER) sby -f $(WBDLY).sby prfdlp
 ## }}}
 
 .PHONY: $(PRIARB)
 ## {{{
 $(PRIARB): $(PRIARB)_prf/PASS
 $(PRIARB)_prf/PASS: $(PRIARB).sby $(RTL)/ex/$(PRIARB).v $(MASTER) $(SLAVE)
-	sby -f $(PRIARB).sby prf
+	$(NOJOBSERVER) sby -f $(PRIARB).sby prf
 ## }}}
 
 ## }}}
@@ -833,6 +834,8 @@ clean:
 	rm -rf $(TMR)*/       $(CNT)*/        $(JIF)*/
 	rm -rf $(WDG)*/       $(INT)_*/       $(DCD)_*/
 	rm -rf $(DMA)_*/      $(ALU)*/        $(DIV)*/
+	rm -rf $(MM2S)_*/     $(S2MM)_*/
+	rm -rf $(RXGEARS)_*/  $(TXGEARS)_*/
 	rm -rf $(DCACHE)_*/
 	rm -rf $(CPU)_*/
 	rm -rf $(AXILPF)_*/   $(AXILMEM)_*/   $(AXIICC)_*/

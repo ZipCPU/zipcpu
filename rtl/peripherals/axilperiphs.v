@@ -4,8 +4,8 @@
 // {{{
 // Project:	WB2AXIPSP: bus bridges and other odds and ends
 //
-// Purpose:	
-// Registers:	
+// Purpose:
+// Registers:
 //	0x00	PIC	Interrupt controller
 //	0x04	Watchdog
 //	0x08	(Reserved)
@@ -112,7 +112,7 @@ module	axilperiphs #(
 				ADR_WATCHDOG	= 4'h1,
 				ADR_APIC	= 4'h2;
 				// No bus watchdog
-				
+
 	localparam	[3:0]	ADR_TIMERA = 4'h4,
 				ADR_TIMERB = 4'h5,
 				ADR_TIMERC = 4'h6,
@@ -577,14 +577,14 @@ module	axilperiphs #(
 			endcase
 		end
 
-		assign	{ mtask, mopstall, mpfstall, micount } = 
+		assign	{ mtask, mopstall, mpfstall, micount } =
 				{ r_mtask, r_mopstall, r_mpfstall, r_micount };
-		assign	{ utask, uopstall, upfstall, uicount } = 
+		assign	{ utask, uopstall, upfstall, uicount } =
 				{ r_utask, r_uopstall, r_upfstall, r_uicount };
 
 		// }}}
 	end else begin : NO_ACCOUNTING
-	
+
 		assign	{ mtask, mopstall, mpfstall, micount } = 0;
 		assign	{ utask, uopstall, upfstall, uicount } = 0;
 

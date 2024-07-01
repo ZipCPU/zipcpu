@@ -54,7 +54,7 @@ module	fwb_counter(i_clk, i_reset,
 	// read modify write cycle, such as an atomic add.
 	parameter [0:0]		F_OPT_RMW_BUS_OPTION = 1;
 	//
-	// 
+	//
 	// If true, allow the bus to issue multiple discontinuous requests.
 	// Unlike F_OPT_RMW_BUS_OPTION, these requests may be issued while other
 	// requests are outstanding
