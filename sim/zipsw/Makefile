@@ -232,6 +232,7 @@ $(OBJDIR)/depends.txt: $(SOURCES) $(HEADERS)
 
 .PHONY: clean
 clean:
+	make -C zlib clean
 	rm -f $(PROGRAMS) hellosim
 	rm -rf $(addsuffix .map,$(PROGRAMS))
 	rm -rf $(addsuffix .txt,$(PROGRAMS))
