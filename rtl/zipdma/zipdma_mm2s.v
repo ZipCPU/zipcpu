@@ -633,9 +633,9 @@ module	zipdma_mm2s #(
 		wb_outstanding <= 0;
 		// wb_pipeline_full <= 1'b0;
 	else case({ (o_rd_stb && !i_rd_stall), i_rd_ack })
-		2'b10: wb_outstanding <= wb_outstanding + 1;
-		2'b01: wb_outstanding <= wb_outstanding - 1;
-		default: begin end
+	2'b10: wb_outstanding <= wb_outstanding + 1;
+	2'b01: wb_outstanding <= wb_outstanding - 1;
+	default: begin end
 	endcase
 	// }}}
 
@@ -751,22 +751,22 @@ module	zipdma_mm2s #(
 	end else if (o_rd_cyc && i_rd_ack)
 	begin
 		case(r_size)
-			SZ_BYTE: pre_shift <= pre_shift + (r_inc ? 1 : 0);
-			SZ_16B:  begin
-				// {{{
-				pre_shift <= pre_shift + (r_inc ? 2 : 0);
-				pre_shift[0] <= 1'b0;
-				end
-				// }}}
-			SZ_32B:  begin
-				// {{{
-				// Verilator lint_off WIDTH
-				pre_shift <= pre_shift + (r_inc ? 4 : 0);
-				// Verilator lint_on  WIDTH
-				pre_shift[1:0] <= 2'b0;
-				end
-				// }}}
-			SZ_BUS:  pre_shift <= 0;
+		SZ_BYTE: pre_shift <= pre_shift + (r_inc ? 1 : 0);
+		SZ_16B:  begin
+			// {{{
+			pre_shift <= pre_shift + (r_inc ? 2 : 0);
+			pre_shift[0] <= 1'b0;
+			end
+			// }}}
+		SZ_32B:  begin
+			// {{{
+			// Verilator lint_off WIDTH
+			pre_shift <= pre_shift + (r_inc ? 4 : 0);
+			// Verilator lint_on  WIDTH
+			pre_shift[1:0] <= 2'b0;
+			end
+			// }}}
+		SZ_BUS:  pre_shift <= 0;
 		endcase
 	end
 
