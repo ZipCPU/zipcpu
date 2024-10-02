@@ -46,6 +46,9 @@ module	zipdma_rxgears #(
 		parameter [0:0]	OPT_LITTLE_ENDIAN = 1'b0,
 		// Abbreviations
 		localparam	DW = BUS_WIDTH
+`ifdef	FORMAL
+		, parameter	F_LGCOUNT = 16
+`endif
 		// }}}
 	) (
 		// {{{
@@ -72,6 +75,9 @@ module	zipdma_rxgears #(
 		output	wire [$clog2(DW/8):0]	M_BYTES,
 		output	wire			M_LAST
 		// }}}
+`ifdef	FORMAL
+		, output reg	[F_LGCOUNT-1:0]	f_rcvd, f_sent
+`endif
 		// }}}
 	);
 
@@ -282,9 +288,12 @@ module	zipdma_rxgears #(
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
-	localparam	F_LGCOUNT = 16;
+`ifdef	RXGEARS
+`define	ASSUME	assume
+`else
+`define	ASSUME	assert
+`endif
 	reg			f_past_valid;
-	reg	[F_LGCOUNT-1:0]	f_rcvd, f_sent;
 
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
@@ -292,7 +301,7 @@ module	zipdma_rxgears #(
 
 	always @(*)
 	if (!f_past_valid)
-		assume(i_reset);
+		`ASSUME(i_reset);
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -304,20 +313,20 @@ module	zipdma_rxgears #(
 
 	always @(posedge i_clk)
 	if (!f_past_valid || $past(i_reset || i_soft_reset))
-		assume(!S_VALID);
+		`ASSUME(!S_VALID);
 	else if ($past(S_VALID && !S_READY))
 	begin
-		assume(S_VALID);
-		assume($stable(S_DATA));
-		assume($stable(S_BYTES));
-		assume($stable(S_LAST));
+		`ASSUME(S_VALID);
+		`ASSUME($stable(S_DATA));
+		`ASSUME($stable(S_BYTES));
+		`ASSUME($stable(S_LAST));
 	end
 
 	always @(*)
 	if (!i_reset && S_VALID)
 	begin
-		assume(S_BYTES <= (DW/8));
-		assume(S_BYTES > 0);
+		`ASSUME(S_BYTES <= (DW/8));
+		`ASSUME(S_BYTES > 0);
 	end
 
 	initial	f_rcvd = 0;
@@ -334,7 +343,7 @@ module	zipdma_rxgears #(
 
 	always @(*)
 	begin
-		assume(!f_rcvd[F_LGCOUNT-1]);
+		`ASSUME(!f_rcvd[F_LGCOUNT-1]);
 		assume({ 1'b0, f_rcvd } + (S_VALID ? S_BYTES : 0)
 						< (1<<(F_LGCOUNT-1)));
 	end

@@ -91,6 +91,7 @@ module	zipjiffies #(
 	// Local declarations
 	// {{{
 	reg	[(BW-1):0]		r_counter;
+	wire	[BW-1:0]		next_counter;
 	//
 	reg				int_set,  new_set, int_now;
 	reg		[(BW-1):0]	int_when, new_when;
@@ -112,18 +113,8 @@ module	zipjiffies #(
 		r_counter <= 0;
 	else if (i_ce)
 		r_counter <= r_counter+1;
-	// }}}
 
-	// int_now
-	// {{{
-	initial	int_now = 0;
-	always @(posedge i_clk)
-	if (i_reset)
-		int_now <= 0;
-	else if (i_ce)
-		int_now <= ((r_counter + 1) == (int_when));
-	else
-		int_now <= 1'b0;
+	assign	next_counter = r_counter+(i_ce ? 1:0);
 	// }}}
 
 	// new_set, new_when
@@ -138,12 +129,12 @@ module	zipjiffies #(
 	always @(posedge i_clk)
 	begin
 		// Delay WB commands (writes) by a clock to simplify our logic
-		new_set <= (i_wb_stb && i_wb_we);
+		new_set <= i_wb_stb && i_wb_we && (&i_wb_sel);
 		// new_when is a don't care when new_set = 0, so don't worry
 		// about setting it at all times.
 		new_when<= i_wb_data;
 
-		till_wb <= (i_wb_data - r_counter - (i_ce ? 1:0));
+		till_wb <= (i_wb_data - next_counter);
 
 		till_when <= (int_when - i_wb_data);
 
@@ -167,15 +158,20 @@ module	zipjiffies #(
 		// {{{
 		o_int <= 1'b0;
 		if ((i_ce)&&(int_set)&&(r_counter == int_when))
+		begin
 			// Interrupts are self-clearing
 			o_int <= 1'b1;	// Set the interrupt flag for one clock
-		else if ((new_set)&&(till_wb <= 0))
+
+			// No more interrupts to be generated from this
+			// request
+			int_set <= 1'b0;
+		end
+
+		if (new_set &&(till_wb <= 0))
 			o_int <= 1'b1;
 
-		if ((new_set)&&(till_wb > 0))
+		if (new_set &&(till_wb > 0))
 			int_set <= 1'b1;
-		else if (int_now)
-			int_set <= 1'b0;
 		// }}}
 	end
 	// }}}
@@ -254,15 +250,16 @@ module	zipjiffies #(
 
 	// We always ack every transaction on the following clock
 	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb)))
+	if (!f_past_valid || $past(i_reset))
 	begin
-		assert(o_wb_ack);
-	end else
 		assert(!o_wb_ack);
+	end else
+		assert(o_wb_ack == $past(i_wb_stb));
+
 	// }}}
 	///////////////////////////////////////////////////////////////////////
 	//
-	// Assumptions about our internal state and our outputs
+	// Assertions about our internal state and our outputs
 	// {{{
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -275,14 +272,10 @@ module	zipjiffies #(
 
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
-			&&($past(i_wb_we)))
-		assert(new_when == $past(i_wb_data));
-
-	always @(posedge i_clk)
-	if ((f_past_valid)&&(!$past(i_reset))&&($past(i_wb_stb))
-			&&($past(i_wb_we)))
+			&& $past(i_wb_we) && (&$past(i_wb_sel)))
 	begin
 		assert(new_set);
+		assert(new_when == $past(i_wb_data[BW-1:0]));
 	end else
 		assert(!new_set);
 
@@ -332,6 +325,45 @@ module	zipjiffies #(
 			||($past(till_wb[BW-1]))
 			||($past(till_wb == 0))))
 		assert(int_when == $past(int_when));
+	// }}}
+	///////////////////////////////////////////////////////////////////////
+	//
+	// Contract
+	// {{{
+
+	reg	[1:0]	fwb_state;
+	reg	[BW-1:0]	fwb_till;
+
+	always @(*)
+		fwb_till= i_wb_data - r_counter;
+
+	initial	fwb_state = 0;
+	always @(posedge i_clk)
+	if (i_reset)
+		fwb_state <= 0;
+	else begin
+		fwb_state <= fwb_state << 1;
+
+		if (i_wb_stb && i_wb_we && (&i_wb_sel))
+			fwb_state[0]  <= 1;
+	end
+
+	// On a write, we get set
+	always @(*)
+	if (f_past_valid)
+		assert(fwb_state[0] == new_set);
+
+	// The interrupt is set whenever r_counter == int_when
+	always @(posedge i_clk)
+	if (f_past_valid && $past(int_set) && $stable(int_when)
+			&& $past(i_ce) && r_counter == int_when)
+		assert(1 || o_int);
+
+	// Following an interrupt, we clear ourselves
+	always @(posedge i_clk)
+	if (f_past_valid && $past(o_int) && !$past(new_set,2)
+			&& !$past(new_set))
+		assert(!int_set);
 	// }}}
 `endif
 // }}}

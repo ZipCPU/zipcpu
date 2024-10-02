@@ -1,0 +1,79 @@
+[*]
+[*] GTKWave Analyzer v3.3.104 (w)1999-2020 BSI
+[*] Tue Sep 24 02:25:55 2024
+[*]
+[dumpfile] "/home/dan/bizcopy/zipcpu/bench/formal/zaxdma_mm2s_prf/engine_0/trace.vcd"
+[dumpfile_mtime] "Tue Sep 24 02:20:29 2024"
+[dumpfile_size] 101688
+[savefile] "/home/dan/bizcopy/zipcpu/bench/formal/zaxdma_mm2s.gtkw"
+[timestart] 0
+[size] 1754 600
+[pos] -755 -1
+*-4.552812 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[sst_width] 270
+[signals_width] 182
+[sst_expanded] 1
+[sst_vpaned_height] 143
+@28
+zaxdma_mm2s.i_clk
+zaxdma_mm2s.i_reset
+zaxdma_mm2s.i_soft_reset
+@c00200
+-AXI-S
+@28
+zaxdma_mm2s.M_AXIS_BYTES[2:0]
+@22
+zaxdma_mm2s.M_AXIS_DATA[31:0]
+@28
+zaxdma_mm2s.M_AXIS_LAST
+zaxdma_mm2s.M_AXIS_READY
+zaxdma_mm2s.M_AXIS_VALID
+@1401200
+-AXI-S
+@800200
+-CFG
+@28
+zaxdma_mm2s.i_request
+@22
+zaxdma_mm2s.i_addr[31:0]
+@28
+zaxdma_mm2s.i_inc
+zaxdma_mm2s.i_size[1:0]
+@22
+zaxdma_mm2s.i_transferlen[12:0]
+@201
+-
+@28
+zaxdma_mm2s.o_busy
+zaxdma_mm2s.o_err
+@1000200
+-CFG
+@800200
+-AXI-AR
+@28
+zaxdma_mm2s.M_AXI_ARVALID
+zaxdma_mm2s.M_AXI_ARREADY
+@22
+zaxdma_mm2s.M_AXI_ARADDR[31:0]
+@28
+zaxdma_mm2s.M_AXI_ARBURST[1:0]
+@22
+zaxdma_mm2s.M_AXI_ARLEN[7:0]
+@28
+zaxdma_mm2s.M_AXI_ARSIZE[2:0]
+@1000200
+-AXI-AR
+@c00200
+-AXI-R
+@28
+zaxdma_mm2s.M_AXI_RVALID
+zaxdma_mm2s.M_AXI_RREADY
+@22
+zaxdma_mm2s.M_AXI_RDATA[31:0]
+@28
+zaxdma_mm2s.M_AXI_RLAST
+zaxdma_mm2s.M_AXI_RRESP[1:0]
+@1401200
+-AXI-R
+[pattern_trace] 1
+[pattern_trace] 0
