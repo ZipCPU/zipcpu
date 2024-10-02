@@ -12,6 +12,7 @@ cvr: mode cover
 smtbmc
 
 [script]
+read -define RXGEARS
 read -formal zipdma_rxgears.v
 --pycode-begin--
 cmd = "hierarchy -top zipdma_rxgears"
