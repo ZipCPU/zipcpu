@@ -75,7 +75,7 @@ module	zaxdma_mm2s #(
 		output	wire			o_busy, o_err,
 		input	wire			i_inc,
 		input	wire	[1:0]		i_size,
-		input	wire	[LGLENGTH:0]	i_transferlen,
+		input	wire	[LGLENGTH-1:0]	i_transferlen,
 		input wire [ADDRESS_WIDTH-1:0]	i_addr, // Byte address
 		// }}}
 		// The AXI (full) read interface
@@ -144,22 +144,22 @@ module	zaxdma_mm2s #(
 	reg	[2:0]	axi_size;
 	reg	[7:0]	maxlen;
 
-	reg	[LGLENGTH:0]	rawlen, rawbeats, rawbursts,
+	reg	[LGLENGTH-1:0]	rawlen, rawbeats, rawbursts,
 				rawfirstln, rawblkln;
-	reg	[LGLENGTH:0]	ar_requests_remaining, ar_beats_remaining;
+	reg	[LGLENGTH-1:0]	ar_requests_remaining, ar_beats_remaining;
 	reg			ar_none_remaining;
 	reg			ar_none_outstanding;
-	reg	[LGLENGTH:0]	ar_bursts_outstanding;
-	reg			rd_none_remaining;
-	reg	[LGLENGTH:0]	rd_reads_remaining;
+	reg	[LGLENGTH-1:0]	ar_bursts_outstanding;
+	// reg			rd_none_remaining;
+	// reg	[LGLENGTH:0]	rd_reads_remaining;
 	reg			w_complete;
 	reg			start_burst, phantom_start;
-	reg	[LGLENGTH:0]	ar_next_remaining;
+	reg	[LGLENGTH-1:0]	ar_next_remaining;
 	reg	[7:0]		axi_arlen;
 	reg	[ADDRESS_WIDTH:0]	nxt_araddr, axi_araddr;
 	reg				axi_arvalid;
 
-	reg	[LGLENGTH:0]	returned_bytes, r_bytes_remaining;
+	reg	[LGLENGTH-1:0]	returned_bytes, r_bytes_remaining;
 	reg	[ADDRESS_WIDTH-1:0]	axi_raddr;
 	reg				rx_valid, rx_last;
 	wire				rx_ready;
@@ -328,10 +328,10 @@ module	zaxdma_mm2s #(
 
 		case(i_size)
 		SZ_BYTE: begin
+			// Verilator lint_off WIDTH
 			rawblkln = i_transferlen + i_addr[LCLMAXBURST_SUB-1:0];
 			rawblkln = rawblkln + (1<<LCLMAXBURST_SUB)-1;
 			end
-		// Verilator lint_off WIDTH
 		SZ_16B:  begin
 			rawblkln = i_transferlen + i_addr[LCLMAXBURST_SUB:0];
 			rawblkln = rawblkln + (2<<LCLMAXBURST_SUB)-1;
@@ -357,7 +357,7 @@ module	zaxdma_mm2s #(
 			SZ_BUS:  rawbursts = rawblkln >> (AXILSB+LCLMAXBURST);
 			endcase
 		end else
-			rawbursts = rawbeats[LGLENGTH:LGMAX_FIXED_BURST]
+			rawbursts = rawbeats[LGLENGTH-1:LGMAX_FIXED_BURST]
 				+ ((|rawbeats[LGMAX_FIXED_BURST-1:0]) ? 1:0);
 			// Verilator lint_on  WIDTH
 
@@ -448,18 +448,18 @@ module	zaxdma_mm2s #(
 
 	// rd_reads_remaining, rd_none_remaining: Are we there yet?
 	// {{{
-	initial	rd_reads_remaining = 0;
-	initial	rd_none_remaining = 1;
-	always @(posedge  i_clk)
-	if (!r_busy)
-	begin
-		rd_reads_remaining <= rawbeats;
-		rd_none_remaining  <= (i_transferlen == 0);
-	end else if (M_AXI_RVALID && M_AXI_RREADY)
-	begin
-		rd_reads_remaining <= rd_reads_remaining - 1;
-		rd_none_remaining  <= (rd_reads_remaining <= 1);
-	end
+	// initial	rd_reads_remaining = 0;
+	// initial	rd_none_remaining = 1;
+	// always @(posedge  i_clk)
+	// if (!r_busy)
+	// begin
+		// rd_reads_remaining <= rawbeats;
+		// rd_none_remaining  <= (i_transferlen == 0);
+	// end else if (M_AXI_RVALID && M_AXI_RREADY)
+	// begin
+		// rd_reads_remaining <= rd_reads_remaining - 1;
+		// rd_none_remaining  <= (rd_reads_remaining <= 1);
+	// end
 
 	always @(*)
 	if (!r_busy || !ar_none_outstanding || M_AXI_ARVALID)
