@@ -1,7 +1,7 @@
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
 <H1 align=center>ZipCPU Verification Report</H1>
-<H2 align=center>20240627</H2>
+<H2 align=center>20241015</H2>
 <TABLE border>
 <TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 <TR></TR>
@@ -129,6 +129,9 @@
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>wbdblpriarb</TD><TD>_prf</TD><TD rowspan=1>WB double priority arbiter, for global and local buses</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>wbwatchdog</TD><TD>_prf</TD><TD rowspan=1>WB Watchdog controller</TD></TR>
+<TR></TR>
+<TR><TD bgcolor=#caeec8>4 Cover points</TD><TD>zaxdma_mm2s</TD><TD>_cvr</TD><TD rowspan=2>AXI ZipDMA read half</TD></TR>
+<TR><TD bgcolor=#caeec8>Pass</TD><TD>zaxdma_mm2s</TD><TD>_prf</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8>Pass</TD><TD>zipaxi</TD><TD>_prf</TD><TD rowspan=1>AXI ZipCPU wrapper</TD></TR>
 <TR></TR>

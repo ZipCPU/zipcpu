@@ -9,6 +9,7 @@ prf: depth 8
 
 [engines]
 smtbmc
+prf: smtbmc boolector		# Induction requires 4 steps, (roughly) 310 hrs
 
 [script]
 read -define F_PEEK
