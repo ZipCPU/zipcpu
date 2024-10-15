@@ -459,9 +459,26 @@ sub simline($) {
 		system "echo \'$cmd\'";
 		system "bash -c \'$cmd\'";
 		$errB = $?;
+		system "grep -q \'%Error:\' $sim_log";
+		$errC = $?;
 
-		if ($errB ne 0) {
-			die "Could not build test!";
+		if ($errB ne 0 or $errC == 0) {
+			## Report that this failed to build
+			## {{{
+			open (SUM, ">> $report");
+			if ($verilator_flag) {
+			$msg = sprintf("%s Verilator -- %s", $tstamp, $tstname);
+			} else {
+			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
+			}
+			print SUM "BLD-FAIL  $msg\n";
+
+			push @failed,$tstname;
+
+			close SUM;
+
+			return;
+			## }}}
 		}
 
 		if ($errB == 0 and $verilator_flag) {
@@ -544,6 +561,8 @@ sub simline($) {
 			## and report them
 			## {{{
 			system "grep \'ERROR\' $sim_log | sort -u";
+			system "grep -q \'%Error:\' $sim_log";
+			$errC = $?;
 			system "grep -q \'ERROR\' $sim_log";
 			$errE = $?;
 			system "grep -iq \'assert.*fail\' $sim_log";
@@ -561,7 +580,7 @@ sub simline($) {
 			} else {
 			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
 			}
-			if ($errE == 0 or $errA == 0 or $errF == 0) {
+			if ($errC == 0 or $errE == 0 or $errA == 0 or $errF == 0) {
 				## {{{
 				## ERRORs found
 				print SUM "ERRORS    $msg\n";
