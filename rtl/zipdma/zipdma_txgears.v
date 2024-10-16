@@ -446,6 +446,11 @@ module	zipdma_txgears #(
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
+`ifdef	TXGEARS
+`define	ASSUME	assume
+`else
+`define	ASSUME	assert
+`endif
 	localparam	F_LGCOUNT = 16;
 	reg		f_past_valid;
 	(* anyconst *)	reg	[1:0]	f_cfg_size;
@@ -475,13 +480,13 @@ module	zipdma_txgears #(
 	// {{{
 	always @(posedge i_clk)
 	if (!f_past_valid || $past(i_reset || i_soft_reset))
-		assume(!S_VALID);
+		`ASSUME(!S_VALID);
 	else if ($past(S_VALID && !S_READY))
 	begin
-		assume(S_VALID);
-		assume($stable(S_DATA));
-		assume($stable(S_BYTES));
-		assume($stable(S_LAST));
+		`ASSUME(S_VALID);
+		`ASSUME($stable(S_DATA));
+		`ASSUME($stable(S_BYTES));
+		`ASSUME($stable(S_LAST));
 	end
 	// }}}
 
@@ -490,10 +495,10 @@ module	zipdma_txgears #(
 	always @(*)
 	if (!i_reset && S_VALID)
 	begin
-		assume(S_BYTES > 0);
-		assume(S_BYTES <= (DW/8));
+		`ASSUME(S_BYTES > 0);
+		`ASSUME(S_BYTES <= (DW/8));
 		if (!S_LAST)
-			assume(S_BYTES == (DW/8));
+			`ASSUME(S_BYTES == (DW/8));
 	end
 	// }}}
 
