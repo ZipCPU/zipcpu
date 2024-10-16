@@ -174,7 +174,9 @@ module	zaxdma_s2mm #(
 	reg				r_inc;
 	reg	[1:0]			r_size;
 	reg	[2:0]			axi_size;
-	reg				cmd_abort, r_busy, w_complete, r_err;
+	reg				cmd_abort, r_busy, r_err,
+					r_overflow;
+	wire				w_complete, w_overflow;
 	//
 	// FIFO stage
 	reg				last_rcvd;
@@ -193,15 +195,43 @@ module	zaxdma_s2mm #(
 	wire	[BUS_WIDTH-1:0]		gears_data;
 
 	// Realignment stage
-	reg			sr_valid, sr_extra;
+	reg			sr_valid;
 	wire			sr_ready;
 	reg	[AXILSB-1:0]	sr_offset;
 	reg	[2*DW-9:0]	pre_shift, sr_data;
-	reg	[AXILSB:0]	sr_step, sr_bytes;
+	// reg	[AXILSB:0]	sr_step; // sr_bytes;
 	reg	[1:0]		sr_last;
 
-	// }}}
+	reg	[AXILSB+8:0]		burst_bytes;
+	reg	[LGMAX_FIFO_BYTES:0]	awbytes_uncommitted;
+	reg	[1:0]			aw_bursts_available;
+	reg	[LGMAX_FIFO_BYTES:0]	beats_committed;
 
+	// AW*
+	reg				w_start_aw, phantom_aw, axi_awvalid;
+	// Verilator lint_off UNUSED
+	reg	[AW:0]			nxt_awaddr;
+	// Verilator lint_on  UNUSED
+	reg	[AW-1:0]		axi_awaddr;
+	reg	[AW-1:0]		bursts_outstanding;
+
+	// W*
+	reg	w_start_w, phantom_w, axi_wvalid, axi_wlast;
+	reg	[AW:0]	nxt_waddr;
+	reg	[AW-1:0]	axi_waddr;
+	reg	[BUS_WIDTH-1:0]		axi_wdata, nxt_wdata;
+	reg	[BUS_WIDTH/8-1:0]	axi_wstrb, base_wstrb, nxt_wstrb;
+	reg	[AXILSB-1:0]		last_count;
+	reg	[1:0]			wpipe;
+	reg	[BUS_WIDTH/8-1:0]	w_last_mask, last_mask;
+	reg	[1:0]			data_sent;
+
+	reg	[AXILSB+4:0]	shift_amt;
+	reg	[7:0]	r_max_burst;
+	reg	[7:0]	axi_awlen;
+	reg	[LGMAX_FIXED_BURST-1:0]	wfix_burst_count;
+
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Configuration
@@ -224,6 +254,9 @@ module	zaxdma_s2mm #(
 	end
 	// }}}
 
+	assign	w_overflow = r_overflow && aw_bursts_available[0]
+				&& bursts_outstanding == 0 && !phantom_aw;
+
 	// cmd_abort
 	// {{{
 	always @(posedge i_clk)
@@ -234,10 +267,8 @@ module	zaxdma_s2mm #(
 			cmd_abort <= 1'b1;
 		if (M_BVALID && M_BREADY && M_BRESP[1])
 			cmd_abort <= 1'b1;
-		// if ((!last_rcvd || bursts_remaining > 1) && r_inc && nxt_awaddr[AW])
-		//	cmd_abort <= 1'b1;
-		// if ((!last_rcvd || beats_remaining > 1) && r_inc && nxt_waddr[AW])
-		//	cmd_abort <= 1'b1;
+		if (w_overflow)
+			cmd_abort <= 1'b1;
 	end
 	// }}}
 
@@ -249,10 +280,8 @@ module	zaxdma_s2mm #(
 	else begin
 		if (M_BVALID && M_BREADY && M_BRESP[1])
 			r_err <= 1'b1;
-		// if ((!last_rcvd || bursts_remaining > 1) && r_inc && nxt_awaddr[AW])
-		//	r_err <= 1'b1;
-		// if ((!last_rcvd || beats_remaining > 1) && r_inc && nxt_waddr[AW])
-		//	r_err <= 1'b1;
+		if (w_overflow)
+			r_err <= 1'b1;
 	end
 
 	assign	o_err = r_err;
@@ -287,9 +316,6 @@ module	zaxdma_s2mm #(
 	// beat_bytes, bytes_uncommitted
 	// {{{
 	always @(*)
-	if (!M_WVALID)
-		beat_bytes = 0;
-	else
 		beat_bytes = $countones(M_WSTRB);
 
 	always @(posedge i_clk)
@@ -326,7 +352,7 @@ module	zaxdma_s2mm #(
 
 	assign	S_READY = !fif_full && r_busy && !last_rcvd;
 
-	// Need to assume S_BYTES = 0 unless S_LAST
+	// Need to assume S_BYTES == (DW/8) unless S_LAST
 
 	// Need to wait on issuing AWVALID until there's enough data available
 	// to finish the burst
@@ -353,7 +379,8 @@ module	zaxdma_s2mm #(
 		.BUS_WIDTH(BUS_WIDTH),
 		.OPT_LITTLE_ENDIAN(1'b1)	// AXI is always little endian
 	) u_txgears (
-		.i_clk(i_clk), .i_reset(i_reset), .i_soft_reset(i_soft_reset),
+		.i_clk(i_clk), .i_reset(i_reset),
+		.i_soft_reset(i_soft_reset || !r_busy),
 		.i_size(r_size),
 		.S_VALID(!fif_empty), .S_READY( fif_read),
 			.S_DATA( fif_data), .S_BYTES( fif_bytes),
@@ -379,7 +406,6 @@ module	zaxdma_s2mm #(
 	if (!o_busy)
 	begin
 		sr_offset <= 0;
-		sr_extra  <= 0;
 		if (i_request)
 		begin
 			case(i_size)
@@ -388,17 +414,8 @@ module	zaxdma_s2mm #(
 			SZ_32B:  sr_offset[1:0] <= i_addr[1:0];
 			SZ_BUS:  sr_offset <= i_addr[AXILSB-1:0];
 			endcase
-
-			case(i_size)
-			SZ_BYTE: sr_extra <= 0;
-			SZ_16B:  sr_extra <=  i_addr[0];
-			SZ_32B:  sr_extra <= |i_addr[1:0];
-			SZ_BUS:  sr_extra <= |i_addr[AXILSB-1:0];
-			endcase
 		end
 	end
-
-	reg	[AXILSB+4:0]	shift_amt;
 
 	always @(*)
 	case(r_size)
@@ -434,6 +451,8 @@ module	zaxdma_s2mm #(
 	else if (gears_valid && gears_ready)
 		sr_data <= pre_shift;
 
+	/*
+	// sr_step is ... unused
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
@@ -464,6 +483,7 @@ module	zaxdma_s2mm #(
 		endcase
 	end
 
+	// sr_bytes is ... unused?
 	always @(posedge i_clk)
 	if (!o_busy)
 		sr_bytes <= 0;
@@ -474,16 +494,32 @@ module	zaxdma_s2mm #(
 		else
 			sr_bytes <= sr_bytes + gears_bytes;
 	end
+	*/
 
 	always @(posedge i_clk)
 	if (!o_busy)
 		sr_last <= 0;
 	else if (gears_valid && gears_ready)
 	begin
-		if (sr_extra)
-			sr_last <= { gears_last, sr_last[1] };
-		else
-			sr_last <= { 1'b0, gears_last };
+		sr_last <= 2'b00;
+		if (gears_last)
+		begin
+			// sr_last[1] equals
+			//	1. We've seen gears_last
+			//	2. Some data is going to spill into the next
+			//		clock cycle
+			// sr_last[0] is set on the last sr_valid
+			sr_last[1] <= gears_last;
+			case(r_size)
+			// Verilator lint_off WIDTH
+			SZ_BYTE: sr_last[0] <= 1'b1;
+			SZ_16B:  sr_last[0] <= (gears_bytes + sr_offset[0]>= 2);
+			SZ_32B:  sr_last[0] <= (gears_bytes+sr_offset[1:0]>= 4);
+			SZ_BUS:  sr_last[0] <=
+				(gears_bytes + sr_offset[AXILSB-1:0] >= DW/8);
+			// Verilator lint_on  WIDTH
+			endcase
+		end
 	end else if (sr_ready && |sr_last)
 		sr_last <= 2'b01;
 
@@ -514,29 +550,6 @@ module	zaxdma_s2mm #(
 	// Bus driving stage
 	// {{{
 
-	reg	[AXILSB+8:0]		burst_bytes;
-	reg	[LGMAX_FIFO_BYTES:0]	awbytes_uncommitted;
-	reg	[1:0]			aw_bursts_available;
-	reg	[LGMAX_FIFO_BYTES:0]	beats_committed;
-
-	// AW*
-	reg				w_start_aw, phantom_aw, axi_awvalid;
-	// Verilator lint_off UNUSED
-	reg	[AW:0]	nxt_awaddr;
-	// Verilator lint_on  UNUSED
-	reg	[AW-1:0]	axi_awaddr;
-	reg	[AW-1:0]	bursts_outstanding;
-
-	// W*
-	reg	w_start_w, phantom_w, axi_wvalid, axi_wlast;
-	reg	[AW:0]	nxt_waddr;
-	reg	[AW-1:0]	axi_waddr;
-	reg	[BUS_WIDTH-1:0]		axi_wdata, nxt_wdata;
-	reg	[BUS_WIDTH/8-1:0]	axi_wstrb, base_wstrb, nxt_wstrb;
-	reg	[AXILSB-1:0]		last_count;
-	reg	[1:0]			wpipe;
-	reg	[BUS_WIDTH/8-1:0]	w_last_mask, last_mask;
-	reg	[1:0]			data_sent;
 
 	// burst_bytes, awbytes_uncommitted
 	// {{{
@@ -583,33 +596,27 @@ module	zaxdma_s2mm #(
 
 	// aw_bursts_available
 	// {{{
-// FIXME!
 	always @(posedge i_clk)
 	if (i_reset || !o_busy)
 		aw_bursts_available <= 2'b00;
-	else if (r_inc)
-		aw_bursts_available <= {
-			awbytes_uncommitted >= (2<<LCLMAXBURST_SUB),
-			last_rcvd && awbytes_uncommitted > 0
-			 	|| awbytes_uncommitted >= (1<<LCLMAXBURST_SUB)};
 	else case(r_size)
 	SZ_BYTE: aw_bursts_available <= {
 			awbytes_uncommitted >= (2<<LCLMAXBURST_SUB),
-			last_rcvd && awbytes_uncommitted > 0
-			 	|| awbytes_uncommitted >= (1<<LCLMAXBURST_SUB)};
+			(last_rcvd && awbytes_uncommitted > 0)
+			 	||(awbytes_uncommitted>= (1<<LCLMAXBURST_SUB))};
 	SZ_16B: aw_bursts_available <= {
 			awbytes_uncommitted >= (4<<LCLMAXBURST_SUB),
-			last_rcvd && awbytes_uncommitted > 0
-				|| awbytes_uncommitted >= (2<<LCLMAXBURST_SUB)};
+			(last_rcvd && awbytes_uncommitted > 0)
+				||(awbytes_uncommitted>= (2<<LCLMAXBURST_SUB))};
 	SZ_32B: aw_bursts_available <= {
 			awbytes_uncommitted >= (8<<LCLMAXBURST_SUB),
-			last_rcvd && awbytes_uncommitted > 0
-				|| awbytes_uncommitted >= (4<<LCLMAXBURST_SUB)};
+			(last_rcvd && awbytes_uncommitted > 0)
+				||(awbytes_uncommitted>= (4<<LCLMAXBURST_SUB))};
 	SZ_BUS: aw_bursts_available <= {
 			awbytes_uncommitted >= (2<<(AXILSB+LCLMAXBURST)),
-			last_rcvd && awbytes_uncommitted > 0
-				|| awbytes_uncommitted
-						>= (1<<(AXILSB+LCLMAXBURST))};
+			(last_rcvd && awbytes_uncommitted > 0)
+				||(awbytes_uncommitted
+						>= (1<<(AXILSB+LCLMAXBURST)))};
 	endcase
 	// }}}
 
@@ -622,6 +629,8 @@ module	zaxdma_s2mm #(
 			w_start_aw = 1'b0;
 		if (!r_busy || !sr_valid || cmd_abort)
 			w_start_aw = 0;
+		if (r_overflow || (nxt_awaddr[AW] && r_inc))
+			w_start_aw = 0;
 	end
 	// }}}
 
@@ -632,6 +641,15 @@ module	zaxdma_s2mm #(
 		phantom_aw <= 0;
 	else
 		phantom_aw <= w_start_aw && (!M_AWVALID || M_AWREADY);
+	// }}}
+
+	// r_overflow
+	// {{{
+	always @(posedge i_clk)
+	if (i_reset || !r_busy)
+		r_overflow <= 1'b0;
+	else if (phantom_aw && nxt_awaddr[AW] && r_inc)
+		r_overflow <= 1'b1;
 	// }}}
 
 	// axi_awvalid
@@ -671,8 +689,6 @@ module	zaxdma_s2mm #(
 		axi_awaddr <= nxt_awaddr[AW-1:0];
 	// }}}
 
-	reg	[7:0]	r_max_burst;
-
 	// r_max_burst
 	// {{{
 	always @(posedge i_clk)
@@ -690,7 +706,6 @@ module	zaxdma_s2mm #(
 	// axi_awlen
 	// {{{
 	// FIXME!
-	reg	[7:0]	axi_awlen;
 	always @(posedge i_clk)
 	if (OPT_LOWPOWER && !r_busy)
 		axi_awlen <= 0;
@@ -739,6 +754,8 @@ module	zaxdma_s2mm #(
 	begin
 		w_start_w = w_start_aw;
 		if (M_WVALID && !M_WLAST)
+			w_start_w = 1;
+		if (w_start_aw && (!M_AWVALID || M_AWREADY))
 			w_start_w = 1;
 		if (beats_committed > 1)
 			w_start_w = 1;
@@ -857,8 +874,8 @@ module	zaxdma_s2mm #(
 		case(i_size)
 		SZ_BYTE: last_count <= 0;
 		// Verilator lint_off WIDTH
-		SZ_16B:  last_count <= i_addr[0];
-		SZ_32B:  last_count <= i_addr[1:0];
+		SZ_16B:  last_count[0] <= i_addr[0];
+		SZ_32B:  last_count[1:0] <= i_addr[1:0];
 		// Verilator lint_on  WIDTH
 		SZ_BUS:  last_count <= i_addr[AXILSB-1:0];
 		endcase
@@ -876,7 +893,9 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(posedge i_clk)
-	if (S_VALID && S_READY && S_LAST)
+	if (!r_busy || (S_VALID && !S_LAST))
+		wpipe <= 2'b00;
+	else if (S_VALID && S_READY && S_LAST)
 		wpipe <= 2'b10;
 	else
 		wpipe <= wpipe >> 1;
@@ -889,7 +908,7 @@ module	zaxdma_s2mm #(
 		SZ_BYTE: w_last_mask = -1;
 		SZ_16B:  w_last_mask = {(DW/8/2){w_last_mask[DW/8-1:DW/8-2]}};
 		SZ_32B:  w_last_mask = {(DW/8/4){w_last_mask[DW/8-1:DW/8-4]}};
-		SZ_BUS:  begin end
+		SZ_BUS:  begin end // w_last_mask= {(1){w_last_mask[DW/8-1:0]}};
 		endcase
 	end
 	
@@ -916,8 +935,9 @@ module	zaxdma_s2mm #(
 
 	// wfix_burst_count
 	// {{{
-	reg	[LGMAX_FIXED_BURST-1:0]	wfix_burst_count;
-
+	// Since we can't use the address register, we need a special register
+	// to keep track of where we are within a burst during fixed addressing.
+	// We need this to set WLAST--but only during fixed addressing.
 	always @(posedge i_clk)
 	if (i_reset || !o_busy || !r_inc || M_WLAST)
 		wfix_burst_count <= 1;
@@ -948,16 +968,23 @@ module	zaxdma_s2mm #(
 	end
 	// }}}
 
+	// data_sent
+	// {{{
 	always @(posedge i_clk)
 	if (i_reset || !r_busy)
 		data_sent <= 2'b0;
 	else if ((!M_WVALID || M_WREADY) && !data_sent[1])
 	begin
+		// data_sent[0] = M_VALID is for the last beat of transfer
+		// data_sent[1] = All beats complete.  Sticky bit.
 		data_sent <= { data_sent[0], 1'b0 };
 		if (sr_valid && sr_last[0])
 			data_sent[0] <= 1'b1;
 	end
+	// }}}
 
+	// bursts_outstanding -- how many BVALIDs left to expect
+	// {{{
 	always @(posedge i_clk)
 	if (i_reset)
 		bursts_outstanding <= 0;
@@ -966,6 +993,7 @@ module	zaxdma_s2mm #(
 	2'b01: bursts_outstanding <= bursts_outstanding - 1;
 	default: begin end
 	endcase
+	// }}}
 
 	assign	sr_ready = w_start_w && (!M_WVALID || M_WREADY);
 
