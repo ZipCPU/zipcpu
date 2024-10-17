@@ -320,9 +320,7 @@ module	zaxdma_s2mm #(
 
 	always @(posedge i_clk)
 	if (i_reset || i_soft_reset || !r_busy)
-		// Verilator lint_off WIDTH
-		bytes_uncommitted <= FULL_FIFO_BYTES;
-		// Verilator lint_on  WIDTH
+		bytes_uncommitted <= 0; // FULL_FIFO_BYTES;
 	else case({ S_VALID && S_READY, M_WVALID && M_WREADY })
 	2'b00: begin end
 	// Verilator lint_off WIDTH
@@ -633,25 +631,30 @@ module	zaxdma_s2mm #(
 	always @(posedge i_clk)
 	if (i_reset || !o_busy)
 		aw_bursts_available <= 2'b00;
-	else case(r_size)
-	SZ_BYTE: aw_bursts_available <= {
+	else begin
+		case(r_size)
+		SZ_BYTE: aw_bursts_available <= {
 			awbytes_uncommitted >= (2<<LCLMAXBURST_SUB),
 			(last_rcvd && awbytes_uncommitted > 0)
 			 	||(awbytes_uncommitted>= (1<<LCLMAXBURST_SUB))};
-	SZ_16B: aw_bursts_available <= {
+		SZ_16B: aw_bursts_available <= {
 			awbytes_uncommitted >= (4<<LCLMAXBURST_SUB),
 			(last_rcvd && awbytes_uncommitted > 0)
 				||(awbytes_uncommitted>= (2<<LCLMAXBURST_SUB))};
-	SZ_32B: aw_bursts_available <= {
+		SZ_32B: aw_bursts_available <= {
 			awbytes_uncommitted >= (8<<LCLMAXBURST_SUB),
 			(last_rcvd && awbytes_uncommitted > 0)
 				||(awbytes_uncommitted>= (4<<LCLMAXBURST_SUB))};
-	SZ_BUS: aw_bursts_available <= {
+		SZ_BUS: aw_bursts_available <= {
 			awbytes_uncommitted >= (2<<(AXILSB+LCLMAXBURST)),
 			(last_rcvd && awbytes_uncommitted > 0)
 				||(awbytes_uncommitted
 						>= (1<<(AXILSB+LCLMAXBURST)))};
-	endcase
+		endcase
+
+		if (phantom_aw)
+			aw_bursts_available[0] <= 1'b0;
+	end
 	// }}}
 
 	// w_start_aw
@@ -762,17 +765,17 @@ module	zaxdma_s2mm #(
 		axi_awlen <= r_max_burst;
 		if (last_rcvd) case(r_size)
 		// Verilator lint_off WIDTH
-		SZ_BYTE: if (r_max_burst + 1 < awbytes_uncommitted)
+		SZ_BYTE: if ((r_max_burst + 1) > awbytes_uncommitted)
 			axi_awlen <= awbytes_uncommitted-1;
-		SZ_16B: if ((r_max_burst + 1)<<1 < awbytes_uncommitted[LGMAX_FIFO_BYTES:1]
+		SZ_16B: if (((r_max_burst + 1)<<1) > awbytes_uncommitted[LGMAX_FIFO_BYTES:1]
 				+ awbytes_uncommitted[0])
 			axi_awlen <= awbytes_uncommitted[LGMAX_FIFO_BYTES:1]
 					+ awbytes_uncommitted[0] - 1;
-		SZ_32B: if ((r_max_burst + 1)<<2 < awbytes_uncommitted[LGMAX_FIFO_BYTES:2]
+		SZ_32B: if (((r_max_burst + 1)<<2) > awbytes_uncommitted[LGMAX_FIFO_BYTES:2]
 				+ (|awbytes_uncommitted[1:0]))
 			axi_awlen <= awbytes_uncommitted[LGMAX_FIFO_BYTES:2]
 					+ (|awbytes_uncommitted[1:0]) - 1;
-		SZ_BUS: if ((r_max_burst + 1)<<AXILSB < awbytes_uncommitted[LGMAX_FIFO_BYTES:AXILSB]
+		SZ_BUS: if (((r_max_burst + 1)<<AXILSB) > awbytes_uncommitted[LGMAX_FIFO_BYTES:AXILSB]
 				+ (|awbytes_uncommitted[AXILSB-1:0]))
 			axi_awlen <= awbytes_uncommitted[LGMAX_FIFO_BYTES:AXILSB]
 					+ (|awbytes_uncommitted[AXILSB-1:0])-1;
@@ -809,6 +812,8 @@ module	zaxdma_s2mm #(
 			w_start_w = 1;
 		if (!M_WVALID && beats_committed > 0)
 			w_start_w = 1;
+		if (M_WVALID && !M_WREADY)
+			w_start_w = 0;
 		if (!r_busy || (!sr_valid && !cmd_abort))
 			w_start_w = 0;
 	end

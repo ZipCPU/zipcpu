@@ -2552,7 +2552,8 @@ module	axi_tb #(
 		.C_S_AXI_ID_WIDTH(IW),
 		.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
 		.C_S_AXI_ADDR_WIDTH(LGMEMSZ),
-		.OPT_LOCK(1'b1)
+		.OPT_LOCK(1'b1),
+		.OPT_LOWPOWER(1'b1) // Useful for seeing things in traces ...
 		// }}}
 	) u_memaxi (
 		// {{{
@@ -2632,6 +2633,10 @@ module	axi_tb #(
 	for(rk=0; rk<BUS_WIDTH/8; rk=rk+1)
 	if (ram_wstrb_swap[rk])
 		ram[ram_waddr][rk*8 +: 8] <= ram_wdata_swap[rk*8 +: 8];
+
+	always @(posedge i_aclk)
+	if (ram_we && (ram_waddr == 24'h0407f || ram_waddr == 24'h0407e))
+		$display("Write 0x%08x/%x to RAM, at time %t", ram_wdata_swap, ram_wstrb_swap, $time);
 
 	always @(posedge i_aclk)
 	if (ram_rd)

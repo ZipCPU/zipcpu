@@ -521,8 +521,9 @@ int	main(int argc, char **argv) {
 			lfsr_state = lfsr_shift(lfsr_state);
 			to_int(lfsr_state, src_2[i]);
 			lfsr_state_hw_2[i] = read_lfsr_int();
-			//printf("(bus) LFSR_SW State: 0x%x\n", src_2[i]);
-			//printf("(bus) LFSR_HW State: 0x%x\n", lfsr_state_hw_2[i]);
+			printf("(bus) LFSR    State: 0x%016lx\n", lfsr_state);
+			printf("(bus) LFSR_SW State: 0x%08x\n", src_2[i]);
+			printf("(bus) LFSR_HW State: 0x%08x\n", lfsr_state_hw_2[i]);
 		}
 		cmp_lfsr(&src_2[TESTLEN-1], s_size);
 		cmp_err = err_detect();
