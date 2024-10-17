@@ -333,9 +333,17 @@ module	zaxdma_s2mm #(
 	endcase
 	// }}}
 
+	localparam	FIFO_WIDTH = 1 + $clog2(BUS_WIDTH/8) + BUS_WIDTH;
+`ifdef	FORMAL
+	wire	[LGFIFO:0]	ffif_first_addr, ffif_second_addr;
+	wire [FIFO_WIDTH-1:0]	ffif_first_data, ffif_second_data;
+	wire			ffif_first_in_fifo, ffif_second_in_fifo;
+	wire	[LGFIFO:0]	ffif_distance_to_first, ffif_distance_to_second;
+`endif
+
 	sfifo #(
 		// {{{
-		.BW(1+(1+$clog2(BUS_WIDTH/8)) + BUS_WIDTH),
+		.BW(FIFO_WIDTH),
 		.LGFLEN(LGFIFO),
 		.OPT_ASYNC_READ(1'b0),
 		.OPT_WRITE_ON_FULL(1'b0), .OPT_READ_ON_EMPTY(1'b0)
@@ -349,6 +357,16 @@ module	zaxdma_s2mm #(
 		.i_rd(fif_read),
 		.o_data({ fif_last, fif_bytes, fif_data }),
 		.o_empty(fif_empty)
+`ifdef	FORMAL
+		, .f_first_addr(ffif_first_addr),
+		.f_second_addr(ffif_second_addr),
+		.f_first_data(ffif_first_data),
+		.f_second_data(ffif_second_data),
+		.f_first_in_fifo(ffif_first_in_fifo),
+		.f_second_in_fifo(ffif_second_in_fifo),
+		.f_distance_to_first(ffif_distance_to_first),
+		.f_distance_to_second(ffif_distance_to_second)
+`endif
 		// }}}
 	);
 
@@ -376,8 +394,16 @@ module	zaxdma_s2mm #(
 	//
 	// Resizing gearbox (txgears)
 	// {{{
+`ifdef	FORMAL
+	localparam	F_LGCOUNT = 16;
+
+	wire	[F_LGCOUNT-1:0]	f_gears_rcvd, f_gears_sent;
+`endif
 
 	zipdma_txgears #(
+`ifdef	FORMAL
+		.F_LGCOUNT(F_LGCOUNT),
+`endif
 		.BUS_WIDTH(BUS_WIDTH),
 		.OPT_LITTLE_ENDIAN(1'b1)	// AXI is always little endian
 	) u_txgears (
@@ -390,6 +416,9 @@ module	zaxdma_s2mm #(
 		.M_VALID(gears_valid), .M_READY(gears_ready),
 			.M_DATA( gears_data), .M_BYTES(gears_bytes),
 			.M_LAST( gears_last)
+`ifdef	FORMAL
+		.f_rcvd(f_gears_rcvd), .f_sent(f_gears_sent)
+`endif
 	);
 
 	// }}}
@@ -575,17 +604,20 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(posedge i_clk)
-	if (i_reset || !r_busy)
+	if (i_reset && OPT_LOWPOWER)
+		awbytes_uncommitted <= 0;
+	else if (!r_busy)
 	begin
-		if (i_request || !OPT_LOWPOWER)
-		case(i_size)
-		SZ_BYTE: awbytes_uncommitted <= 0;
-		// Verilator lint_off WIDTH
-		SZ_16B:  awbytes_uncommitted <= i_addr[0];
-		SZ_32B:  awbytes_uncommitted <= i_addr[1:0];
-		SZ_BUS:  awbytes_uncommitted <= i_addr[AXILSB-1:0];
-		// Verilator lint_on  WIDTH
-		endcase
+		awbytes_uncommitted <= 0;
+		if (!OPT_LOWPOWER || i_request)
+		begin
+			case(i_size)
+			SZ_BYTE: begin end // awbytes_uncommitted <= 0;
+			SZ_16B:  awbytes_uncommitted[0] <= i_addr[0];
+			SZ_32B:  awbytes_uncommitted[1:0] <= i_addr[1:0];
+			SZ_BUS:  awbytes_uncommitted[AXILSB-1:0] <= i_addr[AXILSB-1:0];
+			endcase
+		end
 	end else case({ S_VALID && S_READY, phantom_aw })
 	2'b00: begin end
 	// Verilator lint_off WIDTH
@@ -651,6 +683,8 @@ module	zaxdma_s2mm #(
 	if (i_reset || !r_busy)
 		r_overflow <= 1'b0;
 	else if (phantom_aw && nxt_awaddr[AW] && r_inc)
+		// This is really a *would* overflow signal.  We haven't
+		// overflowed yet, but we will if we start any more bursts.
 		r_overflow <= 1'b1;
 	// }}}
 
@@ -668,10 +702,22 @@ module	zaxdma_s2mm #(
 	always @(*)
 	case(r_size)
 	// Verilator lint_off WIDTH
-	SZ_BYTE: nxt_awaddr = axi_awaddr +  (M_AWLEN + 1);
-	SZ_16B:  nxt_awaddr = axi_awaddr + ((M_AWLEN + 1)<<1);
-	SZ_32B:  nxt_awaddr = axi_awaddr + ((M_AWLEN + 1)<<2);
-	SZ_BUS:  nxt_awaddr = axi_awaddr + ((M_AWLEN + 1)<<AXILSB);
+	SZ_BYTE: begin
+		nxt_awaddr = axi_awaddr +  (1<<LCLMAXBURST_SUB);
+		nxt_awaddr[LCLMAXBURST_SUB-1:0] = 0;
+		end
+	SZ_16B:  begin
+		nxt_awaddr = axi_awaddr + (2<<LCLMAXBURST_SUB);
+		nxt_awaddr[LCLMAXBURST_SUB:0] = 0;
+		end
+	SZ_32B:  begin
+		nxt_awaddr = axi_awaddr + (4<<LCLMAXBURST_SUB);
+		nxt_awaddr[LCLMAXBURST_SUB+1:0] = 0;
+		end
+	SZ_BUS:  begin
+		nxt_awaddr = axi_awaddr + (1<<(LCLMAXBURST+AXILSB));
+		nxt_awaddr[LCLMAXBURST+AXILSB-1:0] = 0;
+		end
 	// Verilator lint_on  WIDTH
 	endcase
 
@@ -745,7 +791,7 @@ module	zaxdma_s2mm #(
 	2'b01: beats_committed <= beats_committed - 1;
 	// Verilator lint_off WIDTH
 	2'b10: beats_committed <= beats_committed + axi_awlen + 1;
-	2'b11: beats_committed <= beats_committed + axi_awlen;
+	2'b11: beats_committed <= beats_committed + axi_awlen; // + 1 - 1
 	// Verilator lint_on  WIDTH
 	endcase
 	// }}}
@@ -766,6 +812,11 @@ module	zaxdma_s2mm #(
 		if (!r_busy || (!sr_valid && !cmd_abort))
 			w_start_w = 0;
 	end
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset && w_start_w)
+		assert(sr_valid);
+`endif
 	// }}}
 
 	// phantom_w
@@ -807,7 +858,9 @@ module	zaxdma_s2mm #(
 	begin
 		axi_waddr <= i_addr;
 
-		if (!i_inc)
+		// Zero out the LSBs, since the gearbox will be handling the
+		// first initial shift in all cases.
+		// if (!i_inc)
 		case(i_size)
 		SZ_BYTE: begin end
 		SZ_16B: axi_waddr[0] <= 1'b0;
@@ -833,10 +886,12 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(posedge i_clk)
-	if (!M_WVALID || M_WREADY)
+	if (i_reset && OPT_LOWPOWER)
+		axi_wdata <= 0;
+	else if (!M_WVALID || M_WREADY)
 	begin
 		axi_wdata <= nxt_wdata;
-		if(OPT_LOWPOWER && (i_reset || !r_busy || cmd_abort
+		if(OPT_LOWPOWER && (!r_busy || cmd_abort
 				|| !sr_valid || nxt_waddr[AW]))
 			axi_wdata <= 0;
 	end
@@ -855,8 +910,9 @@ module	zaxdma_s2mm #(
 			base_wstrb[DW/8-1:2] <= 0;
 			end
 		SZ_32B : begin
-			base_wstrb <= 0;
 			base_wstrb <= { {(DW/8-4){1'b0}}, 4'hf }<< i_addr[1:0];
+			if (DW > 32)
+				base_wstrb[DW/8-1:(DW > 32 ? 4:0)] <= 0;
 			end
 		SZ_BUS: base_wstrb <= {(DW/8){1'b1}} << i_addr[AXILSB-1:0];
 		endcase
@@ -875,24 +931,26 @@ module	zaxdma_s2mm #(
 		if (i_request)
 		case(i_size)
 		SZ_BYTE: last_count <= 0;
-		// Verilator lint_off WIDTH
-		SZ_16B:  last_count[0] <= i_addr[0];
+		SZ_16B:  last_count[  0] <= i_addr[  0];
 		SZ_32B:  last_count[1:0] <= i_addr[1:0];
-		// Verilator lint_on  WIDTH
-		SZ_BUS:  last_count <= i_addr[AXILSB-1:0];
+		SZ_BUS:  last_count      <= i_addr[AXILSB-1:0];
 		endcase
 	end else if (S_VALID && S_READY && S_LAST)
 	begin
-		// Verilator lint_off WIDTH
-		last_count <= last_count + S_BYTES;
-		// Verilator lint_on  WIDTH
-		case(r_size)
-		SZ_BYTE: last_count <= 1;
-		SZ_16B:  last_count[AXILSB-1:1] <= 0;
-		SZ_32B:  if (AXILSB > 2)
+		if (S_LAST)
+		begin
+			// Verilator lint_off WIDTH
+			last_count <= last_count + S_BYTES;
+			// Verilator lint_on  WIDTH
+			case(r_size)
+			SZ_BYTE: last_count <= 1;
+			SZ_16B:  last_count[AXILSB-1:1] <= 0;
+			SZ_32B:  if (AXILSB > 2)
 				last_count[AXILSB-1:(AXILSB > 2 ? 2 : 0)] <= 0;
-		SZ_BUS:  begin end
-		endcase
+			SZ_BUS:  begin end
+			endcase
+		end // else the count = count + the full bus width, which
+		// would overflow and leave us with no change.
 	end
 
 	always @(posedge i_clk)
@@ -927,11 +985,13 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(posedge i_clk)
-	if (!M_WVALID || M_WREADY)
+	if (i_reset && OPT_LOWPOWER)
+		axi_wstrb <= 0;
+	else if (!M_WVALID || M_WREADY)
 	begin
 		axi_wstrb <= nxt_wstrb;
 
-		if (i_reset || !w_start_w)
+		if (!w_start_w || cmd_abort)
 			axi_wstrb <= 0;
 	end
 	// }}}
@@ -951,7 +1011,7 @@ module	zaxdma_s2mm #(
 	// axi_wlast
 	// {{{
 	always @(posedge i_clk)
-	if (i_reset || !o_busy)
+	if ((i_reset && OPT_LOWPOWER) || !o_busy)
 		axi_wlast <= 1'b0;
 	else if (!M_WVALID || M_WREADY)
 	begin
@@ -966,13 +1026,14 @@ module	zaxdma_s2mm #(
 		end else
 			axi_wlast <= &wfix_burst_count;
 
-		if (sr_valid && sr_last[0])
+		if ((sr_valid || !OPT_LOWPOWER) && sr_last[0])
 			axi_wlast <= 1'b1;
 	end
 	// }}}
 
 	// data_sent
 	// {{{
+	// We use this to determine w_complete, to then lower r_busy
 	always @(posedge i_clk)
 	if (i_reset || !r_busy)
 		data_sent <= 2'b0;
