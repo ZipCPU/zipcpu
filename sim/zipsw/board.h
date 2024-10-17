@@ -99,6 +99,7 @@ typedef struct  SCOPE_S {
 	unsigned	s_ctrl;
 	unsigned	s_data;
 } SCOPE;
+// }}}
 
 // (Optional) ZipDMA_Check
 // {{{

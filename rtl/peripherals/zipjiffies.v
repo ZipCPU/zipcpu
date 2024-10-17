@@ -93,7 +93,7 @@ module	zipjiffies #(
 	reg	[(BW-1):0]		r_counter;
 	wire	[BW-1:0]		next_counter;
 	//
-	reg				int_set,  new_set, int_now;
+	reg				int_set,  new_set;
 	reg		[(BW-1):0]	int_when, new_when;
 	reg	signed	[(BW-1):0]	till_wb,  till_when;
 	// }}}

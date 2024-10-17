@@ -80,7 +80,7 @@ module	axi_tb #(
 		parameter	OPT_SMP              = 1,
 		parameter	MEM_FILE = "cput3st",
 		parameter	CONSOLE_FILE = "console.txt",
-		parameter	ID_WIDTH = 4,
+		parameter	ID_WIDTH = 2+$clog2(OPT_SMP),
 		localparam	IW = ID_WIDTH,
 		parameter	LGMEMSZ = ADDRESS_WIDTH-2,
 		// Verilator lint_off UNUSED
@@ -139,10 +139,16 @@ module	axi_tb #(
 	parameter [AW-1:0]	SCOPE_ADDR   = { 4'b0001, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	CONSOLE_ADDR = { 4'b0010, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	SMP_BASE_ADDR= { 4'b0011, {(AW-4){1'b0}} };
+	parameter [AW-1:0]	ZDMA_CHECK_ADDR= { 4'b0101, {(AW-4){1'b0}} };
+	parameter [AW-1:0]	ZDMA_CHKST_ADDR= { 4'b0110, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	MEMORY_ADDR  = { 2'b01, {(AW-2){1'b0}} };
-	parameter [AW-1:0]	AXILP_ADDR   = { {(AW-24){1'b1}},{(24){1'b0}} };
+	parameter [AW-1:0]	AXILP_ADDR   = { {(AW-24){1'b1}},{(16){1'b0}}, 8'h00 };
+	parameter [AW-1:0]	ZAX_ADDR     = { {(AW-24){1'b1}},{(16){1'b0}}, 8'h40 };
 
 	localparam	MIN_SMP = (OPT_SMP < 2) ? 1:OPT_SMP;
+	localparam	[ID_WIDTH-1:0]	INSN_ID= {2'b00, {(ID_WIDTH-2){1'b0}} },
+					DATA_ID= {2'b01, {(ID_WIDTH-2){1'b0}} },
+					DMA_ID = {2'b10, {(ID_WIDTH-2){1'b0}} };
 	parameter [OPT_SMP*AW-1:0]	SMP_ADDR= SMP_ADDR_fn(MIN_SMP);
 	parameter [OPT_SMP*AW-1:0]	SMP_MASK= SMP_MASK_fn(MIN_SMP);
 
@@ -586,6 +592,224 @@ module	axi_tb #(
 	wire	[31:0]		axilp_rdata;
 	wire	[1:0]		axilp_rresp;
 	// }}}
+	// }}}
+
+	// ZaxDMA (AXI DMA) declarations
+	// {{{
+	wire	dma_int;
+
+	// zax_* - The AXI4 (full) connection to control the ZaxDMA set
+	// {{{
+	wire			zax_awvalid, zax_awready;
+	wire	[IW-1:0]	zax_awid;
+	wire	[AW-1:0]	zax_awaddr;
+	wire	[7:0]		zax_awlen;
+	wire	[2:0]		zax_awsize;
+	wire	[1:0]		zax_awburst;
+	wire			zax_awlock;
+	wire	[3:0]		zax_awcache;
+	wire	[2:0]		zax_awprot;
+	wire	[3:0]		zax_awqos;
+
+	wire			zax_wvalid, zax_wready;
+	wire	[BUS_WIDTH-1:0]	zax_wdata;
+	wire [BUS_WIDTH/8-1:0]	zax_wstrb;
+	wire			zax_wlast;
+
+	wire			zax_bvalid, zax_bready;
+	wire	[IW-1:0]	zax_bid;
+	wire	[1:0]		zax_bresp;
+
+	wire			zax_arvalid, zax_arready;
+	wire	[IW-1:0]	zax_arid;
+	wire	[AW-1:0]	zax_araddr;
+	wire	[7:0]		zax_arlen;
+	wire	[2:0]		zax_arsize;
+	wire	[1:0]		zax_arburst;
+	wire			zax_arlock;
+	wire	[3:0]		zax_arcache;
+	wire	[2:0]		zax_arprot;
+	wire	[3:0]		zax_arqos;
+
+
+	wire			zax_rvalid, zax_rready;
+	wire	[IW-1:0]	zax_rid;
+	wire	[BUS_WIDTH-1:0]	zax_rdata;
+	wire	[1:0]		zax_rresp;
+	wire			zax_rlast;
+	// }}}
+
+	// zaxl_* - The AXI-Lite connection to control the ZaxDMA set
+	// {{{
+	wire			zaxl_awvalid, zaxl_awready;
+	wire	[AW-4:0]	zaxl_awaddr;
+	wire	[2:0]		zaxl_awprot;
+
+	wire			zaxl_wvalid, zaxl_wready;
+	wire	[31:0]		zaxl_wdata;
+	wire	[3:0]		zaxl_wstrb;
+
+	wire			zaxl_bvalid, zaxl_bready;
+	wire	[1:0]		zaxl_bresp;
+
+	wire			zaxl_arvalid, zaxl_arready;
+	wire	[AW-4:0]	zaxl_araddr;
+	wire	[2:0]		zaxl_arprot;
+
+	wire			zaxl_rvalid, zaxl_rready;
+	wire	[31:0]		zaxl_rdata;
+	wire	[1:0]		zaxl_rresp;
+	// }}}
+
+	// dma_* - The AXI4 (full) encompassing the ZaxDMA
+	// {{{
+	wire			dma_awvalid, dma_awready;
+	wire	[IW-1:0]	dma_awid;
+	wire	[AW-1:0]	dma_awaddr;
+	wire	[7:0]		dma_awlen;
+	wire	[2:0]		dma_awsize;
+	wire	[1:0]		dma_awburst;
+	wire			dma_awlock;
+	wire	[3:0]		dma_awcache;
+	wire	[2:0]		dma_awprot;
+	wire	[3:0]		dma_awqos;
+
+	wire			dma_wvalid, dma_wready;
+	wire	[BUS_WIDTH-1:0]	dma_wdata;
+	wire [BUS_WIDTH/8-1:0]	dma_wstrb;
+	wire			dma_wlast;
+
+	wire			dma_bvalid, dma_bready;
+	wire	[IW-1:0]	dma_bid;
+	wire	[1:0]		dma_bresp;
+
+	wire			dma_arvalid, dma_arready;
+	wire	[IW-1:0]	dma_arid;
+	wire	[AW-1:0]	dma_araddr;
+	wire	[7:0]		dma_arlen;
+	wire	[2:0]		dma_arsize;
+	wire	[1:0]		dma_arburst;
+	wire			dma_arlock;
+	wire	[3:0]		dma_arcache;
+	wire	[2:0]		dma_arprot;
+	wire	[3:0]		dma_arqos;
+
+
+	wire			dma_rvalid, dma_rready;
+	wire	[IW-1:0]	dma_rid;
+	wire	[BUS_WIDTH-1:0]	dma_rdata;
+	wire	[1:0]		dma_rresp;
+	wire			dma_rlast;
+	// }}}
+
+	// }}}
+
+	// ZaxDMA checker declarations
+	// {{{
+
+	// zckw_* - The AXI4 (full) connection to control the ZaxDMA set
+	// {{{
+	wire			zckw_awvalid, zckw_awready;
+	wire	[IW-1:0]	zckw_awid;
+	wire	[AW-1:0]	zckw_awaddr;
+	wire	[7:0]		zckw_awlen;
+	wire	[2:0]		zckw_awsize;
+	wire	[1:0]		zckw_awburst;
+	wire			zckw_awlock;
+	wire	[3:0]		zckw_awcache;
+	wire	[2:0]		zckw_awprot;
+	wire	[3:0]		zckw_awqos;
+
+	wire			zckw_wvalid, zckw_wready;
+	wire	[BUS_WIDTH-1:0]	zckw_wdata;
+	wire [BUS_WIDTH/8-1:0]	zckw_wstrb;
+	wire			zckw_wlast;
+
+	wire			zckw_bvalid, zckw_bready;
+	wire	[IW-1:0]	zckw_bid;
+	wire	[1:0]		zckw_bresp;
+
+	wire			zckw_arvalid, zckw_arready;
+	wire	[IW-1:0]	zckw_arid;
+	wire	[AW-1:0]	zckw_araddr;
+	wire	[7:0]		zckw_arlen;
+	wire	[2:0]		zckw_arsize;
+	wire	[1:0]		zckw_arburst;
+	wire			zckw_arlock;
+	wire	[3:0]		zckw_arcache;
+	wire	[2:0]		zckw_arprot;
+	wire	[3:0]		zckw_arqos;
+
+	wire			zckw_rvalid, zckw_rready;
+	wire	[IW-1:0]	zckw_rid;
+	wire	[BUS_WIDTH-1:0]	zckw_rdata;
+	wire	[1:0]		zckw_rresp;
+	wire			zckw_rlast;
+	// }}}
+
+	// zck_* - The AXI-Lite connection to control the ZaxDMA set
+	// {{{
+	wire		zck_awvalid, zck_awready;
+	wire	[7:0]	zck_awaddr;
+	wire	[2:0]	zck_awprot;
+
+	wire		zck_wvalid, zck_wready;
+	wire	[31:0]	zck_wdata;
+	wire	[3:0]	zck_wstrb;
+
+	wire		zck_bvalid, zck_bready;
+	wire	[1:0]	zck_bresp;
+
+	wire		zck_arvalid, zck_arready;
+	wire	[7:0]	zck_araddr;
+	wire	[2:0]	zck_arprot;
+
+	wire		zck_rvalid, zck_rready;
+	wire	[31:0]	zck_rdata;
+	wire	[1:0]	zck_rresp;
+	// }}}
+
+	// zstrm_* - The AXI4 (full) connection to control the ZaxDMA set
+	// {{{
+	wire			zstrm_awvalid, zstrm_awready;
+	wire	[IW-1:0]	zstrm_awid;
+	wire	[AW-1:0]	zstrm_awaddr;
+	wire	[7:0]		zstrm_awlen;
+	wire	[2:0]		zstrm_awsize;
+	wire	[1:0]		zstrm_awburst;
+	wire			zstrm_awlock;
+	wire	[3:0]		zstrm_awcache;
+	wire	[2:0]		zstrm_awprot;
+	wire	[3:0]		zstrm_awqos;
+
+	wire			zstrm_wvalid, zstrm_wready;
+	wire	[BUS_WIDTH-1:0]	zstrm_wdata;
+	wire [BUS_WIDTH/8-1:0]	zstrm_wstrb;
+	wire			zstrm_wlast;
+
+	wire			zstrm_bvalid, zstrm_bready;
+	wire	[IW-1:0]	zstrm_bid;
+	wire	[1:0]		zstrm_bresp;
+
+	wire			zstrm_arvalid, zstrm_arready;
+	wire	[IW-1:0]	zstrm_arid;
+	wire	[AW-1:0]	zstrm_araddr;
+	wire	[7:0]		zstrm_arlen;
+	wire	[2:0]		zstrm_arsize;
+	wire	[1:0]		zstrm_arburst;
+	wire			zstrm_arlock;
+	wire	[3:0]		zstrm_arcache;
+	wire	[2:0]		zstrm_arprot;
+	wire	[3:0]		zstrm_arqos;
+
+
+	wire			zstrm_rvalid, zstrm_rready;
+	wire	[IW-1:0]	zstrm_rid;
+	wire	[BUS_WIDTH-1:0]	zstrm_rdata;
+	wire	[1:0]		zstrm_rresp;
+	wire			zstrm_rlast;
+	// }}}
+
 	// }}}
 
 `ifdef	VERILATOR
@@ -1173,7 +1397,9 @@ module	axi_tb #(
 			// {{{
 			.C_AXI_ID_WIDTH(IW),
 			.C_AXI_ADDR_WIDTH(AW),
-			.C_AXI_DATA_WIDTH(BUS_WIDTH)
+			.C_AXI_DATA_WIDTH(BUS_WIDTH),
+			.C_AXI_WRITE_ID(DATA_ID),
+			.C_AXI_READ_ID(INSN_ID)
 			// }}}
 		) u_daxi (
 			.ACLK(i_aclk), .ARESETN(i_aresetn),
@@ -1257,6 +1483,8 @@ module	axi_tb #(
 			.ADDRESS_WIDTH(ADDRESS_WIDTH),
 			.C_AXI_ID_WIDTH(IW),
 			.C_AXI_DATA_WIDTH(BUS_WIDTH),
+			.INSN_ID(INSN_ID),
+			.DATA_ID(DATA_ID),
 			.OPT_PIPELINED(OPT_PIPELINED),
 			.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 			.OPT_LGICACHE(OPT_LGICACHE),
@@ -1957,6 +2185,8 @@ module	axi_tb #(
 				.ADDRESS_WIDTH(ADDRESS_WIDTH),
 				.C_AXI_ID_WIDTH(IW),
 				.C_AXI_DATA_WIDTH(BUS_WIDTH),
+				.INSN_ID(INSN_ID+gk[IW-1:0]),
+				.DATA_ID(DATA_ID+gk[IW-1:0]),
 				.OPT_PIPELINED(OPT_PIPELINED),
 				.OPT_EARLY_BRANCHING(OPT_EARLY_BRANCHING),
 				.OPT_LGICACHE(OPT_LGICACHE),
@@ -2146,18 +2376,23 @@ module	axi_tb #(
 	axixbar #(
 		// {{{
 `ifdef	VERILATOR
-		.NM(1+2*OPT_SMP),
+		.NM(2+2*OPT_SMP),
 `else
-		.NM(2*OPT_SMP),	// ZipAXI(l) CPU is two masters each
+		.NM(1+2*OPT_SMP),	// ZipAXI(l) CPU is two masters each
 `endif
-		.NS(4+OPT_SMP),
+		.NS(7+OPT_SMP),
 		.C_AXI_ID_WIDTH(IW),
 		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH), .C_AXI_DATA_WIDTH(BUS_WIDTH),
 		.OPT_LOWPOWER(OPT_LOWPOWER),
-		.SLAVE_ADDR({ AXILP_ADDR, SMP_ADDR, CONSOLE_ADDR, SCOPE_ADDR,
+		.SLAVE_ADDR({ ZDMA_CHECK_ADDR, ZDMA_CHKST_ADDR, ZAX_ADDR,
+				AXILP_ADDR, SMP_ADDR, CONSOLE_ADDR, SCOPE_ADDR,
 				MEMORY_ADDR }),
 		.SLAVE_MASK({
-			{ {(AW-24){1'b1}}, {(24){1'b0}} },	// AXI-Lite Periph Set
+			// Stream TB control
+			{   4'b1111, {(AW-4){1'b0}} },	// ZDMA_CHECK_ADDR
+			{   4'b1111, {(AW-4){1'b0}} },	// ZDMA_CHKST_ADDR
+			{ {(AW-24){1'b1}}, {(16){1'b1}}, 8'hc0 },	// ZaxDMA Control
+			{ {(AW-24){1'b1}}, {(16){1'b1}}, 8'hc0 },	// AXI-Lite Periph Set
 			SMP_MASK,	// SMP
 				{   4'b1111, {(AW-4){1'b0}} },	// Console
 				{   4'b1111, {(AW-4){1'b0}} },	// Scope
@@ -2170,135 +2405,135 @@ module	axi_tb #(
 		// {{{
 `ifdef	VERILATOR
 		// Three bus masters: the external SIM input, and the CPU
-		.S_AXI_AWVALID({ simfull_awvalid, cpui_awvalid, cpud_awvalid }),
-		.S_AXI_AWREADY({ simfull_awready, cpui_awready, cpud_awready }),
-		.S_AXI_AWID({    simfull_awid,    cpui_awid,    cpud_awid    }),
-		.S_AXI_AWADDR({  simfull_awaddr,  cpui_awaddr,  cpud_awaddr  }),
-		.S_AXI_AWLEN({   simfull_awlen,   cpui_awlen,   cpud_awlen   }),
-		.S_AXI_AWSIZE({  simfull_awsize,  cpui_awsize,  cpud_awsize  }),
-		.S_AXI_AWBURST({ simfull_awburst, cpui_awburst, cpud_awburst }),
-		.S_AXI_AWLOCK({  simfull_awlock,  cpui_awlock,  cpud_awlock  }),
-		.S_AXI_AWCACHE({ simfull_awcache, cpui_awcache, cpud_awcache }),
-		.S_AXI_AWPROT({  simfull_awprot,  cpui_awprot,  cpud_awprot  }),
-		.S_AXI_AWQOS({   simfull_awqos,   cpui_awqos,   cpud_awqos   }),
+		.S_AXI_AWVALID({ simfull_awvalid, dma_awvalid, cpui_awvalid, cpud_awvalid }),
+		.S_AXI_AWREADY({ simfull_awready, dma_awready, cpui_awready, cpud_awready }),
+		.S_AXI_AWID({    simfull_awid,    dma_awid,    cpui_awid,    cpud_awid    }),
+		.S_AXI_AWADDR({  simfull_awaddr,  dma_awaddr,  cpui_awaddr,  cpud_awaddr  }),
+		.S_AXI_AWLEN({   simfull_awlen,   dma_awlen,   cpui_awlen,   cpud_awlen   }),
+		.S_AXI_AWSIZE({  simfull_awsize,  dma_awsize,  cpui_awsize,  cpud_awsize  }),
+		.S_AXI_AWBURST({ simfull_awburst, dma_awburst, cpui_awburst, cpud_awburst }),
+		.S_AXI_AWLOCK({  simfull_awlock,  dma_awlock,  cpui_awlock,  cpud_awlock  }),
+		.S_AXI_AWCACHE({ simfull_awcache, dma_awcache, cpui_awcache, cpud_awcache }),
+		.S_AXI_AWPROT({  simfull_awprot,  dma_awprot,  cpui_awprot,  cpud_awprot  }),
+		.S_AXI_AWQOS({   simfull_awqos,   dma_awqos,   cpui_awqos,   cpud_awqos   }),
 
-		.S_AXI_WVALID({ simfull_wvalid, cpui_wvalid, cpud_wvalid }),
-		.S_AXI_WREADY({ simfull_wready, cpui_wready, cpud_wready }),
-		.S_AXI_WDATA({  simfull_wdata,  cpui_wdata,  cpud_wdata  }),
-		.S_AXI_WSTRB({  simfull_wstrb,  cpui_wstrb,  cpud_wstrb  }),
-		.S_AXI_WLAST({  simfull_wlast,  cpui_wlast,  cpud_wlast  }),
+		.S_AXI_WVALID({ simfull_wvalid, dma_wvalid,  cpui_wvalid, cpud_wvalid }),
+		.S_AXI_WREADY({ simfull_wready, dma_wready,  cpui_wready, cpud_wready }),
+		.S_AXI_WDATA({  simfull_wdata,  dma_wdata,   cpui_wdata,  cpud_wdata  }),
+		.S_AXI_WSTRB({  simfull_wstrb,  dma_wstrb,   cpui_wstrb,  cpud_wstrb  }),
+		.S_AXI_WLAST({  simfull_wlast,  dma_wlast,   cpui_wlast,  cpud_wlast  }),
 
-		.S_AXI_BVALID({ simfull_bvalid, cpui_bvalid, cpud_bvalid }),
-		.S_AXI_BREADY({ simfull_bready, cpui_bready, cpud_bready }),
-		.S_AXI_BID({    simfull_bid,    cpui_bid,    cpud_bid    }),
-		.S_AXI_BRESP({  simfull_bresp,  cpui_bresp,  cpud_bresp  }),
+		.S_AXI_BVALID({ simfull_bvalid, dma_bvalid, cpui_bvalid, cpud_bvalid }),
+		.S_AXI_BREADY({ simfull_bready, dma_bready, cpui_bready, cpud_bready }),
+		.S_AXI_BID({    simfull_bid,    dma_bid,    cpui_bid,    cpud_bid    }),
+		.S_AXI_BRESP({  simfull_bresp,  dma_bresp,  cpui_bresp,  cpud_bresp  }),
 
-		.S_AXI_ARVALID({ simfull_arvalid, cpui_arvalid, cpud_arvalid }),
-		.S_AXI_ARREADY({ simfull_arready, cpui_arready, cpud_arready }),
-		.S_AXI_ARID({    simfull_arid,    cpui_arid,    cpud_arid    }),
-		.S_AXI_ARADDR({  simfull_araddr,  cpui_araddr,  cpud_araddr  }),
-		.S_AXI_ARLEN({   simfull_arlen,   cpui_arlen,   cpud_arlen   }),
-		.S_AXI_ARSIZE({  simfull_arsize,  cpui_arsize,  cpud_arsize  }),
-		.S_AXI_ARBURST({ simfull_arburst, cpui_arburst, cpud_arburst }),
-		.S_AXI_ARLOCK({  simfull_arlock,  cpui_arlock,  cpud_arlock  }),
-		.S_AXI_ARCACHE({ simfull_arcache, cpui_arcache, cpud_arcache }),
-		.S_AXI_ARPROT({  simfull_arprot,  cpui_arprot,  cpud_arprot  }),
-		.S_AXI_ARQOS({   simfull_arqos,   cpui_arqos,   cpud_arqos   }),
+		.S_AXI_ARVALID({ simfull_arvalid, dma_arvalid, cpui_arvalid, cpud_arvalid }),
+		.S_AXI_ARREADY({ simfull_arready, dma_arready, cpui_arready, cpud_arready }),
+		.S_AXI_ARID({    simfull_arid,    dma_arid,    cpui_arid,    cpud_arid    }),
+		.S_AXI_ARADDR({  simfull_araddr,  dma_araddr,  cpui_araddr,  cpud_araddr  }),
+		.S_AXI_ARLEN({   simfull_arlen,   dma_arlen,   cpui_arlen,   cpud_arlen   }),
+		.S_AXI_ARSIZE({  simfull_arsize,  dma_arsize,  cpui_arsize,  cpud_arsize  }),
+		.S_AXI_ARBURST({ simfull_arburst, dma_arburst, cpui_arburst, cpud_arburst }),
+		.S_AXI_ARLOCK({  simfull_arlock,  dma_arlock,  cpui_arlock,  cpud_arlock  }),
+		.S_AXI_ARCACHE({ simfull_arcache, dma_arcache, cpui_arcache, cpud_arcache }),
+		.S_AXI_ARPROT({  simfull_arprot,  dma_arprot,  cpui_arprot,  cpud_arprot  }),
+		.S_AXI_ARQOS({   simfull_arqos,   dma_arqos,   cpui_arqos,   cpud_arqos   }),
 
-		.S_AXI_RVALID({ simfull_rvalid, cpui_rvalid, cpud_rvalid }),
-		.S_AXI_RREADY({ simfull_rready, cpui_rready, cpud_rready }),
-		.S_AXI_RID({    simfull_rid,    cpui_rid,    cpud_rid  }),
-		.S_AXI_RDATA({  simfull_rdata,  cpui_rdata,  cpud_rdata  }),
-		.S_AXI_RLAST({  simfull_rlast,  cpui_rlast,  cpud_rlast  }),
-		.S_AXI_RRESP({  simfull_rresp,  cpui_rresp,  cpud_rresp  }),
+		.S_AXI_RVALID({ simfull_rvalid, dma_rvalid, cpui_rvalid, cpud_rvalid }),
+		.S_AXI_RREADY({ simfull_rready, dma_rready, cpui_rready, cpud_rready }),
+		.S_AXI_RID({    simfull_rid,    dma_rid,    cpui_rid,    cpud_rid  }),
+		.S_AXI_RDATA({  simfull_rdata,  dma_rdata,  cpui_rdata,  cpud_rdata  }),
+		.S_AXI_RLAST({  simfull_rlast,  dma_rlast,  cpui_rlast,  cpud_rlast  }),
+		.S_AXI_RRESP({  simfull_rresp,  dma_rresp,  cpui_rresp,  cpud_rresp  }),
 `else
 		// With no external CPU input, there is no simulation port
-		.S_AXI_AWVALID({ cpui_awvalid, cpud_awvalid }),
-		.S_AXI_AWREADY({ cpui_awready, cpud_awready }),
-		.S_AXI_AWID({    cpui_awid,    cpud_awid    }),
-		.S_AXI_AWADDR({  cpui_awaddr,  cpud_awaddr  }),
-		.S_AXI_AWLEN({   cpui_awlen,   cpud_awlen   }),
-		.S_AXI_AWSIZE({  cpui_awsize,  cpud_awsize  }),
-		.S_AXI_AWBURST({ cpui_awburst, cpud_awburst }),
-		.S_AXI_AWLOCK({  cpui_awlock,  cpud_awlock  }),
-		.S_AXI_AWCACHE({ cpui_awcache, cpud_awcache }),
-		.S_AXI_AWPROT({  cpui_awprot,  cpud_awprot  }),
-		.S_AXI_AWQOS({   cpui_awqos,   cpud_awqos   }),
+		.S_AXI_AWVALID({ dma_awvalid, cpui_awvalid, cpud_awvalid }),
+		.S_AXI_AWREADY({ dma_awready, cpui_awready, cpud_awready }),
+		.S_AXI_AWID({    dma_awid,    cpui_awid,    cpud_awid    }),
+		.S_AXI_AWADDR({  dma_awaddr,  cpui_awaddr,  cpud_awaddr  }),
+		.S_AXI_AWLEN({   dma_awlen,   cpui_awlen,   cpud_awlen   }),
+		.S_AXI_AWSIZE({  dma_awsize,  cpui_awsize,  cpud_awsize  }),
+		.S_AXI_AWBURST({ dma_awburst, cpui_awburst, cpud_awburst }),
+		.S_AXI_AWLOCK({  dma_awlock,  cpui_awlock,  cpud_awlock  }),
+		.S_AXI_AWCACHE({ dma_awcache, cpui_awcache, cpud_awcache }),
+		.S_AXI_AWPROT({  dma_awprot,  cpui_awprot,  cpud_awprot  }),
+		.S_AXI_AWQOS({   dma_awqos,   cpui_awqos,   cpud_awqos   }),
 
-		.S_AXI_WVALID({ cpui_wvalid, cpud_wvalid }),
-		.S_AXI_WREADY({ cpui_wready, cpud_wready }),
-		.S_AXI_WDATA({  cpui_wdata,  cpud_wdata  }),
-		.S_AXI_WSTRB({  cpui_wstrb,  cpud_wstrb  }),
-		.S_AXI_WLAST({  cpui_wlast,  cpud_wlast  }),
+		.S_AXI_WVALID({ dma_wvalid,   cpui_wvalid, cpud_wvalid }),
+		.S_AXI_WREADY({ dma_wready,   cpui_wready, cpud_wready }),
+		.S_AXI_WDATA({  dma_wdata,    cpui_wdata,  cpud_wdata  }),
+		.S_AXI_WSTRB({  dma_wstrb,    cpui_wstrb,  cpud_wstrb  }),
+		.S_AXI_WLAST({  dma_wlast,    cpui_wlast,  cpud_wlast  }),
 
-		.S_AXI_BVALID({ cpui_bvalid, cpud_bvalid }),
-		.S_AXI_BREADY({ cpui_bready, cpud_bready }),
-		.S_AXI_BID({    cpui_bid,    cpud_bid    }),
-		.S_AXI_BRESP({  cpui_bresp,  cpud_bresp  }),
+		.S_AXI_BVALID({ dma_bvalid,   cpui_bvalid, cpud_bvalid }),
+		.S_AXI_BREADY({ dma_bready,   cpui_bready, cpud_bready }),
+		.S_AXI_BID({    dma_bid,      cpui_bid,    cpud_bid    }),
+		.S_AXI_BRESP({  dma_bresp,    cpui_bresp,  cpud_bresp  }),
 
-		.S_AXI_ARVALID({ cpui_arvalid, cpud_arvalid }),
-		.S_AXI_ARREADY({ cpui_arready, cpud_arready }),
-		.S_AXI_ARID({    cpui_arid,    cpud_arid    }),
-		.S_AXI_ARADDR({  cpui_araddr,  cpud_araddr  }),
-		.S_AXI_ARLEN({   cpui_arlen,   cpud_arlen   }),
-		.S_AXI_ARSIZE({  cpui_arsize,  cpud_arsize  }),
-		.S_AXI_ARBURST({ cpui_arburst, cpud_arburst }),
-		.S_AXI_ARLOCK({  cpui_arlock,  cpud_arlock  }),
-		.S_AXI_ARCACHE({ cpui_arcache, cpud_arcache }),
-		.S_AXI_ARPROT({  cpui_arprot,  cpud_arprot  }),
-		.S_AXI_ARQOS({   cpui_arqos,   cpud_arqos   }),
+		.S_AXI_ARVALID({ dma_arvalid, cpui_arvalid, cpud_arvalid }),
+		.S_AXI_ARREADY({ dma_arready, cpui_arready, cpud_arready }),
+		.S_AXI_ARID({    dma_arid,    cpui_arid,    cpud_arid    }),
+		.S_AXI_ARADDR({  dma_araddr,  cpui_araddr,  cpud_araddr  }),
+		.S_AXI_ARLEN({   dma_arlen,   cpui_arlen,   cpud_arlen   }),
+		.S_AXI_ARSIZE({  dma_arsize,  cpui_arsize,  cpud_arsize  }),
+		.S_AXI_ARBURST({ dma_arburst, cpui_arburst, cpud_arburst }),
+		.S_AXI_ARLOCK({  dma_arlock,  cpui_arlock,  cpud_arlock  }),
+		.S_AXI_ARCACHE({ dma_arcache, cpui_arcache, cpud_arcache }),
+		.S_AXI_ARPROT({  dma_arprot,  cpui_arprot,  cpud_arprot  }),
+		.S_AXI_ARQOS({   dma_arqos,   cpui_arqos,   cpud_arqos   }),
 
-		.S_AXI_RVALID({ cpui_rvalid, cpud_rvalid }),
-		.S_AXI_RREADY({ cpui_rready, cpud_rready }),
-		.S_AXI_RID({    cpui_rid,    cpud_rid  }),
-		.S_AXI_RDATA({  cpui_rdata,  cpud_rdata  }),
-		.S_AXI_RLAST({  cpui_rlast,  cpud_rlast  }),
-		.S_AXI_RRESP({  cpui_rresp,  cpud_rresp  }),
+		.S_AXI_RVALID({ dma_rvalid, cpui_rvalid, cpud_rvalid }),
+		.S_AXI_RREADY({ dma_rready, cpui_rready, cpud_rready }),
+		.S_AXI_RID({    dma_rid,    cpui_rid,    cpud_rid  }),
+		.S_AXI_RDATA({  dma_rdata,  cpui_rdata,  cpud_rdata  }),
+		.S_AXI_RLAST({  dma_rlast,  cpui_rlast,  cpud_rlast  }),
+		.S_AXI_RRESP({  dma_rresp,  cpui_rresp,  cpud_rresp  }),
 `endif
 		// }}}
 		// Master port ... to control the slaves w/in this design
 		// {{{
-		.M_AXI_AWVALID({ axip_awvalid, smpfull_awvalid, con_awvalid, scope_awvalid,  mem_awvalid  }),
-		.M_AXI_AWREADY({ axip_awready, smpfull_awready, con_awready, scope_awready,  mem_awready  }),
-		.M_AXI_AWID({    axip_awid,    smpfull_awid,    con_awid,    scope_awid,     mem_awid  }),
-		.M_AXI_AWADDR({  axip_awaddr,  smpfull_awaddr,  con_awaddr,  scope_awaddr,   mem_awaddr  }),
-		.M_AXI_AWLEN({   axip_awlen,   smpfull_awlen,   con_awlen,   scope_awlen,    mem_awlen  }),
-		.M_AXI_AWSIZE({  axip_awsize,  smpfull_awsize,  con_awsize,  scope_awsize,   mem_awsize  }),
-		.M_AXI_AWBURST({ axip_awburst, smpfull_awburst, con_awburst, scope_awburst,  mem_awburst  }),
-		.M_AXI_AWLOCK({  axip_awlock,  smpfull_awlock,  con_awlock,  scope_awlock,   mem_awlock  }),
-		.M_AXI_AWCACHE({ axip_awcache, smpfull_awcache, con_awcache, scope_awcache,  mem_awcache  }),
-		.M_AXI_AWPROT({  axip_awprot,  smpfull_awprot,  con_awprot,  scope_awprot,   mem_awprot  }),
-		.M_AXI_AWQOS({   axip_awqos,   smpfull_awqos,   con_awqos,   scope_awqos,    mem_awqos  }),
+		.M_AXI_AWVALID({ zstrm_awvalid, zckw_awvalid, zax_awvalid, axip_awvalid, smpfull_awvalid, con_awvalid, scope_awvalid,  mem_awvalid  }),
+		.M_AXI_AWREADY({ zstrm_awready, zckw_awready, zax_awready, axip_awready, smpfull_awready, con_awready, scope_awready,  mem_awready  }),
+		.M_AXI_AWID({    zstrm_awid,    zckw_awid,    zax_awid,    axip_awid,    smpfull_awid,    con_awid,    scope_awid,     mem_awid     }),
+		.M_AXI_AWADDR({  zstrm_awaddr,  zckw_awaddr,  zax_awaddr,  axip_awaddr,  smpfull_awaddr,  con_awaddr,  scope_awaddr,   mem_awaddr   }),
+		.M_AXI_AWLEN({   zstrm_awlen,   zckw_awlen,   zax_awlen,   axip_awlen,   smpfull_awlen,   con_awlen,   scope_awlen,    mem_awlen    }),
+		.M_AXI_AWSIZE({  zstrm_awsize,  zckw_awsize,  zax_awsize,  axip_awsize,  smpfull_awsize,  con_awsize,  scope_awsize,   mem_awsize   }),
+		.M_AXI_AWBURST({ zstrm_awburst, zckw_awburst, zax_awburst, axip_awburst, smpfull_awburst, con_awburst, scope_awburst,  mem_awburst  }),
+		.M_AXI_AWLOCK({  zstrm_awlock,  zckw_awlock,  zax_awlock,  axip_awlock,  smpfull_awlock,  con_awlock,  scope_awlock,   mem_awlock   }),
+		.M_AXI_AWCACHE({ zstrm_awcache, zckw_awcache, zax_awcache, axip_awcache, smpfull_awcache, con_awcache, scope_awcache,  mem_awcache  }),
+		.M_AXI_AWPROT({  zstrm_awprot,  zckw_awprot,  zax_awprot,  axip_awprot,  smpfull_awprot,  con_awprot,  scope_awprot,   mem_awprot   }),
+		.M_AXI_AWQOS({   zstrm_awqos,   zckw_awqos,   zax_awqos,   axip_awqos,   smpfull_awqos,   con_awqos,   scope_awqos,    mem_awqos    }),
 		//
-		.M_AXI_WVALID({ axip_wvalid, smpfull_wvalid, con_wvalid, scope_wvalid,  mem_wvalid  }),
-		.M_AXI_WREADY({ axip_wready, smpfull_wready, con_wready, scope_wready,  mem_wready  }),
-		.M_AXI_WDATA({  axip_wdata,  smpfull_wdata,  con_wdata,  scope_wdata,   mem_wdata  }),
-		.M_AXI_WSTRB({  axip_wstrb,  smpfull_wstrb,  con_wstrb,  scope_wstrb,   mem_wstrb  }),
-		.M_AXI_WLAST({  axip_wlast,  smpfull_wlast,  con_wlast,  scope_wlast,   mem_wlast  }),
+		.M_AXI_WVALID({ zstrm_wvalid, zckw_wvalid, zax_wvalid, axip_wvalid, smpfull_wvalid, con_wvalid, scope_wvalid,  mem_wvalid  }),
+		.M_AXI_WREADY({ zstrm_wready, zckw_wready, zax_wready, axip_wready, smpfull_wready, con_wready, scope_wready,  mem_wready  }),
+		.M_AXI_WDATA({  zstrm_wdata,  zckw_wdata,  zax_wdata,  axip_wdata,  smpfull_wdata,  con_wdata,  scope_wdata,   mem_wdata   }),
+		.M_AXI_WSTRB({  zstrm_wstrb,  zckw_wstrb,  zax_wstrb,  axip_wstrb,  smpfull_wstrb,  con_wstrb,  scope_wstrb,   mem_wstrb   }),
+		.M_AXI_WLAST({  zstrm_wlast,  zckw_wlast,  zax_wlast,  axip_wlast,  smpfull_wlast,  con_wlast,  scope_wlast,   mem_wlast   }),
 		//
-		.M_AXI_BVALID({ axip_bvalid, smpfull_bvalid, con_bvalid, scope_bvalid,  mem_bvalid  }),
-		.M_AXI_BREADY({ axip_bready, smpfull_bready, con_bready, scope_bready,  mem_bready  }),
-		.M_AXI_BID({    axip_bid,    smpfull_bid,    con_bid,    scope_bid,     mem_bid  }),
-		.M_AXI_BRESP({  axip_bresp,  smpfull_bresp,  con_bresp,  scope_bresp,   mem_bresp  }),
+		.M_AXI_BVALID({ zstrm_bvalid, zckw_bvalid, zax_bvalid, axip_bvalid, smpfull_bvalid, con_bvalid, scope_bvalid,  mem_bvalid  }),
+		.M_AXI_BREADY({ zstrm_bready, zckw_bready, zax_bready, axip_bready, smpfull_bready, con_bready, scope_bready,  mem_bready  }),
+		.M_AXI_BID({    zstrm_bid,    zckw_bid,    zax_bid,    axip_bid,    smpfull_bid,    con_bid,    scope_bid,     mem_bid     }),
+		.M_AXI_BRESP({  zstrm_bresp,  zckw_bresp,  zax_bresp,  axip_bresp,  smpfull_bresp,  con_bresp,  scope_bresp,   mem_bresp   }),
 		//
-		.M_AXI_ARVALID({ axip_arvalid, smpfull_arvalid, con_arvalid, scope_arvalid,  mem_arvalid  }),
-		.M_AXI_ARREADY({ axip_arready, smpfull_arready, con_arready, scope_arready,  mem_arready  }),
-		.M_AXI_ARID({    axip_arid,    smpfull_arid,    con_arid,    scope_arid,     mem_arid  }),
-		.M_AXI_ARADDR({  axip_araddr,  smpfull_araddr,  con_araddr,  scope_araddr,   mem_araddr  }),
-		.M_AXI_ARLEN({   axip_arlen,   smpfull_arlen,   con_arlen,   scope_arlen,    mem_arlen  }),
-		.M_AXI_ARSIZE({  axip_arsize,  smpfull_arsize,  con_arsize,  scope_arsize,   mem_arsize  }),
-		.M_AXI_ARBURST({ axip_arburst, smpfull_arburst, con_arburst, scope_arburst,  mem_arburst  }),
-		.M_AXI_ARLOCK({  axip_arlock,  smpfull_arlock,  con_arlock,  scope_arlock,   mem_arlock  }),
-		.M_AXI_ARCACHE({ axip_arcache, smpfull_arcache, con_arcache, scope_arcache,  mem_arcache  }),
-		.M_AXI_ARPROT({  axip_arprot,  smpfull_arprot,  con_arprot,  scope_arprot,   mem_arprot  }),
-		.M_AXI_ARQOS({   axip_arqos,   smpfull_arqos,   con_arqos,   scope_arqos,    mem_arqos  }),
+		.M_AXI_ARVALID({ zstrm_arvalid, zckw_arvalid, zax_arvalid, axip_arvalid, smpfull_arvalid, con_arvalid, scope_arvalid,  mem_arvalid  }),
+		.M_AXI_ARREADY({ zstrm_arready, zckw_arready, zax_arready, axip_arready, smpfull_arready, con_arready, scope_arready,  mem_arready  }),
+		.M_AXI_ARID({    zstrm_arid,    zckw_arid,    zax_arid,    axip_arid,    smpfull_arid,    con_arid,    scope_arid,     mem_arid     }),
+		.M_AXI_ARADDR({  zstrm_araddr,  zckw_araddr,  zax_araddr,  axip_araddr,  smpfull_araddr,  con_araddr,  scope_araddr,   mem_araddr   }),
+		.M_AXI_ARLEN({   zstrm_arlen,   zckw_arlen,   zax_arlen,   axip_arlen,   smpfull_arlen,   con_arlen,   scope_arlen,    mem_arlen    }),
+		.M_AXI_ARSIZE({  zstrm_arsize,  zckw_arsize,  zax_arsize,  axip_arsize,  smpfull_arsize,  con_arsize,  scope_arsize,   mem_arsize   }),
+		.M_AXI_ARBURST({ zstrm_arburst, zckw_arburst, zax_arburst, axip_arburst, smpfull_arburst, con_arburst, scope_arburst,  mem_arburst  }),
+		.M_AXI_ARLOCK({  zstrm_arlock,  zckw_arlock,  zax_arlock,  axip_arlock,  smpfull_arlock,  con_arlock,  scope_arlock,   mem_arlock   }),
+		.M_AXI_ARCACHE({ zstrm_arcache, zckw_arcache, zax_arcache, axip_arcache, smpfull_arcache, con_arcache, scope_arcache,  mem_arcache  }),
+		.M_AXI_ARPROT({  zstrm_arprot,  zckw_arprot,  zax_arprot,  axip_arprot,  smpfull_arprot,  con_arprot,  scope_arprot,   mem_arprot   }),
+		.M_AXI_ARQOS({   zstrm_arqos,   zckw_arqos,   zax_arqos,   axip_arqos,   smpfull_arqos,   con_arqos,   scope_arqos,    mem_arqos    }),
 		//
-		.M_AXI_RVALID({ axip_rvalid, smpfull_rvalid, con_rvalid, scope_rvalid,  mem_rvalid  }),
-		.M_AXI_RREADY({ axip_rready, smpfull_rready, con_rready, scope_rready,  mem_rready  }),
-		.M_AXI_RID({    axip_rid,    smpfull_rid,    con_rid,    scope_rid,     mem_rid  }),
-		.M_AXI_RDATA({  axip_rdata,  smpfull_rdata,  con_rdata,  scope_rdata,   mem_rdata  }),
-		.M_AXI_RLAST({  axip_rlast,  smpfull_rlast,  con_rlast,  scope_rlast,   mem_rlast  }),
-		.M_AXI_RRESP({  axip_rresp,  smpfull_rresp,  con_rresp,  scope_rresp,   mem_rresp  })
+		.M_AXI_RVALID({ zstrm_rvalid, zckw_rvalid, zax_rvalid, axip_rvalid, smpfull_rvalid, con_rvalid, scope_rvalid,  mem_rvalid  }),
+		.M_AXI_RREADY({ zstrm_rready, zckw_rready, zax_rready, axip_rready, smpfull_rready, con_rready, scope_rready,  mem_rready  }),
+		.M_AXI_RID({    zstrm_rid,    zckw_rid,    zax_rid,    axip_rid,    smpfull_rid,    con_rid,    scope_rid,     mem_rid     }),
+		.M_AXI_RDATA({  zstrm_rdata,  zckw_rdata,  zax_rdata,  axip_rdata,  smpfull_rdata,  con_rdata,  scope_rdata,   mem_rdata   }),
+		.M_AXI_RLAST({  zstrm_rlast,  zckw_rlast,  zax_rlast,  axip_rlast,  smpfull_rlast,  con_rlast,  scope_rlast,   mem_rlast   }),
+		.M_AXI_RRESP({  zstrm_rresp,  zckw_rresp,  zax_rresp,  axip_rresp,  smpfull_rresp,  con_rresp,  scope_rresp,   mem_rresp   })
 		// }}}
 		// }}}
 	);
@@ -2645,7 +2880,7 @@ module	axi_tb #(
 
 	axilperiphs #(
 		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_SKIDBUFFER(1'b1),
-		.OPT_COUNTERS(1'b1), .EXTERNAL_INTERRUPTS(2)
+		.OPT_COUNTERS(1'b1), .EXTERNAL_INTERRUPTS(3)
 	) u_axilp (
 		// {{{
 		.S_AXI_ACLK(i_aclk), .S_AXI_ARESETN(i_aresetn),
@@ -2681,7 +2916,7 @@ module	axi_tb #(
 		.i_cpu_pfstall(cpu_pf_stall[0]),
 		.i_cpu_opstall(cpu_op_stall[0]),
 		.i_cpu_icount(cpu_i_count[0]),
-		.i_ivec({ scope_int, i_sim_int }),
+		.i_ivec({ dma_int, scope_int, i_sim_int }),
 		.o_interrupt(pic_interrupt),
 		.o_watchdog_reset(watchdog_reset)
 		// }}}
@@ -2693,6 +2928,193 @@ module	axi_tb #(
 	assign	unused_axip = &{ 1'b0,
 			axip_awaddr[AW-1:AW-4], axip_araddr[AW-1:AW-4],
 			axilp_awaddr[AW-4:4],   axilp_araddr[AW-4:4]
+			};
+	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// ZaxDMA (AXI DMA)
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	axi2axilsub #(
+		// {{{
+		.C_AXI_ID_WIDTH(IW),
+		.C_AXI_ADDR_WIDTH(ADDRESS_WIDTH-3),
+		.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
+		.C_M_AXI_DATA_WIDTH(32),
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
+		// }}}
+	) u_zaxdown (
+		// {{{
+		.S_AXI_ACLK(i_aclk), .S_AXI_ARESETN(i_aresetn),
+		// The "Wide" slave connection
+		// {{{
+		.S_AXI_AWVALID(zax_awvalid),
+		.S_AXI_AWREADY(zax_awready),
+		.S_AXI_AWID(   zax_awid),
+		.S_AXI_AWADDR( zax_awaddr[AW-4:0]),
+		.S_AXI_AWLEN(  zax_awlen),
+		.S_AXI_AWSIZE( zax_awsize),
+		.S_AXI_AWBURST(zax_awburst),
+		.S_AXI_AWLOCK( zax_awlock),
+		.S_AXI_AWCACHE(zax_awcache),
+		.S_AXI_AWPROT( zax_awprot),
+		.S_AXI_AWQOS(  zax_awqos),
+
+		.S_AXI_WVALID(zax_wvalid),
+		.S_AXI_WREADY(zax_wready),
+		.S_AXI_WDATA( zax_wdata),
+		.S_AXI_WSTRB( zax_wstrb),
+		.S_AXI_WLAST( zax_wlast),
+
+		.S_AXI_BVALID(zax_bvalid),
+		.S_AXI_BREADY(zax_bready),
+		.S_AXI_BID(   zax_bid),
+		.S_AXI_BRESP( zax_bresp),
+
+		.S_AXI_ARVALID(zax_arvalid),
+		.S_AXI_ARREADY(zax_arready),
+		.S_AXI_ARID(   zax_arid),
+		.S_AXI_ARADDR( zax_araddr[AW-4:0]),
+		.S_AXI_ARLEN(  zax_arlen),
+		.S_AXI_ARSIZE( zax_arsize),
+		.S_AXI_ARBURST(zax_arburst),
+		.S_AXI_ARLOCK( zax_arlock),
+		.S_AXI_ARCACHE(zax_arcache),
+		.S_AXI_ARPROT( zax_arprot),
+		.S_AXI_ARQOS(  zax_arqos),
+
+		.S_AXI_RVALID(zax_rvalid),
+		.S_AXI_RREADY(zax_rready),
+		.S_AXI_RID(   zax_rid),
+		.S_AXI_RDATA( zax_rdata),
+		.S_AXI_RLAST( zax_rlast),
+		.S_AXI_RRESP( zax_rresp),
+		// }}}
+		// The downsized connection
+		// {{{
+		.M_AXI_AWVALID(zaxl_awvalid),
+		.M_AXI_AWREADY(zaxl_awready),
+		.M_AXI_AWADDR( zaxl_awaddr),
+		.M_AXI_AWPROT( zaxl_awprot),
+
+		.M_AXI_WVALID(zaxl_wvalid),
+		.M_AXI_WREADY(zaxl_wready),
+		.M_AXI_WDATA( zaxl_wdata),
+		.M_AXI_WSTRB( zaxl_wstrb),
+
+		.M_AXI_BVALID(zaxl_bvalid),
+		.M_AXI_BREADY(zaxl_bready),
+		.M_AXI_BRESP( zaxl_bresp),
+
+		.M_AXI_ARVALID(zaxl_arvalid),
+		.M_AXI_ARREADY(zaxl_arready),
+		.M_AXI_ARADDR( zaxl_araddr),
+		.M_AXI_ARPROT( zaxl_arprot),
+
+		.M_AXI_RVALID(zaxl_rvalid),
+		.M_AXI_RREADY(zaxl_rready),
+		.M_AXI_RDATA( zaxl_rdata),
+		.M_AXI_RRESP( zaxl_rresp)
+		// }}}
+		// }}}
+	);
+
+	zaxdma #(
+		.ADDRESS_WIDTH(ADDRESS_WIDTH),
+		.BUS_WIDTH(BUS_WIDTH),
+		.IW(IW), .AXI_ID(DMA_ID),
+		.OPT_LOWPOWER(OPT_LOWPOWER)
+	) u_dma (
+		// {{{
+		.i_clk(i_aclk), .i_reset(!i_aresetn),
+		// Slave bus connection(s)
+		// {{{
+		.S_AXIL_AWVALID(zaxl_awvalid),
+		.S_AXIL_AWREADY(zaxl_awready),
+		.S_AXIL_AWADDR( zaxl_awaddr[3:0]),
+		.S_AXIL_AWPROT( zaxl_awprot),
+
+		.S_AXIL_WVALID(zaxl_wvalid),
+		.S_AXIL_WREADY(zaxl_wready),
+		.S_AXIL_WDATA( zaxl_wdata),
+		.S_AXIL_WSTRB( zaxl_wstrb),
+
+		.S_AXIL_BVALID(zaxl_bvalid),
+		.S_AXIL_BREADY(zaxl_bready),
+		.S_AXIL_BRESP( zaxl_bresp),
+
+		.S_AXIL_ARVALID(zaxl_arvalid),
+		.S_AXIL_ARREADY(zaxl_arready),
+		.S_AXIL_ARADDR( zaxl_araddr[3:0]),
+		.S_AXIL_ARPROT( zaxl_arprot),
+
+		.S_AXIL_RVALID(zaxl_rvalid),
+		.S_AXIL_RREADY(zaxl_rready),
+		.S_AXIL_RDATA( zaxl_rdata),
+		.S_AXIL_RRESP( zaxl_rresp),
+		// }}}
+		// Master bus connection(s)
+		// {{{
+		.M_AXI_AWVALID(dma_awvalid),
+		.M_AXI_AWREADY(dma_awready),
+		.M_AXI_AWID(   dma_awid),
+		.M_AXI_AWADDR( dma_awaddr),
+		.M_AXI_AWLEN(  dma_awlen),
+		.M_AXI_AWSIZE( dma_awsize),
+		.M_AXI_AWBURST(dma_awburst),
+		.M_AXI_AWLOCK( dma_awlock),
+		.M_AXI_AWCACHE(dma_awcache),
+		.M_AXI_AWPROT( dma_awprot),
+		.M_AXI_AWQOS(  dma_awqos),
+
+
+		.M_AXI_WVALID(dma_wvalid),
+		.M_AXI_WREADY(dma_wready),
+		.M_AXI_WDATA( dma_wdata),
+		.M_AXI_WSTRB( dma_wstrb),
+		.M_AXI_WLAST( dma_wlast),
+
+		.M_AXI_BVALID(dma_bvalid),
+		.M_AXI_BREADY(dma_bready),
+		.M_AXI_BID(   dma_bid),
+		.M_AXI_BRESP( dma_bresp),
+
+		.M_AXI_ARVALID(dma_arvalid),
+		.M_AXI_ARREADY(dma_arready),
+		.M_AXI_ARID(   dma_arid),
+		.M_AXI_ARADDR( dma_araddr),
+		.M_AXI_ARLEN(  dma_arlen),
+		.M_AXI_ARSIZE( dma_arsize),
+		.M_AXI_ARBURST(dma_arburst),
+		.M_AXI_ARLOCK( dma_arlock),
+		.M_AXI_ARCACHE(dma_arcache),
+		.M_AXI_ARPROT( dma_arprot),
+		.M_AXI_ARQOS(  dma_arqos),
+
+		.M_AXI_RVALID(dma_rvalid),
+		.M_AXI_RREADY(dma_rready),
+		.M_AXI_RID(   dma_rid),
+		.M_AXI_RDATA( dma_rdata),
+		.M_AXI_RRESP( dma_rresp),
+		.M_AXI_RLAST( dma_rlast),
+		// }}}
+		.i_dev_ints({ 30'h0, scope_int, i_sim_int }),
+		.o_interrupt(dma_int)
+		// }}}
+	);
+
+	// Verilator coverage_off
+	// Verilator lint_off UNUSED
+	wire	unused_zaxdma;
+	assign	unused_zaxdma = &{ 1'b0, dma_int, zax_awaddr[AW-1:AW-3],
+			zax_araddr[AW-1:AW-3],
+			zaxl_awaddr[AW-4:4], zaxl_araddr[AW-4:4]
 			};
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on
@@ -2906,6 +3328,188 @@ module	axi_tb #(
 		// Verilator lint_on  UNUSED
 		// Verilator coverage_on
 	end endgenerate
+
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// ZaxDMA Check
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	axi2axilsub #(
+		// {{{
+		.C_AXI_ID_WIDTH(IW),
+		.C_AXI_ADDR_WIDTH(8),
+		.C_S_AXI_DATA_WIDTH(BUS_WIDTH),
+		.C_M_AXI_DATA_WIDTH(32),
+		.OPT_LOWPOWER(OPT_LOWPOWER), .OPT_WRITES(1), .OPT_READS(1)
+		// }}}
+	) u_zchkdown (
+		// {{{
+		.S_AXI_ACLK(i_aclk), .S_AXI_ARESETN(i_aresetn),
+		// The "Wide" slave connection
+		// {{{
+		.S_AXI_AWVALID(zckw_awvalid),
+		.S_AXI_AWREADY(zckw_awready),
+		.S_AXI_AWID(   zckw_awid),
+		.S_AXI_AWADDR( zckw_awaddr[7:0]),
+		.S_AXI_AWLEN(  zckw_awlen),
+		.S_AXI_AWSIZE( zckw_awsize),
+		.S_AXI_AWBURST(zckw_awburst),
+		.S_AXI_AWLOCK( zckw_awlock),
+		.S_AXI_AWCACHE(zckw_awcache),
+		.S_AXI_AWPROT( zckw_awprot),
+		.S_AXI_AWQOS(  zckw_awqos),
+
+		.S_AXI_WVALID(zckw_wvalid),
+		.S_AXI_WREADY(zckw_wready),
+		.S_AXI_WDATA( zckw_wdata),
+		.S_AXI_WSTRB( zckw_wstrb),
+		.S_AXI_WLAST( zckw_wlast),
+
+		.S_AXI_BVALID(zckw_bvalid),
+		.S_AXI_BREADY(zckw_bready),
+		.S_AXI_BID(   zckw_bid),
+		.S_AXI_BRESP( zckw_bresp),
+
+		.S_AXI_ARVALID(zckw_arvalid),
+		.S_AXI_ARREADY(zckw_arready),
+		.S_AXI_ARID(   zckw_arid),
+		.S_AXI_ARADDR( zckw_araddr[7:0]),
+		.S_AXI_ARLEN(  zckw_arlen),
+		.S_AXI_ARSIZE( zckw_arsize),
+		.S_AXI_ARBURST(zckw_arburst),
+		.S_AXI_ARLOCK( zckw_arlock),
+		.S_AXI_ARCACHE(zckw_arcache),
+		.S_AXI_ARPROT( zckw_arprot),
+		.S_AXI_ARQOS(  zckw_arqos),
+
+		.S_AXI_RVALID(zckw_rvalid),
+		.S_AXI_RREADY(zckw_rready),
+		.S_AXI_RID(   zckw_rid),
+		.S_AXI_RDATA( zckw_rdata),
+		.S_AXI_RLAST( zckw_rlast),
+		.S_AXI_RRESP( zckw_rresp),
+		// }}}
+		// The downsized connection
+		// {{{
+		.M_AXI_AWVALID(zck_awvalid),
+		.M_AXI_AWREADY(zck_awready),
+		.M_AXI_AWADDR( zck_awaddr),
+		.M_AXI_AWPROT( zck_awprot),
+
+		.M_AXI_WVALID(zck_wvalid),
+		.M_AXI_WREADY(zck_wready),
+		.M_AXI_WDATA( zck_wdata),
+		.M_AXI_WSTRB( zck_wstrb),
+
+		.M_AXI_BVALID(zck_bvalid),
+		.M_AXI_BREADY(zck_bready),
+		.M_AXI_BRESP( zck_bresp),
+
+		.M_AXI_ARVALID(zck_arvalid),
+		.M_AXI_ARREADY(zck_arready),
+		.M_AXI_ARADDR( zck_araddr),
+		.M_AXI_ARPROT( zck_arprot),
+
+		.M_AXI_RVALID(zck_rvalid),
+		.M_AXI_RREADY(zck_rready),
+		.M_AXI_RDATA( zck_rdata),
+		.M_AXI_RRESP( zck_rresp)
+		// }}}
+		// }}}
+	);
+
+	zaxdma_check #(
+		.ADDRESS_WIDTH(ADDRESS_WIDTH),
+		.BUS_WIDTH(BUS_WIDTH),
+		.IW(IW)
+	) u_dmacheck (
+		// {{{
+		.i_clk(i_aclk), .i_reset(!i_aresetn),
+		// Data bus (wide) connection(s)
+		// {{{
+		.S_AXI_AWVALID(zstrm_awvalid),
+		.S_AXI_AWREADY(zstrm_awready),
+		.S_AXI_AWID(   zstrm_awid),
+		.S_AXI_AWADDR( zstrm_awaddr),
+		.S_AXI_AWLEN(  zstrm_awlen),
+		.S_AXI_AWSIZE( zstrm_awsize),
+		.S_AXI_AWBURST(zstrm_awburst),
+		.S_AXI_AWLOCK( zstrm_awlock),
+		.S_AXI_AWCACHE(zstrm_awcache),
+		.S_AXI_AWPROT( zstrm_awprot),
+		.S_AXI_AWQOS(  zstrm_awqos),
+
+		.S_AXI_WVALID(zstrm_wvalid),
+		.S_AXI_WREADY(zstrm_wready),
+		.S_AXI_WDATA( zstrm_wdata),
+		.S_AXI_WSTRB( zstrm_wstrb),
+		.S_AXI_WLAST( zstrm_wlast),
+
+		.S_AXI_BVALID(zstrm_bvalid),
+		.S_AXI_BREADY(zstrm_bready),
+		.S_AXI_BID(   zstrm_bid),
+		.S_AXI_BRESP( zstrm_bresp),
+
+		.S_AXI_ARVALID(zstrm_arvalid),
+		.S_AXI_ARREADY(zstrm_arready),
+		.S_AXI_ARID(   zstrm_arid),
+		.S_AXI_ARADDR( zstrm_araddr),
+		.S_AXI_ARLEN(  zstrm_arlen),
+		.S_AXI_ARSIZE( zstrm_arsize),
+		.S_AXI_ARBURST(zstrm_arburst),
+		.S_AXI_ARLOCK( zstrm_arlock),
+		.S_AXI_ARCACHE(zstrm_arcache),
+		.S_AXI_ARPROT( zstrm_arprot),
+		.S_AXI_ARQOS(  zstrm_arqos),
+
+		.S_AXI_RVALID(zstrm_rvalid),
+		.S_AXI_RREADY(zstrm_rready),
+		.S_AXI_RID(   zstrm_rid),
+		.S_AXI_RDATA( zstrm_rdata),
+		.S_AXI_RRESP( zstrm_rresp),
+		.S_AXI_RLAST( zstrm_rlast),
+		// }}}
+		// Control bus connection(s)
+		// {{{
+		.S_AXIL_AWVALID(zck_awvalid),
+		.S_AXIL_AWREADY(zck_awready),
+		.S_AXIL_AWADDR( zck_awaddr[1:0]),
+		.S_AXIL_AWPROT( zck_awprot),
+
+		.S_AXIL_WVALID( zck_wvalid),
+		.S_AXIL_WREADY( zck_wready),
+		.S_AXIL_WDATA(  zck_wdata),
+		.S_AXIL_WSTRB(  zck_wstrb),
+
+		.S_AXIL_BVALID( zck_bvalid),
+		.S_AXIL_BREADY( zck_bready),
+		.S_AXIL_BRESP(  zck_bresp),
+
+		.S_AXIL_ARVALID(zck_arvalid),
+		.S_AXIL_ARREADY(zck_arready),
+		.S_AXIL_ARADDR( zck_araddr[1:0]),
+		.S_AXIL_ARPROT( zck_arprot),
+
+		.S_AXIL_RVALID( zck_rvalid),
+		.S_AXIL_RREADY( zck_rready),
+		.S_AXIL_RDATA(  zck_rdata),
+		.S_AXIL_RRESP(  zck_rresp)
+		// }}}
+		// }}}
+	);
+
+	// Verilator coverage_off
+	// Verilator lint_off UNUSED
+	wire	unused_zaxchk;
+	assign	unused_zaxchk = &{ 1'b0, zck_awaddr[7:2], zck_araddr[7:2],
+			zckw_awaddr[AW-1:8], zckw_araddr[AW-1:8]
+			};
+	// Verilator lint_on  UNUSED
+	// Verilator coverage_on
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////

@@ -77,7 +77,6 @@ module zaxdma #(
 		output	wire	[31:0]	S_AXIL_RDATA,
 		output	wire	[1:0]	S_AXIL_RRESP,
 		// }}}
-		// }}}
 		// Master/DMA port
 		// {{{
 		output	wire			M_AXI_AWVALID,
@@ -256,8 +255,7 @@ module zaxdma #(
 	zaxdma_mm2s #(
 		// {{{
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
-		.AXI_IW(IW),
-		.AXI_ID(AXI_ID),
+		.AXI_IW(IW), .AXI_ID(AXI_ID),
 		.LGMAXBURST(LGMAXBURST),	// = 8
 		.LGFIFO(LGFIFO),		// = 9
 		.BUS_WIDTH(BUS_WIDTH),
@@ -319,6 +317,7 @@ module zaxdma #(
 		// {{{
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
 		.BUS_WIDTH(BUS_WIDTH),
+		.IW(IW), .AXI_ID(AXI_ID),
 		// .OPT_LITTLE_ENDIAN(OPT_LITTLE_ENDIAN),
 		.LGFIFO(LGMEMLEN)
 		// }}}

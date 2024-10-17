@@ -320,7 +320,9 @@ module	zaxdma_s2mm #(
 
 	always @(posedge i_clk)
 	if (i_reset || i_soft_reset || !r_busy)
+		// Verilator lint_off WIDTH
 		bytes_uncommitted <= FULL_FIFO_BYTES;
+		// Verilator lint_on  WIDTH
 	else case({ S_VALID && S_READY, M_WVALID && M_WREADY })
 	2'b00: begin end
 	// Verilator lint_off WIDTH
@@ -853,8 +855,8 @@ module	zaxdma_s2mm #(
 			base_wstrb[DW/8-1:2] <= 0;
 			end
 		SZ_32B : begin
+			base_wstrb <= 0;
 			base_wstrb <= { {(DW/8-4){1'b0}}, 4'hf }<< i_addr[1:0];
-			base_wstrb[DW/8-1:4] <= 0;
 			end
 		SZ_BUS: base_wstrb <= {(DW/8){1'b1}} << i_addr[AXILSB-1:0];
 		endcase
@@ -887,7 +889,8 @@ module	zaxdma_s2mm #(
 		case(r_size)
 		SZ_BYTE: last_count <= 1;
 		SZ_16B:  last_count[AXILSB-1:1] <= 0;
-		SZ_32B:  last_count[AXILSB-1:2] <= 0;
+		SZ_32B:  if (AXILSB > 2)
+				last_count[AXILSB-1:(AXILSB > 2 ? 2 : 0)] <= 0;
 		SZ_BUS:  begin end
 		endcase
 	end

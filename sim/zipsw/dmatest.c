@@ -115,7 +115,12 @@ int	dma_memcpy(void *des, void *src, unsigned len) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
-		printf("ERR: DMA transfer failed\n");
+		if (des && src) {
+			printf("ERR: DMA transfer failed\n");
+			return 1;
+		}
+	} else if (len > 0 && (NULL == des || NULL == src)) {
+		printf("ERR: DMA transfer failed to produce a bus error\n");
 		return 1;
 	}
 
@@ -140,7 +145,7 @@ int	dma_memcpy_size(void *des, void *src, unsigned len, unsigned size) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
-		printf("ERR: DMA transfer failed\n");
+		printf("ERR: DMA/SZ transfer failed\n");
 		return 1;
 	}
 
@@ -165,7 +170,7 @@ int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
 	} CLEAR_DCACHE;
 
 	if (_zipdma->d_ctrl & ZIPDMA_ERR) {
-		printf("ERR: DMA transfer failed\n");
+		printf("ERR: DMA/Z transfer failed\n");
 		return 1;
 	}
 
@@ -330,7 +335,8 @@ int	main(int argc, char **argv) {
 
 	cmp_lfsr(&src[TESTLEN-1], s_size);
 	cmp_err = err_detect();
-	printf("(char) Error: 0x%x\n", cmp_err);
+	if (cmp_err != 0)
+		printf("(char) Error: 0x%x\n", cmp_err);
 	// data copy from sw lfsr to destination for 8 bit
 	err = dma_memcpy_size(dst, src, TESTLEN, SZBYTE);
 
@@ -368,7 +374,8 @@ int	main(int argc, char **argv) {
 	}
 	cmp_lfsr(&src_1[TESTLEN-1], s_size);
 	cmp_err = err_detect();
-	printf("(short) Error: 0x%x\n", cmp_err);
+	if (cmp_err != 0)
+		printf("(short) Error: 0x%x\n", cmp_err);
 
 	// data copy from sw lfsr to destination for 16 bit
 	err = dma_memcpy_size(dst_1, src_1, TESTLEN, SZHALF);
@@ -419,7 +426,8 @@ int	main(int argc, char **argv) {
 	}
 	cmp_lfsr(&src_2[TESTLEN-1], s_size);
 	cmp_err = err_detect();
-	printf("(int) Error: 0x%x\n", cmp_err);
+	if (cmp_err != 0)
+		printf("(int) Error: 0x%x\n", cmp_err);
 
 	// data copy from sw lfsr to destination for 32 bit
 	err = dma_memcpy_size(dst_2, src_2, TESTLEN, SZ32);
@@ -470,7 +478,8 @@ int	main(int argc, char **argv) {
 	}
 	cmp_lfsr(&src_2[TESTLEN-1], s_size);
 	cmp_err = err_detect();
-	printf("(bus) Error: 0x%x\n", cmp_err);
+	if (cmp_err != 0)
+		printf("(bus) Error: 0x%x\n", cmp_err);
 
 	// data copy from sw lfsr to destination for 32 bit
 	err = dma_memcpy_size(dst_2, src_2, TESTLEN, SZBUS);
@@ -510,7 +519,7 @@ int	main(int argc, char **argv) {
 	dst = NULL;
 
 	err = dma_memcpy(dst, src, TESTLEN);
-	if (err == 0) {
+	if (err) {
 		printf("FAIL!\n");
 		fail = 1;
 	} else

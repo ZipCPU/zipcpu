@@ -787,6 +787,7 @@ module	zaxdma_mm2s #(
 
 	// rd_uncommitted (units: bytes)
 	// {{{
+	// Verilator lint_off WIDTH
 	initial	rd_uncommitted = FIFO_BYTES;
 	always @(posedge i_clk)
 	if (i_reset || !r_busy || cmd_abort || i_soft_reset
@@ -799,6 +800,7 @@ module	zaxdma_mm2s #(
 	2'b11: rd_uncommitted <= rd_uncommitted + (BUS_WIDTH/8)
 						- nxt_commitment;
 	endcase
+	// Verilator lint_on  WIDTH
 	// }}}
 
 	// rd_ubursts: Two bits, first bit indicates 2+ bursts can be made,
@@ -829,6 +831,7 @@ module	zaxdma_mm2s #(
 			// Verilator lint_on  WIDTH
 			endcase
 		end else begin
+			// Verilator lint_off WIDTH
 			case(r_size)
 			SZ_BYTE: rd_ubursts <= { (rd_uncommitted >= 32),
 						(rd_uncommitted >=  16) };
@@ -838,6 +841,7 @@ module	zaxdma_mm2s #(
 						(rd_uncommitted >=  64) };
 			SZ_BUS: rd_ubursts <= { (rd_uncommitted >= (BUS_WIDTH*4)),
 						(rd_uncommitted >= (BUS_WIDTH*2)) };
+			// Verilator lint_on  WIDTH
 			endcase
 		end
 
