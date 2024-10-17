@@ -139,8 +139,8 @@ module	axi_tb #(
 	parameter [AW-1:0]	SCOPE_ADDR   = { 4'b0001, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	CONSOLE_ADDR = { 4'b0010, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	SMP_BASE_ADDR= { 4'b0011, {(AW-4){1'b0}} };
-	parameter [AW-1:0]	ZDMA_CHECK_ADDR= { 4'b0101, {(AW-4){1'b0}} };
-	parameter [AW-1:0]	ZDMA_CHKST_ADDR= { 4'b0110, {(AW-4){1'b0}} };
+	parameter [AW-1:0]	ZDMA_CHECK_ADDR= { 4'b1001, {(AW-4){1'b0}} };
+	parameter [AW-1:0]	ZDMA_CHKST_ADDR= { 4'b1010, {(AW-4){1'b0}} };
 	parameter [AW-1:0]	MEMORY_ADDR  = { 2'b01, {(AW-2){1'b0}} };
 	parameter [AW-1:0]	AXILP_ADDR   = { {(AW-24){1'b1}},{(16){1'b0}}, 8'h00 };
 	parameter [AW-1:0]	ZAX_ADDR     = { {(AW-24){1'b1}},{(16){1'b0}}, 8'h40 };

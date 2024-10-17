@@ -333,7 +333,7 @@ module	zaxdma_s2mm #(
 	endcase
 	// }}}
 
-	localparam	FIFO_WIDTH = 1 + $clog2(BUS_WIDTH/8) + BUS_WIDTH;
+	localparam	FIFO_WIDTH = 2 + $clog2(BUS_WIDTH/8) + BUS_WIDTH;
 `ifdef	FORMAL
 	wire	[LGFIFO:0]	ffif_first_addr, ffif_second_addr;
 	wire [FIFO_WIDTH-1:0]	ffif_first_data, ffif_second_data;

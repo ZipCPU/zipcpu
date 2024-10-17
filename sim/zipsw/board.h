@@ -130,8 +130,8 @@ extern char	_bkram[0x00100000];
 static volatile SCOPE   *const _scope = ((SCOPE   *)0x01000000);
 static volatile CONSOLE *const _uart  = ((CONSOLE *)0x02000000);
 static volatile SMP     *const _smp   = ((SMP     *)0x03000000);
-static volatile ZDMACHECK *const _zdmacheck = ((ZDMACHECK     *)0x05000000);
-static volatile ZDMACHECKST *const _zdmastcheck  = ((ZDMACHECKST     *)0x06000000);
+static volatile ZDMACHECK *const _zdmacheck = ((ZDMACHECK     *)0x09000000);
+static volatile ZDMACHECKST *const _zdmastcheck  = ((ZDMACHECKST     *)0x0a000000);
 static volatile AXILP   *const _axilp = ((AXILP   *)0xff000000);
 // static volatile ZIPSYS  *const _zip   = ((ZIPSYS   *)0xff000000);
 #define	_HAVE_ZIPSYS_PERFORMANCE_COUNTERS

@@ -120,8 +120,8 @@ module	wb_tb #(
 	parameter [WAW-1:0]	SCOPE_ADDR   = { 4'b0001, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	CONSOLE_ADDR = { 4'b0010, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	SMP_BASE_ADDR = { 4'b0011, {(WAW-4){1'b0}} };
-	parameter [WAW-1:0]	ZDMA_CHECK_ADDR = { 4'b0101, {(WAW-4){1'b0}} };
-	parameter [WAW-1:0]	ZDMA_CHECKST_ADDR = { 4'b0110, {(WAW-4){1'b0}} };
+	parameter [WAW-1:0]	ZDMA_CHECK_ADDR = { 4'b1001, {(WAW-4){1'b0}} };
+	parameter [WAW-1:0]	ZDMA_CHECKST_ADDR = { 4'b1010, {(WAW-4){1'b0}} };
 	parameter [WAW-1:0]	ZSYS_ADDR = { {(ADDRESS_WIDTH-24){1'b1}}, {(24-WBLSB){1'b0}} };
 	parameter [WAW-1:0]	MEMORY_ADDR  = { 2'b01, {(WAW-2){1'b0}} };
 	localparam	LGFIFO = 4;
