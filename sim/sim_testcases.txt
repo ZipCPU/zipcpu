@@ -197,8 +197,7 @@ wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ##
 ##
 wbzipdmacach  WBCACHE  dmatest.hex   wbzdma-out.txt
-wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
-wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
+wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 DUMP_TO_VCD=1 VCD_FILE="wbzdmacach64.vcd"
 
 axdmacheck    AXCACHE  dmatest.hex   axdmacheck-out.txt DUMP_TO_VCD=1
 axdmachk64    AXCACHE  dmatest64.hex axdmachk64-out.txt BUS_WIDTH=64

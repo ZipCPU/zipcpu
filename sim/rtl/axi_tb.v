@@ -3482,7 +3482,7 @@ module	axi_tb #(
 		// {{{
 		.S_AXIL_AWVALID(zck_awvalid),
 		.S_AXIL_AWREADY(zck_awready),
-		.S_AXIL_AWADDR( zck_awaddr[1:0]),
+		.S_AXIL_AWADDR( zck_awaddr[2:0]),
 		.S_AXIL_AWPROT( zck_awprot),
 
 		.S_AXIL_WVALID( zck_wvalid),
@@ -3496,7 +3496,7 @@ module	axi_tb #(
 
 		.S_AXIL_ARVALID(zck_arvalid),
 		.S_AXIL_ARREADY(zck_arready),
-		.S_AXIL_ARADDR( zck_araddr[1:0]),
+		.S_AXIL_ARADDR( zck_araddr[2:0]),
 		.S_AXIL_ARPROT( zck_arprot),
 
 		.S_AXIL_RVALID( zck_rvalid),
@@ -3510,7 +3510,7 @@ module	axi_tb #(
 	// Verilator coverage_off
 	// Verilator lint_off UNUSED
 	wire	unused_zaxchk;
-	assign	unused_zaxchk = &{ 1'b0, zck_awaddr[7:2], zck_araddr[7:2],
+	assign	unused_zaxchk = &{ 1'b0, zck_awaddr[7:3], zck_araddr[7:3],
 			zckw_awaddr[AW-1:8], zckw_araddr[AW-1:8]
 			};
 	// Verilator lint_on  UNUSED

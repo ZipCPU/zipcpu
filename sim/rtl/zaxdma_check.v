@@ -97,7 +97,7 @@ module	zaxdma_check #(
 		// {{{
 		input	wire		S_AXIL_AWVALID,
 		output	wire		S_AXIL_AWREADY,
-		input	wire	[1:0]	S_AXIL_AWADDR,
+		input	wire	[2:0]	S_AXIL_AWADDR,
 		input	wire	[2:0]	S_AXIL_AWPROT,
 		//
 		input	wire		S_AXIL_WVALID,
@@ -111,7 +111,7 @@ module	zaxdma_check #(
 		//
 		input	wire		S_AXIL_ARVALID,
 		output	wire		S_AXIL_ARREADY,
-		input	wire	[1:0]	S_AXIL_ARADDR,
+		input	wire	[2:0]	S_AXIL_ARADDR,
 		input	wire	[2:0]	S_AXIL_ARPROT,
 		//
 		output	reg		S_AXIL_RVALID,
@@ -124,12 +124,19 @@ module	zaxdma_check #(
 
 	// Local declarations
 	// {{{
-	integer		lfsrk, wk, ek;
-	reg [DW-1:0]	lfsr_state;
+	localparam	SR = 32;
+	localparam [SR-1:0]	POLY = 32'hc000_0000;
+	localparam		AXILSB = $clog2(BUS_WIDTH/8);
+
+	integer		lfsrk, dk, wk, wkp, rk, rkp;
+	reg [SR-1:0]	lfsr_state;
+	reg	[DW-1:0]	read_data, nxt_rddata;
 	wire		read_beat, write_beat;
 	reg		err_flag;
 	reg	[11:0]	rd_count, wr_count;
 	reg	[11:0]	rd_count_reg, wr_count_reg;
+	reg	[DW/8-1:0]	wrmatchb, rdmask;
+	reg	[2*DW-1:0]	wide_state, shift_state;
 
 	wire			awskd_valid, axi_write_ready;
 	wire	[IW-1:0]	awskd_id;
@@ -155,28 +162,31 @@ module	zaxdma_check #(
 	wire	[IW-1:0]	arskd_id;
 	wire	[AW-1:0]	arskd_addr;
 	wire	[7:0]		arskd_len;
-	// wire	[7:0]	arskd_burst;
+	wire	[1:0]	arskd_burst;
 	wire	[2:0]	arskd_size;
 	// wire	[7:0]	arskd_lock;
 	// wire	[2:0]	arskd_cache;
 	// wire	[2:0]	arskd_prot;
 	// wire	[2:0]	arskd_qos;
 	reg			rvalid, rlast;
+	reg	[AW-1:0]	raddr, arbeat_addr;
 	reg	[IW-1:0]	rid;
 	reg	[7:0]		rlen;
 	reg	[2:0]		rsize;
 	wire	[2:0]		read_size;
+	reg	[1:0]		rburst;
 
 
 	wire		ctrl_awvalid, ctrl_write_ready;
-	wire	[1:0]	ctrl_awaddr;
+	wire	[2:0]	ctrl_awaddr;
 
 	wire		ctrl_wvalid;
 	wire	[31:0]	ctrl_wdata;
 	wire	[3:0]	ctrl_wstrb;
 
 	wire		ctrl_arvalid, ctrl_read_ready;
-	wire	[1:0]	ctrl_araddr;
+	wire	[2:0]	ctrl_araddr;
+	wire	[DW/8-1:0]	byte_mask, half_mask, word_mask, bus_mask;
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -208,17 +218,17 @@ module	zaxdma_check #(
 	);
 
 	skidbuffer #(
-		.OPT_OUTREG(1'b0), .DW(3+IW+8+AW)
+		.OPT_OUTREG(1'b0), .DW(2+3+IW+8+AW)
 	) u_arskd (
 		.i_clk(i_clk), .i_reset(i_reset),
 		.i_valid(S_AXI_ARVALID), .o_ready(S_AXI_ARREADY),
-			.i_data({ S_AXI_ARSIZE, S_AXI_ARID, S_AXI_ARLEN, S_AXI_ARADDR }),
+			.i_data({ S_AXI_ARBURST, S_AXI_ARSIZE, S_AXI_ARID, S_AXI_ARLEN, S_AXI_ARADDR }),
 		.o_valid(arskd_valid), .i_ready(axi_read_ready),
-			.o_data({ arskd_size, arskd_id, arskd_len, arskd_addr })
+			.o_data({ arskd_burst, arskd_size, arskd_id, arskd_len, arskd_addr })
 	);
 
 	skidbuffer #(
-		.OPT_OUTREG(1'b0), .DW(2)
+		.OPT_OUTREG(1'b0), .DW(3)
 	) u_ctrl_awskd (
 		.i_clk(i_clk), .i_reset(i_reset),
 		.i_valid(S_AXIL_AWVALID), .o_ready(S_AXIL_AWREADY),
@@ -238,7 +248,7 @@ module	zaxdma_check #(
 	);
 
 	skidbuffer #(
-		.OPT_OUTREG(1'b0), .DW(2)
+		.OPT_OUTREG(1'b0), .DW(3)
 	) u_ctrl_arskd (
 		.i_clk(i_clk), .i_reset(i_reset),
 		.i_valid(S_AXIL_ARVALID), .o_ready(S_AXIL_ARREADY),
@@ -288,7 +298,11 @@ module	zaxdma_check #(
 
 	always @(posedge i_clk)
 	if (axi_read_ready)
+	begin
 		rid <= arskd_id;
+		rburst <= arskd_burst;
+		rsize <= arskd_size;
+	end
 
 	always @(posedge i_clk)
 	if (i_reset)
@@ -298,9 +312,95 @@ module	zaxdma_check #(
 	else if (read_beat)
 		rlen <= rlen - 1;
 
+	always @(*)
+	begin
+		wide_state = 0;
+		wide_state[2*DW-1:2*DW-32]= lfsr_state;
+		for(dk=1; dk<2*DW/32; dk=dk+1)
+			wide_state[2*DW - 32 - (32*dk) +: 32]
+				= advance_lfsr(wide_state[2*DW-(32*dk) +: 32]);
+	end
+
 	always @(posedge i_clk)
-	if (axi_read_ready)
-		rsize <= arskd_size;
+	if (i_reset)
+		raddr <= 0;
+	else if (arskd_valid && axi_read_ready)
+	begin
+		if (arskd_burst == 2'b00)
+		begin // FIX addressing
+			raddr <= arskd_addr;
+			case(arskd_size)
+			3'h0: begin end
+			3'h1: raddr[0] <= 1'b0;
+			3'h2: raddr[1:0] <= 2'b00;
+			default: raddr[AXILSB-1:0] <= 0;
+			endcase
+		end else begin // if arskd_burst == 2'b01
+			case(arskd_size)
+			3'h0: raddr <= arskd_addr + 1;
+			3'h1: begin
+				raddr <= arskd_addr + 2;
+				raddr[0] <= 1'b0;
+				end
+			3'h2: begin
+				raddr <= arskd_addr + 4;
+				raddr[1:0] <= 2'b00;
+				end
+			default: begin
+				raddr[AW-1:AXILSB] <= arskd_addr[AW-1:AXILSB]+1;
+				raddr[AXILSB-1:0] <= 0;
+				end
+			endcase
+		end
+	end else if (read_beat && rburst[0])
+	begin
+		case(rsize)
+		3'h0: raddr <= raddr + 1;
+		3'h1: raddr <= raddr + 2;
+		3'h2: raddr <= raddr + 4;
+		default: raddr <= raddr + (1<<AXILSB);
+		endcase
+	end
+
+	assign	byte_mask = { {(BUS_WIDTH/8-1){1'b0}}, 1'b1 };
+	assign	half_mask = { {(BUS_WIDTH/8-2){1'b0}}, 2'b11 };
+	assign	word_mask = { {(BUS_WIDTH/8-4){1'b0}}, 4'hf };
+	assign	bus_mask  =   {(BUS_WIDTH/8  ){1'b1}};
+
+	assign	arbeat_addr = (arskd_valid && axi_read_ready) ? arskd_addr
+				: raddr;
+	always @(*)
+	begin
+		case(arskd_size)
+		3'h0: rdmask = (byte_mask << arbeat_addr[AXILSB-1:0]);
+		3'h1: rdmask = (half_mask <<(2*arbeat_addr[AXILSB-1:1]))
+				& (half_mask << (arbeat_addr[AXILSB-1:0]));
+		3'h2: if (AXILSB > 2)
+			begin
+				rdmask = (word_mask << (4*arbeat_addr[((AXILSB <= 2) ? 2:(AXILSB-1)):2]))
+					& (word_mask << (arbeat_addr[AXILSB-1:0]));
+			end else
+				rdmask = word_mask << (arbeat_addr[1:0]);
+		default: rdmask = bus_mask << arbeat_addr[AXILSB-1:0];
+		endcase
+	end
+
+	always @(*)
+	begin
+		nxt_rddata = 0;
+		rkp = 0;
+		if (read_beat)
+		for(rk=0; rk<DW/8; rk=rk+1)
+		begin
+			if (rdmask[rk])
+				nxt_rddata[rk*8 +: 8]
+					= lfsr_state[(2*DW-8)-8*rkp +: 8];
+		end
+	end
+
+	always @(posedge i_clk)
+	if (!S_AXI_RVALID || S_AXI_RREADY)
+		read_data <= nxt_rddata;
 
 	always @(posedge i_clk)
 	if (axi_read_ready)
@@ -310,15 +410,16 @@ module	zaxdma_check #(
 
 	assign	S_AXI_RVALID = rvalid;
 	assign	S_AXI_RID    = rid;
-	assign	S_AXI_RDATA  = lfsr_state;
+	assign	S_AXI_RDATA  = read_data;
 	assign	S_AXI_RLAST  = rlast;
 	assign	S_AXI_RRESP  = 2'b00;
 
 	assign	read_size = (axi_read_ready) ? arskd_size : rsize;
 
 	assign	axi_read_ready = arskd_valid && (rlen == 0)
-				&& (!S_AXI_RVALID || S_AXI_RLAST);
-	assign	read_beat = (axi_read_ready || rlen != 0);
+			&& (!S_AXI_RVALID || (S_AXI_RREADY && S_AXI_RLAST));
+	assign	read_beat = (axi_read_ready || rlen != 0)
+				&& (!S_AXI_RVALID || S_AXI_RREADY);
 	// }}}
 	// AXI-Lite Control Bus logic
 	// {{{
@@ -354,23 +455,23 @@ module	zaxdma_check #(
 
 	// lfsr_state
 	// {{{
+	always @(*)
+	if (read_beat)
+		shift_state = wide_state >> ((2*DW-32)-(8*$countones(rdmask)));
+	else
+		shift_state = wide_state >> ((2*DW-32)-(8*$countones(wskd_strb)));
 	always @(posedge i_clk)
 	if (i_reset)
 		lfsr_state <= 0; // initial state
-	else if (!S_AXI_RVALID || S_AXI_RREADY)
+	else if (ctrl_write_ready && ctrl_wstrb != 0)
 	begin
-		if (ctrl_write_ready && ctrl_wstrb != 0)
-		begin // set an initial per-test state
-			lfsr_state <= 0;
-			for (lfsrk = 0; lfsrk < 4; lfsrk = lfsrk + 1)
-			if (ctrl_wstrb[lfsrk])
-				lfsr_state[(DW-32) + (lfsrk*8) +: 8] <= ctrl_wdata[(lfsrk*8) +: 8];
-		end
-
-		// feedback
-		if (read_beat)
-			lfsr_state <= {lfsr_state[DW-2:0], lfsr_state[DW-1] ^ lfsr_state[DW-2]};
-	end
+		// set an initial per-test state
+		lfsr_state <= 0;
+		for (lfsrk = 0; lfsrk < 4; lfsrk = lfsrk + 1)
+		if (ctrl_wstrb[lfsrk])
+			lfsr_state[(DW-32) + (lfsrk*8) +: 8] <= ctrl_wdata[(lfsrk*8) +: 8];
+	end else if (read_beat || write_beat)
+		lfsr_state <= shift_state[SR-1:0];
 	// }}}
 
 	// rd_count, wr_count
@@ -415,20 +516,26 @@ module	zaxdma_check #(
 
 	// err_flag
 	// {{{
+	always @(*)
+	begin
+		wrmatchb = -1; wkp = 0;
+		if (write_beat)
+		for(wk=0; wk<DW/8; wk=wk+1)
+		if (wskd_strb[wk])
+		begin
+			wrmatchb[wk] = (wskd_data[wk*8 +: 8]
+					== wide_state[2*DW-8-(8*wkp) +: 8]);
+			wkp = wkp+1;
+		end
+	end
+
 	always @(posedge i_clk)
 	if (i_reset)
 		err_flag <= 1'b0;
 	else if (ctrl_write_ready && ctrl_wstrb != 0)
 		err_flag <= 1'b0;
 	else if (write_beat)
-	begin
-		for (ek = 0; ek < DW; ek++)
-		if (wskd_strb[ek])
-		begin
-			if (wskd_data[(ek*8)+:8] != lfsr_state[(ek*8)+:8])
-				err_flag <= 1'b1;
-		end
-	end
+		err_flag <= |wrmatchb;
 	// }}}
 
 	// S_AXIL_RDATA: Error detectıon (might need more error flags)
@@ -440,11 +547,37 @@ module	zaxdma_check #(
 	begin
 		S_AXIL_RDATA  <= 32'h0;
 
-		S_AXIL_RDATA[15:4]  <= rd_count;
-		S_AXIL_RDATA[31:20] <= wr_count;
+		case(ctrl_araddr[2])
+		1'b0: begin
+			S_AXIL_RDATA[15:4]  <= rd_count;
+			S_AXIL_RDATA[31:20] <= wr_count;
 
-		S_AXIL_RDATA[0] <= err_flag;
+			S_AXIL_RDATA[0] <= err_flag;
+			end
+		1'b1: S_AXIL_RDATA[SR-1:0] <= lfsr_state;
+		endcase
+
+		if (!ctrl_read_ready)
+			S_AXIL_RDATA <= 0;
 	end
+	// }}}
+
+	function automatic [SR-1:0] advance_lfsr(input [SR-1:0] istate);
+		// {{{
+		integer ak;
+		reg	[SR-1:0]	fill;
+	begin
+		fill = istate;
+		for(ak=0; ak<SR; ak=ak+1)
+		begin
+			if (^(fill & POLY))
+				fill = { fill[SR-2:0], 1'b1 };
+			else
+				fill = { fill[SR-2:0], 1'b0 };
+		end
+
+		advance_lfsr = fill;
+	end endfunction
 	// }}}
 
 	// Keep Verilator happy
@@ -455,8 +588,10 @@ module	zaxdma_check #(
 	assign	unused = &{ 1'b0, awskd_addr, arskd_addr,
 			S_AXI_AWLOCK, S_AXI_AWBURST, S_AXI_AWCACHE, S_AXI_AWPROT, S_AXI_AWQOS, S_AXI_AWSIZE,
 			S_AXI_ARLOCK, S_AXI_ARBURST, S_AXI_ARCACHE, S_AXI_ARPROT, S_AXI_ARQOS,
-			S_AXIL_AWPROT, ctrl_awaddr,
-			S_AXIL_ARPROT, ctrl_araddr };
+			S_AXIL_AWPROT, ctrl_awaddr[2:0],
+			S_AXIL_ARPROT, ctrl_araddr[1:0],
+			arbeat_addr[AW-1:AXILSB],
+			rburst[1], shift_state[2*DW-1:SR] };
 	// verilator lint_on UNUSED
 	// verilator coverage_on
 	// }}}

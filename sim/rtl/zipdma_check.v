@@ -85,25 +85,39 @@ module	zipdma_check #(
 	// Local declarations
 	// {{{
 	localparam	BW = DW/8;   // BIT_WIDTH
+	localparam	SR = 32;	// Shift register width
+	localparam	[SR-1:0]	POLY = 32'hc000_0000;
 
-	reg [DW-1:0]	lfsr_state;
+	reg [2*DW-1:0]	wide_state, shift_state;
+	reg [SR-1:0]	lfsr_state;
 
-	wire		rd_data_en, wr_data_en;
+	wire		rd_data_en, wr_data_en, ctrl_write_ready;
 	reg	[11:0]	rd_count, wr_count;
 	reg	[11:0]	rd_count_reg, wr_count_reg;
+
+	integer	rk, rkp;
+	reg	[DW-1:0]	nxt_rddata, read_data;
+
+	integer	wk, wkp;
+	reg	[DW/8-1:0]	wrmatchb;
+	reg			err_flag;
 	// }}}
 
 	// rd_data_en, wr_data_en
 	assign rd_data_en = i_wb_stb && !i_wb_we && (i_wb_sel != 0);
 	assign wr_data_en = i_wb_stb &&  i_wb_we && (i_wb_sel != 0);
+	assign	ctrl_write_ready = i_st_stb && !o_st_stall && i_st_we && (i_st_sel != 0);
 
 	// Wishbone outputs
 	assign o_wb_stall = 1'b0;
 	assign o_wb_err   = 1'b0;
-	assign o_wb_data  = lfsr_state;
+	assign o_wb_data  = read_data;
 
 	assign o_st_stall = 1'b0;
 	assign o_st_err   = 1'b0;
+
+	assign	ctrl_write_ready = i_st_stb && !o_st_stall && i_st_we
+					&& i_st_sel != 0;
 
 	// o_st_ack
 	always @(posedge i_clk)
@@ -112,23 +126,41 @@ module	zipdma_check #(
 	else
 		o_st_ack <= i_st_stb;
 
+	// wide_state
+	// {{{
+	always @(*)
+	begin
+		wide_state = 0;
+		wide_state[2*DW-SR +: SR] = lfsr_state;
+		for(wk=1; wk<2*DW/SR; wk=wk+1)
+			wide_state[2*DW-SR-(SR*wk) +: SR]
+				= advance_lfsr(wide_state[2*DW-(SR*wk) +: SR]);
+	end
+	// }}}
+
 	// lfsr_state
 	// {{{
+	always @(*)
+		shift_state = wide_state >>((2*DW-SR)-(8*$countones(i_wb_sel)));
 	always @(posedge i_clk)
 	if (i_reset)
 		lfsr_state <= 0; // initial state
 	else begin
-		if (i_st_stb && i_st_we && (i_st_sel != 0))
-		begin // set an initial per-test state
-			lfsr_state <= 0;
-			for (int i = 0; i < 4; i++)
-			if (i_st_sel[i])
-				lfsr_state[(DW-32) + (i*8) +: 8] <= i_st_data[(i*8) +: 8];
-		end
-
 		// feedback
-		if (rd_data_en)
-			lfsr_state <= {lfsr_state[DW-2:0], lfsr_state[DW-1] ^ lfsr_state[DW-2]};
+		if (rd_data_en || wr_data_en)
+			lfsr_state <= shift_state[SR-1:0];
+
+		if (ctrl_write_ready)
+		begin // set an initial per-test state
+			if (i_st_sel[0])
+				lfsr_state[ 0 +: 8] <= i_st_data[ 0 +: 8];
+			if (i_st_sel[1])
+				lfsr_state[ 8 +: 8] <= i_st_data[ 8 +: 8];
+			if (i_st_sel[2])
+				lfsr_state[16 +: 8] <= i_st_data[16 +: 8];
+			if (i_st_sel[3])
+				lfsr_state[24 +: 8] <= i_st_data[24 +: 8];
+		end
 	end
 	// }}}
 
@@ -142,6 +174,31 @@ module	zipdma_check #(
 		o_wb_ack <= i_wb_stb && !o_wb_stall;
 	// }}}
 
+	// read_data (i.e. o_wb_data)
+	// {{{
+	always @(*)
+	begin
+		nxt_rddata = 0;
+		rkp = 0;
+		if (rd_data_en)
+		for(rk=0; rk<DW/8; rk=rk+1)
+		begin
+			if (i_wb_sel[DW/8-1-rk])
+			begin
+				nxt_rddata[(DW/8-1-rk)*8 +: 8]
+					= wide_state[(2*DW-8)-8*rkp +: 8];
+				rkp = rkp+1;
+			end
+		end
+	end
+
+	always @(posedge i_clk)
+	if (i_reset || !rd_data_en)
+		read_data <= 0;
+	else
+		read_data <= nxt_rddata;
+	// }}}
+	
 	// rd_count, wr_count
 	// {{{
 	always @(*)
@@ -173,27 +230,61 @@ module	zipdma_check #(
 	end
 	// }}}
 
-	// o_st_data: Error detectıon (might need more error flags)
+	// o_st_data: Error detectıon
 	// {{{
+	always @(*)
+	begin
+		wrmatchb = -1;
+		wkp = 0;
+		if (wr_data_en)
+		for(wk=0; wk<DW/8; wk=wk+1)
+		if (i_wb_sel[wk])
+		begin
+			wrmatchb[wk] = (i_wb_data[(DW/8-1-wk)*8 +: 8]
+					== lfsr_state[(DW/8-1-wkp)*8 +: 8]);
+			wkp = wkp+1;
+		end
+	end
+
 	always @(posedge i_clk)
 	if (i_reset)
-		o_st_data <= 32'b0;
+		err_flag <= 1'b0;
 	else begin
-		o_st_data[15:4]  <= rd_count;
-		o_st_data[31:20] <= wr_count;
+		if (wr_data_en && |(~wrmatchb))
+			err_flag <= 1'b1;
 
-		for (int i = 0; i < BW; i++)
-		if (wr_data_en && i_wb_sel[i])
+		if (i_st_stb && i_st_we && |i_st_sel)
+			// Clear the error flag on any status write
+			err_flag <= 1'b0;
+	end
+
+	always @(posedge i_clk)
+	if (i_st_stb && !i_st_we)
+	begin
+		o_st_data <= 0;
+		case(i_st_addr)
+		1'b0: o_st_data <= { wr_count, 4'h0, rd_count, 3'h0, err_flag };
+		1'b1: o_st_data[SR-1:0] <= lfsr_state;
+		endcase
+	end
+	// }}}
+
+	function automatic [SR-1:0] advance_lfsr(input [SR-1:0] istate);
+		// {{{
+		integer	ak;
+		reg	[SR-1:0]	fill;
+	begin
+		fill = istate;
+		for(ak=0; ak<SR; ak=ak+1)
 		begin
-			if (i_wb_data[(i*8)+:8] != lfsr_state[(i*8)+:8])
-				o_st_data[0] <= 1'b1;
+			if (^(fill & POLY))
+				fill = { fill[SR-2:0], 1'b1 };
 			else
-				o_st_data[0] <= 1'b0;
+				fill = { fill[SR-2:0], 1'b0 };
 		end
 
-		if (i_st_stb && i_st_we)
-			o_st_data[0] <= 1'b0;
-	end
+		advance_lfsr = fill;
+	end endfunction
 	// }}}
 
 	// Keep Verilator happy
@@ -201,7 +292,8 @@ module	zipdma_check #(
 	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, i_wb_cyc, i_st_cyc, i_st_addr, i_wb_addr };
+	assign	unused = &{ 1'b0, i_wb_cyc, i_st_cyc, i_st_addr, i_wb_addr,
+			shift_state[2*DW-1:SR] };
 	// verilator lint_on UNUSED
 	// verilator coverage_on
 	// }}}

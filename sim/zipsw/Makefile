@@ -52,7 +52,7 @@ MKHEX := ../verilator/mkhex
 #
 #
 TTTT    := tttt
-SOURCES := clkgatechk.c cputest.c dmatest.c hello.c hellosmp.c hellostep.c lockcheck.c stepchk.c txfns.c # rintftst.c sdtest.c gpiotoggle.c
+SOURCES := clkgatechk.c cputest.c dmatest.c hello.c hellostep.c lockcheck.c stepchk.c txfns.c
 HEADERS := board.h txfns.h txfns.c
 DUMPRTL := -fdump-rtl-all
 DUMPTREE:= -fdump-tree-all

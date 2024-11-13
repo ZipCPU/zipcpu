@@ -110,9 +110,9 @@ typedef struct __attribute__((packed)) ZDMACHECK_S {
 } ZDMACHECK;
 
 typedef struct __attribute__((packed)) ZDMACHECKST_S {
-	char		z_data0[8];
-	short		z_data1[4];
-	unsigned	z_data2[2];
+	// Control port
+	uint32_t	zck_check,
+			zck_state;
 } ZDMACHECKST;
 
 #define	SCOPE_NO_RESET	0x80000000u
