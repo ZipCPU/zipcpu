@@ -42,8 +42,8 @@
 // }}}
 const unsigned	ZIPDMA_BUSY = 0x80000000,
 		ZIPDMA_ERR  = 0x40000000,
-		ZIPDMA_DINC = 0x00400000,
-		ZIPDMA_SINC = 0x00040000,
+		ZIPDMA_DFIX = 0x00400000,
+		ZIPDMA_SFIX = 0x00040000,
 		ZIPDMA_TLEN = 0x0000ffff,
 		//
 		DMACMD_FIXSRC   = 0x0400000,
@@ -157,7 +157,7 @@ int	dma_memcpy_size(void *des, void *src, unsigned len, unsigned size) {
 }
 // }}}
 
-int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
+int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size, unsigned mode) {
 	// {{{
 	printf("  DMA_MEMCPY_FIXD(0x%08x, 0x%08x, %6d, %1d);\n", (unsigned)des,
 		(unsigned)src, len, (size>>20)&3);
@@ -168,7 +168,7 @@ int	dma_memcpy_noninc(void *des, void *src, unsigned len, unsigned size) {
 		_zipdma->d_dst = des;
 		_zipdma->d_len = len;
 
-		_zipdma->d_ctrl = DMACMD_MEMCPY | ZIPDMA_DINC | ZIPDMA_SINC | size;
+		_zipdma->d_ctrl = DMACMD_MEMCPY | size | mode;
 	}
 
 	while(_zipdma->d_ctrl & ZIPDMA_BUSY) {
@@ -336,7 +336,7 @@ int	main(int argc, char **argv) {
 
 	// compare hw-sw lfsr values for 8 bit
 	s_size = S_BYTE;
-	lfsr_state = 0x00000000f1000000;	// big endian for cpu
+	lfsr_state = 0xf1000000;	// big endian for cpu
 	init_lfsr(&lfsr_state, s_size);
 	for(int i = 0; i < 2; i++) {
 		lfsr_state = lfsr_shift(lfsr_state);
@@ -365,16 +365,23 @@ int	main(int argc, char **argv) {
 		fail = 1;
 	} // else printf("  (char) LFSR Matches\n");
 
+
+	for(int ln=1; ln<15 && !fail; ln++) {
 	if (!fail) {
-		err = dma_memcpy_noninc(dst, src, 1, SZBYTE);
+		lfsr_state_hw = 0xf1000000;	// big endian for cpu
+		// Test reading from a constant address
+		err = dma_memcpy_noninc(dst, c_lfsr_state_hw, TESTLEN-ln, SZBYTE, ZIPDMA_SFIX);
+		lfsr_state_hw = 0xf1000000;	// big endian for cpu
+		// Test writing to a constant address
+		err = err || dma_memcpy_noninc(c_lfsr_state_hw, dst, TESTLEN-ln, SZBYTE, ZIPDMA_DFIX);
 		if (err) {
 			printf("  (char) DMA (bus) error\n");
 			fail = 1;
-		} else if (0 != memcmp(dst, src, 1)) {
-			printf("FAIL!\n");
+		} else if (err_detect()) {
+			printf("  FAIL: (char) Stream comparison failure!\n");
 			fail = 1;
 		} else
-			printf("PASS\n");
+			printf("Pass\n");
 	}
 
 	// }}}

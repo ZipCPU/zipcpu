@@ -43,3 +43,4 @@ rtl/iscachable.v
 ../rtl/peripherals/zipcounter.v
 ../rtl/peripherals/zipjiffies.v
 ../rtl/peripherals/ziptimer.v
+rtl/zipdma_check.v

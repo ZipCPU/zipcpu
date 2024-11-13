@@ -255,7 +255,7 @@ if ($ARGV[0] eq "") {
 	open(SUM,">> $report");
 	print(SUM "\nRunning all tests with Verilator:\n$linestr\n");
 	close SUM;
-} elsif ($ARGV[0] eq "icarus" or $ARGV eq "iverilog") {
+} elsif ($ARGV[0] eq "icarus" or $ARGV[0] eq "iverilog") {
 	$verilator_flag = 0;
 	$coverage_flag  = 0;
 	@array = @ARGV;

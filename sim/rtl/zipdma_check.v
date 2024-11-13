@@ -38,8 +38,10 @@
 `default_nettype none
 // }}}
 module	zipdma_check #(
-		parameter ADDRESS_WIDTH = 30,
-		parameter BUS_WIDTH = 64
+		parameter	ADDRESS_WIDTH = 30,
+		parameter	BUS_WIDTH = 64,
+		localparam	DW = BUS_WIDTH,
+		localparam	AW = ADDRESS_WIDTH-$clog2(DW/8)
 	) (
 		// {{{
 		input	wire		i_clk, i_reset,
@@ -82,8 +84,6 @@ module	zipdma_check #(
 
 	// Local declarations
 	// {{{
-	localparam	DW = BUS_WIDTH;
-	localparam	AW = ADDRESS_WIDTH-$clog2(DW/8);
 	localparam	BW = DW/8;   // BIT_WIDTH
 
 	reg [DW-1:0]	lfsr_state;
