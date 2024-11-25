@@ -1,0 +1,38 @@
+[tasks]
+prf
+cvr
+
+[options]
+prf: mode prove
+prf: depth 8
+prf: depth 20
+cvr: mode cover
+
+[engines]
+smtbmc
+
+[script]
+read -define F_PEEK
+read -formal zaxdma_s2mm.v
+read -formal zipdma_txgears.v
+read -formal sfifo.v
+read -formal faxi_master.v
+read -formal faxi_addr.v
+read -formal faxi_valaddr.v
+read -formal faxi_wstrb.v
+--pycode-begin--
+cmd = "hierarchy -top zaxdma_s2mm"
+output(cmd)
+--pycode-end--
+proc -norom
+prep -top zaxdma_s2mm
+
+[files]
+faxi_master.v
+faxi_addr.v
+faxi_valaddr.v
+faxi_wstrb.v
+../../rtl/ex/fwb_master.v
+../../rtl/zipdma/zaxdma_s2mm.v
+../../rtl/zipdma/zipdma_txgears.v
+../../rtl/ex/sfifo.v

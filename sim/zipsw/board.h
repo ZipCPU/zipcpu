@@ -104,9 +104,9 @@ typedef struct  SCOPE_S {
 // (Optional) ZipDMA_Check
 // {{{
 typedef struct __attribute__((packed)) ZDMACHECK_S {
-	char		z_data0[8];
-	short		z_data1[4];
-	unsigned	z_data2[2];
+	char		z_char[8];
+	short		z_short[4];
+	unsigned	z_word[2];
 } ZDMACHECK;
 
 typedef struct __attribute__((packed)) ZDMACHECKST_S {

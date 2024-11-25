@@ -51,6 +51,7 @@ zipdma_rxgears*/
 zipdma_txgears*/
 zipdma_s2mm*/
 zaxdma_mm2s*/
+zaxdma_s2mm*/
 wbdmac*/
 
 ## Other

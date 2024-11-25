@@ -424,8 +424,8 @@ module	zipdma_mm2s #(
 		end else begin
 			// {{{
 			case(i_size)
-			SZ_BYTE: ibase_sel= {1'h1, {(DW/8-1){1'b0}} } << i_addr[WBLSB-1:0];
-			SZ_16B: ibase_sel = {2'h3, {(DW/8-2){1'b0}} } << {i_addr[WBLSB-1:1], 1'b0 };
+			SZ_BYTE: ibase_sel= {1'h1, {(DW/8-1){1'b0}} } >> i_addr[WBLSB-1:0];
+			SZ_16B: ibase_sel = {2'h3, {(DW/8-2){1'b0}} } >> {i_addr[WBLSB-1:1], 1'b0 };
 			default: ibase_sel = {(DW/8){1'b1}};
 			endcase
 			// }}}

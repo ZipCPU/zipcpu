@@ -2635,10 +2635,6 @@ module	axi_tb #(
 		ram[ram_waddr][rk*8 +: 8] <= ram_wdata_swap[rk*8 +: 8];
 
 	always @(posedge i_aclk)
-	if (ram_we && (ram_waddr == 24'h0407f || ram_waddr == 24'h0407e))
-		$display("Write 0x%08x/%x to RAM, at time %t", ram_wdata_swap, ram_wstrb_swap, $time);
-
-	always @(posedge i_aclk)
 	if (ram_rd)
 		ram_rdata_swap <= ram[ram_raddr];
 

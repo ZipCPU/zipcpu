@@ -124,12 +124,13 @@ module	zaxdma_check #(
 
 	// Local declarations
 	// {{{
-	localparam	SR = 32;
-	localparam [SR-1:0]	POLY = 32'hc000_0000;
+	localparam	SR = 32;	// Shift register width
+	localparam [SR-1:0]	POLY = 32'h0040_1003;
 	localparam		AXILSB = $clog2(BUS_WIDTH/8);
 
-	integer		lfsrk, dk, wk, wkp, rk, rkp;
+	integer		dk, wk, wkp, rk, rkp;
 	reg [SR-1:0]	lfsr_state;
+	wire [SR-1:0]	rewrite_state;
 	reg	[DW-1:0]	read_data, nxt_rddata;
 	wire		read_beat, write_beat;
 	reg		err_flag;
@@ -315,10 +316,10 @@ module	zaxdma_check #(
 	always @(*)
 	begin
 		wide_state = 0;
-		wide_state[2*DW-1:2*DW-32]= lfsr_state;
-		for(dk=1; dk<2*DW/32; dk=dk+1)
-			wide_state[2*DW - 32 - (32*dk) +: 32]
-				= advance_lfsr(wide_state[2*DW-(32*dk) +: 32]);
+		wide_state[0 +: SR]= lfsr_state;
+		for(dk=0; dk<2*DW/SR-1; dk=dk+1)
+			wide_state[SR + (SR*dk) +: SR]
+				= advance_lfsr(wide_state[(dk*SR) +: SR]);
 	end
 
 	always @(posedge i_clk)
@@ -371,7 +372,7 @@ module	zaxdma_check #(
 				: raddr;
 	always @(*)
 	begin
-		case(arskd_size)
+		case(axi_read_ready ? arskd_size : rsize)
 		3'h0: rdmask = (byte_mask << arbeat_addr[AXILSB-1:0]);
 		3'h1: rdmask = (half_mask <<(2*arbeat_addr[AXILSB-1:1]))
 				& (half_mask << (arbeat_addr[AXILSB-1:0]));
@@ -393,8 +394,11 @@ module	zaxdma_check #(
 		for(rk=0; rk<DW/8; rk=rk+1)
 		begin
 			if (rdmask[rk])
+			begin
 				nxt_rddata[rk*8 +: 8]
-					= lfsr_state[(2*DW-8)-8*rkp +: 8];
+					= wide_state[(8*rkp) +: 8];
+				rkp = rkp+1;
+			end
 		end
 	end
 
@@ -403,10 +407,16 @@ module	zaxdma_check #(
 		read_data <= nxt_rddata;
 
 	always @(posedge i_clk)
-	if (axi_read_ready)
-		rlast <= arskd_len == 0;
-	else if (read_beat)
-		rlast <= (arskd_len <= 1);
+	if (!S_AXI_RVALID || S_AXI_RREADY)
+	begin
+		rlast <= 0;
+		if (axi_read_ready)
+			// read_beat will be set here, due to arskd*
+			rlast <= (arskd_len == 0);
+		else if (read_beat && (rlen <= 1))
+			// read_beat will be set here only on a read burst
+			rlast <= 1'b1;
+	end
 
 	assign	S_AXI_RVALID = rvalid;
 	assign	S_AXI_RID    = rid;
@@ -457,19 +467,18 @@ module	zaxdma_check #(
 	// {{{
 	always @(*)
 	if (read_beat)
-		shift_state = wide_state >> ((2*DW-32)-(8*$countones(rdmask)));
+		shift_state = wide_state >> (8*$countones(rdmask));
 	else
-		shift_state = wide_state >> ((2*DW-32)-(8*$countones(wskd_strb)));
+		shift_state = wide_state >> (8*$countones(wskd_strb));
+	assign	rewrite_state = new_state(lfsr_state, ctrl_wdata, ctrl_wstrb);
+
 	always @(posedge i_clk)
 	if (i_reset)
 		lfsr_state <= 0; // initial state
-	else if (ctrl_write_ready && ctrl_wstrb != 0)
+	else if (ctrl_write_ready && ctrl_awaddr[2] && ctrl_wstrb != 0)
 	begin
 		// set an initial per-test state
-		lfsr_state <= 0;
-		for (lfsrk = 0; lfsrk < 4; lfsrk = lfsrk + 1)
-		if (ctrl_wstrb[lfsrk])
-			lfsr_state[(DW-32) + (lfsrk*8) +: 8] <= ctrl_wdata[(lfsrk*8) +: 8];
+		lfsr_state <= rewrite_state;
 	end else if (read_beat || write_beat)
 		lfsr_state <= shift_state[SR-1:0];
 	// }}}
@@ -524,7 +533,7 @@ module	zaxdma_check #(
 		if (wskd_strb[wk])
 		begin
 			wrmatchb[wk] = (wskd_data[wk*8 +: 8]
-					== wide_state[2*DW-8-(8*wkp) +: 8]);
+					== wide_state[(8*wkp) +: 8]);
 			wkp = wkp+1;
 		end
 	end
@@ -534,8 +543,8 @@ module	zaxdma_check #(
 		err_flag <= 1'b0;
 	else if (ctrl_write_ready && ctrl_wstrb != 0)
 		err_flag <= 1'b0;
-	else if (write_beat)
-		err_flag <= |wrmatchb;
+	else if (write_beat && |(~wrmatchb))
+		err_flag <= 1'b1;
 	// }}}
 
 	// S_AXIL_RDATA: Error detectıon (might need more error flags)
@@ -571,12 +580,27 @@ module	zaxdma_check #(
 		for(ak=0; ak<SR; ak=ak+1)
 		begin
 			if (^(fill & POLY))
-				fill = { fill[SR-2:0], 1'b1 };
+				fill = { 1'b1, fill[SR-1:1] };
 			else
-				fill = { fill[SR-2:0], 1'b0 };
+				fill = { 1'b0, fill[SR-1:1] };
 		end
 
 		advance_lfsr = fill;
+	end endfunction
+	// }}}
+
+	function automatic [SR-1:0] new_state(input [SR-1:0] current,
+		// {{{
+				input [31:0] bus_word, input[3:0] bus_strb);
+		reg	[31:0]	sr_state;
+		integer		lfsrk;
+	begin
+		sr_state = 0;
+		sr_state[SR-1:0] = current;
+		for (lfsrk = 0; lfsrk < 4; lfsrk = lfsrk + 1)
+		if (bus_strb[lfsrk])
+			sr_state[(lfsrk*8) +: 8] = bus_word[(lfsrk*8) +: 8];
+		new_state = sr_state[SR-1:0];
 	end endfunction
 	// }}}
 
@@ -585,10 +609,10 @@ module	zaxdma_check #(
 	// verilator coverage_off
 	// verilator lint_off UNUSED
 	wire	unused;
-	assign	unused = &{ 1'b0, awskd_addr, arskd_addr,
+	assign	unused = &{ 1'b0, awskd_addr,
 			S_AXI_AWLOCK, S_AXI_AWBURST, S_AXI_AWCACHE, S_AXI_AWPROT, S_AXI_AWQOS, S_AXI_AWSIZE,
 			S_AXI_ARLOCK, S_AXI_ARBURST, S_AXI_ARCACHE, S_AXI_ARPROT, S_AXI_ARQOS,
-			S_AXIL_AWPROT, ctrl_awaddr[2:0],
+			S_AXIL_AWPROT, ctrl_awaddr[1:0],
 			S_AXIL_ARPROT, ctrl_araddr[1:0],
 			arbeat_addr[AW-1:AXILSB],
 			rburst[1], shift_state[2*DW-1:SR] };

@@ -264,7 +264,7 @@ module	zipdma_s2mm #(
 `endif
 	// }}}
 
-	// crc, stb, o_wr_addr, o_wr_sel, o_busy, o_err, subaddr
+	// crc, stb, o_wr_addr, o_busy, o_err, subaddr
 	// {{{
 	initial	o_wr_cyc = 1'b0;
 	initial	o_wr_stb = 1'b0;

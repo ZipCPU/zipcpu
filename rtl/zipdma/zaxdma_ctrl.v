@@ -380,8 +380,7 @@ module zaxdma_ctrl #(
 
 		if (i_dma_err)
 			r_err <= 1'b1;
-		if (r_busy && (!i_dma_busy || i_dma_err))
-			o_interrupt <= 1'b1;
+		o_interrupt <= (r_busy && (!i_dma_busy || i_dma_err));
 
 		if (axil_write_ready && skd_awaddr[3:2] == 2'b00)
 		begin
@@ -394,10 +393,7 @@ module zaxdma_ctrl #(
 
 			end else if (skd_wstrb[3])
 			begin
-				// Clear interrupts, errors, and potentially
-				// restart the DMA
-				if (skd_wdata[29] || !skd_wdata[30])
-					o_interrupt <= 1'b0;
+				// Clear errors and potentially restart the DMA
 				if (skd_wdata[30])
 					r_err <= 1'b0;
 				if (!skd_wdata[31] && (!r_err || skd_wdata[30]))

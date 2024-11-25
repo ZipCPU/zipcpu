@@ -38,11 +38,13 @@
 // }}}
 module zaxdma #(
 		// {{{
-		parameter	ADDRESS_WIDTH=30, LGMEMLEN = 10,
+		parameter	ADDRESS_WIDTH=30,
 		parameter	LGDMALENGTH=ADDRESS_WIDTH,
 		parameter	BUS_WIDTH=512,
+				LGMEMLEN = $clog2(BUS_WIDTH/8)+10,
 		parameter	IW=2,
-		parameter	LGMAXBURST=LGMEMLEN-$clog2(BUS_WIDTH/8)-1,
+		// Split the FIFO memory size evenly between the two FIFOs
+		parameter	LGMAXBURST=LGMEMLEN-$clog2(BUS_WIDTH/8)-2,
 		parameter [IW-1:0]	AXI_ID = 0,
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
 		localparam	AW=ADDRESS_WIDTH,
@@ -318,6 +320,7 @@ module zaxdma #(
 		.ADDRESS_WIDTH(ADDRESS_WIDTH),
 		.BUS_WIDTH(BUS_WIDTH),
 		.IW(IW), .AXI_ID(AXI_ID),
+		.LGMAXBURST(LGMAXBURST),	// = 8
 		// .OPT_LITTLE_ENDIAN(OPT_LITTLE_ENDIAN),
 		.LGFIFO(LGMEMLEN)
 		// }}}

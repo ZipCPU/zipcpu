@@ -4,10 +4,46 @@
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	ZipDMA --
+// Purpose:	To test the ZipDMA.  This module has two bus ports, one control
+//		port and one high speed data port.
 //
+//	The control port has two 32b registers.
+//
+//	Addr 0:
+//		Contains two counters and an error flag.
+//	   BIT[0]:	An error flag.  This will be set on any write where the
+//			written data doesn't match the internal pseudorandom
+//			state.
+//	   BITS[15: 4]:	Read count.  Counts the number of bytes read from the
+//			high speed data port.  Reading more than this amount
+//			will simply overflow.
+//	   BITS[31:20]:	Write data count.  Counts the number of bytes written
+//			to the high speed data port.
+//
+//	Addr 4:
+//		Reads from this register return the current state of the
+//		shift register.  Writes to this register will both update the
+//		shift register, and clear the read and write counters.
+//
+//	The high speed data port has two purposes.  When read, the high speed
+//	port returns a pseudorandom data stream.  When written, bytes written
+//	are compared against the pseudorandom data stream.  Any failure to
+//	match will set the error flag bit in the control register.
+//
+//	Although the high speed data port has many bits to its address, these
+//	address bits are unused.  The "address", or rather the position in the
+//	pseudorandom stream, is determined by the order in which the bytes in
+//	the high speed port are accessed.  The first byte read (or written) will
+//	always be the first byte in the pseudorandom stream--regardless of the
+//	address used when reading (or writing) the port.  This is to allow this
+//	checking facility to verify whether or not the DMA can properly
+//	read from (or write to) ports with a fixed address, as well as reading
+//	from (or writing to) ports with more memory-type addressing.  As long
+//	as the reads (or writes) are done in order, there (should) be no issues
+//	with this approach.
 //
 // Creator:	Sukru Uzun
+// Updated by:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,10 +74,12 @@
 `default_nettype none
 // }}}
 module	zipdma_check #(
+		// {{{
 		parameter	ADDRESS_WIDTH = 30,
 		parameter	BUS_WIDTH = 64,
 		localparam	DW = BUS_WIDTH,
 		localparam	AW = ADDRESS_WIDTH-$clog2(DW/8)
+		// }}}
 	) (
 		// {{{
 		input	wire		i_clk, i_reset,
@@ -62,7 +100,7 @@ module	zipdma_check #(
 		output	wire 		o_wb_err,
 		// verilator coverage_on
 		// }}}
-		// Wishbone status port
+		// Wishbone status/control port
 		// {{{
 		input	wire		i_st_cyc, i_st_stb,
 		input	wire		i_st_we,
@@ -84,29 +122,29 @@ module	zipdma_check #(
 
 	// Local declarations
 	// {{{
-	localparam	BW = DW/8;   // BIT_WIDTH
 	localparam	SR = 32;	// Shift register width
-	localparam	[SR-1:0]	POLY = 32'hc000_0000;
+	localparam [SR-1:0]	POLY = 32'h0040_1003;
 
-	reg [2*DW-1:0]	wide_state, shift_state;
 	reg [SR-1:0]	lfsr_state;
+	wire [SR-1:0]	rewrite_state;
 
-	wire		rd_data_en, wr_data_en, ctrl_write_ready;
+	wire		read_beat, write_beat, ctrl_write_ready;
 	reg	[11:0]	rd_count, wr_count;
-	reg	[11:0]	rd_count_reg, wr_count_reg;
+	reg	[DW/8-1:0]	wrmatchb;
+	reg	[2*DW-1:0]	wide_state, shift_state;
 
 	integer	rk, rkp;
 	reg	[DW-1:0]	nxt_rddata, read_data;
 
 	integer	wk, wkp;
-	reg	[DW/8-1:0]	wrmatchb;
 	reg			err_flag;
 	// }}}
 
-	// rd_data_en, wr_data_en
-	assign rd_data_en = i_wb_stb && !i_wb_we && (i_wb_sel != 0);
-	assign wr_data_en = i_wb_stb &&  i_wb_we && (i_wb_sel != 0);
-	assign	ctrl_write_ready = i_st_stb && !o_st_stall && i_st_we && (i_st_sel != 0);
+	// read_beat, write_beat
+	assign read_beat  = i_wb_stb && !i_wb_we && (i_wb_sel != 0);
+	assign write_beat = i_wb_stb &&  i_wb_we && (i_wb_sel != 0);
+	assign ctrl_write_ready = i_st_stb && !o_st_stall && i_st_we
+					&& i_st_sel != 0;
 
 	// Wishbone outputs
 	assign o_wb_stall = 1'b0;
@@ -116,50 +154,45 @@ module	zipdma_check #(
 	assign o_st_stall = 1'b0;
 	assign o_st_err   = 1'b0;
 
-	assign	ctrl_write_ready = i_st_stb && !o_st_stall && i_st_we
-					&& i_st_sel != 0;
-
 	// o_st_ack
+	// {{{
+	initial	o_st_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
 		o_st_ack <= 1'b0;
 	else
 		o_st_ack <= i_st_stb;
+	// }}}
 
 	// wide_state
 	// {{{
 	always @(*)
 	begin
 		wide_state = 0;
-		wide_state[2*DW-SR +: SR] = lfsr_state;
-		for(wk=1; wk<2*DW/SR; wk=wk+1)
-			wide_state[2*DW-SR-(SR*wk) +: SR]
-				= advance_lfsr(wide_state[2*DW-(SR*wk) +: SR]);
+		wide_state[0 +: SR] = lfsr_state;
+		for(wk=0; wk<2*DW/SR-1; wk=wk+1)
+			wide_state[SR+(wk*SR) +: SR]
+				= advance_lfsr(wide_state[(wk*SR) +: SR]);
 	end
 	// }}}
 
 	// lfsr_state
 	// {{{
 	always @(*)
-		shift_state = wide_state >>((2*DW-SR)-(8*$countones(i_wb_sel)));
+		shift_state = wide_state >> (8*$countones(i_wb_sel));
+	assign	rewrite_state = new_state(lfsr_state, i_st_data, i_st_sel);
+
 	always @(posedge i_clk)
 	if (i_reset)
 		lfsr_state <= 0; // initial state
 	else begin
 		// feedback
-		if (rd_data_en || wr_data_en)
-			lfsr_state <= shift_state[SR-1:0];
+		if (read_beat || write_beat)
+			lfsr_state <= shift_state[0 +: SR];
 
 		if (ctrl_write_ready)
 		begin // set an initial per-test state
-			if (i_st_sel[0])
-				lfsr_state[ 0 +: 8] <= i_st_data[ 0 +: 8];
-			if (i_st_sel[1])
-				lfsr_state[ 8 +: 8] <= i_st_data[ 8 +: 8];
-			if (i_st_sel[2])
-				lfsr_state[16 +: 8] <= i_st_data[16 +: 8];
-			if (i_st_sel[3])
-				lfsr_state[24 +: 8] <= i_st_data[24 +: 8];
+			lfsr_state <= rewrite_state;
 		end
 	end
 	// }}}
@@ -180,20 +213,20 @@ module	zipdma_check #(
 	begin
 		nxt_rddata = 0;
 		rkp = 0;
-		if (rd_data_en)
+		if (read_beat)
 		for(rk=0; rk<DW/8; rk=rk+1)
 		begin
 			if (i_wb_sel[DW/8-1-rk])
 			begin
 				nxt_rddata[(DW/8-1-rk)*8 +: 8]
-					= wide_state[(2*DW-8)-8*rkp +: 8];
+					= wide_state[(8*rkp) +: 8];
 				rkp = rkp+1;
 			end
 		end
 	end
 
 	always @(posedge i_clk)
-	if (i_reset || !rd_data_en)
+	if (i_reset || !read_beat)
 		read_data <= 0;
 	else
 		read_data <= nxt_rddata;
@@ -201,32 +234,23 @@ module	zipdma_check #(
 	
 	// rd_count, wr_count
 	// {{{
-	always @(*)
-	begin
-		rd_count = rd_count_reg;
-		wr_count = wr_count_reg;
-
-		// reset counter after lfsr initialization
-		if (i_st_stb && i_st_we && (i_st_sel != 0))
-		begin
-			rd_count = 0;
-			wr_count = 0;
-		end else for (int i = 0; i < BW; i++)
-		if (i_wb_sel[i])
-		begin
-			rd_count = rd_count + (rd_data_en ? 1 : 0);
-			wr_count = wr_count + (wr_data_en ? 1 : 0);
-		end
-	end
-
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
-		rd_count_reg <= 0;
-		wr_count_reg <= 0;
-	end else begin
-		rd_count_reg <= rd_count;
-		wr_count_reg <= wr_count;
+		rd_count <= 0;
+		wr_count <= 0;
+	end else if (ctrl_write_ready)
+	begin
+		// reset counter on any write--either to the LFSR state, or to
+		// the counters themselves.
+		rd_count <= 0;
+		wr_count <= 0;
+	end else if (i_wb_stb && !o_wb_stall)
+	begin
+		if (i_wb_we)
+			wr_count <= wr_count + $countones(i_wb_sel);
+		else
+			rd_count <= rd_count + $countones(i_wb_sel);
 	end
 	// }}}
 
@@ -234,14 +258,13 @@ module	zipdma_check #(
 	// {{{
 	always @(*)
 	begin
-		wrmatchb = -1;
-		wkp = 0;
-		if (wr_data_en)
+		wrmatchb = -1; wkp = 0;
+		if (write_beat)
 		for(wk=0; wk<DW/8; wk=wk+1)
-		if (i_wb_sel[wk])
+		if (i_wb_sel[DW/8-1-wk])
 		begin
-			wrmatchb[wk] = (i_wb_data[(DW/8-1-wk)*8 +: 8]
-					== lfsr_state[(DW/8-1-wkp)*8 +: 8]);
+			wrmatchb[DW/8-1-wk] = (i_wb_data[(DW/8-1-wk)*8 +: 8]
+					== wide_state[(8*wkp) +: 8]);
 			wkp = wkp+1;
 		end
 	end
@@ -250,7 +273,7 @@ module	zipdma_check #(
 	if (i_reset)
 		err_flag <= 1'b0;
 	else begin
-		if (wr_data_en && |(~wrmatchb))
+		if (write_beat && |(~wrmatchb))
 			err_flag <= 1'b1;
 
 		if (i_st_stb && i_st_we && |i_st_sel)
@@ -271,19 +294,34 @@ module	zipdma_check #(
 
 	function automatic [SR-1:0] advance_lfsr(input [SR-1:0] istate);
 		// {{{
-		integer	ak;
+		integer ak;
 		reg	[SR-1:0]	fill;
 	begin
 		fill = istate;
 		for(ak=0; ak<SR; ak=ak+1)
 		begin
 			if (^(fill & POLY))
-				fill = { fill[SR-2:0], 1'b1 };
+				fill = { 1'b1, fill[SR-1:1] };
 			else
-				fill = { fill[SR-2:0], 1'b0 };
+				fill = { 1'b0, fill[SR-1:1] };
 		end
 
 		advance_lfsr = fill;
+	end endfunction
+	// }}}
+
+	function automatic [SR-1:0] new_state(input [SR-1:0] current,
+		// {{{
+				input [31:0] bus_word, input[3:0] bus_strb);
+		reg	[31:0]	sr_state;
+		integer		lfsrk;
+	begin
+		sr_state = 0;
+		sr_state[SR-1:0] = current;
+		for (lfsrk = 0; lfsrk < 4; lfsrk = lfsrk + 1)
+		if (bus_strb[lfsrk])
+			sr_state[(lfsrk*8) +: 8] = bus_word[(lfsrk*8) +: 8];
+		new_state = sr_state[SR-1:0];
 	end endfunction
 	// }}}
 

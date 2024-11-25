@@ -800,6 +800,11 @@ module	zaxdma_mm2s #(
 	2'b11: rd_uncommitted <= rd_uncommitted + (BUS_WIDTH/8)
 						- nxt_commitment;
 	endcase
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset)
+		assert(rd_uncommitted <= FIFO_BYTES);
+`endif
 	// Verilator lint_on  WIDTH
 	// }}}
 
@@ -815,18 +820,18 @@ module	zaxdma_mm2s #(
 		if (r_inc)
 		begin
 			case(r_size)
-			SZ_BYTE: rd_ubursts <= { (rd_uncommitted >= 512),
-						(rd_uncommitted >= 256) };
-			SZ_16B:  rd_ubursts <= { (rd_uncommitted >= 1024),
-						(rd_uncommitted >= 512) };
+			SZ_BYTE: rd_ubursts <= { (rd_uncommitted >= 2<<LCLMAXBURST_SUB),
+						(rd_uncommitted >= 1<<LCLMAXBURST_SUB) };
+			SZ_16B:  rd_ubursts <= { (rd_uncommitted >= 4<<LCLMAXBURST_SUB),
+						(rd_uncommitted >= 2<<LCLMAXBURST_SUB) };
 			// Verilator lint_off WIDTH
-			SZ_32B:  rd_ubursts <= { (rd_uncommitted >= 2048),
-						(rd_uncommitted >= 1024) };
+			SZ_32B:  rd_ubursts <= { (rd_uncommitted >= 8<<LCLMAXBURST_SUB),
+						(rd_uncommitted >= 4<<LCLMAXBURST_SUB) };
 			SZ_BUS:  rd_ubursts <= {
 					(rd_uncommitted >= 2 * BUS_WIDTH/8
-							* (1<<LCLMAXBURST_SUB)),
+							* (1<<LCLMAXBURST)),
 					(rd_uncommitted >=     BUS_WIDTH/8
-							* (1<<LCLMAXBURST_SUB))
+							* (1<<LCLMAXBURST))
 				};
 			// Verilator lint_on  WIDTH
 			endcase
