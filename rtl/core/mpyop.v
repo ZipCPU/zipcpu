@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	mpyop.v
+// Filename:	rtl/core/mpyop.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

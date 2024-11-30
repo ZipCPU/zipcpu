@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	axilpipe.v
+// Filename:	rtl/core/axilpipe.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

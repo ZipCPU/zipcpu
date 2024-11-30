@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	prefetch.v
+// Filename:	rtl/core/prefetch.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

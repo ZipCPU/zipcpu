@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	pffifo.v
+// Filename:	rtl/core/pffifo.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

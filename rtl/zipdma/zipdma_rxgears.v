@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipdma_rxgears.v
+// Filename:	rtl/zipdma/zipdma_rxgears.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

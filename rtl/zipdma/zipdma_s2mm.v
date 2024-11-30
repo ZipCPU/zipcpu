@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipdma_s2mm.v
+// Filename:	rtl/zipdma/zipdma_s2mm.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -111,7 +111,9 @@ module	zipdma_s2mm #(
 
 	reg	[LGPIPE-1:0]		wb_outstanding;
 	reg				wb_pipeline_full;
-	reg				addr_overflow;
+
+	reg				wr_overflow, addr_overflow;
+	wire				new_data;
 	// }}}
 
 	assign	o_wr_we = 1'b1;
@@ -266,6 +268,21 @@ module	zipdma_s2mm #(
 
 	// crc, stb, o_wr_addr, o_busy, o_err, subaddr
 	// {{{
+	// Two cases of "new" (or rather "more") data:
+	//   1. There's more data on the incoming stream, *and* we haven't
+	//	(yet) seen S_LAST
+	//   2. We've seen S_LAST, and we still have data left in our shift
+	//	register.
+	assign	new_data = (r_last && (|r_sel)) || (S_VALID && !r_last);
+
+	always @(posedge i_clk)
+	if (i_reset)
+		wr_overflow <= 1'b0;
+	else if (!o_busy || o_err || (o_wr_cyc && i_wr_err))
+		wr_overflow <= 1'b0;
+	else if (!wr_overflow && o_wr_stb && !i_wr_stall)
+		wr_overflow <= next_addr[ADDRESS_WIDTH];
+
 	initial	o_wr_cyc = 1'b0;
 	initial	o_wr_stb = 1'b0;
 	initial	o_busy   = 1'b0;
@@ -308,15 +325,14 @@ module	zipdma_s2mm #(
 		if (o_wr_stb)
 			{ o_wr_addr, subaddr } <= next_addr[ADDRESS_WIDTH-1:0];
 
-		if (addr_overflow)
-			{ o_err, o_wr_cyc, o_wr_stb } <= 3'b100;
-		else if (!wb_pipeline_full)
+		if (!wb_pipeline_full)
 		begin
-			if ((r_last && (|r_sel)) || (S_VALID && !r_last))
+			if (new_data)
 			begin
-				// Need to flush our last result out
 				{ o_wr_cyc, o_wr_stb } <= 2'b11;
 
+				if (o_wr_stb ? addr_overflow : wr_overflow)
+					{ o_err, o_wr_cyc, o_wr_stb } <= 3'b100;
 			end else if (wb_outstanding + (o_wr_stb ? 1:0)
 							== (i_wr_ack ? 1:0))
 			begin
@@ -338,7 +354,7 @@ module	zipdma_s2mm #(
 	end else if (!o_wr_stb || !i_wr_stall)
 	begin
 		// {{{
-		if (addr_overflow)
+		if (o_wr_stb ? addr_overflow : wr_overflow)
 		begin
 		end else if (!wb_pipeline_full)
 		begin

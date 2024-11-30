@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	slowmpy.v
+// Filename:	rtl/core/slowmpy.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

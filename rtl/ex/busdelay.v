@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	busdelay.v
+// Filename:	rtl/ex/busdelay.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipbones.v
+// Filename:	rtl/zipbones.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

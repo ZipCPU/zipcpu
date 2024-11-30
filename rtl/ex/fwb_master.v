@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	fwb_master.v
+// Filename:	rtl/ex/fwb_master.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

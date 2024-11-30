@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipcounter.v
+// Filename:	rtl/peripherals/zipcounter.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

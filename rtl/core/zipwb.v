@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipwb.v
+// Filename:	rtl/core/zipwb.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

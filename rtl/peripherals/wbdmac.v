@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	wbdmac.v
+// Filename:	rtl/peripherals/wbdmac.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

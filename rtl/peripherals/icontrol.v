@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	icontrol.v
+// Filename:	rtl/peripherals/icontrol.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

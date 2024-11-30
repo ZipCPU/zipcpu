@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	pfcache.v
+// Filename:	rtl/core/pfcache.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

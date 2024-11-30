@@ -1,6 +1,6 @@
 ################################################################################
 ##
-## Filename:	Makefile
+## Filename:	rtl/Makefile
 ## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
@@ -33,7 +33,6 @@
 ## License:	GPL, v3, as defined and found on www.gnu.org,
 ## {{{
 ##		http://www.gnu.org/licenses/gpl.html
-##
 ##
 ################################################################################
 ##

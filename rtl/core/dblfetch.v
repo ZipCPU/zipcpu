@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	dblfetch.v
+// Filename:	rtl/core/dblfetch.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

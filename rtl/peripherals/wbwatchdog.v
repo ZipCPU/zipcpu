@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	wbwatchdog.v
+// Filename:	rtl/peripherals/wbwatchdog.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

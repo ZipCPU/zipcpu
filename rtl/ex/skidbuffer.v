@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	skidbuffer.v
+// Filename:	rtl/ex/skidbuffer.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

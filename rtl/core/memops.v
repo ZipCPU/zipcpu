@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	memops.v
+// Filename:	rtl/core/memops.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

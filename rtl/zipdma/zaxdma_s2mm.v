@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zaxdma_s2mm.v
+// Filename:	rtl/zipdma/zaxdma_s2mm.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipaxil.v
+// Filename:	rtl/zipaxil.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

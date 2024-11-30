@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	ziptimer.v
+// Filename:	rtl/peripherals/ziptimer.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

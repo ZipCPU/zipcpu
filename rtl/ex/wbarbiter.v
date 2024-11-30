@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	wbarbiter.v
+// Filename:	rtl/ex/wbarbiter.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

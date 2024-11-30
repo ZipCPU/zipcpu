@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipdma_ctrl.v
+// Filename:	rtl/zipdma/zipdma_ctrl.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

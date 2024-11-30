@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	axilops.v
+// Filename:	rtl/core/axilops.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

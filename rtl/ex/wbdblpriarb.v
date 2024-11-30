@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	wbdblpriarb.v
+// Filename:	rtl/ex/wbdblpriarb.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //

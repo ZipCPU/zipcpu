@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipjiffies.v
+// Filename:	rtl/peripherals/zipjiffies.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
