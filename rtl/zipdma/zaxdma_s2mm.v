@@ -237,16 +237,13 @@ module	zaxdma_s2mm #(
 
 	// AW*
 	reg				w_start_aw, phantom_aw, axi_awvalid;
-	// Verilator lint_off UNUSED
 	reg	[AW:0]			nxt_awaddr;
-	// Verilator lint_on  UNUSED
-	reg	[AW-1:0]		axi_awaddr;
-	reg	[AW-1:0]		bursts_outstanding;
+	reg	[AW-1:0]		axi_awaddr, bursts_outstanding;
 
 	// W*
-	reg	w_start_w, phantom_w, axi_wvalid, axi_wlast;
-	reg	[AW:0]	nxt_waddr;
-	reg	[AW-1:0]	axi_waddr;
+	reg				w_start_w, phantom_w,
+					axi_wvalid, axi_wlast;
+	reg	[AW-1:0]		axi_waddr, nxt_waddr;
 	reg	[BUS_WIDTH-1:0]		axi_wdata, nxt_wdata;
 	reg	[BUS_WIDTH/8-1:0]	axi_wstrb, base_wstrb, nxt_wstrb;
 	reg	[AXILSB-1:0]		last_count;
@@ -938,9 +935,9 @@ module	zaxdma_s2mm #(
 		nxt_waddr = 0;
 		case(r_size)
 		SZ_BYTE: nxt_waddr = axi_waddr + 1;
-		SZ_16B:  nxt_waddr[AW:1] = axi_waddr[AW-1:1] + 1;
-		SZ_32B:  nxt_waddr[AW:2] = axi_waddr[AW-1:2] + 1;
-		SZ_BUS:  nxt_waddr[AW:AXILSB] = axi_waddr[AW-1:AXILSB] + 1;
+		SZ_16B:  nxt_waddr[AW-1:1] = axi_waddr[AW-1:1] + 1;
+		SZ_32B:  nxt_waddr[AW-1:2] = axi_waddr[AW-1:2] + 1;
+		SZ_BUS:  nxt_waddr[AW-1:AXILSB] = axi_waddr[AW-1:AXILSB] + 1;
 		endcase
 
 		if (!M_WVALID || !M_WREADY)
@@ -992,8 +989,7 @@ module	zaxdma_s2mm #(
 	else if (!M_WVALID || M_WREADY)
 	begin
 		axi_wdata <= nxt_wdata;
-		if(OPT_LOWPOWER && (!r_busy || cmd_abort
-				|| !sr_valid || (r_inc && nxt_waddr[AW])))
+		if(OPT_LOWPOWER && (!r_busy || cmd_abort || !sr_valid))
 			axi_wdata <= 0;
 	end
 	// }}}
@@ -1093,7 +1089,7 @@ module	zaxdma_s2mm #(
 	else if (!M_WVALID || M_WREADY)
 	begin
 		axi_wstrb <= nxt_wstrb;
-		if (cmd_abort || (r_inc && nxt_waddr[AW]))
+		if (cmd_abort)
 			axi_wstrb <= 0;
 	end
 	// }}}
