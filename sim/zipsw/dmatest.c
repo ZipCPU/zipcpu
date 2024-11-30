@@ -46,16 +46,17 @@ const unsigned	ZIPDMA_BUSY = 0x80000000,
 		ZIPDMA_SFIX = 0x00040000,
 		ZIPDMA_TLEN = 0x0000ffff,
 		//
-		DMACMD_FIXSRC   = 0x0400000,
-		DMACMD_SRCBYTE  = 0x0300000,
-		DMACMD_SRC16B   = 0x0200000,
-		DMACMD_SRC32B   = 0x0100000,
+		DMACMD_FIXDST   = 0x0400000,
+		DMACMD_DSTBYTE  = 0x0300000,
+		DMACMD_DST16B   = 0x0200000,
+		DMACMD_DST32B   = 0x0100000,
+		//
+		DMACMD_FIXSRC   = 0x0040000,
+		DMACMD_SRCBYTE  = 0x0030000,
+		DMACMD_SRC16B   = 0x0020000,
+		DMACMD_SRC32B   = 0x0010000,
 		DMACMD_BUSSRC   = 0,
 		//
-		DMACMD_FIXDST   = 0x0040000,
-		DMACMD_DSTBYTE  = 0x0030000,
-		DMACMD_DST16B   = 0x0020000,
-		DMACMD_DST32B   = 0x0010000,
 		DMACMD_BUSDST   = 0,
 		DMACMD_MEMCPY	= 0;
 
@@ -171,13 +172,13 @@ int	dma_test(unsigned seed, unsigned soff, unsigned doff, unsigned len,
 
 	init_lfsr(seed);
 	err = dma_memcpy_flags(buf, (void *)&_zdmacheck->z_char[soff], len,
-				flags & (~DMACMD_FIXDST));
+				flags & (~(DMACMD_FIXDST | DMACMD_DSTBYTE)));
 	if (err)
 		printf("    BUS-ERROR! ->MEM\n");
 	if (0 == err) {
 		init_lfsr(seed);
 		err |= dma_memcpy_flags((void *)&_zdmacheck->z_char[doff], buf, len,
-				flags & (~DMACMD_FIXSRC));
+				flags & (~(DMACMD_FIXSRC | DMACMD_SRCBYTE)));
 		if (err)
 			printf("    BUS-ERROR! MEM->\n");
 	}
@@ -207,14 +208,14 @@ int	main(int argc, char **argv) {
 	//
 	// 8b test
 	// {{{
-	if (1) {
+	if (0) {
 		printf("Basic MEMCPY( 8b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
 		lfsr_state = 0xf1000000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZBYTE);
-		for(int fx=0; fx<1; fx++) {
+		for(int fx=0; fx<4; fx++) {
 			unsigned flags = SZBYTE;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
@@ -267,14 +268,14 @@ int	main(int argc, char **argv) {
 	//
 	// 16b test
 	// {{{
-	if (1 && !fail) {
+	if (0 && !fail) {
 		printf("Basic MEMCPY( 16b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
 		lfsr_state = 0xf2000000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZHALF);
-		for(int fx=0; fx<1; fx++) {
+		for(int fx=0; fx<4; fx++) {
 			unsigned flags = SZHALF;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
@@ -335,7 +336,7 @@ int	main(int argc, char **argv) {
 		lfsr_state = 0xf4000000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZ32);
-		for(int fx=0; fx<1; fx++) {
+		for(int fx=2; fx<4; fx++) {
 			unsigned flags = SZ32;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
@@ -396,7 +397,7 @@ int	main(int argc, char **argv) {
 		lfsr_state = 0xf6400000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZBUS);
-		for(int fx=0; fx<1; fx++) {
+		for(int fx=0; fx<4; fx++) {
 			unsigned flags = SZBUS;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
