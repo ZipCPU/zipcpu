@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	sim/rtl/axilxbar.v
+// Filename:	sim/rtl/axilxbar.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -57,7 +57,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2019-2024, Gisselquist Technology, LLC
+// Copyright (C) 2019-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

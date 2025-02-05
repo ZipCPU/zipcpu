@@ -49,7 +49,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2024, Gisselquist Technology, LLC
+// Copyright (C) 2022-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -941,7 +941,7 @@ module	zaxdma_s2mm #(
 		endcase
 
 		if (!M_WVALID || !M_WREADY)
-			nxt_waddr = { 1'b0, axi_waddr };
+			nxt_waddr = axi_waddr;
 	end
 
 	initial	axi_waddr = 0;

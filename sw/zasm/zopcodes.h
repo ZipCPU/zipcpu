@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	zopcodes.h	(Mostly deprecated, still used by zipdbg)
+// Filename:	sw/zasm/zopcodes.h
 // {{{
-// Project:	Zip CPU -- a small, lightweight, RISC CPU core
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A structure defined to keep track of our various opcodes and
 //		some of their shortcut synonyms.
@@ -12,7 +12,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2023, Gisselquist Technology, LLC
+// Copyright (C) 2015-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	zopcodes.cpp	(Mostly deprecated, still used by the debugger)
+// Filename:	sw/zasm/zopcodes.cpp
 // {{{
-// Project:	Zip CPU -- a small, lightweight, RISC CPU core
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	A simple program to handle the disassembly and definition
 //		of the various Zip Assembly opcodes.  The primary function
@@ -16,7 +16,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2017-2023, Gisselquist Technology, LLC
+// Copyright (C) 2017-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

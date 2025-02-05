@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	sim/zipsw/zlib/umod.c
+// Filename:	sim/zipsw/zlib/umod.c
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -20,7 +20,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2017-2024, Gisselquist Technology, LLC
+// Copyright (C) 2017-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
