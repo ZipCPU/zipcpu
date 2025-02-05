@@ -119,7 +119,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/configure.ac binutils-2.
    case "$COREFILE" in
 diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/cpu-zip.c binutils-2.27-zip/bfd/cpu-zip.c
 --- binutils-2.27-original/bfd/cpu-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/cpu-zip.c	2022-01-29 15:32:58.459414571 -0500
++++ binutils-2.27-zip/bfd/cpu-zip.c	2025-01-18 17:41:07.333677212 -0500
 @@ -0,0 +1,65 @@
 +////////////////////////////////////////////////////////////////////////////////
 //
@@ -235,13 +235,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/doc/reloc.texi binutils-
  
 diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.27-zip/bfd/elf32-zip.c
 --- binutils-2.27-original/bfd/elf32-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/bfd/elf32-zip.c	2022-01-29 15:33:26.995221873 -0500
++++ binutils-2.27-zip/bfd/elf32-zip.c	2025-01-18 17:40:22.002528731 -0500
 @@ -0,0 +1,1134 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	tc-zip.c
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/bfd/elf32-zip.c
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	Zip-specific support for 32-bit ELF.
 +//
@@ -252,10 +252,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -265,13 +265,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.2
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#include "sysdep.h"
@@ -282,7 +282,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/bfd/elf32-zip.c binutils-2.2
 +#include "elf/zip.h"
 +#include <limits.h>
 +#include <stdint.h>
-+
++// }}}
 +#define	zip_relocation	bfd_elf_generic_reloc
 +
 +static bfd_reloc_status_type
@@ -1705,13 +1705,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/configure.ac binutils-2.27-z
  # If we aren't building newlib, then don't build libgloss, since libgloss
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils-2.27-zip/gas/config/tc-zip.c
 --- binutils-2.27-original/gas/config/tc-zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.c	2022-01-29 15:35:21.570448339 -0500
-@@ -0,0 +1,3555 @@
++++ binutils-2.27-zip/gas/config/tc-zip.c	2025-01-27 14:32:43.885625269 -0500
+@@ -0,0 +1,3566 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	tc-zip.c
++// Filename:	sw/binutils-2.27-zip/gas/config/tc-zip.c
 +// {{{
-+// Project:	Zip CPU backend for GNU Binutils
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	This is the main file associated with the Zip Assembler.  By
 +//		that I mean that it handles all of the ZipCPU specifics.  The
@@ -1728,10 +1728,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -1741,11 +1741,12 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
 +//
 +////////////////////////////////////////////////////////////////////////////////
@@ -2244,8 +2245,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +		if (pzipm->r[rg].m_subsy)
 +			continue;
 +
-+		d = abs(pzipm->r[rg].m_value - value);
-+		if (d < bestd) {
++		d = (int)pzipm->r[rg].m_value - (int)value;
++		if (abs(d) < bestd) {
 +			bestd = d;
 +			bestrg = rg;
 +		}
@@ -3723,7 +3724,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +		case	ZIPO_LDI: 
 +			imm = (a & 0x03fffff); break;
 +		case	ZIPO_LDIn:
-+			imm = (a & 0x03fffff); imm |= -0x0200000; break;
++			imm = (a & 0x03fffff); imm |= -0x0400000; break;
 +/*
 + * While this makes conceptual sense, it doesn't match the CPU.  Hence let's
 + * comment it out and make certain things still work.
@@ -3735,9 +3736,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +*/
 +		default:
 +			if (a & 0x040000) {
++				// 14b immediate
 +				imm = (a & 0x03fff);
 +				if (a & 0x2000) imm |= -0x02000;
 +			} else {
++				// 18b immediate
 +				imm = (a & 0x03ffff);
 +				if (a & 0x020000)
 +					imm |= -0x020000;
@@ -3829,12 +3832,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +		case ZIPO_LDI: case ZIPO_LDIn:
 +			if (!fits_within(8,imma))
 +				return 0;
-+			if (aareg == ZIP_CC)
++			if (ZIP_CC == aareg)
 +				return 0;
 +			break;
 +		case ZIPO_ADD: case ZIPO_SUB: case ZIPO_AND:
 +			if (aareg == ZIP_CC)
 +				return 0;
++			// Fall through ...
 +		case ZIPO_CMP:
 +			if ((abreg&0x10)==0) {
 +				if (!fits_within(7,imma)) {
@@ -4283,10 +4287,16 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +			}
 +		}
 +#ifdef	ZIP_DEBUG
-+		fprintf(stderr, "LDI %04x:%04x,%d Instruction assembled into %08x : %08x\n",
++		if (insn->i_naux == 0) {
++			fprintf(stderr, "LDI %04x:%04x,%d Instruction assembled into %08x\n",
++			(immv>>16)&0x0ffff,
++			immv & 0x0ffff, insn->i_areg, insn->i_code);
++		} else {
++			fprintf(stderr, "LDI %04x:%04x,%d Instruction assembled into %08x : %08x\n",
 +			(immv>>16)&0x0ffff,
 +			immv & 0x0ffff, insn->i_areg,
 +			insn->i_code, insn->i_aux[0]);
++		}
 +#endif
 +		break;
 +	case ZIPO_BRA: // Includes both conditional and unconditional branches
@@ -4499,7 +4509,8 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +		// These instructions *should*ve been turned into NOOP and SIM
 +		// instructions by now.  Getting here with them is therefore
 +		// an error.
-+		gas_assert(0);
++		gas_assert(0 && "Internal ZipCPU assembler error");
++		break;
 +	case ZIPO_SEXTB: {
 +		insn->i_naux = 1;
 +		insn->i_code   = IMMOP(ZIPO_LSL, insn->i_cnd, 24, insn->i_areg);
@@ -5264,13 +5275,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.c binutils
 +// }}}
 diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils-2.27-zip/gas/config/tc-zip.h
 --- binutils-2.27-original/gas/config/tc-zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/gas/config/tc-zip.h	2022-01-29 15:36:29.353990825 -0500
-@@ -0,0 +1,194 @@
++++ binutils-2.27-zip/gas/config/tc-zip.h	2025-01-18 18:56:04.617344665 -0500
+@@ -0,0 +1,195 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	tc-zip.h
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/gas/config/tc-zip.h
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -5278,11 +5289,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -5292,17 +5303,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/gas/config/tc-zip.h binutils
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#ifndef	TC_ZIPCPU
 +#define	TC_ZIPCPU
++// }}}
 +
 +#define	TC_ZIP	1
 +#ifndef	ZIP_BIGENDIAN
@@ -6671,13 +6683,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/common.h binutil
  /* Values for e_version.  */
 diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2.27-zip/include/elf/zip.h
 --- binutils-2.27-original/include/elf/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/include/elf/zip.h	2022-01-29 15:36:15.506084287 -0500
++++ binutils-2.27-zip/include/elf/zip.h	2025-01-18 18:04:11.499651215 -0500
 @@ -0,0 +1,58 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip.h
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/include/elf/zip.h
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -6686,10 +6698,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -6699,13 +6711,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/include/elf/zip.h binutils-2
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#ifndef	_ELF_ZIP_H
@@ -6745,48 +6757,53 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/configure.tgt binutils-2.
  *-tandem-none)		targ_emul=st2000
 diff -Naur '--exclude=*.swp' binutils-2.27-original/ld/emulparams/elf32zip.sh binutils-2.27-zip/ld/emulparams/elf32zip.sh
 --- binutils-2.27-original/ld/emulparams/elf32zip.sh	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/ld/emulparams/elf32zip.sh	2022-01-29 15:58:19.068782176 -0500
-@@ -0,0 +1,50 @@
++++ binutils-2.27-zip/ld/emulparams/elf32zip.sh	2025-01-18 18:03:46.956113078 -0500
+@@ -0,0 +1,55 @@
 +################################################################################
-+#
-+# Filename:	elf32zip.sh
-+#
-+# Project:	Zip CPU backend for GNU Binutils
-+#
-+# Purpose:	This is a simple shell script providing some variables used
-+#		later and elsewhere by the ZipCPU linker.  Some things to note
-+#	are: 1) the TEXT_START_ADDR is set for the Basys-3 board I am using and
-+#	will likely need to change as your platform changes, 2) there currently
-+#	aren't any "pages" since the ZipCPU doesn't yet	support a memory
-+#	management unit, 3) the ENTRY point only works if a separate loader
-+#	is loading the ZipCPU into RAM.  In all other cases, place your startup
-+#	code directly at the top of the .start segment, and set the ZipCPU
-+#	to run from there.  It'll start then at the first address loaded in
-+#	memory.
-+#
-+# Creator:	Dan Gisselquist, Ph.D.
-+#		Gisselquist Technology, LLC
-+#
++##
++## Filename:	sw/binutils-2.27-zip/ld/emulparams/elf32zip.sh
++## {{{
++## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
++##
++## Purpose:	This is a simple shell script providing some variables used
++##		later and elsewhere by the ZipCPU linker.  Some things to note
++##	are: 1) the TEXT_START_ADDR is set for the Basys-3 board I am using and
++##	will likely need to change as your platform changes, 2) there currently
++##	aren't any "pages" since the ZipCPU doesn't yet	support a memory
++##	management unit, 3) the ENTRY point only works if a separate loader
++##	is loading the ZipCPU into RAM.  In all other cases, place your startup
++##	code directly at the top of the .start segment, and set the ZipCPU
++##	to run from there.  It'll start then at the first address loaded in
++##	memory.
++##
++## Creator:	Dan Gisselquist, Ph.D.
++##		Gisselquist Technology, LLC
++##
 +################################################################################
-+#
-+# Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+#
-+# This program is free software (firmware): you can redistribute it and/or
-+# modify it under the terms of  the GNU General Public License as published
-+# by the Free Software Foundation, either version 3 of the License, or (at
-+# your option) any later version.
-+#
-+# This program is distributed in the hope that it will be useful, but WITHOUT
-+# ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
-+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-+# for more details.
-+#
-+# License:	GPL, v3, as defined and found on www.gnu.org,
-+#		http://www.gnu.org/licenses/gpl.html
-+#
-+#
++## }}}
++## Copyright (C) 2016-2025, Gisselquist Technology, LLC
++## {{{
++## This program is free software (firmware): you can redistribute it and/or
++## modify it under the terms of the GNU General Public License as published
++## by the Free Software Foundation, either version 3 of the License, or (at
++## your option) any later version.
++##
++## This program is distributed in the hope that it will be useful, but WITHOUT
++## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
++## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++## for more details.
++##
++## You should have received a copy of the GNU General Public License along
++## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
++## target there if the PDF file isn't present.)  If not, see
++## <http://www.gnu.org/licenses/> for a copy.
++## }}}
++## License:	GPL, v3, as defined and found on www.gnu.org,
++## {{{
++##		http://www.gnu.org/licenses/gpl.html
++##
 +################################################################################
-+
++## }}}
 +SCRIPT_NAME=elf
 +TEMPLATE_NAME=elf32
 +ARCH=zip
@@ -6963,13 +6980,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/Makefile.in binutils
  @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2.27-zip/opcodes/zip-dis.c
 --- binutils-2.27-original/opcodes/zip-dis.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.c	2022-01-29 15:35:15.970486140 -0500
++++ binutils-2.27-zip/opcodes/zip-dis.c	2025-01-18 18:06:57.204532643 -0500
 @@ -0,0 +1,565 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip-dis.c
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/opcodes/zip-dis.c
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -6977,11 +6994,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -6994,10 +7011,10 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#include "config.h"
@@ -7532,13 +7549,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.c binutils-2
 +
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2.27-zip/opcodes/zip-dis.h
 --- binutils-2.27-original/opcodes/zip-dis.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-dis.h	2022-01-29 15:36:24.398024274 -0500
++++ binutils-2.27-zip/opcodes/zip-dis.h	2025-01-18 18:06:31.477016873 -0500
 @@ -0,0 +1,45 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip-dis.h
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/opcodes/zip-dis.h
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -7546,11 +7563,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -7560,18 +7577,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#ifndef	ZIP_DIS_H
 +#define	ZIP_DIS_H
-+
++// }}}
 +#include "config.h"
 +#include "dis-asm.h"
 +
@@ -7581,13 +7598,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-dis.h binutils-2
 +#endif
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2.27-zip/opcodes/zip-opc.c
 --- binutils-2.27-original/opcodes/zip-opc.c	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.c	2022-01-31 16:33:56.855270646 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.c	2025-01-18 18:05:54.785707433 -0500
 @@ -0,0 +1,369 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip-opc.c
++// Filename:	sw/binutils-2.27-zip/opcodes/zip-opc.c
 +// {{{
-+// Project:	Zip CPU backend for GNU Binutils
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -7596,7 +7613,7 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2015-2022, Gisselquist Technology, LLC
++// Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
 +// modify it under the terms of the GNU General Public License as published
@@ -7954,13 +7971,13 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.c binutils-2
 +
 diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2.27-zip/opcodes/zip-opc.h
 --- binutils-2.27-original/opcodes/zip-opc.h	1969-12-31 19:00:00.000000000 -0500
-+++ binutils-2.27-zip/opcodes/zip-opc.h	2022-01-29 15:36:20.210052540 -0500
++++ binutils-2.27-zip/opcodes/zip-opc.h	2025-01-18 18:05:20.630350240 -0500
 @@ -0,0 +1,77 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip-opc.h
-+//
-+// Project:	Zip CPU backend for GNU Binutils
++// Filename:	sw/binutils-2.27-zip/opcodes/zip-opc.h
++// {{{
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -7968,11 +7985,11 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2
 +//		Gisselquist Technology, LLC
 +//
 +////////////////////////////////////////////////////////////////////////////////
-+//
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
-+//
++// }}}
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
++// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -7982,18 +7999,18 @@ diff -Naur '--exclude=*.swp' binutils-2.27-original/opcodes/zip-opc.h binutils-2
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +#ifndef	ZIP_OPC_H
 +#define	ZIP_OPC_H
-+
++// }}}
 +#include <stdint.h>
 +
 +// MACROS used in the instruction definition list.
