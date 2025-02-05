@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	zipdma_mm2s.v
+// Filename:	rtl/zipdma/zipdma_mm2s.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -14,7 +14,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2022-2023, Gisselquist Technology, LLC
+// Copyright (C) 2022-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

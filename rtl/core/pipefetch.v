@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename:	pipefetch.v (DEPRECATED)
+// Filename:	rtl/core/pipefetch.v
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
@@ -30,7 +30,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2024 Gisselquist Technology, LLC
+// Copyright (C) 2015-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published
@@ -50,7 +50,6 @@
 // License:	GPL, v3, as defined and found on www.gnu.org,
 // {{{
 //		http://www.gnu.org/licenses/gpl.html
-//
 //
 ////////////////////////////////////////////////////////////////////////////////
 //

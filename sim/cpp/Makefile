@@ -1,6 +1,6 @@
 ################################################################################
 ##
-## Filename:	Makefile
+## Filename:	sim/cpp/Makefile
 ## {{{
 ## Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 ##
@@ -14,10 +14,10 @@
 ##
 ################################################################################
 ## }}}
-## Copyright (C) 2017-2024, Gisselquist Technology, LLC
+## Copyright (C) 2017-2025, Gisselquist Technology, LLC
 ## {{{
 ## This program is free software (firmware): you can redistribute it and/or
-## modify it under the terms of  the GNU General Public License as published
+## modify it under the terms of the GNU General Public License as published
 ## by the Free Software Foundation, either version 3 of the License, or (at
 ## your option) any later version.
 ##
