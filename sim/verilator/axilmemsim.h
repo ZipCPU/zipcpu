@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Filename: 	axilmemsim.h
+// Filename:	sim/verilator/axilmemsim.h
 // {{{
-// Project:	Zip CPU -- a small, lightweight, RISC CPU core
+// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
 // Purpose:	This creates a memory like device to act on a AXI-lite bus.
 //		It doesn't exercise the bus thoroughly, but does give some
@@ -13,7 +13,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 // }}}
-// Copyright (C) 2015-2024, Gisselquist Technology, LLC
+// Copyright (C) 2015-2025, Gisselquist Technology, LLC
 // {{{
 // This program is free software (firmware): you can redistribute it and/or
 // modify it under the terms of the GNU General Public License as published

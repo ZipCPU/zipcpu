@@ -109,13 +109,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/configure.ac gcc-10.3.0-zip/configure.ac
  
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c
 --- gcc-10.3.0/gcc/common/config/zip/zip-common.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c	2022-01-31 16:38:27.057427689 -0500
++++ gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c	2025-01-18 17:59:20.285130520 -0500
 @@ -0,0 +1,53 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	common/config/zip/zip-common.c
++// Filename:	sw/gcc-10.3.0-zip/gcc/common/config/zip/zip-common.c
 +// {{{
-+// Project:	Zip CPU backend for the GNU Compiler Collection
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	To eliminate the frame register automatically.
 +//
@@ -124,10 +124,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-1
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2022, Gisselquist Technology, LLC
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -137,7 +137,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/common/config/zip/zip-common.c gcc-1
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +// }}}
@@ -182,11 +182,11 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/compare-elim.c gcc-10.3.0-zip/gcc/co
  	  x = XEXP (x, 0);
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zip/gcc/config/zip/genzipops.c
 --- gcc-10.3.0/gcc/config/zip/genzipops.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2024-08-05 15:09:26.276164343 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/genzipops.c	2025-01-18 17:59:00.705498854 -0500
 @@ -0,0 +1,702 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename:	genzipops.c
++// Filename:	sw/gcc-10.3.0-zip/gcc/config/zip/genzipops.c
 +// {{{
 +// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
@@ -216,10 +216,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2017-2024, Gisselquist Technology, LLC
++// Copyright (C) 2017-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -232,10 +232,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +//
@@ -888,13 +888,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/genzipops.c gcc-10.3.0-zi
 +// }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/config/zip/zip.c
 --- gcc-10.3.0/gcc/config/zip/zip.c	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2024-08-05 15:09:01.172328497 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip.c	2025-01-27 14:21:33.566386291 -0500
 @@ -0,0 +1,3513 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip.c
++// Filename:	sw/gcc-10.3.0-zip/gcc/config/zip/zip.c
 +// {{{
-+// Project:	Zip CPU backend for the GNU Compiler Collection
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -903,10 +903,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2024, Gisselquist Technology, LLC
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -916,11 +916,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
 +//
 +////////////////////////////////////////////////////////////////////////////////
@@ -1212,7 +1213,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		case PLUS:
 +			// {{{
 +			if (!REG_P(XEXP(x, 0))) {
-+				fprintf(stderr, "Unsupported address construct\n");
++				fprintf(stderr, "ZIP:Unsupported address construct\n");
 +				zip_debug_rtx(x);
 +				abort();
 +			} gcc_assert(is_ZIP_REG(REGNO(XEXP(x,0))));
@@ -1280,7 +1281,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			// }}}
 +		default:
 +			// {{{
-+			fprintf(stderr, "Unknown address format\n");
++			fprintf(stderr, "ZIP:Unknown address format\n");
 +			zip_debug_rtx(x);
 +			abort(); break;
 +			// output_addr_const(file, x);
@@ -1341,6 +1342,11 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		LOSE_AND_RETURN("Need a scratch register", x);
 +		return;
 +
++		// }}}
++	case CONST_INT:
++		// {{{
++		fprintf(file, HOST_WIDE_INT_PRINT_DEC, INTVAL(x));
++		break;
 +		// }}}
 +	case CODE_LABEL:
 +	case LABEL_REF:
@@ -1471,7 +1477,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	int	args_size;
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-COMPUTE-FRAME: %s\n", current_function_name());
++	if (dbg) fprintf(stderr, "ZIP:ZIP-COMPUTE-FRAME: %s\n", current_function_name());
 +	// gcc_assert(crtl);
 +	gcc_assert(cfun);
 +	gcc_assert(cfun->machine);
@@ -1482,7 +1488,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	if(crtl->args.pretend_args_size > 0) {
 +		args_size += crtl->args.pretend_args_size;
-+		if (dbg) fprintf(stderr, "%s pretend_args_size : %d\n", current_function_name(),
++		if (dbg) fprintf(stderr, "ZIP:%s pretend_args_size : %d\n", current_function_name(),
 +			crtl->args.pretend_args_size);
 +		cfun->machine->pretend_size = crtl->args.pretend_args_size;
 +	}
@@ -1513,23 +1519,23 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			+ cfun->machine->saved_reg_size
 +			+ args_size;
 +	if(dbg) {
-+		fprintf(stderr, "\t---- STACK PTR ----\n");
-+		fprintf(stderr, "\tOUTGOIN-SIZE: %d\n",
++		fprintf(stderr, "ZIP:\t---- STACK PTR ----\n");
++		fprintf(stderr, "ZIP:\tOUTGOIN-SIZE: %d\n",
 +			(int)crtl->outgoing_args_size);
-+		fprintf(stderr, "\tLOCALS-SIZE : %d\n",
++		fprintf(stderr, "ZIP:\tLOCALS-SIZE : %d\n",
 +			cfun->machine->local_vars_size);
-+		fprintf(stderr, "\t---- FRAME PTR ----%s\n",
++		fprintf(stderr, "ZIP:\t---- FRAME PTR ----%s\n",
 +			cfun->machine->fp_needed?"":" (Eliminated)");
-+		fprintf(stderr, "\tREGISTERS   : %d\n",
++		fprintf(stderr, "ZIP:\tREGISTERS   : %d\n",
 +			cfun->machine->saved_reg_size);
-+		fprintf(stderr, "\tPRETEND SIZE: %d\n",
++		fprintf(stderr, "ZIP:\tPRETEND SIZE: %d\n",
 +			crtl->args.pretend_args_size);
-+		fprintf(stderr, "\t---- ARG PTR (Original SP, should be eliminated) ----\n");
-+		fprintf(stderr, "\t----\n");
-+		fprintf(stderr, "\tARGS-SIZE   : %d\n", args_size);
-+		fprintf(stderr, "\tSP_FP_OFFSET: %d\n",
++		fprintf(stderr, "ZIP:\t---- ARG PTR (Original SP, should be eliminated) ----\n");
++		fprintf(stderr, "ZIP:\t----\n");
++		fprintf(stderr, "ZIP:\tARGS-SIZE   : %d\n", args_size);
++		fprintf(stderr, "ZIP:\tSP_FP_OFFSET: %d\n",
 +			cfun->machine->sp_fp_offset);
-+		fprintf(stderr, "\tSP-ADJUSTMNT: %d\n",
++		fprintf(stderr, "ZIP:\tSP-ADJUSTMNT: %d\n",
 +			cfun->machine->size_for_adjusting_sp);
 +	}
 +}
@@ -1544,14 +1550,14 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// Compute Frame has already been calculated before coming into here
 +	//
 +	// zip_compute_frame();
-+	if (dbg)  fprintf(stderr, "PROLOGUE::SAVE-REGISTER\n");
++	if (dbg)  fprintf(stderr, "ZIP:PROLOGUE::SAVE-REGISTER\n");
 +
 +	int offset = 0, regno;
 +	for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
 +		// {{{
 +		if (zip_save_reg(regno)) {
 +			if (dbg) fprintf(stderr,
-+				"PROLOGUE::SAVE-REGISTER Saving R%d in %d+%d(SP)\n",
++				"ZIP:PROLOGUE::SAVE-REGISTER Saving R%d in %d+%d(SP)\n",
 +				regno, sp_offset_to_first_register, offset);
 +			insn=emit_insn(gen_movsi_sto_off(
 +				basereg_rtx,
@@ -1561,7 +1567,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			offset += 4;
 +		}
 +		// }}}
-+	} if (dbg)  fprintf(stderr, "%d registers saved%s\n", offset,
++	} if (dbg)  fprintf(stderr, "ZIP:%d registers saved%s\n", offset,
 +		(crtl->saves_all_registers)?", should be all of them":", less than all");
 +
 +}
@@ -1596,7 +1602,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	zip_compute_frame();
 +
-+	if (dbg)  fprintf(stderr, "PROLOGUE:::EXPAND-SMALL-PROLOGUE(SP-FP offset is %d)\n",
++	if (dbg)  fprintf(stderr, "ZIP:PROLOGUE:::EXPAND-SMALL-PROLOGUE(SP-FP offset is %d)\n",
 +		cfun->machine->sp_fp_offset);
 +
 +	insn = emit_insn(gen_subsi3(stack_pointer_rtx, stack_pointer_rtx,
@@ -1610,12 +1616,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		rtx	fp_rtx;
 +
 +		fp_rtx = gen_rtx_REG(SImode, zip_FP);
-+		if (dbg)  fprintf(stderr, "PROLOGUE:::EXPAND-SMALL-PROLOGUE(FP-NEEDED)\n");
++		if (dbg)  fprintf(stderr, "ZIP:PROLOGUE:::EXPAND-SMALL-PROLOGUE(FP-NEEDED)\n");
 +		if (dbg) zip_debug_rtx(stack_pointer_rtx);
 +		if (dbg) zip_debug_rtx(fp_rtx);
 +		if (cfun->machine->sp_fp_offset < zip_max_mov_offset) {
 +			if (dbg)  fprintf(stderr,
-+				"PROLOGUE:::EXPAND-SMALL-PROLOGUE() "
++				"ZIP:PROLOGUE:::EXPAND-SMALL-PROLOGUE() "
 +				"gen_movsi_reg_off(FP, SP, %d), %d < %ld\n",
 +				cfun->machine->sp_fp_offset,
 +				cfun->machine->sp_fp_offset,
@@ -1664,7 +1670,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	gcc_assert(cfun->machine->fp_needed);
 +
-+	if (dbg)	fprintf(stderr, "PROLOGUE::expand-large(%d-%d)\n",
++	if (dbg)	fprintf(stderr, "ZIP:PROLOGUE::expand-large(%d-%d)\n",
 +				cfun->machine->size_for_adjusting_sp,
 +				cfun->machine->sp_fp_offset);
 +	insn = emit_insn(gen_subsi3(stack_pointer_rtx, stack_pointer_rtx,
@@ -1696,12 +1702,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	zip_compute_frame();
 +
-+	if (dbg)  fprintf(stderr, "PROLOGUE: Computing Prologue instructions\n");
-+	if (dbg)  fprintf(stderr, "PROLOGUE: SP-FP offset is %d\n", 
++	if (dbg)  fprintf(stderr, "ZIP:PROLOGUE: Computing Prologue instructions\n");
++	if (dbg)  fprintf(stderr, "ZIP:PROLOGUE: SP-FP offset is %d\n", 
 +			cfun->machine->sp_fp_offset);
 +	if (cfun->machine->size_for_adjusting_sp != 0) {
 +		if (cfun->machine->size_for_adjusting_sp <= zip_max_anchor_offset) {
-+			if (dbg)  fprintf(stderr, "PROLOGUE: "
++			if (dbg)  fprintf(stderr, "ZIP:PROLOGUE: "
 +					"%d <= %ld, so going small\n",
 +					cfun->machine->size_for_adjusting_sp,
 +					zip_max_opb_imm);
@@ -1775,7 +1781,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	zip_compute_frame();
 +
-+	if (dbg) fprintf(stderr, "EPILOG::\n");
++	if (dbg) fprintf(stderr, "ZIP:EPILOG::\n");
 +	if (cfun->machine->fp_needed) { // Frame pointer necessary
 +		// {{{
 +		rtx	fp_rtx;
@@ -1786,7 +1792,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// trust its offset enough to restore from it.  Hence, we start
 +		// by moving the frame pointer to the stack pointer to recover
 +		// the stack pointer back to a usable value.
-+		if (dbg) fprintf(stderr, "EPILOG::Moving frame pointer to stack register\n");
++		if (dbg) fprintf(stderr, "ZIP:EPILOG::Moving frame pointer to stack register\n");
 +		insn = emit_insn(gen_movsi_raw(stack_pointer_rtx, fp_rtx));
 +		RTX_FRAME_RELATED_P(insn) = 1;
 +		// }}}
@@ -1798,12 +1804,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			offset = 0;
 +		else
 +			offset = cfun->machine->sp_fp_offset;
-+		if (dbg) fprintf(stderr, "EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
++		if (dbg) fprintf(stderr, "ZIP:EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
 +		for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
 +			// Restore registers from the stack
 +			// {{{
 +			if (zip_save_reg(regno)) {
-+				if (dbg) fprintf(stderr, "EPILOG::RESTORING R%d from SP+%d\n", regno, offset);
++				if (dbg) fprintf(stderr, "ZIP:EPILOG::RESTORING R%d from SP+%d\n", regno, offset);
 +				rtx reg = gen_rtx_REG(SImode, regno);
 +				insn = emit_insn(gen_movsi_lod_off(
 +						reg,
@@ -1833,7 +1839,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// {{{
 +		// else now the difference is between the stack pointer and
 +		// the original stack pointer.
-+		if (dbg) fprintf(stderr, "EPILOG::ADDSI3(StackPtr, %d)\n",
++		if (dbg) fprintf(stderr, "ZIP:EPILOG::ADDSI3(StackPtr, %d)\n",
 +				cfun->machine->size_for_adjusting_sp);
 +		insn = emit_insn(gen_addsi3(stack_pointer_rtx,
 +			stack_pointer_rtx,
@@ -1841,7 +1847,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		RTX_FRAME_RELATED_P(insn) = 1;
 +		// }}}
 +	}
-+	if (dbg) fprintf(stderr, "EPILOG::EMITTING-RETURN\n");
++	if (dbg) fprintf(stderr, "ZIP:EPILOG::EMITTING-RETURN\n");
 +
 +	// The return RTX is not allowed to be frame related
 +	insn = emit_jump_insn(ret_rtx);
@@ -1858,7 +1864,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +
 +	zip_compute_frame();
 +
-+	if (dbg) fprintf(stderr, "EPILOG::\n");
++	if (dbg) fprintf(stderr, "ZIP:EPILOG::\n");
 +	if (cfun->machine->fp_needed) {
 +		rtx	fp_rtx;
 +
@@ -1868,7 +1874,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// trust its offset enough to restore from it.  Hence, we start
 +		// by moving the frame pointer to the stack pointer to recover
 +		// the stack pointer back to a usable value.
-+		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::Moving frame pointer to stack register\n");
++		if (dbg) fprintf(stderr, "ZIP:SIBCALL-EPILOG::Moving frame pointer to stack register\n");
 +		insn = emit_insn(gen_movsi_raw(stack_pointer_rtx, fp_rtx));
 +		RTX_FRAME_RELATED_P(insn) = 1;
 +	}
@@ -1878,11 +1884,11 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			offset = 0;
 +		else
 +			offset = cfun->machine->sp_fp_offset;
-+		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
++		if (dbg) fprintf(stderr, "ZIP:SIBCALL-EPILOG::Saved_REG_Size = %d\n", cfun->machine->saved_reg_size);
 +		for(regno=0; regno < FIRST_PSEUDO_REGISTER; regno++) {
 +			// {{{
 +			if (zip_save_reg(regno)) {
-+				if (dbg) fprintf(stderr, "SIBCALL-EPILOG::RESTORING R%d\n", regno);
++				if (dbg) fprintf(stderr, "ZIP:SIBCALL-EPILOG::RESTORING R%d\n", regno);
 +				rtx reg = gen_rtx_REG(SImode, regno);
 +				insn = emit_insn(gen_movsi_lod_off(
 +						reg,
@@ -1910,7 +1916,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// {{{
 +		// else now the difference is between the stack pointer and
 +		// the original stack pointer.
-+		if (dbg) fprintf(stderr, "SIBCALL-EPILOG::ADDSI3(StackPtr, %d)\n",
++		if (dbg) fprintf(stderr, "ZIP:SIBCALL-EPILOG::ADDSI3(StackPtr, %d)\n",
 +				cfun->machine->size_for_adjusting_sp);
 +		insn = emit_insn(gen_addsi3(stack_pointer_rtx,stack_pointer_rtx,
 +			GEN_INT(cfun->machine->size_for_adjusting_sp)));
@@ -2036,7 +2042,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +zip_can_eliminate(int from ATTRIBUTE_UNUSED, int to) {
 +	// {{{
 +	/*
-+	fprintf(stderr, "CAN_ELIMINATE::QUERYING(");
++	fprintf(stderr, "ZIP:CAN_ELIMINATE::QUERYING(");
 +
 +	if (from == zip_FP_PSEUDO)
 +		fprintf(stderr, "FP-P, ");
@@ -2153,87 +2159,9 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +/* DECL is the declaration of the function being targeted by the call, and EXP
 + * is the CALL_EXPR representing the call.
 + */
-+// #ifdef	COME_BACK_AND_FIXME
 +bool	zip_function_ok_for_sibcall(ATTRIBUTE_UNUSED tree decl, tree exp) {
 +	// {{{
-+	// calls.c already checks whether or not the parameter stack space
-+	// is identical, so ... let's hope this all works and find out.
-+	//
-+	// Actually, this will fail:  If the sibling uses R5 to pass registers
-+	// in and we don't, then there will be no way to restore R5.  This is
-+	// true for the current configuration.  It will be true for future
-+	// configurations if the sibling ever uses a register that must be
-+	// saved as a parameter register.
-+	//
-+	// We can check this ... if we can count how many registers the
-+	// sibling call will use.
-+	//
-+	CUMULATIVE_ARGS	cum_v;
-+	cumulative_args_t	cum;
-+	tree		parameter;
-+	machine_mode	mode;
-+	tree		ttype;
-+	rtx		parm_rtx;
-+	int		i;
-+	static const char zip_call_used_register[] = CALL_USED_REGISTERS;
-+
-+	INIT_CUMULATIVE_ARGS(cum_v, NULL, NULL, 0,0);
-+	cum = pack_cumulative_args(&cum_v);
-+
-+	if (call_expr_nargs(exp) > 3)
-+		return false;
-+
-+	for (i=0; i<call_expr_nargs(exp); i++) {
-+
-+		parameter = CALL_EXPR_ARG(exp, i);
-+
-+		if ((!parameter) || (TREE_CODE(parameter)==ERROR_MARK))
-+			return true;
-+		ttype = TREE_TYPE(parameter);
-+		gcc_assert(ttype);
-+		mode = ttype->type_common.mode;
-+
-+		function_arg_info arg(const_cast<tree>(ttype), mode,
-+						/*named=*/true);
-+		if (pass_by_reference(&cum_v, arg)) {
-+			mode = Pmode;
-+			ttype = build_pointer_type(ttype);
-+		}
-+
-+		parm_rtx = zip_function_arg(cum, arg);
-+		zip_function_arg_advance(cum, arg);
-+		if (!parm_rtx)
-+			continue;
-+
-+		// If it is a register
-+		//	and it is *NOT* a CALL_USED_REGISTER
-+		//	then we can't do this.
-+		//
-+		// Example: func(R1,..R4,R5)
-+		//	can be followed by func2(R1,.., up to R5)
-+		//	(not supported, though... just to simplify our test
-+		//	below)
-+		// Example: func(R1,..R4)
-+		//	cannot be followed by func2(R1,..,R5)
-+		//	We would blow R5 away by our prologue, even if it was
-+		//	properly set.
-+		// Example: func(R1,..R5)
-+		//	can be followed by func2(R1,.., up to R4)
-+		//	func2 may save R5 (which doesn't need saving) but that's
-+		//		irrelevant
-+		// Example: func(R1,..up to R4)
-+		//	can be followed by func2(R1,.., up to R4)
-+		//	
-+		if (REG_P(parm_rtx)&&(REGNO(parm_rtx))
-+				&&((REGNO(parm_rtx)>=sizeof(zip_call_used_register))
-+				||(!zip_call_used_register[REGNO(parm_rtx)])))
-+			return false;
-+	}
-+
-+	return true;
-+
-+	// We also need to check if the return types are the same ... or
-+	// will GCC handle that for us?
++	return false;
 +}
 +// }}}
 +// #endif
@@ -2251,7 +2179,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	ZIPDEBUGFLAG(dbg, false);
 +	bool	reverse = false;
 +
-+	if (dbg) fprintf(stderr, "CANONICALIZE ...%s\n", (preserve_op0)?"(Preserve Op0)":"");
++	if (dbg) fprintf(stderr, "ZIP:CANONICALIZE ...%s\n", (preserve_op0)?"(Preserve Op0)":"");
 +	if (dbg) zip_debug_rtx_pfx("CODE", gen_rtx_fmt_ee((rtx_code)*code, VOIDmode, gen_rtx_REG(CCmode,zip_CC), const0_rtx));
 +	if (dbg) zip_debug_rtx_pfx("OP0 ", *op0);
 +	if (dbg) zip_debug_rtx_pfx("OP1 ", *op1);
@@ -2608,7 +2536,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ADDRESS COST ...\n");
++	if (dbg) fprintf(stderr, "ZIP:ADDRESS COST ...\n");
 +	if (dbg) zip_debug_rtx_pfx("ADDR ", addr);
 +
 +	if (GET_CODE(addr) == PLUS) {
@@ -3200,7 +3128,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// }}}
 +	case ASHIFT:
 +		// {{{
-+		zip_debug_print_m_file(fp, pfx, lvl, "(ASHIFT", GET_MODE(x));
++		zip_debug_print_m_file(fp, pfx, lvl, "(ASHIFTL", GET_MODE(x));
 +		zip_debug_rtx_1_file(fp, pfx, XEXP(x,0),lvl+1);
 +		zip_debug_rtx_1_file(fp, pfx, XEXP(x,1),lvl+1);
 +		zip_debug_print_file(fp, pfx, lvl, ")");
@@ -3241,6 +3169,18 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		zip_debug_print_m_file(fp, pfx, lvl, "(CLOBBER", GET_MODE(x));
 +		zip_debug_rtx_1_file(fp, pfx, XEXP(x,0),lvl+1);
 +		zip_debug_print_file(fp, pfx, lvl, ")");
++		break;
++		// }}}
++	case USE:
++		// {{{
++		zip_debug_print_m_file(fp, pfx, lvl, "(USE", GET_MODE(x));
++		zip_debug_rtx_1_file(fp, pfx, XEXP(x,0),lvl+1);
++		zip_debug_print_file(fp, pfx, lvl, ")");
++		break;
++		// }}}
++	case SIMPLE_RETURN:
++		// {{{
++		zip_debug_print_file(fp, pfx, lvl, "(SIMPLE_RETURN)");
 +		break;
 +		// }}}
 +	default:
@@ -3357,7 +3297,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB\n");
 +	if (dbg) zip_debug_rtx_pfx("Test: ", x);
 +
 +	if (NULL_RTX == x)
@@ -3366,21 +3306,21 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			&&(GET_MODE(x) != HImode)
 +			&&(GET_MODE(x) != SImode)
 +			&&(GET_MODE(x) != VOIDmode)) {
-+		if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> Mode failure\n");
++		if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> Mode failure\n");
 +		return false;
 +	} else if ((strict)&&(REG_P(x))) {
 +		if (REGNO(x)<zip_CC) {
-+			if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> (Reg)\n");
++			if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> (Reg)\n");
 +			return true;
 +		} else return false;
 +	} else if (register_operand(x, GET_MODE(x))) {
 +		// This also handles subregs
-+		if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> (Reg)\n");
++		if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> (Reg)\n");
 +		return true;
 +	} else if ((CONST_INT_P(x))
 +		&&(INTVAL(x) >= zip_min_opb_imm)
 +		&&(INTVAL(x) <= zip_max_opb_imm)) {
-+		if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> YES! (Const) %ld <= %ld <= %ld\n", (long)zip_min_opb_imm, (long)INTVAL(x), (long)zip_max_opb_imm);
++		if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> YES! (Const) %ld <= %ld <= %ld\n", (long)zip_min_opb_imm, (long)INTVAL(x), (long)zip_max_opb_imm);
 +		return true;
 +	// } else if ((GET_CODE(x) == LABEL_REF)||(GET_CODE(x)==CODE_LABEL)) {
 +		// return true;
@@ -3388,7 +3328,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// Is it a valid register?
 +		rtx	regrtx = XEXP(x, 0);
 +		if ((!strict)&&(!REG_P(regrtx))) {
-+			if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> No (No reg in +%s)\n",
++			if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> No (No reg in +%s)\n",
 +			(GET_CODE(XEXP(x,1))==REG)?", reg in op[1]":"");
 +			return false;
 +		} else if ((strict)&&((!REG_P(XEXP(x,0)))||(REGNO(XEXP(x,0))>=zip_CC))) {
@@ -3396,7 +3336,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		} if ((GET_CODE(XEXP(x, 1)) == CONST_INT)
 +			&&(INTVAL(XEXP(x, 1)) <= zip_max_anchor_offset)
 +			&&(INTVAL(XEXP(x, 1)) >= zip_min_anchor_offset)) {
-+			if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> YES! (reg+int)\n");
++			if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> YES! (reg+int)\n");
 +			// if((INTVAL(XEXP(x,1))<0)&&(REGNO(XEXP(x,0))==zip_SP))
 +				// gcc_unreachable();
 +			return true;
@@ -3407,12 +3347,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			// is that the symbol address could be anywhere, and we
 +			// have no way of recovering if it's outside of our
 +			// 14 allowable bits.
-+			if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> No. (reg+lbl)\n");
++			if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> No. (reg+lbl)\n");
 +			return false;
 +		}
 +	}
 +
-+	if (dbg) fprintf(stderr, "ZIP-LEGITIMATE-OPB -> No\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-LEGITIMATE-OPB -> No\n");
 +	if (dbg) zip_debug_rtx(x);
 +	return false;
 +}
@@ -3423,7 +3363,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-VALID-MOVE-OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-MOVE-OPERAND\n");
 +	if (dbg) zip_debug_rtx_pfx("VMov?: ", x);
 +
 +	if (!zip_legitimate_opb(x, strict))
@@ -3431,12 +3371,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	else if ((GET_CODE(x)==PLUS)&&(CONST_INT_P(XEXP(x,1)))) {
 +		if ((INTVAL(XEXP(x, 1)) > zip_max_mov_offset)
 +			||(INTVAL(XEXP(x, 1)) < zip_min_mov_offset)) {
-+			if (dbg) fprintf(stderr, "ZIP-VALID-MOVE-OPERAND -> NO! (reg+int), int out of bounds: %ld\n", (long)INTVAL(XEXP(x,1)));
++			if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-MOVE-OPERAND -> NO! (reg+int), int out of bounds: %ld\n", (long)INTVAL(XEXP(x,1)));
 +			return false;
 +		}
 +	}
 +
-+	if (dbg) fprintf(stderr, "ZIP-VALID-MOVE-OPERAND -> Yes\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-MOVE-OPERAND -> Yes\n");
 +	if (dbg) zip_debug_rtx(x);
 +	return true;
 +}
@@ -3447,7 +3387,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-VALID-MOV(predicate) for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-MOV(predicate) for OPERAND\n");
 +	return zip_legitimate_move_operand_p(VOIDmode, op, !can_create_pseudo_p());
 +}
 +// }}}
@@ -3457,7 +3397,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-VALID-MVIMM(predicate) for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-MVIMM(predicate) for OPERAND\n");
 +	if (!CONST_INT_P(op))
 +		return false;
 +	if (INTVAL(op) > zip_max_mov_offset)
@@ -3473,7 +3413,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-VALID-IMM(predicate) for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-VALID-IMM(predicate) for OPERAND\n");
 +	if (!CONST_INT_P(op))
 +		return false;
 +	if (INTVAL(op) > zip_max_anchor_offset)
@@ -3489,7 +3429,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-ADDRESS for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-ADDRESS for OPERAND\n");
 +	if ((REG_P(op))&&(REGNO(op)==zip_CC))
 +		return false;
 +	else if ((GET_CODE(op) == PLUS)&&(REG_P(XEXP(op,0)))
@@ -3505,7 +3445,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-OPB(predicate) for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-OPB(predicate) for OPERAND\n");
 +	return zip_legitimate_opb(op, false); //, !can_create_pseudo_p());
 +}
 +// }}}
@@ -3515,8 +3455,39 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-ADDRESS(constraint) for OPERAND\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-ADDRESS(constraint) for OPERAND\n");
 +	return zip_legitimate_opb(op, !can_create_pseudo_p());
++}
++// }}}
++
++int
++zip_sibcall_address_operand(rtx op) {
++	// {{{
++	ZIPDEBUGFLAG(dbg, false);
++	bool strict = !can_create_pseudo_p();
++	int	rnum;
++
++	if (dbg) fprintf(stderr, "ZIP:ZIP-SIBADDR(constraint%s) for OPERAND\n", strict ? ",strict":"");
++	if (!zip_legitimate_opb(op, strict))
++		return 0;
++
++	if (dbg) zip_debug_rtx_pfx("Sibcall check: ", op);
++
++	if (!strict)
++		return 1;
++
++	rnum = -1;
++	if (REG_P(op)) {
++		rnum = REGNO(op);
++		return (rnum == JUMP_REG);
++	} else if (GET_CODE(op) == PLUS) {
++		// Is it a valid register?
++		rtx	regrtx = XEXP(op, 0);
++		if (!REG_P(regrtx)) {
++			return 0;
++		} if (JUMP_REG != REGNO(regrtx))
++			return 0;
++	} return 1;
 +}
 +// }}}
 +
@@ -3525,31 +3496,31 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS?\n");
++	if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS?\n");
 +	if (dbg) zip_debug_rtx(x);
 +	if ((GET_MODE(x) != SImode)&&(GET_MODE(x) != VOIDmode)) {
-+		fprintf(stderr, "is ZIP-CONST-ADDRESS? -> NO, BAD MODE\n");
++		fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS? -> NO, BAD MODE\n");
 +		return false;
 +	}
 +	if ((GET_CODE(x) == LABEL_REF)
 +			||(GET_CODE(x) == CODE_LABEL)
 +			||(GET_CODE(x) == SYMBOL_REF)) {
-+		if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS? -> YES! (LBL)\n");
++		if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS? -> YES! (LBL)\n");
 +		return true;
 +	} else if (CONST_INT_P(x)) {
-+		if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS? -> YES! (INT)\n");
++		if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS? -> YES! (INT)\n");
 +		return true;
 +	} else if (GET_CODE(x) == PLUS) {
-+		if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS(PLUS)\n");
++		if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS(PLUS)\n");
 +		return ((zip_const_address_operand(XEXP(x,0)))
 +			&&(CONST_INT_P(XEXP(x,1))));
 +	} else if (GET_CODE(x) == MINUS) {
-+		if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS(MINUS)\n");
++		if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS(MINUS)\n");
 +		return ((zip_const_address_operand(XEXP(x,0)))
 +			&&(zip_const_address_operand(XEXP(x,1))));
 +	}
 +
-+	if (dbg) fprintf(stderr, "is ZIP-CONST-ADDRESS? -> No\n");
++	if (dbg) fprintf(stderr, "ZIP:is ZIP-CONST-ADDRESS? -> No\n");
 +	if (dbg) zip_debug_rtx(x);
 +	return false;
 +}
@@ -3560,7 +3531,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-CONST-ADDRESS(constraint)\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-CONST-ADDRESS(constraint)\n");
 +	return zip_const_address_operand(x);
 +}
 +// }}}
@@ -3570,7 +3541,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "ZIP-CONST-ADDRESS(predicate)\n");
++	if (dbg) fprintf(stderr, "ZIP:ZIP-CONST-ADDRESS(predicate)\n");
 +	return zip_const_address_operand(x);
 +}
 +// }}}
@@ -3580,7 +3551,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg, false);
 +
-+	if (dbg) fprintf(stderr, "Zip-LEGITIMATE-ADDRESS-P\n");
++	if (dbg) fprintf(stderr, "ZIP:Zip-LEGITIMATE-ADDRESS-P\n");
 +	if (dbg) zip_debug_rtx(x);
 +
 +	// Only insist the register be a valid register if strict is true
@@ -3714,47 +3685,64 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// MOV REG->REG
 +	// {{{
 +	if ((REG_P(dst))&&(REG_P(src))) {
-+		// {{{
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- REG->REG\n");
 +
 +		emit_insn(gen_movdi_raw(dst, src));
 +		return 1;
-+		// }}}
 +	}
 +	// }}}
 +
 +	// MOV SUBREG->REG
 +	// {{{
 +	if ((REG_P(dst))&&(SUBREG_P(src))) {
-+		// {{{
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- SUBREG->REG\n");
 +
 +		if (GET_MODE(src)==DImode) {
 +			emit_insn(gen_movdi_raw(dst, src));
 +			return 1;
 +		}
-+		// }}}
++/*
++		if (GET_MODE(src)==SImode) {
++			poly_uint64	lo = 0, hi = 4;
++			rtx	zero = CONST0_RTX(SImode);
++
++			emit_insn(gen_movsi_raw(
++				gen_rtx_SUBREG(SImode, dst, lo),
++				src));
++			emit_insn(gen_movsi_raw(
++				gen_rtx_SUBREG(SImode, dst, hi),
++				zero));
++			return 1;
++		}
++*/
 +	}
 +	// }}}
 +
 +	// MOV REG->SUBREG
 +	// {{{
 +	if ((SUBREG_P(dst))&&(REG_P(src))) {
-+		// {{{
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- REG->SUBREG\n");
 +
 +		if (GET_MODE(dst)==DImode) {
 +			emit_insn(gen_movdi_raw(dst, src));
 +			return 1;
 +		}
-+		// }}}
++/*
++		if (GET_MODE(dst)==SImode) {
++			poly_uint64	lo = 0;
++
++			emit_insn(gen_movsi_raw(
++				dst,
++				gen_rtx_SUBREG(SImode, src, lo)));
++			return 1;
++		}
++*/
 +	}
 +	// }}}
 +
 +	// MOV REG->MEM (a store instruction)
 +	// {{{
 +	if ((MEM_P(dst))&&(REG_P(src))) {
-+		// {{{
 +		rtx	addr = XEXP(dst,0);
 +		long	offset = 0;
 +		if ((GET_CODE(addr)==PLUS)&&(CONST_INT_P(XEXP(addr,1))))
@@ -3778,14 +3766,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			emit_insn(gen_movdi_raw(gen_rtx_MEM(DImode, tmp), src));
 +			return 1;
 +		}
-+		// }}}
 +	}
 +	// }}}
 +
 +	// MOV MEM->REG (a load instruction)
 +	// {{{
 +	if ((REG_P(dst))&&(MEM_P(src))) {
-+		// {{{
 +		rtx addr = XEXP(src,0);
 +		long	offset = 0;
 +		if ((GET_CODE(addr)==PLUS)&&(CONST_INT_P(XEXP(addr,1))))
@@ -3813,18 +3799,31 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			return 1;
 +		} else if (dbg)
 +			fprintf(stderr, "ZIP::MOVDI -- MEM[?]->REG (no match)\n");
-+		// }}}
 +	}
 +	// }}}
 +
 +	// MOV #->REG (An LDI instruction, but for DIwords)
 +	// {{{
 +	if ((CONST_INT_P(src))&&(REG_P(dst))) {
-+		// {{{
 +		if (dbg) fprintf(stderr, "ZIP::MOVDI -- IMM->REG\n");
++
 +		emit_insn(gen_movdi_raw(dst, src));
++/*
++		poly_uint64	lo = 0, hi = 4;
++		long value = INTVAL(src);
++
++		int	lv, hv;
++
++		lv = (int)value;
++		hv = (int)(value >> 32);
++
++		emit_insn(gen_movsi_raw(gen_rtx_SUBREG(SImode, dst, lo),
++			gen_rtx_CONST_INT(SImode, lv)));
++		emit_insn(gen_movsi_raw(gen_rtx_SUBREG(SImode, dst, hi),
++			gen_rtx_CONST_INT(SImode, hv)));
++		emit_insn(gen_movsi_raw(dst, src));
++*/
 +		return 1;
-+		// }}}
 +	}
 +	// }}}
 +
@@ -3945,10 +3944,9 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +zip_ifcvt_modify_tests(ce_if_block *ce_info ATTRIBUTE_UNUSED, rtx *true_expr, rtx *false_expr) {
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
-+	if (dbg) fprintf(stderr, "IFCVT-MODIFY-TESTS\n");
-+	if (dbg) fprintf(stderr, "IFCVT-MODIFY-TESTS\n");
++	if (dbg) fprintf(stderr, "ZIP:IFCVT-MODIFY-TESTS\n");
 +	if (dbg) zip_debug_rtx_pfx("  TRU", *true_expr);
-+	if (dbg) zip_debug_rtx_pfx("  TLS", *false_expr);
++	if (dbg) zip_debug_rtx_pfx("  FLS", *false_expr);
 +
 +	if (*true_expr) switch(GET_CODE(*true_expr)) {
 +		// {{{
@@ -3980,7 +3978,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		// }}}
 +	}
 +	if ((dbg)&&((!*true_expr)||(!*false_expr)))
-+		fprintf(stderr, "IFCVT-MODIFY-TESTS -- FAIL\n");
++		fprintf(stderr, "ZIP:IFCVT-MODIFY-TESTS -- FAIL\n");
 +}
 +// }}}
 +
@@ -3989,14 +3987,14 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "IFCVT-MODIFY-MULTIPLE-TESTS\n");
-+	if (dbg) zip_debug_rtx_pfx("  TRU", *true_expr);
-+	if (dbg) zip_debug_rtx_pfx("  TLS", *false_expr);
++	if (dbg) fprintf(stderr, "ZIP:IFCVT-MODIFY-MULTIPLE-TESTS\n");
++	if (dbg) zip_debug_rtx_pfx("ZIP:  TRU", *true_expr);
++	if (dbg) zip_debug_rtx_pfx("ZIP:  TLS", *false_expr);
 +
 +	*true_expr = NULL_RTX;
 +
 +	if ((dbg)&&((!*true_expr)||(!*false_expr)))
-+		fprintf(stderr, "IFCVT-MODIFY-MULTIPLE-TESTS -- FAIL (not really implemented yet)\n");
++		fprintf(stderr, "ZIP:IFCVT-MODIFY-MULTIPLE-TESTS -- FAIL (not really implemented yet)\n");
 +}
 +// }}}
 +
@@ -4005,7 +4003,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "IFCVT-MACHDEP-INIT\n");
++	if (dbg) fprintf(stderr, "ZIP:IFCVT-MACHDEP-INIT\n");
 +}
 +// }}}
 +
@@ -4015,17 +4013,19 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +		rtx_insn *insn ATTRIBUTE_UNUSED) {
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) zip_debug_rtx_pfx("IF-CVT MODIFY-INSN: ", insn);
-+	if (dbg) zip_debug_rtx_pfx("IF-CVT MODIFY-PATTERN: ", pattern);
++	if (dbg) zip_debug_rtx_pfx("ZIP:IF-CVT MODIFY-INSN: ", insn);
++	if (dbg) zip_debug_rtx_pfx("ZIP:IF-CVT MODIFY-PATTERN: ", pattern);
 +	if (GET_CODE(pattern) == COND_EXEC) {
 +		// Should always get here
 +		rtx	op = COND_EXEC_CODE(pattern);
 +
++		if (dbg) fprintf(stderr, "ZIP:COND-EXEC\n");
 +		if ((GET_CODE(op) == PARALLEL)
 +			&& (XVECLEN(op, 0) == 2)
 +			&& (GET_CODE(XVECEXP(op, 0, 1)) == CLOBBER)) {
 +			rtx	clobber_target, set;
 +
++			if (dbg) fprintf(stderr, "ZIP:COND-EXEC/PARALLEL\n");
 +			set = XVECEXP(op, 0, 0);
 +
 +			clobber_target = XEXP(XVECEXP(op, 0, 1),0);
@@ -4053,7 +4053,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +			}
 +		} else {
 +			if (dbg) zip_debug_rtx_pfx("IF-CVT MISSED: ",
-+				XVECEXP(op, 0, 1));
++				pattern);
 +		}
 +	}
 +}
@@ -4063,7 +4063,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.c gcc-10.3.0-zip/gcc/
 +	// {{{
 +	ZIPDEBUGFLAG(dbg,false);
 +
-+	if (dbg) fprintf(stderr, "IFCVT -- CANCEL\n");
++	if (dbg) fprintf(stderr, "ZIP:IFCVT -- CANCEL\n");
 +/*
 +	zip_ifcvt_info = NULL;
 +*/
@@ -4418,8 +4418,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zipdbg.h gcc-10.3.0-zip/g
 +#endif
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/gcc/config/zip/zip-di.md
 --- gcc-10.3.0/gcc/config/zip/zip-di.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2024-08-05 15:21:31.395437019 -0400
-@@ -0,0 +1,590 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip-di.md	2025-02-01 15:31:35.891208724 -0500
+@@ -0,0 +1,989 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip-di.md
@@ -4437,7 +4437,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2024, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -4465,6 +4465,47 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +		(match_operand:DI 1 "general_operand" ""))]
 +	"(ZIP_HAS_DI)"
 +	{
++		//; fprintf(stderr, "ZIP-MD(MOVDI):\n");
++
++/*
++		if (can_create_pseudo_p()) {
++			poly_uint64	lo = 4, hi = 0;
++			rtx		oplo, ophi, op1 = operands[1];
++
++			oplo = gen_reg_rtx(SImode);
++			ophi = gen_reg_rtx(SImode);
++
++			if (!REG_P(op1)) {
++				op1 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op1, operands[1]));
++			}
++
++			emit_insn(gen_movsi(ophi,
++				gen_rtx_SUBREG(SImode, op1, hi)));
++			emit_insn(gen_movsi(oplo,
++				gen_rtx_SUBREG(SImode, op1, lo)));
++
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], hi), ophi));
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], lo), oplo));
++			DONE;
++		}
++*/
++
++/*
++		if (REG_P(operands[0]) && REG_P(operands[1])) {
++			poly_uint64	lo = 4, hi = 0;
++
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], lo),
++				gen_rtx_SUBREG(SImode, operands[1], lo)));
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], hi),
++				gen_rtx_SUBREG(SImode, operands[1], hi)));
++			DONE;
++		}
++*/
 +		if (zip_expand_movdi(operands[0], operands[1]))
 +			DONE;
 +		FAIL;
@@ -4479,6 +4520,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +		(match_operand:DI 1 "general_operand" "r,r,Q,i"))]
 +	"(ZIP_HAS_DI)"
 +	{
++		//; fprintf(stderr, "ZIP-MD(MOVDI-RAW):\n");
++
 +		if ((REG_P(operands[0]))&&(REG_P(operands[1])))
 +		// {{{
 +			return	"MOV %H1,%H0\t; MOV:DI\n\tMOV %L1,%L0";
@@ -4541,12 +4584,74 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +; The following may appear to be a rather backwards ordering.  It is required,
 +; however, to add H2 to H0 prior to adding the carry--otherwise H2 might also
 +; be H0, and the carry would then be added twice.
-+(define_insn "adddi3"
++(define_expand "adddi3"
++	[(parallel
++		[(set (match_operand:DI 0 "register_operand" "")
++			(plus:DI (match_operand:DI 1 "register_operand" "")
++				(match_operand:DI 2 "register_operand" "")))
++		(clobber (reg:CC CC_REG))]
++	)]
++	"(ZIP_HAS_DI)"
++	{
++		if (can_create_pseudo_p()) {
++			rtx	op0l, op0h, op2l, op2h, op1, op2;
++			poly_uint64	lo = 4, hi = 0;
++
++			// Create a whole bunch of pseudo-registers to do this
++			op0l = gen_reg_rtx(SImode);
++			op0h = gen_reg_rtx(SImode);
++			op1 = operands[1];
++			op2 = operands[2];
++
++			if (!REG_P(operands[1])) {
++				op1 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op1, operands[1]));
++			} if (!REG_P(operands[2])) {
++				op2 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op2, operands[2]));
++			}
++
++
++			emit_insn(gen_movsi(
++				op0l = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, op1, lo)));
++			emit_insn(gen_movsi(
++				op2l = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, op2, lo)));
++
++			emit_insn(gen_movsi(
++				op0h = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, op1, hi)));
++			emit_insn(gen_movsi(
++				op2h = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, op2, hi)));
++
++			// Now let's do the add ...
++			emit_insn(gen_addsi3(op0h, op0h, op2h));
++			emit_insn(gen_addsi3_raw(op0l, op0l, op2l));
++			// Don't forget to carry into the upper word
++			emit_insn(gen_addsi3_cltu(op0h, op0h,
++						CONST1_RTX(SImode)));
++
++			// Then put the result back into the DI register that's
++			//   supposed to be our result.
++			emit_insn(gen_movsi(gen_rtx_SUBREG(SImode, operands[0], lo), op0l));
++			emit_insn(gen_movsi(gen_rtx_SUBREG(SImode, operands[0], hi), op0h));
++
++			DONE;
++		} else
++			FAIL; // else ... go fish for adddi3_bare
++	}
++	; "ADD	%H2,%H0\t; ADD:DI
++	; ADD\t%L2,%L0
++	; ADD.C\t1,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "3")])
++(define_insn "adddi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(plus:DI (match_operand:DI 1 "register_operand" "0")
 +			(match_operand:DI 2 "register_operand" "r")))
-+	(clobber (reg:CC CC_REG))
-+	]
++	(clobber (reg:CC CC_REG))]
 +	"(ZIP_HAS_DI)"
 +	"ADD	%H2,%H0\t; ADD:DI
 +	ADD\t%L2,%L0
@@ -4559,7 +4664,63 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +; SUB
 +; {{{
 +; See the comments regarding adddi3 above to explain the operand ordering.
-+(define_insn "subdi3"
++(define_expand "subdi3"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(minus:DI (match_operand:DI 1 "register_operand" "r")
++			(match_operand:DI 2 "register_operand" "r")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		poly_uint64	lo = 4, hi = 0;
++
++		if (can_create_pseudo_p()) {
++			rtx	op0l, op0h, op2l, op2h;
++			rtx	op1 = operands[1], op2 = operands[2];
++
++			op0l = gen_reg_rtx(SImode);
++			op0h = gen_reg_rtx(SImode);
++			op2l = gen_reg_rtx(SImode);
++			op2h = gen_reg_rtx(SImode);
++
++			if (!REG_P(operands[1])) {
++				op1 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op1, operands[1]));
++			} if (!REG_P(operands[2])) {
++				op2 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op2, operands[2]));
++			}
++
++			emit_insn(gen_movsi(op0l,
++				gen_rtx_SUBREG(SImode, op1, lo)));
++			emit_insn(gen_movsi(op2l,
++				gen_rtx_SUBREG(SImode, op2, lo)));
++
++			emit_insn(gen_movsi(op0h,
++				gen_rtx_SUBREG(SImode, op1, hi)));
++			emit_insn(gen_movsi(op2h,
++				gen_rtx_SUBREG(SImode, op2, hi)));
++
++
++			emit_insn(gen_subsi3( op0h, op0h, op2h));
++			emit_insn(gen_subsi3_raw(op0l, op0l, op2l));
++			emit_insn(gen_subsi3_cltu(op0h, op0h,
++							CONST1_RTX(SImode)));
++
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], hi), op0h));
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], lo), op0l));
++
++			DONE;
++		} else
++			FAIL; // else go fish for the subsi3_bare
++	}
++	; "SUB	%H2,%H0\t; SUB:DI
++	; SUB\t%L2,%L0
++	; SUB.C\t1,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "3")])
++(define_insn "subdi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(minus:DI (match_operand:DI 1 "register_operand" "0")
 +			(match_operand:DI 2 "register_operand" "r")))
@@ -4576,12 +4737,52 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +; AND
 +; {{{
-+(define_insn "anddi3"
++(define_expand "anddi3"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(and:DI (match_operand:DI 1 "register_operand" "%0")
++			(match_operand:DI 2 "register_operand" "r")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		rtx	op0 = operands[0], op1 = operands[1],
++			op2 = operands[2];
++
++		if (!REG_P(operands[2]) && can_create_pseudo_p()) {
++			//; fprintf(stderr, "Generating pseudo register for anddi3\n");
++			op2 = gen_reg_rtx(DImode);
++			emit_insn(gen_movdi(op2,operands[2]));
++		}
++
++		if (SUBREG_P(operands[0]) && DFmode == GET_MODE(operands[0]))
++			op0 = XEXP(operands[0], 0);
++		if (SUBREG_P(operands[1]) && DFmode == GET_MODE(operands[1]))
++			op1 = XEXP(operands[1], 0);
++		if (SUBREG_P(operands[2]) && DFmode == GET_MODE(operands[2]))
++			op2 = XEXP(operands[2], 0);
++
++		if (SUBREG_P(op0) || SUBREG_P(op1) || SUBREG_P(op2)) {
++		} else {
++			poly_uint64	lo = 4, hi = 0;
++
++			emit_insn(gen_andsi3(
++				gen_rtx_SUBREG(SImode, op0, lo),
++				gen_rtx_SUBREG(SImode, op1, lo),
++				gen_rtx_SUBREG(SImode, op2, lo)));
++			emit_insn(gen_andsi3(
++				gen_rtx_SUBREG(SImode, op0, hi),
++				gen_rtx_SUBREG(SImode, op1, hi),
++				gen_rtx_SUBREG(SImode, op2, hi)));
++			DONE;
++		}
++	}
++	; "AND	%L2,%L0\t; AND:DI\n\tAND\t%H2,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "2")])
++(define_insn "anddi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(and:DI (match_operand:DI 1 "register_operand" "%0")
 +			(match_operand:DI 2 "register_operand" "r")))
-+	(clobber (reg:CC CC_REG))
-+	]
++	(clobber (reg:CC CC_REG))]
 +	"(ZIP_HAS_DI)"
 +	"AND	%L2,%L0\t; AND:DI\n\tAND\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
@@ -4591,12 +4792,45 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +; iOR
 +; {{{
-+(define_insn "iordi3"
++(define_expand "iordi3"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(ior:DI (match_operand:DI 1 "register_operand" "%0")
++			(match_operand:DI 2 "register_operand" "r")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		rtx	op0 = operands[0], op1 = operands[1],
++			op2 = operands[2];
++		if (SUBREG_P(operands[0]) && DFmode == GET_MODE(operands[0]))
++			op0 = XEXP(operands[0], 0);
++		if (SUBREG_P(operands[1]) && DFmode == GET_MODE(operands[1]))
++			op1 = XEXP(operands[1], 0);
++		if (SUBREG_P(operands[2]) && DFmode == GET_MODE(operands[2]))
++			op2 = XEXP(operands[2], 0);
++
++		if (SUBREG_P(op0) || SUBREG_P(op1) || SUBREG_P(op2)) {
++		} else {
++			poly_uint64	lo = 4, hi = 0;
++
++			emit_insn(gen_iorsi3(
++				gen_rtx_SUBREG(SImode, op0, lo),
++				gen_rtx_SUBREG(SImode, op1, lo),
++				gen_rtx_SUBREG(SImode, op2, lo)));
++			emit_insn(gen_iorsi3(
++				gen_rtx_SUBREG(SImode, op0, hi),
++				gen_rtx_SUBREG(SImode, op1, hi),
++				gen_rtx_SUBREG(SImode, op2, hi)));
++			DONE;
++		}
++	}
++	; "OR	%L2,%L0\t; OR:DI\n\tOR\t%H2,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "2")])
++(define_insn "iordi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(ior:DI (match_operand:DI 1 "register_operand" "%0")
 +			(match_operand:DI 2 "register_operand" "r")))
-+	(clobber (reg:CC CC_REG))
-+	]
++	(clobber (reg:CC CC_REG))]
 +	"(ZIP_HAS_DI)"
 +	"OR	%L2,%L0\t; OR:DI\n\tOR\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
@@ -4606,12 +4840,33 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +; XOR
 +; {{{
-+(define_insn "xordi3"
++(define_expand "xordi3"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(xor:DI (match_operand:DI 1 "register_operand" "%0")
++			(match_operand:DI 2 "register_operand" "r")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		poly_uint64	lo = 4, hi = 0;
++
++		emit_insn(gen_xorsi3(
++			gen_rtx_SUBREG(SImode, operands[0], lo),
++			gen_rtx_SUBREG(SImode, operands[1], lo),
++			gen_rtx_SUBREG(SImode, operands[2], lo)));
++		emit_insn(gen_xorsi3(
++			gen_rtx_SUBREG(SImode, operands[0], hi),
++			gen_rtx_SUBREG(SImode, operands[1], hi),
++			gen_rtx_SUBREG(SImode, operands[2], hi)));
++		DONE;
++	}
++	; "XOR	%L2,%L0\t; XOR:DI\n\tXOR\t%H2,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "2")])
++(define_insn "xordi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(xor:DI (match_operand:DI 1 "register_operand" "%0")
 +			(match_operand:DI 2 "register_operand" "r")))
-+	(clobber (reg:CC CC_REG))
-+	]
++	(clobber (reg:CC CC_REG))]
 +	"(ZIP_HAS_DI)"
 +	"XOR	%L2,%L0\t; XOR:DI\n\tXOR\t%H2,%H0"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
@@ -4621,7 +4876,59 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +; NEG
 +; {{{
-+(define_insn "negdi2"
++(define_expand "negdi2"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(neg:DI (match_operand:DI 1 "register_operand" "r")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		if (can_create_pseudo_p()) {
++			poly_uint64	lo = 4, hi = 0;
++			rtx	op0l, op0h, op1l, op1h,
++				op0 = operands[0], op1 = operands[1];
++
++			op0l = gen_reg_rtx(SImode);
++			op0h = gen_reg_rtx(SImode);
++			op1l = gen_reg_rtx(SImode);
++			op1h = gen_reg_rtx(SImode);
++
++			if (!REG_P(operands[1])) {
++				op1 = gen_reg_rtx(DImode);
++				emit_insn(gen_movdi(op1, operands[1]));
++			}
++
++
++			emit_insn(gen_movsi(
++				op1l, gen_rtx_SUBREG(SImode, op1, lo)));
++			emit_insn(gen_movsi(
++				op1h, gen_rtx_SUBREG(SImode, op1, hi)));
++
++			// First, ones complement
++			emit_insn(gen_xorsi3(op0l, op1l, CONSTM1_RTX(SImode)));
++			emit_insn(gen_xorsi3(op0h, op1h, CONSTM1_RTX(SImode)));
++
++			// Then add 1
++			emit_insn(gen_addsi3_raw(op0l, op0l,
++				CONST1_RTX(SImode)));
++			// ... and the carry ...
++			emit_insn(gen_addsi3_cltu(
++				op0h, op0h, CONST1_RTX(SImode)));
++
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, op0, lo), op0l));
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, op0, hi), op0h));
++
++			DONE;
++		}
++	}
++	; "XOR	-1,%L0\t; NEG:DI
++	; XOR\t-1,%H0
++	; ADD\t1,%L0
++	; ADD.C\t1,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "4")])
++(define_insn "negdi2_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(neg:DI (match_operand:DI 1 "register_operand" "0")))
 +	(clobber (reg:CC CC_REG))
@@ -4659,7 +4966,27 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +; NOT
 +; {{{
-+(define_insn "one_cmpldi2"
++(define_expand "one_cmpldi2"
++	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++		(not:DI (match_operand:DI 1 "register_operand" "0")))
++	(clobber (reg:CC CC_REG))])]
++	"(ZIP_HAS_DI)"
++	{
++		poly_uint64	lo = 4, hi = 0;
++
++		emit_insn(gen_one_cmplsi2(
++			gen_rtx_SUBREG(SImode, operands[0], lo),
++			gen_rtx_SUBREG(SImode, operands[1], lo)));
++		emit_insn(gen_one_cmplsi2(
++			gen_rtx_SUBREG(SImode, operands[0], hi),
++			gen_rtx_SUBREG(SImode, operands[1], hi)));
++		DONE;
++	}
++	; "XOR	-1,%L0\t; NOT:DI
++	; XOR\t-1,%H0"
++	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")
++		(set_attr "cost" "2")])
++(define_insn "one_cmpldi2_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(not:DI (match_operand:DI 1 "register_operand" "0")))
 +	(clobber (reg:CC CC_REG))
@@ -4706,16 +5033,62 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +; Multiply
 +; {{{
 +(define_expand "muldi3"
-+	[(parallel [(set (match_operand:DI 0 "register_operand" "=r")
++	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(mult:DI (match_operand:DI 1 "register_operand" "r")
-+			(match_operand:DI 2 "register_operand" "r")))
-+	(clobber (match_dup 1))
-+	(clobber (match_dup 2))
-+	(clobber (match_scratch:SI 3 "=r"))
-+	(clobber (reg:CC CC_REG))])]
-+	"(ZIP_HAS_DI)")
++			(match_operand:DI 2 "register_operand" "r")))]
++	"(ZIP_HAS_DI)"
++	{
++		if (can_create_pseudo_p()) {
++			rtx	op0l, op0h, op1l, op1h, op2l, op2h;
++			poly_uint64	lo = 4, hi = 0;
++
++			// Create a whole bunch of pseudo-registers to do this
++			emit_insn(gen_movsi(
++				op1l = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, operands[1], lo)));
++			emit_insn(gen_movsi(
++				op2l = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, operands[2], lo)));
++
++			emit_insn(gen_movsi(
++				op1h = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, operands[1], hi)));
++			emit_insn(gen_movsi(
++				op2h = gen_reg_rtx(SImode),
++				gen_rtx_SUBREG(SImode, operands[2], hi)));
++
++			op0l = gen_reg_rtx(SImode);
++			op0h = gen_reg_rtx(SImode);
++
++			emit_insn(gen_mulsi3(op1h, op1h, op2l));
++			emit_insn(gen_mulsi3(op2h, op2h, op1l));
++			emit_insn(gen_movsi(op0l, op2l));
++			emit_insn(gen_movsi(op0h, op2l));
++			emit_insn(gen_mulsi3(op0l, op0l, op1l));
++			emit_insn(gen_umulsi_highpart(op0h, op0h, op1l));
++			emit_insn(gen_addsi3(op0h, op0h, op2h));
++			emit_insn(gen_addsi3(op0h, op0h, op1h));
++
++			// ; muldi3_raw/D (%H0:%L0) = (%H1:%L1) * (%H2:%L2)\n"
++			// ; MPY	%L2,%H1	; %H1 = %H1 * %L2\n"
++			// ; MPY	%L1,%H2	; %H2 = %L1 * %H2\n"
++			// ; MOV	%L2,%L0	; %H0:%L0 = %L1 * %L2\n"
++			// ; MOV	%L2,%H0\n"
++			// ; MPY	%L1,%L0\n"
++			// ; MPYUHI %L1,%H0\n"
++			// ; ADD	%H2,%H0	; H0 += (H2 = L1 * H2)\n"
++			// ; ADD	%H1,%H0	; H0 += (H1 = H1 * L2)";
++
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], lo), op0l));
++			emit_insn(gen_movsi(
++				gen_rtx_SUBREG(SImode, operands[0], hi), op0h));
++
++			DONE;
++		} // else ... go fish for muldi3_raw
++	})
 +;
-+(define_insn "muldi3_raw"
++(define_insn "muldi3_bare"
 +	[(set (match_operand:DI 0 "register_operand" "=r")
 +		(mult:DI (match_operand:DI 1 "register_operand" "r")
 +			(match_operand:DI 2 "register_operand" "r")))
@@ -4868,7 +5241,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +;
 +(define_insn "cstoredi4" ; Store 0 or 1 in %0 based on cmp between %2&%3
 +	[(set (match_operand:SI 0 "register_operand" "=r")
-+		(if_then_else:SI (match_operator 1 "ordered_comparison_operator" 
++		(if_then_else:SI (match_operator 1 "ordered_comparison_operator"
 +			[(match_operand:DI 2 "register_operand" "r")
 +				(match_operand:DI 3 "register_operand" "r")])
 +			(const_int 1) (const_int 0)))
@@ -4921,6 +5294,27 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +				DONE;
 +			} else FAIL;
 +		}
++		// [(set (reg:CC CC_REG) (compare:CC
++		//	(match_operand:SI 0 "register_operand" "r")
++		//	(match_operand:SI 1 "register_operand" "r")))]
++
++		/*
++		poly_uint64	lo = 4, hi = 0;
++
++		emit_insn(gen_movsi(
++			gen_rtx_SUBREG(SImode, operands[0], lo),
++			gen_rtx_SUBREG(SImode, operands[1], lo)));
++		emit_insn(gen_cmpsi(
++			gen_rtx_SUBREG(SImode, operands[0], hi),
++			gen_rtx_SUBREG(SImode, operands[1], hi)));
++		emit_insn(gen_rtx_COND_EXEC(VOIDmode,
++					gen_rtx_EQ(SImode, gen_rtx_SET(
++				gen_rtx_REG(CC_REG),
++				gen_rtx_COMPARE(CCmode,
++					gen_rtx_SUBREG(SImode, operands[0], lo),
++					gen_rtx_SUBREG(SImode, operands[1], lo)
++				)))));
++		*/
 +	})
 +(define_insn "cmpdi_reg"
 +	[(set (reg:CC CC_REG) (compare:CC
@@ -4950,12 +5344,17 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +	(clobber (reg:CC CC_REG))]
 +	"(ZIP_HAS_DI)"
 +	{
++		//; fprintf(stderr, "ZIP-MD(CBRANCHDI4):\n");
++
 +		if (!REG_P(operands[2])) {
 +			if ((CONST_INT_P(operands[2]))
 +				&&(INTVAL(operands[2])> -(1l<<17))
 +				&&(INTVAL(operands[2])<(1l<<17)-1)) {
-+				emit_jump_insn(gen_cbranchdi4_internal(operands[0],
-+					operands[1], operands[2], operands[3]));
++				emit_jump_insn(gen_cbranchdi4_internal(
++					operands[0],
++					operands[1],
++					operands[2],
++					operands[3]));
 +				DONE;
 +			} if (can_create_pseudo_p()) {
 +				rtx tmp = gen_reg_rtx(DImode);
@@ -4968,7 +5367,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +			emit_jump_insn(gen_cbranchdi4_internal(operands[0],
 +				operands[1], operands[2], operands[3]));
 +			DONE;
-+		}
++		} // else FAIL;
 +	})
 +(define_insn "cbranchdi4_internal"
 +	[(set (pc) (if_then_else
@@ -5012,7 +5411,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-di.md gcc-10.3.0-zip/
 +; }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-zip/gcc/config/zip/zip-float.md
 --- gcc-10.3.0/gcc/config/zip/zip-float.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-float.md	2024-08-05 15:09:38.812082383 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-float.md	2025-01-18 19:18:47.727786947 -0500
 @@ -0,0 +1,138 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -5029,7 +5428,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-z
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2024, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -5154,13 +5553,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-float.md gcc-10.3.0-z
 +;
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/config/zip/zip.h
 --- gcc-10.3.0/gcc/config/zip/zip.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2024-08-05 15:09:44.160047418 -0400
-@@ -0,0 +1,4277 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.h	2025-01-27 10:04:53.366508054 -0500
+@@ -0,0 +1,4285 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	gcc/config/zip/zip.h
++// Filename:	sw/gcc-10.3.0-zip/gcc/config/zip/zip.h
 +// {{{
-+// Project:	Zip CPU backend for the GNU Compiler Collection
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -5169,10 +5568,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2024, Gisselquist Technology, LLC
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -5182,11 +5581,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
-+//
++// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
++// {{{
 +//		http://www.gnu.org/licenses/gpl.html
 +//
 +////////////////////////////////////////////////////////////////////////////////
@@ -5437,6 +5837,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +	else		builtin_define("__IEEE_LITTLE_ENDIAN__");	\
 +	if (ZIP_BIGENDIAN) builtin_define("__IEEE_BIG_ENDIAN");	\
 +	else		builtin_define("__IEEE_LITTLE_ENDIAN");	\
++	if (ZIP_HAS_DI) builtin_define("__ZIPDI__");		\
++	else		builtin_define("__ZIPNODI__");		\
 +	builtin_define("_LDBL_EQ_DBL");				\
 +	if (ZIP_FPU) builtin_define("__ZIPFPU__");		\
 +	else builtin_define("_SOFT_FLOAT");			\
@@ -5758,7 +6160,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 + * compile time flag (ZIP_HAS_DI) that we can enable when we're ready.
 + */
 +#undef	MAX_FIXED_MODE_SIZE
-+#ifdef	ZIP_HAS_DI
++#if	ZIP_HAS_DI
 +# define MAX_FIXED_MODE_SIZE	GET_MODE_BITSIZE(DImode)
 +#else
 +# define MAX_FIXED_MODE_SIZE	GET_MODE_BITSIZE(SImode)
@@ -5771,8 +6173,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +#undef	LONG_TYPE_SIZE
 +#undef	LONG_LONG_TYPE_SIZE
 +//
++#if	ZIP_HAS_DI
 +#define	LONG_TYPE_SIZE	64
 +#define	LONG_LONG_TYPE_SIZE	64
++#else
++#define	LONG_TYPE_SIZE		32
++#define	LONG_LONG_TYPE_SIZE	32
++#endif
 +// SHORT_FRAC_TYPE_SIZE
 +// LONG_FFRACT_TYPE_SIZE
 +// LONG_LONG_FRACT_TIME_SIZE
@@ -9435,8 +9842,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.h gcc-10.3.0-zip/gcc/
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc/config/zip/zip.md
 --- gcc-10.3.0/gcc/config/zip/zip.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2024-08-05 15:09:49.988009321 -0400
-@@ -0,0 +1,2321 @@
++++ gcc-10.3.0-zip/gcc/config/zip/zip.md	2025-01-27 12:58:42.565036137 -0500
+@@ -0,0 +1,2157 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
 +;; Filename:	zip.md
@@ -9452,7 +9859,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2024, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -9536,6 +9943,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +(define_constants
 +  [(RTN_REG		0)	; Return address register
 +   (RTNV_REG		1)	; Subroutine return value register
++   (JUMP_REG		4)	; Sibcall jump register
 +   (AP_REG		10)	; Hopefully never used
 +   (GBL_REG		11)	; Hopefully never used, but just in case ...
 +   (FP_REG		12)	; Frame pointer register
@@ -11064,116 +11472,6 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	})
 +; }}}
 +;
-+(define_expand "sibcall"
-+; {{{
-+	[(call (mem:SI (match_operand 0 "zip_const_address_operand_p" ""))
-+		(match_operand 1 "" ""))
-+	(use (match_operand 2 "" ""))
-+	(use (reg:SI RTN_REG))
-+	(simple_return)]
-+	""
-+	{
-+		if (MEM_P(operands[0])) {
-+			;// extern void zip_debug_rtx(const_rtx);
-+			;//
-+			;// fprintf(stderr, "CALL: ");
-+			;// zip_debug_rtx(operands[0]);
-+			;//
-+			;//
-+			;// This should always be the case
-+			rtx addr = XEXP(operands[0],0);
-+			if (zip_const_address_operand_p(addr, SImode)) {
-+				//; fprintf(stderr, "Generating gen_void_call_const()\n");
-+				emit_call_insn(gen_void_sibcall_const(addr,
-+						operands[1]));
-+			} else if ((MEM_P(addr))&&(zip_address_operand(
-+							XEXP(addr,0)))) {
-+				fprintf(stderr, "ERR: ZIP.MD::SIBCALL INDIRECT\n");
-+				emit_call_insn(gen_void_sibcall_mem(XEXP(addr,0),
-+								 operands[1]));
-+				gcc_assert(0);
-+			} else {
-+				emit_call_insn(gen_void_sibcall_var(operands[0],
-+								 operands[1]));
-+			}
-+			DONE;
-+		} else FAIL;
-+	}) ; "BAR\t%0\n"
-+; }}}
-+;
-+(define_insn "void_sibcall_const"
-+; {{{
-+	[(call (mem:SI (match_operand:SI 0 "zip_const_address_operand_p" ""))
-+			(match_operand 1 "const_int_operand" "n"))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	"BRA\t%0"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+; }}}
-+(define_insn "void_sibcall_mem"
-+; {{{
-+	[(call (mem:SI (match_operand:SI 0 "zip_memory_operand_p" "Q"))
-+			(match_operand 1 "const_int_operand" "n"))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	"LW\t%0,PC"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+; }}}
-+;
-+; #warning "This predicate is appropriate for non-moves, but not for JMPs"
-+(define_insn "void_sibcall_var"
-+; {{{
-+	[(call (match_operand:SI 0 "zip_memory_operand_p" "")
-+			(match_operand 1 "const_int_operand" "n"))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	"JMP\t%0"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+;
-+; }}}
-+(define_expand "sibcall_value"
-+; {{{
-+	[(set (match_operand 0 "register_operand" "")
-+		(call (mem:SI
-+			(match_operand 1 "zip_const_address_operand_p" ""))
-+		(match_operand 2 "" "")))
-+	(use (match_operand 3 "" ""))
-+	(use (reg:SI RTN_REG))
-+	(clobber (reg:CC CC_REG))
-+	(simple_return)]
-+	""
-+	{
-+		if (MEM_P(operands[1])) {
-+			;// extern void zip_debug_rtx(const_rtx);
-+			;//
-+			;// fprintf(stderr, "SIBCALL/V: ");
-+			;// zip_debug_rtx(operands[1]);
-+			;//
-+			;//
-+			;// This should always be the case
-+			rtx addr = XEXP(operands[1],0);
-+			if (zip_const_address_operand_p(addr, SImode)) {
-+				emit_call_insn(gen_reg_sibcall_const(operands[0], addr, operands[2]));
-+			} else if ((MEM_P(addr))&&(zip_address_operand(XEXP(addr,0)))) {
-+				fprintf(stderr, "ERR: ZIP.MD::SIBCALL-VALUE() INDIRECT\n");
-+				emit_call_insn(gen_reg_sibcall_mem(operands[0], XEXP(addr,0), operands[2]));
-+				gcc_assert(0);
-+			} else {
-+				emit_call_insn(gen_reg_sibcall_var(operands[0], operands[1], operands[2]));
-+			}
-+			DONE;
-+		} else FAIL;
-+	})
-+; }}}
-+;
-+;
-+;
 +;
 +; How do we want to do this better?
 +;	Replace the RTL w/
@@ -11281,7 +11579,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +		(clobber (reg:SI RTN_REG))
 +		(clobber (reg:CC CC_REG))]
 +	""
-+	"MOV	.Lcall%=(PC),R0\t; CALL MEM (untested)\n\tLW\t%1,PC\n.Lcall%=:"
++	"MOV	.Lcall%=(PC),R0\t;\tREG-CALL-MEM\n\tLW\t%1,PC\n.Lcall%=:"
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +; }}}
 +;
@@ -11308,51 +11606,6 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
 +; }}}
 +;
-+;
-+;
-+(define_insn "reg_sibcall_const"
-+; {{{
-+	[(set (match_operand 0 "register_operand" "")
-+		(call (mem:SI (match_operand:SI 1 "zip_const_address_operand_p" ""))
-+			(match_operand 2 "const_int_operand" "n")))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	"BRA\t%1"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+; }}}
-+(define_insn "reg_sibcall_mem"
-+; {{{
-+	[(set (match_operand 0 "register_operand" "")
-+		(call (mem:SI (match_operand:SI 1 "zip_memory_operand_p" "Q"))
-+			(match_operand 2 "const_int_operand" "n")))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	"LW\t%1,PC"
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+; }}}
-+; #warning "This predicate is appropriate for non-moves, but not for JMPs"
-+(define_insn "reg_sibcall_var"
-+; {{{
-+	[(set (match_operand 0 "register_operand" "")
-+		(call (match_operand:SI 1 "zip_memory_operand_p" "")
-+			(match_operand 2 "const_int_operand" "n")))
-+		(use (reg:SI RTN_REG))
-+		(clobber (reg:CC CC_REG))
-+		(simple_return)]
-+	""
-+	{
-+		if (REG_P(operands[1]))
-+			return "JMP\t(%1); REG_SIBCALL_VAR";
-+		else
-+			return "JMP\t%1";
-+	}
-+	[(set_attr "predicable" "no") (set_attr "ccresult" "unknown")])
-+; }}}
-+;
 +; }}}
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -11367,12 +11620,6 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +	[(const_int 0)]
 +	""
 +	"{ zip_expand_prologue(); DONE; }")
-+; }}}
-+(define_expand "sibcall_epilogue"
-+; {{{
-+	[(return)]
-+	""
-+	"{ zip_sibcall_epilogue(); DONE; }")
 +; }}}
 +(define_expand "epilogue"
 +; {{{
@@ -11727,10 +11974,6 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +;
 +;
 +;
-+;(define_insn "addvsi4"
-+;	)
-+;(define_insn "subvsi4"
-+;	)
 +;(define_insn "mulvsi4"
 +;	)
 +;(define_insn "umulvsi4"
@@ -11760,7 +12003,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip.md gcc-10.3.0-zip/gcc
 +; }}}
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md
 --- gcc-10.3.0/gcc/config/zip/zip-peephole.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md	2024-08-05 15:09:59.339948190 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-peephole.md	2025-01-27 17:10:52.414545716 -0500
 @@ -0,0 +1,591 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -11778,7 +12021,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2024, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -12355,13 +12598,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-peephole.md gcc-10.3.
 +;
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-zip/gcc/config/zip/zip-protos.h
 --- gcc-10.3.0/gcc/config/zip/zip-protos.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-protos.h	2024-08-05 15:10:03.403921627 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-protos.h	2025-01-27 11:55:08.077718981 -0500
 @@ -0,0 +1,86 @@
 +////////////////////////////////////////////////////////////////////////////////
 +//
-+// Filename: 	zip-protos.h
++// Filename:	sw/gcc-10.3.0-zip/gcc/config/zip/zip-protos.h
 +// {{{
-+// Project:	Zip CPU backend for the GNU Compiler Collection
++// Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 +//
 +// Purpose:	
 +//
@@ -12370,10 +12613,10 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
-+// Copyright (C) 2016-2024, Gisselquist Technology, LLC
++// Copyright (C) 2016-2025, Gisselquist Technology, LLC
 +// {{{
 +// This program is free software (firmware): you can redistribute it and/or
-+// modify it under the terms of  the GNU General Public License as published
++// modify it under the terms of the GNU General Public License as published
 +// by the Free Software Foundation, either version 3 of the License, or (at
 +// your option) any later version.
 +//
@@ -12383,14 +12626,13 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +// for more details.
 +//
 +// You should have received a copy of the GNU General Public License along
-+// with this program.  (It's in the $(ROOT)/doc directory, run make with no
++// with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
 +// target there if the PDF file isn't present.)  If not, see
 +// <http://www.gnu.org/licenses/> for a copy.
 +// }}}
 +// License:	GPL, v3, as defined and found on www.gnu.org,
 +// {{{
 +//		http://www.gnu.org/licenses/gpl.html
-+//
 +//
 +////////////////////////////////////////////////////////////////////////////////
 +// }}}
@@ -12423,6 +12665,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +extern	int	zip_insn_sets_cc(rtx_insn *insn);
 +extern	int	zip_is_conditional(rtx_insn *insn);
 +extern	int	zip_ct_address_operand(rtx op);
++extern	int	zip_sibcall_address_operand(rtx op);
 +extern	int	zip_pd_opb_operand(rtx op);
 +extern	int	zip_pd_mov_operand(rtx op);
 +extern	int	zip_pd_imm_operand(rtx op);
@@ -12445,7 +12688,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-protos.h gcc-10.3.0-z
 +
 diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zip/gcc/config/zip/zip-sync.md
 --- gcc-10.3.0/gcc/config/zip/zip-sync.md	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2024-08-05 15:18:17.720697002 -0400
++++ gcc-10.3.0-zip/gcc/config/zip/zip-sync.md	2025-01-18 19:18:57.271608120 -0500
 @@ -0,0 +1,611 @@
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;;
@@ -12462,7 +12705,7 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/config/zip/zip-sync.md gcc-10.3.0-zi
 +;;
 +;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 +;; }}}
-+;; Copyright (C) 2015-2024, Gisselquist Technology, LLC
++;; Copyright (C) 2015-2025, Gisselquist Technology, LLC
 +;; {{{
 +;; This program is free software (firmware): you can redistribute it and/or
 +;; modify it under the terms of  the GNU General Public License as published
@@ -13126,8 +13369,8 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/gcc/testsuite/lib/target-supports.exp gc
      # 64-bit double multilib has been selected.
 diff -Naur '--exclude=*.swp' gcc-10.3.0/libgcc/config/zip/sfp-machine.h gcc-10.3.0-zip/libgcc/config/zip/sfp-machine.h
 --- gcc-10.3.0/libgcc/config/zip/sfp-machine.h	1969-12-31 19:00:00.000000000 -0500
-+++ gcc-10.3.0-zip/libgcc/config/zip/sfp-machine.h	2021-04-12 15:27:31.967708745 -0400
-@@ -0,0 +1,55 @@
++++ gcc-10.3.0-zip/libgcc/config/zip/sfp-machine.h	2025-01-25 16:53:34.489317619 -0500
+@@ -0,0 +1,61 @@
 +#ifndef	ZIP_SFP_MACHINE_H
 +#define	ZIP_SFP_MACHINE_H
 +
@@ -13135,6 +13378,12 @@ diff -Naur '--exclude=*.swp' gcc-10.3.0/libgcc/config/zip/sfp-machine.h gcc-10.3
 +#define	__BYTE_ORDER	__BIG_ENDIAN
 +
 +#include "fp-bit.h"
++
++#ifdef	__ZIPDI__
++  #define	LIBGCC2_UNITS_PER_WORD	8
++#else
++  #define	LIBGCC2_UNITS_PER_WORD	4
++#endif
 +
 +#define	_FP_W_TYPE_SIZE	32
 +#define	_FP_W_TYPE	unsigned int
