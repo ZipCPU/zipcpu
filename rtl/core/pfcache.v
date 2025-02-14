@@ -165,6 +165,16 @@ module	pfcache #(
 	// Pre-FORMAL declarations
 	localparam	F_LGDEPTH=LS+1;
 	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	wire	[WBLSB+AW-1:0]	f_const_addr, f_address;
+	wire			f_const_illegal;
+	wire	[BUSW-1:0]	f_const_insn;
+	wire			f_const_illegal;
+	wire			f_const_loaded;
+	wire	[LS-1:0]	f_const_line;
+	wire	[AW-LS-1:0]	f_const_tag;
+	wire		f_this_pc, f_this_insn, f_this_data, f_this_line,
+			f_this_ack, f_this_tag; // f_this_addr;
+
 
 	assign	f_pc_wb = i_pc[AW+1:2];
 `endif
@@ -499,15 +509,43 @@ module	pfcache #(
 		assign	last_addr = r_last_addr;
 		assign	last_ack  = r_last_ack;
 `ifdef	FORMAL
+		wire	f_already_loaded, f_wrap_loaded;
+		wire	[LS-1:0]	f_first_addr, f_acks_to_const,
+					f_write_addr;
+
+		assign	f_first_addr = o_wb_stb ? (o_wb_addr[LS-1:0] - req_count[LS-1:0])
+					: (o_wb_addr[LS-1:0] + 1);
+		assign	f_write_addr = f_first_addr + ack_count;
+		assign	f_acks_to_const = f_const_addr[WBLSB +: LS] - f_first_addr;
+
 		always @(*)
 		if (!i_reset && o_wb_cyc)
+		begin
+			assert(!f_nacks[LS]);
 			assert(r_last_ack == (&ack_count[LS-1:0]));
+			assert(wraddr[LS-1:0] == f_write_addr);
+		end
+		always @(*)
+		if (!i_reset && o_wb_cyc && !bus_abort)
+		begin
+			assert(r_pc[WBLSB+LS +: (AW-LS)] == o_wb_addr[LS +: (AW-LS)]);
+			if (f_this_line)
+				assert(f_first_addr[LS-1:0] == r_pc[WBLSB +: LS]);
+		end
 		always @(*)
 		if (!i_reset && o_wb_cyc)
 			assert({ !o_wb_stb, req_count } == f_nreqs);
 		always @(*)
 		if (!i_reset && o_wb_cyc)
 			assert(ack_count == { 1'b0, f_nacks[LS-1:0] });
+
+		assign	f_already_loaded = (valid_mask[f_const_line]
+				&&(cache_tags[f_const_line] == f_const_addr[WBLSB+CW +: (AW-CW)]));
+		assign	f_wrap_loaded = o_wb_cyc
+				&& (o_wb_addr[AW-1:LS]
+					== f_const_addr[WBLSB+LS +: (AW-LS)])
+				&& (ack_count > f_acks_to_const);
+		assign	f_const_loaded = f_already_loaded || f_wrap_loaded;
 `endif
 	end else begin : NO_WRAP_LAST_ACK
 		reg	r_last_ack, r_last_addr;
@@ -545,6 +583,13 @@ module	pfcache #(
 		always @(*)
 		if (!i_reset && o_wb_cyc)
 			assert(r_last_ack == (&wraddr[LS-1:0]));
+
+		assign	f_const_loaded = (o_wb_cyc
+			&& (f_nacks > f_const_addr[WBLSB +: LS])
+			&& (o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS
+							+: (AW-LS)]))
+			||(valid_mask[f_const_line]
+				&&(cache_tags[f_const_line] == f_const_addr[WBLSB+CW +: (AW-CW)]));
 `endif
 	end endgenerate
 	// }}}
@@ -611,7 +656,7 @@ module	pfcache #(
 	begin
 		wraddr <= { last_line, {(LS){1'b0}} };
 		if (OPT_WRAP)
-			wraddr[LS-1:0] <= lastpc[LS-1:0];
+			wraddr[LS-1:0] <= lastpc[WBLSB +: LS];
 	end
 	// }}}
 
@@ -633,7 +678,7 @@ module	pfcache #(
 		o_wb_addr <= { lasttag, {(LS){1'b0}} };
 
 		if (OPT_WRAP)
-			o_wb_addr[LS-1:0] <= lastpc[LS-1:0];
+			o_wb_addr[LS-1:0] <= lastpc[WBLSB +: LS];
 	end
 	// }}}
 
@@ -741,9 +786,7 @@ module	pfcache #(
 	reg	[((1<<(LGLINES))-1):0]	f_past_valid_mask;
 	reg	[AW+WBLSB-1:0]	f_next_pc;
 	reg	[AW+WBLSB-1:0]	f_next_lastpc;
-	wire	[WBLSB+AW-1:0]	f_const_addr, f_address;
-	wire			f_const_illegal;
-	wire	[BUSW-1:0]	f_const_insn;
+	wire	[WBLSB+AW-1:0]	f_address;
 
 	wire	[INSN_WIDTH-1:0]	f_insn;
 
@@ -1063,11 +1106,6 @@ module	pfcache #(
 	// value gets returned.
 	//
 
-	wire		f_this_pc, f_this_insn, f_this_data, f_this_line,
-			f_this_ack, f_this_tag; // f_this_addr;
-	wire	[LS-1:0]	f_const_line;
-	wire	[AW-LS-1:0]	f_const_tag;
-
 	assign	f_const_line = f_const_addr[WBLSB+LS +: (CW-LS)];
 	assign	f_const_tag  = f_const_addr[WBLSB+LS +: (AW-LS)];
 
@@ -1091,16 +1129,8 @@ module	pfcache #(
 	end
 
 	always @(*)
-	if ((valid_mask[f_const_line])
-			&&(cache_tags[f_const_line]==f_const_addr[WBLSB+CW +: (AW-CW)]))
-	begin
+	if (f_const_loaded)
 		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
-	end else if (!OPT_WRAP && o_wb_cyc
-		&&(o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS +: (AW-LS)])
-		&&(f_nacks > f_const_addr[WBLSB +: LS]))
-	begin
-		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
-	end
 
 	always @(*)
 	if (o_wb_cyc)

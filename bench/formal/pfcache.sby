@@ -11,7 +11,6 @@ cvrw    cvr  bus32  wrap
 [options]
 prf: mode prove
 prf: depth  5
-wrap: depth 20
 cvr: mode cover
 cvr: depth 60
 
