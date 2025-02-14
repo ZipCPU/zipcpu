@@ -106,6 +106,9 @@ module	zipwb #(
 				OPT_LGICACHE=12,
 		localparam	DATA_WIDTH = 32,	// CPU data width
 		parameter	OPT_MPY = 3,
+		// Verilator lint_off UNUSED
+		parameter [0:0]	OPT_WRAP = 1,
+		// Verilator lint_on  UNUSED
 		parameter [0:0]	OPT_DIV = 1,
 		parameter [0:0]	OPT_SHIFTS = 1,
 		parameter [0:0]	IMPLEMENT_FPU = 0,
@@ -429,6 +432,7 @@ module	zipwb #(
 			.BUS_WIDTH(BUS_WIDTH),
 			// .INSN_WIDTH(INSN_WIDTH),
 			.LGCACHELEN(OPT_LGICACHE-WBLSB),
+			.OPT_WRAP(OPT_WRAP),
 			// .OPT_LOWPOWER(OPT_LOWPOWER),		(Unused)
 			.ADDRESS_WIDTH(ADDRESS_WIDTH)
 			// }}}
@@ -470,6 +474,7 @@ module	zipwb #(
 			.OPT_LOCAL_BUS(WITH_LOCAL_BUS),
 			.OPT_LOWPOWER(OPT_LOWPOWER),
 			.OPT_PIPE(OPT_MEMPIPE),
+			.OPT_WRAP(0 && OPT_WRAP),
 			.OPT_LOCK(OPT_LOCK)
 `ifdef	FORMAL
 			, .OPT_FIFO_DEPTH(2)

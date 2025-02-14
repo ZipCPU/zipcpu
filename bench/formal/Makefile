@@ -213,14 +213,22 @@ $(PFFIFO)_prf128b/PASS:$(PFFIFO).sby $(RTL)/core/$(PFFIFO).v $(MASTER) $(IFETCH)
 
 .PHONY: $(PFCACHE)
 ## {{{
-$(PFCACHE): $(PFCACHE)_prf/PASS   $(PFCACHE)_cvr/PASS
-$(PFCACHE): $(PFCACHE)_prf64/PASS $(PFCACHE)_prf128/PASS
+$(PFCACHE): $(PFCACHE)_prf/PASS     $(PFCACHE)_cvr/PASS
+$(PFCACHE): $(PFCACHE)_prf64/PASS   $(PFCACHE)_prf128/PASS
+$(PFCACHE): $(PFCACHE)_prfw/PASS   # $(PFCACHE)_cvr/PASS
+$(PFCACHE): $(PFCACHE)_prf64w/PASS $(PFCACHE)_prf128w/PASS
 $(PFCACHE)_prf/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf
 $(PFCACHE)_prf64/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf64
 $(PFCACHE)_prf128/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf128
+$(PFCACHE)_prfw/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prfw
+$(PFCACHE)_prf64w/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf64w
+$(PFCACHE)_prf128w/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
+	$(NOJOBSERVER) sby -f $(PFCACHE).sby prf128w
 $(PFCACHE)_cvr/PASS: $(PFCACHE).sby $(RTL)/core/$(PFCACHE).v $(MASTER) $(IFETCH)
 	$(NOJOBSERVER) sby -f $(PFCACHE).sby cvr
 ## }}}
@@ -610,6 +618,8 @@ $(AXLPH)_prf/PASS: $(AXLPH).sby $(RTL)/peripherals/$(AXLPH).v $(SLAVE) $(RTL)/ex
 
 ## ZipDMA
 ## {{{
+.PHONY: zipdma
+zipdma: mm2s rxgears txgears s2mm
 
 .PHONY: mm2s $(MM2S)
 ## {{{
@@ -661,6 +671,9 @@ $(S2MM)_cvr/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
 ## }}}
 
 ## ZaxDMA
+## {{{
+.PHONY: zaxdma
+zaxdma: zaxmm2s rxgears txgears
 .PHONY: zaxmm2s $(AXMM2S)
 ## {{{
 zaxmm2s: $(AXMM2S)
@@ -670,7 +683,7 @@ $(AXMM2S)_prf/PASS: $(AXMM2S).sby $(RTL)/zipdma/$(AXMM2S).v $(MASTER)
 $(AXMM2S)_cvr/PASS: $(AXMM2S).sby $(RTL)/zipdma/$(AXMM2S).v $(MASTER)
 	$(NOJOBSERVER) sby -f $(AXMM2S).sby cvr
 ## }}}
-
+## }}}
 
 ## ZipCPU core components
 ## {{{
@@ -688,8 +701,11 @@ DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core
 $(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
 $(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
 $(DCACHE) : $(DCACHE)_piped/PASS  $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
+$(DCACHE) : $(DCACHE)_pipedw/PASS $(DCACHE)_piped_lpw/PASS
 $(DCACHE) : $(DCACHE)_prf64/PASS  $(DCACHE)_prf64lp/PASS
 $(DCACHE) : $(DCACHE)_prf128/PASS $(DCACHE)_prf128lp/PASS
+$(DCACHE) : $(DCACHE)_prf64lpw/PASS  $(DCACHE)_prf128w/PASS
+$(DCACHE) : $(DCACHE)_cvrpipew/PASS
 $(DCACHE)_full/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby full
 $(DCACHE)_full_single/PASS: $(DCACHE_FILES)
@@ -706,22 +722,35 @@ $(DCACHE)_nolock_system/PASS: $(DCACHE_FILES)
 
 $(DCACHE)_piped/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby piped
+$(DCACHE)_pipedw/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby pipedw
+
+$(DCACHE)_piped_lp/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby piped_lp
+$(DCACHE)_piped_lpw/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby piped_lpw
 
 $(DCACHE)_prf64/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby prf64
 $(DCACHE)_prf64lp/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby prf64lp
+$(DCACHE)_prf64lpw/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf64lpw
 
 $(DCACHE)_prf128/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby prf128
 $(DCACHE)_prf128lp/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby prf128lp
+$(DCACHE)_prf128w/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby prf128w
 
 $(DCACHE)_cover/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby cover
 
 $(DCACHE)_cover_pipe/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby cover_pipe
+$(DCACHE)_cvrpipew/PASS: $(DCACHE_FILES)
+	$(NOJOBSERVER) sby -f $(DCACHE).sby cvrpipew
 ## }}}
 
 .PHONY: $(DIV)

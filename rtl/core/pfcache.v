@@ -71,6 +71,7 @@ module	pfcache #(
 `endif
 		parameter	BUS_WIDTH = 32, // Num data bits on the bus
 		parameter [0:0]	OPT_LITTLE_ENDIAN = 1'b0,
+		parameter [0:0]	OPT_WRAP = 1'b1,
 		localparam	CACHELEN=(1<<LGCACHELEN), //Wrd Size of cach mem
 		localparam	CW=LGCACHELEN,	// Short hand for LGCACHELEN
 		localparam	LS=LGCACHELEN-LGLINES, // Size of a cache line
@@ -129,15 +130,12 @@ module	pfcache #(
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 0;
 
-`ifdef	FORMAL
-	assign	f_pc_wb = i_pc[AW+1:2];
-`endif
-
 	wire			r_v;
 	reg	[BUSW-1:0]	cache	[0:CACHELEN-1];
 	wire	[BUSW-1:0]	cache_word;
 	reg	[AW-CW-1:0]	cache_tags	[0:((1<<(LGLINES))-1)];
 	reg	[((1<<(LGLINES))-1):0]	valid_mask;
+	wire			wrap_valid;
 
 	reg			r_v_from_pc, r_v_from_last;
 	reg			rvsrc;
@@ -156,13 +154,20 @@ module	pfcache #(
 	reg	[AW+WBLSB-1:0]	r_pc;
 	reg			isrc;
 	reg	[1:0]		delay;
-	reg			svmask, last_ack, needload, last_addr,
-				bus_abort;
+	reg			svmask, needload, bus_abort;
 	reg	[LGLINES-1:0]	saddr;
-	wire			w_advance;
+	wire			w_advance, last_ack, last_addr;
 	wire			w_invalidate_result;
 
 	wire	[CW-LS-1:0]	pc_line, last_line;
+
+`ifdef	FORMAL
+	// Pre-FORMAL declarations
+	localparam	F_LGDEPTH=LS+1;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+
+	assign	f_pc_wb = i_pc[AW+1:2];
+`endif
 	// }}}
 
 	assign	w_advance = (i_new_pc)||((r_v)&&(i_ready));
@@ -308,7 +313,7 @@ module	pfcache #(
 	assign	w_v_from_pc = ((pc_tag == lasttag) &&(tag_lookup == pc_tag)
 				&& valid_mask[pc_line]);
 	assign	w_v_from_last = ((tag_lookup == lasttag)
-				&&(valid_mask[last_line]));
+				&&(valid_mask[last_line])) || wrap_valid;
 
 	initial	delay = 2'h3;
 	always @(posedge i_clk)
@@ -376,6 +381,65 @@ module	pfcache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+
+	// wrap_valid
+	// {{{
+	generate if (OPT_WRAP)
+	begin : GEN_WRAP_VALID
+		localparam	WRAP_BITS = LS + $clog2(BUS_WIDTH/INSN_WIDTH);
+		reg			r_wrap_valid, pre_wrap, wrap_active;
+		reg	[WRAP_BITS-1:0]	wrap_nvalid;
+
+		initial	pre_wrap = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || i_clear_cache || i_new_pc || !o_wb_cyc)
+			pre_wrap <= 1'b1;
+		else if (i_wb_ack && (&wraddr[LS-1:0]))
+			pre_wrap <= 1'b0;
+
+		initial	wrap_active = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || i_clear_cache || i_new_pc || !OPT_WRAP
+					|| !o_wb_cyc || i_wb_err || pre_wrap)
+			wrap_active <= 1'b0;
+		else if (i_wb_ack && pre_wrap)
+			wrap_active <= (wraddr[CW-1:LS] == last_line);
+
+		initial	wrap_nvalid = 0;
+		always @(posedge i_clk)
+		if (!OPT_WRAP || i_reset || i_clear_cache || i_new_pc
+					|| bus_abort || i_wb_err || pre_wrap)
+		begin
+			wrap_nvalid <= 0;
+			r_wrap_valid <= 0;
+		end else if (i_wb_ack && pre_wrap && !wrap_active)
+		begin
+			r_wrap_valid <= 1;
+		end else case({ (i_wb_ack && pre_wrap), (r_v && i_ready) })
+		2'b10:	begin
+			// Verilator lint_off WIDTH
+			wrap_nvalid <= wrap_nvalid + (BUS_WIDTH/INSN_WIDTH);
+			r_wrap_valid <= 1;
+			end
+		2'b01:  begin
+			wrap_nvalid  <= wrap_nvalid - 1;
+			r_wrap_valid <= (wrap_nvalid > 1);
+			end
+		2'b11:	begin
+			wrap_nvalid <= wrap_nvalid + (BUS_WIDTH/INSN_WIDTH) - 1;
+			if (BUS_WIDTH/INSN_WIDTH > 1)
+				r_wrap_valid <= 1;
+			// Verilator lint_on  WIDTH
+			end
+		default: begin end
+		endcase
+
+		assign	wrap_valid = r_wrap_valid;
+	end else begin : NO_WRAP_VALID
+		assign	wrap_valid = 1'b0;
+	end endgenerate
+	// }}}
+
 	initial	needload = 1'b0;
 	always @(posedge i_clk)
 	if (i_clear_cache || o_wb_cyc)
@@ -389,39 +453,114 @@ module	pfcache #(
 			// and over again
 			&&(!illegal_valid ||(lasttag != illegal_cache));
 
-	//
-	// Working from the rule that you want to keep complex logic out of
-	// a state machine if possible, we calculate a "last_stb" value one
-	// clock ahead of time.  Hence, any time a request is accepted, if
-	// last_stb is also true we'll know we need to drop the strobe line,
-	// having finished requesting a complete cache  line.
-	initial	last_addr = 1'b0;
-	always @(posedge i_clk)
-	if (!o_wb_cyc)
-		last_addr <= 1'b0;
-	else if ((o_wb_addr[(LS-1):1] == {(LS-1){1'b1}})
-			&&((!i_wb_stall)|(o_wb_addr[0])))
-		last_addr <= 1'b1;
-
+	// last_ack, last_addr
+	// {{{
+	// last_addr ... Working from the rule that you want to keep complex
+	// logic out of a state machine if possible, we calculate a "last_stb"
+	// value one clock ahead of time.  Hence, any time a request is
+	// accepted, if last_stb is also true we'll know we need to drop the
+	// strobe line, having finished requesting a complete cache line.
 	//
 	// "last_ack" is almost identical to last_addr, save that this
 	// will be true on the same clock as the last acknowledgment from the
 	// bus.  The state machine logic will use this to determine when to
 	// get off the bus and end the wishbone bus cycle.
-	initial	last_ack = 1'b0;
-	always @(posedge i_clk)
-		last_ack <= (o_wb_cyc)&&(
-				(wraddr[(LS-1):1]=={(LS-1){1'b1}})
-				&&((wraddr[0])||(i_wb_ack)));
+	generate if (OPT_WRAP)
+	begin : GEN_WRAP_LAST_ACK
+		reg			r_last_ack, r_last_addr;
+		reg	[LS-1:0]	ack_count, req_count;
 
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			req_count <= 0;
+		else if (o_wb_stb && !i_wb_stall)
+			req_count <= req_count + 1;
+
+		initial	r_last_addr = 1'b0;
+		always @(posedge i_clk)
+		if (!o_wb_cyc)
+			r_last_addr <= 1'b0;
+		else if ((req_count[(LS-1):1] == {(LS-1){1'b1}})&&(!i_wb_stall))
+			r_last_addr <= 1'b1;
+
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			ack_count <= 0;
+		else if (i_wb_ack)
+			ack_count <= ack_count + 1;
+
+		initial	r_last_ack = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			r_last_ack <= 0;
+		else if ((ack_count[LS-1:1] == {(LS-1){1'b1}}) && i_wb_ack)
+			r_last_ack <= 1'b1;
+
+		assign	last_addr = r_last_addr;
+		assign	last_ack  = r_last_ack;
+`ifdef	FORMAL
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert(r_last_ack == (&ack_count[LS-1:0]));
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert({ !o_wb_stb, req_count } == f_nreqs);
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert(ack_count == { 1'b0, f_nacks[LS-1:0] });
+`endif
+	end else begin : NO_WRAP_LAST_ACK
+		reg	r_last_ack, r_last_addr;
+
+		initial	r_last_addr = 1'b0;
+		always @(posedge i_clk)
+		if (!o_wb_cyc)
+			r_last_addr <= 1'b0;
+		else if ((o_wb_addr[(LS-1):1] == {(LS-1){1'b1}})&&(!i_wb_stall))
+			r_last_addr <= 1'b1;
+
+		initial	r_last_ack = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			r_last_ack <= 1'b0;
+		else if ((wraddr[(LS-1):1]=={(LS-1){1'b1}}) && i_wb_ack)
+			r_last_ack <= 1'b1;
+
+		assign	last_addr = r_last_addr;
+		assign	last_ack  = r_last_ack;
+`ifdef	FORMAL
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+		begin
+			if (!o_wb_stb)
+			begin
+				assert(r_last_addr);
+				assert(&o_wb_addr[LS-1:0]);
+			end else begin
+				assert(r_last_addr == (&o_wb_addr[LS-1:0]));
+				assert(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
+			end
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert(r_last_ack == (&wraddr[LS-1:0]));
+`endif
+	end endgenerate
+	// }}}
+
+	// bus_abort
+	// {{{
 	initial	bus_abort = 1'b0;
 	always @(posedge i_clk)
 	if (!o_wb_cyc)
 		bus_abort <= 1'b0;
 	else if (i_clear_cache || i_new_pc)
 		bus_abort <= 1'b1;
+	// }}}
 
-	//
+	// o_wb_cyc, o_wb_stb
+	// {{{
 	// Here's the difficult piece of state machine logic--the part that
 	// determines o_wb_cyc and o_wb_stb.  We've already moved most of the
 	// complicated logic off of this statemachine, calculating it one cycle
@@ -448,14 +587,19 @@ module	pfcache #(
 		o_wb_cyc  <= 1'b1;
 		o_wb_stb  <= 1'b1;
 	end
+	// }}}
 
+	// Set the cache_tags array
+	// {{{
 	// If we are reading from this cache line, then once we get the first
 	// acknowledgement, this cache line has the new tag value
 	always @(posedge i_clk)
 	if (o_wb_cyc && i_wb_ack)
 		cache_tags[o_wb_addr[(CW-1):LS]] <= o_wb_addr[(AW-1):CW];
+	// }}}
 
-
+	// wraddr -- what address to we write to within the cache
+	// {{{
 	// On each acknowledgment, increment the address we use to write into
 	// our cache.  Hence, this is the write address into our cache block
 	// RAM.
@@ -464,9 +608,15 @@ module	pfcache #(
 	if (o_wb_cyc && i_wb_ack && !last_ack)
 		wraddr[LS-1:0] <= wraddr[LS-1:0] + 1'b1;
 	else if (!o_wb_cyc)
+	begin
 		wraddr <= { last_line, {(LS){1'b0}} };
+		if (OPT_WRAP)
+			wraddr[LS-1:0] <= lastpc[LS-1:0];
+	end
+	// }}}
 
-	//
+	// o_wb_addr
+	// {{{
 	// The wishbone request address.  This has meaning anytime o_wb_stb
 	// is active, and needs to be incremented any time an address is
 	// accepted--WITH THE EXCEPTION OF THE LAST ADDRESS.  We need to keep
@@ -479,8 +629,16 @@ module	pfcache #(
 	if ((o_wb_stb)&&(!i_wb_stall)&&(!last_addr))
 		o_wb_addr[(LS-1):0] <= o_wb_addr[(LS-1):0]+1'b1;
 	else if (!o_wb_cyc)
+	begin
 		o_wb_addr <= { lasttag, {(LS){1'b0}} };
 
+		if (OPT_WRAP)
+			o_wb_addr[LS-1:0] <= lastpc[LS-1:0];
+	end
+	// }}}
+
+	// Actually write from the bus to the cache
+	// {{{
 	// Since it is impossible to initialize an array, our cache will start
 	// up cache uninitialized.  We'll also never get a valid ack without
 	// cyc being active, although we might get one on the clock after
@@ -495,8 +653,10 @@ module	pfcache #(
 	always @(posedge i_clk)
 	if (o_wb_cyc)
 		cache[wraddr] <= i_wb_data;
+	// }}}
 
 	// VMask ... is a section loaded?
+	// {{{
 	// Note "svmask".  It's purpose is to delay the valid_mask setting by
 	// one clock, so that we can insure the right value of the cache is
 	// loaded before declaring that the cache line is valid.  Without
@@ -519,8 +679,9 @@ module	pfcache #(
 	end
 
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_ack))
+	if (o_wb_cyc && i_wb_ack)
 		saddr <= wraddr[(CW-1):LS];
+	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -535,17 +696,20 @@ module	pfcache #(
 	initial	illegal_cache = 0;
 	initial	illegal_valid = 0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache))
+	if (i_reset || i_clear_cache)
 	begin
 		illegal_cache <= 0;
 		illegal_valid <= 0;
-	end else if ((o_wb_cyc)&&(i_wb_err))
+	end else if (o_wb_cyc && i_wb_err)
 	begin
 		illegal_cache <= o_wb_addr[(AW-1):LS];
 		illegal_valid <= 1'b1;
-	end else if ((o_wb_cyc)&&(i_wb_ack)&&(last_ack)&&(!bus_abort)
+	end else if (o_wb_cyc && i_wb_ack && !bus_abort
 			&&(wraddr[(CW-1):LS] == illegal_cache[CW-1:LS]))
-		illegal_valid <= 1'b0;
+	begin
+		if (OPT_WRAP || last_ack)
+			illegal_valid <= 1'b0;
+	end
 
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
@@ -571,7 +735,6 @@ module	pfcache #(
 `ifdef	FORMAL
 	// Declarations, reset, and f_past_valid
 	// {{{
-	localparam	F_LGDEPTH=LS+1;
 
 	reg			f_past_valid;
 	reg	[4:0]		f_cpu_delay;
@@ -582,7 +745,6 @@ module	pfcache #(
 	wire			f_const_illegal;
 	wire	[BUSW-1:0]	f_const_insn;
 
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	wire	[INSN_WIDTH-1:0]	f_insn;
 
 	(* anyconst *)	reg	[BUS_WIDTH-1:0]		f_const_word;
@@ -721,8 +883,6 @@ module	pfcache #(
 	always @(posedge i_clk)
 	begin
 		assert(f_nreqs <= (1<<LS));
-		if ((o_wb_cyc)&&(o_wb_stb))
-			assert(f_nreqs == o_wb_addr[(LS-1):0]);
 		if ((f_past_valid)&&($past(o_wb_cyc))
 			&&(!o_wb_stb)&&(!$past(i_wb_err || i_reset || i_clear_cache)))
 			assert(f_nreqs == (1<<LS));
@@ -735,7 +895,7 @@ module	pfcache #(
 				&&(!$past(i_clear_cache)) &&(!$past(i_wb_err)))
 		begin
 			assert(f_nacks == (1<<LS));
-		end else if (o_wb_cyc)
+		end else if (o_wb_cyc && !OPT_WRAP)
 			assert(f_nacks[(LS-1):0] == wraddr[(LS-1):0]);
 	end
 
@@ -916,7 +1076,7 @@ module	pfcache #(
 	assign	f_this_insn = (o_insn == f_const_insn);
 	assign	f_this_data = (i_wb_data == f_const_word);
 	assign	f_this_line = (o_wb_addr[AW-1:LS] == f_const_tag);
-	assign	f_this_ack  = (f_this_line)&&(f_nacks == f_const_addr[WBLSB +: LS]);
+	assign	f_this_ack  = (f_this_line)&&(wraddr[LS-1:0] == f_const_addr[WBLSB +: LS]);
 	assign	f_this_tag  = (tag_lookup == f_const_tag);
 
 	always @(posedge i_clk)
@@ -935,8 +1095,9 @@ module	pfcache #(
 			&&(cache_tags[f_const_line]==f_const_addr[WBLSB+CW +: (AW-CW)]))
 	begin
 		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
-	end else if ((o_wb_cyc)&&(o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS +: (AW-LS)])
-				&&(f_nacks > f_const_addr[WBLSB +: LS]))
+	end else if (!OPT_WRAP && o_wb_cyc
+		&&(o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS +: (AW-LS)])
+		&&(f_nacks > f_const_addr[WBLSB +: LS]))
 	begin
 		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
 	end
