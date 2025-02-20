@@ -118,6 +118,7 @@ module	pfcache #(
 	// Declarations
 	// {{{
 	localparam	INLSB = $clog2(INSN_WIDTH/8);
+	localparam	INSN_PER_WORD = BUS_WIDTH / INSN_WIDTH;
 
 	//
 	// o_illegal will be true if this instruction was the result of a
@@ -323,7 +324,7 @@ module	pfcache #(
 	assign	w_v_from_pc = ((pc_tag == lasttag) &&(tag_lookup == pc_tag)
 				&& valid_mask[pc_line]);
 	assign	w_v_from_last = ((tag_lookup == lasttag)
-				&&(valid_mask[last_line])) || wrap_valid;
+				&&(valid_mask[last_line]));
 
 	initial	delay = 2'h3;
 	always @(posedge i_clk)
@@ -373,13 +374,15 @@ module	pfcache #(
 		r_v_from_pc   <= (w_v_from_pc)&&(!w_invalidate_result)
 					&&(!o_illegal);
 		r_v_from_last <= (w_v_from_last)&&(!w_invalidate_result);
+
+		if (wrap_valid && !w_invalidate_result && !i_new_pc)
+			{ r_v_from_pc, r_v_from_last } <= 2'b11;
 	end
 
 	// Now use rvsrc to determine which of the two valid flags we'll be
 	// using: r_v_from_pc (the i_pc address), or r_v_from_last (the lastpc
 	// address)
 	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last));
-
 	always @(*)
 		o_valid = r_v || o_illegal;
 	// }}}
@@ -396,9 +399,20 @@ module	pfcache #(
 	// {{{
 	generate if (OPT_WRAP)
 	begin : GEN_WRAP_VALID
-		localparam	WRAP_BITS = LS + $clog2(BUS_WIDTH/INSN_WIDTH);
+		localparam	WRAP_BITS = LS + $clog2(INSN_PER_WORD);
 		reg			r_wrap_valid, pre_wrap, wrap_active;
 		reg	[WRAP_BITS-1:0]	wrap_nvalid;
+		wire	[WRAP_BITS-1:0]	first_nvalid;
+
+		if (BUS_WIDTH == INSN_WIDTH)
+		begin : SINGLE_WIDTH
+			assign	first_nvalid = 1;
+		end else begin : MANY_WIDTH
+			// Verilator lint_off WIDTH
+			assign first_nvalid = INSN_PER_WORD[WRAP_BITS-1:0]
+						- r_pc[WBLSB-1:INLSB];
+			// Verilator lint_on  WIDTH
+		end
 
 		initial	pre_wrap = 1'b0;
 		always @(posedge i_clk)
@@ -410,36 +424,44 @@ module	pfcache #(
 		initial	wrap_active = 1'b0;
 		always @(posedge i_clk)
 		if (i_reset || i_clear_cache || i_new_pc || !OPT_WRAP
-					|| !o_wb_cyc || i_wb_err || pre_wrap)
+					|| !o_wb_cyc || i_wb_err || !pre_wrap)
 			wrap_active <= 1'b0;
 		else if (i_wb_ack && pre_wrap)
 			wrap_active <= (wraddr[CW-1:LS] == last_line);
 
 		initial	wrap_nvalid = 0;
 		always @(posedge i_clk)
-		if (!OPT_WRAP || i_reset || i_clear_cache || i_new_pc
-					|| bus_abort || i_wb_err || pre_wrap)
+		if (i_reset || i_clear_cache || i_new_pc
+				|| bus_abort || i_wb_err
+				|| (!r_wrap_valid && !o_wb_cyc))
 		begin
-			wrap_nvalid <= 0;
+			// wrap_nvalid <= 0;
+			wrap_nvalid <= INSN_PER_WORD[WRAP_BITS-1:0];
 			r_wrap_valid <= 0;
-		end else if (i_wb_ack && pre_wrap && !wrap_active)
+			if (!i_reset && !i_clear_cache && i_new_pc)
+			begin
+				wrap_nvalid <= first_nvalid;
+			end
+		end else if (!wrap_active)
 		begin
-			r_wrap_valid <= 1;
-		end else case({ (i_wb_ack && pre_wrap), (r_v && i_ready) })
+			// Always become valid on the first ACK
+			r_wrap_valid <= i_wb_ack && pre_wrap;
+			wrap_nvalid  <= first_nvalid;
+		end else case({ (i_wb_ack && pre_wrap),
+				(r_wrap_valid && !r_v) || (r_v && i_ready) })
 		2'b10:	begin
-			// Verilator lint_off WIDTH
-			wrap_nvalid <= wrap_nvalid + (BUS_WIDTH/INSN_WIDTH);
+			wrap_nvalid <= wrap_nvalid+INSN_PER_WORD[WRAP_BITS-1:0];
 			r_wrap_valid <= 1;
 			end
 		2'b01:  begin
-			wrap_nvalid  <= wrap_nvalid - 1;
+			if (r_wrap_valid)
+				wrap_nvalid  <= wrap_nvalid - 1;
 			r_wrap_valid <= (wrap_nvalid > 1);
 			end
 		2'b11:	begin
-			wrap_nvalid <= wrap_nvalid + (BUS_WIDTH/INSN_WIDTH) - 1;
-			if (BUS_WIDTH/INSN_WIDTH > 1)
+			wrap_nvalid<=wrap_nvalid+INSN_PER_WORD[WRAP_BITS-1:0]-1;
+			if (INSN_PER_WORD > 1)
 				r_wrap_valid <= 1;
-			// Verilator lint_on  WIDTH
 			end
 		default: begin end
 		endcase

@@ -94,7 +94,6 @@ module	dcache #(
 		parameter	DATA_WIDTH=32, // CPU's register width
 		parameter [0:0]	OPT_LOCAL_BUS=1'b1,
 		parameter [0:0]	OPT_PIPE=1'b1,
-		parameter [0:0]	OPT_WRAP=1'b1,
 		parameter [0:0]	OPT_LOCK=1'b1,
 		parameter [0:0]	OPT_DUAL_READ_PORT=1'b1,
 		parameter 	OPT_FIFO_DEPTH = 4,
@@ -162,7 +161,7 @@ module	dcache #(
 	//
 	// output	reg	[31:0]		o_debug;
 
-	reg	cyc, stb, last_ack, last_line_stb;
+	reg	cyc, stb, last_ack, end_of_line, last_line_stb;
 	reg	r_wb_cyc_gbl, r_wb_cyc_lcl;
 	// npending is the number of pending non-cached operations, counted
 	// from the i_pipe_stb to the o_wb_ack
@@ -187,7 +186,6 @@ module	dcache #(
 	reg	[BUS_WIDTH-1:0]	c_wdata;
 	reg [BUS_WIDTH/8-1:0]	c_wsel;
 	reg	[(CS-1):0]	c_waddr;
-	wire	[LS-1:0]	req_count, ack_count;
 
 	reg	[(AW-LS-1):0]	last_tag;
 	reg			last_tag_valid;
@@ -207,8 +205,9 @@ module	dcache #(
 	// Verilator lint_on  UNDRIVEN
 `endif
 	wire	cache_miss_inow, w_cachable;
-	wire	raw_cachable_address, r_wrap_valid;
-	reg	r_cachable, r_svalid, r_dvalid, r_rd, r_cache_miss,r_rd_pending;
+	wire	raw_cachable_address;
+	reg	r_cachable, r_svalid, r_dvalid, r_rd, r_cache_miss,
+		r_rd_pending;
 	reg	[AW-1:0]		r_addr;
 	wire	[(LGNLINES-1):0]	r_cline;
 	wire	[(CS-1):0]		r_caddr;
@@ -284,17 +283,14 @@ module	dcache #(
 			// r_itag <= c_vtags[r_cline];
 			r_rd_pending <= (r_rd_pending)
 				&&((!cyc)||(!i_wb_err))
-				&&((r_itag != r_ctag)||(!r_iv))
-				&&(!r_wrap_valid);
+				&&((r_itag != r_ctag)||(!r_iv));
 		end
 		r_rd <= (i_pipe_stb)&&(!i_op[0]);
-		// r_itag contains the tag we didn't have available to us on
-		// the last clock, r_ctag is a bit select from r_addr
-		// containing a one clock delayed address.
-		r_dvalid <= (r_itag == r_ctag)&&(r_iv) && r_cachable
-							&& r_rd_pending;
-		if (r_svalid || r_dvalid || r_wrap_valid)
-			r_dvalid <= 1'b0;
+		// r_itag contains the tag we didn't have available to us on the
+		// last clock, r_ctag is a bit select from r_addr containing a
+		// one clock delayed address.
+		r_dvalid <= (!r_svalid)&&(!r_dvalid)&&(r_itag == r_ctag)&&(r_iv)
+						&&(r_cachable)&&(r_rd_pending);
 		if ((r_itag == r_ctag)&&(r_iv)&&(r_cachable)&&(r_rd_pending))
 		begin
 			last_tag_valid <= 1'b1;
@@ -887,33 +883,6 @@ module	dcache #(
 	end endgenerate
 	// }}}
 
-	// req_count and ack_count
-	// {{{
-	generate if (OPT_WRAP)
-	begin : GEN_COUNTERS
-		reg	[LS-1:0]	r_req_count, r_ack_count;
-
-		always @(posedge i_clk)
-		if (i_reset || !cyc || i_wb_err)
-			r_req_count <= 0;
-		else if (stb && !i_wb_stall)
-			r_req_count <= req_count + 1;
-
-		always @(posedge i_clk)
-		if (i_reset || !cyc || i_wb_err)
-			// Our count is off by one for pipeline reasons
-			r_ack_count <= 0;
-		else if (i_wb_ack)
-			r_ack_count <= ack_count + 1;
-
-		assign	req_count = r_req_count;
-		assign	ack_count = r_ack_count;
-	end else begin : KEEP_COUNTERS
-		assign req_count = o_wb_addr[LS-1:0];
-		assign ack_count =   wr_addr[LS-1:0];
-	end endgenerate
-	// }}}
-
 	// BIG STATE machine: CYC, STB, c_v, state, etc
 	// {{{
 	initial	o_wb_addr    = 0;
@@ -942,6 +911,7 @@ module	dcache #(
 		o_wb_addr    <= 0;
 		wr_cstb <= 1'b0;
 		last_line_stb <= 1'b0;
+		end_of_line <= 1'b0;
 		state <= DC_IDLE;
 		cyc <= 1'b0;
 		stb <= 1'b0;
@@ -960,6 +930,25 @@ module	dcache #(
 
 		wr_cstb <= 1'b0;
 
+		// end_of_line
+		// {{{
+		// Verilator coverage_off
+		if (LS <= 0)
+			end_of_line <= 1'b1;
+		// Verilator coverage_on
+		else if (!cyc)
+			end_of_line <= 1'b0;
+		else if (!end_of_line)
+		begin
+			if (i_wb_ack)
+				end_of_line
+				<= (c_waddr[(LS-1):0] == {{(LS-2){1'b1}},2'b01});
+			else
+				end_of_line
+				<= (c_waddr[(LS-1):0]=={{(LS-1){1'b1}}, 1'b0});
+		end
+		// }}}
+
 		// last_line_stb
 		// {{{
 		if (!cyc || !stb || (OPT_LOWPOWER && state != DC_READC))
@@ -968,8 +957,10 @@ module	dcache #(
 		else if (!i_wb_stall && (LS <= 1))
 			last_line_stb <= 1'b1;
 		// Verilator coverage_on
-		else if (!i_wb_stall && !last_line_stb)
-			last_line_stb <= (req_count[(LS-1):1]=={(LS-1){1'b1}});
+		else if (!i_wb_stall)
+			last_line_stb <= (o_wb_addr[(LS-1):1]=={(LS-1){1'b1}});
+		else
+			last_line_stb <= (o_wb_addr[(LS-1):0]=={(LS){1'b1}});
 		// }}}
 
 		//
@@ -1017,15 +1008,8 @@ module	dcache #(
 			begin // Cache miss
 				state <= DC_READC;
 				o_wb_addr <= { r_ctag, {(LS){1'b0}} };
-				if (OPT_WRAP)
-					o_wb_addr <= r_addr[AW-1:0];
 
-				if (OPT_WRAP)
-					c_waddr[LS-1:0] <= r_addr[LS-1:0]-1;
-				else
-					c_waddr[LS-1:0] <= {(LS){1'b1}};
-				c_waddr[CS-1:LS] <= r_ctag[CS-LS-1:0];
-
+				c_waddr <= { r_ctag[CS-LS-1:0], {(LS){1'b0}} }-1'b1;
 				cyc <= 1'b1;
 				stb <= 1'b1;
 				r_wb_cyc_gbl <= 1'b1;
@@ -1081,7 +1065,7 @@ module	dcache #(
 			//	c_vtags[r_addr[(CS-1):LS]]
 			//			<= r_addr[(AW-1):LS];
 
-			if ((i_wb_ack && last_ack)|| i_wb_err)
+			if ((i_wb_ack && end_of_line)|| i_wb_err)
 			begin
 				state          <= DC_IDLE;
 				cyc <= 1'b0;
@@ -1191,7 +1175,7 @@ module	dcache #(
 	if (!cyc)
 	begin
 		wr_addr <= r_addr[(CS-1):0];
-		if (!OPT_WRAP && (!i_pipe_stb || !i_op[0])&&(r_cache_miss))
+		if ((!i_pipe_stb || !i_op[0])&&(r_cache_miss))
 			wr_addr[LS-1:0] <= 0;
 	end else if (i_wb_ack)
 		wr_addr <= wr_addr + 1'b1;
@@ -1244,10 +1228,11 @@ module	dcache #(
 			last_ack <= 1'b1;
 	end else if (state == DC_READC)
 	begin
-		if (i_wb_ack && !last_ack)
-			last_ack <= (&ack_count[LS-1:1]);
-	end else case({ i_pipe_stb, i_wb_ack })
-		// state = DC_WRITE || state == DC_READS
+		if (i_wb_ack)
+			last_ack <= last_ack || (&wr_addr[LS-1:1]);
+		else
+			last_ack <= last_ack || (&wr_addr[LS-1:0]);
+	end else case({ (i_pipe_stb), (i_wb_ack) })
 	2'b01: last_ack <= (npending <= 2);
 	2'b10: last_ack <= (!cyc)||(npending == 0);
 	default: begin end
@@ -1299,32 +1284,6 @@ module	dcache #(
 	end endgenerate
 	// }}}
 
-	// r_wrap_valid
-	// {{{
-	generate if (OPT_WRAP)
-	begin : GEN_WRAP_VALID
-		reg	wrap_prime, wrap_valid;
-
-		// We want to capture the first ack, only the first ack, and
-		// return the data associated with it when in WRAP mode.
-		always @(posedge i_clk)
-		if (i_reset || !cyc || state != DC_READC)
-			wrap_prime <= 1'b1;
-		else if (i_wb_ack)
-			wrap_prime <= 1'b0;
-
-		always @(posedge i_clk)
-		if (i_reset || !cyc || !wrap_prime)
-			wrap_valid <= 1'b0;
-		else if (i_wb_ack)
-			wrap_valid <= 1'b1;
-
-		assign	r_wrap_valid = wrap_valid;
-	end else begin : NO_WRAP_VALID
-		assign	r_wrap_valid = 1'b0;
-	end endgenerate
-	// }}}
-
 	// o_data, pre_data
 	// {{{
 	// o_data can come from one of three places:
@@ -1336,7 +1295,7 @@ module	dcache #(
 	always @(*)
 	if (r_svalid)
 		pre_data = cached_iword;
-	else if (state == DC_READS || (OPT_WRAP && state == DC_READC))
+	else if (state == DC_READS)
 		pre_data = i_wb_data;
 	else
 		pre_data = cached_rword;
@@ -1351,8 +1310,7 @@ module	dcache #(
 	initial	o_data = 0;
 	always @(posedge i_clk)
 	if (OPT_LOWPOWER && (i_reset
-		||(!r_svalid && (!i_wb_ack || state != DC_READS) && !r_dvalid
-			&& !r_wrap_valid)))
+		||(!r_svalid && (!i_wb_ack || state != DC_READS) && !r_dvalid)))
 		o_data <= 0;
 	else casez(req_data[WBLSB +: 2])
 	2'b10: o_data <= { 16'h0, pre_shifted[BUS_WIDTH-1:BUS_WIDTH-16] };
@@ -1370,7 +1328,7 @@ module	dcache #(
 	else if (state == DC_READS)
 		o_valid <= i_wb_ack;
 	else
-		o_valid <= r_svalid || r_dvalid || r_wrap_valid;
+		o_valid <= (r_svalid)||(r_dvalid);
 	// }}}
 
 	// o_err
@@ -1414,9 +1372,9 @@ module	dcache #(
 		o_rdbusy <= 1'b1;
 	else if ((state == DC_READS)&&(i_wb_ack))
 		o_rdbusy <= 1'b0;
-	else if (r_rd_pending && !r_dvalid && !r_wrap_valid)
+	else if ((r_rd_pending)&&(!r_dvalid))
 		o_rdbusy <= 1'b1;
-	else if (cyc && !o_wb_we && (!OPT_WRAP || state != DC_READC))
+	else if (cyc && !o_wb_we)
 		o_rdbusy <= 1'b1;
 	else // if ((r_dvalid)||(r_svalid))
 		o_rdbusy <= 1'b0;
@@ -2406,6 +2364,16 @@ module	dcache #(
 	always @(posedge i_clk)
 	if (state == DC_READC)
 	begin
+		if (LS == 0)
+		begin
+			`ASSERT(end_of_line);
+		end else if (f_nacks < (1<<LS)-1)
+		begin
+			`ASSERT(!end_of_line);
+		end else if (f_nacks == (1<<LS)-1)
+		begin
+			`ASSERT(end_of_line);
+		end
 		`ASSERT(f_nacks <= (1<<LS));
 		`ASSERT(f_nreqs <= (1<<LS));
 		if (f_nreqs < (1<<LS))
