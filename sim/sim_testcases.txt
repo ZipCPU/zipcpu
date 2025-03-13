@@ -96,11 +96,15 @@ axcachecheck   AXCACHE  cputest.hex axcache-out.txt
 axcachenowrap  AXCACHE  cputest.hex axchnwrap-out.txt	OPT_WRAP=0
 wbbcachecheck  WBBCACHE cputest.hex wbbcache-out.txt
 wbcachecheck   WBCACHE  cputest.hex wbcache-out.txt
+wbbcchechknw  WBBCACHE cputest.hex wbbcache-out.txt OPT_WRAP=0
+wbcachechknw   WBCACHE  cputest.hex wbcache-out.txt OPT_WRAP=0
 ##
 axcachechk64   AXCACHE  cputest64.hex axcach64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/axcch64trace.vcd"
 axcch64nwrap   AXCACHE  cputest64.hex axch64nwr-out.txt	BUS_WIDTH=64 OPT_WRAP=0
 wbbcachechk64  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64
-wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64
+wbbcchchk64nw  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64 OPT_WRAP=0
+wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64 DUMP_TO_VCD=1 VCD_FILE="test/wbcachecheck.vcd"
+wbcchchk64nw   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64 OPT_WRAP=0
 ##
 axlpwrcheck    AXLPWR  cputest.hex axlpwr-out.txt
 wbblpwrcheck   WBBLPWR cputest.hex wblpwr-out.txt

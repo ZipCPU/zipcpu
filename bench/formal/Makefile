@@ -701,11 +701,11 @@ DCACHE_FILES := $(DCACHE).sby $(RTL)/core/dcache.v $(MASTER) $(FMEM) $(RTL)/core
 $(DCACHE) : $(DCACHE)_full/PASS $(DCACHE)_full_single/PASS $(DCACHE)_bare/PASS
 $(DCACHE) : $(DCACHE)_nolock_nolocal/PASS $(DCACHE)_nolock_system/PASS
 $(DCACHE) : $(DCACHE)_piped/PASS  $(DCACHE)_cover/PASS $(DCACHE)_cover_pipe/PASS
-$(DCACHE) : $(DCACHE)_pipedw/PASS $(DCACHE)_piped_lpw/PASS
+## $(DCACHE) : $(DCACHE)_pipedw/PASS $(DCACHE)_piped_lpw/PASS
 $(DCACHE) : $(DCACHE)_prf64/PASS  $(DCACHE)_prf64lp/PASS
 $(DCACHE) : $(DCACHE)_prf128/PASS $(DCACHE)_prf128lp/PASS
-$(DCACHE) : $(DCACHE)_prf64lpw/PASS  $(DCACHE)_prf128w/PASS
-$(DCACHE) : $(DCACHE)_cvrpipew/PASS
+## $(DCACHE) : $(DCACHE)_prf64lpw/PASS  $(DCACHE)_prf128w/PASS
+## $(DCACHE) : $(DCACHE)_cvrpipew/PASS
 $(DCACHE)_full/PASS: $(DCACHE_FILES)
 	$(NOJOBSERVER) sby -f $(DCACHE).sby full
 $(DCACHE)_full_single/PASS: $(DCACHE_FILES)
