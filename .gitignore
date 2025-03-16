@@ -43,3 +43,7 @@ coverage_lcov.dat
 verilated_cov_2_lcov.py
 coverage.lcov.dat
 annotated/
+bazel-bin
+bazel-zipcpu
+bazel-out
+bazel-testlogs

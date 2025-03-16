@@ -1,0 +1,34 @@
+load("@bazel-orfs//:openroad.bzl", "orfs_flow")
+
+FASTER = {
+    # ignore timing repair for now
+    "SETUP_SLACK_MARGIN": "-1000",
+    "SKIP_REPORT_METRICS": "1",
+    "SKIP_LAST_GASP": "1",
+    # skip checks for now, faster
+    "PWR_NETS_VOLTAGES": "",
+    "GND_NETS_VOLTAGES": "",
+    # This is slow, reenable it when more work has gone into .sdc files
+    # and SRAMs.
+    "GPL_TIMING_DRIVEN": "0",
+}
+
+orfs_flow(
+    name = "zipsystem",
+    arguments = FASTER | {
+        "SYNTH_HIERARCHICAL": "1",
+        "SYNTH_MEMORY_MAX_BITS": "9216",
+        "CORE_UTILIZATION": "40",
+        "MIN_ROUTING_LAYER": "M2",
+        "MAX_ROUTING_LAYER": "M7",
+        "CORE_MARGIN": "2",
+        "MACRO_PLACE_HALO": "2 2",
+        "PDN_TCL": "$(PLATFORM_DIR)/openRoad/pdn/BLOCKS_grid_strategy.tcl",
+    },
+    sources = {
+        "SDC_FILE": [":constraints.sdc"],
+    },
+    verilog_files = [
+        "//:verilog",
+    ],
+)
