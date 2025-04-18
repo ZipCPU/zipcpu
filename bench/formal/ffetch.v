@@ -80,12 +80,12 @@ module	ffetch #(
 
 	// Declarations
 	// {{{
-`ifdef	ZIPCPU
-`define	CPU_ASSUME	assume
-`define	CPU_ASSERT	assert
-`else
-`define	CPU_ASSUME	assert
-`define	CPU_ASSERT	assume
+`ifdef	ZIPCPU	// Only set when verifying the ZipCPU's core
+  `define	CPU_ASSUME	assume
+  `define	CPU_ASSERT	assert
+`else		// Else verifying any instruction fetch itself
+  `define	CPU_ASSUME	assert
+  `define	CPU_ASSERT	assume
 `endif
 	localparam	INSN_LSB = $clog2(INSN_WIDTH/8);
 	reg	[BW-1:0]	f_next_address;
@@ -95,9 +95,12 @@ module	ffetch #(
 	reg	[INSN_WIDTH-1:0]	past_insn;
 
 	// Verilator lint_off UNDRIVEN
+	// Program counter of a constant, but otherwise arbitrary address
 	(* anyconst *)	reg	[BW-1:0]	r_fc_pc;
+	//   ... whether this arbitrary address should return an illegal insn
 	(* anyconst *)	reg			r_fc_illegal;
-	(* anyconst *)	reg	[INSN_WIDTH-1:0]	r_fc_insn;
+	//   ... or, if not, what instruction should be returned at that address
+	(* anyconst *)	reg [INSN_WIDTH-1:0]	r_fc_insn;
 	// Verilator lint_on  UNDRIVEN
 
 	assign	fc_pc		= r_fc_pc;
@@ -109,9 +112,14 @@ module	ffetch #(
 	// {{{
 	always @(posedge i_clk)
 	if (cpu_new_pc)
+		// On any branch, the CPU specifies the destination address of
+		// the branch
 		f_address <= cpu_pc;
 	else if (pf_valid && cpu_ready)
 	begin
+		// Otherwise, if we aren't branching, then the address of the
+		// instruction returned by the I-Fetch simply increments from
+		// one accepted instruction to the next.
 		f_address[BW-1:INSN_LSB] <= f_address[BW-1:INSN_LSB] + 1'b1;
 		if (INSN_LSB > 0)
 			f_address[((INSN_LSB>0) ? INSN_LSB:1)-1:0] <= 0;
@@ -247,7 +255,7 @@ module	ffetch #(
 	begin
 		`CPU_ASSUME(!pf_valid);
 	end else if ((f_past_valid)&&(!$past(pf_illegal && !cpu_new_pc))&&(pf_illegal))
-		// pf_illegal can only rise if pf_valid is true
+		// pf_illegal can only rise if pf_valid is also true
 		`CPU_ASSUME(pf_valid);
 
 	always @(posedge i_clk)
@@ -255,12 +263,19 @@ module	ffetch #(
 	begin
 		`CPU_ASSUME(!pf_illegal || pf_valid);
 	end else if (f_past_valid && $past(pf_illegal))
+		// Once illegal is set, it cannot be cleared without either
+		// a reset, a new PC to jump to, or the cache being cleared
 		`CPU_ASSUME(pf_illegal);
 
+	// The outgoing PC *must* track f_address.  However, I only care what
+	// value it is when/if pf_valid is true.
 	always @(*)
 	if (pf_valid && !pf_illegal)
 		`CPU_ASSUME(f_address == pf_pc);
 
+	// If the CPU is not requesting a new address, *and* we aren't waiting
+	// for our first address to be provided, then the CPU's address must
+	// always increment from one instruction to the next.
 	always @(posedge i_clk)
 	if (f_past_valid && !i_reset && !cpu_new_pc && !need_new_pc)
 		`CPU_ASSERT(f_next_address == cpu_pc);

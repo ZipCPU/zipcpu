@@ -54,6 +54,8 @@ my $report= $testd . "/sim_report.txt";
 ## To run coverage, run: perl sim_run.pl cover
 my $coverage_flag = 0;
 my $linestr="----------------------------------------";
+my $ntasks = 0;
+my $maxtasks = 16;
 if (-x "verilator") {
 	open(VDEF,"verilator -V |");
 	while($line = <VDEF>) {
@@ -472,10 +474,9 @@ sub simline($) {
 			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
 			}
 			print SUM "BLD-FAIL  $msg\n";
-
-			push @failed,$tstname;
-
 			close SUM;
+
+			# push @failed,$tstname;
 
 			return;
 			## }}}
@@ -545,6 +546,11 @@ sub simline($) {
 			$yr=$yr+1900; $mo=$mo+1;
 			$tstamp = sprintf("%04d/%02d/%02d %02d:%02d:%02d",
 					$yr,$mo,$dy,$hr,$mn,$sc);
+			$pid = fork;
+			if ($pid ne 0) {
+				return;
+			}
+
 			system "echo \"$tstamp -- Starting simulation\" | tee -a $sim_log";
 			system "$testd/$tstname >> $sim_log";
 
@@ -574,7 +580,6 @@ sub simline($) {
 			system "grep -v \"Not enough words in the file for the requested range\" $sim_log | grep -iq \'warning\'";
 			$warnW = $?;
 
-			open (SUM,">> $report");
 			if ($verilator_flag) {
 			$msg = sprintf("%s Verilator -- %s", $tstamp, $tstname);
 			} else {
@@ -583,47 +588,47 @@ sub simline($) {
 			if ($errC == 0 or $errE == 0 or $errA == 0 or $errF == 0) {
 				## {{{
 				## ERRORs found
-				print SUM "ERRORS    $msg\n";
-				print     "ERRORS    $msg\n";
-				push @failed,$tstname;
+				$msg = sprintf("ERRORS    %s\n", $msg);
+				# push @failed,$tstname;
 				## }}}
 			} elsif ($warnW == 0) {
 				## {{{
-				print SUM "Warnings! $msg\n";
-				print     "Warnings! $msg\n";
-				push @passed,$tstname;
+				$msg = sprintf("Warnings! %s\n", $msg);
+				## push @passed,$tstname;
 				## }}}
 			# } elsif ($errS != 0) {
 				## TEST SUCCESS message not found
 			} elsif ($coverage_flag) {
 				## {{{
-				print SUM "COVERED   $msg\n";
-				print     "COVERED   $msg\n";
-				push @passed,$tstname;
+				$msg = sprintf("COVERED   %s\n", $msg);
+				## push @passed,$tstname;
 				## }}}
 			} else {
 				## {{{
-				print SUM "Pass      $msg\n";
-				print     "Pass      $msg\n";
-				push @passed,$tstname;
+				$msg = sprintf("Pass      %s\n", $msg);
+				## push @passed,$tstname;
 				## }}}
 			}
+			open (SUM,">> $report");
+			print SUM $msg;
+			close(SUM);
+			print     $msg;
 			## }}}
+
+			exit 0;
 			## }}}
 		} else {
 			## Report that this failed to build
 			## {{{
-			open (SUM, ">> $report");
 			if ($verilator_flag) {
 			$msg = sprintf("%s Verilator -- %s", $tstamp, $tstname);
 			} else {
 			$msg = sprintf("%s IVerilog  -- %s", $tstamp, $tstname);
 			}
+			open (SUM, ">> $report");
 			print SUM "BLD-FAIL  $msg\n";
-
-			push @failed,$tstname;
-
 			close SUM;
+			# push @failed,$tstname;
 			## }}}
 		}
 		## }}}
@@ -662,13 +667,31 @@ if (! -d "$testd/") {
 	mkdir $testd;
 }
 
+if ($verilator_flag ne 0) {
+	$maxtasks = $maxtasks / 2;
+}
+
 if ($all_run) {
 	open(TL,"sim_testcases.txt");
 	while($line = <TL>) {
 		next if ($line =~ /^\s*#/);
 		next if ($line =~ /^\s*$/);
 		# print "TEST LINE: $line";
+
+		if ($ntasks >= $maxtasks) {
+			if (waitpid(-1,0) lt 0) {
+				$ntasks = 0;
+			} else {
+				$ntasks = $ntasks - 1;
+			}
+		}
+
 		simline($line);
+		$ntasks = $ntasks + 1;
+	}
+
+	while(waitpid(-1,0) gt 0) {
+		;
 	}
 
 	open(SUM,">> $report");
@@ -683,7 +706,20 @@ if ($all_run) {
 		$line = gettest($akey);
 		next if ($line =~ /FAIL/);
 		# print "TEST LINE: $line";
+		if ($ntasks >= $maxtasks) {
+			if (waitpid(-1,0) lt 0) {
+				$ntasks = 0;
+			} else {
+				$ntasks = $ntasks - 1;
+			}
+		}
+
 		simline($line);
+		$ntasks = $ntasks + 1;
+	}
+
+	while(waitpid(-1,0) gt 0) {
+		;
 	}
 }
 ## }}}
