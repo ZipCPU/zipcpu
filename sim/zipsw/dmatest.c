@@ -164,6 +164,21 @@ void init_lfsr(uint32_t init_value) {
 int	dma_test(unsigned seed, unsigned soff, unsigned doff, unsigned len,
 		unsigned flags) {
 	// {{{
+	if (flags & DMACMD_FIXSRC) {
+		// See if this transfer is even possible--it isn't in AXI
+		// contexts.  So, we have to "ask" the DMA if it's an AXI
+		// DMA, and only run the test if so.  We can do this by
+		// writing our address and flags to the DMA.  If the
+		// address then changes on read back, that means that the
+		// requested offset isn't supported.
+		char	*src = (void *)&_zdmacheck->z_char[soff];
+		_zipdma->d_ctrl = ZIPDMA_BUSY | flags; // Don't start the DMA
+		_zipdma->d_src  = src;
+		if (src != _zipdma->d_src)
+			// Skip this test ... it's not supported.
+			return 0;
+	}
+
 	printf("  DMA TEST(0x%08x, S[%2d], D[%02d], %5d, 0x%08x);\n",
 		seed, soff, doff, len, flags);
 
@@ -208,7 +223,7 @@ int	main(int argc, char **argv) {
 	//
 	// 8b test
 	// {{{
-	if (0) {
+	if (1) {
 		printf("Basic MEMCPY( 8b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -268,7 +283,7 @@ int	main(int argc, char **argv) {
 	//
 	// 16b test
 	// {{{
-	if (0 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( 16b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -329,7 +344,7 @@ int	main(int argc, char **argv) {
 	//
 	// 32b test
 	// {{{
-	if (1 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( 32b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -388,9 +403,9 @@ int	main(int argc, char **argv) {
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Bus width test
+	// Full Bus width test
 	// {{{
-	if (1 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( BUS): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -456,10 +471,10 @@ int	main(int argc, char **argv) {
 
 		err = dma_memcpy(c_dst, c_src, TESTLEN);
 		if (err) {
-			printf("FAIL!\n");
+			printf("Checking valid err return: FAIL!\n");
 			fail = 1;
 		} else
-			printf("PASS\n");
+			printf("Checking valid err return: PASS\n");
 	}
 	// }}}
 
