@@ -42,7 +42,7 @@ module zaxdma_ctrl #(
 		// {{{
 		parameter	ADDRESS_WIDTH=30, LGMEMLEN = 10,
 		parameter	SLV_WIDTH=32,
-		parameter	BUS_WIDTH=32,
+				// BUS_WIDTH=512,
 		parameter	LGDMALENGTH = ADDRESS_WIDTH,
 		parameter	ABORT_KEY = 32'h41425254,
 		parameter [0:0]	OPT_LOWPOWER = 1'b0,
@@ -103,27 +103,10 @@ module zaxdma_ctrl #(
 
 	// Local declarations
 	// {{{
-	localparam	AXILSB = $clog2(BUS_WIDTH/8);
-	localparam [1:0]	SZ_BYTE = 2'b11,
-				SZ_16B  = 2'b10,
-				SZ_32B  = 2'b01,
-				SZ_BUS  = 2'b00;
 	reg		int_trigger, r_err, r_zero_len, r_busy;
 	reg	[4:0]	int_sel;
 	reg	[SLV_WIDTH-1:0]	next_src, next_dst, next_len, next_tlen,
 			w_control_reg;
-
-	reg		rvalid, bvalid;
-	wire		skd_awvalid, skd_wvalid, skd_arvalid;
-	wire		axil_write_ready, axil_read_ready;
-	wire	[3:0]	skd_awaddr, skd_araddr;
-	wire	[31:0]	skd_wdata;
-	wire	[3:0]	skd_wstrb;
-	reg	[31:0]	rd_data;
-
-	reg [AW-1:0]	lcl_src_addr;
-	reg		nxt_mm2s_inc;
-	reg	[1:0]	nxt_mm2s_size;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -132,6 +115,14 @@ module zaxdma_ctrl #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+
+	reg	rvalid, bvalid;
+	wire		skd_awvalid, skd_wvalid, skd_arvalid;
+	wire		axil_write_ready, axil_read_ready;
+	wire	[3:0]	skd_awaddr, skd_araddr;
+	wire	[31:0]	skd_wdata;
+	wire	[3:0]	skd_wstrb;
+	reg	[31:0]	rd_data;
 
 	skidbuffer #(
 		.DW(4), .OPT_OUTREG(1'b0), .OPT_LOWPOWER(OPT_LOWPOWER)
@@ -227,18 +218,8 @@ module zaxdma_ctrl #(
 		rd_data <= 0;
 		case(skd_araddr[3:2])
 		2'b00: rd_data <= w_control_reg;
-		2'b01: begin
-			if (i_dma_busy)
-				rd_data[AW-1:0] <= i_current_src;
-			else
-				rd_data[AW-1:0] <= o_src_addr;
-			end
-		2'b10: begin
-			if (i_dma_busy)
-				rd_data[AW-1:0] <= i_current_dst;
-			else
-				rd_data[AW-1:0] <= o_dst_addr;
-			end
+		2'b01: rd_data[AW-1:0] <= (i_dma_busy) ? i_current_src : o_src_addr;
+		2'b10: rd_data[AW-1:0] <= (i_dma_busy) ? i_current_dst : o_dst_addr;
 		2'b11: rd_data[LGDMALENGTH-1:0] <= (i_dma_busy) ? i_remaining_len : o_length;
 		endcase
 	end
@@ -261,7 +242,7 @@ module zaxdma_ctrl #(
 	always @(*)
 	begin
 		next_src = 32'h00;
-		next_src[AW-1:0] = lcl_src_addr;
+		next_src[AW-1:0] = o_src_addr;
 
 		if (skd_wstrb[0]) next_src[ 7: 0] = skd_wdata[ 7: 0];
 		if (skd_wstrb[1]) next_src[15: 8] = skd_wdata[15: 8];
@@ -317,24 +298,11 @@ module zaxdma_ctrl #(
 
 	// Process writes
 	// {{{
-	always @(*)
-	begin
-		nxt_mm2s_inc  = o_mm2s_inc;
-		nxt_mm2s_size = o_mm2s_size;
-
-		if (axil_write_ready && !o_dma_request && !i_dma_busy
-				&& skd_awaddr[3:2] == 2'b00 && skd_wstrb[2])
-		begin
-			nxt_mm2s_inc  = !skd_wdata[18];
-			nxt_mm2s_size =  skd_wdata[17:16];
-		end
-	end
-
 	always @(posedge i_clk)
 	if (i_reset)
 	begin
 		// {{{
-		lcl_src_addr    <= {(AW){1'b0}};
+		o_src_addr    <= {(AW){1'b0}};
 		o_dst_addr    <= {(AW){1'b0}};
 		o_length      <= {(LGDMALENGTH){1'b0}};
 		r_zero_len    <= 1'b1;
@@ -371,7 +339,7 @@ module zaxdma_ctrl #(
 				int_sel     <= skd_wdata[28:24];
 			end end
 			// }}}
-		2'b01: lcl_src_addr <= next_src[AW-1:0];
+		2'b01: o_src_addr <= next_src[AW-1:0];
 		2'b10: o_dst_addr <= next_dst[AW-1:0];
 		2'b11: begin // o_length
 			// {{{
@@ -383,22 +351,8 @@ module zaxdma_ctrl #(
 		// }}}
 	end else if (i_dma_busy)
 	begin
-		lcl_src_addr <= i_current_src;
+		o_src_addr <= i_current_src;
 		o_dst_addr <= i_current_dst;
-	end
-
-	always @(posedge i_clk)
-	if (!i_dma_busy && !o_dma_request)
-	begin
-		o_src_addr <= lcl_src_addr;
-
-		if (!nxt_mm2s_inc)
-		case(nxt_mm2s_size)
-		SZ_BYTE: begin end
-		SZ_16B:  o_src_addr[0] <= 1'b0;
-		SZ_32B:  o_src_addr[1:0] <= 2'b00;
-		SZ_BUS:  o_src_addr[AXILSB-1:0] <= {(AXILSB){1'b0}};
-		endcase
 	end
 	// }}}
 

@@ -40,11 +40,13 @@
 `default_nettype none
 // }}}
 module	zaxdma_check #(
+		// {{{
 		parameter	ADDRESS_WIDTH = 30,
 		parameter	BUS_WIDTH = 64,
 		parameter	IW = 1,
 		localparam	AW = ADDRESS_WIDTH,
 		localparam	DW = BUS_WIDTH
+		// }}}
 	) (
 		// {{{
 		input	wire		i_clk, i_reset,

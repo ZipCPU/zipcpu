@@ -164,21 +164,6 @@ void init_lfsr(uint32_t init_value) {
 int	dma_test(unsigned seed, unsigned soff, unsigned doff, unsigned len,
 		unsigned flags) {
 	// {{{
-	if (flags & DMACMD_FIXSRC) {
-		// See if this transfer is even possible--it isn't in AXI
-		// contexts.  So, we have to "ask" the DMA if it's an AXI
-		// DMA, and only run the test if so.  We can do this by
-		// writing our address and flags to the DMA.  If the
-		// address then changes on read back, that means that the
-		// requested offset isn't supported.
-		char	*src = (void *)&_zdmacheck->z_char[soff];
-		_zipdma->d_ctrl = ZIPDMA_BUSY | flags; // Don't start the DMA
-		_zipdma->d_src  = src;
-		if (src != _zipdma->d_src)
-			// Skip this test ... it's not supported.
-			return 0;
-	}
-
 	printf("  DMA TEST(0x%08x, S[%2d], D[%02d], %5d, 0x%08x);\n",
 		seed, soff, doff, len, flags);
 
@@ -351,7 +336,7 @@ int	main(int argc, char **argv) {
 		lfsr_state = 0xf4000000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZ32);
-		for(int fx=2; fx<4; fx++) {
+		for(int fx=0; fx<4; fx++) {
 			unsigned flags = SZ32;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
