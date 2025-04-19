@@ -137,7 +137,7 @@ module	zaxdma_s2mm #(
 		output	wire			M_AWVALID,
 		input	wire			M_AWREADY,
 		output	wire	[IW-1:0]	M_AWID,
-		output wire [AW-1:0]	M_AWADDR,
+		output	wire	[AW-1:0]	M_AWADDR,
 		output	wire	[7:0]		M_AWLEN,
 		output	wire	[2:0]		M_AWSIZE,
 		output	wire	[1:0]		M_AWBURST,
@@ -488,6 +488,8 @@ module	zaxdma_s2mm #(
 		sr_valid <= gears_valid || sr_last[1];
 	// }}}
 
+	// sr_offset
+	// {{{
 	initial	sr_offset = 0;
 	always @(posedge i_clk)
 	if (OPT_LOWPOWER && (i_reset || (!o_busy && !i_request)))
@@ -502,7 +504,10 @@ module	zaxdma_s2mm #(
 		SZ_BUS:  sr_offset <= i_addr[AXILSB-1:0];
 		endcase
 	end
+	// }}}
 
+	// pre_shift, sr_data
+	// {{{
 	always @(*)
 	case(r_size)
 	SZ_BYTE: pre_shift = { {(2*DW-16){1'b0}}, gears_data[7:0] };
@@ -534,7 +539,10 @@ module	zaxdma_s2mm #(
 	else if ((gears_valid && gears_ready)
 			|| (sr_valid && sr_ready && |sr_last))
 		sr_data <= pre_shift;
+	// }}}
 
+	// sr_last
+	// {{{
 	initial	sr_last = 0;
 	always @(posedge i_clk)
 	if (!o_busy)
@@ -567,6 +575,7 @@ module	zaxdma_s2mm #(
 		end
 	end else if (sr_ready && |sr_last)
 		sr_last <= 2'b01;
+	// }}}
 
 	// Output
 	//	sr_valid, sr_ready, sr_data, sr_last
@@ -1399,21 +1408,6 @@ module	zaxdma_s2mm #(
 	if (o_busy)
 		assume(!f_posn[ADDRESS_WIDTH] || f_posn[ADDRESS_WIDTH-1:0]==0);
 
-	/*
-	always @(*)
-	if (!i_reset && o_busy)
-	begin
-		if (r_last)
-		begin
-		end else case(f_cfg_size)
-		2'b11: begin end
-		2'b10: assert(f_posn[0] == 1'b0);
-		2'b01: assert(f_posn[1:0] == 2'b0);
-		2'b00: assert(f_posn[AXILSB-1:0] == 0);
-		endcase
-	end
-	*/
-
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1723,60 +1717,6 @@ module	zaxdma_s2mm #(
 		SZ_BUS: f_waddr[AXILSB-1:0] = 0;
 		endcase
 	end
-
-	/*
-	always @(*)
-	if (!i_reset && o_busy && !r_last && !o_err)
-	begin
-		assert({ 1'b0, axi_waddr } == f_waddr[ADDRESS_WIDTH:AXILSB]);
-		case(r_size)
-		SZ_BUS: assert(subaddr == f_cfg_addr[AXILSB-1:0]);
-		SZ_16B: assert(subaddr == { f_waddr[AXILSB-1:1], f_cfg_addr[0] });
-		SZ_32B: assert(subaddr == { f_waddr[AXILSB-1:2], f_cfg_addr[1:0] });
-		default:
-			assert(subaddr == f_waddr[AXILSB-1:0]);
-		endcase
-	end
-
-	always @(*)
-	if (o_busy && faxi_waddr[ADDRESS_WIDTH] && !r_last)
-	begin
-		assert(o_err);
-		// assert(faxi_waddr[ADDRESS_WIDTH-1:0] <= DW/8);
-	end
-
-	always @(*)
-	if (!i_reset && o_busy)
-	begin
-		if (!r_inc)
-		case(r_size)
-		SZ_BYTE: begin end
-		SZ_16B: assert(subaddr[0] == 1'b0);
-		SZ_32B: assert(subaddr[1:0] == 2'b00);
-		SZ_BUS: assert(subaddr == 0);
-		endcase else case(r_size)
-		SZ_BYTE: begin end
-		SZ_16B: assert(subaddr[0]   == f_cfg_addr[0]);
-		SZ_32B: assert(subaddr[1:0] == f_cfg_addr[1:0]);
-		SZ_BUS: assert(subaddr      == f_cfg_addr[AXILSB-1:0]);
-		endcase
-	end
-
-	always @(*)
-		fr_sel_count = $countones(r_sel);
-
-	// always @(posedge i_clk)
-	// if (!o_wr_sel || !i_wr_stall)
-	//	fr_sel_count_past <= fr_sel_count;
-
-	always @(posedge i_clk)
-	if(!i_reset && o_busy && !o_err && !r_last && $past(S_VALID && S_READY))
-	begin
-		assert(M_WVALID);
-		assert($countones({ r_sel, M_WSTRB })
-					== $past(S_BYTES + fr_sel_count));
-	end
-	*/
 
 	/*
 	always @(*)
