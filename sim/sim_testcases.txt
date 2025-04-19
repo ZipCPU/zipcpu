@@ -103,7 +103,7 @@ axcachechk64   AXCACHE  cputest64.hex axcach64-out.txt	BUS_WIDTH=64 # DUMP_TO_VC
 axcch64nwrap   AXCACHE  cputest64.hex axch64nwr-out.txt	BUS_WIDTH=64 OPT_WRAP=0
 wbbcachechk64  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64
 wbbcchchk64nw  WBBCACHE cputest64.hex wbbcach64-out.txt	BUS_WIDTH=64 OPT_WRAP=0
-wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64 DUMP_TO_VCD=1 VCD_FILE="test/wbcachecheck.vcd"
+wbcachechk64   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="test/wbcachecheck.vcd"
 wbcchchk64nw   WBCACHE  cputest64.hex wbcach64-out.txt	BUS_WIDTH=64 OPT_WRAP=0
 ##
 axlpwrcheck    AXLPWR  cputest.hex axlpwr-out.txt
@@ -200,10 +200,10 @@ wblpwrcklock   WBLPWR  lockcheck.hex wblpwrlk-out.txt
 ## {{{
 ##
 ##
-wbzipdmacach  WBCACHE  dmatest.hex   wbzdma-out.txt DUMP_TO_VCD=1
-wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64 VCD_FILE="wbzdmacach64.vcd"
+wbzipdmacach  WBCACHE  dmatest.hex   wbzdma-out.txt	# DUMP_TO_VCD=1
+wbzdmacach64  WBCACHE  dmatest64.hex wbzdma64-out.txt	BUS_WIDTH=64
 
-axdmacheck    AXCACHE  dmatest.hex   axdmacheck-out.txt # DUMP_TO_VCD=1
+axdmacheck    AXCACHE  dmatest.hex   axdmacheck-out.txt DUMP_TO_VCD=1
 axdmachk64    AXCACHE  dmatest64.hex axdmachk64-out.txt BUS_WIDTH=64
 axdlpcheck    AXLPWR   dmatest.hex   axdlpcheck-out.txt
 axdlpchk64    AXLPWR   dmatest64.hex axdlpchk64-out.txt BUS_WIDTH=64

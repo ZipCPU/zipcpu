@@ -115,9 +115,9 @@ module	zipdma_mm2s #(
 
 	reg	[WBLSB+1:0]	fill, next_fill;
 
-	reg			m_valid, m_last;
+	reg			rx_valid, rx_last;
 	reg	[DW-1:0]	sreg;
-	reg	[WBLSB:0]	m_bytes;
+	reg	[WBLSB:0]	rx_bytes;
 
 	reg	[LGLENGTH:0]	rdstb_len, rdack_len;
 
@@ -354,7 +354,7 @@ module	zipdma_mm2s #(
 		if (wb_outstanding == (i_rd_ack ? 1:0) && !o_rd_stb)
 			o_rd_cyc <= 1'b0;
 
-		if (m_valid && m_last)
+		if (rx_valid && rx_last)
 			o_busy <= 0;
 	end
 
@@ -366,10 +366,10 @@ module	zipdma_mm2s #(
 		r_wrap <= next_addr[ADDRESS_WIDTH];
 `ifdef	FORMAL
 	always @(*)
-	if (o_busy && m_valid && m_last)
+	if (o_busy && rx_valid && rx_last)
 	begin
 		assert(rdack_len == 0);
-		assert(fill == m_bytes);
+		assert(fill == rx_bytes);
 	end
 `endif
 	// }}}
@@ -500,7 +500,7 @@ module	zipdma_mm2s #(
 		SZ_32B : begin
 			if (2'b00 != i_lastaddr[1:0])
 			begin
-				i_last_sel_mask[3:0] = ~(4'hf >> i_lastaddr[2:0]);
+				i_last_sel_mask[3:0] = ~(4'hf >> i_lastaddr[1:0]);
 				i_last_sel_mask = {(DW/32){i_last_sel_mask[3:0]}};
 			end else
 				i_last_sel_mask = {(DW/8){1'b1}};
@@ -768,7 +768,9 @@ module	zipdma_mm2s #(
 	// {{{
 	always @(*)
 	begin
-		next_fill = (M_VALID) ? 0 : fill;
+		next_fill = fill;
+		if (M_VALID)
+			next_fill = fill - {1'b0,M_BYTES };
 		if (i_rd_ack)
 			next_fill = next_fill + { 1'b0, rdack_size };
 	end
@@ -780,18 +782,18 @@ module	zipdma_mm2s #(
 		fill <= next_fill;
 	// }}}
 
-	// m_valid
+	// rx_valid
 	// {{{
-	initial	m_valid = 0;
+	initial	rx_valid = 0;
 	always @(posedge i_clk)
 	if (i_reset || !o_busy)
-		m_valid <= 1'b0;
+		rx_valid <= 1'b0;
 	else begin
-		m_valid <= 0;
-		if ((!m_valid || !m_last) && rdack_len == 0 && fill > 0)
-			m_valid <= 1;
+		rx_valid <= 0;
+		if ((!rx_valid || !rx_last) && rdack_len == 0 && fill > 0)
+			rx_valid <= 1;
 		else if (o_rd_cyc && i_rd_ack)
-			m_valid <= 1'b1;
+			rx_valid <= 1'b1;
 	end
 	// }}}
 
@@ -843,7 +845,7 @@ module	zipdma_mm2s #(
 		sreg <= pre_shifted_data;
 		// Verilator lint_on  WIDTH
 		// }}}
-	end else if (m_valid)
+	end else if (rx_valid)
 	begin
 		// {{{
 		sreg <= {(DW){1'b0}};
@@ -851,26 +853,26 @@ module	zipdma_mm2s #(
 	end
 	// }}}
 
-	// m_bytes
+	// rx_bytes
 	// {{{
-	initial	m_bytes = 0;
+	initial	rx_bytes = 0;
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
-		m_bytes <= 0;
+		rx_bytes <= 0;
 	end else if (i_rd_ack)
 	begin
 		if (|next_fill[WBLSB+1:WBLSB]) // if next_fill >= DW/8)
 			// Verilator lint_off WIDTH
-			m_bytes <= DW/8;
+			rx_bytes <= DW/8;
 			// Verilator lint_on  WIDTH
 		else
-			m_bytes <= { 1'b0, next_fill[WBLSB-1:0] };
+			rx_bytes <= { 1'b0, next_fill[WBLSB-1:0] };
 	end else if (rdack_len == 0)
-		m_bytes <= next_fill[WBLSB:0];
+		rx_bytes <= next_fill[WBLSB:0];
 	// }}}
 
-	// m_last
+	// rx_last
 	// {{{
 	always @(*)
 	begin
@@ -881,33 +883,33 @@ module	zipdma_mm2s #(
 			// Verilator lint_on  WIDTH
 	end
 
-	initial	m_last = 0;
+	initial	rx_last = 0;
 	always @(posedge i_clk)
 	if (i_reset)
-		m_last <= 1'b0;
+		rx_last <= 1'b0;
 	else if (!o_busy)
 	begin
-		m_last <= 1'b0;
+		rx_last <= 1'b0;
 		if (!OPT_LOWPOWER || i_request)
 		case(i_size)
-		SZ_BYTE: m_last <= (i_transferlen <= 1);
-		SZ_16B: m_last <= (last_request_addr[ADDRESS_WIDTH-1:1] != i_addr[ADDRESS_WIDTH-1:1]);
-		SZ_32B: m_last <= (last_request_addr[ADDRESS_WIDTH-1:2] != i_addr[ADDRESS_WIDTH-1:2]);
-		SZ_BUS: m_last <= (last_request_addr[ADDRESS_WIDTH-1:WBLSB] != i_addr[ADDRESS_WIDTH-1:WBLSB]);
+		SZ_BYTE: rx_last <= (i_transferlen <= 1);
+		SZ_16B: rx_last <= (last_request_addr[ADDRESS_WIDTH-1:1] != i_addr[ADDRESS_WIDTH-1:1]);
+		SZ_32B: rx_last <= (last_request_addr[ADDRESS_WIDTH-1:2] != i_addr[ADDRESS_WIDTH-1:2]);
+		SZ_BUS: rx_last <= (last_request_addr[ADDRESS_WIDTH-1:WBLSB] != i_addr[ADDRESS_WIDTH-1:WBLSB]);
 		endcase
 	end else if (i_rd_ack)
 	begin
 		// Verilator lint_off WIDTH
-		m_last <= (rdack_len <= rdack_size) && (next_fill <= DW/8);
+		rx_last <= (rdack_len <= rdack_size) && (next_fill <= DW/8);
 		// Verilator lint_on  WIDTH
 	end else if (rdack_len == 0)
-		m_last <= 1;
+		rx_last <= 1;
 	// }}}
 
-	assign	M_VALID = m_valid;
+	assign	M_VALID = rx_valid;
 	assign	M_DATA = sreg;
-	assign	M_BYTES= m_bytes;
-	assign	M_LAST = m_last;
+	assign	M_BYTES= rx_bytes;
+	assign	M_LAST = rx_last;
 
 	// Keep Verilator happy
 	// {{{
