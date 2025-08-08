@@ -912,7 +912,6 @@ module	dcache #(
 		wr_cstb <= 1'b0;
 		last_line_stb <= 1'b0;
 		end_of_line <= 1'b0;
-		state <= DC_IDLE;
 		cyc <= 1'b0;
 		stb <= 1'b0;
 		state <= DC_IDLE;
