@@ -105,13 +105,13 @@ vsim: rtl
 .PHONY: clean
 ## {{{
 clean:
-	+@$(SUBMAKE) --directory=rtl           clean
-	+@$(SUBMAKE) --directory=sw            clean
-	+@$(SUBMAKE) --directory=sim/cpp       clean
-	+@$(SUBMAKE) --directory=sim/verilator clean
-	+@$(SUBMAKE) --directory=bench/asm     clean
-	+@$(SUBMAKE) --directory=bench/cpp     clean
-	+@$(SUBMAKE) --directory=bench/formal  clean
+	+@$(SUBMAKE) rtl           clean
+	+@$(SUBMAKE) sw            clean
+	+@$(SUBMAKE) sim/cpp       clean
+	+@$(SUBMAKE) sim/verilator clean
+	+@$(SUBMAKE) bench/asm     clean
+	+@$(SUBMAKE) bench/cpp     clean
+	+@$(SUBMAKE) bench/formal  clean
 ## }}}
 
 .PHONY: bench
