@@ -43,3 +43,4 @@ coverage_lcov.dat
 verilated_cov_2_lcov.py
 coverage.lcov.dat
 annotated/
+/relicense
