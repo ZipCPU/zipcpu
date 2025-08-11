@@ -344,6 +344,12 @@ module	zipdma_s2mm #(
 
 `ifdef	FORMAL
 	always @(posedge i_clk)
+	if (!i_reset && o_busy && wr_overflow)
+	begin
+		assert(!o_wr_stb);
+	end
+
+	always @(posedge i_clk)
 	if (i_reset || !o_busy || o_err || (o_wr_cyc && i_wr_err))
 	begin
 	end else if (!o_wr_stb || !i_wr_stall)
@@ -650,7 +656,10 @@ module	zipdma_s2mm #(
 	if (!i_reset && o_busy && !r_last && !o_err)
 			// && (o_wr_stb || !fwb_addr[ADDRESS_WIDTH]) && !r_last)
 	begin
-		assert({ 1'b0, o_wr_addr } == fwb_addr[ADDRESS_WIDTH:WBLSB]);
+		if (!wr_overflow)
+		begin
+			assert({ 1'b0, o_wr_addr } == fwb_addr[ADDRESS_WIDTH:WBLSB]);
+		end
 		case(r_size)
 		SZ_BUS: assert(subaddr == r_addr[WBLSB-1:0]);
 		SZ_16B: assert(subaddr == { fwb_addr[WBLSB-1:1], r_addr[0] });
@@ -663,7 +672,8 @@ module	zipdma_s2mm #(
 	always @(*)
 	if (o_busy && fwb_addr[ADDRESS_WIDTH] && !r_last)
 	begin
-		assert(o_err);
+		assert(!o_wr_stb);
+		assert(o_err || wr_overflow);
 		// assert(fwb_addr[ADDRESS_WIDTH-1:0] <= DW/8);
 	end
 
