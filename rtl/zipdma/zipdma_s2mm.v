@@ -135,29 +135,20 @@ module	zipdma_s2mm #(
 	begin
 		next_addr = { 1'b0, o_wr_addr, subaddr };
 
-		if (o_wr_stb && !i_wr_stall)
+		// While it would make sense to clear the sub address on any
+		// subsequent writes, we need to keep track of it in order
+		// to know how much to shift our register--so we keep it around.
+		if (o_wr_stb && !i_wr_stall && r_inc)
 		case(r_size)
-		SZ_BYTE: if (r_inc)
+		SZ_BYTE: // 8b addressing
 			next_addr = next_addr + 1;
-		SZ_16B: begin	// 16-bit addressing
-			if (r_inc)
-				next_addr = next_addr + 2;
-			else
-				next_addr[  0] = 0;
-			end
-		SZ_32B: begin	// 32-bit addressing
-			if (r_inc)
-				next_addr = next_addr + 4;
-			else
-				next_addr[1:0] = 0;
-			end
-		SZ_BUS: begin	// Full word addressing
-			if (r_inc)
-				next_addr = next_addr + { {(AW-1){1'b0}}, 1'b1,
+		SZ_16B: // 16-bit addressing
+			next_addr = next_addr + 2;
+		SZ_32B: // 32-bit addressing
+			next_addr = next_addr + 4;
+		SZ_BUS: // Full word addressing
+			next_addr = next_addr + { {(AW-1){1'b0}}, 1'b1,
 						{(WBLSB){1'b0}} };
-			else
-				next_addr[WBLSB-1:0] = 0;
-			end
 		endcase
 	end
 
@@ -323,7 +314,11 @@ module	zipdma_s2mm #(
 		o_wr_stb <= 1'b0;
 
 		if (o_wr_stb)
+		begin
 			{ o_wr_addr, subaddr } <= next_addr[ADDRESS_WIDTH-1:0];
+			if (!r_inc)
+				subaddr <= subaddr;
+		end
 
 		if (!wb_pipeline_full)
 		begin

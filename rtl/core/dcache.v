@@ -94,6 +94,9 @@ module	dcache #(
 		parameter	DATA_WIDTH=32, // CPU's register width
 		parameter [0:0]	OPT_LOCAL_BUS=1'b1,
 		parameter [0:0]	OPT_PIPE=1'b1,
+		// Verilator lint_off UNUSED
+		parameter [0:0]	OPT_WRAP=1'b1,
+		// Verilator lint_on  UNUSED
 		parameter [0:0]	OPT_LOCK=1'b1,
 		parameter [0:0]	OPT_DUAL_READ_PORT=1'b1,
 		parameter 	OPT_FIFO_DEPTH = 4,
@@ -912,7 +915,6 @@ module	dcache #(
 		wr_cstb <= 1'b0;
 		last_line_stb <= 1'b0;
 		end_of_line <= 1'b0;
-		state <= DC_IDLE;
 		cyc <= 1'b0;
 		stb <= 1'b0;
 		state <= DC_IDLE;

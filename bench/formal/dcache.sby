@@ -5,13 +5,18 @@ bare		bus32  nolocal lock    dualread
 nolock_nolocal	bus32  nolocal nolock  dualread
 nolock_system	bus32  system  nolock  dualread
 piped		bus32  system  lock    dualread
+pipedw		bus32  system  lock    dualread              wrap
 cover           bus32  system  lock    dualread
 cover_pipe      bus32  system  lock    dualread cover piped
+cvrpipew        bus32  system  lock    dualread cover piped  wrap
 piped_lp	bus32  system  lock    dualread opt_lowpower
+piped_lpw	bus32  system  lock    dualread opt_lowpower wrap
 prf64		bus64  system  lock    dualread
 prf64lp		bus64  system  lock    dualread opt_lowpower
+prf64lpw	bus64  system  lock    dualread opt_lowpower wrap
 prf128		bus128 system  lock    dualread
 prf128lp	bus128 system  lock    dualread opt_lowpower
+prf128w		bus128 system  lock    dualread              wrap
 
 [options]
 ~cover: mode prove
@@ -45,6 +50,7 @@ cmd += " -chparam OPT_DUAL_READ_PORT %d" % (1 if "dualread" in tags else 0)
 cmd += " -chparam OPT_LOCK           %d" % (1 if "lock"     in tags else 0)
 cmd += " -chparam OPT_LOCAL_BUS      %d" % (1 if "system"   in tags else 0)
 cmd += " -chparam OPT_LOWPOWER       %d" % (1 if "opt_lowpower" in tags else 0)
+cmd += " -chparam OPT_WRAP           %d" % (1 if "wrap"     in tags else 0)
 if ("bus32" in tags):
 	cmd += " -chparam BUS_WIDTH 32"
 elif ("bus64" in tags):

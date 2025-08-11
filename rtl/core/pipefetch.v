@@ -4,15 +4,14 @@
 // {{{
 // Project:	Zip CPU -- a small, lightweight, RISC CPU soft core
 //
-// Purpose:	Keeping our CPU fed with instructions, at one per clock and
-//		with no stalls, can be quite a chore.  Worse, the Wishbone
-//		takes a couple of cycles just to read one instruction from
-//		the bus.  However, if we use pipeline accesses to the Wishbone
-//		bus, then we can read more and faster.  Further, if we cache
-//		these results so that we have them before we need them, then
-//		we have a chance of keeping our CPU from stalling.  Those are
-//		the purposes of this instruction fetch module: 1) Pipeline
-//		wishbone accesses, and 2) an instruction cache.
+// Purpose:	DEPRECATED!  Keeping our CPU fed with instructions, at one per
+//		clock and with no stalls, can be quite a chore.  Worse, the
+//	Wishbone takes a couple of cycles just to read one instruction from
+//	the bus.  However, if we use pipeline accesses to the Wishbone then we
+//	can read more and faster.  Further, if we cache these results so that
+//	we have them before we need them, then we have a chance of keeping our
+//	CPU from stalling.  Those are the purposes of this instruction fetch
+//	module: 1) Pipeline wishbone accesses, and 2) an instruction cache.
 //
 //	20150919 -- Fixed a nasty race condition whereby the pipefetch routine
 //		would produce either the same instruction twice, or skip
@@ -56,34 +55,37 @@
 //
 `default_nettype	none
 // }}}
-module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
-	// {{{
-			o_i, o_pc, o_v,
-		o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-			i_wb_stall, i_wb_ack, i_wb_err, i_wb_data, i_wb_request,
-			o_illegal);
-	parameter	RESET_ADDRESS=32'h0010_0000,
-			LGCACHELEN = 6, ADDRESS_WIDTH=24,
-			CACHELEN=(1<<LGCACHELEN), BUSW=32, AW=ADDRESS_WIDTH;
-	input	wire			i_clk, i_reset, i_new_pc,
-					i_clear_cache, i_stall_n;
-	input	wire	[AW+1:0]	i_pc;
-	output	reg	[BUSW-1:0]	o_i;
-	output	reg	[AW+1:0]	o_pc;
-	output	reg			o_v;
-	//
-	output	reg		o_wb_cyc, o_wb_stb;
-	output	wire		o_wb_we;
-	output	reg	[(AW-1):0]	o_wb_addr;
-	output	wire	[(BUSW-1):0]	o_wb_data;
-	//
-	input	wire		i_wb_stall, i_wb_ack, i_wb_err;
-	input	wire	[(BUSW-1):0]	i_wb_data;
-	//
-	// Is the (data) memory unit also requesting access to the bus?
-	input	wire			i_wb_request;
-	output	wire			o_illegal;
-	// }}}
+module	pipefetch #(
+		// {{{
+		parameter	RESET_ADDRESS=32'h0010_0000,
+				LGCACHELEN = 6,
+				ADDRESS_WIDTH=24,
+				CACHELEN=(1<<LGCACHELEN),
+				BUSW=32,
+				AW=ADDRESS_WIDTH
+		// }}}
+	) (
+		// {{{
+		input	wire			i_clk, i_reset, i_new_pc,
+						i_clear_cache, i_stall_n,
+		input	wire	[AW+1:0]	i_pc,
+		output	reg	[BUSW-1:0]	o_i,
+		output	reg	[AW+1:0]	o_pc,
+		output	reg			o_v,
+		//
+		output	reg		o_wb_cyc, o_wb_stb,
+		output	wire		o_wb_we,
+		output	reg	[(AW-1):0]	o_wb_addr,
+		output	wire	[(BUSW-1):0]	o_wb_data,
+		//
+		input	wire		i_wb_stall, i_wb_ack, i_wb_err,
+		input	wire	[(BUSW-1):0]	i_wb_data,
+		//
+		// Is the (data) memory unit also requesting access to the bus?
+		input	wire			i_wb_request,
+		output	wire			o_illegal
+		// }}}
+	);
 
 	// Declarations
 	// {{{
@@ -209,16 +211,16 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	// {{{
 	initial	r_nvalid = 0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache)) // Required, so we can reload memoy and then reset
+	if (i_reset || i_clear_cache) // Required, so we can reload memoy and then reset
 		r_nvalid <= 0;
-	else if ((!o_wb_cyc)&&(
-			(w_pc_out_of_bounds)||(w_ran_off_end_of_cache)))
+	else if (!o_wb_cyc
+			&& (w_pc_out_of_bounds || w_ran_off_end_of_cache))
 		r_nvalid <= 0;
-	else if ((!o_wb_cyc)&&(w_running_out_of_cache))
+	else if (!o_wb_cyc && w_running_out_of_cache)
 		r_nvalid[LGCACHELEN:(LGCACHELEN-2)]
 			<= r_nvalid[LGCACHELEN:(LGCACHELEN-2)] +3'b111;
 				// i.e.  - (1<<(LGCACHELEN-2));
-	else if ((o_wb_cyc)&&(i_wb_ack))
+	else if (o_wb_cyc && i_wb_ack)
 		r_nvalid <= r_nvalid + {{(LGCACHELEN){1'b0}},1'b1}; // +1;
 	// }}}
 
@@ -228,11 +230,10 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	always @(posedge i_clk)
 	if (i_clear_cache)
 		r_cache_base <= i_pc[AW+1:2];
-	else if ((!o_wb_cyc)&&(
-			(w_pc_out_of_bounds)
-			||(w_ran_off_end_of_cache)))
+	else if (!o_wb_cyc
+			&& (w_pc_out_of_bounds || w_ran_off_end_of_cache))
 		r_cache_base <= (i_new_pc) ? i_pc[AW+1:2] : r_addr[AW+1:2];
-	else if ((!o_wb_cyc)&&(w_running_out_of_cache))
+	else if (!o_wb_cyc && w_running_out_of_cache)
 		r_cache_base[(AW-1):(LGCACHELEN-2)]
 			<= r_cache_base[(AW-1):(LGCACHELEN-2)]
 				+ {{(AW-LGCACHELEN+1){1'b0}},1'b1};
@@ -244,11 +245,10 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	always @(posedge i_clk)
 	if (i_clear_cache)
 		r_cache_offset <= 0;
-	else if ((!o_wb_cyc)&&(
-			(w_pc_out_of_bounds)
-			||(w_ran_off_end_of_cache)))
+	else if (!o_wb_cyc
+			&&(w_pc_out_of_bounds || w_ran_off_end_of_cache))
 		r_cache_offset <= 0;
-	else if ((!o_wb_cyc)&&(w_running_out_of_cache))
+	else if (!o_wb_cyc && w_running_out_of_cache)
 		r_cache_offset[1:0] <= r_cache_offset[1:0] + 2'b01;
 
 	assign	w_cache_offset = { r_cache_offset, {(LGCACHELEN-2){1'b0}} };
@@ -259,16 +259,16 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	always @(posedge i_clk)
 	if (i_clear_cache)
 		o_wb_addr <= i_pc[AW+1:2];
-	else if ((o_wb_cyc)&&(w_pc_out_of_bounds))
+	else if (o_wb_cyc && w_pc_out_of_bounds)
 	begin
 		if (i_wb_ack)
 			o_wb_addr <= r_cache_base + bus_nvalid+1;
 		else
 			o_wb_addr <= r_cache_base + bus_nvalid;
-	end else if ((!o_wb_cyc)&&((w_pc_out_of_bounds)
-				||(w_ran_off_end_of_cache)))
+	end else if (!o_wb_cyc
+			&&(w_pc_out_of_bounds || w_ran_off_end_of_cache))
 		o_wb_addr <= (i_new_pc) ? i_pc[AW+1:2] : r_addr[AW+1:2];
-	else if ((o_wb_stb)&&(!i_wb_stall))	// && o_wb_cyc
+	else if (o_wb_stb && !i_wb_stall)	// && o_wb_cyc
 		o_wb_addr <= o_wb_addr + 1;
 	// }}}
 
@@ -279,16 +279,16 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	if (!o_wb_cyc)
 		r_acks_waiting <= 0;
 	// o_wb_cyc *must* be true for all following
-	else if ((o_wb_stb)&&(!i_wb_stall)&&(!i_wb_ack)) //&&(o_wb_cyc)
+	else if (o_wb_stb && !i_wb_stall && !i_wb_ack) //&&(o_wb_cyc)
 		r_acks_waiting <= r_acks_waiting + {{(LGCACHELEN){1'b0}},1'b1};
-	else if ((i_wb_ack)&&((!o_wb_stb)||(i_wb_stall))) //&&(o_wb_cyc)
+	else if (i_wb_ack &&(!o_wb_stb || i_wb_stall)) //&&(o_wb_cyc)
 		r_acks_waiting <= r_acks_waiting + {(LGCACHELEN+1){1'b1}}; // - 1;
 	// }}}
 
 	// cache
 	// {{{
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_ack))
+	if (o_wb_cyc && i_wb_ack)
 		cache[r_nvalid[(LGCACHELEN-1):0]+w_cache_offset] <= i_wb_data;
 	// }}}
 
@@ -296,7 +296,7 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	// {{{
 	initial	r_addr_set = 1'b0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_new_pc))
+	if (i_reset || i_new_pc)
 		r_addr_set <= 1'b1;
 	else if (i_clear_cache)
 		r_addr_set <= 1'b0;
@@ -335,7 +335,7 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	// o_i
 	// {{{
 	always @(posedge i_clk)
-	if ((!o_v)||((i_stall_n)&&(o_v)))
+	if (!o_v || i_stall_n)
 		o_i <= cache[c_rdaddr];
 	// }}}
 
@@ -353,14 +353,14 @@ module	pipefetch(i_clk, i_reset, i_new_pc, i_clear_cache, i_stall_n, i_pc,
 	always @(posedge i_clk)
 	if (i_reset)
 		ill_valid <= 0;
-	else if ((o_wb_cyc)&&(i_wb_err))
+	else if (o_wb_cyc && i_wb_err)
 		ill_valid <= 1;
 	// }}}
 
 	// ill_address
 	// {{{
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_err))
+	if (o_wb_cyc && i_wb_err)
 		ill_address <= o_wb_addr - {{(AW-LGCACHELEN-1){1'b0}}, r_acks_waiting};
 	// }}}
 

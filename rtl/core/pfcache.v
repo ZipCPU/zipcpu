@@ -71,6 +71,7 @@ module	pfcache #(
 `endif
 		parameter	BUS_WIDTH = 32, // Num data bits on the bus
 		parameter [0:0]	OPT_LITTLE_ENDIAN = 1'b0,
+		parameter [0:0]	OPT_WRAP = 1'b1,
 		localparam	CACHELEN=(1<<LGCACHELEN), //Wrd Size of cach mem
 		localparam	CW=LGCACHELEN,	// Short hand for LGCACHELEN
 		localparam	LS=LGCACHELEN-LGLINES, // Size of a cache line
@@ -117,6 +118,7 @@ module	pfcache #(
 	// Declarations
 	// {{{
 	localparam	INLSB = $clog2(INSN_WIDTH/8);
+	localparam	INSN_PER_WORD = BUS_WIDTH / INSN_WIDTH;
 
 	//
 	// o_illegal will be true if this instruction was the result of a
@@ -129,15 +131,12 @@ module	pfcache #(
 	assign	o_wb_we = 1'b0;
 	assign	o_wb_data = 0;
 
-`ifdef	FORMAL
-	assign	f_pc_wb = i_pc[AW+1:2];
-`endif
-
 	wire			r_v;
 	reg	[BUSW-1:0]	cache	[0:CACHELEN-1];
 	wire	[BUSW-1:0]	cache_word;
 	reg	[AW-CW-1:0]	cache_tags	[0:((1<<(LGLINES))-1)];
 	reg	[((1<<(LGLINES))-1):0]	valid_mask;
+	wire			wrap_valid;
 
 	reg			r_v_from_pc, r_v_from_last;
 	reg			rvsrc;
@@ -146,7 +145,11 @@ module	pfcache #(
 	reg	[(CW-1):0]	wraddr;
 	reg	[AW-1:LS]	pc_tag_lookup, last_tag_lookup;
 	wire	[AW-1:LS]	tag_lookup;
-	wire	[AW-1:LS]	pc_tag, lasttag;
+	wire	[AW-1:LS]	lasttag;
+	wire	[AW-1:CW]	pc_tag;
+	wire	[AW-CW-1:0]	r_tag, wb_tag;
+	wire	[CW-LS-1:0]	r_line, wb_line;
+
 	reg			illegal_valid;
 	reg	[AW-1:LS]	illegal_cache;
 
@@ -156,13 +159,32 @@ module	pfcache #(
 	reg	[AW+WBLSB-1:0]	r_pc;
 	reg			isrc;
 	reg	[1:0]		delay;
-	reg			svmask, last_ack, needload, last_addr,
-				bus_abort;
+	reg			svmask, needload, bus_abort;
 	reg	[LGLINES-1:0]	saddr;
-	wire			w_advance;
+	wire			w_advance, last_ack, last_addr;
 	wire			w_invalidate_result;
 
 	wire	[CW-LS-1:0]	pc_line, last_line;
+
+`ifdef	FORMAL
+	// Pre-FORMAL declarations
+	localparam	F_LGDEPTH=LS+1;
+	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
+	wire	[WBLSB+AW-1:0]	f_const_addr, f_address;
+	wire			f_const_illegal;
+	wire	[BUSW-1:0]	f_const_insn;
+	wire			f_const_illegal;
+	wire			f_const_loaded;
+	wire	[LS-1:0]	f_const_line;
+	wire	[AW-LS-1:0]	f_const_tag;
+	wire		f_this_pc, f_this_insn, f_this_data, f_this_line,
+			f_this_ack, f_this_tag; // f_this_addr;
+	reg		f_void_read;
+	reg [AW-1:0]	fr_wb_first;
+
+
+	assign	f_pc_wb = i_pc[AW+1:2];
+`endif
 	// }}}
 
 	assign	w_advance = (i_new_pc)||((r_v)&&(i_ready));
@@ -182,7 +204,7 @@ module	pfcache #(
 		// We don't have the logic to select what to read, we must
 		// read both the value at i_pc and lastpc.  cache[i_pc] is
 		// the value we return if the last cache request was in the
-		// cache on the last clock, cacne[lastpc] is the value we
+		// cache on the last clock, cache[lastpc] is the value we
 		// return if we've been stalled, weren't valid, or had to wait
 		// a clock or two.
 		//
@@ -261,10 +283,17 @@ module	pfcache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	assign	pc_tag    =   i_pc[WBLSB+LS +: (AW-LS)];
+	assign	pc_tag    =   i_pc[WBLSB+CW +: (AW-CW)];
 	assign	pc_line   =   i_pc[WBLSB+LS +: (CW-LS)];
+
 	assign	last_line = lastpc[WBLSB+LS +: (CW-LS)];
+	assign	lasttag   = lastpc[WBLSB+LS +: (AW-LS)];
+
+	assign	r_tag     =   r_pc[WBLSB+CW +: (AW-CW)];
+	assign	r_line    =   r_pc[WBLSB+LS +: (CW-LS)];
+
+	assign	wb_tag    =   o_wb_addr[AW-1:CW];
+	assign	wb_line   =   o_wb_addr[CW-1:LS];
 
 	//
 	// Read the tag value associated with this i_pc value
@@ -295,7 +324,6 @@ module	pfcache #(
 	if (w_advance)
 		lastpc <= i_pc;
 
-	assign	lasttag = lastpc[WBLSB + LS +: (AW-LS)];
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -305,7 +333,8 @@ module	pfcache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	w_v_from_pc = ((pc_tag == lasttag) &&(tag_lookup == pc_tag)
+	assign	w_v_from_pc = (({ pc_tag, pc_line } == lasttag)
+					&&(tag_lookup == { pc_tag, pc_line })
 				&& valid_mask[pc_line]);
 	assign	w_v_from_last = ((tag_lookup == lasttag)
 				&&(valid_mask[last_line]));
@@ -354,17 +383,26 @@ module	pfcache #(
 	initial	r_v_from_pc = 0;
 	initial	r_v_from_last = 0;
 	always @(posedge i_clk)
+	if (i_reset || i_clear_cache)
+	begin
+		r_v_from_pc   <= 1'b0;
+		r_v_from_last <= 1'b0;
+	end else if (i_new_pc || !r_v || i_ready)
 	begin
 		r_v_from_pc   <= (w_v_from_pc)&&(!w_invalidate_result)
 					&&(!o_illegal);
 		r_v_from_last <= (w_v_from_last)&&(!w_invalidate_result);
+		if (o_wb_cyc)
+			{ r_v_from_pc, r_v_from_last } <= 2'b00;
+
+		if (wrap_valid && !w_invalidate_result && !i_new_pc)
+			{ r_v_from_pc, r_v_from_last } <= 2'b11;
 	end
 
 	// Now use rvsrc to determine which of the two valid flags we'll be
 	// using: r_v_from_pc (the i_pc address), or r_v_from_last (the lastpc
 	// address)
 	assign	r_v = ((rvsrc)?(r_v_from_pc):(r_v_from_last));
-
 	always @(*)
 		o_valid = r_v || o_illegal;
 	// }}}
@@ -376,6 +414,214 @@ module	pfcache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
+
+	// wrap_valid
+	// {{{
+	localparam	WRAP_BITS = LS + $clog2(INSN_PER_WORD);
+`ifdef	FORMAL
+	wire	[WRAP_BITS-1:0]	f_wrap_nvalid;
+`endif
+	generate if (OPT_WRAP)
+	begin : GEN_WRAP_VALID
+		reg			r_wrap_valid, pre_wrap, wrap_active;
+		reg	[WRAP_BITS-1:0]	wrap_nvalid;
+		wire	[WRAP_BITS-1:0]	first_nvalid;
+
+		if (BUS_WIDTH == INSN_WIDTH)
+		begin : SINGLE_WIDTH
+			assign	first_nvalid = 1;
+		end else begin : MANY_WIDTH
+			assign first_nvalid = INSN_PER_WORD[WRAP_BITS-1:0]
+					- { {(LS){1'b0}}, r_pc[WBLSB-1:INLSB] };
+		end
+
+		initial	pre_wrap = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || i_clear_cache || !o_wb_cyc)
+			pre_wrap <= 1'b1;
+		else if (i_new_pc || (i_wb_ack && (&wraddr[LS-1:0])))
+			pre_wrap <= 1'b0;
+
+		initial	wrap_active = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || i_clear_cache || i_new_pc
+					|| !o_wb_cyc || i_wb_err || !pre_wrap)
+			wrap_active <= 1'b0;
+		else if (i_wb_ack && pre_wrap)
+			wrap_active <= (wraddr[CW-1:LS] == last_line);
+
+		initial	wrap_nvalid = 0;
+		always @(posedge i_clk)
+		if (i_reset || i_clear_cache || i_new_pc
+				|| bus_abort || i_wb_err
+				|| (!r_wrap_valid && !o_wb_cyc))
+		begin
+			// wrap_nvalid <= 0;
+			wrap_nvalid <= INSN_PER_WORD[WRAP_BITS-1:0];
+			r_wrap_valid <= 0;
+			if (!i_reset && !i_clear_cache)
+			begin
+				wrap_nvalid <= first_nvalid;
+			end
+		end else if (!wrap_active && pre_wrap)
+		begin
+			// Always become valid on the first ACK
+			r_wrap_valid <= i_wb_ack && pre_wrap;
+			wrap_nvalid  <= first_nvalid;
+		end else case({ (i_wb_ack && pre_wrap && o_wb_cyc),
+				(r_wrap_valid && (!r_v || i_ready)) })
+		2'b10:	begin
+			wrap_nvalid <= wrap_nvalid+INSN_PER_WORD[WRAP_BITS-1:0];
+			r_wrap_valid <= 1;
+			end
+		2'b01:  begin
+			wrap_nvalid  <= wrap_nvalid - 1;
+			r_wrap_valid <= (wrap_nvalid > 1);
+			end
+		2'b11:	begin
+			wrap_nvalid<=wrap_nvalid+INSN_PER_WORD[WRAP_BITS-1:0]-1;
+			r_wrap_valid <= 1;
+			end
+		default: begin end
+		endcase
+
+		assign	wrap_valid = r_wrap_valid;
+`ifdef	FORMAL
+		reg	[WRAP_BITS-1:0]	fr_wrap_nvalid;
+
+		always @(*)
+		if (f_void_read && o_wb_cyc)
+		begin
+			assert(!pre_wrap);
+			assert(!wrap_valid);
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && f_nacks == 0)
+		begin
+			assert(pre_wrap || f_void_read);
+			assert(!wrap_valid);
+			assert(!pre_wrap || first_nvalid == wrap_nvalid);
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && (pre_wrap || wrap_active))
+			assert({ r_tag, r_line } == { wb_tag, wb_line });
+
+		always @(*)
+		if (o_valid)
+		begin
+			assert(lastpc == o_pc);
+		end else
+			assert(lastpc == o_pc);
+
+		always @(posedge i_clk)
+		if (!i_reset && f_past_valid && $stable(lasttag))
+			assert(r_pc == lastpc);
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && !f_void_read && (wrap_valid || f_nacks > 0))
+		begin
+			if ({ wb_tag, wb_line } == { r_tag, r_line })
+				assert(wrap_valid == (wrap_nvalid > 0));
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && !bus_abort && (wrap_valid || pre_wrap))
+		begin
+			assert(r_pc[WBLSB+LS +: (AW-LS)] == o_wb_addr[LS +: (AW-LS)]
+				|| r_pc[WBLSB+LS +: (CW-LS)] != o_wb_addr[LS +: (CW-LS)]);
+			// if (f_this_line && r_line == wb_line)
+			//	assert(f_first_addr[LS-1:0] == r_pc[WBLSB +: LS]);
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && (wrap_valid || pre_wrap))
+			assert({ wb_tag, wb_line} == { r_tag, r_line });
+
+		always @(*)
+		if (!i_reset && wrap_valid)
+			assert(!o_illegal);
+
+		always @(*)
+		if (!i_reset && { wb_tag, wb_line } == { r_tag, r_line })
+			assert(!o_illegal || !o_wb_cyc);
+
+		always @(*)
+		if (!i_reset && o_wb_cyc && !wrap_valid)
+			assert(!o_valid || wrap_nvalid <= INSN_PER_WORD);
+
+		always @(*)
+		begin
+			// fr_end_of_wrap = (({ 1'b0, r_line } + 1)
+			//			<< (LS+$clog2(INSN_PER_WORD) ))
+			//		- { r_pc[WBLSB+CW-1:INLSB] };
+			if (pre_wrap && o_wb_cyc)
+			begin
+				fr_wrap_nvalid= (fr_wb_first + f_nacks)<< $clog2(INSN_PER_WORD);
+				fr_wrap_nvalid = fr_wrap_nvalid
+					- r_pc[INLSB +: WRAP_BITS];
+			end else begin
+				fr_wrap_nvalid = (({ 1'b0, r_line } + 1)
+						<< (LS+$clog2(INSN_PER_WORD) ))
+					- { r_pc[INLSB +: WRAP_BITS] };
+			end
+
+			if (f_nacks == 0)
+				fr_wrap_nvalid = 0;
+		end
+
+		assign	f_wrap_nvalid = fr_wrap_nvalid;
+
+		always @(*)
+		if (!i_reset && (wrap_valid || wrap_active))
+		begin
+			if (wrap_valid && (!o_wb_cyc || !pre_wrap))
+			begin
+				assert({ 1'b0, r_pc[WBLSB+CW-1:INLSB] }
+					+ wrap_nvalid
+					+ (o_valid ? 1:0)
+				    == (({ 1'b0, r_line } + 1) << (LS+$clog2(INSN_PER_WORD))));
+			end
+
+			if (o_wb_cyc)
+			begin
+				assert(fr_wb_first[LS-1:0] <= r_pc[WBLSB +: LS]);
+				if (pre_wrap)
+				begin
+					assert(fr_wb_first[LS-1:0] + f_nacks < (1<<LS));
+					assert((fr_wb_first[LS-1:0] + f_nacks)
+						>= o_pc[WBLSB +: LS]);
+
+					assert(((fr_wb_first + f_nacks) << $clog2(INSN_PER_WORD)) >= r_pc[INLSB +: WRAP_BITS]);
+				end else begin
+					assert(fr_wb_first[LS-1:0] + f_nacks >= (1<<LS));
+					assert(((r_line + 1) << (LS+$clog2(INSN_PER_WORD))) >= r_pc[INLSB +: WRAP_BITS]);
+				end
+				assert({ 4'b0, wrap_nvalid } <= (f_nacks << $clog2(INSN_PER_WORD)));
+			end else begin
+				assert({ 4'b0, wrap_nvalid } <= (1 << (LS + $clog2(INSN_PER_WORD))));
+			end
+		end
+
+		always @(*)
+		if (!i_reset && ((pre_wrap && o_wb_cyc) || wrap_active))
+		begin
+			assert(wrap_valid == (wrap_active && wrap_nvalid > 0));
+			assert(f_nacks == 0	// !!!
+				|| (wrap_nvalid + o_valid) == f_wrap_nvalid);
+			assert(wrap_nvalid + r_pc[INLSB +: LS]
+					<= (1<<(LS+$clog2(INSN_PER_WORD))));
+		end
+`endif
+	end else begin : NO_WRAP_VALID
+		assign	wrap_valid = 1'b0;
+`ifdef	FORMAL
+		assign	f_wrap_nvalid = 0;
+`endif
+	end endgenerate
+	// }}}
+
 	initial	needload = 1'b0;
 	always @(posedge i_clk)
 	if (i_clear_cache || o_wb_cyc)
@@ -389,39 +635,161 @@ module	pfcache #(
 			// and over again
 			&&(!illegal_valid ||(lasttag != illegal_cache));
 
-	//
-	// Working from the rule that you want to keep complex logic out of
-	// a state machine if possible, we calculate a "last_stb" value one
-	// clock ahead of time.  Hence, any time a request is accepted, if
-	// last_stb is also true we'll know we need to drop the strobe line,
-	// having finished requesting a complete cache  line.
-	initial	last_addr = 1'b0;
-	always @(posedge i_clk)
-	if (!o_wb_cyc)
-		last_addr <= 1'b0;
-	else if ((o_wb_addr[(LS-1):1] == {(LS-1){1'b1}})
-			&&((!i_wb_stall)|(o_wb_addr[0])))
-		last_addr <= 1'b1;
-
+	// last_ack, last_addr
+	// {{{
+	// last_addr ... Working from the rule that you want to keep complex
+	// logic out of a state machine if possible, we calculate a "last_stb"
+	// value one clock ahead of time.  Hence, any time a request is
+	// accepted, if last_stb is also true we'll know we need to drop the
+	// strobe line, having finished requesting a complete cache line.
 	//
 	// "last_ack" is almost identical to last_addr, save that this
 	// will be true on the same clock as the last acknowledgment from the
 	// bus.  The state machine logic will use this to determine when to
 	// get off the bus and end the wishbone bus cycle.
-	initial	last_ack = 1'b0;
-	always @(posedge i_clk)
-		last_ack <= (o_wb_cyc)&&(
-				(wraddr[(LS-1):1]=={(LS-1){1'b1}})
-				&&((wraddr[0])||(i_wb_ack)));
+	generate if (OPT_WRAP)
+	begin : GEN_WRAP_LAST_ACK
+		reg			r_last_ack, r_last_addr;
+		reg	[LS-1:0]	ack_count, req_count;
 
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			req_count <= 0;
+		else if (o_wb_stb && !i_wb_stall)
+			req_count <= req_count + 1;
+
+		initial	r_last_addr = 1'b0;
+		always @(posedge i_clk)
+		if (!o_wb_cyc)
+			r_last_addr <= 1'b0;
+		else if ((req_count[(LS-1):1] == {(LS-1){1'b1}})&&(!i_wb_stall))
+			r_last_addr <= 1'b1;
+
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			ack_count <= 0;
+		else if (i_wb_ack)
+			ack_count <= ack_count + 1;
+
+		initial	r_last_ack = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			r_last_ack <= 0;
+		else if ((ack_count[LS-1:1] == {(LS-1){1'b1}}) && i_wb_ack)
+			r_last_ack <= 1'b1;
+
+		assign	last_addr = r_last_addr;
+		assign	last_ack  = r_last_ack;
+`ifdef	FORMAL
+		wire	f_already_loaded, f_wrap_loaded;
+		wire	[LS-1:0]	f_first_addr, f_acks_to_const,
+					f_write_addr;
+
+		assign	f_first_addr = o_wb_stb ? (o_wb_addr[LS-1:0] - req_count[LS-1:0])
+					: (o_wb_addr[LS-1:0] + 1);
+		assign	f_write_addr = f_first_addr + ack_count;
+		assign	f_acks_to_const = f_const_addr[WBLSB +: LS] - f_first_addr;
+
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+		begin
+			assert(f_first_addr[LS-1:0] == fr_wb_first[LS-1:0]);
+			if (f_nacks == 0 && !o_illegal && !f_void_read)
+				assert(r_pc[WBLSB +: LS] == f_first_addr);
+			assert(!f_nacks[LS]);
+			assert(r_last_ack == (&ack_count[LS-1:0]));
+			assert(wraddr[LS-1:0] == f_write_addr);
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert({ !o_wb_stb, req_count } == f_nreqs);
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert(ack_count == { 1'b0, f_nacks[LS-1:0] });
+		always @(*)
+		if (!i_reset && o_wb_cyc && ack_count > 0)
+			assert(!valid_mask[wb_line]);
+
+		assign	f_already_loaded = (valid_mask[f_const_line]
+				&&(cache_tags[f_const_line] == f_const_addr[WBLSB+CW +: (AW-CW)]));
+		assign	f_wrap_loaded = o_wb_cyc
+				&& (o_wb_addr[AW-1:LS]
+					== f_const_addr[WBLSB+LS +: (AW-LS)])
+				&& (ack_count > f_acks_to_const);
+		assign	f_const_loaded = f_already_loaded || f_wrap_loaded;
+`endif
+	end else begin : NO_WRAP_LAST_ACK
+		// {{{
+		reg	r_last_ack, r_last_addr;
+
+		initial	r_last_addr = 1'b0;
+		always @(posedge i_clk)
+		if (!o_wb_cyc)
+			r_last_addr <= 1'b0;
+		else if ((o_wb_addr[(LS-1):1] == {(LS-1){1'b1}})&&(!i_wb_stall))
+			r_last_addr <= 1'b1;
+
+		initial	r_last_ack = 1'b0;
+		always @(posedge i_clk)
+		if (i_reset || !o_wb_cyc || i_wb_err)
+			r_last_ack <= 1'b0;
+		else if ((wraddr[(LS-1):1]=={(LS-1){1'b1}}) && i_wb_ack)
+			r_last_ack <= 1'b1;
+
+		assign	last_addr = r_last_addr;
+		assign	last_ack  = r_last_ack;
+`ifdef	FORMAL
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+		begin
+			if (!o_wb_stb)
+			begin
+				assert(r_last_addr);
+				assert(&o_wb_addr[LS-1:0]);
+			end else begin
+				assert(r_last_addr == (&o_wb_addr[LS-1:0]));
+				assert(o_wb_addr[LS-1:0] == f_nreqs[LS-1:0]);
+			end
+		end
+
+		always @(*)
+		if (!i_reset && o_wb_cyc)
+			assert(r_last_ack == (&wraddr[LS-1:0]));
+
+		assign	f_const_loaded = (o_wb_cyc
+			&& (f_nacks > f_const_addr[WBLSB +: LS])
+			&& (o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS
+							+: (AW-LS)]))
+			||(valid_mask[f_const_line]
+				&&(cache_tags[f_const_line] == f_const_addr[WBLSB+CW +: (AW-CW)]));
+`endif
+		// }}}
+	end endgenerate
+	// }}}
+
+	// bus_abort
+	// {{{
 	initial	bus_abort = 1'b0;
 	always @(posedge i_clk)
-	if (!o_wb_cyc)
+	if (i_reset || i_clear_cache)
+		// These will cause us to drop CYC immediately--before the last
+		// ACK
 		bus_abort <= 1'b0;
-	else if (i_clear_cache || i_new_pc)
+	else if (!o_wb_cyc)
+		bus_abort <= 1'b0;
+	else if (i_clear_cache || i_wb_err
+			|| (i_new_pc && pc_tag != wb_tag && pc_line == wb_line))
 		bus_abort <= 1'b1;
+`ifdef	FORMAL
+	always @(*)
+	if (!i_reset && bus_abort)
+		assert(f_void_read);
+`endif
+	// }}}
 
-	//
+	// o_wb_cyc, o_wb_stb
+	// {{{
 	// Here's the difficult piece of state machine logic--the part that
 	// determines o_wb_cyc and o_wb_stb.  We've already moved most of the
 	// complicated logic off of this statemachine, calculating it one cycle
@@ -448,14 +816,19 @@ module	pfcache #(
 		o_wb_cyc  <= 1'b1;
 		o_wb_stb  <= 1'b1;
 	end
+	// }}}
 
+	// Set the cache_tags array
+	// {{{
 	// If we are reading from this cache line, then once we get the first
 	// acknowledgement, this cache line has the new tag value
 	always @(posedge i_clk)
 	if (o_wb_cyc && i_wb_ack)
 		cache_tags[o_wb_addr[(CW-1):LS]] <= o_wb_addr[(AW-1):CW];
+	// }}}
 
-
+	// wraddr -- what address to we write to within the cache
+	// {{{
 	// On each acknowledgment, increment the address we use to write into
 	// our cache.  Hence, this is the write address into our cache block
 	// RAM.
@@ -464,9 +837,15 @@ module	pfcache #(
 	if (o_wb_cyc && i_wb_ack && !last_ack)
 		wraddr[LS-1:0] <= wraddr[LS-1:0] + 1'b1;
 	else if (!o_wb_cyc)
+	begin
 		wraddr <= { last_line, {(LS){1'b0}} };
+		if (OPT_WRAP)
+			wraddr[LS-1:0] <= lastpc[WBLSB +: LS];
+	end
+	// }}}
 
-	//
+	// o_wb_addr
+	// {{{
 	// The wishbone request address.  This has meaning anytime o_wb_stb
 	// is active, and needs to be incremented any time an address is
 	// accepted--WITH THE EXCEPTION OF THE LAST ADDRESS.  We need to keep
@@ -479,8 +858,26 @@ module	pfcache #(
 	if ((o_wb_stb)&&(!i_wb_stall)&&(!last_addr))
 		o_wb_addr[(LS-1):0] <= o_wb_addr[(LS-1):0]+1'b1;
 	else if (!o_wb_cyc)
+	begin
 		o_wb_addr <= { lasttag, {(LS){1'b0}} };
 
+		if (OPT_WRAP)
+			o_wb_addr[LS-1:0] <= lastpc[WBLSB +: LS];
+	end
+`ifdef	FORMAL
+	always @(posedge i_clk)
+	if (!o_wb_cyc)
+	begin
+		fr_wb_first <= { lasttag, {(LS){1'b0}} };
+
+		if (OPT_WRAP)
+			fr_wb_first[LS-1:0] <= lastpc[WBLSB +: LS];
+	end
+`endif
+	// }}}
+
+	// Actually write from the bus to the cache
+	// {{{
 	// Since it is impossible to initialize an array, our cache will start
 	// up cache uninitialized.  We'll also never get a valid ack without
 	// cyc being active, although we might get one on the clock after
@@ -495,32 +892,40 @@ module	pfcache #(
 	always @(posedge i_clk)
 	if (o_wb_cyc)
 		cache[wraddr] <= i_wb_data;
+	// }}}
 
 	// VMask ... is a section loaded?
+	// {{{
 	// Note "svmask".  It's purpose is to delay the valid_mask setting by
 	// one clock, so that we can insure the right value of the cache is
 	// loaded before declaring that the cache line is valid.  Without
 	// this, the cache line would get read, and the instruction would
-	// read from the last cache line.
+	// read the contents left over from the last cache line that had been
+	// loaded.
 	initial	valid_mask = 0;
 	initial	svmask = 1'b0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache))
+	if (i_reset||i_clear_cache)
 	begin
 		valid_mask <= 0;
 		svmask<= 1'b0;
 	end else begin
-		svmask <= (o_wb_cyc && i_wb_ack && last_ack && !bus_abort);
+		svmask <= o_wb_cyc && i_wb_ack && last_ack;
+		if (i_new_pc && wb_tag != pc_tag && wb_line == pc_line)
+			svmask <= 1'b0;
+		else if (bus_abort && wb_tag != r_tag && wb_line == r_line)
+			svmask <= 1'b0;
 
 		if (svmask)
-			valid_mask[saddr] <= !bus_abort;
+			valid_mask[saddr] <= 1'b1;
 		if (!o_wb_cyc && needload)
 			valid_mask[last_line] <= 1'b0;
 	end
 
 	always @(posedge i_clk)
-	if ((o_wb_cyc)&&(i_wb_ack))
+	if (o_wb_cyc && i_wb_ack)
 		saddr <= wraddr[(CW-1):LS];
+	// }}}
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -535,17 +940,20 @@ module	pfcache #(
 	initial	illegal_cache = 0;
 	initial	illegal_valid = 0;
 	always @(posedge i_clk)
-	if ((i_reset)||(i_clear_cache))
+	if (i_reset || i_clear_cache)
 	begin
 		illegal_cache <= 0;
 		illegal_valid <= 0;
-	end else if ((o_wb_cyc)&&(i_wb_err))
+	end else if (o_wb_cyc && i_wb_err)
 	begin
 		illegal_cache <= o_wb_addr[(AW-1):LS];
 		illegal_valid <= 1'b1;
-	end else if ((o_wb_cyc)&&(i_wb_ack)&&(last_ack)&&(!bus_abort)
+	end else if (o_wb_cyc && i_wb_ack && !bus_abort
 			&&(wraddr[(CW-1):LS] == illegal_cache[CW-1:LS]))
-		illegal_valid <= 1'b0;
+	begin
+		if (OPT_WRAP || last_ack)
+			illegal_valid <= 1'b0;
+	end
 
 	initial o_illegal = 1'b0;
 	always @(posedge i_clk)
@@ -557,6 +965,9 @@ module	pfcache #(
 	begin
 		o_illegal <= (!i_wb_err)&&(illegal_valid)&&(!isrc)
 			&&(illegal_cache == lasttag);
+		if (OPT_WRAP && o_wb_cyc && i_wb_err && !bus_abort
+				&& { r_tag, r_line } == { wb_tag, wb_line })
+			o_illegal <= 1'b1;
 	end
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////
@@ -571,18 +982,14 @@ module	pfcache #(
 `ifdef	FORMAL
 	// Declarations, reset, and f_past_valid
 	// {{{
-	localparam	F_LGDEPTH=LS+1;
 
 	reg			f_past_valid;
 	reg	[4:0]		f_cpu_delay;
 	reg	[((1<<(LGLINES))-1):0]	f_past_valid_mask;
 	reg	[AW+WBLSB-1:0]	f_next_pc;
 	reg	[AW+WBLSB-1:0]	f_next_lastpc;
-	wire	[WBLSB+AW-1:0]	f_const_addr, f_address;
-	wire			f_const_illegal;
-	wire	[BUSW-1:0]	f_const_insn;
+	wire	[WBLSB+AW-1:0]	f_address;
 
-	wire	[(F_LGDEPTH-1):0]	f_nreqs, f_nacks, f_outstanding;
 	wire	[INSN_WIDTH-1:0]	f_insn;
 
 	(* anyconst *)	reg	[BUS_WIDTH-1:0]		f_const_word;
@@ -610,7 +1017,8 @@ module	pfcache #(
 
 	ffetch #(
 		// {{{
-		.ADDRESS_WIDTH(AW + WBLSB-INLSB), .OPT_CONTRACT(1'b1)
+		.ADDRESS_WIDTH(AW + WBLSB-INLSB), .OPT_CONTRACT(1'b1),
+		.INSN_WIDTH(INSN_WIDTH)
 		// }}}
 	) fcpu(
 		// {{{
@@ -623,6 +1031,12 @@ module	pfcache #(
 		.fc_insn(f_const_insn), .f_address(f_address)
 		// }}}
 	);
+
+	always @(posedge i_clk)
+	if (!i_reset && !o_illegal && (o_valid || o_wb_cyc))
+	begin
+		assert(f_address == o_pc);
+	end
 
 	generate if (INSN_WIDTH == BUS_WIDTH)
 	begin : F_CONST_NOSHIFT
@@ -675,6 +1089,14 @@ module	pfcache #(
 	always @(posedge i_clk)
 		assume(f_cpu_delay < F_CPU_DELAY);
 `endif
+
+	initial	f_void_read = 0;
+	always @(posedge i_clk)
+	if (i_reset || !o_wb_cyc || i_clear_cache)
+		f_void_read <= 0;
+	else if (i_new_pc || i_wb_err)
+		f_void_read <= 1;
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -683,9 +1105,8 @@ module	pfcache #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	always @(*)
-	if (o_wb_cyc && !bus_abort)
-		assert(!o_valid);
+
+	// always @(*) if (o_wb_cyc && !bus_abort) assert(!o_valid);
 
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -721,8 +1142,6 @@ module	pfcache #(
 	always @(posedge i_clk)
 	begin
 		assert(f_nreqs <= (1<<LS));
-		if ((o_wb_cyc)&&(o_wb_stb))
-			assert(f_nreqs == o_wb_addr[(LS-1):0]);
 		if ((f_past_valid)&&($past(o_wb_cyc))
 			&&(!o_wb_stb)&&(!$past(i_wb_err || i_reset || i_clear_cache)))
 			assert(f_nreqs == (1<<LS));
@@ -735,7 +1154,7 @@ module	pfcache #(
 				&&(!$past(i_clear_cache)) &&(!$past(i_wb_err)))
 		begin
 			assert(f_nacks == (1<<LS));
-		end else if (o_wb_cyc)
+		end else if (o_wb_cyc && !OPT_WRAP)
 			assert(f_nacks[(LS-1):0] == wraddr[(LS-1):0]);
 	end
 
@@ -759,8 +1178,9 @@ module	pfcache #(
 
 	always @(posedge i_clk)
 	if ((o_valid)&&($past(!o_valid || !o_illegal)))
-		assert((!o_wb_cyc)
-			||(o_wb_addr[AW-1:LS] != o_pc[WBLSB+LS +: (AW-LS)]));
+		assert(!o_wb_cyc
+			||({ wb_tag, wb_line} != o_pc[WBLSB+LS +: (AW-LS)])
+			||(OPT_WRAP && !bus_abort));
 
 	always @(posedge i_clk)
 	if (illegal_valid)
@@ -812,11 +1232,15 @@ module	pfcache #(
 		assert(o_wb_addr[(AW-1):LS] == $past(o_wb_addr[(AW-1):LS]));
 
 	always @(posedge i_clk)
+	if(o_valid)
+		assert(r_pc == o_pc);
+
+	always @(posedge i_clk)
 	if (o_valid && !i_new_pc)
 	begin
 		if (!o_illegal)
 		begin
-			assert(valid_mask[o_pc[WBLSB+LS +: (CW-LS)]]);
+			assert(OPT_WRAP || valid_mask[o_pc[WBLSB+LS +: (CW-LS)]]);
 			assert(cache_tags[o_pc[WBLSB+LS +: (CW-LS)]] == o_pc[WBLSB+CW +: (AW-CW)]);
 			assert(o_insn == f_insn);
 			assert((!illegal_valid)
@@ -824,8 +1248,9 @@ module	pfcache #(
 		end
 
 		if ($rose(o_illegal))
-			assert(o_illegal == ($past(illegal_valid)
-				&&($past(illegal_cache)== o_pc[WBLSB+LS +: (AW-LS)])));
+			assert((OPT_WRAP && $past(o_wb_cyc && i_wb_err))
+				|| (o_illegal == ($past(illegal_valid)
+				&&($past(illegal_cache)== o_pc[WBLSB+LS +: (AW-LS)]))));
 	end else if (!i_reset && !i_new_pc && !i_clear_cache)
 		assert(o_pc == f_address);
 
@@ -854,7 +1279,7 @@ module	pfcache #(
 		&&(!$past(i_ready))
 		&&(!o_illegal))
 	begin
-		assert(cache_tags[o_pc[WBLSB+LS +: (CW-LS)]] == o_pc[WBLSB+CW +: (AW-CW)]);
+		assert(wrap_valid || cache_tags[r_line] == r_tag);
 	end
 
 	//
@@ -903,11 +1328,6 @@ module	pfcache #(
 	// value gets returned.
 	//
 
-	wire		f_this_pc, f_this_insn, f_this_data, f_this_line,
-			f_this_ack, f_this_tag; // f_this_addr;
-	wire	[LS-1:0]	f_const_line;
-	wire	[AW-LS-1:0]	f_const_tag;
-
 	assign	f_const_line = f_const_addr[WBLSB+LS +: (CW-LS)];
 	assign	f_const_tag  = f_const_addr[WBLSB+LS +: (AW-LS)];
 
@@ -916,7 +1336,7 @@ module	pfcache #(
 	assign	f_this_insn = (o_insn == f_const_insn);
 	assign	f_this_data = (i_wb_data == f_const_word);
 	assign	f_this_line = (o_wb_addr[AW-1:LS] == f_const_tag);
-	assign	f_this_ack  = (f_this_line)&&(f_nacks == f_const_addr[WBLSB +: LS]);
+	assign	f_this_ack  = (f_this_line)&&(wraddr[LS-1:0] == f_const_addr[WBLSB +: LS]);
 	assign	f_this_tag  = (tag_lookup == f_const_tag);
 
 	always @(posedge i_clk)
@@ -931,15 +1351,8 @@ module	pfcache #(
 	end
 
 	always @(*)
-	if ((valid_mask[f_const_line])
-			&&(cache_tags[f_const_line]==f_const_addr[WBLSB+CW +: (AW-CW)]))
-	begin
+	if (f_const_loaded)
 		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
-	end else if ((o_wb_cyc)&&(o_wb_addr[AW-1:LS] == f_const_addr[WBLSB+LS +: (AW-LS)])
-				&&(f_nacks > f_const_addr[WBLSB +: LS]))
-	begin
-		assert(f_const_word == cache[f_const_addr[WBLSB +: CW]]);
-	end
 
 	always @(*)
 	if (o_wb_cyc)
@@ -977,13 +1390,13 @@ module	pfcache #(
 	always @(*)
 		f_valid_legal = o_valid && (!o_illegal);
 	always @(posedge i_clk)		// Trace 0
-		cover((o_valid)&&( o_illegal));
+		cover(o_valid && o_illegal);		// !!!
 	always @(posedge i_clk)		// Trace 1
-		cover(f_valid_legal);
+		cover(f_valid_legal);			// !!!
 	always @(posedge i_clk)		// Trace 2
 		cover((f_valid_legal)
 			&&($past(!o_valid && !i_new_pc))
-			&&($past(i_new_pc,2)));
+			&&($past(i_new_pc,2)));		// !!!
 	always @(posedge i_clk)		// Trace 3
 		cover((f_valid_legal)&&($past(i_ready))&&($past(i_new_pc)));
 	always @(posedge i_clk)		// Trace 4
@@ -992,7 +1405,7 @@ module	pfcache #(
 		cover((f_valid_legal)
 			&&($past(f_valid_legal && i_ready))
 			&&($past(f_valid_legal && i_ready,2))
-			&&($past(f_valid_legal && i_ready,3)));
+			&&($past(f_valid_legal && i_ready,3)));		// !!!
 	always @(posedge i_clk)		// Trace 6
 		cover((f_valid_legal)
 			&&($past(f_valid_legal && i_ready))
@@ -1000,7 +1413,88 @@ module	pfcache #(
 			&&($past(!o_illegal && i_ready && i_new_pc,3))
 			&&($past(f_valid_legal && i_ready,4))
 			&&($past(f_valid_legal && i_ready,5))
-			&&($past(f_valid_legal && i_ready,6)));
+			&&($past(f_valid_legal && i_ready,6)));		// !!!
+
+	always @(posedge i_clk)
+	if (!i_reset && !i_new_pc && !i_clear_cache)
+		cover(o_wb_cyc && o_wb_stb);		// !!!
+
+	always @(posedge i_clk)
+	if (!i_reset && !i_clear_cache)
+		cover(i_new_pc);
+
+	reg	[4:0]	fcvr_check = -1;
+	always @(posedge i_clk)
+	if (i_reset || i_new_pc || i_clear_cache)
+		fcvr_check <= -1;
+	else
+		fcvr_check <= { fcvr_check[3:0], 1'b0 };
+
+	always @(posedge i_clk)
+	if (!i_reset)
+		cover(fcvr_check == 0);			// !!!
+
+	always @(posedge i_clk)
+	if (!i_reset)
+	begin
+		cover(fcvr_check[  0] == 1'b0);	// !!!
+		cover(fcvr_check[1:0] == 2'b0);	// !!!
+		cover(fcvr_check[2:0] == 3'b0);	// !!!
+		cover(fcvr_check[3:0] == 4'h0);	// !!!
+		cover(fcvr_check[4:0] == 5'h0);	// !!!
+	end
+
+	always @(posedge i_clk)
+	if (!i_reset)
+		cover(valid_mask != 0);			// !!!
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Assumptions
+	// {{{
+
+	// always @(*) assume(!i_wb_err);
+	(* anyseq *)	reg	f_good_line;
+	always @(posedge i_clk)
+	if (o_wb_cyc)
+		assume($stable(f_good_line));
+
+	always @(*)
+	if (OPT_WRAP && o_wb_cyc)
+	begin
+		if (f_good_line)
+		begin
+			assume(!i_wb_err);
+		end else
+			assume(!i_wb_ack);
+	end
+
+	always @(*)
+	if(o_wb_cyc && f_this_line && OPT_WRAP)
+	begin
+		// Assume the whole line is illegal or valid
+		if (f_const_illegal)
+		begin
+			assume(!i_wb_ack);
+		end else
+			assume(!i_wb_err);
+
+		if (o_wb_cyc && { f_const_tag, f_const_line } == { wb_tag, wb_line} && f_const_illegal)
+		begin
+			assert(f_nacks == 0);
+		end
+
+		if (o_wb_cyc && o_illegal)
+		begin
+			assert({ wb_tag, wb_line } != { r_tag, r_line });
+		end
+
+		if (o_wb_cyc && f_nacks > 0 && { r_tag, r_line } == { wb_tag, wb_line })
+		begin
+			assert(!o_illegal);
+		end
+	end
+
 	// }}}
 `endif	// FORMAL
 // }}}

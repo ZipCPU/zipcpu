@@ -2,11 +2,19 @@
 prf          bus32
 prf64   prf  bus64
 prf128  prf  bus128
+prfw    prf  bus32  wrap
+prf64w  prf  bus64  wrap
+prf128w prf  bus128 wrap
 cvr          bus32
+cvrw    cvr  bus32  wrap
 
 [options]
 prf: mode prove
 prf: depth  5
+wrap: depth 12
+# prfw: depth 10
+# prf64w: depth 11
+# prf128w: depth 12
 cvr: mode cover
 cvr: depth 60
 
@@ -19,6 +27,7 @@ read -formal ffetch.v
 read -formal -DPFCACHE pfcache.v
 --pycode-begin--
 cmd = "hierarchy -top pfcache"
+cmd += " -chparam OPT_WRAP %d" % (1 if "wrap" in tags else 0)
 if ("bus32" in tags):
 	cmd += " -chparam BUS_WIDTH 32"
 elif ("bus64" in tags):
@@ -31,6 +40,7 @@ elif ("bus512" in tags):
 	cmd += " -chparam BUS_WIDTH 512"
 output(cmd)
 --pycode-end--
+proc -norom
 prep -top pfcache
 
 [files]

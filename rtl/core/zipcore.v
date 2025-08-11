@@ -841,7 +841,7 @@ module	zipcore #(
 	// Op register addresses
 	// {{{
 	generate if (OPT_PIPELINED)
-	begin : OP_REG_ADVANEC
+	begin : OP_REG_ADVANCE
 		// {{{
 		reg	[4:0]	r_op_R;
 		reg	[4:0]	r_op_Aid, r_op_Bid;

@@ -208,7 +208,7 @@ int	main(int argc, char **argv) {
 	//
 	// 8b test
 	// {{{
-	if (0) {
+	if (1) {
 		printf("Basic MEMCPY( 8b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -268,7 +268,7 @@ int	main(int argc, char **argv) {
 	//
 	// 16b test
 	// {{{
-	if (0 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( 16b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -329,14 +329,14 @@ int	main(int argc, char **argv) {
 	//
 	// 32b test
 	// {{{
-	if (1 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( 32b): \n");
 
 		// compare hw-sw lfsr values for 8 bit
 		lfsr_state = 0xf4000000;	// big endian for cpu
 
 		err |= dma_test(lfsr_state, 0, 0, TESTLEN, SZ32);
-		for(int fx=2; fx<4; fx++) {
+		for(int fx=0; fx<4; fx++) {
 			unsigned flags = SZ32;
 			if (1 & fx)
 				flags |= DMACMD_FIXSRC;
@@ -388,9 +388,9 @@ int	main(int argc, char **argv) {
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
-	// Bus width test
+	// Full Bus width test
 	// {{{
-	if (1 && !fail) {
+	if (!fail) {
 		printf("Basic MEMCPY( BUS): \n");
 
 		// compare hw-sw lfsr values for 8 bit
@@ -456,10 +456,10 @@ int	main(int argc, char **argv) {
 
 		err = dma_memcpy(c_dst, c_src, TESTLEN);
 		if (err) {
-			printf("FAIL!\n");
+			printf("Checking valid err return: FAIL!\n");
 			fail = 1;
 		} else
-			printf("PASS\n");
+			printf("Checking valid err return: PASS\n");
 	}
 	// }}}
 

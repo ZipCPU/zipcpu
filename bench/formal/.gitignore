@@ -62,3 +62,7 @@ cpuops*/
 wbdblpriarb*/
 wbpriarbiter*/
 zipmmu*/
+##
+##
+axiops_tb.v
+zipaxi.gtkw

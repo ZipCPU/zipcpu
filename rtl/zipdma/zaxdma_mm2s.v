@@ -533,42 +533,47 @@ module	zaxdma_mm2s #(
 	// {{{
 	always @(*)
 	begin
-		nxt_araddr = 0;
-		case(r_size)
-		// Verilator lint_off WIDTH
-		SZ_BYTE: nxt_araddr = axi_araddr + (M_AXI_ARLEN + 1);
-		SZ_16B: nxt_araddr[ADDRESS_WIDTH:1]
-			= axi_araddr[ADDRESS_WIDTH-1:1]
+		if (r_inc)
+		begin
+			nxt_araddr = 0;
+			case(r_size)
+			// Verilator lint_off WIDTH
+			SZ_BYTE: nxt_araddr = axi_araddr + (M_AXI_ARLEN + 1);
+			SZ_16B: nxt_araddr[ADDRESS_WIDTH:1]
+				= axi_araddr[ADDRESS_WIDTH-1:1]
 						+ (M_AXI_ARLEN + 1);
-		SZ_32B: nxt_araddr[ADDRESS_WIDTH:2]
-			= axi_araddr[ADDRESS_WIDTH-1:2]
-						+ (M_AXI_ARLEN + 1);
-		SZ_BUS: nxt_araddr[ADDRESS_WIDTH:AXILSB]
-			= axi_araddr[ADDRESS_WIDTH-1:AXILSB]
-						+ (M_AXI_ARLEN + 1);
-		// Verilator lint_on  WIDTH
-		endcase
+			SZ_32B: nxt_araddr[ADDRESS_WIDTH:2]
+				= axi_araddr[ADDRESS_WIDTH-1:2]
+							+ (M_AXI_ARLEN + 1);
+			SZ_BUS: nxt_araddr[ADDRESS_WIDTH:AXILSB]
+				= axi_araddr[ADDRESS_WIDTH-1:AXILSB]
+							+ (M_AXI_ARLEN + 1);
+			// Verilator lint_on  WIDTH
+			endcase
+		end else begin
+			nxt_araddr = axi_araddr;
+			case(r_size)
+			// Verilator lint_off WIDTH
+			SZ_BYTE: begin end
+			SZ_16B: nxt_araddr[0] = 1'b0;
+			SZ_32B: nxt_araddr[1:0] = 2'b00;
+			SZ_BUS: nxt_araddr[AXILSB-1:0] = {(AXILSB){1'b0}};
+			endcase
+		end
 
-		if (!r_busy || !r_inc || !M_AXI_ARVALID)
+		if (!r_busy || !M_AXI_ARVALID)
 			nxt_araddr = axi_araddr;
 	end
 
 	initial	axi_araddr = 0;
 	always @(posedge i_clk)
 	begin
-		if (M_AXI_ARVALID && M_AXI_ARREADY && r_inc)
+		if (M_AXI_ARVALID && M_AXI_ARREADY)
 			axi_araddr <= nxt_araddr;
 
 		if (!r_busy)
 		begin
 			axi_araddr <= { 1'b0, i_addr };
-			if (!i_inc)
-			case(i_size)
-			SZ_BYTE: begin end
-			SZ_16B: axi_araddr[0] <= 0;
-			SZ_32B: axi_araddr[1:0] <= 0;
-			SZ_BUS: axi_araddr[AXILSB-1:0] <= 0;
-			endcase
 
 			if (OPT_LOWPOWER && !i_request)
 				axi_araddr <= 0;
