@@ -147,7 +147,7 @@ VERILATOR_ROOT ?= $(shell bash -c 'verilator -V|grep VERILATOR_ROOT | tail -1 | 
 endif
 export	$(VERILATOR)
 VROOT   := $(VERILATOR_ROOT)
-VDEFS   := $(shell ./vversion.sh)
+VDEFS   := $(shell bash ./vversion.sh)
 VINCS	:= -I$(VROOT)/include -I$(VROOT)/include/vltstd
 INCS	:= -I$(RTLOBJD) -I$(RTLD) -I$(ZASM) $(VINCS)
 ZLIBSRCS:= zipelf.cpp twoc.cpp byteswap.cpp
