@@ -138,6 +138,7 @@ sub getstatus($) {
 	my $ERR = 0;
 	my $terminated = 0;
 	my $current = 1;
+	my $basepass = 0;
 
 	# print "<TR><TD>Checking make $based/PASS</TD></TR>\n";
 
@@ -157,6 +158,9 @@ sub getstatus($) {
 		if ($line =~ /DONE.*FAIL/) {
 			$FAIL = 1;
 			# print "<TR><TD>FAIL match</TD></TR>\n";
+		} if ($line =~ /basecase.*Status: passed/) {
+			$basepass = 1;
+			# print "<TR><TD>PASS match</TD></TR>\n";
 		} if ($line =~ /DONE.*PASS/) {
 			$PASS = 1;
 			# print "<TR><TD>PASS match</TD></TR>\n";
@@ -167,7 +171,10 @@ sub getstatus($) {
 			$ERR = 1;
 			# print "<TR><TD>ERROR match</TD></TR>\n";
 		} if ($line =~ /terminating process/) {
-			$terminated = 1;
+			if ($basepass != 0 && $line =~ /basecase: terminating process/) {
+			} else {
+				$terminated = 1;
+			}
 		} if ($line =~ /Checking cover/) {
 			$cvr = 1;
 		} if ($line =~ /engine_\d.induction/) {
@@ -206,6 +213,49 @@ sub getstatus($) {
 }
 ## }}}
 
+## getelapsed subroutine
+## {{{
+# This subroutine runs make, to see if a proof is up to date, or otherwise
+# checks the logfile to see what the status was the last time the proof was
+# run.
+sub getelapsed($) {
+	my $based = shift;
+	my $log = "$based/logfile.txt";
+	my $elapsed = "";
+	my $tmp, $hrs, $rest, $elhrs=0;
+
+	open (LOG, "< $log") or return "No log";
+	while($line = <LOG>) {
+		# print "<TR><TD>LINE=$line</TD></TR>\n";
+		if ($line =~ /\s+(\d+):(\d\d:\d\d)\s+waiti/) {
+			$hrs = $1; $rest = $2;
+			$tmp = $hrs . ":" . $rest;
+			if ($hrs > $elhrs or ($hrs == $elhrs and $tmp gt $elapsed)) {
+				$elapsed = $tmp;
+				$elhrs = $hrs;
+			}
+		} elsif ($line =~ /\s+(\d+):(\d\d:\d\d)\s+Check/) {
+			$hrs = $1; $rest = $2;
+			$tmp = $hrs . ":" . $rest;
+			if ($hrs > $elhrs or ($hrs == $elhrs and $tmp gt $elapsed)) {
+				$elapsed = $tmp;
+				$elhrs = $hrs;
+			}
+		} elsif ($line =~ /\s+(\d+):(\d\d:\d\d)\s+Try/) {
+			$hrs = $1; $rest = $2;
+			$tmp = $hrs . ":" . $rest;
+			if ($hrs > $elhrs or ($hrs == $elhrs and $tmp gt $elapsed)) {
+				$elapsed = $tmp;
+				$elhrs = $hrs;
+			}
+		}
+	}
+	close(LOG);
+
+	$elapsed;
+}
+## }}}
+
 ## Start the HTML output
 ## {{{
 ## Grab a timestamp
@@ -220,7 +270,7 @@ print <<"EOM";
 <H1 align=center>ZipCPU Verification Report</H1>
 <H2 align=center>$tstamp</H2>
 <TABLE border>
-<TR><TH>Status</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
+<TR><TH>Status</TH><TH>Elapsed</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 EOM
 ## }}}
 
@@ -260,50 +310,63 @@ foreach $prf (sort @proofs) {
 		next if ($dent !~ /^$prf(_\S+)/);
 			$subprf = $1;
 		# print("<TR><TD>$dent matches $prf</TD></TR>\n");
+		my $st;
+		my $el;
 		## }}}
 
 		## Get the resulting status
 		$st = getstatus($dent);
+		$el = getelapsed($dent);
 		# print("<TR><TD>STATUS = $st</TD></TR>\n");
+
+		my $link = $prf . $subprf . "/logfile.txt";
+		if (-e $link) {
+			$link = "<A HREF=\"$link\">";
+		} else {
+			## print "Not found: $link\n";
+			$link = "";
+		}
 
 		## Fill out one entry of our table
 		## {{{
 		my $tail;
 		if ($firstd) {
 			print "<TR></TR>\n";
-			$tail = "</TD><TD>$prf</TD><TD>$subprf</TD><TD rowspan=$ndirs>$desc{$prf}</TD></TR>\n";
+			$tail = "</TD><TD>$el</TD><TD>$prf</TD><TD>$subprf</TD><TD rowspan=$ndirs>$desc{$prf}</TD></TR>\n";
 			$firstd = 0;
 		} else {
-			$tail = "</TD><TD>$prf</TD><TD>$subprf</TD></TR>\n";
+			$tail = "</TD><TD>$el</TD><TD>$prf</TD><TD>$subprf</TD></TR>\n";
+		} if ($link ne "") {
+			$tail = "</A>" . $tail;
 		}
 		if ($st =~ /PASS/) {
-			print "<TR><TD bgcolor=#caeec8>Pass$tail";
+			print "<TR><TD bgcolor=#caeec8>$link" ."Pass$tail";
 		} elsif ($st =~ /Cover\s+(\d+)/) {
 			my $cvr = $1;
 			if ($cvr < 1) {
-			print "<TR><TD bgcolor=#ffffca>$1 Cover points$tail";
+			print "<TR><TD bgcolor=#ffffca>$link" ."$1 Cover points$tail";
 			} else {
-			print "<TR><TD bgcolor=#caeec8>$1 Cover points$tail";
+			print "<TR><TD bgcolor=#caeec8>$link" ."$1 Cover points$tail";
 			}
 		} elsif ($st =~ /FAIL/) {
-			print "<TR><TD bgcolor=#ffa4a4>FAIL$tail";
+			print "<TR><TD bgcolor=#ffa4a4>$link" ."FAIL$tail";
 		} elsif ($st =~ /Terminated/) {
-			print "<TR><TD bgcolor=#ffa4a4>Terminated$tail";
+			print "<TR><TD bgcolor=#ffa4a4>$link" ."Terminated$tail";
 		} elsif ($st =~ /ERROR/) {
-			print "<TR><TD bgcolor=#ffa4a4>ERROR$tail";
+			print "<TR><TD bgcolor=#ffa4a4>$link" ."ERROR$tail";
 		} elsif ($st =~ /Out of date/) {
-			print "<TR><TD bgcolor=#ffffca>Out of date$tail";
+			print "<TR><TD bgcolor=#ffffca>$link" ."Out of date$tail";
 		} elsif ($st =~ /BMC\s+(\d+)/) {
 			my $bmc = $1;
 			if ($bmc < 2) {
-			print "<TR><TD bgcolor=#ffa4a4>$bmc steps of BMC$tail";
+			print "<TR><TD bgcolor=#ffa4a4>$link" ."$bmc steps of BMC$tail";
 			} else {
-			print "<TR><TD bgcolor=#ffffca>$bmc steps of BMC$tail";
+			print "<TR><TD bgcolor=#ffffca>$link" ."$bmc steps of BMC$tail";
 			}
 		} elsif ($st =~ /No log/) {
-			print "<TR><TD bgcolor=#e5e5e5>No log file found$tail";
+			print "<TR><TD bgcolor=#e5e5e5>$link" ."No log file found$tail";
 		} else {
-			print "<TR><TD bgcolor=#e5e5e5>Unknown$tail";
+			print "<TR><TD bgcolor=#e5e5e5>$link" ."Unknown$tail";
 		}
 		## }}}
 	} if ($myfirstd != 0) {
