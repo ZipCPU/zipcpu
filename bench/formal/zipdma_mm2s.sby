@@ -18,6 +18,7 @@ read -formal fwb_master.v
 cmd = "hierarchy -top zipdma_mm2s"
 output(cmd)
 --pycode-end--
+proc -norom
 prep -top zipdma_mm2s
 
 [files]
