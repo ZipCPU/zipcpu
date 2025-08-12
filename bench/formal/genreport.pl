@@ -74,6 +74,7 @@ $dir = ".";
 	"zipdma_rxgears",
 	"zipdma_txgears",
 	"zaxdma_mm2s",
+	"zaxdma_s2mm",
 	"zipjiffies",
 	"zipmmu",
 	"ziptimer"
@@ -112,6 +113,7 @@ $dir = ".";
 	"zipdma_rxgears"=> "WB ZipDMA incoming gearbox",
 	"zipdma_txgears"=> "WB ZipDMA outgoing gearbox",
 	"zaxdma_mm2s"	=> "AXI ZipDMA read half",
+	"zaxdma_s2mm"	=> "AXI ZipDMA write half",
 	"zipjiffies"	=> "ZipCPU Jiffies peripheral",
 	"zipmmu"	=> "Zip MMU (deprecated)",
 	"ziptimer"	=> "Peripheral timer"

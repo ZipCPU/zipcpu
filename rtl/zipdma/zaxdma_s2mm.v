@@ -1223,7 +1223,7 @@ module	zaxdma_s2mm #(
 	(* anyconst *)	reg		f_cfg_inc;
 	// wire	[F_LGDEPTH-1:0]		fwb_nreqs, fwb_nacks, fwb_outstanding;
 	reg	[ADDRESS_WIDTH:0]	f_posn, f_waddr, faxi_wposn,
-					f_fifo_bytes, faxi_awposn;
+					f_fifo_bytes, faxi_awposn, f_tmp_last;
 	reg	[AXILSB-1:0]	fr_sel_count, fr_sel_count_past;
 	reg	[AXILSB:0]	ffif_last_bytes, f_sr_bytes;
 	wire	[AXILSB:0]	f_gears_bytes;
@@ -1807,6 +1807,7 @@ module	zaxdma_s2mm #(
 			SZ_16B:  assert(last_count == { {(AW-1){1'b0}}, f_cfg_addr[  0] });
 			SZ_32B:  assert(last_count == { {(AW-2){1'b0}}, f_cfg_addr[1:0] });
 			SZ_BUS:  assert(last_count == { {(AW-AXILSB){1'b0}}, f_cfg_addr[AXILSB-1:0] });
+			endcase
 		end else begin
 			case(r_size)
 			SZ_BYTE: assert(last_count == 1);

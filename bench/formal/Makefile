@@ -44,7 +44,7 @@ TESTS += axilfetch axilops axilpipe axilperiphs # axiops axipipe # axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
 TESTS += zipbones zipaxil zipaxi
-TESTS += txgears rxgears s2mm mm2s memdev zaxmm2s
+TESTS += txgears rxgears s2mm mm2s memdev zaxmm2s zaxs2mm
 .PHONY: $(TESTS)
 all: $(TESTS)
 RTL := ../../rtl
@@ -90,6 +90,7 @@ S2MM    := zipdma_s2mm
 
 ## ZaxDMA
 AXMM2S  := zaxdma_mm2s
+AXS2MM  := zaxdma_s2mm
 
 ## CPU Wrappers
 BONES  := zipbones
@@ -673,15 +674,29 @@ $(S2MM)_cvr/PASS: $(S2MM).sby $(RTL)/zipdma/$(S2MM).v $(MASTER)
 ## ZaxDMA
 ## {{{
 .PHONY: zaxdma
-zaxdma: zaxmm2s rxgears txgears
+zaxdma: zaxmm2s zaxs2mm rxgears txgears
 .PHONY: zaxmm2s $(AXMM2S)
 ## {{{
 zaxmm2s: $(AXMM2S)
-$(AXMM2S): $(AXMM2S)_prf/PASS $(AXMM2S)_cvr/PASS
+$(AXMM2S): $(AXMM2S)_prf/PASS $(AXMM2S)_prf64/PASS $(AXMM2S)_cvr/PASS
 $(AXMM2S)_prf/PASS: $(AXMM2S).sby $(RTL)/zipdma/$(AXMM2S).v $(MASTER)
 	$(NOJOBSERVER) sby -f $(AXMM2S).sby prf
+$(AXMM2S)_prf64/PASS: $(AXMM2S).sby $(RTL)/zipdma/$(AXMM2S).v $(MASTER)
+	$(NOJOBSERVER) sby -f $(AXMM2S).sby prf64
 $(AXMM2S)_cvr/PASS: $(AXMM2S).sby $(RTL)/zipdma/$(AXMM2S).v $(MASTER)
 	$(NOJOBSERVER) sby -f $(AXMM2S).sby cvr
+## }}}
+
+.PHONY: zaxs2mm $(AXS2MM)
+## {{{
+zaxs2mm: $(AXS2MM)
+$(AXS2MM): $(AXS2MM)_prf/PASS $(AXS2MM)_prf64/PASS $(AXS2MM)_cvr/PASS
+$(AXS2MM)_prf/PASS: $(AXS2MM).sby $(RTL)/zipdma/$(AXS2MM).v $(MASTER)
+	$(NOJOBSERVER) sby -f $(AXS2MM).sby prf
+$(AXS2MM)_prf64/PASS: $(AXS2MM).sby $(RTL)/zipdma/$(AXS2MM).v $(MASTER)
+	$(NOJOBSERVER) sby -f $(AXS2MM).sby prf64
+$(AXS2MM)_cvr/PASS: $(AXS2MM).sby $(RTL)/zipdma/$(AXS2MM).v $(MASTER)
+	$(NOJOBSERVER) sby -f $(AXS2MM).sby cvr
 ## }}}
 ## }}}
 

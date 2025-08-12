@@ -1,5 +1,6 @@
 [tasks]
 prf
+prf64 prf bus64
 cvr
 
 [options]
@@ -10,6 +11,7 @@ cvr: mode cover
 
 [engines]
 smtbmc
+prf: smtbmc boolector
 
 [script]
 read -define F_PEEK
@@ -22,6 +24,14 @@ read -formal faxi_valaddr.v
 read -formal faxi_wstrb.v
 --pycode-begin--
 cmd = "hierarchy -top zaxdma_s2mm"
+if ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
+elif ("bus512" in tags):
+	cmd += " -chparam BUS_WIDTH 512"
+else:
+	cmd += " -chparam BUS_WIDTH 32"
 output(cmd)
 --pycode-end--
 proc -norom
@@ -32,7 +42,6 @@ faxi_master.v
 faxi_addr.v
 faxi_valaddr.v
 faxi_wstrb.v
-../../rtl/ex/fwb_master.v
 ../../rtl/zipdma/zaxdma_s2mm.v
 ../../rtl/zipdma/zipdma_txgears.v
 ../../rtl/ex/sfifo.v
