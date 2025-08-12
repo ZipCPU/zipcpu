@@ -6,7 +6,6 @@ cvr
 [options]
 prf: mode prove
 prf: depth 8
-prf: depth 20
 cvr: mode cover
 
 [engines]
@@ -28,6 +27,8 @@ if ("bus64" in tags):
 	cmd += " -chparam BUS_WIDTH 64"
 elif ("bus128" in tags):
 	cmd += " -chparam BUS_WIDTH 128"
+elif ("bus256" in tags):
+	cmd += " -chparam BUS_WIDTH 256"
 elif ("bus512" in tags):
 	cmd += " -chparam BUS_WIDTH 512"
 else:

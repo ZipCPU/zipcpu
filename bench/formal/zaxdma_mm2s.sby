@@ -1,5 +1,6 @@
 [tasks]
 prf
+prf64 prf bus64
 cvr
 
 [options]
@@ -22,6 +23,16 @@ read -formal faxi_valaddr.v
 read -formal faxi_wstrb.v
 --pycode-begin--
 cmd = "hierarchy -top zaxdma_mm2s"
+if ("bus64" in tags):
+	cmd += " -chparam BUS_WIDTH 64"
+elif ("bus128" in tags):
+	cmd += " -chparam BUS_WIDTH 128"
+elif ("bus256" in tags):
+	cmd += " -chparam BUS_WIDTH 256"
+elif ("bus512" in tags):
+	cmd += " -chparam BUS_WIDTH 512"
+else:
+	cmd += " -chparam BUS_WIDTH 32"
 output(cmd)
 --pycode-end--
 proc -norom
