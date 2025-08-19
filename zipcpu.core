@@ -1,0 +1,51 @@
+CAPI=2:
+
+name : zipcpu::zipcpu:0
+
+filesets:
+  core:
+    files:
+      - rtl/cpudefs.v : {is_include_file : true}
+      - rtl/core/axiicache.v
+      - rtl/core/cpuops.v
+      - rtl/core/dblfetch.v
+      - rtl/core/dcache.v
+      - rtl/core/div.v
+      - rtl/core/idecode.v
+      - rtl/core/iscachable.v
+      - rtl/core/memops.v
+      - rtl/core/mpyop.v
+      - rtl/core/pfcache.v
+      - rtl/core/pipefetch.v
+      - rtl/core/pipemem.v
+      - rtl/core/prefetch.v
+      - rtl/core/slowmpy.v
+      - rtl/core/zipcpu.v
+    file_type : verilogSource
+
+  ex:
+    files:
+      - rtl/ex/busdelay.v
+      - rtl/ex/wbarbiter.v
+      - rtl/ex/wbdblpriarb.v
+      - rtl/ex/wbpriarbiter.v
+    file_type : verilogSource
+
+  sky130:
+    files: [data/sky130.tcl : {file_type : tclSource}]
+
+targets:
+  default:
+    filesets: [core]
+
+  lint:
+    default_tool : verilator
+    filesets : [core, ex]
+    tools:
+      verilator: {mode: lint-only}
+    toplevel: zipcpu
+
+  sky130_div:
+    default_tool : openlane
+    filesets: [core, sky130]
+    toplevel : div
