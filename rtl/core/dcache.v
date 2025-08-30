@@ -348,7 +348,7 @@ module	dcache #(
 		always @(posedge i_clk)
 		if (i_reset)
 			r_sel <= 4'hf;
-		else if (!o_pipe_stalled && (!OPT_LOWPOWER  || i_pipe_stb))
+		else if (i_pipe_stb && (!OPT_LOWPOWER||i_op[0] || !w_cachable))
 		begin
 			casez({i_op[2:1], i_addr[1:0]})
 			4'b0???: r_sel <= 4'b1111;
@@ -359,10 +359,10 @@ module	dcache #(
 			4'b1110: r_sel <= 4'b0010;
 			4'b1111: r_sel <= 4'b0001;
 			endcase
-		end else if (OPT_LOWPOWER && !i_wb_stall)
-			r_sel <= 4'h0;
+		end else if (!i_wb_stall)
+			r_sel <= 4'hf;
 
-		assign	o_wb_sel = (state == DC_READC) ? 4'hf : r_sel;
+		assign	o_wb_sel = r_sel;
 		// }}}
 	end else begin : GEN_SEL
 		// {{{
@@ -388,7 +388,7 @@ module	dcache #(
 		always @(posedge i_clk)
 		if (i_reset)
 			r_wb_sel <= -1;
-		else if (i_pipe_stb && (i_op[0] || !w_cachable))
+		else if (i_pipe_stb && (!OPT_LOWPOWER||i_op[0] || !w_cachable))
 			r_wb_sel <= full_sel;
 		else if (!i_wb_stall)
 			r_wb_sel <= -1;
@@ -407,7 +407,7 @@ module	dcache #(
 		always @(posedge i_clk)
 		if (i_reset)
 			o_wb_data <= 0;
-		else if ((!o_busy || !i_wb_stall) && (!OPT_LOWPOWER || i_pipe_stb))
+		else if ((!o_busy || !i_wb_stall) && (!OPT_LOWPOWER || (i_pipe_stb && i_op[0])))
 		begin
 			if (DATA_WIDTH == 32)
 			begin
