@@ -76,7 +76,8 @@ module	zipdma_txgears #(
 		output	wire			M_LAST
 		// }}}
 `ifdef	FORMAL
-		, output wire	[F_LGCOUNT-1:0]	f_rcvd, f_sent, f_fill
+		, output wire	[F_LGCOUNT-1:0]	f_rcvd, f_sent, f_fill,
+		output	wire			f_last
 `endif
 		// }}}
 	);
@@ -533,6 +534,7 @@ module	zipdma_txgears #(
 		assert(f_rcvd > 0);
 
 	assign	f_fill = {{(F_LGCOUNT-(WBLSB+1)){1'b0}}, fill };
+	assign	f_last = m_last || r_last;
 	// }}}
 
 	// }}}
