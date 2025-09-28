@@ -1,21 +1,19 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Wed Feb 14 18:39:41 2024
+[*] Mon Aug 11 21:01:01 2025
 [*]
-[dumpfile] "/home/sukru/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s_prf/engine_0/trace.vcd"
-[dumpfile_mtime] "Wed Feb 14 18:35:18 2024"
-[dumpfile_size] 46189
-[savefile] "/home/sukru/ZN/Side_Job/zipcpu/bench/formal/zipdma_mm2s.gtkw"
+[dumpfile_mtime] "Mon Aug 11 20:59:45 2025"
+[dumpfile_size] 15699
 [timestart] 0
-[size] 1920 1123
+[size] 1920 996
 [pos] -1 -1
-*-4.137919 50 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-4.137919 20 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] zipdma_mm2s.
 [treeopen] zipdma_mm2s.fwb.
-[sst_width] 297
+[sst_width] 343
 [signals_width] 334
 [sst_expanded] 1
-[sst_vpaned_height] 351
+[sst_vpaned_height] 308
 @28
 zipdma_mm2s.i_clk
 zipdma_mm2s.i_reset
@@ -82,44 +80,36 @@ zipdma_mm2s.i_addr[29:0]
 -group_end
 @1000200
 -CONF
-@200
--
 @800200
--WB_i
-@28
-zipdma_mm2s.i_rd_err
-zipdma_mm2s.i_rd_ack
-zipdma_mm2s.i_rd_stall
-@22
-zipdma_mm2s.i_rd_data[63:0]
-@1000200
--WB_i
-@200
--
-@800200
--WB_o
+-Wishbone
 @28
 zipdma_mm2s.o_rd_cyc
 zipdma_mm2s.o_rd_stb
-zipdma_mm2s.o_rd_sel[7:0]
 @22
 zipdma_mm2s.o_rd_addr[26:0]
 zipdma_mm2s.o_rd_data[63:0]
+@28
+zipdma_mm2s.o_rd_sel[7:0]
+zipdma_mm2s.i_rd_stall
+zipdma_mm2s.i_rd_err
+zipdma_mm2s.i_rd_ack
+@22
+zipdma_mm2s.i_rd_data[63:0]
 @1000200
--WB_o
-@200
--
-@c00200
+-Wishbone
+@22
+zipdma_mm2s.first_size[3:0]
+@800200
 -AXI_MASTER
 @28
 zipdma_mm2s.M_VALID
-@22
-zipdma_mm2s.M_BYTES[3:0]
-@28
-zipdma_mm2s.M_LAST
+zipdma_mm2s.M_READY
 @22
 zipdma_mm2s.M_DATA[63:0]
-@1401200
+zipdma_mm2s.M_BYTES[3:0]
+@29
+zipdma_mm2s.M_LAST
+@1000200
 -AXI_MASTER
 @200
 -
@@ -137,8 +127,6 @@ zipdma_mm2s.M_DATA[63:0]
 -
 @24
 zipdma_mm2s.f_excess_last_return[2:0]
-@28
-zipdma_mm2s.lower_bits[2:0]
 @22
 zipdma_mm2s.first_size[3:0]
 @24
@@ -171,9 +159,9 @@ zipdma_mm2s.wb_outstanding[10:0]
 zipdma_mm2s.f_outstanding_bytes[10:0]
 @200
 -
-@c00025
+@c00024
 zipdma_mm2s.f_cfg_len[10:0]
-@29
+@28
 (0)zipdma_mm2s.f_cfg_len[10:0]
 (1)zipdma_mm2s.f_cfg_len[10:0]
 (2)zipdma_mm2s.f_cfg_len[10:0]
@@ -185,7 +173,7 @@ zipdma_mm2s.f_cfg_len[10:0]
 (8)zipdma_mm2s.f_cfg_len[10:0]
 (9)zipdma_mm2s.f_cfg_len[10:0]
 (10)zipdma_mm2s.f_cfg_len[10:0]
-@1401201
+@1401200
 -group_end
 @22
 zipdma_mm2s.rdstb_size[3:0]
@@ -212,75 +200,5 @@ zipdma_mm2s.rdack_len[10:0]
 -
 @28
 zipdma_mm2s.subaddr[2:0]
-@c00022
-zipdma_mm2s.next_addr[29:0]
-@28
-(0)zipdma_mm2s.next_addr[29:0]
-(1)zipdma_mm2s.next_addr[29:0]
-(2)zipdma_mm2s.next_addr[29:0]
-(3)zipdma_mm2s.next_addr[29:0]
-(4)zipdma_mm2s.next_addr[29:0]
-(5)zipdma_mm2s.next_addr[29:0]
-(6)zipdma_mm2s.next_addr[29:0]
-(7)zipdma_mm2s.next_addr[29:0]
-(8)zipdma_mm2s.next_addr[29:0]
-(9)zipdma_mm2s.next_addr[29:0]
-(10)zipdma_mm2s.next_addr[29:0]
-(11)zipdma_mm2s.next_addr[29:0]
-(12)zipdma_mm2s.next_addr[29:0]
-(13)zipdma_mm2s.next_addr[29:0]
-(14)zipdma_mm2s.next_addr[29:0]
-(15)zipdma_mm2s.next_addr[29:0]
-(16)zipdma_mm2s.next_addr[29:0]
-(17)zipdma_mm2s.next_addr[29:0]
-(18)zipdma_mm2s.next_addr[29:0]
-(19)zipdma_mm2s.next_addr[29:0]
-(20)zipdma_mm2s.next_addr[29:0]
-(21)zipdma_mm2s.next_addr[29:0]
-(22)zipdma_mm2s.next_addr[29:0]
-(23)zipdma_mm2s.next_addr[29:0]
-(24)zipdma_mm2s.next_addr[29:0]
-(25)zipdma_mm2s.next_addr[29:0]
-(26)zipdma_mm2s.next_addr[29:0]
-(27)zipdma_mm2s.next_addr[29:0]
-(28)zipdma_mm2s.next_addr[29:0]
-(29)zipdma_mm2s.next_addr[29:0]
-@1401200
--group_end
-@c00022
-zipdma_mm2s.f_cfg_addr[29:0]
-@28
-(0)zipdma_mm2s.f_cfg_addr[29:0]
-(1)zipdma_mm2s.f_cfg_addr[29:0]
-(2)zipdma_mm2s.f_cfg_addr[29:0]
-(3)zipdma_mm2s.f_cfg_addr[29:0]
-(4)zipdma_mm2s.f_cfg_addr[29:0]
-(5)zipdma_mm2s.f_cfg_addr[29:0]
-(6)zipdma_mm2s.f_cfg_addr[29:0]
-(7)zipdma_mm2s.f_cfg_addr[29:0]
-(8)zipdma_mm2s.f_cfg_addr[29:0]
-(9)zipdma_mm2s.f_cfg_addr[29:0]
-(10)zipdma_mm2s.f_cfg_addr[29:0]
-(11)zipdma_mm2s.f_cfg_addr[29:0]
-(12)zipdma_mm2s.f_cfg_addr[29:0]
-(13)zipdma_mm2s.f_cfg_addr[29:0]
-(14)zipdma_mm2s.f_cfg_addr[29:0]
-(15)zipdma_mm2s.f_cfg_addr[29:0]
-(16)zipdma_mm2s.f_cfg_addr[29:0]
-(17)zipdma_mm2s.f_cfg_addr[29:0]
-(18)zipdma_mm2s.f_cfg_addr[29:0]
-(19)zipdma_mm2s.f_cfg_addr[29:0]
-(20)zipdma_mm2s.f_cfg_addr[29:0]
-(21)zipdma_mm2s.f_cfg_addr[29:0]
-(22)zipdma_mm2s.f_cfg_addr[29:0]
-(23)zipdma_mm2s.f_cfg_addr[29:0]
-(24)zipdma_mm2s.f_cfg_addr[29:0]
-(25)zipdma_mm2s.f_cfg_addr[29:0]
-(26)zipdma_mm2s.f_cfg_addr[29:0]
-(27)zipdma_mm2s.f_cfg_addr[29:0]
-(28)zipdma_mm2s.f_cfg_addr[29:0]
-(29)zipdma_mm2s.f_cfg_addr[29:0]
-@1401200
--group_end
 [pattern_trace] 1
 [pattern_trace] 0

@@ -111,7 +111,7 @@ module	axixbar #(
 		parameter integer C_AXI_ADDR_WIDTH = 32,
 		parameter integer C_AXI_ID_WIDTH = 2,
 		//
-		// NM is the number of masters driving the incoming slave chnls
+		// NM is the number of masters driving incoming slave channels
 		parameter	NM = 4,
 		//
 		// NS is the number of slaves connected to the crossbar, driven
@@ -205,101 +205,118 @@ module	axixbar #(
 		input	wire	S_AXI_ARESETN,
 		// Write slave channels from the controlling AXI masters
 		// {{{
+		input	wire	[NM-1:0]			S_AXI_AWVALID,
+		output	wire	[NM-1:0]			S_AXI_AWREADY,
 		input	wire	[NM*C_AXI_ID_WIDTH-1:0]		S_AXI_AWID,
 		input	wire	[NM*C_AXI_ADDR_WIDTH-1:0]	S_AXI_AWADDR,
 		input	wire	[NM*8-1:0]			S_AXI_AWLEN,
 		input	wire	[NM*3-1:0]			S_AXI_AWSIZE,
 		input	wire	[NM*2-1:0]			S_AXI_AWBURST,
+		// Verilator coverage_off
 		input	wire	[NM-1:0]			S_AXI_AWLOCK,
 		input	wire	[NM*4-1:0]			S_AXI_AWCACHE,
 		input	wire	[NM*3-1:0]			S_AXI_AWPROT,
 		input	wire	[NM*4-1:0]			S_AXI_AWQOS,
-		input	wire	[NM-1:0]			S_AXI_AWVALID,
-		output	wire	[NM-1:0]			S_AXI_AWREADY,
+		// Verilator coverage_on
 		//
+		input	wire	[NM-1:0]			S_AXI_WVALID,
+		output	wire	[NM-1:0]			S_AXI_WREADY,
 		input	wire	[NM*C_AXI_DATA_WIDTH-1:0]	S_AXI_WDATA,
 		input	wire	[NM*C_AXI_DATA_WIDTH/8-1:0]	S_AXI_WSTRB,
 		input	wire	[NM-1:0]			S_AXI_WLAST,
-		input	wire	[NM-1:0]			S_AXI_WVALID,
-		output	wire	[NM-1:0]			S_AXI_WREADY,
 		//
-		output	wire	[NM*C_AXI_ID_WIDTH-1:0]		S_AXI_BID,
-		output	wire	[NM*2-1:0]			S_AXI_BRESP,
 		output	wire	[NM-1:0]			S_AXI_BVALID,
 		input	wire	[NM-1:0]			S_AXI_BREADY,
+		output	wire	[NM*C_AXI_ID_WIDTH-1:0]		S_AXI_BID,
+		output	wire	[NM*2-1:0]			S_AXI_BRESP,
 		// }}}
 		// Read slave channels from the controlling AXI masters
 		// {{{
+		input	wire	[NM-1:0]			S_AXI_ARVALID,
+		output	wire	[NM-1:0]			S_AXI_ARREADY,
 		input	wire	[NM*C_AXI_ID_WIDTH-1:0]		S_AXI_ARID,
 		input	wire	[NM*C_AXI_ADDR_WIDTH-1:0]	S_AXI_ARADDR,
 		input	wire	[NM*8-1:0]			S_AXI_ARLEN,
 		input	wire	[NM*3-1:0]			S_AXI_ARSIZE,
 		input	wire	[NM*2-1:0]			S_AXI_ARBURST,
+		// Verilator coverage_off
 		input	wire	[NM-1:0]			S_AXI_ARLOCK,
 		input	wire	[NM*4-1:0]			S_AXI_ARCACHE,
 		input	wire	[NM*3-1:0]			S_AXI_ARPROT,
 		input	wire	[NM*4-1:0]			S_AXI_ARQOS,
-		input	wire	[NM-1:0]			S_AXI_ARVALID,
-		output	wire	[NM-1:0]			S_AXI_ARREADY,
+		// Verilator coverage_on
 		//
+		output	wire	[NM-1:0]			S_AXI_RVALID,
+		input	wire	[NM-1:0]			S_AXI_RREADY,
 		output	wire	[NM*C_AXI_ID_WIDTH-1:0]		S_AXI_RID,
 		output	wire	[NM*C_AXI_DATA_WIDTH-1:0]	S_AXI_RDATA,
 		output	wire	[NM*2-1:0]			S_AXI_RRESP,
 		output	wire	[NM-1:0]			S_AXI_RLAST,
-		output	wire	[NM-1:0]			S_AXI_RVALID,
-		input	wire	[NM-1:0]			S_AXI_RREADY,
 		// }}}
 		// Write channel master outputs to the connected AXI slaves
 		// {{{
+		output	wire	[NS-1:0]			M_AXI_AWVALID,
+		input	wire	[NS-1:0]			M_AXI_AWREADY,
 		output	wire	[NS*C_AXI_ID_WIDTH-1:0]		M_AXI_AWID,
 		output	wire	[NS*C_AXI_ADDR_WIDTH-1:0]	M_AXI_AWADDR,
 		output	wire	[NS*8-1:0]			M_AXI_AWLEN,
 		output	wire	[NS*3-1:0]			M_AXI_AWSIZE,
 		output	wire	[NS*2-1:0]			M_AXI_AWBURST,
+		// Verilator coverage_off
 		output	wire	[NS-1:0]			M_AXI_AWLOCK,
 		output	wire	[NS*4-1:0]			M_AXI_AWCACHE,
 		output	wire	[NS*3-1:0]			M_AXI_AWPROT,
 		output	wire	[NS*4-1:0]			M_AXI_AWQOS,
-		output	wire	[NS-1:0]			M_AXI_AWVALID,
-		input	wire	[NS-1:0]			M_AXI_AWREADY,
+		// Verilator coverage_on
 		//
 		//
+		output	wire	[NS-1:0]			M_AXI_WVALID,
+		input	wire	[NS-1:0]			M_AXI_WREADY,
 		output	wire	[NS*C_AXI_DATA_WIDTH-1:0]	M_AXI_WDATA,
 		output	wire	[NS*C_AXI_DATA_WIDTH/8-1:0]	M_AXI_WSTRB,
 		output	wire	[NS-1:0]			M_AXI_WLAST,
-		output	wire	[NS-1:0]			M_AXI_WVALID,
-		input	wire	[NS-1:0]			M_AXI_WREADY,
 		//
-		input	wire	[NS*C_AXI_ID_WIDTH-1:0]		M_AXI_BID,
-		input	wire	[NS*2-1:0]			M_AXI_BRESP,
 		input	wire	[NS-1:0]			M_AXI_BVALID,
 		output	wire	[NS-1:0]			M_AXI_BREADY,
+		input	wire	[NS*C_AXI_ID_WIDTH-1:0]		M_AXI_BID,
+		input	wire	[NS*2-1:0]			M_AXI_BRESP,
 		// }}}
 		// Read channel master outputs to the connected AXI slaves
 		// {{{
+		output	wire	[NS-1:0]			M_AXI_ARVALID,
+		input	wire	[NS-1:0]			M_AXI_ARREADY,
 		output	wire	[NS*C_AXI_ID_WIDTH-1:0]		M_AXI_ARID,
 		output	wire	[NS*C_AXI_ADDR_WIDTH-1:0]	M_AXI_ARADDR,
 		output	wire	[NS*8-1:0]			M_AXI_ARLEN,
 		output	wire	[NS*3-1:0]			M_AXI_ARSIZE,
 		output	wire	[NS*2-1:0]			M_AXI_ARBURST,
+		// Verilator coverage_off
 		output	wire	[NS-1:0]			M_AXI_ARLOCK,
 		output	wire	[NS*4-1:0]			M_AXI_ARCACHE,
 		output	wire	[NS*4-1:0]			M_AXI_ARQOS,
 		output	wire	[NS*3-1:0]			M_AXI_ARPROT,
-		output	wire	[NS-1:0]			M_AXI_ARVALID,
-		input	wire	[NS-1:0]			M_AXI_ARREADY,
+		// Verilator coverage_on
 		//
 		//
+		input	wire	[NS-1:0]			M_AXI_RVALID,
+		output	wire	[NS-1:0]			M_AXI_RREADY,
 		input	wire	[NS*C_AXI_ID_WIDTH-1:0]		M_AXI_RID,
 		input	wire	[NS*C_AXI_DATA_WIDTH-1:0]	M_AXI_RDATA,
 		input	wire	[NS*2-1:0]			M_AXI_RRESP,
-		input	wire	[NS-1:0]			M_AXI_RLAST,
-		input	wire	[NS-1:0]			M_AXI_RVALID,
-		output	wire	[NS-1:0]			M_AXI_RREADY
+		input	wire	[NS-1:0]			M_AXI_RLAST
 		// }}}
 		// }}}
 	);
 
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Internal signal declarations and definitions
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	//
 	// Local parameters, derived from those above
 	// {{{
 	// IW, AW, and DW, are short-hand abbreviations used locally.
@@ -340,13 +357,7 @@ module	axixbar #(
 	// combinatorial path length
 	localparam	OPT_AWW = 1'b1;
 	// }}}
-	////////////////////////////////////////////////////////////////////////
-	//
-	// Internal signal declarations and definitions
-	// {{{
-	////////////////////////////////////////////////////////////////////////
-	//
-	//
+
 	genvar	N,M;
 	integer	iN, iM;
 
@@ -379,33 +390,33 @@ module	axixbar #(
 	wire	[NM-1:0]		wdata_expected;
 
 	// The shadow buffers
-	wire	[NMFULL-1:0]	m_awvalid, m_arvalid;
-	wire	[NMFULL-1:0]	m_wvalid;
+	wire	[NMFULL-1:0]	w_awvalid, w_arvalid;
+	wire	[NMFULL-1:0]	w_wvalid;
 	wire	[NM-1:0]	dcd_awvalid, dcd_arvalid;
 
-	wire	[C_AXI_ID_WIDTH-1:0]		m_awid		[0:NMFULL-1];
-	wire	[C_AXI_ADDR_WIDTH-1:0]		m_awaddr	[0:NMFULL-1];
-	wire	[7:0]				m_awlen		[0:NMFULL-1];
-	wire	[2:0]				m_awsize	[0:NMFULL-1];
-	wire	[1:0]				m_awburst	[0:NMFULL-1];
-	wire	[NMFULL-1:0]			m_awlock;
-	wire	[3:0]				m_awcache	[0:NMFULL-1];
-	wire	[2:0]				m_awprot	[0:NMFULL-1];
-	wire	[3:0]				m_awqos		[0:NMFULL-1];
+	wire	[C_AXI_ID_WIDTH-1:0]		w_awid		[0:NMFULL-1];
+	wire	[C_AXI_ADDR_WIDTH-1:0]		w_awaddr	[0:NMFULL-1];
+	wire	[7:0]				w_awlen		[0:NMFULL-1];
+	wire	[2:0]				w_awsize	[0:NMFULL-1];
+	wire	[1:0]				w_awburst	[0:NMFULL-1];
+	wire	[NMFULL-1:0]			w_awlock;
+	wire	[3:0]				w_awcache	[0:NMFULL-1];
+	wire	[2:0]				w_awprot	[0:NMFULL-1];
+	wire	[3:0]				w_awqos		[0:NMFULL-1];
 	//
-	wire	[C_AXI_DATA_WIDTH-1:0]		m_wdata		[0:NMFULL-1];
-	wire	[C_AXI_DATA_WIDTH/8-1:0]	m_wstrb		[0:NMFULL-1];
-	wire	[NMFULL-1:0]			m_wlast;
+	wire	[C_AXI_DATA_WIDTH-1:0]		w_wdata		[0:NMFULL-1];
+	wire	[C_AXI_DATA_WIDTH/8-1:0]	w_wstrb		[0:NMFULL-1];
+	wire	[NMFULL-1:0]			w_wlast;
 
-	wire	[C_AXI_ID_WIDTH-1:0]		m_arid		[0:NMFULL-1];
-	wire	[C_AXI_ADDR_WIDTH-1:0]		m_araddr	[0:NMFULL-1];
-	wire	[8-1:0]				m_arlen		[0:NMFULL-1];
-	wire	[3-1:0]				m_arsize	[0:NMFULL-1];
-	wire	[2-1:0]				m_arburst	[0:NMFULL-1];
-	wire	[NMFULL-1:0]			m_arlock;
-	wire	[4-1:0]				m_arcache	[0:NMFULL-1];
-	wire	[2:0]				m_arprot	[0:NMFULL-1];
-	wire	[3:0]				m_arqos		[0:NMFULL-1];
+	wire	[C_AXI_ID_WIDTH-1:0]		w_arid		[0:NMFULL-1];
+	wire	[C_AXI_ADDR_WIDTH-1:0]		w_araddr	[0:NMFULL-1];
+	wire	[8-1:0]				w_arlen		[0:NMFULL-1];
+	wire	[3-1:0]				w_arsize	[0:NMFULL-1];
+	wire	[2-1:0]				w_arburst	[0:NMFULL-1];
+	wire	[NMFULL-1:0]			w_arlock;
+	wire	[4-1:0]				w_arcache	[0:NMFULL-1];
+	wire	[2:0]				w_arprot	[0:NMFULL-1];
+	wire	[3:0]				w_arqos		[0:NMFULL-1];
 	//
 	//
 	reg	[NM-1:0]			berr_valid;
@@ -439,34 +450,34 @@ module	axixbar #(
 	wire	[4-1:0]		skd_arqos			[0:NM-1];
 
 	// Verilator lint_off UNUSED
-	reg	[NSFULL-1:0]	m_axi_awvalid;
-	reg	[NSFULL-1:0]	m_axi_awready;
-	reg	[IW-1:0]	m_axi_awid	[0:NSFULL-1];
-	reg	[7:0]		m_axi_awlen	[0:NSFULL-1];
+	reg	[NSFULL-1:0]	m_awvalid;
+	reg	[NSFULL-1:0]	m_awready;
+	reg	[IW-1:0]	m_awid	[0:NSFULL-1];
+	reg	[7:0]		m_awlen	[0:NSFULL-1];
 
-	reg	[NSFULL-1:0]	m_axi_wvalid;
-	reg	[NSFULL-1:0]	m_axi_wready;
-	reg	[NSFULL-1:0]	m_axi_bvalid;
-	reg	[NSFULL-1:0]	m_axi_bready;
+	reg	[NSFULL-1:0]	m_wvalid;
+	reg	[NSFULL-1:0]	m_wready;
+	reg	[NSFULL-1:0]	m_bvalid;
+	reg	[NSFULL-1:0]	m_bready;
 	// Verilator lint_on  UNUSED
-	reg	[1:0]		m_axi_bresp	[0:NSFULL-1];
-	reg	[IW-1:0]	m_axi_bid	[0:NSFULL-1];
+	reg	[1:0]		m_bresp	[0:NSFULL-1];
+	reg	[IW-1:0]	m_bid	[0:NSFULL-1];
 
 	// Verilator lint_off UNUSED
-	reg	[NSFULL-1:0]	m_axi_arvalid;
-	reg	[7:0]		m_axi_arlen	[0:NSFULL-1];
-	reg	[IW-1:0]	m_axi_arid	[0:NSFULL-1];
-	reg	[NSFULL-1:0]	m_axi_arready;
+	reg	[NSFULL-1:0]	m_arvalid;
+	reg	[7:0]		m_arlen	[0:NSFULL-1];
+	reg	[IW-1:0]	m_arid	[0:NSFULL-1];
+	reg	[NSFULL-1:0]	m_arready;
 	// Verilator lint_on  UNUSED
-	reg	[NSFULL-1:0]	m_axi_rvalid;
+	reg	[NSFULL-1:0]	m_rvalid;
 	// Verilator lint_off UNUSED
-	reg	[NSFULL-1:0]	m_axi_rready;
+	reg	[NSFULL-1:0]	m_rready;
 	// Verilator lint_on  UNUSED
 	//
-	reg	[IW-1:0]	m_axi_rid	[0:NSFULL-1];
-	reg	[DW-1:0]	m_axi_rdata	[0:NSFULL-1];
-	reg	[NSFULL-1:0]	m_axi_rlast;
-	reg	[2-1:0]		m_axi_rresp	[0:NSFULL-1];
+	reg	[IW-1:0]	m_rid	[0:NSFULL-1];
+	reg	[DW-1:0]	m_rdata	[0:NSFULL-1];
+	reg	[NSFULL-1:0]	m_rlast;
+	reg	[2-1:0]		m_rresp	[0:NSFULL-1];
 
 	reg	[NM-1:0]	slave_awaccepts;
 	reg	[NM-1:0]	slave_waccepts;
@@ -477,84 +488,81 @@ module	axixbar #(
 	wire	[NM-1:0]	bskd_ready;
 	wire	[NM-1:0]	rskd_ready;
 
-	// Verilator lint_off UNUSED
 	wire	[NMFULL-1:0]	write_qos_lockout,
 				read_qos_lockout;
-	// Verilator lint_on  UNUSED
 
 	reg	[NSFULL-1:0]	slave_awready, slave_wready, slave_arready;
-	// }}}
 
-	// m_axi_* convenience signals (write side)
+	// m_* convenience signals (write side)
 	// {{{
 	always @(*)
 	begin
-		m_axi_awvalid = -1;
-		m_axi_awready = -1;
-		m_axi_wvalid = -1;
-		m_axi_wready = -1;
-		m_axi_bvalid = 0;
-		m_axi_bready = -1;
+		m_awvalid = -1;
+		m_awready = -1;
+		m_wvalid = -1;
+		m_wready = -1;
+		m_bvalid = 0;
+		m_bready = -1;
 
-		m_axi_awvalid[NS-1:0] = M_AXI_AWVALID;
-		m_axi_awready[NS-1:0] = M_AXI_AWREADY;
-		m_axi_wvalid[NS-1:0]  = M_AXI_WVALID;
-		m_axi_wready[NS-1:0]  = M_AXI_WREADY;
-		m_axi_bvalid[NS-1:0]  = M_AXI_BVALID;
-		m_axi_bready[NS-1:0]  = M_AXI_BREADY;
+		m_awvalid[NS-1:0] = M_AXI_AWVALID;
+		m_awready[NS-1:0] = M_AXI_AWREADY;
+		m_wvalid[NS-1:0]  = M_AXI_WVALID;
+		m_wready[NS-1:0]  = M_AXI_WREADY;
+		m_bvalid[NS-1:0]  = M_AXI_BVALID;
+		m_bready[NS-1:0]  = M_AXI_BREADY;
 
 		for(iM=0; iM<NS; iM=iM+1)
 		begin
-			m_axi_awid[iM]   = M_AXI_AWID[   iM*IW +: IW];
-			m_axi_awlen[iM]  = M_AXI_AWLEN[  iM* 8 +:  8];
+			m_awid[iM]   = M_AXI_AWID[   iM*IW +: IW];
+			m_awlen[iM]  = M_AXI_AWLEN[  iM* 8 +:  8];
 
-			m_axi_bid[iM]   = M_AXI_BID[iM* IW +:  IW];
-			m_axi_bresp[iM] = M_AXI_BRESP[iM* 2 +:  2];
+			m_bid[iM]   = M_AXI_BID[iM* IW +:  IW];
+			m_bresp[iM] = M_AXI_BRESP[iM* 2 +:  2];
 
-			m_axi_rid[iM]   = M_AXI_RID[  iM*IW +: IW];
-			m_axi_rdata[iM] = M_AXI_RDATA[iM*DW +: DW];
-			m_axi_rresp[iM] = M_AXI_RRESP[iM* 2 +:  2];
-			m_axi_rlast[iM] = M_AXI_RLAST[iM];
+			m_rid[iM]   = M_AXI_RID[  iM*IW +: IW];
+			m_rdata[iM] = M_AXI_RDATA[iM*DW +: DW];
+			m_rresp[iM] = M_AXI_RRESP[iM* 2 +:  2];
+			m_rlast[iM] = M_AXI_RLAST[iM];
 		end
 		for(iM=NS; iM<NSFULL; iM=iM+1)
 		begin
-			m_axi_awid[iM]   = 0;
-			m_axi_awlen[iM]  = 0;
+			m_awid[iM]   = 0;
+			m_awlen[iM]  = 0;
 
-			m_axi_bresp[iM] = INTERCONNECT_ERROR;
-			m_axi_bid[iM]   = 0;
+			m_bresp[iM] = INTERCONNECT_ERROR;
+			m_bid[iM]   = 0;
 
-			m_axi_rid[iM]   = 0;
-			m_axi_rdata[iM] = 0;
-			m_axi_rresp[iM] = INTERCONNECT_ERROR;
-			m_axi_rlast[iM] = 1;
+			m_rid[iM]   = 0;
+			m_rdata[iM] = 0;
+			m_rresp[iM] = INTERCONNECT_ERROR;
+			m_rlast[iM] = 1;
 		end
 	end
 	// }}}
 
-	// m_axi_* convenience signals (read side)
+	// m_* convenience signals (read side)
 	// {{{
 	always @(*)
 	begin
-		m_axi_arvalid = 0;
-		m_axi_arready = 0;
-		m_axi_rvalid = 0;
-		m_axi_rready = 0;
+		m_arvalid = 0;
+		m_arready = 0;
+		m_rvalid = 0;
+		m_rready = 0;
 		for(iM=0; iM<NS; iM=iM+1)
 		begin
-			m_axi_arlen[iM] = M_AXI_ARLEN[iM* 8 +:  8];
-			m_axi_arid[iM]  = M_AXI_ARID[ iM*IW +: IW];
+			m_arlen[iM] = M_AXI_ARLEN[iM* 8 +:  8];
+			m_arid[iM]  = M_AXI_ARID[ iM*IW +: IW];
 		end
 		for(iM=NS; iM<NSFULL; iM=iM+1)
 		begin
-			m_axi_arlen[iM] = 0;
-			m_axi_arid[iM]  = 0;
+			m_arlen[iM] = 0;
+			m_arid[iM]  = 0;
 		end
 
-		m_axi_arvalid[NS-1:0] = M_AXI_ARVALID;
-		m_axi_arready[NS-1:0] = M_AXI_ARREADY;
-		m_axi_rvalid[NS-1:0]  = M_AXI_RVALID;
-		m_axi_rready[NS-1:0]  = M_AXI_RREADY;
+		m_arvalid[NS-1:0] = M_AXI_ARVALID;
+		m_arready[NS-1:0] = M_AXI_ARREADY;
+		m_rvalid[NS-1:0]  = M_AXI_RVALID;
+		m_rready[NS-1:0]  = M_AXI_RREADY;
 	end
 	// }}}
 
@@ -579,6 +587,7 @@ module	axixbar #(
 	end
 	// }}}
 
+	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Process our incoming signals: AW*, W*, and AR*
@@ -601,17 +610,19 @@ module	axixbar #(
 			// }}}
 		) awskid(
 			// {{{
-			S_AXI_ACLK, !S_AXI_ARESETN,
-			S_AXI_AWVALID[N], S_AXI_AWREADY[N],
+			.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+			.i_valid(S_AXI_AWVALID[N]), .o_ready(S_AXI_AWREADY[N]),
+			.i_data(
 			{ S_AXI_AWID[N*IW +: IW], S_AXI_AWADDR[N*AW +: AW],
 			  S_AXI_AWLEN[N*8 +: 8], S_AXI_AWSIZE[N*3 +: 3],
 			  S_AXI_AWBURST[N*2 +: 2], S_AXI_AWLOCK[N],
 			  S_AXI_AWCACHE[N*4 +: 4], S_AXI_AWPROT[N*3 +: 3],
-			  S_AXI_AWQOS[N*4 +: 4] },
-			skd_awvalid[N], !skd_awstall[N],
+			  S_AXI_AWQOS[N*4 +: 4] }),
+			.o_valid(skd_awvalid[N]), .i_ready(!skd_awstall[N]),
+			.o_data(
 			{ skd_awid[N], skd_awaddr[N], skd_awlen[N],
 			  skd_awsize[N], skd_awburst[N], skd_awlock[N],
-			  skd_awcache[N], skd_awprot[N], skd_awqos[N] }
+			  skd_awcache[N], skd_awprot[N], skd_awqos[N] })
 			// }}}
 		);
 		// }}}
@@ -636,10 +647,10 @@ module	axixbar #(
 				skd_awqos[N] }),
 			.o_valid(dcd_awvalid[N]),
 				.i_stall(!dcd_awvalid[N]||!slave_awaccepts[N]),
-				.o_decode(wdecode), .o_addr(m_awaddr[N]),
-				.o_data({ m_awid[N], m_awlen[N], m_awsize[N],
-				  m_awburst[N], m_awlock[N], m_awcache[N],
-				  m_awprot[N], m_awqos[N]})
+				.o_decode(wdecode), .o_addr(w_awaddr[N]),
+				.o_data({ w_awid[N], w_awlen[N], w_awsize[N],
+				  w_awburst[N], w_awlock[N], w_awcache[N],
+				  w_awprot[N], w_awqos[N]})
 			// }}}
 		);
 		// }}}
@@ -653,12 +664,13 @@ module	axixbar #(
 			// }}}
 		) wskid(
 			// {{{
-			S_AXI_ACLK, !S_AXI_ARESETN,
-			S_AXI_WVALID[N], S_AXI_WREADY[N],
+			.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+			.i_valid(S_AXI_WVALID[N]), .o_ready(S_AXI_WREADY[N]),
+			.i_data(
 			{ S_AXI_WDATA[N*DW +: DW], S_AXI_WSTRB[N*DW/8 +: DW/8],
-			  S_AXI_WLAST[N] },
-			m_wvalid[N], slave_waccepts[N],
-			{ m_wdata[N], m_wstrb[N], m_wlast[N] }
+			  S_AXI_WLAST[N] }),
+			.o_valid(w_wvalid[N]), .i_ready(slave_waccepts[N]),
+			.o_data({ w_wdata[N], w_wstrb[N], w_wlast[N] })
 			// }}}
 		);
 		// }}}
@@ -728,7 +740,7 @@ module	axixbar #(
 				wrequest[N][NS:0] = wdecode;
 		end
 
-		assign	m_awvalid[N] = r_awvalid;
+		assign	w_awvalid[N] = r_awvalid;
 
 		// QOS handling via write_qos_lockout
 		// {{{
@@ -756,10 +768,10 @@ module	axixbar #(
 				for(iN=0; iN<NM; iN=iN+1)
 				if (iN != N)
 				begin
-					if (m_awvalid[N]
+					if (w_awvalid[N]
 						&&(|(wrequest[iN][NS-1:0]
 							& wdecode[NS-1:0]))
-						&&(m_awqos[N] < m_awqos[iN]))
+						&&(w_awqos[N] < w_awqos[iN]))
 						r_write_qos_lockout <= 1;
 				end
 			end
@@ -769,32 +781,37 @@ module	axixbar #(
 		end
 		// }}}
 
+	// }}}
 	end for (N=NM; N<NMFULL; N=N+1)
 	begin : UNUSED_WSKID_BUFFERS
 	// {{{
 		// The following values are unused.  They need to be defined
 		// so that our indexing scheme will work, but indexes should
 		// never actually reference them
-		assign	m_awid[N]    = 0;
-		assign	m_awaddr[N]  = 0;
-		assign	m_awlen[N]   = 0;
-		assign	m_awsize[N]  = 0;
-		assign	m_awburst[N] = 0;
-		assign	m_awlock[N]  = 0;
-		assign	m_awcache[N] = 0;
-		assign	m_awprot[N]  = 0;
-		assign	m_awqos[N]   = 0;
+		assign	w_awid[N]    = 0;
+		assign	w_awaddr[N]  = 0;
+		assign	w_awlen[N]   = 0;
+		assign	w_awsize[N]  = 0;
+		assign	w_awburst[N] = 0;
+		assign	w_awlock[N]  = 0;
+		assign	w_awcache[N] = 0;
+		assign	w_awprot[N]  = 0;
+		assign	w_awqos[N]   = 0;
 
-		assign	m_awvalid[N] = 0;
+		assign	w_awvalid[N] = 0;
 
-		assign	m_wvalid[N]  = 0;
+		assign	w_wvalid[N]  = 0;
 		//
-		assign	m_wdata[N] = 0;
-		assign	m_wstrb[N] = 0;
-		assign	m_wlast[N] = 0;
+		assign	w_wdata[N] = 0;
+		assign	w_wstrb[N] = 0;
+		assign	w_wlast[N] = 0;
 
 		assign	write_qos_lockout[N] = 0;
-	// }}}
+
+		// Verilator lint_off UNUSED
+		wire	unused_NMFULL;
+		assign	unused_NMFULL = &{ 1'b0, write_qos_lockout[N] };
+		// Verilator lint_on  UNUSED
 	// }}}
 	end endgenerate
 
@@ -814,17 +831,19 @@ module	axixbar #(
 			// }}}
 		) arskid(
 			// {{{
-			S_AXI_ACLK, !S_AXI_ARESETN,
-			S_AXI_ARVALID[N], S_AXI_ARREADY[N],
+			.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+			.i_valid(S_AXI_ARVALID[N]), .o_ready(S_AXI_ARREADY[N]),
+			.i_data(
 			{ S_AXI_ARID[N*IW +: IW], S_AXI_ARADDR[N*AW +: AW],
 			  S_AXI_ARLEN[N*8 +: 8], S_AXI_ARSIZE[N*3 +: 3],
 			  S_AXI_ARBURST[N*2 +: 2], S_AXI_ARLOCK[N],
 			  S_AXI_ARCACHE[N*4 +: 4], S_AXI_ARPROT[N*3 +: 3],
-			  S_AXI_ARQOS[N*4 +: 4] },
-			skd_arvalid[N], !skd_arstall[N],
+			  S_AXI_ARQOS[N*4 +: 4] }),
+			.o_valid(skd_arvalid[N]), .i_ready(!skd_arstall[N]),
+			.o_data(
 			{ skd_arid[N], skd_araddr[N], skd_arlen[N],
 			  skd_arsize[N], skd_arburst[N], skd_arlock[N],
-			  skd_arcache[N], skd_arprot[N], skd_arqos[N] }
+			  skd_arcache[N], skd_arprot[N], skd_arqos[N] })
 			// }}}
 		);
 		// }}}
@@ -847,11 +866,11 @@ module	axixbar #(
 				skd_arlock[N], skd_arcache[N], skd_arprot[N],
 				skd_arqos[N] }),
 			.o_valid(dcd_arvalid[N]),
-				.i_stall(!m_arvalid[N] || !slave_raccepts[N]),
-				.o_decode(rdecode), .o_addr(m_araddr[N]),
-				.o_data({ m_arid[N], m_arlen[N], m_arsize[N],
-				  m_arburst[N], m_arlock[N], m_arcache[N],
-				  m_arprot[N], m_arqos[N]})
+				.i_stall(!w_arvalid[N] || !slave_raccepts[N]),
+				.o_decode(rdecode), .o_addr(w_araddr[N]),
+				.o_data({ w_arid[N], w_arlen[N], w_arsize[N],
+				  w_arburst[N], w_arlock[N], w_arcache[N],
+				  w_arprot[N], w_arqos[N]})
 			// }}}
 		);
 		// }}}
@@ -864,7 +883,7 @@ module	axixbar #(
 				rrequest[N][NS:0] = rdecode;
 		end
 
-		assign	m_arvalid[N] = r_arvalid;
+		assign	w_arvalid[N] = r_arvalid;
 
 		// slave_raccepts decoding
 		// {{{
@@ -879,7 +898,7 @@ module	axixbar #(
 				slave_raccepts[N] = 1'b0;
 			// If we aren't requesting access to the channel we've
 			// been granted access to, then we can't accept this
-			// verilator lint_off  WIDTH
+			// verilator lint_off WIDTH
 			if (!rrequest[N][mrindex[N]])
 				slave_raccepts[N] = 1'b0;
 			// verilator lint_on  WIDTH
@@ -922,40 +941,43 @@ module	axixbar #(
 				for(iN=0; iN<NM; iN=iN+1)
 				if (iN != N)
 				begin
-					if (m_arvalid[iN]
+					if (w_arvalid[iN]
 						&& !slave_raccepts[N]
 						&&(|(rrequest[iN][NS-1:0]
 							& rdecode[NS-1:0]))
-						&&(m_arqos[N] < m_arqos[iN]))
+						&&(w_arqos[N] < w_arqos[iN]))
 						r_read_qos_lockout <= 1;
 				end
 			end
 
-			assign	read_qos_lockout[N] = 0;
+			assign	read_qos_lockout[N] = r_read_qos_lockout;
 			// }}}
 		end
 		// }}}
-
+	// }}}
 	end for (N=NM; N<NMFULL; N=N+1)
 	begin : UNUSED_RSKID_BUFFERS
 	// {{{
-		assign	m_arvalid[N] = 0;
-		assign	m_arid[N]    = 0;
-		assign	m_araddr[N]  = 0;
-		assign	m_arlen[N]   = 0;
-		assign	m_arsize[N]  = 0;
-		assign	m_arburst[N] = 0;
-		assign	m_arlock[N]  = 0;
-		assign	m_arcache[N] = 0;
-		assign	m_arprot[N]  = 0;
-		assign	m_arqos[N]   = 0;
+		assign	w_arvalid[N] = 0;
+		assign	w_arid[N]    = 0;
+		assign	w_araddr[N]  = 0;
+		assign	w_arlen[N]   = 0;
+		assign	w_arsize[N]  = 0;
+		assign	w_arburst[N] = 0;
+		assign	w_arlock[N]  = 0;
+		assign	w_arcache[N] = 0;
+		assign	w_arprot[N]  = 0;
+		assign	w_arqos[N]   = 0;
 
 		assign	read_qos_lockout[N] = 0;
-	// }}}
+
+		// Verilator lint_off UNUSED
+		wire	unused_NMFULL;
+		assign	unused_NMFULL = &{ 1'b0, read_qos_lockout[N] };
+		// Verilator lint_on  UNUSED
 	// }}}
 	end endgenerate
 	// }}}
-
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Channel arbitration
@@ -1045,6 +1067,7 @@ module	axixbar #(
 		reg	[LGNS-1:0]	requested_index;
 		wire			linger;
 		reg	[LGNS-1:0]	r_mwindex;
+		wire	[NSFULL-1:0]	write_requests;
 
 		// The basic logic:
 		// 1. If we must stay_on_channel, then nothing changes
@@ -1097,7 +1120,7 @@ module	axixbar #(
 			// Likewise, if we are the only master, then the
 			// channel is always available on any request
 			if (NM < 2)
-				requested_channel_is_available = m_awvalid[N];
+				requested_channel_is_available = w_awvalid[N];
 		end
 		// }}}
 
@@ -1154,13 +1177,13 @@ module	axixbar #(
 		always @(*)
 		begin
 			leave_channel = 0;
-			if (!m_awvalid[N]
+			if (!w_awvalid[N]
 				&& (!linger || wrequested[NM][mwindex[N]]))
 				// Leave the channel after OPT_LINGER counts
 				// of the channel being idle, or when someone
 				// else asks for the channel
 				leave_channel = 1;
-			if (m_awvalid[N] && !wrequest[N][mwindex[N]])
+			if (w_awvalid[N] && !wrequest[N][mwindex[N]])
 				// Need to leave this channel to connect
 				// to any other channel
 				leave_channel = 1;
@@ -1200,11 +1223,13 @@ module	axixbar #(
 
 		// mwindex (registered)
 		// {{{
-		always @(wrequest[N])
+		assign	write_requests = wrequest[N];
+
+		always @(*)
 		begin
 			requested_index = 0;
 			for(iM=0; iM<=NS; iM=iM+1)
-			if (wrequest[N][iM])
+			if (write_requests[iM])
 				requested_index= requested_index | iM[LGNS-1:0];
 		end
 
@@ -1218,7 +1243,7 @@ module	axixbar #(
 		// }}}
 
 	end for (N=NM; N<NMFULL; N=N+1)
-	begin
+	begin : EMPTY_WRITE_REQUEST
 
 		assign	mwindex[N] = 0;
 	// }}}
@@ -1231,8 +1256,9 @@ module	axixbar #(
 		reg			requested_channel_is_available;
 		reg			leave_channel;
 		reg	[LGNS-1:0]	requested_index;
-		reg			linger;
+		wire			linger;
 		reg	[LGNS-1:0]	r_mrindex;
+		wire	[NSFULL-1:0]	read_requests;
 
 
 		// The basic logic:
@@ -1286,7 +1312,7 @@ module	axixbar #(
 			// Likewise, if we are the only master, then the
 			// channel is always available on any request
 			if (NM < 2)
-				requested_channel_is_available = m_arvalid[N];
+				requested_channel_is_available = w_arvalid[N];
 		end
 		// }}}
 
@@ -1301,31 +1327,31 @@ module	axixbar #(
 		// or a different master requests this slave, then the linger
 		// option is voided and the grant given up anyway.
 		if (OPT_LINGER == 0)
-		begin : NO_LONGER
-			always @(*)
-				linger = 0;
+		begin : NO_LINGER
+			assign	linger = 0;
 		end else begin : READ_LINGER
-
+			reg			r_linger;
 			reg [LGLINGER-1:0]	linger_counter;
 
-			initial	linger = 0;
+			initial	r_linger = 0;
 			initial	linger_counter = 0;
 			always @(posedge S_AXI_ACLK)
 			if (!S_AXI_ARESETN || rgrant[N][NS])
 			begin
-				linger <= 0;
+				r_linger <= 0;
 				linger_counter <= 0;
 			end else if (!mrempty[N] || rskd_valid[N])
 			begin
 				linger_counter <= OPT_LINGER;
-				linger <= 1;
+				r_linger <= 1;
 			end else if (linger_counter > 0)
 			begin
-				linger <= (linger_counter > 1);
+				r_linger <= (linger_counter > 1);
 				linger_counter <= linger_counter - 1;
 			end else
-				linger <= 0;
+				r_linger <= 0;
 
+			assign	linger = r_linger;
 		end
 		// }}}
 
@@ -1338,13 +1364,13 @@ module	axixbar #(
 		always @(*)
 		begin
 			leave_channel = 0;
-			if (!m_arvalid[N]
+			if (!w_arvalid[N]
 				&& (!linger || rrequested[NM][mrindex[N]]))
 				// Leave the channel after OPT_LINGER counts
 				// of the channel being idle, or when someone
 				// else asks for the channel
 				leave_channel = 1;
-			if (m_arvalid[N] && !rrequest[N][mrindex[N]])
+			if (w_arvalid[N] && !rrequest[N][mrindex[N]])
 				// Need to leave this channel to connect
 				// to any other channel
 				leave_channel = 1;
@@ -1380,11 +1406,12 @@ module	axixbar #(
 
 		// mrindex (registered)
 		// {{{
-		always @(rrequest[N])
+		assign	read_requests = rrequest[N];
+		always @(*)
 		begin
 			requested_index = 0;
 			for(iM=0; iM<=NS; iM=iM+1)
-			if (rrequest[N][iM])
+			if (read_requests[iM])
 				requested_index = requested_index|iM[LGNS-1:0];
 		end
 
@@ -1397,7 +1424,7 @@ module	axixbar #(
 		// }}}
 
 	end for (N=NM; N<NMFULL; N=N+1)
-	begin
+	begin : EMPTY_READ_REQUEST
 
 		assign	mrindex[N] = 0;
 	// }}}
@@ -1411,7 +1438,7 @@ module	axixbar #(
 		// master that has currently won write arbitration and so
 		// has permission to access this slave
 		if (NM <= 1)
-		begin : SINGLE_MASTER
+		begin : ONE_MASTER
 
 			// If there's only ever one master, that index is
 			// always the index of the one master.
@@ -1442,7 +1469,7 @@ module	axixbar #(
 		end
 
 	end for (M=NS; M<NSFULL; M=M+1)
-	begin : W4_UNUSED_MASTERS
+	begin : EMPTY_WRITE_INDEX
 
 		assign	swindex[M] = 0;
 	// }}}
@@ -1456,7 +1483,7 @@ module	axixbar #(
 		// read arbitration to the given slave.
 
 		if (NM <= 1)
-		begin : SINGLE_MASTER
+		begin : ONE_MASTER
 			// If there's only one master, srindex can always
 			// point to that master--no longic required
 			assign	srindex[M] = 0;
@@ -1485,7 +1512,7 @@ module	axixbar #(
 		end
 
 	end for (M=NS; M<NSFULL; M=M+1)
-	begin : R4_UNUSED_MASTERS
+	begin : EMPTY_READ_INDEX
 
 		assign	srindex[M] = 0;
 	// }}}
@@ -1570,7 +1597,7 @@ module	axixbar #(
 			axi_awvalid <= 0;
 		else if (!sawstall)
 		begin
-			axi_awvalid <= m_awvalid[swindex[M]] &&(awaccepts);
+			axi_awvalid <= w_awvalid[swindex[M]] &&(awaccepts);
 		end
 
 		initial	axi_awid    = 0;
@@ -1598,19 +1625,19 @@ module	axixbar #(
 			axi_awqos   <= 0;
 		end else if (!sawstall)
 		begin
-			if (!OPT_LOWPOWER||(m_awvalid[swindex[M]]&&awaccepts))
+			if (!OPT_LOWPOWER||(w_awvalid[swindex[M]]&&awaccepts))
 			begin
 				// swindex[M] is defined as 0 above in the
 				// case where NM <= 1
-				axi_awid    <= m_awid[   swindex[M]];
-				axi_awaddr  <= m_awaddr[ swindex[M]];
-				axi_awlen   <= m_awlen[  swindex[M]];
-				axi_awsize  <= m_awsize[ swindex[M]];
-				axi_awburst <= m_awburst[swindex[M]];
-				axi_awlock  <= m_awlock[ swindex[M]];
-				axi_awcache <= m_awcache[swindex[M]];
-				axi_awprot  <= m_awprot[ swindex[M]];
-				axi_awqos   <= m_awqos[  swindex[M]];
+				axi_awid    <= w_awid[   swindex[M]];
+				axi_awaddr  <= w_awaddr[ swindex[M]];
+				axi_awlen   <= w_awlen[  swindex[M]];
+				axi_awsize  <= w_awsize[ swindex[M]];
+				axi_awburst <= w_awburst[swindex[M]];
+				axi_awlock  <= w_awlock[ swindex[M]];
+				axi_awcache <= w_awcache[swindex[M]];
+				axi_awprot  <= w_awprot[ swindex[M]];
+				axi_awqos   <= w_awqos[  swindex[M]];
 			end else begin
 				axi_awid    <= 0;
 				axi_awaddr  <= 0;
@@ -1636,7 +1663,7 @@ module	axixbar #(
 			axi_wvalid <= 0;
 		else if (!swstall)
 		begin
-			axi_wvalid <= (m_wvalid[swindex[M]])
+			axi_wvalid <= (w_wvalid[swindex[M]])
 					&&(slave_waccepts[swindex[M]]);
 		end
 
@@ -1656,13 +1683,13 @@ module	axixbar #(
 			axi_wlast  <= 0;
 		end else if (!swstall)
 		begin
-			if (!OPT_LOWPOWER || (m_wvalid[swindex[M]]&&slave_waccepts[swindex[M]]))
+			if (!OPT_LOWPOWER || (w_wvalid[swindex[M]]&&slave_waccepts[swindex[M]]))
 			begin
 				// If NM <= 1, swindex[M] is already defined
 				// to be zero above
-				axi_wdata  <= m_wdata[swindex[M]];
-				axi_wstrb  <= m_wstrb[swindex[M]];
-				axi_wlast  <= m_wlast[swindex[M]];
+				axi_wdata  <= w_wdata[swindex[M]];
+				axi_wstrb  <= w_wstrb[swindex[M]];
+				axi_wlast  <= w_wlast[swindex[M]];
 			end else begin
 				axi_wdata  <= 0;
 				axi_wstrb  <= 0;
@@ -1720,17 +1747,16 @@ module	axixbar #(
 		reg	[3:0]			axi_arqos;
 		//
 		reg				axi_rready;
-		reg				arstall;
+		wire				arstall;
 
-		always @(*)
-			arstall= axi_arvalid && !M_AXI_ARREADY[M];
+		assign	arstall= axi_arvalid && !M_AXI_ARREADY[M];
 
 		initial	axi_arvalid = 0;
 		always @(posedge  S_AXI_ACLK)
 		if (!S_AXI_ARESETN || !srgrant[M])
 			axi_arvalid <= 0;
 		else if (!arstall)
-			axi_arvalid <= m_arvalid[srindex[M]] && slave_raccepts[srindex[M]];
+			axi_arvalid <= w_arvalid[srindex[M]] && slave_raccepts[srindex[M]];
 		else if (M_AXI_ARREADY[M])
 			axi_arvalid <= 0;
 
@@ -1757,18 +1783,18 @@ module	axixbar #(
 			axi_arqos   <= 0;
 		end else if (!arstall)
 		begin
-			if (!OPT_LOWPOWER || (m_arvalid[srindex[M]] && slave_raccepts[srindex[M]]))
+			if (!OPT_LOWPOWER || (w_arvalid[srindex[M]] && slave_raccepts[srindex[M]]))
 			begin
 				// If NM <=1, srindex[M] is defined to be zero
-				axi_arid    <= m_arid[   srindex[M]];
-				axi_araddr  <= m_araddr[ srindex[M]];
-				axi_arlen   <= m_arlen[  srindex[M]];
-				axi_arsize  <= m_arsize[ srindex[M]];
-				axi_arburst <= m_arburst[srindex[M]];
-				axi_arlock  <= m_arlock[ srindex[M]];
-				axi_arcache <= m_arcache[srindex[M]];
-				axi_arprot  <= m_arprot[ srindex[M]];
-				axi_arqos   <= m_arqos[  srindex[M]];
+				axi_arid    <= w_arid[   srindex[M]];
+				axi_araddr  <= w_araddr[ srindex[M]];
+				axi_arlen   <= w_arlen[  srindex[M]];
+				axi_arsize  <= w_arsize[ srindex[M]];
+				axi_arburst <= w_arburst[srindex[M]];
+				axi_arlock  <= w_arlock[ srindex[M]];
+				axi_arcache <= w_arcache[srindex[M]];
+				axi_arprot  <= w_arprot[ srindex[M]];
+				axi_arqos   <= w_arqos[  srindex[M]];
 			end else begin
 				axi_arid    <= 0;
 				axi_araddr  <= 0;
@@ -1825,7 +1851,7 @@ module	axixbar #(
 		always @(posedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN)
 			berr_valid[N] <= 0;
-		else if (wgrant[N][NS] && m_wvalid[N] && m_wlast[N]
+		else if (wgrant[N][NS] && w_wvalid[N] && w_wlast[N]
 				&& slave_waccepts[N])
 			berr_valid[N] <= 1;
 		else if (bskd_ready[N])
@@ -1835,11 +1861,11 @@ module	axixbar #(
 		if (berr_valid[N])
 			bskd_valid[N] = 1;
 		else
-			bskd_valid[N] = mwgrant[N]&&m_axi_bvalid[mwindex[N]];
+			bskd_valid[N] = mwgrant[N]&&m_bvalid[mwindex[N]];
 
 		always @(posedge S_AXI_ACLK)
-		if (m_awvalid[N] && slave_awaccepts[N])
-			berr_id[N] <= m_awid[N];
+		if (w_awvalid[N] && slave_awaccepts[N])
+			berr_id[N] <= w_awid[N];
 
 		always @(*)
 		if (wgrant[N][NS])
@@ -1847,8 +1873,8 @@ module	axixbar #(
 			i_axi_bid   = berr_id[N];
 			i_axi_bresp = INTERCONNECT_ERROR;
 		end else begin
-			i_axi_bid   = m_axi_bid[mwindex[N]];
-			i_axi_bresp = m_axi_bresp[mwindex[N]];
+			i_axi_bid   = m_bid[mwindex[N]];
+			i_axi_bresp = m_bresp[mwindex[N]];
 		end
 		// }}}
 
@@ -1862,11 +1888,11 @@ module	axixbar #(
 			// }}}
 		) bskid(
 			// {{{
-			S_AXI_ACLK, !S_AXI_ARESETN,
-			bskd_valid[N], bskd_ready[N],
-			{ i_axi_bid, i_axi_bresp },
-			S_AXI_BVALID[N], S_AXI_BREADY[N],
-			{ S_AXI_BID[N*IW +: IW], S_AXI_BRESP[N*2 +: 2] }
+			.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+			.i_valid(bskd_valid[N]), .o_ready(bskd_ready[N]),
+			.i_data({ i_axi_bid, i_axi_bresp }),
+			.o_valid(S_AXI_BVALID[N]), .i_ready(S_AXI_BREADY[N]),
+			.o_data({ S_AXI_BID[N*IW +: IW], S_AXI_BRESP[N*2 +: 2]})
 			// }}}
 		);
 		// }}}
@@ -1891,7 +1917,7 @@ module	axixbar #(
 		if (rgrant[N][NS])
 			rskd_valid[N] = !rerr_none[N];
 		else
-			rskd_valid[N] = mrgrant[N] && m_axi_rvalid[mrindex[N]];
+			rskd_valid[N] = mrgrant[N] && m_rvalid[mrindex[N]];
 
 		always @(*)
 		if (rgrant[N][NS])
@@ -1901,10 +1927,10 @@ module	axixbar #(
 			rskd_rlast[N] = rerr_last[N];
 			i_axi_rresp = INTERCONNECT_ERROR;
 		end else begin
-			i_axi_rid   = m_axi_rid[mrindex[N]];
-			i_axi_rdata = m_axi_rdata[mrindex[N]];
-			rskd_rlast[N]= m_axi_rlast[mrindex[N]];
-			i_axi_rresp = m_axi_rresp[mrindex[N]];
+			i_axi_rid   = m_rid[mrindex[N]];
+			i_axi_rdata = m_rdata[mrindex[N]];
+			rskd_rlast[N]= m_rlast[mrindex[N]];
+			i_axi_rresp = m_rresp[mrindex[N]];
 		end
 		// }}}
 
@@ -1922,12 +1948,13 @@ module	axixbar #(
 			// }}}
 		) rskid(
 			// {{{
-			S_AXI_ACLK, !S_AXI_ARESETN,
-			rskd_valid[N], rskd_ready[N],
-			{ i_axi_rid, i_axi_rdata, rskd_rlast[N], i_axi_rresp },
-			S_AXI_RVALID[N], S_AXI_RREADY[N],
+			.i_clk(S_AXI_ACLK), .i_reset(!S_AXI_ARESETN),
+			.i_valid(rskd_valid[N]), .o_ready(rskd_ready[N]),
+			.i_data({ i_axi_rid, i_axi_rdata, rskd_rlast[N], i_axi_rresp }),
+			.o_valid(S_AXI_RVALID[N]), .i_ready(S_AXI_RREADY[N]),
+			.o_data(
 			{ S_AXI_RID[N*IW +: IW], S_AXI_RDATA[N*DW +: DW],
-			  S_AXI_RLAST[N], S_AXI_RRESP[N*2 +: 2] }
+			  S_AXI_RLAST[N], S_AXI_RRESP[N*2 +: 2] })
 			// }}}
 		);
 		// }}}
@@ -1966,7 +1993,7 @@ module	axixbar #(
 			awpending     <= 0;
 			mwempty[N]    <= 1;
 			mwfull[N]     <= 0;
-		end else case ({(m_awvalid[N] && slave_awaccepts[N]),
+		end else case ({(w_awvalid[N] && slave_awaccepts[N]),
 				(bskd_valid[N] && bskd_ready[N])})
 		2'b01: begin
 			awpending     <= awpending - 1;
@@ -2007,8 +2034,8 @@ module	axixbar #(
 		begin
 			r_wdata_expected <= 0;
 			wpending <= 0;
-		end else case ({(m_awvalid[N] && slave_awaccepts[N]),
-				(m_wvalid[N]&&slave_waccepts[N] && m_wlast[N])})
+		end else case ({(w_awvalid[N] && slave_awaccepts[N]),
+				(w_wvalid[N]&&slave_waccepts[N] && w_wlast[N])})
 		2'b01: begin
 			r_wdata_expected <= (wpending > 1);
 			wpending <= wpending - 1;
@@ -2050,7 +2077,7 @@ module	axixbar #(
 			rpending  <= 0;
 			mrempty[N]<= 1;
 			mrfull[N] <= 0;
-		end else case ({(m_arvalid[N] && slave_raccepts[N] && !rgrant[N][NS]),
+		end else case ({(w_arvalid[N] && slave_raccepts[N] && !rgrant[N][NS]),
 				(rskd_valid[N] && rskd_ready[N]
 					&& rskd_rlast[N] && !rgrant[N][NS])})
 		2'b01: begin
@@ -2093,12 +2120,12 @@ module	axixbar #(
 				rerr_last[N] <= (rerr_outstanding[N] == 2);
 				rerr_outstanding[N] <= rerr_outstanding[N] - 1;
 			end
-		end else if (m_arvalid[N] && rrequest[N][NS]
+		end else if (w_arvalid[N] && rrequest[N][NS]
 						&& slave_raccepts[N])
 		begin
 			rerr_none[N] <= 0;
-			rerr_last[N] <= (m_arlen[N] == 0);
-			rerr_outstanding[N] <= m_arlen[N] + 1;
+			rerr_last[N] <= (w_arlen[N] == 0);
+			rerr_outstanding[N] <= w_arlen[N] + 1;
 		end
 
 		// rerr_id is the ARID field of the currently outstanding
@@ -2108,11 +2135,11 @@ module	axixbar #(
 		always @(posedge S_AXI_ACLK)
 		if (!S_AXI_ARESETN && OPT_LOWPOWER)
 			rerr_id[N] <= 0;
-		else if (m_arvalid[N] && slave_raccepts[N])
+		else if (w_arvalid[N] && slave_raccepts[N])
 		begin
 			if (rrequest[N][NS] || !OPT_LOWPOWER)
 				// A low-logic definition
-				rerr_id[N] <= m_arid[N];
+				rerr_id[N] <= w_arid[N];
 			else
 				rerr_id[N] <= 0;
 		end else if (OPT_LOWPOWER && rerr_last[N]

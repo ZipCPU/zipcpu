@@ -277,7 +277,6 @@ module	dcache #(
 			r_cachable <= (!i_op[0])&&(w_cachable)&&(i_pipe_stb);
 			r_rd_pending <= (i_pipe_stb)&&(!i_op[0])&&(w_cachable)
 				&&((cache_miss_inow)||(c_wr)||(wr_cstb));
-				// &&((!c_wr)||(!wr_cstb));
 		end else begin
 			r_iv   <= c_v[r_cline];
 			// r_itag <= c_vtags[r_cline];
@@ -292,8 +291,6 @@ module	dcache #(
 		// one clock delayed address.
 		r_dvalid <= (!r_svalid)&&(!r_dvalid)&&(r_itag == r_ctag)&&(r_iv)
 						&&(r_cachable)&&(r_rd_pending);
-		if (r_wrap_valid)
-			r_dvalid <= 1'b0;
 		if ((r_itag == r_ctag)&&(r_iv)&&(r_cachable)&&(r_rd_pending))
 		begin
 			last_tag_valid <= 1'b1;
@@ -554,7 +551,7 @@ module	dcache #(
 
 		initial	rdaddr = 0;
 		always @(posedge i_clk)
-		if ((i_reset)||((cyc)&&(i_wb_err)))
+		if (i_reset || (cyc && i_wb_err))
 			rdaddr <= 0;
 		else if (r_dvalid || r_svalid || r_wrap_valid)
 			rdaddr <= rdaddr + 1'b1;
@@ -1346,37 +1343,33 @@ module	dcache #(
 	// {{{
 	generate if (OPT_WRAP)
 	begin : GEN_WRAP_VALID
-		reg	wrap_prime, wrap_valid;
+		reg	wrap_prime; // wrap_valid;
 
 		// We want to capture the first ack, only the first ack, and
 		// return the data associated with it when in WRAP mode.
-		initial wrap_prime = 1;
+		initial wrap_prime = 0;
 		always @(posedge i_clk)
-		if (i_reset || !cyc || state != DC_READC)
+		if (i_reset || (cyc && i_wb_err))
+			wrap_prime <= 0;
+		else if (state == DC_IDLE && r_cache_miss)
 			wrap_prime <= 1'b1;
 		else if (i_wb_ack)
-			wrap_prime <= 0;
+			wrap_prime <= 1'b0;
 
-		initial wrap_valid = 0;
-		always @(posedge i_clk)
-		if (i_reset || !cyc || !wrap_prime || state != DC_READC)
-			wrap_valid <= 1'b0;
-		else
-			wrap_valid <= i_wb_ack;
-
-		assign	r_wrap_valid = wrap_valid;
+		assign	r_wrap_valid = i_wb_ack && wrap_prime;
 `ifdef	FORMAL
 		always @(*)
 		if (i_reset)
 		begin
 		end else if (!cyc || state != DC_READC)
-			assert(!wrap_valid);
-		else begin
+		begin
+			assert(!wrap_prime);
+			assert(!r_wrap_valid);
+		end else begin
 			assert(wrap_prime == (ack_count == 0));
-			if (ack_count == 0 || ack_count >= 2)
-			begin
-				assert(!wrap_valid);
-			end
+			if (ack_count != 0)
+				assert(!r_wrap_valid);
+			assert(!r_dvalid);
 		end
 `endif
 	end else begin : NO_WRAP_VALID
@@ -1438,7 +1431,7 @@ module	dcache #(
 	always @(posedge i_clk)
 	if (i_reset)
 		o_err <= 1'b0;
-	else if (OPT_WRAP && state == DC_READC && (r_wrap_valid || o_valid || ack_count > 0))
+	else if (OPT_WRAP && state == DC_READC && ack_count > 0)
 		o_err <= 1'b0;
 	else
 		o_err <= (cyc && i_wb_err);
@@ -1469,13 +1462,13 @@ module	dcache #(
 	// {{{
 	initial	o_rdbusy = 0;
 	always @(posedge i_clk)
-	if ((i_reset)||((cyc)&&(i_wb_err)))
+	if (i_reset || (cyc && i_wb_err))
 		o_rdbusy <= 1'b0;
 	else if (i_pipe_stb && !i_op[0])
 		o_rdbusy <= 1'b1;
 	else if ((state == DC_READS)&&(i_wb_ack))
 		o_rdbusy <= 1'b0;
-	else if (r_rd_pending && !r_dvalid && !r_wrap_valid)
+	else if (r_rd_pending && !r_dvalid)
 		o_rdbusy <= 1'b1;
 	else if (cyc && !o_wb_we && (!OPT_WRAP || state != DC_READC))
 		o_rdbusy <= 1'b1;
@@ -1650,13 +1643,13 @@ module	dcache #(
 	always @(*)
 	begin
 		f_rdbusy = 0;
-		if (state == DC_READC && (!OPT_WRAP || ack_count == 0))
+		if (state == DC_READC && (!OPT_WRAP || ack_count == 0 || o_valid))
 			f_rdbusy = 1'b1;
 		if (state == DC_READS)
 			f_rdbusy = 1'b1;
 		if (r_svalid || r_dvalid)
 			f_rdbusy = 1'b1;
-		if (r_rd_pending || r_dvalid || r_svalid || r_wrap_valid)
+		if (r_rd_pending || r_dvalid || r_svalid)
 			f_rdbusy = 1'b1;
 
 		assert(f_rdbusy == o_rdbusy);
@@ -2345,7 +2338,7 @@ module	dcache #(
 
 		if (OPT_WRAP)
 		begin
-			`ASSERT(r_rd_pending == (ack_count == 0 || r_wrap_valid));
+			`ASSERT(r_rd_pending == (ack_count == 0));
 		end else begin
 			`ASSERT(r_rd_pending);
 		end
@@ -2361,8 +2354,7 @@ module	dcache #(
 		if ((OPT_PIPE && !OPT_WRAP)&&(o_valid))
 		begin
 			`ASSERT(f_rdpending == 2);
-		end else if (!OPT_WRAP || ack_count == 0 || r_wrap_valid
-							|| o_valid)
+		end else if (!OPT_WRAP || ack_count == 0 || o_valid)
 			`ASSERT(f_rdpending == 1);
 		else
 			`ASSERT(f_rdpending == 0);

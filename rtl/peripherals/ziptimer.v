@@ -94,7 +94,7 @@ module	ziptimer #(
 	// Local declarations
 	// {{{
 	reg			r_running;
-	reg			r_zero  = 1'b1;
+	reg			r_zero;
 	reg	[(VW-1):0]	r_value;
 
 	wire	wb_write;
@@ -179,6 +179,7 @@ module	ziptimer #(
 
 	// r_zero
 	// {{{
+	initial	r_zero = 1'b1;
 	always @(posedge i_clk)
 	if (i_reset)
 		r_zero <= 1'b1;

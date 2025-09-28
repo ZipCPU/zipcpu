@@ -55,9 +55,11 @@ my $report= $testd . "/sim_report.txt";
 my $coverage_flag = 0;
 my $linestr="----------------------------------------";
 my $ntasks = 0;
-my $maxtasks = 16;
-if (-x "verilator") {
-	open(VDEF,"verilator -V |");
+my $maxtasks = 24;
+my $vexe = "verilator";
+# my $vexe = "/path/to/verilator/bin/verilator";
+if (-x $vexe) {
+	open(VDEF,"$vexe -V |");
 	while($line = <VDEF>) {
 		if ($line =~ /VERILATOR_ROOT\s*=\s*(\S+)\s*$/) {
 			$verilatord = $1;
@@ -65,6 +67,7 @@ if (-x "verilator") {
 			# last;
 		}
 	} close VDEF;
+	# $verilatord = "/path/to/verilator";
 } else {
 	$verilator_flag = 0;
 	$verilatord = "";
@@ -317,7 +320,7 @@ sub simline($) {
 			## {{{
 			$lint_only = $verilator_lint_only;
 
-			$cmd = "verilator -Wall -Wno-TIMESCALEMOD --trace";
+			$cmd = "$vexe --quiet -Wall -Wno-TIMESCALEMOD --trace";
 			# $cmd = $cmd . " -Wno-UNUSED";
 			if ($lint_only != 0) {
 				$cmd = $cmd . " --lint_only";
