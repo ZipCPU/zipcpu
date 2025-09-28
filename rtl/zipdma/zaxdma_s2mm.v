@@ -945,12 +945,14 @@ module	zaxdma_s2mm #(
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
-		tail_bytes <= i_addr[LCLMAXBURST+AXILSB-1:0];
+		tail_bytes <= i_addr[LGTAIL-1:0];
 		if (!i_inc || (OPT_LOWPOWER && !i_request))
 			tail_bytes <= 0;
 	end else if (S_VALID && S_READY)
 	begin
+		// Verilator lint_off WIDTH
 		tail_bytes <= tail_bytes + S_BYTES;
+		// Verilator lint_on  WIDTH
 		if (!r_inc)
 		begin
 			case(r_size)
