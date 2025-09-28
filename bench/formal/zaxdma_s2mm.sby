@@ -6,11 +6,13 @@ cvr
 [options]
 prf: mode prove
 prf: depth 8
+prf: depth 14		## 5 hrs as of 9/25
+cvr: depth 40
 cvr: mode cover
 
 [engines]
 smtbmc
-prf: smtbmc boolector
+# prf: smtbmc boolector
 
 [script]
 read -define F_PEEK
@@ -23,6 +25,7 @@ read -formal faxi_valaddr.v
 read -formal faxi_wstrb.v
 --pycode-begin--
 cmd = "hierarchy -top zaxdma_s2mm"
+cmd += " -chparam LGMAXBURST 2"
 if ("bus64" in tags):
 	cmd += " -chparam BUS_WIDTH 64"
 elif ("bus128" in tags):
