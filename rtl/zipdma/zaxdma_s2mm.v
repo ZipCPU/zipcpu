@@ -268,7 +268,8 @@ module	zaxdma_s2mm #(
 	reg	[LGMAX_FIXED_BURST:0]	wfix_burst_count;
 
 	reg		r_initial_burst;
-	reg	[7:0]	r_max_initial;
+	reg	[7:0]	r_max_initial, r_initial_beats, initial_beats;
+	reg	[8+AXILSB-1:0]	initial_bytes;
 	wire	[7:0]	w_max_burst;
 `ifdef	FORMAL
 	(* anyconst *)	reg	[AW-1:0]	f_cfg_addr;
@@ -901,6 +902,45 @@ module	zaxdma_s2mm #(
 	else if (w_start_aw)
 		r_initial_burst <= 1'b0;
 
+	always @(*)
+	begin
+		initial_bytes = awbytes_uncommitted;
+		if (S_VALID && S_READY)
+			initial_bytes = initial_bytes + S_BYTES;
+
+		if (r_inc)
+		case(r_size)
+		SZ_BYTE: begin end
+		SZ_16B: initial_bytes = initial_bytes + axi_awaddr[0];
+		SZ_32B: initial_bytes = initial_bytes + axi_awaddr[1:0];
+		SZ_BUS: initial_bytes = initial_bytes + axi_awaddr[AXILSB-1:0];
+		endcase
+
+		case(r_size)
+		SZ_BYTE: initial_beats = initial_bytes;
+		SZ_16B: initial_beats = (initial_bytes >> 1) + initial_bytes[0];
+		SZ_32B: initial_beats = (initial_bytes >> 2) + (|initial_bytes[1:0]);
+		SZ_BUS: initial_beats = (initial_bytes >> AXILSB) + (|initial_bytes[AXILSB-1:0]);
+		endcase
+
+		if (initial_bytes > 0)
+			initial_beats = initial_beats - 1;
+
+		if (initial_beats > w_max_burst)
+			initial_beats = w_max_burst;
+	end
+
+	always @(posedge i_clk)
+	if (i_reset || !o_busy)
+		r_initial_beats <= 0;
+	else if (r_initial_burst && r_initial_beats < w_max_burst)
+		r_initial_beats <= initial_beats;
+`ifdef	FORMAL
+	always @(*)
+	if (o_busy && r_initial_burst)
+		assert(r_initial_beats <= initial_beats);
+`endif
+
 	always @(posedge i_clk)
 	if (OPT_LOWPOWER && (i_reset || (!o_busy && !i_request)))
 		r_max_initial <= 0;
@@ -927,6 +967,10 @@ module	zaxdma_s2mm #(
 `ifdef	FORMAL
 	always @(*)
 	if (!i_reset && r_busy)
+		assert(r_initial_beats <= w_max_burst);
+
+	always @(*)
+	if (!i_reset && r_busy)
 	begin
 		case(f_cfg_size)
 		SZ_BYTE: assert(r_max_initial == (9'h1 << LCLMAXBURST_SUB)
@@ -945,7 +989,8 @@ module	zaxdma_s2mm #(
 	always @(posedge i_clk)
 	if (!o_busy)
 	begin
-		tail_bytes <= i_addr[LGTAIL-1:0];
+		tail_bytes <= { {(LGTAIL-LCLMAXBURST-AXILSB){1'b0}},
+				i_addr[LCLMAXBURST+AXILSB-1:0] };
 		if (!i_inc || (OPT_LOWPOWER && !i_request))
 			tail_bytes <= 0;
 	end else if (S_VALID && S_READY)
@@ -998,7 +1043,10 @@ module	zaxdma_s2mm #(
 		axi_awlen <= w_max_burst;
 		// if (last_rcvd && w_max_burst > awbeats)
 		//	axi_awlen <= awbeats;
-		if (last_rcvd && aw_bursts_available[2:1]==2'b00) case(r_size)
+		if (last_rcvd && r_initial_burst)
+			axi_awlen <= r_initial_beats;
+		else if (last_rcvd && aw_bursts_available[2:1]==2'b00)
+		case(r_size)
 		// Verilator lint_off WIDTH
 		SZ_BYTE: if (w_max_burst >= tail_bytes)
 			axi_awlen <= tail_bytes[7:0]-1;
@@ -1311,6 +1359,8 @@ module	zaxdma_s2mm #(
 			axi_wlast <= &wfix_burst_count[LGMAX_FIXED_BURST-1:0];
 
 		if ((sr_valid || !OPT_LOWPOWER) && sr_last[0])
+			axi_wlast <= 1'b1;
+		if (r_initial_burst && r_inc && r_initial_beats == 0)
 			axi_wlast <= 1'b1;
 		// Verilator lint_off WIDTH
 		if (cmd_abort && beats_committed == 1 + phantom_w)
@@ -2754,7 +2804,7 @@ module	zaxdma_s2mm #(
 	//   broke.
 	//
 	//
-	always @(*) if (o_busy && r_initial_burst) assume(!last_rcvd);
+	// always @(*) if (o_busy && r_initial_burst) assume(!last_rcvd);
 	// always @(*) assume(f_cfg_size != SZ_BYTE);
 	// always @(*) assume(f_cfg_inc);
 	always @(*) assume(!cmd_abort);
