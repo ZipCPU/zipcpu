@@ -6,7 +6,7 @@ cvr
 [options]
 prf: mode prove
 prf: depth 8
-prf: depth 14		## 5 hrs as of 9/25
+prf: depth 14		## 5 hrs as of 9/25, 26.5hrs for 64b
 cvr: depth 40
 cvr: mode cover
 
@@ -25,7 +25,8 @@ read -formal faxi_valaddr.v
 read -formal faxi_wstrb.v
 --pycode-begin--
 cmd = "hierarchy -top zaxdma_s2mm"
-cmd += " -chparam LGMAXBURST 2"
+if ("cvr" in tags):
+	cmd += " -chparam LGMAXBURST 2"
 if ("bus64" in tags):
 	cmd += " -chparam BUS_WIDTH 64"
 elif ("bus128" in tags):

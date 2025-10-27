@@ -744,7 +744,7 @@ module	zipdma_txgears #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
+`ifdef	TXGEARS
 	always @(posedge i_clk)
 	if (!i_reset && M_VALID && M_READY && M_LAST)
 	begin
@@ -762,6 +762,7 @@ module	zipdma_txgears #(
 		cover(i_size == SZ_BUS  && f_sent > 2*DW/8+3);
 		cover(i_size == SZ_BUS  && f_sent > 2*DW/8+4);
 	end
+`endif
 
 	// }}}
 	////////////////////////////////////////////////////////////////////////

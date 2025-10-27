@@ -2366,9 +2366,9 @@ module	zaxdma_mm2s #(
 				&& !$past(cmd_abort))
 	begin
 		cover(o_busy);
-		cover(M_AXI_ARVALID);		// !!!
-		cover(M_AXI_RVALID);		// !!!
-		cover($fell(o_busy));		// !!!
+		cover(M_AXI_ARVALID);
+		cover(M_AXI_RVALID);
+		cover($fell(o_busy));
 	end
 
 	// }}}
@@ -2394,6 +2394,15 @@ module	zaxdma_mm2s #(
 	SZ_16B: assume(0 == fc_addr[0]);
 	SZ_32B: assume(0 == fc_addr[1:0]);
 	SZ_BUS: assume(0 == fc_addr[AXILSB-1:0]);
+	endcase
+
+	always @(*)
+	if (f_past_valid && !fc_inc && r_busy)
+	case(fc_size)
+	SZ_BYTE: begin end
+	SZ_16B: assert(0 == M_AXI_ARADDR[0]);
+	SZ_32B: assert(0 == M_AXI_ARADDR[1:0]);
+	SZ_BUS: assert(0 == M_AXI_ARADDR[AXILSB-1:0]);
 	endcase
 
 	// always @(*) assume(M_AXI_ARREADY);

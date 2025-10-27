@@ -44,6 +44,22 @@
 //		always the "first" byte in any stream.
 //	M_* -- AXI (full) memory mapped master bus control signals
 //
+// Known issues:
+//	DOES NOT WORK for unaligned FIX addressing.  FIX addressing requires
+//	that 16b transfers start on an address aligned by 16b, 32b transfers
+//	begin on an address aligned by 32b, and bus-width transfers must begin
+//	on an address that is bus width aligned.
+//
+//	Why not?
+//	1. The ZipDMA approach to fixed addresses is to accomplish the first
+//	   beat unaligned, and all other beats aligned--backing up if
+//	   necessary.  This approach violates the AXI standard.
+//	2. In order to work using the AXI standard, the first AXI address is
+//	   forced to be aligned, and only the first beat is unaligned.  This
+//	   breaks the uncommitted data counter, which can't see that the first
+//	   burst has an offset.  Any attempt to do an offset fixed address
+//	   will therefore lock up the IP, although not the bus.
+//
 // Creator:	Dan Gisselquist, Ph.D.
 //		Gisselquist Technology, LLC
 //
@@ -268,8 +284,9 @@ module	zaxdma_s2mm #(
 	reg	[LGMAX_FIXED_BURST:0]	wfix_burst_count;
 
 	reg		r_initial_burst;
-	reg	[7:0]	r_max_initial, r_initial_beats, initial_beats;
-	reg	[8+AXILSB-1:0]	initial_bytes;
+	reg	[7:0]	r_max_initial, r_initial_beats;
+	reg	[8:0]	initial_beats;
+	reg	[9+AXILSB-1:0]	initial_bytes;
 	wire	[7:0]	w_max_burst;
 `ifdef	FORMAL
 	(* anyconst *)	reg	[AW-1:0]	f_cfg_addr;
@@ -730,6 +747,22 @@ module	zaxdma_s2mm #(
 			(last_rcvd && awbytes_uncommitted > 0)};
 		endcase
 
+		if (!r_inc)
+		case(r_size)
+		SZ_BYTE: aw_bursts_available[2:1] <= {
+				awbytes_uncommitted >= (2<<LGMAX_FIXED_BURST),
+				awbytes_uncommitted >= (1<<LGMAX_FIXED_BURST) };
+		SZ_16B: aw_bursts_available[2:1] <= {
+				awbytes_uncommitted >= (4<<LGMAX_FIXED_BURST),
+				awbytes_uncommitted >= (2<<LGMAX_FIXED_BURST) };
+		SZ_32B: aw_bursts_available[2:1] <= {
+				awbytes_uncommitted >= (8<<LGMAX_FIXED_BURST),
+				awbytes_uncommitted >= (4<<LGMAX_FIXED_BURST) };
+		SZ_BUS: aw_bursts_available[2:1] <= {
+			awbytes_uncommitted >= (2<<(AXILSB+LGMAX_FIXED_BURST)),
+			awbytes_uncommitted >= (1<<(AXILSB+LGMAX_FIXED_BURST)) };
+		endcase
+
 		if (phantom_aw)
 			aw_bursts_available[1:0] <= 2'b0;
 	end
@@ -766,7 +799,7 @@ module	zaxdma_s2mm #(
 			w_start_aw = 1'b0;
 		if (!r_busy || !sr_valid || cmd_abort || i_soft_reset)
 			w_start_aw = 0;
-		if (r_overflow || (nxt_awaddr[AW] && r_inc))
+		if (r_overflow || (phantom_aw && nxt_awaddr[AW] && r_inc))
 			w_start_aw = 0;
 `ifdef	FORMAL
 		if (M_WVALID && (!M_WREADY || !M_WLAST))
@@ -904,6 +937,7 @@ module	zaxdma_s2mm #(
 
 	always @(*)
 	begin
+		// Verilator lint_off WIDTH
 		initial_bytes = awbytes_uncommitted;
 		if (S_VALID && S_READY)
 			initial_bytes = initial_bytes + S_BYTES;
@@ -928,13 +962,14 @@ module	zaxdma_s2mm #(
 
 		if (initial_beats > w_max_burst)
 			initial_beats = w_max_burst;
+		// Verilator lint_on  WIDTH
 	end
 
 	always @(posedge i_clk)
 	if (i_reset || !o_busy)
 		r_initial_beats <= 0;
 	else if (r_initial_burst && r_initial_beats < w_max_burst)
-		r_initial_beats <= initial_beats;
+		r_initial_beats <= initial_beats[7:0];
 `ifdef	FORMAL
 	always @(*)
 	if (o_busy && r_initial_burst)
@@ -1473,7 +1508,7 @@ module	zaxdma_s2mm #(
 			reg		f_past_valid;
 	// wire	[F_LGDEPTH-1:0]		fwb_nreqs, fwb_nacks, fwb_outstanding;
 	reg	[ADDRESS_WIDTH:0]	f_posn, f_waddr, faxi_endposn,
-					faxi_wposn, faxi_awposn,
+					faxi_eob_addr, faxi_wposn, faxi_awposn,
 					f_tmp_last, f_fifo_bytes;
 	reg	[AXILSB-1:0]	fr_sel_count, fr_sel_count_past;
 	reg	[AXILSB:0]	ffif_last_bytes, f_sr_bytes;
@@ -1501,6 +1536,7 @@ module	zaxdma_s2mm #(
 	reg	[DW/8-1:0]		f_base_wstrb;
 	reg	[LGTAIL-1:0]		f_tail;
 	reg	[LGMAX_FIXED_BURST-1:0]	f_wfix_burst_count;
+	reg				f_wfirst_burst, f_wlast_burst;
 
 	initial	f_past_valid = 0;
 	always @(posedge i_clk)
@@ -1814,6 +1850,49 @@ module	zaxdma_s2mm #(
 
 	always @(*)
 	begin
+		faxi_eob_addr = faxi_waddr;
+		if (f_cfg_inc)
+		begin
+			case(f_cfg_size)
+			SZ_BYTE: faxi_eob_addr = faxi_eob_addr + faxi_pending;
+			SZ_16B: begin
+				faxi_eob_addr = faxi_eob_addr + (faxi_pending << 1);
+				faxi_eob_addr[0] = 1'b0;
+				end
+			SZ_32B: begin
+				faxi_eob_addr = faxi_eob_addr + (faxi_pending << 2);
+				faxi_eob_addr[1:0] = 2'b0;
+				end
+			SZ_BUS: begin
+				faxi_eob_addr = faxi_eob_addr + (faxi_pending << AXILSB);
+				faxi_eob_addr[AXILSB-1:0] = 0;
+				end
+			endcase
+		end
+	end
+
+	always @(*)
+	begin
+		f_wfirst_burst = 1'b0;
+		if (r_initial_burst)
+			f_wfirst_burst = 1'b1;
+		else if (f_cfg_inc && M_AWADDR == f_cfg_addr)
+			f_wfirst_burst = 1'b1;
+		else if (faxi_pending > 0)
+		case(f_cfg_size)
+		SZ_BYTE: if ( faxi_wposn       <= faxi_len) f_wfirst_burst = 1'b1;
+		SZ_16B:  if ((faxi_wposn >> 1) <= faxi_len) f_wfirst_burst = 1'b1;
+		SZ_32B:  if ((faxi_wposn >> 2) <= faxi_len) f_wfirst_burst = 1'b1;
+		SZ_BUS:  if ((faxi_wposn >> AXILSB) <= faxi_len) f_wfirst_burst = 1'b1;
+		endcase
+
+		f_wlast_burst = 1'b0;
+		if (last_rcvd && awbytes_uncommitted == 0 && faxi_pending > 0)
+			f_wlast_burst = 1'b1;
+	end
+
+	always @(*)
+	begin
 		assert(faxi_arckvalid == 1'b0);
 		assert(faxi_rd_nbursts == 0);
 		assert(faxi_rd_outstanding == 0);
@@ -1874,7 +1953,53 @@ module	zaxdma_s2mm #(
 					+ (M_AWLEN+1)
 					- ((M_WVALID && !phantom_w) ? 1:0));
 			end
+
+			if (!f_wlast_burst && !f_wfirst_burst)
+			begin
+				if (!f_cfg_inc)
+					assert(faxi_len == MAX_FIXED_BURST-1);
+				else if (f_cfg_size == SZ_BUS)
+					assert(faxi_len == (1<<LCLMAXBURST_SUB)-1);
+				else
+					assert(faxi_len == (1<<LCLMAXBURST)-1);
+			end else begin
+				if (!f_cfg_inc)
+					assert(faxi_len < MAX_FIXED_BURST);
+				else if (f_cfg_size == SZ_BUS)
+					assert(faxi_len < (1<<LCLMAXBURST));
+				else
+					assert(faxi_len < (1<<LCLMAXBURST_SUB));
+			end
 		end
+	end
+
+	always @(*)
+	if (f_past_valid && r_busy && !f_wlast_burst && f_cfg_inc && faxi_wposn>0)
+	begin
+		if (f_wlast_burst)
+		begin
+			if (f_wfirst_burst)
+			begin end else case(f_cfg_size)
+			SZ_BYTE: assert(faxi_eob_addr[LCLMAXBURST_SUB-1:0] == 0
+					|| faxi_eob_addr[LCLMAXBURST_SUB-1:0] == faxi_len-1);
+			SZ_16B:  assert(faxi_eob_addr[LCLMAXBURST_SUB  :0] == 0
+					|| faxi_eob_addr[LCLMAXBURST_SUB:1] + (faxi_eob_addr[0] ? 1:0) == faxi_len-1);
+			SZ_32B:  assert(faxi_eob_addr[LCLMAXBURST_SUB+1:0] == 0
+					|| faxi_eob_addr[LCLMAXBURST_SUB+1:2] + ((|faxi_eob_addr[1:0]) ? 1:0) == faxi_len-1);
+			SZ_BUS:  assert(faxi_eob_addr[LCLMAXBURST+AXILSB-1:0] == 0
+					|| faxi_eob_addr[LCLMAXBURST+AXILSB-1:0]
+						+ ((|faxi_eob_addr[AXILSB-1:0]) ? 1:0) == faxi_len-1);
+			endcase
+		end else begin
+			case(f_cfg_size)
+			SZ_BYTE: assert(faxi_eob_addr[LCLMAXBURST_SUB-1:0] == 0);
+			SZ_16B:  assert(faxi_eob_addr[LCLMAXBURST_SUB  :0] == 0);
+			SZ_32B:  assert(faxi_eob_addr[LCLMAXBURST_SUB+1:0] == 0);
+			SZ_BUS:  assert(faxi_eob_addr[LCLMAXBURST+AXILSB-1:0] == 0);
+			endcase
+		end
+
+		assert(M_AWADDR == faxi_eob_addr[AW-1:0]);
 	end
 
 	always @(*)
@@ -2352,19 +2477,18 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(*)
-	if (!i_reset && r_busy && (phantom_aw
-				|| r_initial_burst || (M_AWADDR == f_cfg_addr)))
+	if (!i_reset && r_busy && (phantom_aw || r_initial_burst))
 	begin
 		assert(!r_overflow);
 	end
 
 	always @(*)
-	if (!i_reset && r_busy && !r_overflow && !cmd_abort)
+	if (!i_reset && r_busy)
 	begin
 		if (M_AWADDR != f_cfg_addr)
 		begin
 			if (f_waddr != f_cfg_addr)
-				assert(f_waddr == axi_waddr || data_sent);
+				assert(f_waddr[AW-1:0] == axi_waddr || data_sent);
 			if (faxi_pending == 0)
 				assert(axi_waddr == M_AWADDR || (last_rcvd && awbytes_uncommitted == 0));
 		end else case(f_cfg_size)
