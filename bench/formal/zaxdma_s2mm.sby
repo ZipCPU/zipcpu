@@ -7,7 +7,7 @@ cvr
 prf: mode prove
 prf: depth 8
 prf: depth 14		## 5 hrs as of 9/25, 26.5hrs for 64b
-cvr: depth 40
+cvr: depth 80		## Still fails ... ???
 cvr: mode cover
 
 [engines]

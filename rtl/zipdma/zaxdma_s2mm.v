@@ -1880,15 +1880,30 @@ module	zaxdma_s2mm #(
 			f_wfirst_burst = 1'b1;
 		else if (faxi_pending > 0)
 		case(f_cfg_size)
-		SZ_BYTE: if ( faxi_wposn       <= faxi_len) f_wfirst_burst = 1'b1;
-		SZ_16B:  if ((faxi_wposn >> 1) <= faxi_len) f_wfirst_burst = 1'b1;
-		SZ_32B:  if ((faxi_wposn >> 2) <= faxi_len) f_wfirst_burst = 1'b1;
-		SZ_BUS:  if ((faxi_wposn >> AXILSB) <= faxi_len) f_wfirst_burst = 1'b1;
+		SZ_BYTE: if ( faxi_wposn       <= faxi_len + 1 - faxi_pending) f_wfirst_burst = 1'b1;
+		SZ_16B:  if ((faxi_wposn[0] ? 1:0)+(faxi_wposn >> 1) <= faxi_len + 1 - faxi_pending) f_wfirst_burst = 1'b1;
+		SZ_32B:  if (((|faxi_wposn[1:0]) ? 1:0) + (faxi_wposn >> 2) <= faxi_len + 1 - faxi_pending) f_wfirst_burst = 1'b1;
+		SZ_BUS:  if (((|faxi_wposn[AXILSB-1:0]) ? 1:0) + (faxi_wposn >> AXILSB) <= faxi_len + 1 - faxi_pending) f_wfirst_burst = 1'b1;
 		endcase
 
 		f_wlast_burst = 1'b0;
 		if (last_rcvd && awbytes_uncommitted == 0 && faxi_pending > 0)
 			f_wlast_burst = 1'b1;
+	end
+
+	always @(*)
+	if (r_busy && f_wfirst_burst && faxi_pending > 0)
+	begin
+		case(f_cfg_size)
+		SZ_BYTE: assert(faxi_pending + faxi_wposn == faxi_len + 1);
+		SZ_16B:  assert(faxi_pending + (faxi_wposn >> 1)
+				+ (faxi_wposn[0] ? 1:0) == faxi_len + 1);
+		SZ_32B:  assert(faxi_pending + (faxi_wposn >> 2)
+				+ ((|faxi_wposn[1:0]) ? 1:0) == faxi_len + 1);
+		SZ_BUS:  assert(faxi_pending + (faxi_wposn >> AXILSB)
+			+ ((|faxi_wposn[AXILSB-1:0]) ? 1:0) == faxi_len + 1);
+		default: begin end
+		endcase
 	end
 
 	always @(*)
@@ -1974,21 +1989,32 @@ module	zaxdma_s2mm #(
 	end
 
 	always @(*)
-	if (f_past_valid && r_busy && !f_wlast_burst && f_cfg_inc && faxi_wposn>0)
+	if (f_past_valid && r_busy && f_cfg_inc && faxi_wposn>0)
 	begin
-		if (f_wlast_burst)
+		if (f_wlast_burst && f_wfirst_burst)
 		begin
-			if (f_wfirst_burst)
-			begin end else case(f_cfg_size)
+			case(f_cfg_size)
 			SZ_BYTE: assert(faxi_eob_addr[LCLMAXBURST_SUB-1:0] == 0
-					|| faxi_eob_addr[LCLMAXBURST_SUB-1:0] == faxi_len-1);
+				|| (faxi_eob_addr[LCLMAXBURST_SUB-1:0] == faxi_len + f_cfg_addr[LCLMAXBURST_SUB-1:0]+1));
+			SZ_16B: assert(faxi_eob_addr[LCLMAXBURST_SUB:0] == 0
+				|| (faxi_eob_addr[LCLMAXBURST_SUB:1] == faxi_len + f_cfg_addr[LCLMAXBURST_SUB:1]+1));
+			SZ_32B: assert(faxi_eob_addr[LCLMAXBURST_SUB+1:0] == 0
+				|| (faxi_eob_addr[LCLMAXBURST_SUB+1:2] == faxi_len + f_cfg_addr[LCLMAXBURST_SUB+1:2]+1));
+			SZ_BUS: assert(faxi_eob_addr[LCLMAXBURST+AXILSB-1:0] == 0
+				|| (faxi_eob_addr[LCLMAXBURST+AXILSB-1:AXILSB] == faxi_len + f_cfg_addr[LCLMAXBURST+AXILSB-1:AXILSB]+1));
+			endcase
+		end else if (f_wlast_burst)
+		begin
+			case(f_cfg_size)
+			SZ_BYTE: assert(faxi_eob_addr[LCLMAXBURST_SUB-1:0] == 0
+					|| (faxi_eob_addr[LCLMAXBURST_SUB-1:0] == faxi_len+1));
 			SZ_16B:  assert(faxi_eob_addr[LCLMAXBURST_SUB  :0] == 0
-					|| faxi_eob_addr[LCLMAXBURST_SUB:1] + (faxi_eob_addr[0] ? 1:0) == faxi_len-1);
+					|| (faxi_eob_addr[LCLMAXBURST_SUB:1] + (faxi_eob_addr[0] ? 1:0) == faxi_len+1));
 			SZ_32B:  assert(faxi_eob_addr[LCLMAXBURST_SUB+1:0] == 0
-					|| faxi_eob_addr[LCLMAXBURST_SUB+1:2] + ((|faxi_eob_addr[1:0]) ? 1:0) == faxi_len-1);
+					|| (faxi_eob_addr[LCLMAXBURST_SUB+1:2] + ((|faxi_eob_addr[1:0]) ? 1:0) == faxi_len+1));
 			SZ_BUS:  assert(faxi_eob_addr[LCLMAXBURST+AXILSB-1:0] == 0
-					|| faxi_eob_addr[LCLMAXBURST+AXILSB-1:0]
-						+ ((|faxi_eob_addr[AXILSB-1:0]) ? 1:0) == faxi_len-1);
+					|| (faxi_eob_addr[LCLMAXBURST+AXILSB-1:0]
+						+ ((|faxi_eob_addr[AXILSB-1:0]) ? 1:0) == faxi_len+1));
 			endcase
 		end else begin
 			case(f_cfg_size)
@@ -1999,7 +2025,9 @@ module	zaxdma_s2mm #(
 			endcase
 		end
 
-		assert(M_AWADDR == faxi_eob_addr[AW-1:0]);
+		assert(f_wlast_burst || M_AWADDR == faxi_eob_addr[AW-1:0]);
+		if (f_wlast_burst)
+			assert(!M_AWVALID);
 	end
 
 	always @(*)
@@ -2897,9 +2925,16 @@ module	zaxdma_s2mm #(
 		assume(!f_posn[ADDRESS_WIDTH] || f_posn[ADDRESS_WIDTH-1:0]==0);
 
 	always @(*)
+	if (f_past_valid && r_busy && axi_awaddr < f_cfg_addr)
+	begin
+		assert(f_cfg_inc);
+		assert(r_overflow);
+	end
+
+	always @(*)
 	if (r_busy && (M_AWVALID || axi_awaddr == nxt_awaddr[AW-1:0]) && !data_sent)
 	begin
-		assert(f_waddr <= M_AWADDR);	// !!!
+		assert(f_waddr <= M_AWADDR);
 		assert(f_waddr >= f_cfg_addr);
 	end
 
@@ -2929,7 +2964,7 @@ module	zaxdma_s2mm #(
 	//
 	//
 	// always @(*) if (o_busy && r_initial_burst) assume(!last_rcvd);
-	// always @(*) assume(f_cfg_size != SZ_BYTE);
+	always @(*) assume(f_cfg_size == SZ_BYTE || f_cfg_size == SZ_16B);
 	// always @(*) assume(f_cfg_inc);
 	always @(*) assume(!cmd_abort);
 	// }}}
