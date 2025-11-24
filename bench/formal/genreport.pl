@@ -271,7 +271,7 @@ print <<"EOM";
 <BODY>
 <H1 align=center>ZipCPU Verification Report</H1>
 <H2 align=center>$tstamp</H2>
-<TABLE border>
+<P align=center><TABLE border>
 <TR><TH>Status</TH><TH>Elapsed</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 EOM
 ## }}}
@@ -379,7 +379,7 @@ foreach $prf (sort @proofs) {
 ## Finish the HTML log file
 ## {{{
 print <<"EOM";
-</TABLE>
+</TABLE></P>
 </BODY></HTML>
 EOM
 ## }}}

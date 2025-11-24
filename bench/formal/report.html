@@ -1,8 +1,8 @@
 <HTML><HEAD><TITLE>Formal Verification Report</TITLE></HEAD>
 <BODY>
 <H1 align=center>ZipCPU Verification Report</H1>
-<H2 align=center>20250812</H2>
-<TABLE border>
+<H2 align=center>20251124</H2>
+<P align=center><TABLE border>
 <TR><TH>Status</TH><TH>Elapsed</TH><TH>Component</TD><TH>Proof</TH><TH>Component description</TH></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8><A HREF="axilfetch_prf/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>axilfetch</TD><TD>_prf</TD><TD rowspan=12>AXI-Lite instruction fetch</TD></TR>
@@ -51,18 +51,23 @@
 <TR><TD bgcolor=#caeec8><A HREF="dblfetch_prf128b/logfile.txt">Pass</A></TD><TD>0:02:35</TD><TD>dblfetch</TD><TD>_prf128b</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="dblfetch_cvr/logfile.txt">2 Cover points</A></TD><TD>0:00:01</TD><TD>dblfetch</TD><TD>_cvr</TD></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_cover/logfile.txt">4 Cover points</A></TD><TD>0:00:33</TD><TD>dcache</TD><TD>_cover</TD><TD rowspan=12>WB Data cache</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_prf64/logfile.txt">Pass</A></TD><TD>0:06:18</TD><TD>dcache</TD><TD>_prf64</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_prf128lp/logfile.txt">Pass</A></TD><TD>0:24:05</TD><TD>dcache</TD><TD>_prf128lp</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_piped/logfile.txt">Pass</A></TD><TD>0:12:08</TD><TD>dcache</TD><TD>_piped</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_prf128/logfile.txt">Pass</A></TD><TD>0:22:34</TD><TD>dcache</TD><TD>_prf128</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_nolock_system/logfile.txt">Pass</A></TD><TD>0:04:26</TD><TD>dcache</TD><TD>_nolock_system</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_full/logfile.txt">Pass</A></TD><TD>0:04:47</TD><TD>dcache</TD><TD>_full</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_full_single/logfile.txt">Pass</A></TD><TD>0:04:29</TD><TD>dcache</TD><TD>_full_single</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_cover/logfile.txt">4 Cover points</A></TD><TD>0:00:29</TD><TD>dcache</TD><TD>_cover</TD><TD rowspan=17>WB Data cache</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_prf64/logfile.txt">Pass</A></TD><TD>0:03:33</TD><TD>dcache</TD><TD>_prf64</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_prf128lp/logfile.txt">Pass</A></TD><TD>0:16:16</TD><TD>dcache</TD><TD>_prf128lp</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_piped/logfile.txt">Pass</A></TD><TD>0:09:13</TD><TD>dcache</TD><TD>_piped</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_prf128w/logfile.txt">Pass</A></TD><TD>0:17:22</TD><TD>dcache</TD><TD>_prf128w</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_prf128/logfile.txt">Pass</A></TD><TD>0:12:17</TD><TD>dcache</TD><TD>_prf128</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_nolock_system/logfile.txt">Pass</A></TD><TD>0:01:57</TD><TD>dcache</TD><TD>_nolock_system</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_full/logfile.txt">Pass</A></TD><TD>0:01:50</TD><TD>dcache</TD><TD>_full</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_full_single/logfile.txt">Pass</A></TD><TD>0:02:45</TD><TD>dcache</TD><TD>_full_single</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="dcache_prf64lp/logfile.txt">Pass</A></TD><TD>0:06:24</TD><TD>dcache</TD><TD>_prf64lp</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_bare/logfile.txt">Pass</A></TD><TD>0:04:33</TD><TD>dcache</TD><TD>_bare</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_cover_pipe/logfile.txt">16 Cover points</A></TD><TD>0:14:37</TD><TD>dcache</TD><TD>_cover_pipe</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="dcache_nolock_nolocal/logfile.txt">Pass</A></TD><TD>0:02:28</TD><TD>dcache</TD><TD>_nolock_nolocal</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_pipedw/logfile.txt">Pass</A></TD><TD>0:03:26</TD><TD>dcache</TD><TD>_pipedw</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_bare/logfile.txt">Pass</A></TD><TD>0:02:42</TD><TD>dcache</TD><TD>_bare</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_piped_lpw/logfile.txt">Pass</A></TD><TD>0:06:22</TD><TD>dcache</TD><TD>_piped_lpw</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_cover_pipe/logfile.txt">16 Cover points</A></TD><TD>0:13:16</TD><TD>dcache</TD><TD>_cover_pipe</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_nolock_nolocal/logfile.txt">Pass</A></TD><TD>0:02:35</TD><TD>dcache</TD><TD>_nolock_nolocal</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_prf64lpw/logfile.txt">Pass</A></TD><TD>0:06:23</TD><TD>dcache</TD><TD>_prf64lpw</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="dcache_cvrpipew/logfile.txt">16 Cover points</A></TD><TD>0:11:05</TD><TD>dcache</TD><TD>_cvrpipew</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8><A HREF="div_prf/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>div</TD><TD>_prf</TD><TD rowspan=2>Divide unit</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="div_prflp/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>div</TD><TD>_prflp</TD></TR>
@@ -133,8 +138,13 @@
 <TR></TR>
 <TR><TD bgcolor=#caeec8><A HREF="wbwatchdog_prf/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>wbwatchdog</TD><TD>_prf</TD><TD rowspan=1>WB Watchdog controller</TD></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8><A HREF="zaxdma_mm2s_cvr/logfile.txt">4 Cover points</A></TD><TD>0:00:06</TD><TD>zaxdma_mm2s</TD><TD>_cvr</TD><TD rowspan=2>AXI ZipDMA read half</TD></TR>
-<TR><TD bgcolor=#ffa4a4><A HREF="zaxdma_mm2s_prf/logfile.txt">FAIL</A></TD><TD>0:00:01</TD><TD>zaxdma_mm2s</TD><TD>_prf</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zaxdma_mm2s_prf64/logfile.txt">Pass</A></TD><TD>924:05:02</TD><TD>zaxdma_mm2s</TD><TD>_prf64</TD><TD rowspan=3>AXI ZipDMA read half</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zaxdma_mm2s_cvr/logfile.txt">4 Cover points</A></TD><TD>0:00:02</TD><TD>zaxdma_mm2s</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zaxdma_mm2s_prf/logfile.txt">Pass</A></TD><TD>426:02:25</TD><TD>zaxdma_mm2s</TD><TD>_prf</TD></TR>
+<TR></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zaxdma_s2mm_prf64/logfile.txt">Pass</A></TD><TD>36:17:24</TD><TD>zaxdma_s2mm</TD><TD>_prf64</TD><TD rowspan=3>AXI ZipDMA write half</TD></TR>
+<TR><TD bgcolor=#ffa4a4><A HREF="zaxdma_s2mm_cvr/logfile.txt">FAIL</A></TD><TD>0:00:43</TD><TD>zaxdma_s2mm</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zaxdma_s2mm_prf/logfile.txt">Pass</A></TD><TD>75:53:33</TD><TD>zaxdma_s2mm</TD><TD>_prf</TD></TR>
 <TR></TR>
 <TR><TD bgcolor=#caeec8><A HREF="zipaxi_prf/logfile.txt">Pass</A></TD><TD>0:00:01</TD><TD>zipaxi</TD><TD>_prf</TD><TD rowspan=1>AXI ZipCPU wrapper</TD></TR>
 <TR></TR>
@@ -169,8 +179,8 @@
 <TR><TD bgcolor=#caeec8><A HREF="zipdma_s2mm_cvr/logfile.txt">11 Cover points</A></TD><TD>0:00:02</TD><TD>zipdma_s2mm</TD><TD>_cvr</TD><TD rowspan=2>WB ZipDMA write half</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="zipdma_s2mm_prf/logfile.txt">Pass</A></TD><TD>0:00:04</TD><TD>zipdma_s2mm</TD><TD>_prf</TD></TR>
 <TR></TR>
-<TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_cvrw/logfile.txt">11 Cover points</A></TD><TD>0:00:03</TD><TD>zipdma_txgears</TD><TD>_cvrw</TD><TD rowspan=4>WB ZipDMA outgoing gearbox</TD></TR>
-<TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_cvr/logfile.txt">11 Cover points</A></TD><TD>0:00:03</TD><TD>zipdma_txgears</TD><TD>_cvr</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_cvrw/logfile.txt">11 Cover points</A></TD><TD>0:00:00</TD><TD>zipdma_txgears</TD><TD>_cvrw</TD><TD rowspan=4>WB ZipDMA outgoing gearbox</TD></TR>
+<TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_cvr/logfile.txt">11 Cover points</A></TD><TD>0:00:00</TD><TD>zipdma_txgears</TD><TD>_cvr</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_prf/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>zipdma_txgears</TD><TD>_prf</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="zipdma_txgears_prfw/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>zipdma_txgears</TD><TD>_prfw</TD></TR>
 <TR></TR>
@@ -180,5 +190,5 @@
 <TR></TR>
 <TR><TD bgcolor=#caeec8><A HREF="ziptimer_prfr/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>ziptimer</TD><TD>_prfr</TD><TD rowspan=2>Peripheral timer</TD></TR>
 <TR><TD bgcolor=#caeec8><A HREF="ziptimer_prf/logfile.txt">Pass</A></TD><TD>0:00:00</TD><TD>ziptimer</TD><TD>_prf</TD></TR>
-</TABLE>
+</TABLE></P>
 </BODY></HTML>
