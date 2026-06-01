@@ -11,8 +11,8 @@ prf: depth 8
 [engines]
 smtbmc
 # Induction requires
-#	prf:	426 hrs
-#	prf64	925 hrs
+#	prf:	209-426 hrs
+#	prf64	447-925 hrs
 prf: smtbmc boolector
 
 [script]
