@@ -357,7 +357,7 @@ module	axilperiphs #(
 		.i_wb_stb(axil_write_ready && awskd_addr == ADR_PIC),
 		.i_wb_we(1'b1), .i_wb_data(wskd_data), .i_wb_sel(wskd_strb),
 		.o_wb_stall(pic_stall), .o_wb_ack(pic_ack),.o_wb_data(pic_data),
-		.i_brd_ints(int_vector[14:0]), .o_interrupt(o_interrupt)
+		.i_brd_ints(int_vector[14:0]), .o_int(o_interrupt)
 		// }}}
 	);
 
@@ -390,7 +390,7 @@ module	axilperiphs #(
 			.o_wb_stall(apic_stall), .o_wb_ack(apic_ack),
 				.o_wb_data(apic_data),
 			.i_brd_ints(int_vector[30:15]),
-			.o_interrupt(o_interrupt)
+			.o_int(o_interrupt)
 			// }}}
 		);
 

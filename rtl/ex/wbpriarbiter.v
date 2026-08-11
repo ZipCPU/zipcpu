@@ -187,14 +187,18 @@ module	wbpriarbiter #(
 	always @(posedge i_clk)
 		f_past_valid <= 1'b1;
 
-	initial	assume(!i_a_cyc);
-	initial	assume(!i_a_stb);
+	always @(*)
+	if (!f_past_valid)
+	begin
+		`ASSUME(!i_a_cyc);
+		`ASSUME(!i_a_stb);
 
-	initial	assume(!i_b_cyc);
-	initial	assume(!i_b_stb);
+		`ASSUME(!i_b_cyc);
+		`ASSUME(!i_b_stb);
 
-	initial	assume(!i_ack);
-	initial	assume(!i_err);
+		`ASSUME(!i_ack);
+		`ASSUME(!i_err);
+	end
 
 	always @(posedge i_clk)
 	begin
@@ -213,8 +217,8 @@ module	wbpriarbiter #(
 	always @(posedge i_clk)
 		f_reset <= 1'b0;
 	always @(*)
-		if (!f_past_valid)
-			assert(f_reset);
+	if (!f_past_valid)
+		assert(f_reset);
 
 	parameter	F_LGDEPTH=3;
 

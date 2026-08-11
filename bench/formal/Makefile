@@ -43,7 +43,7 @@ TESTS := prefetch dblfetch pffifo pfcache memops pipemem idecode div # axiicache
 TESTS += axilfetch axilops axilpipe axilperiphs # axiops axipipe # axidcache
 TESTS += zipmmu ziptimer zipcounter zipjiffies wbwatchdog icontrol wbdmac
 TESTS += busdelay wbpriarbiter wbdblpriarb cpuops cpu dcache zipcore
-TESTS += zipbones zipaxil zipaxi
+TESTS += zipbones zipsystem zipaxil zipaxi
 TESTS += txgears rxgears s2mm mm2s memdev zaxmm2s zaxs2mm
 .PHONY: $(TESTS)
 all: $(TESTS)
@@ -93,6 +93,7 @@ AXMM2S  := zaxdma_mm2s
 AXS2MM  := zaxdma_s2mm
 
 ## CPU Wrappers
+ZIPSYS := zipsystem
 BONES  := zipbones
 ZAXIL  := zipaxil
 ZAXI   := zipaxi
@@ -107,6 +108,7 @@ cpu: zipcore
 ## {{{
 MASTER := $(RTL)/ex/fwb_master.v
 SLAVE  := $(RTL)/ex/fwb_slave.v
+SINGLE := fwb_single.v
 FMEM   := fmem.v
 IFETCH := ffetch.v
 FDBG   := fdebug.v
@@ -826,6 +828,13 @@ $(CPU)_cvr/PASS: $(CPUDEPS)
 
 ## ZipCPU wrappers
 ## {{{
+.PHONY: $(ZIPSYS)
+## {{{
+$(ZIPSYS): $(ZIPSYS)_prf/PASS
+$(ZIPSYS)_prf/PASS: $(ZIPSYS).sby $(RTL)/$(ZIPSYS).v $(FDBG) $(SLAVE) $(MASTER) $(SINGLE)
+	$(NOJOBSERVER) sby -f $(ZIPSYS).sby prf
+## }}}
+
 .PHONY: $(BONES)
 ## {{{
 $(BONES): $(BONES)_prf/PASS

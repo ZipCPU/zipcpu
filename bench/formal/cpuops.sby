@@ -12,7 +12,7 @@ smtbmc
 read   -formal -D CPUOPS cpuops.v
 # read -formal -D CPUOPS mpyop.v
 read   -formal -D CPUOPS abs_mpy.v
-chparam -set IMPLYMENT_MPY 3 cpuops.v
+hierarchy -top cpuops -chparam OPT_MPY 3
 prep -top cpuops
 
 [files]

@@ -77,6 +77,7 @@ $dir = ".";
 	"zaxdma_s2mm",
 	"zipjiffies",
 	"zipmmu",
+	"zipsystem",
 	"ziptimer"
 	);
 
@@ -116,6 +117,7 @@ $dir = ".";
 	"zaxdma_s2mm"	=> "AXI ZipDMA write half",
 	"zipjiffies"	=> "ZipCPU Jiffies peripheral",
 	"zipmmu"	=> "Zip MMU (deprecated)",
+	"zipsystem"	=> "ZipSystem, Wrapper w/ peripherals",
 	"ziptimer"	=> "Peripheral timer"
 	);
 ## }}}

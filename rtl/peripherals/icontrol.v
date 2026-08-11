@@ -90,7 +90,7 @@ module	icontrol #(
 		output	wire			o_wb_stall, o_wb_ack,
 		output	reg	[DW-1:0]	o_wb_data,
 		input	wire	[(IUSED-1):0]	i_brd_ints,
-		output	reg			o_interrupt
+		output	reg			o_int
 		// }}}
 	);
 
@@ -155,15 +155,15 @@ module	icontrol #(
 	// Have "any" enabled interrupts triggered?
 	assign	w_any = ((r_int_state & r_int_enable) != 0);
 
-	// o_interrupt
+	// o_int
 	// {{{
 	// How then shall the interrupt wire be set?
-	initial	o_interrupt = 1'b0;
+	initial	o_int = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset)
-		o_interrupt <= 1'b0;
+		o_int <= 1'b0;
 	else
-		o_interrupt <= (r_mie)&&(w_any);
+		o_int <= (r_mie)&&(w_any);
 	// }}}
 
 	// o_wb_data
@@ -242,7 +242,7 @@ module	icontrol #(
 		assert(r_int_state  == 0);
 		assert(r_int_enable == 0);
 		assert(w_any == 0);
-		assert(o_interrupt == 0);
+		assert(o_int == 0);
 		assert(r_mie == 0);
 	end
 	// }}}
@@ -268,20 +268,20 @@ module	icontrol #(
 	if (((f_past_valid)&&(!$past(i_reset)))
 			&&(|$past(r_int_state & r_int_enable))
 			&&($past(r_mie)) )
-		assert(o_interrupt);
+		assert(o_int);
 
 	// Rule #3: If the global interrupt enable bit is off, then no
 	//	interrupts shall be asserted
 	//
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(r_mie)))
-		assert(!o_interrupt);
+		assert(!o_int);
 
 	// Rule #4: If no active interrupts are enabled, then no outgoing
 	// 	interrupt shall be asserted either
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(0 == |$past(r_int_state & r_int_enable)))
-		assert(!o_interrupt);
+		assert(!o_int);
 
 	// Bus rules
 	//
@@ -358,7 +358,7 @@ module	icontrol #(
 	// is also high
 	always @(posedge i_clk)
 	if ((f_past_valid)&&(!$past(w_any)))
-		assert(!o_interrupt);
+		assert(!o_int);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -368,7 +368,7 @@ module	icontrol #(
 	//
 	//
 	always @(posedge i_clk)
-		cover(o_interrupt);
+		cover(o_int);
 
 	always @(posedge i_clk)
 	if (!f_past_valid)
@@ -377,8 +377,8 @@ module	icontrol #(
 	always @(posedge i_clk)
 	if (f_past_valid)
 	begin
-		cover(!o_interrupt && $past(w_any));
-		cover(!o_interrupt && $past(r_mie) && $past(|r_int_state));
+		cover(!o_int && $past(w_any));
+		cover(!o_int && $past(r_mie) && $past(|r_int_state));
 	end
 	// }}}
 `endif

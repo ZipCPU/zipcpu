@@ -447,14 +447,14 @@ module	zipsystem #(
 	wire				no_dbg_err;
 
 	wire			cpu_break, dbg_cmd_write,
-				dbg_cpu_write, dbg_cpu_read;
+				dbg_cpu_write, dbg_cpu_read, dbg_cpu_read_req;
 	wire	[DBG_WIDTH-1:0]	dbg_cmd_data;
 	wire [DBG_WIDTH/8-1:0]	dbg_cmd_strb;
 	wire			reset_hold, halt_on_fault, dbg_catch;
 	wire			reset_request, release_request, halt_request,
 				step_request, clear_cache_request;
 	reg			cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
-				cmd_write, cmd_read;
+				cmd_write, cpu_read_ack;
 	reg	[4:0]		cmd_waddr;
 	reg	[DBG_WIDTH-1:0]	cmd_wdata;
 	wire	[2:0]		cpu_dbg_cc;
@@ -536,7 +536,14 @@ module	zipsystem #(
 
 	reg	[DBG_WIDTH-1:0]		tmr_data;
 	reg	[2:0]			w_ack_idx, ack_idx;
+	reg	[2:0]			ack_subaddr;
 	reg				last_sys_stb;
+	reg				pre_cpu_ack, sys_ack_cpu;
+
+	reg			pre_dbg_ack;
+	reg	[1:0]		pre_dbg_addr, dbg_ack_addr;
+	reg	[DBG_WIDTH-1:0]	dbg_cpu_status;
+	reg	[DBG_WIDTH-1:0]	dbg_r_odata;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -618,18 +625,28 @@ module	zipsystem #(
 		// {{{
 		wire		dbg_err;
 		assign		dbg_err = 1'b0;
+
 		busdelay #(
 			// {{{
 			.AW(7),.DW(32)
 			// }}}
 		) wbdelay(
 			// {{{
-			i_clk, i_reset,
-			i_dbg_cyc, i_dbg_stb, i_dbg_we, i_dbg_addr, i_dbg_data,
-				4'hf,
-				o_dbg_stall, o_dbg_ack, o_dbg_data, no_dbg_err,
-			dbg_cyc, dbg_stb, dbg_we, dbg_addr, dbg_idata, dbg_sel,
-				dbg_stall, dbg_ack, dbg_odata, dbg_err
+			.i_clk(i_clk), .i_reset(i_reset),
+			//
+			.i_wb_cyc(i_dbg_cyc), .i_wb_stb(i_dbg_stb),
+			.i_wb_we(i_dbg_we), .i_wb_addr(i_dbg_addr),
+			.i_wb_data(i_dbg_data), .i_wb_sel(i_dbg_sel),
+			.o_wb_stall(o_dbg_stall), .o_wb_ack(o_dbg_ack),
+				.o_wb_data(o_dbg_data), .o_wb_err(no_dbg_err),
+			//
+			.o_dly_cyc(dbg_cyc), .o_dly_stb(dbg_stb),
+				.o_dly_we(dbg_we),
+			.o_dly_addr(dbg_addr), .o_dly_data(dbg_idata),
+				.o_dly_sel(dbg_sel),
+			.i_dly_stall(dbg_stall),
+			.i_dly_ack(dbg_ack), .i_dly_data(dbg_odata),
+			.i_dly_err(dbg_err)
 			// }}}
 		);
 		// }}}
@@ -643,7 +660,7 @@ module	zipsystem #(
 		assign	o_dbg_ack   = dbg_ack;
 		assign	o_dbg_stall = dbg_stall;
 		assign	o_dbg_data  = dbg_odata;
-		assign	dbg_sel     = 4'b1111;
+		assign	dbg_sel     = i_dbg_sel;
 		assign	no_dbg_err  = 1'b0;
 		// }}}
 	end endgenerate
@@ -665,6 +682,13 @@ module	zipsystem #(
 	assign	sel_dmac        = (sys_stb)&&(sys_addr[7:4] ==DMAC_ADDR[7:4]);
 	assign	sel_mmus        = (sys_stb)&&(sys_addr[7]);
 
+`ifdef	FORMAL
+	always @(*)
+		assert($onehot0({ sel_pic, sel_watchdog, sel_bus_watchdog,
+				sel_apic, sel_timer, sel_counter,
+				sel_dmac, sel_mmus }));
+`endif
+
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -677,8 +701,9 @@ module	zipsystem #(
 	assign	dbg_cpu_write = OPT_DBGPORT && (dbg_stb && !dbg_stall && dbg_we)
 				&& (dbg_addr[6:5] == DBG_ADDR_CPU)
 				&& dbg_sel == 4'hf;
-	assign	dbg_cpu_read = (dbg_stb && !dbg_stall && !dbg_we
+	assign	dbg_cpu_read_req = (dbg_stb && !dbg_we
 				&& dbg_addr[6:5] == DBG_ADDR_CPU);
+	assign	dbg_cpu_read = (dbg_cpu_read_req && !dbg_stall);
 	assign	dbg_cmd_write = (dbg_stb)&&(dbg_we)
 					&&(dbg_addr[6:5] == DBG_ADDR_CTRL);
 	assign	dbg_cmd_data = dbg_idata;
@@ -909,34 +934,24 @@ module	zipsystem #(
 		cmd_write <= dbg_cpu_write;
 	// }}}
 
-	// cmd_read
+	// cpu_read_ack
 	// {{{
-	reg	cmd_read_ack;
-
-	initial	cmd_read = 0;
-	always @(posedge i_clk)
-	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-		cmd_read <= 1'b0;
-	else if (dbg_cpu_read)
-		cmd_read <= 1'b1;
-	else if (cmd_read) // cmd_read_ack == 1)
-		cmd_read <= 1'b0;
-
 	generate if (OPT_DISTRIBUTED_REGS)
 	begin : GEN_CMD_READ_ACK
 
-		initial	cmd_read_ack = 0;
+		initial	cpu_read_ack = 0;
 		always @(posedge i_clk)
 		if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-			cmd_read_ack <= 0;
+			cpu_read_ack <= 0;
 		else if (dbg_cpu_read)
-			cmd_read_ack <= 1;
-		else if (cmd_read_ack != 0)
-			cmd_read_ack <= 0;
+			cpu_read_ack <= 1;
+		else // if (cpu_read_ack != 0)
+			cpu_read_ack <= 0;
 
 	end else begin : GEN_FWD_CMDREAD_ACK
+
 		always @(*)
-			cmd_read_ack = cmd_read;
+			cpu_read_ack = dbg_cpu_read;
 
 	end endgenerate
 	// }}}
@@ -958,12 +973,17 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	ziptimer #(
-		.BW(32),.VW(31),.RELOADABLE(0)
-	) u_watchdog (
+`ifdef	FORMAL
+	fwb_single
+`else
+	ziptimer #( .BW(32),.VW(31),.RELOADABLE(0) )
+`endif
+	u_watchdog (
 		// {{{
 		.i_clk(i_clk), .i_reset(cpu_reset),
+`ifndef	FORMAL
 		.i_ce(!cmd_halt),
+`endif
 			.i_wb_cyc(sys_cyc),
 			.i_wb_stb((sys_stb)&&(sel_watchdog)),
 			.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
@@ -985,8 +1005,9 @@ module	zipsystem #(
 	wbwatchdog #(14)
 	u_watchbus(
 		// {{{
-		i_clk,(cpu_reset)||(reset_wdbus_timer),
-			14'h2000, wdbus_int
+		.i_clk(i_clk),.i_reset((cpu_reset)||(reset_wdbus_timer)),
+			.i_timeout(14'h2000),
+		.o_int(wdbus_int)
 		// }}}
 	);
 
@@ -1013,6 +1034,16 @@ module	zipsystem #(
 
 	// Here's the stuff we'll be counting ....
 	//
+`ifndef	VBENCH_TB
+	wire	[DBG_WIDTH-1:0]	mtc_data;
+	wire	[DBG_WIDTH-1:0]	moc_data;
+	wire	[DBG_WIDTH-1:0]	mpc_data;
+	wire	[DBG_WIDTH-1:0]	mic_data;
+	wire	[DBG_WIDTH-1:0]	utc_data;
+	wire	[DBG_WIDTH-1:0]	uoc_data;
+	wire	[DBG_WIDTH-1:0]	upc_data;
+	wire	[DBG_WIDTH-1:0]	uic_data;
+`endif
 	generate if (OPT_ACCOUNTING)
 	begin : ACCOUNTING_COUNTERS
 		// {{{
@@ -1028,16 +1059,6 @@ module	zipsystem #(
 		wire		upc_stall, upc_ack;
 		wire		uic_stall, uic_ack;
 		// Verilator lint_on  UNUSED
-`ifndef	VBENCH_TB
-		wire	[DBG_WIDTH-1:0]	mtc_data;
-		wire	[DBG_WIDTH-1:0]	moc_data;
-		wire	[DBG_WIDTH-1:0]	mpc_data;
-		wire	[DBG_WIDTH-1:0]	mic_data;
-		wire	[DBG_WIDTH-1:0]	utc_data;
-		wire	[DBG_WIDTH-1:0]	uoc_data;
-		wire	[DBG_WIDTH-1:0]	upc_data;
-		wire	[DBG_WIDTH-1:0]	uic_data;
-`endif
 		reg	[DBG_WIDTH-1:0]	r_actr_data;
 		// }}}
 
@@ -1047,46 +1068,89 @@ module	zipsystem #(
 		// be used for an overall counter.
 		//
 		// Master task counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		mtask_ctr(
 			// {{{
-			i_clk, 1'b0, (!cmd_halt), sys_cyc,
-			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b000),
-				sys_we, sys_data,
-			mtc_stall, mtc_ack, mtc_data, mtc_int
+			.i_clk(i_clk), .i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event(!cmd_halt),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+					&&(sys_addr[2:0] == 3'b000)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(mtc_stall),
+			.o_wb_ack(mtc_ack), .o_wb_data(mtc_data),
+			.o_int(mtc_int)
 			// }}}
 		);
 
 		// Master Operand Stall counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		mmstall_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_op_stall), sys_cyc,
-			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b001),
-				sys_we, sys_data,
-			moc_stall, moc_ack, moc_data, moc_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event(cpu_op_stall),
+`endif
+			.i_wb_cyc(sys_cyc), .i_wb_stb((sys_stb)&&(sel_counter)
+						&&(sys_addr[2:0] == 3'b001)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(moc_stall), .o_wb_ack(moc_ack),
+				.o_wb_data(moc_data),
+			.o_int(moc_int)
 			// }}}
 		);
 
 		// Master PreFetch-Stall counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		mpstall_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_pf_stall), sys_cyc,
-			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b010),
-					sys_we, sys_data,
-			mpc_stall, mpc_ack, mpc_data, mpc_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event(cpu_pf_stall),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+					&&(sys_addr[2:0] == 3'b010)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(mpc_stall),
+			.o_wb_ack(mpc_ack), .o_wb_data(mpc_data),
+			.o_int(mpc_int)
 			// }}}
 		);
 
 		// Master Instruction counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		mins_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_i_count), sys_cyc,
-			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b011),
-				sys_we, sys_data,
-			mic_stall, mic_ack, mic_data, mic_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event(cpu_i_count),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+					&&(sys_addr[2:0] == 3'b011)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(mic_stall),
+			.o_wb_ack(mic_ack), .o_wb_data(mic_data),
+			.o_int(mic_int)
 			// }}}
 		);
 		// }}}
@@ -1097,46 +1161,89 @@ module	zipsystem #(
 		// CPU.
 		//
 		// User task counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		utask_ctr(
 			// {{{
-			i_clk,1'b0, (!cmd_halt)&&(cpu_gie), sys_cyc,
-			(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b100),
-				sys_we, sys_data,
-			utc_stall, utc_ack, utc_data, utc_int
+			.i_clk(i_clk), .i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event((!cmd_halt)&&(cpu_gie)),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+						&&(sys_addr[2:0] == 3'b100)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(utc_stall),
+			.o_wb_ack(utc_ack), .o_wb_data(utc_data),
+			.o_int(utc_int)
 			// }}}
 		);
 
 		// User Op-Stall counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		umstall_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_op_stall)&&(cpu_gie), sys_cyc,
-				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b101),
-					sys_we, sys_data,
-				uoc_stall, uoc_ack, uoc_data, uoc_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event((cpu_op_stall)&&(cpu_gie)),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b101)),
+					.i_wb_we(sys_we), .i_wb_data(sys_data),
+				.o_wb_stall(uoc_stall),
+			.o_wb_ack(uoc_ack), .o_wb_data(uoc_data),
+			.o_int(uoc_int)
 			// }}}
 		);
 
 		// User PreFetch-Stall counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		upstall_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_pf_stall)&&(cpu_gie), sys_cyc,
-				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b110),
-					sys_we, sys_data,
-				upc_stall, upc_ack, upc_data, upc_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event((cpu_pf_stall)&&(cpu_gie)),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+					&&(sys_addr[2:0] == 3'b110)),
+				.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(upc_stall),
+			.o_wb_ack(upc_ack), .o_wb_data(upc_data),
+			.o_int(upc_int)
 			// }}}
 		);
 
 		// User instruction counter
+`ifdef	FORMAL
+		fwb_single
+`else
 		zipcounter
+`endif
 		uins_ctr(
 			// {{{
-			i_clk,1'b0, (cpu_i_count)&&(cpu_gie), sys_cyc,
-				(sys_stb)&&(sel_counter)&&(sys_addr[2:0] == 3'b111),
-					sys_we, sys_data,
-				uic_stall, uic_ack, uic_data, uic_int
+			.i_clk(i_clk),.i_reset(1'b0),
+`ifndef	FORMAL
+			.i_event((cpu_i_count)&&(cpu_gie)),
+`endif
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_stb)&&(sel_counter)
+						&&(sys_addr[2:0] == 3'b111)),
+					.i_wb_we(sys_we), .i_wb_data(sys_data),
+			.o_wb_stall(uic_stall),
+			.o_wb_ack(uic_ack), .o_wb_data(uic_data),
+			.o_int(uic_int)
 			// }}}
 		);
 		// }}}
@@ -1149,7 +1256,7 @@ module	zipsystem #(
 		// {{{
 		always @(*)
 		begin
-			case(sys_addr[2:0])
+			case(ack_subaddr[2:0])
 			3'h0: r_actr_data = mtc_data;
 			3'h1: r_actr_data = moc_data;
 			3'h2: r_actr_data = mpc_data;
@@ -1166,7 +1273,6 @@ module	zipsystem #(
 		// }}}
 	end else begin : NO_ACCOUNTING_COUNTERS
 		// {{{
-
 		assign	actr_stall = 1'b0;
 		assign	actr_data = 32'h0000;
 
@@ -1180,6 +1286,25 @@ module	zipsystem #(
 		assign	uic_int = 1'b0;
 
 		assign	actr_ack = sel_counter;
+
+		assign	mtc_data = 32'h0;
+		assign	moc_data = 32'h0;
+		assign	mpc_data = 32'h0;
+		assign	mic_data = 32'h0;
+		assign	utc_data = 32'h0;
+		assign	uoc_data = 32'h0;
+		assign	upc_data = 32'h0;
+		assign	uic_data = 32'h0;
+
+		// Keep Verilator happy
+		// {{{
+		// Verilator lint_off UNUSED
+		wire	unused_counter_data;
+		assign	unused_counter_data = &{ 1'b0,
+				mtc_data, moc_data, mpc_data, mic_data,
+				utc_data, uoc_data, upc_data, uic_data };
+		// Verilator lint_on  UNUSED
+		// }}}
 		// }}}
 	end endgenerate
 	// }}}
@@ -1197,6 +1322,7 @@ module	zipsystem #(
 	generate if (OPT_DMA)
 	begin : DMA
 		// {{{
+`ifndef	FORMAL
 		zipdma	#(
 			// {{{
 			.ADDRESS_WIDTH(ADDRESS_WIDTH), .LGMEMLEN(DMA_LGMEM),
@@ -1224,6 +1350,7 @@ module	zipsystem #(
 			.o_interrupt(dmac_int)
 			// }}}
 		);
+`endif
 		// }}}
 	end else begin : NO_DMA
 		// {{{
@@ -1274,7 +1401,11 @@ module	zipsystem #(
 		//
 		if (EXTERNAL_INTERRUPTS <= 9)
 		begin : ALT_PIC
+`ifdef	FORMAL
+			fwb_single
+`else
 			icontrol #(8)
+`endif
 			ctri(
 			// {{{
 			.i_clk(i_clk), .i_reset(cpu_reset),
@@ -1282,14 +1413,21 @@ module	zipsystem #(
 			.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
 			.o_wb_stall(ctri_stall), .o_wb_ack(ctri_ack),
 			.o_wb_data(ctri_data),
-			.i_brd_ints(alt_int_vector[7:0]), .o_interrupt(ctri_int)
+`ifndef	FORMAL
+			.i_brd_ints(alt_int_vector[7:0]),
+`endif
+			.o_int(ctri_int)
 			// }}}
 			);
 `ifdef	VBENCH_TB
 			assign	alt_int_state = { 8'h0, ctri.r_int_state };
 `endif
 		end else begin : ALT_PIC
+`ifdef	FORMAL
+			fwb_single
+`else
 			icontrol #(8+(EXTERNAL_INTERRUPTS-9))
+`endif
 			ctri(
 			// {{{
 			.i_clk(i_clk), .i_reset(cpu_reset),
@@ -1299,8 +1437,10 @@ module	zipsystem #(
 				.o_wb_stall(ctri_stall),
 				.o_wb_ack(ctri_ack),
 				.o_wb_data(ctri_data),
+`ifndef	FORMAL
 				.i_brd_ints(alt_int_vector[(EXTERNAL_INTERRUPTS-2):0]),
-				.o_interrupt(ctri_int)
+`endif
+				.o_int(ctri_int)
 			// }}}
 			);
 `ifdef	VBENCH_TB
@@ -1320,7 +1460,11 @@ module	zipsystem #(
 			assign	alt_int_state = 16'h0;
 `endif
 		end else begin : ALT_PIC
+`ifdef	FORMAL
+			fwb_single
+`else
 			icontrol #(EXTERNAL_INTERRUPTS-9)
+`endif
 			ctri(
 				// {{{
 				.i_clk(i_clk), .i_reset(cpu_reset),
@@ -1330,8 +1474,10 @@ module	zipsystem #(
 				.o_wb_stall(ctri_stall),
 				.o_wb_ack(ctri_ack),
 				.o_wb_data(ctri_data),
+`ifndef	FORMAL
 				.i_brd_ints(alt_int_vector[(EXTERNAL_INTERRUPTS-10):0]),
-				.o_interrupt(ctri_int)
+`endif
+				.o_int(ctri_int)
 				// }}}
 			);
 `ifdef	VBENCH_TB
@@ -1353,9 +1499,17 @@ module	zipsystem #(
 	//
 	// Timer A
 	//
-	ziptimer u_timer_a(
+`ifdef	FORMAL
+	fwb_single
+`else
+	ziptimer
+`endif
+	u_timer_a(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_clk(i_clk), .i_reset(cpu_reset),
+`ifndef	FORMAL
+		.i_ce(!cmd_halt),
+`endif
 		.i_wb_cyc(sys_cyc),
 		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b00)),
 		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
@@ -1368,9 +1522,17 @@ module	zipsystem #(
 	//
 	// Timer B
 	//
-	ziptimer u_timer_b(
+`ifdef	FORMAL
+	fwb_single
+`else
+	ziptimer
+`endif
+	u_timer_b(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_clk(i_clk), .i_reset(cpu_reset),
+`ifndef	FORMAL
+		.i_ce(!cmd_halt),
+`endif
 		.i_wb_cyc(sys_cyc),
 		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b01)),
 		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
@@ -1383,9 +1545,17 @@ module	zipsystem #(
 	//
 	// Timer C
 	//
-	ziptimer u_timer_c(
+`ifdef	FORMAL
+	fwb_single
+`else
+	ziptimer
+`endif
+	u_timer_c(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_clk(i_clk), .i_reset(cpu_reset),
+`ifndef	FORMAL
+		.i_ce(!cmd_halt),
+`endif
 		.i_wb_cyc(sys_cyc),
 		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b10)),
 		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
@@ -1398,9 +1568,17 @@ module	zipsystem #(
 	//
 	// JIFFIES
 	//
-	zipjiffies u_jiffies(
+`ifdef	FORMAL
+	fwb_single
+`else
+	zipjiffies
+`endif
+	u_jiffies(
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset), .i_ce(!cmd_halt),
+		.i_clk(i_clk), .i_reset(cpu_reset),
+`ifndef	FORMAL
+		.i_ce(!cmd_halt),
+`endif
 		.i_wb_cyc(sys_cyc),
 		.i_wb_stb((sys_stb)&&(sel_timer)&&(sys_addr[1:0] == 2'b11)),
 		.i_wb_we(sys_we), .i_wb_data(sys_data), .i_wb_sel(4'hf),
@@ -1420,14 +1598,24 @@ module	zipsystem #(
 
 	generate if (EXTERNAL_INTERRUPTS < 9)
 	begin : MAIN_PIC
+`ifdef	FORMAL
+		fwb_single
+`else
 		icontrol #(6+EXTERNAL_INTERRUPTS)
+`endif
 		pic(
 			// {{{
-			i_clk, cpu_reset,
-		sys_cyc, (sys_cyc)&&(sys_stb)&&(sel_pic),sys_we,
-			sys_data, 4'hf, pic_stall, pic_ack, pic_data,
-			main_int_vector[(6+EXTERNAL_INTERRUPTS-1):0],
-			pic_interrupt
+			.i_clk(i_clk), .i_reset(cpu_reset),
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_cyc)&&(sys_stb)&&(sel_pic)),
+			.i_wb_we(sys_we),
+			.i_wb_data(sys_data),
+			.i_wb_sel(4'hf), .o_wb_stall(pic_stall),
+			.o_wb_ack(pic_ack), .o_wb_data(pic_data),
+`ifndef	FORMAL
+			.i_brd_ints(main_int_vector[(6+EXTERNAL_INTERRUPTS-1):0]),
+`endif
+			.o_int(pic_interrupt)
 			// }}}
 		);
 
@@ -1436,13 +1624,23 @@ module	zipsystem #(
 						pic.r_int_state };
 `endif
 	end else begin : MAIN_PIC
+`ifdef	FORMAL
+		fwb_single
+`else
 		icontrol #(15)
+`endif
 		pic(
 			// {{{
-			i_clk, cpu_reset,
-			sys_cyc, (sys_cyc)&&(sys_stb)&&(sel_pic),sys_we,
-			sys_data, 4'hf, pic_stall, pic_ack, pic_data,
-			main_int_vector[14:0], pic_interrupt
+			.i_clk(i_clk), .i_reset(cpu_reset),
+			.i_wb_cyc(sys_cyc),
+			.i_wb_stb((sys_cyc)&&(sys_stb)&&(sel_pic)),
+			.i_wb_we(sys_we),
+			.i_wb_data(sys_data),.i_wb_sel(4'hf),
+			.o_wb_stall(pic_stall), .o_wb_ack(pic_ack), .o_wb_data(pic_data),
+`ifndef	FORMAL
+			.i_brd_ints(main_int_vector[14:0]),
+`endif
+			.o_int(pic_interrupt)
 			// }}}
 		);
 
@@ -1458,13 +1656,22 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	cpu_clken = cmd_write || cmd_read || (dbg_stb && dbg_addr[6] == DBG_ADDR_CPU[1]);
+	assign	cpu_clken = cmd_write || cpu_read_ack || (dbg_stb && dbg_addr[6] == DBG_ADDR_CPU[1]);
 `ifdef	FORMAL
 	// {{{
-	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
-				f_cpu_break;
-	(* anyseq *) reg [1:0]	f_cpu_dbg_cc;
+	// Anyseq model of the (separately verified) ZipCPU: only its bus-facing
+	// behavior matters here, constrained by fdebug and the fwb_* below.
+	(* anyseq *)	reg	f_cpu_halted, f_cpu_stall, f_cpu_break;
+	(* anyseq *) reg [2:0]	f_cpu_dbg_cc;
 	(* anyseq *) reg [31:0]	f_cpu_dbg_data;
+	//
+	(* anyseq *)	reg	f_cpu_gbl_cyc, f_cpu_gbl_stb,
+				f_cpu_lcl_cyc, f_cpu_lcl_stb,
+				f_cpu_we;
+	(* anyseq *)	reg	[PAW-1:0]		f_cpu_addr;
+	(* anyseq *)	reg	[BUS_WIDTH-1:0]		f_cpu_odata;
+	(* anyseq *)	reg	[BUS_WIDTH/8-1:0]	f_cpu_sel;
+	(* anyseq *)	reg	f_cpu_op_stall, f_cpu_pf_stall, f_cpu_i_count;
 	wire			cpu_dbg_we;
 
 	assign cpu_dbg_we = ((dbg_stb)&&(dbg_we)
@@ -1475,6 +1682,25 @@ module	zipsystem #(
 	assign	cpu_dbg_cc    = f_cpu_dbg_cc;
 	assign	cpu_dbg_data  = f_cpu_dbg_data;
 	assign	cpu_has_halted= f_cpu_halted;
+	//
+	// The CPU's two Wishbone master interfaces
+	assign	cpu_gbl_cyc = f_cpu_gbl_cyc;
+	assign	cpu_gbl_stb = f_cpu_gbl_stb;
+	assign	cpu_lcl_cyc = f_cpu_lcl_cyc;
+	assign	cpu_lcl_stb = f_cpu_lcl_stb;
+	assign	cpu_we      = f_cpu_we;
+	assign	cpu_addr    = f_cpu_addr;
+	assign	cpu_data    = f_cpu_odata;
+	assign	cpu_sel     = f_cpu_sel;
+	//
+	// Accounting/profiling/trace outputs -- irrelevant to this proof
+	assign	cpu_op_stall = f_cpu_op_stall;
+	assign	cpu_pf_stall = f_cpu_pf_stall;
+	assign	cpu_i_count  = f_cpu_i_count;
+	assign	o_cpu_debug  = 32'h0;
+	assign	o_prof_stb   = 1'b0;
+	assign	o_prof_addr  = {(ADDRESS_WIDTH){1'b0}};
+	assign	o_prof_ticks = 32'h0;
 
 	fdebug #(
 		// {{{
@@ -1498,9 +1724,20 @@ module	zipsystem #(
 		// }}}
 	);
 
+	// A halted CPU makes no bus requests at all
 	always @(*)
 	if (f_cpu_halted)
-		assume(!cpu_gbl_cyc && !cpu_gbl_stb);
+		assume(!cpu_gbl_cyc && !cpu_lcl_cyc);
+	always @(*)
+	if (!cpu_gbl_cyc)
+		assume(!cpu_gbl_stb);
+	always @(*)
+	if (!cpu_lcl_cyc)
+		assume(!cpu_lcl_stb);
+
+	// The CPU drives at most one of its busses (asserted in wbdblpriarb)
+	always @(*)
+		assume(!cpu_gbl_cyc || !cpu_lcl_cyc);
 	// }}}
 `else
 	zipwb	#(
@@ -1583,35 +1820,6 @@ module	zipsystem #(
 	// the CPU, and the responses haven't been merged back together again
 	// yet.
 
-`ifdef	OPT_MMU
-	// Ok ... here's the MMU
-	zipmmu	#(
-		// {{{
-		.LGTBL(LGTLBSZ),
-		.ADDRESS_WIDTH(PHYSICAL_ADDRESS_WIDTH)
-		// }}}
-	) themmu(
-		// {{{
-		i_clk, cpu_reset,
-		// Slave interface
-		(sys_stb)&&(sel_mmus),
-			sys_we, sys_addr[7:0], sys_data,
-			mmus_stall, mmus_ack, mmus_data,
-		// CPU global bus master lines
-		cpu_gbl_cyc, cpu_gbl_stb, cpu_we, cpu_addr,
-			cpu_data, cpu_sel,
-		// MMU bus master outgoing lines
-		mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
-			// .... and the return from the slave(s)
-			mmu_stall, mmu_ack, mmu_err, mmu_idata,
-		// CPU gobal bus master return lines
-			mmu_cpu_stall, mmu_cpu_ack, cpu_err, cpu_miss, mmu_cpu_idata,
-			pf_return_stb, pf_return_we, pf_return_p, pf_return_v,
-				pf_return_cachable
-		// }}}
-	);
-
-`else
 	reg	r_mmus_ack;
 
 	assign	mmu_cyc   = cpu_gbl_cyc;
@@ -1642,11 +1850,12 @@ module	zipsystem #(
 	assign	pf_return_p   = 0;
 	assign	pf_return_we  = 0;
 	assign	pf_return_cachable = 0;
-`endif
 	//
 	// Responses from the MMU still need to be merged/muxed back together
 	// with the responses from the local bus
-	assign	cpu_ack   = ((cpu_lcl_cyc)&&(sys_ack))
+	// Forward a sys ack to the CPU only if the CPU issued the
+	// request; a debug ack in flight used to be delivered to the CPU too
+	assign	cpu_ack   = ((cpu_lcl_cyc)&&(sys_ack_cpu))
 				||((cpu_gbl_cyc)&&(mmu_cpu_ack));
 	assign	cpu_stall = ((cpu_lcl_cyc)&&(sys_stall))
 				||((cpu_gbl_cyc)&&(mmu_cpu_stall));
@@ -1695,7 +1904,7 @@ module	zipsystem #(
 	// {{{
 	always @(*)
 	begin
-		case(sys_addr[1:0])
+		case(ack_subaddr[1:0])
 		2'b00: tmr_data = tma_data;
 		2'b01: tmr_data = tmb_data;
 		2'b10: tmr_data = tmc_data;
@@ -1708,32 +1917,40 @@ module	zipsystem #(
 
 	// last_sys_stb
 	// {{{
-	initial	last_sys_stb = 0;
+	always @(*)
+		last_sys_stb = pre_dbg_ack || pre_cpu_ack;
+
+	// initial	last_sys_stb = 0;
+	// always @(posedge i_clk)
+	// if (i_reset)
+	//	last_sys_stb <= 0;
+	// else
+	//	last_sys_stb <= sys_stb;
+	// }}}
+
+	// sys_ack_cpu, pre_cpu_ack
+	// {{{
+	initial	{ sys_ack_cpu, pre_cpu_ack } = 2'b00;
 	always @(posedge i_clk)
-	if (i_reset)
-		last_sys_stb <= 0;
+	if (i_reset || cpu_reset || !cpu_lcl_cyc)
+		{ sys_ack_cpu, pre_cpu_ack } <= 2'b00;
 	else
-		last_sys_stb <= sys_stb;
+		{ sys_ack_cpu, pre_cpu_ack } <= { pre_cpu_ack, sys_stb };
 	// }}}
 
 	// sys_ack, sys_idata
 	// {{{
 	always @(posedge i_clk)
-	begin
-		case(ack_idx)
-		3'h0: { sys_ack, sys_idata } <= { mmus_ack, mmus_data };
-		3'h1: { sys_ack, sys_idata } <= { last_sys_stb,  wdt_data  };
-		3'h2: { sys_ack, sys_idata } <= { last_sys_stb,  wdbus_data };
-		3'h3: { sys_ack, sys_idata } <= { last_sys_stb,  ctri_data };// A-PIC
-		3'h4: { sys_ack, sys_idata } <= { last_sys_stb,  tmr_data };
-		3'h5: { sys_ack, sys_idata } <= { last_sys_stb,  actr_data };//countr
-		3'h6: { sys_ack, sys_idata } <= { dmac_ack, dmac_data };
-		3'h7: { sys_ack, sys_idata } <= { last_sys_stb,  pic_data };
-		endcase
-
-		if (i_reset || !sys_cyc)
-			sys_ack <= 1'b0;
-	end
+	case(ack_idx)
+	3'h0: sys_idata <= mmus_data;
+	3'h1: sys_idata <= wdt_data;
+	3'h2: sys_idata <= wdbus_data;
+	3'h3: sys_idata <= ctri_data;// A-PIC
+	3'h4: sys_idata <= tmr_data;
+	3'h5: sys_idata <= actr_data;//countr
+	3'h6: sys_idata <= dmac_data;
+	3'h7: sys_idata <= pic_data;
+	endcase
 	// }}}
 
 	// w_ack_idx
@@ -1758,6 +1975,13 @@ module	zipsystem #(
 	if (sys_stb)
 		ack_idx <= w_ack_idx;
 	// }}}
+
+	// ack_subaddr
+	// {{{
+	always @(posedge i_clk)
+	if (sys_stb)
+		ack_subaddr <= sys_addr[2:0];
+	// }}}
 	assign	sys_stall = 1'b0;
 
 	// }}}
@@ -1768,22 +1992,23 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	reg			dbg_pre_ack;
-	reg	[1:0]		dbg_pre_addr;
-	reg	[DBG_WIDTH-1:0]	dbg_cpu_status;
-
 	always @(posedge i_clk)
-		dbg_pre_addr <= dbg_addr[6:5];
+	if (dbg_stb && !dbg_stall)
+		pre_dbg_addr <= dbg_addr[6:5];
+
+	// ... then carry it one more clock, to the cycle the ack goes out
+	always @(posedge i_clk)
+		dbg_ack_addr <= pre_dbg_addr;
 
 	always @(posedge i_clk)
 		dbg_cpu_status <= cpu_status;
 
-	initial	dbg_pre_ack = 1'b0;
+	initial	pre_dbg_ack = 1'b0;
 	always @(posedge i_clk)
 	if (i_reset || !i_dbg_cyc)
-		dbg_pre_ack <= 1'b0;
+		pre_dbg_ack <= 1'b0;
 	else
-		dbg_pre_ack <= dbg_stb && !dbg_stall && !dbg_cpu_read;
+		pre_dbg_ack <= dbg_stb && !dbg_stall && !dbg_cpu_read;
 
 	// A return from one of three busses:
 	//	CMD	giving command instructions to the CPU (step, halt, etc)
@@ -1796,19 +2021,26 @@ module	zipsystem #(
 	if (i_reset || !dbg_cyc)
 		dbg_ack <= 1'b0;
 	else
-		dbg_ack <= dbg_pre_ack || cmd_read_ack;
+		dbg_ack <= pre_dbg_ack || cpu_read_ack;
 
 	always @(posedge i_clk)
-	if (!OPT_LOWPOWER || (dbg_cyc && (dbg_pre_ack || cmd_read)))
-	casez(dbg_pre_addr)
-	DBG_ADDR_CPU:	dbg_odata <= cpu_dbg_data;
-	DBG_ADDR_CTRL:	dbg_odata <= dbg_cpu_status;
-	// DBG_ADDR_SYS:
-	default:	dbg_odata <= sys_idata;
+	if (!OPT_LOWPOWER || (dbg_cyc && (pre_dbg_ack || cpu_read_ack)))
+	casez(pre_dbg_addr)
+	DBG_ADDR_CPU:	dbg_r_odata <= cpu_dbg_data;
+	// DBG_ADDR_CTRL, and the (reserved) 2'b11 space
+	default:	dbg_r_odata <= dbg_cpu_status;
 	endcase
 
-	assign	dbg_stall = cmd_read || (cmd_write && cpu_dbg_stall
-			&& dbg_addr[6:5] == DBG_ADDR_CPU)
+	always @(*)
+	if (dbg_ack_addr == DBG_ADDR_SYS)
+		dbg_odata = sys_idata;
+	else
+		dbg_odata = dbg_r_odata;
+
+	assign	dbg_stall = (OPT_DISTRIBUTED_REGS ? cpu_read_ack : 1'b0) ||
+			(dbg_cpu_read_req && pre_dbg_ack)
+			|| (cmd_write && cpu_dbg_stall
+				&& dbg_addr[6:5] == DBG_ADDR_CPU)
 			||(dbg_addr[6]==DBG_ADDR_SYS[1] && cpu_lcl_cyc);
 	// }}}
 	////////////////////////////////////////////////////////////////////////
@@ -1824,34 +2056,50 @@ module	zipsystem #(
 	// The way this works, though, the CPU will stall once the flash
 	// cache gets access to the bus--the CPU will be stuck until the
 	// flash cache is finished with the bus.
-	wbpriarbiter #(
+	generate if (OPT_DMA)
+	begin : GEN_ARB
+		wbpriarbiter #(
 		// {{{
 		.DW(BUS_WIDTH),
 		.AW(PAW)
 		// }}}
-	) dmacvcpu(
-		// {{{
-		i_clk,
-		mmu_cyc, mmu_stb, mmu_we, mmu_addr, mmu_data, mmu_sel,
-			mmu_stall, mmu_ack, mmu_err,
-		dc_cyc, dc_stb, dc_we, dc_addr, dc_data, dc_sel,
-			dc_stall, dc_ack, dc_err,
-		ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
-			ext_stall, ext_ack, ext_err
-		// }}}
-	);
+		) dmacvcpu(
+			// {{{
+			.i_clk(i_clk),
+			//
+			.i_a_cyc(mmu_cyc), .i_a_stb(mmu_stb), .i_a_we(mmu_we),
+			.i_a_adr(mmu_addr),.i_a_dat(mmu_data), .i_a_sel(mmu_sel),
+				.o_a_stall(mmu_stall),
+				.o_a_ack(mmu_ack), .o_a_err(mmu_err),
+			//
+			.i_b_cyc(dc_cyc), .i_b_stb(dc_stb), .i_b_we(dc_we),
+			.i_b_adr(dc_addr), .i_b_dat(dc_data), .i_b_sel(dc_sel),
+				.i_b_stall(dc_stall),
+				.i_b_ack(dc_ack), .i_b_err(dc_err),
+			//
+			.o_cyc(ext_cyc), .o_stb(ext_stb), .o_we(ext_we),
+			.o_adr(ext_addr), .o_dat(ext_odata), .o_sel(ext_sel),
+				.i_stall(ext_stall),
+				.i_ack(ext_ack), .i_err(ext_err)
+			// }}}
+		);
+	end else begin : NO_ARB
+		assign	ext_cyc   = mmu_cyc;
+		assign	ext_stb   = mmu_stb;
+		assign	ext_we    = mmu_we;
+		assign	ext_addr  = mmu_addr;
+		assign	ext_odata = mmu_data;
+		assign	ext_sel   = mmu_sel;
+		assign	mmu_stall = ext_stall;
+		assign	mmu_ack   = ext_ack;
+		assign	mmu_err   = ext_err;
+
+		assign	dc_stall = 1'b0;
+		assign	dc_ack   = 1'b0;
+		assign	dc_err   = 1'b0;
+	end endgenerate
+
 	assign	mmu_idata = ext_idata;
-/*
-	assign	ext_cyc  = mmu_cyc;
-	assign	ext_stb  = mmu_stb;
-	assign	ext_we   = mmu_we;
-	assign	ext_odata= mmu_data;
-	assign	ext_addr = mmu_addr;
-	assign	ext_sel  = mmu_sel;
-	assign	mmu_ack  = ext_ack;
-	assign	mmu_stall= ext_stall;
-	assign	mmu_err  = ext_err;
-*/
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -1872,12 +2120,23 @@ module	zipsystem #(
 			// }}}
 		) extbus(
 			// {{{
-			i_clk, i_reset,
-			ext_cyc, ext_stb, ext_we, ext_addr, ext_odata, ext_sel,
-				ext_stall, ext_ack, ext_idata, ext_err,
-			o_wb_cyc, o_wb_stb, o_wb_we, o_wb_addr, o_wb_data,
-				o_wb_sel,
-			i_wb_stall, i_wb_ack, i_wb_data, (i_wb_err)||(wdbus_int)
+			.i_clk(i_clk), .i_reset(i_reset),
+			//
+			.i_wb_cyc(ext_cyc), .i_wb_stb(ext_stb),
+				.i_wb_we(ext_we),
+			.i_wb_addr(ext_addr), .i_wb_data(ext_odata),
+				.i_wb_sel(ext_sel),
+				.o_wb_stall(ext_stall), .o_wb_ack(ext_ack),
+				.o_wb_data(ext_idata), .o_wb_err(ext_err),
+			//
+			.o_dly_cyc(o_wb_cyc), .o_dly_stb(o_wb_stb),
+				.o_dly_we(o_wb_we), .o_dly_addr(o_wb_addr),
+				.o_dly_data(o_wb_data),
+				.o_dly_sel(o_wb_sel),
+			.i_dly_stall(i_wb_stall),
+			.i_dly_ack(i_wb_ack && !wdbus_int),
+				.i_dly_data(i_wb_data),
+			.i_dly_err((i_wb_err)||(wdbus_int))
 			// }}}
 		);
 		// }}}
@@ -1890,7 +2149,7 @@ module	zipsystem #(
 		assign	o_wb_data = ext_odata;
 		assign	o_wb_sel  = ext_sel;
 		assign	ext_stall = i_wb_stall;
-		assign	ext_ack   = i_wb_ack;
+		assign	ext_ack   = i_wb_ack && !wdbus_int;
 		assign	ext_idata = i_wb_data;
 		assign	ext_err   = (i_wb_err)||(wdbus_int);
 		// }}}
@@ -2065,6 +2324,7 @@ module	zipsystem #(
 	assign	release_from_interrupt = thecpu.core.w_release_from_interrupt;
 	assign	break_en = thecpu.core.break_en;
 	// }}}
+	// }}}
 `endif
 	// }}}
 
@@ -2079,7 +2339,7 @@ module	zipsystem #(
 		jif_ack, jif_stall, no_dbg_err, dbg_sel,
 		sel_mmus, ctri_ack, ctri_stall, mmus_stall, dmac_stall,
 		wdt_ack, wdt_stall, actr_ack, actr_stall,
-		wdbus_ack, i_dbg_sel,
+		wdbus_ack,
 		// moc_ack, mtc_ack, mic_ack, mpc_ack,
 		// uoc_ack, utc_ack, uic_ack, upc_ack,
 		// moc_stall, mtc_stall, mic_stall, mpc_stall,
@@ -2099,13 +2359,61 @@ module	zipsystem #(
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 `ifdef	FORMAL
-	wire	[2:0]	fdbg_nreqs, fdbg_nacks, fdbg_outstanding;
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Formal setup
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	localparam	F_LGDEPTH  = 4,	// Debug/local bus outstanding counts
+			F_LGXDEPTH = 6;	// External bus outstanding counts
 
+	reg	f_past_valid;
+
+	// Per-interface outstanding-request counters (see the fwb_* below)
+	wire	[F_LGDEPTH-1:0]	 fdbg_nreqs, fdbg_nacks, fdbg_outstanding;
+	wire	[F_LGDEPTH-1:0]	 flcl_nreqs, flcl_nacks, flcl_outstanding;
+	wire	[F_LGXDEPTH-1:0] fgbl_nreqs, fgbl_nacks, fgbl_outstanding;
+	wire	[F_LGXDEPTH-1:0] fdma_nreqs, fdma_nacks, fdma_outstanding;
+	wire	[F_LGXDEPTH-1:0] fext_nreqs, fext_nacks, fext_outstanding;
+
+	// sys-bus shadow pipeline: every accepted request must be acked two
+	// clocks later, with that request's device data
+	reg		f_sys1_valid, f_sys2_valid;
+	reg		f_sys1_we, f_sys2_we;
+	reg	[7:0]	f_sys1_addr;
+	reg	[DBG_WIDTH-1:0]	f_sys2_data;
+	reg	[DBG_WIDTH-1:0]	f_exp_dev;
+	wire		f_sys_now_dmac;
+
+	// debug-bus shadow pipeline (same idea, for the external debug port)
+	reg			f_dbg1_valid, f_dbg2_valid;
+	reg			f_dbg1_we, f_dbg2_we;
+	reg	[1:0]		f_dbg1_space, f_dbg2_space;
+	reg	[4:0]		f_dbg1_addr;
+	reg	[DBG_WIDTH-1:0]	f_dbg1_status, f_dbg2_data;
+
+	initial	f_past_valid = 1'b0;
+	always @(posedge i_clk)
+		f_past_valid <= 1'b1;
+
+	always @(*)
+	if (!f_past_valid)
+		assume(i_reset);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Bus properties: count(STB && !STALL) == count(ACK), etc.
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	// 1. The external debug bus: we are the slave of an assumed-legal
+	// master, which contends with the CPU for the peripherals within
 	fwb_slave #(
 		// {{{
-		.AW(7), .DW(32), .F_LGDEPTH(3)
+		.AW(7), .DW(DBG_WIDTH), .F_LGDEPTH(F_LGDEPTH)
 		// }}}
-	) dbg (
+	) fwb_dbg (
 		// {{{
 		.i_clk(i_clk), .i_reset(i_reset),
 		.i_wb_cyc(i_dbg_cyc), .i_wb_stb(i_dbg_stb),
@@ -2118,29 +2426,290 @@ module	zipsystem #(
 		// }}}
 	);
 
+	// 2. The CPU's local bus: the anyseq CPU model, assumed legal here,
+	// is the other master contending for the peripherals
 	fwb_slave #(
 		// {{{
-		.AW(32), .DW(32), .F_LGDEPTH(3)
+		.AW(8), .DW(DBG_WIDTH), .F_LGDEPTH(F_LGDEPTH)
 		// }}}
-	) fwb_cpu (
+	) fwb_cpu_lcl (
 		// {{{
-		.i_clk(i_clk), .i_reset(cpu_reset),
-		//
-		.i_wb_cyc(i_dbg_cyc), .i_wb_stb(i_dbg_stb),
-			.i_wb_we(i_dbg_we),	.i_wb_addr(i_dbg_addr),
-			.i_wb_data(i_dbg_data),	.i_wb_sel(i_dbg_sel),
-		.i_wb_ack(o_dbg_ack), .i_wb_stall(o_dbg_stall),
-		.i_wb_idata(o_dbg_data), .i_wb_err(1'b0),
-		.f_nreqs(fdbg_nreqs), .f_nacks(fdbg_nacks),
-			.f_outstanding(fdbg_outstanding)
+		.i_clk(i_clk), .i_reset(i_reset || cpu_reset),
+		.i_wb_cyc(cpu_lcl_cyc), .i_wb_stb(cpu_lcl_stb),
+		.i_wb_we(cpu_we), .i_wb_addr(cpu_addr[7:0]),
+		.i_wb_data(cpu_data[DBG_WIDTH-1:0]),
+		.i_wb_sel(cpu_sel[DBG_WIDTH/8-1:0]),
+		.i_wb_ack(cpu_lcl_cyc && sys_ack_cpu),
+		.i_wb_stall(sys_stall),
+		.i_wb_idata(sys_idata), .i_wb_err(1'b0),
+		.f_nreqs(flcl_nreqs), .f_nacks(flcl_nacks),
+		.f_outstanding(flcl_outstanding)
 		// }}}
 	);
 
+	// 3. The CPU's global bus, through the null MMU to the arbiter
+	fwb_slave #(
+		// {{{
+		.AW(PAW), .DW(BUS_WIDTH), .F_LGDEPTH(F_LGXDEPTH)
+		// }}}
+	) fwb_cpu_gbl (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset || cpu_reset),
+		.i_wb_cyc(cpu_gbl_cyc), .i_wb_stb(cpu_gbl_stb),
+		.i_wb_we(cpu_we), .i_wb_addr(cpu_addr),
+		.i_wb_data(cpu_data), .i_wb_sel(cpu_sel),
+		.i_wb_ack(cpu_gbl_cyc && mmu_cpu_ack),
+		.i_wb_stall(mmu_cpu_stall),
+		.i_wb_idata(mmu_cpu_idata), .i_wb_err(cpu_err),
+		.f_nreqs(fgbl_nreqs), .f_nacks(fgbl_nacks),
+		.f_outstanding(fgbl_outstanding)
+		// }}}
+	);
+
+	always @(posedge i_clk)
+	if (f_past_valid || $past(i_reset) || $past(cpu_reset))
+	begin
+		assume(!cpu_gbl_cyc);
+		assume(!cpu_gbl_stb);
+		assume(!cpu_lcl_cyc);
+		assume(!cpu_lcl_stb);
+	end else begin
+		assume(!cpu_gbl_cyc || !cpu_lcl_cyc);
+
+		if ($past(cpu_gbl_cyc))
+			assume(!cpu_lcl_cyc);
+
+		if ($past(cpu_lcl_cyc))
+			assume(!cpu_gbl_cyc);
+	end
+
+	// 4. The DMA's (anyseq) master port, assumed legal here, contending
+	// with the CPU's global bus for the external bus
+	fwb_slave #(
+		// {{{
+		.AW(PAW), .DW(BUS_WIDTH), .F_LGDEPTH(F_LGXDEPTH)
+		// }}}
+	) fwb_dma (
+		// {{{
+		.i_clk(i_clk), .i_reset(i_reset || cpu_reset),
+		.i_wb_cyc(dc_cyc), .i_wb_stb(dc_stb),
+		.i_wb_we(dc_we), .i_wb_addr(dc_addr),
+		.i_wb_data(dc_data), .i_wb_sel(dc_sel),
+		// A master ignores acks/errs once it has dropped CYC
+		.i_wb_ack(dc_cyc && dc_ack), .i_wb_stall(dc_stall),
+		.i_wb_idata(ext_idata), .i_wb_err(dc_cyc && dc_err),
+		.f_nreqs(fdma_nreqs), .f_nacks(fdma_nacks),
+		.f_outstanding(fdma_outstanding)
+		// }}}
+	);
+
+	// 5. The external bus: prove the outgoing bus obeys Wishbone,
+	// whatever the CPU and DMA do
 	fwb_master #(
-	) fsys (
+		// {{{
+		.AW(PAW), .DW(BUS_WIDTH), .F_LGDEPTH(F_LGXDEPTH)
+		// }}}
+	) fwb_ext (
+		// {{{
 		.i_clk(i_clk), .i_reset(i_reset),
+		.i_wb_cyc(o_wb_cyc), .i_wb_stb(o_wb_stb),
+		.i_wb_we(o_wb_we), .i_wb_addr(o_wb_addr),
+		.i_wb_data(o_wb_data), .i_wb_sel(o_wb_sel),
+		.i_wb_ack(i_wb_ack), .i_wb_stall(i_wb_stall),
+		.i_wb_idata(i_wb_data), .i_wb_err(i_wb_err),
+		.f_nreqs(fext_nreqs), .f_nacks(fext_nacks),
+		.f_outstanding(fext_outstanding)
+		// }}}
 	);
 
+	// The (anyseq) bus watchdog model may only fire at a hung request --
+	// its real hang-recovery purpose -- not while the bus sits idle
+	always @(*)
+	if (fext_outstanding == 0)
+		assume(!wdbus_int);
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Sys bus properties ...
+	// {{{
+	// Only the DMAC's ack dies on cpu_reset (its i_reset is cpu_reset):
+	// a DMAC request accepted during cpu_reset is never answered. The
+	// 0x10-0x1f decode matches sel_dmac above.
+	// assign	f_sys_now_dmac = (sys_addr[7:4] == 4'h1);
+
+	// Every accepted cpu request is acked two clocks later
+	initial	{ f_sys1_valid, f_sys2_valid } = 2'b00;
+	always @(posedge i_clk)
+	if (i_reset || !sys_cyc)
+		{ f_sys1_valid, f_sys2_valid } <= 2'b00;
+	else begin
+		// Stage 1
+		f_sys1_valid <= sys_stb;
+		if (dbg_stb && !dbg_stall && (dbg_addr[6:5] != DBG_ADDR_CPU))
+			f_sys1_valid <= 1;
+		f_sys1_we    <= sys_we;
+		f_sys1_addr  <= sys_addr;
+
+		// Stage 2
+		f_sys2_valid <= f_sys1_valid;
+		f_sys2_we    <= f_sys1_we;
+		f_sys2_data  <= f_exp_dev;
+
+		if ((cpu_reset || !cpu_lcl_cyc) && pre_cpu_ack)
+			f_sys2_valid <= 1'b0;
+		if (!i_dbg_cyc && pre_dbg_ack)
+			f_sys2_valid <= 1'b0;
+	end
+
+	// External bus tracks its owner
+/*
+	always @(*)
+	if (f_past_valid)
+	begin
+		if (f_arb_cpu_owner)
+		begin
+			assert(fdma_outstanding == 0);
+			if (o_wb_cyc)
+				assert(fext_outstanding == fgbl_outstanding);
+		end else begin
+			assert(fgbl_outstanding == 0);
+			if (o_wb_cyc)
+				assert(fext_outstanding == fdma_outstanding);
+		end
+	end
+*/
+
+	// What the stage-1 request's device presents right now,
+	always @(*)
+	if (!f_sys1_addr[7]) 
+	casez(f_sys1_addr[4:0])
+	5'h00: f_exp_dev = pic_data;
+	5'h01: f_exp_dev = wdt_data;
+	5'h02: f_exp_dev = wdbus_data;
+	5'h03: f_exp_dev = ctri_data;
+	5'h04: f_exp_dev = tma_data;
+	5'h05: f_exp_dev = tmb_data;
+	5'h06: f_exp_dev = tmc_data;
+	5'h07: f_exp_dev = jif_data;
+	5'h08: f_exp_dev = mtc_data;
+	5'h09: f_exp_dev = moc_data;
+	5'h0a: f_exp_dev = mpc_data;
+	5'h0b: f_exp_dev = mic_data;
+	5'h0c: f_exp_dev = utc_data;
+	5'h0d: f_exp_dev = uoc_data;
+	5'h0e: f_exp_dev = upc_data;
+	5'h0f: f_exp_dev = uic_data;
+	5'h1?: f_exp_dev = dmac_data;	// 5'h10-5'h1f
+	endcase else
+		f_exp_dev = mmus_data;
+
+	// The sys-bus contract proper
+	reg	f_dbg_ack;
+	always @(posedge i_clk)
+	if (i_reset || !dbg_cyc)
+		f_dbg_ack <= 1'b0;
+	else
+		f_dbg_ack <= pre_dbg_ack;
+
+	always @(*)
+	if (f_past_valid)
+	begin
+		assert(!pre_cpu_ack || !pre_dbg_ack);
+		assert(!sys_ack_cpu || !f_dbg_ack);
+
+		// A request accepted 2 clocks ago is ack'd now,
+		// if it is addressed a real (mapped, ackable) device
+		assert((sys_ack_cpu || f_dbg_ack) == f_sys2_valid);
+
+		// Any read response carries the data of the device
+		if (f_sys2_valid && !f_sys2_we)
+			assert(sys_idata == f_sys2_data);
+	end
+
+	// Tie the CPU's outstanding count
+	always @(*)
+	if (f_past_valid && cpu_lcl_cyc)
+		assert(flcl_outstanding == (f_sys1_valid ? 1:0)
+			+ (f_sys2_valid ? 1:0));
+
+	// Tie the RTL's own request trackers (last_sys_stb*, sys_ack_cpu)
+	always @(*)
+	if (f_past_valid)
+	begin
+		assert(last_sys_stb == f_sys1_valid);
+		assert((sys_ack_cpu || f_dbg_ack) == f_sys2_valid);
+	end
+	// }}}
+
+	// Tie the (external) debug bus outstanding count to the shadow
+	always @(*)
+	if (f_past_valid && i_dbg_cyc)
+		assert(fdbg_outstanding == (o_dbg_ack ? 1:0)+(pre_dbg_ack ? 1:0)
+			+ ((DELAY_DBG_BUS && dbg_ack) ? 1:0)
+			+ ((OPT_DISTRIBUTED_REGS && cpu_read_ack) ? 1:0));
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Cover checks: make sure the assumptions above still allow traffic
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	always @(*)
+	if (f_past_valid)
+	begin
+		// Completed debug reads, one per address space
+		cover(dbg_ack && f_dbg2_valid && !f_dbg2_we
+					&& f_dbg2_space == DBG_ADDR_CTRL);
+		cover(dbg_ack && f_dbg2_valid && !f_dbg2_we
+					&& f_dbg2_space == DBG_ADDR_CPU);
+		cover(dbg_ack && f_dbg2_valid && !f_dbg2_we
+					&& f_dbg2_space == DBG_ADDR_SYS);
+
+		// A completed CPU (local bus) read
+		cover(sys_ack && f_sys2_valid && !f_sys2_we);
+
+		// Back-to-back sys-bus requests from different masters
+		cover(f_sys1_valid && f_sys2_valid);
+
+		// External bus activity, from either master
+		// cover(o_wb_cyc && i_wb_ack && f_arb_cpu_owner);
+		// cover(o_wb_cyc && i_wb_ack && !f_arb_cpu_owner);
+	end
+	// }}}
+	////////////////////////////////////////////////////////////////////////
+	//
+	// Careless Assumptions
+	// {{{
+	////////////////////////////////////////////////////////////////////////
+	//
+	//
+
+	always @(*)
+	if (f_past_valid)
+		assert(!pre_dbg_ack || !cpu_read_ack);
+
+	(* anyconst *) reg	fnvr_cpu, fnvr_dbg;
+
+	always @(*)
+	if (fnvr_cpu && !i_reset && dbg_stb && !dbg_we)
+		assume(dbg_addr[6:5] != DBG_ADDR_CPU);
+
+	always @(*)
+	if (fnvr_dbg && !i_reset && dbg_stb)
+		assume(dbg_addr[6:5] == DBG_ADDR_SYS);
+
+	always @(*)
+	if (fnvr_cpu && !i_reset)
+		assert(!cpu_read_ack);
+
+always @(*)
+assume(!cpu_lcl_cyc);
+
+always @(*)
+if (i_dbg_stb)
+assume(!i_dbg_we);
+	// }}}
 `endif
 // }}}
 endmodule

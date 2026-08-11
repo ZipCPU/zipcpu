@@ -1,0 +1,38 @@
+[tasks]
+prf
+cvr
+
+[options]
+prf: mode prove
+cvr: mode cover
+prf: depth 5
+cvr: depth 20
+
+[engines]
+smtbmc
+
+[script]
+read -formal zipsystem.v
+read -formal fwb_single.v
+read -formal fdebug.v
+read -formal fwb_slave.v
+read -formal fwb_master.v
+read -formal wbpriarbiter.v
+read -formal wbwatchdog.v
+# busdelay carries its own proof; run undelayed here
+--pycode-begin--
+cmd = "hierarchy -top zipsystem"
+cmd += " -chparam DELAY_DBG_BUS 0"
+cmd += " -chparam OPT_DMA 0"
+output(cmd)
+--pycode-end--
+prep -top zipsystem
+
+[files]
+../../rtl/zipsystem.v
+../../rtl/ex/fwb_slave.v
+../../rtl/ex/fwb_master.v
+../../rtl/ex/wbpriarbiter.v
+../../rtl/peripherals/wbwatchdog.v
+fdebug.v
+fwb_single.v
