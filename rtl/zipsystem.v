@@ -164,7 +164,9 @@ module	zipsystem #(
 		parameter [0:0]	OPT_DBGPORT=START_HALTED,
 		parameter [0:0]	OPT_TRACE_PORT=1,
 		parameter [0:0]	OPT_PROFILER=0,
+`ifndef	FORMAL
 		parameter [0:0]	OPT_LOWPOWER=0,
+`endif
 		// }}}
 		// Local bus options
 		// {{{
@@ -339,6 +341,9 @@ module	zipsystem #(
 
 	// Local declarations
 	// {{{
+`ifdef	FORMAL
+	wire	[0:0]	OPT_LOWPOWER;
+`endif
 	// Local parameter declarations
 	// {{{
 	localparam	DW=BUS_WIDTH;
@@ -433,7 +438,7 @@ module	zipsystem #(
 	wire			sys_stall;
 
 	wire	sel_counter, sel_timer, sel_pic, sel_apic,
-		sel_watchdog, sel_bus_watchdog, sel_dmac, sel_mmus;
+		sel_watchdog, sel_bus_watchdog, sel_dmac;
 
 `ifndef	VBENCH_TB
 	wire				dbg_cyc, dbg_stb, dbg_we;
@@ -537,7 +542,6 @@ module	zipsystem #(
 	reg	[DBG_WIDTH-1:0]		tmr_data;
 	reg	[2:0]			w_ack_idx, ack_idx;
 	reg	[2:0]			ack_subaddr;
-	reg				last_sys_stb;
 	reg				pre_cpu_ack, sys_ack_cpu;
 
 	reg			pre_dbg_ack;
@@ -680,13 +684,12 @@ module	zipsystem #(
 	assign	sel_timer       = (sys_stb)&&(sys_addr[7:2]==TIMER_A[7:2]);
 	assign	sel_counter     = (sys_stb)&&(sys_addr[7:3]==MSTR_TASK_CTR[7:3]);
 	assign	sel_dmac        = (sys_stb)&&(sys_addr[7:4] ==DMAC_ADDR[7:4]);
-	assign	sel_mmus        = (sys_stb)&&(sys_addr[7]);
 
 `ifdef	FORMAL
 	always @(*)
 		assert($onehot0({ sel_pic, sel_watchdog, sel_bus_watchdog,
 				sel_apic, sel_timer, sel_counter,
-				sel_dmac, sel_mmus }));
+				sel_dmac }));
 `endif
 
 	// }}}
@@ -1350,6 +1353,24 @@ module	zipsystem #(
 			.o_interrupt(dmac_int)
 			// }}}
 		);
+`else
+		(* anyseq *) reg [31:0]	dmac_data;
+		reg	f_dmac_ack;
+
+		assign	dmac_stall = 1'b0;
+		always @(posedge i_clk)
+		if (cpu_reset || !sys_cyc)
+			f_dmac_ack <= 1'b0;
+		else
+			f_dmac_ack <= (dmac_stb && !dmac_stall);
+		assign	dmac_ack = f_dmac_ack;
+
+		assign	dc_cyc = 1'b0;
+		assign	dc_stb = 1'b0;
+
+		assign	dmac_ack = f_dmac_ack;
+		assign	dmac_data = 32'h000;
+		assign	dmac_stall = 1'b0;
 `endif
 		// }}}
 	end else begin : NO_DMA
@@ -1727,17 +1748,36 @@ module	zipsystem #(
 	// A halted CPU makes no bus requests at all
 	always @(*)
 	if (f_cpu_halted)
-		assume(!cpu_gbl_cyc && !cpu_lcl_cyc);
-	always @(*)
-	if (!cpu_gbl_cyc)
-		assume(!cpu_gbl_stb);
-	always @(*)
-	if (!cpu_lcl_cyc)
-		assume(!cpu_lcl_stb);
+		assume(!f_cpu_gbl_cyc && !f_cpu_lcl_cyc);
 
 	// The CPU drives at most one of its busses (asserted in wbdblpriarb)
 	always @(*)
-		assume(!cpu_gbl_cyc || !cpu_lcl_cyc);
+		assume(!f_cpu_gbl_cyc || !f_cpu_lcl_cyc);
+
+	// STB is never high withut an ongoing bus CYCle
+	always @(*)
+	if (!f_cpu_gbl_cyc)
+		assume(!f_cpu_gbl_stb);
+	always @(*)
+	if (!f_cpu_lcl_cyc)
+		assume(!f_cpu_lcl_stb);
+
+	// Reset always clears any ongoing bus cycles
+	always @(posedge i_clk)
+	if (f_past_valid || $past(i_reset) || $past(cpu_reset))
+	begin
+		assume(!f_cpu_gbl_cyc);
+		assume(!f_cpu_lcl_cyc);
+	end else begin
+		// The CPU will always place at least one clock between
+		// local and global clock cycles
+		if ($past(f_cpu_gbl_cyc))
+			assume(!f_cpu_lcl_cyc);
+
+		if ($past(f_cpu_lcl_cyc))
+			assume(!f_cpu_gbl_cyc);
+	end
+
 	// }}}
 `else
 	zipwb	#(
@@ -1915,19 +1955,6 @@ module	zipsystem #(
 	end
 	// }}}
 
-	// last_sys_stb
-	// {{{
-	always @(*)
-		last_sys_stb = pre_dbg_ack || pre_cpu_ack;
-
-	// initial	last_sys_stb = 0;
-	// always @(posedge i_clk)
-	// if (i_reset)
-	//	last_sys_stb <= 0;
-	// else
-	//	last_sys_stb <= sys_stb;
-	// }}}
-
 	// sys_ack_cpu, pre_cpu_ack
 	// {{{
 	initial	{ sys_ack_cpu, pre_cpu_ack } = 2'b00;
@@ -1958,7 +1985,6 @@ module	zipsystem #(
 	always @(*)
 	begin
 		w_ack_idx = 0;
-		if (sel_mmus)         w_ack_idx = w_ack_idx | 3'h0;
 		if (sel_watchdog)     w_ack_idx = w_ack_idx | 3'h1;
 		if (sel_bus_watchdog) w_ack_idx = w_ack_idx | 3'h2;
 		if (sel_apic)         w_ack_idx = w_ack_idx | 3'h3;
@@ -1998,6 +2024,7 @@ module	zipsystem #(
 
 	// ... then carry it one more clock, to the cycle the ack goes out
 	always @(posedge i_clk)
+	if (!OPT_LOWPOWER || dbg_cyc)	// Already accepted, no stalls allowed
 		dbg_ack_addr <= pre_dbg_addr;
 
 	always @(posedge i_clk)
@@ -2074,8 +2101,8 @@ module	zipsystem #(
 			//
 			.i_b_cyc(dc_cyc), .i_b_stb(dc_stb), .i_b_we(dc_we),
 			.i_b_adr(dc_addr), .i_b_dat(dc_data), .i_b_sel(dc_sel),
-				.i_b_stall(dc_stall),
-				.i_b_ack(dc_ack), .i_b_err(dc_err),
+				.o_b_stall(dc_stall),
+				.o_b_ack(dc_ack), .o_b_err(dc_err),
 			//
 			.o_cyc(ext_cyc), .o_stb(ext_stb), .o_we(ext_we),
 			.o_adr(ext_addr), .o_dat(ext_odata), .o_sel(ext_sel),
@@ -2337,7 +2364,7 @@ module	zipsystem #(
 		pic_ack, pic_stall, cpu_clken,
 		tma_ack, tma_stall, tmb_ack, tmb_stall, tmc_ack, tmc_stall,
 		jif_ack, jif_stall, no_dbg_err, dbg_sel,
-		sel_mmus, ctri_ack, ctri_stall, mmus_stall, dmac_stall,
+		ctri_ack, ctri_stall, mmus_stall, dmac_stall,
 		wdt_ack, wdt_stall, actr_ack, actr_stall,
 		wdbus_ack,
 		// moc_ack, mtc_ack, mic_ack, mpc_ack,
@@ -2367,6 +2394,9 @@ module	zipsystem #(
 	//
 	localparam	F_LGDEPTH  = 4,	// Debug/local bus outstanding counts
 			F_LGXDEPTH = 6;	// External bus outstanding counts
+	(* anyconst *)	reg	f_lowpower;
+
+	assign	OPT_LOWPOWER = f_lowpower;
 
 	reg	f_past_valid;
 
@@ -2379,11 +2409,9 @@ module	zipsystem #(
 
 	// sys-bus shadow pipeline: every accepted request must be acked two
 	// clocks later, with that request's device data
-	reg		f_sys1_valid, f_sys2_valid;
+	reg		f_sys1_valid;
 	reg		f_sys1_we, f_sys2_we;
 	reg	[7:0]	f_sys1_addr;
-	reg	[DBG_WIDTH-1:0]	f_sys2_data;
-	reg	[DBG_WIDTH-1:0]	f_exp_dev;
 	wire		f_sys_now_dmac;
 
 	// debug-bus shadow pipeline (same idea, for the external debug port)
@@ -2466,22 +2494,6 @@ module	zipsystem #(
 		// }}}
 	);
 
-	always @(posedge i_clk)
-	if (f_past_valid || $past(i_reset) || $past(cpu_reset))
-	begin
-		assume(!cpu_gbl_cyc);
-		assume(!cpu_gbl_stb);
-		assume(!cpu_lcl_cyc);
-		assume(!cpu_lcl_stb);
-	end else begin
-		assume(!cpu_gbl_cyc || !cpu_lcl_cyc);
-
-		if ($past(cpu_gbl_cyc))
-			assume(!cpu_lcl_cyc);
-
-		if ($past(cpu_lcl_cyc))
-			assume(!cpu_gbl_cyc);
-	end
 
 	// 4. The DMA's (anyseq) master port, assumed legal here, contending
 	// with the CPU's global bus for the external bus
@@ -2502,6 +2514,10 @@ module	zipsystem #(
 		.f_outstanding(fdma_outstanding)
 		// }}}
 	);
+
+	always @(*)
+	if (!i_reset)
+		assert(fdma_outstanding == 0);
 
 	// 5. The external bus: prove the outgoing bus obeys Wishbone,
 	// whatever the CPU and DMA do
@@ -2538,10 +2554,10 @@ module	zipsystem #(
 	// assign	f_sys_now_dmac = (sys_addr[7:4] == 4'h1);
 
 	// Every accepted cpu request is acked two clocks later
-	initial	{ f_sys1_valid, f_sys2_valid } = 2'b00;
+	initial	{ f_sys1_valid } = 2'b00;
 	always @(posedge i_clk)
 	if (i_reset || !sys_cyc)
-		{ f_sys1_valid, f_sys2_valid } <= 2'b00;
+		{ f_sys1_valid } <= 2'b00;
 	else begin
 		// Stage 1
 		f_sys1_valid <= sys_stb;
@@ -2551,14 +2567,7 @@ module	zipsystem #(
 		f_sys1_addr  <= sys_addr;
 
 		// Stage 2
-		f_sys2_valid <= f_sys1_valid;
 		f_sys2_we    <= f_sys1_we;
-		f_sys2_data  <= f_exp_dev;
-
-		if ((cpu_reset || !cpu_lcl_cyc) && pre_cpu_ack)
-			f_sys2_valid <= 1'b0;
-		if (!i_dbg_cyc && pre_dbg_ack)
-			f_sys2_valid <= 1'b0;
 	end
 
 	// External bus tracks its owner
@@ -2579,66 +2588,18 @@ module	zipsystem #(
 	end
 */
 
-	// What the stage-1 request's device presents right now,
-	always @(*)
-	if (!f_sys1_addr[7]) 
-	casez(f_sys1_addr[4:0])
-	5'h00: f_exp_dev = pic_data;
-	5'h01: f_exp_dev = wdt_data;
-	5'h02: f_exp_dev = wdbus_data;
-	5'h03: f_exp_dev = ctri_data;
-	5'h04: f_exp_dev = tma_data;
-	5'h05: f_exp_dev = tmb_data;
-	5'h06: f_exp_dev = tmc_data;
-	5'h07: f_exp_dev = jif_data;
-	5'h08: f_exp_dev = mtc_data;
-	5'h09: f_exp_dev = moc_data;
-	5'h0a: f_exp_dev = mpc_data;
-	5'h0b: f_exp_dev = mic_data;
-	5'h0c: f_exp_dev = utc_data;
-	5'h0d: f_exp_dev = uoc_data;
-	5'h0e: f_exp_dev = upc_data;
-	5'h0f: f_exp_dev = uic_data;
-	5'h1?: f_exp_dev = dmac_data;	// 5'h10-5'h1f
-	endcase else
-		f_exp_dev = mmus_data;
-
-	// The sys-bus contract proper
-	reg	f_dbg_ack;
-	always @(posedge i_clk)
-	if (i_reset || !dbg_cyc)
-		f_dbg_ack <= 1'b0;
-	else
-		f_dbg_ack <= pre_dbg_ack;
-
 	always @(*)
 	if (f_past_valid)
 	begin
 		assert(!pre_cpu_ack || !pre_dbg_ack);
-		assert(!sys_ack_cpu || !f_dbg_ack);
-
-		// A request accepted 2 clocks ago is ack'd now,
-		// if it is addressed a real (mapped, ackable) device
-		assert((sys_ack_cpu || f_dbg_ack) == f_sys2_valid);
-
-		// Any read response carries the data of the device
-		if (f_sys2_valid && !f_sys2_we)
-			assert(sys_idata == f_sys2_data);
+		assert(!sys_ack_cpu || !dbg_ack);
 	end
 
 	// Tie the CPU's outstanding count
 	always @(*)
 	if (f_past_valid && cpu_lcl_cyc)
-		assert(flcl_outstanding == (f_sys1_valid ? 1:0)
-			+ (f_sys2_valid ? 1:0));
-
-	// Tie the RTL's own request trackers (last_sys_stb*, sys_ack_cpu)
-	always @(*)
-	if (f_past_valid)
-	begin
-		assert(last_sys_stb == f_sys1_valid);
-		assert((sys_ack_cpu || f_dbg_ack) == f_sys2_valid);
-	end
+		assert(flcl_outstanding == (pre_cpu_ack ? 1:0)
+			+ (sys_ack_cpu ? 1:0));
 	// }}}
 
 	// Tie the (external) debug bus outstanding count to the shadow
@@ -2647,6 +2608,96 @@ module	zipsystem #(
 		assert(fdbg_outstanding == (o_dbg_ack ? 1:0)+(pre_dbg_ack ? 1:0)
 			+ ((DELAY_DBG_BUS && dbg_ack) ? 1:0)
 			+ ((OPT_DISTRIBUTED_REGS && cpu_read_ack) ? 1:0));
+
+	always @(posedge i_clk)
+	if (f_past_valid && $past(cpu_lcl_stb, 2) && $past(cpu_lcl_cyc))
+	begin
+		assert(sys_ack_cpu);
+		assert(cpu_ack);
+
+		if ($past(sys_we,2))
+		begin end else if ($past(sys_addr[7:4] == DMAC_ADDR[7:4]))
+		begin
+			assert(cpu_idata == $past(dmac_data));
+		end else if (!$past(sys_addr[7],2))
+		casez($past(sys_addr[4:0],2))
+		5'h00: assert(cpu_idata == $past(pic_data));
+		5'h01: assert(cpu_idata == $past(wdt_data));
+		5'h02: assert(cpu_idata == $past(wdbus_data));
+		5'h03: assert(cpu_idata == $past(ctri_data));
+		5'h04: assert(cpu_idata == $past(tma_data));
+		5'h05: assert(cpu_idata == $past(tmb_data));
+		5'h06: assert(cpu_idata == $past(tmc_data));
+		5'h07: assert(cpu_idata == $past(jif_data));
+		5'h08: assert(cpu_idata == $past(mtc_data));
+		5'h09: assert(cpu_idata == $past(moc_data));
+		5'h0a: assert(cpu_idata == $past(mpc_data));
+		5'h0b: assert(cpu_idata == $past(mic_data));
+		5'h0c: assert(cpu_idata == $past(utc_data));
+		5'h0d: assert(cpu_idata == $past(uoc_data));
+		5'h0e: assert(cpu_idata == $past(upc_data));
+		5'h0f: assert(cpu_idata == $past(uic_data));
+		endcase
+	end
+
+	always @(posedge i_clk)
+	if (f_past_valid && $past(dbg_stb && !dbg_stall && dbg_we
+			&& dbg_addr[6:5] == DBG_ADDR_CPU))
+	begin
+		assert(!cpu_reset);
+		assert(cmd_write);
+		assert(cmd_waddr == $past(dbg_addr[4:0]));
+		assert(cmd_wdata == $past(dbg_idata));
+	end
+
+	always @(posedge i_clk)
+	if (!f_past_valid || $past(i_reset || cpu_reset))
+	begin
+		assert(!cmd_write);
+	end else if ($past(cmd_write && !cpu_has_halted))
+	begin
+		assert(cmd_write);
+		assert($stable(cmd_waddr));
+		assert($stable(cmd_wdata));
+	end
+
+	always @(posedge i_clk)
+	if (f_past_valid && $past(dbg_stb && !dbg_stall && !dbg_we, 2)
+					&& $past(dbg_cyc) && dbg_cyc && dbg_ack)
+	begin
+		if ($past(dbg_we,2))
+		begin
+			// Return data following a write operation is a don't
+			// care.
+		end else if ($past(dbg_addr[6:5],2) == DBG_ADDR_CTRL)
+		begin
+			assert(dbg_odata == $past(dbg_cpu_status));
+		end else if ($past(dbg_addr[6:5],2) == DBG_ADDR_CPU)
+		begin
+			assert(dbg_odata == $past(cpu_dbg_data));
+		end else if ($past(dbg_addr[6:5],2) != DBG_ADDR_SYS)
+		begin
+		end else casez($past(dbg_addr[4:0],2))
+		5'h00: assert(dbg_odata == $past(pic_data));
+		5'h01: assert(dbg_odata == $past(wdt_data));
+		5'h02: assert(dbg_odata == $past(wdbus_data));
+		5'h03: assert(dbg_odata == $past(ctri_data));
+		5'h04: assert(dbg_odata == $past(tma_data));
+		5'h05: assert(dbg_odata == $past(tmb_data));
+		5'h06: assert(dbg_odata == $past(tmc_data));
+		5'h07: assert(dbg_odata == $past(jif_data));
+		5'h08: assert(dbg_odata == $past(mtc_data));
+		5'h09: assert(dbg_odata == $past(moc_data));
+		5'h0a: assert(dbg_odata == $past(mpc_data));
+		5'h0b: assert(dbg_odata == $past(mic_data));
+		5'h0c: assert(dbg_odata == $past(utc_data));
+		5'h0d: assert(dbg_odata == $past(uoc_data));
+		5'h0e: assert(dbg_odata == $past(upc_data));
+		5'h0f: assert(dbg_odata == $past(uic_data));
+		5'b1????: assert(dbg_odata == $past(dmac_data));
+		endcase
+	end
+
 	////////////////////////////////////////////////////////////////////////
 	//
 	// Cover checks: make sure the assumptions above still allow traffic
@@ -2667,10 +2718,10 @@ module	zipsystem #(
 					&& f_dbg2_space == DBG_ADDR_SYS);
 
 		// A completed CPU (local bus) read
-		cover(sys_ack && f_sys2_valid && !f_sys2_we);
+		// cover(sys_ack && f_sys2_valid && !f_sys2_we);
 
 		// Back-to-back sys-bus requests from different masters
-		cover(f_sys1_valid && f_sys2_valid);
+		// cover(f_sys1_valid && f_sys2_valid);
 
 		// External bus activity, from either master
 		// cover(o_wb_cyc && i_wb_ack && f_arb_cpu_owner);

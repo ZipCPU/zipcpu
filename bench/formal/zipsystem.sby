@@ -23,7 +23,7 @@ read -formal wbwatchdog.v
 --pycode-begin--
 cmd = "hierarchy -top zipsystem"
 cmd += " -chparam DELAY_DBG_BUS 0"
-cmd += " -chparam OPT_DMA 0"
+# cmd += " -chparam OPT_DMA 0"
 output(cmd)
 --pycode-end--
 prep -top zipsystem
