@@ -599,10 +599,16 @@ module	zipaxil #(
 						&& dbg_cmd_data[RESET_BIT];
 	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
 						&& !dbg_cmd_data[HALT_BIT];
-	assign	halt_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
-						&& dbg_cmd_data[HALT_BIT];
+	assign	halt_request = dbg_cmd_write && (
+				(dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT]
+				&&(!dbg_cmd_strb[STEP_BIT/8]
+						|| !dbg_cmd_data[STEP_BIT]))
+			||(dbg_cmd_strb[STEP_BIT/8] && dbg_cmd_data[STEP_BIT]
+				&& !cpu_has_halted));
 	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
-						&& dbg_cmd_data[STEP_BIT];
+						&& dbg_cmd_data[STEP_BIT]
+						&& cpu_has_halted;
 	assign	clear_cache_request = dbg_cmd_write
 					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
 					&& dbg_cmd_data[CLEAR_CACHE_BIT];
@@ -699,7 +705,7 @@ module	zipaxil #(
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
-		if (cmd_step && !step_request)
+		if (cmd_step && !step_request && !cpu_has_halted)
 			cmd_halt <= 1'b1;
 
 		// 5. Halt following any clear cache
@@ -732,19 +738,38 @@ module	zipaxil #(
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request || release_request
+			|| reset_request
 			|| clear_cache_request || cmd_clear_cache
 			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
 	else if (!dbg_write_valid && cpu_has_halted && step_request)
 		cmd_step <= 1'b1;
-	else if (cpu_has_halted)
+	else if (!cpu_has_halted)
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt
 	always @(*)
 	if (S_AXI_ARESETN && cmd_step)
 		assert(!cmd_halt);
+
+	always @(posedge S_AXI_ACLK)
+	if (!S_AXI_ARESETN || !$past(S_AXI_ARESETN) || $past(reset_request)
+			|| $past(i_cpu_reset)
+			|| $past(cmd_reset) || $past(cpu_break)
+			|| $past(cmd_clear_cache) || $past(clear_cache_request))
+	begin
+	end else if ($past(dbg_cpu_write))
+	begin
+		// Halt on any register write
+		assert(cmd_halt);
+		assert(!cmd_step);
+	end else if ($past(step_request))
+	begin
+		assert(!cmd_halt);
+		assert(cmd_step);
+	end else if (!$past(dbg_write_valid) && !$past(cpu_has_halted)
+			&& $past(cmd_step))
+		assert(!cmd_step && cmd_halt);
 `endif
 	// }}}
 
