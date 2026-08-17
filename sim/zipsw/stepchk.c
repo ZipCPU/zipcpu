@@ -111,39 +111,27 @@ int	main(int argc, char **argv) {
 			d = b-a;
 			if (d != 0 && d != 257) {
 				failed = 1;
-				txstr("FAIL #1\r\nA = "); txhex(a),
-				txstr("\r\nB = "); txhex(b);
-				txstr("\r\nC = "); txhex(c);
-				txstr("\r\nD = "); txhex(d);
-				txstr("\r\n");
+				txstr("FAIL #1:\n A =   "); txhex(a),
+				txstr("\n B =   "); txhex(b);
+				txstr("\n C =   "); txhex(c);
+				txstr("\n D =   "); txhex(d);
+				txstr("\n");
 				break;
 			}
 
+			// Given four step commands, the CPU must only step
+			// zero, one, two, three, or four times, never more.
 			d = c-b;
-			if (d != 0 && d != 257 && d != 514
-						&& d != 771 && d != 1028) {
+			if (d != 0 && d != 257 && d != 257*2
+						&& d != 257*3 && d != 257*4) {
 				failed = 2;
-				txstr("FAIL #2\r\nA = "); txhex(a),
-				txstr("\r\nB = "); txhex(b);
-				txstr("\r\nC = "); txhex(c);
-				txstr("\r\nD = "); txhex(d);
-				txstr("\r\n");
+				txstr("FAIL #2\n A =   "); txhex(a),
+				txstr("\n B =   "); txhex(b);
+				txstr("\n C =   "); txhex(c);
+				txstr("\n D =   "); txhex(d);
+				txstr("\n");
 				break;
 			}
-
-			// Must always step by some amount
-			/*
-			if (a == d) {
-				failed = 3;
-				txstr("FAIL #3\r\nA = "); txhex(a),
-				txstr("\r\nB = "); txhex(b);
-				txstr("\r\nC = "); txhex(c);
-				txstr("\r\nD = "); txhex(d);
-				txstr("\r\n");
-
-				break;
-			}
-			*/
 		}
 		// }}}
 		// }}}

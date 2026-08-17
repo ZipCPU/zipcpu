@@ -270,8 +270,8 @@ module	zipbones #(
 	wire			reset_request, release_request, halt_request,
 				step_request, clear_cache_request;
 	reg			cmd_reset, cmd_halt, cmd_step, cmd_clear_cache,
-				cmd_write, cmd_read;
-	reg	[2:0]		cmd_read_ack;
+				cmd_write;
+	reg			cpu_read_ack;
 
 	reg	[4:0]		cmd_waddr;
 	reg	[DBG_WIDTH-1:0]	cmd_wdata;
@@ -287,7 +287,9 @@ module	zipbones #(
 	wire	[DBG_WIDTH-1:0]	dbg_cmd_data;
 	wire [DBG_WIDTH/8-1:0]	dbg_cmd_strb;
 	reg			dbg_pre_ack;
+	reg			pre_dbg_addr;
 	reg	[DBG_WIDTH-1:0]	dbg_cpu_status;
+	reg	[DBG_WIDTH-1:0]	dbg_r_odata;
 	// }}}
 	////////////////////////////////////////////////////////////////////////
 	//
@@ -460,13 +462,13 @@ module	zipbones #(
 	if (i_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request
+			|| reset_request || release_request
 			|| clear_cache_request || cmd_clear_cache
 			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
 	else if (!cmd_write && cpu_has_halted && step_request)
 		cmd_step <= 1'b1;
-	else // if (cpu_dbg_stall)
+	else if (cpu_has_halted)
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt
@@ -533,25 +535,16 @@ module	zipbones #(
 		cmd_write <= dbg_cpu_write;
 	// }}}
 
-	// cmd_read
+	// cpu_read_ack
 	// {{{
-	initial	cmd_read = 0;
+	initial	cpu_read_ack = 0;
 	always @(posedge i_clk)
 	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-		cmd_read <= 1'b0;
+		cpu_read_ack <= 0;
 	else if (dbg_cpu_read)
-		cmd_read <= 1'b1;
-	else if (cmd_read_ack == 1)
-		cmd_read <= 1'b0;
-
-	initial	cmd_read_ack = 0;
-	always @(posedge i_clk)
-	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-		cmd_read_ack <= 0;
-	else if (dbg_cpu_read)
-		cmd_read_ack <= 2 + (OPT_DISTRIBUTED_REGS ? 0:1);
-	else if (cmd_read_ack > 0)
-		cmd_read_ack <= cmd_read_ack - 1;
+		cpu_read_ack <= 1;
+	else // if (cpu_read_ack != 0)
+		cpu_read_ack <= 0;
 	// }}}
 
 	// cmd_waddr, cmd_wdata
@@ -571,7 +564,7 @@ module	zipbones #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	cpu_clken = cmd_write || cmd_read || dbg_cyc;
+	assign	cpu_clken = cmd_write || cpu_read_ack || dbg_cyc;
 `ifdef	FORMAL
 	// {{{
 	(* anyseq *)	reg	f_cpu_halted, f_cpu_data, f_cpu_stall,
@@ -681,9 +674,9 @@ module	zipbones #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-
-	// always @(posedge i_clk)
-	//	dbg_pre_addr <= dbg_addr[5];
+	always @(posedge i_clk)
+	if (dbg_stb && !dbg_stall)
+		pre_dbg_addr <= dbg_addr[5];
 
 	always @(posedge i_clk)
 		dbg_cpu_status <= cpu_status;
@@ -700,19 +693,21 @@ module	zipbones #(
 	if (i_reset || !i_dbg_cyc)
 		dbg_ack <= 1'b0;
 	else
-		dbg_ack <= dbg_pre_ack || (cmd_read_ack == 1);
+		dbg_ack <= dbg_pre_ack || cpu_read_ack;
 
 	always @(posedge i_clk)
-	if (!OPT_LOWPOWER || dbg_pre_ack || cmd_read)
-	begin
-		if (cmd_read)
-			dbg_odata <= cpu_dbg_data;
-		else
-			dbg_odata <= dbg_cpu_status;
-	end
+	if (!OPT_LOWPOWER || dbg_pre_ack || cpu_read_ack)
+	casez(pre_dbg_addr)
+	DBG_ADDR_CPU:	dbg_r_odata <= cpu_dbg_data;
+	default:	dbg_r_odata <= dbg_cpu_status;
+	endcase
 
-	assign	dbg_stall = cmd_read || (cmd_write && cpu_dbg_stall
-			&& dbg_addr[5] == DBG_ADDR_CPU);
+	always @(*)
+		dbg_odata = dbg_r_odata;
+
+	assign	dbg_stall = cpu_read_ack
+			|| (cmd_write && cpu_dbg_stall
+				&& dbg_addr[5] == DBG_ADDR_CPU);
 	// }}}
 
 	assign	o_ext_int = (cmd_halt) && (!i_wb_stall);
@@ -938,7 +933,7 @@ module	zipbones #(
 	always @(*)
 	if (i_dbg_cyc)
 	begin
-		if (cmd_read_ack > 0)
+		if (cpu_read_ack)
 		begin
 			assert(!dbg_pre_ack);
 			assert(fwb_outstanding == 1 + (o_dbg_ack ? 1:0));

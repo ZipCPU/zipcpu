@@ -471,6 +471,7 @@ module	zipaxi #(
 					? 5'h0 : arskd_addr[4:0];
 
 	// dbg_read_valid
+	// {{{
 	reg	[1:0]	r_blkram_stall;
 
 	initial	r_blkram_stall = 0;
@@ -481,7 +482,7 @@ module	zipaxi #(
 		r_blkram_stall <= 2 + (OPT_DISTRIBUTED_REGS ? 0:1);
 	else if (r_blkram_stall > 0)
 		r_blkram_stall <= r_blkram_stall - 1;
-	// {{{
+
 	initial	dbg_read_valid = 0;
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || !OPT_DBGPORT)
@@ -685,13 +686,13 @@ module	zipaxi #(
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request
+			|| reset_request || release_request
 			|| clear_cache_request || cmd_clear_cache
 			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
 	else if (!dbg_write_valid && cpu_has_halted && step_request)
 		cmd_step <= 1'b1;
-	else // if (cpu_dbg_stall)
+	else if (cpu_has_halted)
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt

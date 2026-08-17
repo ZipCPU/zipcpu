@@ -226,13 +226,15 @@ axlstepc64smp   AXLPIPE stepchk64.hex axlstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=
 ## WBCACHE
 wbstepc         WBCACHE stepchk.hex   wbzstp-out.txt      OPT_SMP=1 # DUMP_TO_VCD=1 VCD_FILE="wbstepc.vcd"
 wbstepc64       WBCACHE stepchk64.hex wbzstp64-out.txt	  OPT_SMP=1 BUS_WIDTH=64
-wbstepcsmp      WBCACHE stepchk.hex   wbzstpc-out.txt     OPT_SMP=2 # DUMP_TO_VCD=1 VCD_FILE="wbstepcsmp.vcd"
+wbstepcsmpn     WBCACHE stepchk.hex   wbzstpcn-out.txt    OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="wbstepcsmp.vcd"
+wbstepcsmpd     WBCACHE stepchk.hex   wbzstpcd-out.txt    OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="wbstepcsmp.vcd"
 wbstepc64smp    WBCACHE stepchk64.hex wbzstp64c-out.txt	  OPT_SMP=2 BUS_WIDTH=64
 
 ## WBBLPWR
 wbblpstepc      WBBLPWR stepchk.hex   wbblpstp-out.txt    OPT_SMP=1 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepc.vcd"
 wbblpstepc64    WBBLPWR  stepchk64.hex wbblpstp64-out.txt  OPT_SMP=1 BUS_WIDTH=64
-wbblpstepcsmp   WBBLPWR stepchk.hex   wbblpstpc-out.txt   OPT_SMP=2 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmp.vcd"
+wbblpstepcsmpn  WBBLPWR stepchk.hex   wbblpstpcn-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmpn.vcd"
+wbblpstepcsmpd  WBBLPWR stepchk.hex   wbblpstpcd-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmpd.vcd"
 wbblpstepc64smp WBBLPWR stepchk64.hex  wbblpstp64c-out.txt OPT_SMP=2 BUS_WIDTH=64
 
 ## AXCACHE

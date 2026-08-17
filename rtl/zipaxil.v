@@ -311,7 +311,7 @@ module	zipaxil #(
 	// Debug bit allocations
 	// {{{
 	//	DBGCTRL
-	//		 5 DBG Catch -- Catch exceptions/fautls w/ debugger
+	//		 5 DBG Catch -- Catch exceptions/faults w/ debugger
 	//		 4 Clear cache
 	//		 3 RESET_FLAG
 	//		 2 STEP	(W=1 steps, and returns to halted)
@@ -732,13 +732,13 @@ module	zipaxil #(
 	if (!S_AXI_ARESETN || i_cpu_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request
+			|| reset_request || release_request
 			|| clear_cache_request || cmd_clear_cache
 			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
 	else if (!dbg_write_valid && cpu_has_halted && step_request)
 		cmd_step <= 1'b1;
-	else // if (cpu_dbg_stall)
+	else if (cpu_has_halted)
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt

@@ -8,6 +8,7 @@ a.out
 *.o
 *.a
 *.vcd
+*.fst
 .swp
 .*.swp
 .*.swo
@@ -35,7 +36,6 @@ wbcordic.v
 zipport.v
 ziptrap.v
 genzipops
-doc/gfx/*.dia
 doc/gfx/*.json
 doc/gfx/*.svg
 coverage.dat

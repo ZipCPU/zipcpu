@@ -1529,7 +1529,7 @@ module	dcache #(
 	begin : UNUSED_BITS
 
 		wire	unused_aw;
-		assign	unused = &{ 1'b0, i_addr[DATA_WIDTH-1:AW+WBLSB] };
+		assign	unused_aw = &{ 1'b0, i_addr[DATA_WIDTH-1:AW+WBLSB] };
 	end endgenerate
 	// Verilator lint_on  UNUSED
 	// Verilator coverage_on

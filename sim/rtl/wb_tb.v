@@ -1365,7 +1365,7 @@ module	wb_tb #(
 		.i_brd_ints({ 9'h0, i_sim_int,
 			1'b0, timer_a_int,
 			timer_b_int, timer_c_int, jiffies_int, dmac_int }),
-		.o_interrupt(pic_int)
+		.o_int(pic_int)
 		// }}}
 	);
 

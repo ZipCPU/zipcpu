@@ -346,6 +346,10 @@ module	zipsystem #(
 `endif
 	// Local parameter declarations
 	// {{{
+	localparam	[1:0]	DBG_ADDR_CTRL= 2'b00,
+				DBG_ADDR_CPU = 2'b01,
+				DBG_ADDR_SYS = 2'b10;
+
 	localparam	DW=BUS_WIDTH;
 	// Peripheral addresses
 	// {{{
@@ -411,10 +415,6 @@ module	zipsystem #(
 				// LGTLBSZ = 6,	// Log TLB size
 				// VAW=VIRTUAL_ADDRESS_WIDTH,
 	// }}}
-
-	localparam	[1:0]	DBG_ADDR_CTRL= 2'b00,
-				DBG_ADDR_CPU = 2'b01,
-				DBG_ADDR_SYS = 2'b10;
 	// }}}
 
 	wire	[14:0]	main_int_vector, alt_int_vector;
@@ -434,7 +434,6 @@ module	zipsystem #(
 `endif
 	wire	[PAW-1:0]	cpu_addr;
 	reg	[DBG_WIDTH-1:0]	sys_idata;
-	reg			sys_ack;
 	wire			sys_stall;
 
 	wire	sel_counter, sel_timer, sel_pic, sel_apic,
@@ -520,10 +519,9 @@ module	zipsystem #(
 
 	wire			ext_stall, ext_ack;
 	wire			mmu_cyc, mmu_stb, mmu_we, mmu_stall, mmu_ack,
-				mmu_err, mmus_stall, mmus_ack;
+				mmu_err;
 	wire	[PAW-1:0]	mmu_addr;
 	wire	[BUS_WIDTH-1:0]	mmu_data, mmu_idata;
-	wire	[DBG_WIDTH-1:0]	mmus_data;
 	wire			cpu_miss;
 
 	wire			mmu_cpu_stall, mmu_cpu_ack;
@@ -848,13 +846,13 @@ module	zipsystem #(
 	if (i_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request
+			|| reset_request || release_request
 			|| clear_cache_request || cmd_clear_cache
 			|| halt_request || dbg_cpu_write)
 		cmd_step <= 1'b0;
 	else if (!cmd_write && cpu_has_halted && step_request)
 		cmd_step <= 1'b1;
-	else // if (cpu_dbg_stall)
+	else if (cpu_has_halted)
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt
@@ -939,24 +937,14 @@ module	zipsystem #(
 
 	// cpu_read_ack
 	// {{{
-	generate if (OPT_DISTRIBUTED_REGS)
-	begin : GEN_CMD_READ_ACK
-
-		initial	cpu_read_ack = 0;
-		always @(posedge i_clk)
-		if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-			cpu_read_ack <= 0;
-		else if (dbg_cpu_read)
-			cpu_read_ack <= 1;
-		else // if (cpu_read_ack != 0)
-			cpu_read_ack <= 0;
-
-	end else begin : GEN_FWD_CMDREAD_ACK
-
-		always @(*)
-			cpu_read_ack = dbg_cpu_read;
-
-	end endgenerate
+	initial	cpu_read_ack = 0;
+	always @(posedge i_clk)
+	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
+		cpu_read_ack <= 0;
+	else if (dbg_cpu_read)
+		cpu_read_ack <= 1;
+	else // if (cpu_read_ack != 0)
+		cpu_read_ack <= 0;
 	// }}}
 
 	// cmd_waddr, cmd_wdata
@@ -1860,8 +1848,6 @@ module	zipsystem #(
 	// the CPU, and the responses haven't been merged back together again
 	// yet.
 
-	reg	r_mmus_ack;
-
 	assign	mmu_cyc   = cpu_gbl_cyc;
 	assign	mmu_stb   = cpu_gbl_stb;
 	assign	mmu_we    = cpu_we;
@@ -1873,17 +1859,6 @@ module	zipsystem #(
 	assign	mmu_cpu_idata = mmu_idata;
 	assign	mmu_cpu_stall = mmu_stall;
 	assign	mmu_cpu_ack   = mmu_ack;
-
-	initial	r_mmus_ack = 1'b0;
-	always @(posedge i_clk)
-	if (i_reset)
-		r_mmus_ack <= 1'b0;
-	else
-		r_mmus_ack <= (sys_stb)&&(sys_addr[7]);
-
-	assign	mmus_ack   = r_mmus_ack;
-	assign	mmus_stall = 1'b0;
-	assign	mmus_data  = 32'h0;
 
 	assign	pf_return_stb = 0;
 	assign	pf_return_v   = 0;
@@ -1965,11 +1940,11 @@ module	zipsystem #(
 		{ sys_ack_cpu, pre_cpu_ack } <= { pre_cpu_ack, sys_stb };
 	// }}}
 
-	// sys_ack, sys_idata
+	// sys_idata
 	// {{{
 	always @(posedge i_clk)
 	case(ack_idx)
-	3'h0: sys_idata <= mmus_data;
+	3'h0: sys_idata <= 32'h0;
 	3'h1: sys_idata <= wdt_data;
 	3'h2: sys_idata <= wdbus_data;
 	3'h3: sys_idata <= ctri_data;// A-PIC
@@ -2064,8 +2039,8 @@ module	zipsystem #(
 	else
 		dbg_odata = dbg_r_odata;
 
-	assign	dbg_stall = (OPT_DISTRIBUTED_REGS ? cpu_read_ack : 1'b0) ||
-			(dbg_cpu_read_req && pre_dbg_ack)
+	assign	dbg_stall = cpu_read_ack
+			|| (dbg_cpu_read_req && pre_dbg_ack)
 			|| (cmd_write && cpu_dbg_stall
 				&& dbg_addr[6:5] == DBG_ADDR_CPU)
 			||(dbg_addr[6]==DBG_ADDR_SYS[1] && cpu_lcl_cyc);
@@ -2363,8 +2338,8 @@ module	zipsystem #(
 		cpu_dbg_cc[2],
 		pic_ack, pic_stall, cpu_clken,
 		tma_ack, tma_stall, tmb_ack, tmb_stall, tmc_ack, tmc_stall,
-		jif_ack, jif_stall, no_dbg_err, dbg_sel,
-		ctri_ack, ctri_stall, mmus_stall, dmac_stall,
+		jif_ack, jif_stall, no_dbg_err, dbg_sel, dmac_ack,
+		ctri_ack, ctri_stall, dmac_stall,
 		wdt_ack, wdt_stall, actr_ack, actr_stall,
 		wdbus_ack,
 		// moc_ack, mtc_ack, mic_ack, mpc_ack,
