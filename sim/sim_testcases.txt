@@ -220,7 +220,8 @@ axdlpchk64    AXLPWR   dmatest64.hex axdlpchk64-out.txt BUS_WIDTH=64
 ## AXLPIPE
 axlstepc        AXLPIPE stepchk.hex   axlstepc-out.txt      OPT_SMP=1
 axlstepc64      AXLPIPE stepchk64.hex axlstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
-axlstepcsmp     AXLPIPE stepchk.hex   axlstepcsmp-out.txt   OPT_SMP=2 # DUMP_TO_VCD=1 VCD_FILE="axlstepcsmp.vcd"
+axlstepcsmpd     AXLPIPE stepchk.hex   axlstepcsmp-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="axlstepcsmp.vcd"
+axlstepcsmpn     AXLPIPE stepchk.hex   axlstepcsmp-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="axlstepcsmp.vcd"
 axlstepc64smp   AXLPIPE stepchk64.hex axlstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
 
 ## WBCACHE
@@ -235,18 +236,20 @@ wbblpstepc      WBBLPWR stepchk.hex   wbblpstp-out.txt    OPT_SMP=1 # DUMP_TO_VC
 wbblpstepc64    WBBLPWR  stepchk64.hex wbblpstp64-out.txt  OPT_SMP=1 BUS_WIDTH=64
 wbblpstepcsmpn  WBBLPWR stepchk.hex   wbblpstpcn-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmpn.vcd"
 wbblpstepcsmpd  WBBLPWR stepchk.hex   wbblpstpcd-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepcsmpd.vcd"
-wbblpstepc64smp WBBLPWR stepchk64.hex  wbblpstp64c-out.txt OPT_SMP=2 BUS_WIDTH=64
+wbblpstepc64smp WBBLPWR stepchk64.hex  wbblpstp64c-out.txt OPT_SMP=2 BUS_WIDTH=64 # DUMP_TO_VCD=1 VCD_FILE="wbblpstepc64smp.vcd"
 
 ## AXCACHE
 axistepc        AXCACHE stepchk.hex   axistepc-out.txt      OPT_SMP=1
 axistepc64      AXCACHE stepchk64.hex axistepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
-axistepcsmp     AXCACHE stepchk.hex   axistepcsmp-out.txt   OPT_SMP=2 # DUMP_TO_VCD=1 VCD_FILE="axistepcsmp.vcd"
+axistepcsmpd     AXCACHE stepchk.hex   axistepcsmpd-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="axistepcsmp.vcd"
+axistepcsmpn     AXCACHE stepchk.hex   axistepcsmpn-out.txt   OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="axistepcsmp.vcd"
 axistepc64smp   AXCACHE stepchk64.hex axistepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
 
 ## AXLPWR
 axlpstepc        AXLPWR  stepchk.hex   axlpstepc-out.txt      OPT_SMP=1
 axlpstepc64      AXLPWR  stepchk64.hex axlpstepc64-out.txt    OPT_SMP=1 BUS_WIDTH=64
-axlpstepcsmp     AXLPWR  stepchk.hex   axlpstepcsmp-out.txt   OPT_SMP=2 # DUMP_TO_VCD=1 VCD_FILE="axlpstepcsmp.vcd"
+axlpstepcsmpd    AXLPWR  stepchk.hex   axlpstepcsmpd-out.txt  OPT_SMP=2 OPT_DISTRIBUTED_REGS=1 # DUMP_TO_VCD=1 VCD_FILE="axlpstepcsmp.vcd"
+axlpstepcsmpn    AXLPWR  stepchk.hex   axlpstepcsmpn-out.txt  OPT_SMP=2 OPT_DISTRIBUTED_REGS=0 # DUMP_TO_VCD=1 VCD_FILE="axlpstepcsmp.vcd"
 axlpstepc64smp   AXLPWR  stepchk64.hex axlpstepc64smp-out.txt OPT_SMP=2 BUS_WIDTH=64
 
 

@@ -41,9 +41,9 @@ asm(
 int     smp_count(void);
 // {{{
 asm("\t.text\n\t.global\tsmp_count\n"
-	"\t.type\tsmp_count,@function\n" 
+	"\t.type\tsmp_count,@function\n"
 	"\t.text\n\t.global\tusmp_count\n"
-	"\t.type\tsmp_count,@function\n" 
+	"\t.type\tsmp_count,@function\n"
 "smp_count:\n"
 	"CLR\tR2\n"
 	"MOV\tR2,uR0\n"
@@ -59,7 +59,7 @@ asm("\t.text\n\t.global\tsmp_count\n"
 "usmp_count:\n"
 	"\tCLR  R1\n"
 	// "\tLDI       _smp,R2\n"
-	"\tLDI  50332160,R2\n" 
+	"\tLDI  50332160,R2\n"
 ".Lsmp_count_loop:\n"
 	"\tLW   (R2),R3\n"
 	"\tADD  1,R1\n"
@@ -98,7 +98,9 @@ int	main(int argc, char **argv) {
 		for(int k=0; k<ITERATIONS; k++) {
 			register	uint32_t	a, b, c, d;
 
+			c = cpu->c_sreg[0];
 			a = cpu->c_sreg[1];
+			b = cpu->c_sreg[2];
 			cpu->c_control = SMPCMD_CATCH | SMPCMD_STEP;
 
 			b = cpu->c_sreg[1];
@@ -107,30 +109,64 @@ int	main(int argc, char **argv) {
 			cpu->c_control = SMPCMD_CATCH | SMPCMD_STEP;
 			cpu->c_control = SMPCMD_CATCH | SMPCMD_STEP;
 			c = cpu->c_sreg[1];
+			d = cpu->c_sreg[1];
+
+			if (c != d) {
+				failed = 1;
+				txstr("SMP FAIL #1 [Reg-Consistency]:\n Before =   "); txhex(a),
+				txstr("\n Mid +1 =   "); txhex(b);
+				txstr("\n Mid +3 =   "); txhex(c);
+				txstr("\n Mid +3 =   "); txhex(d);
+				txstr(" [2nd Read]\n");
+				break;
+			}
 
 			d = b-a;
 			if (d != 0 && d != 257) {
-				failed = 1;
-				txstr("FAIL #1:\n A =   "); txhex(a),
-				txstr("\n B =   "); txhex(b);
-				txstr("\n C =   "); txhex(c);
-				txstr("\n D =   "); txhex(d);
-				txstr("\n");
+				failed = 2;
+				txstr("SMP FAIL #2 [Single-Step]:\n Before =   "); txhex(a),
+				txstr("\n Mid +1 =   "); txhex(b);
+				txstr("\n Mid +3 =   "); txhex(c);
+				txstr("\n Diff   =   "); txhex(d);
+				txstr(" [X-1]\n");
 				break;
 			}
 
 			// Given four step commands, the CPU must only step
-			// zero, one, two, three, or four times, never more.
+			// one, two, three, or four times, never more.
 			d = c-b;
-			if (d != 0 && d != 257 && d != 257*2
+			if (0 != d && d != 257 && d != 257*2
 						&& d != 257*3 && d != 257*4) {
-				failed = 2;
-				txstr("FAIL #2\n A =   "); txhex(a),
-				txstr("\n B =   "); txhex(b);
-				txstr("\n C =   "); txhex(c);
-				txstr("\n D =   "); txhex(d);
-				txstr("\n");
+				failed = 3;
+				code   = d;
+				txstr("SMP FAIL #3 [Multi-step]\n Before =   "); txhex(a),
+				txstr("\n Mid +1 =   "); txhex(b);
+				txstr("\n Mid +3 =   "); txhex(c);
+				txstr("\n L Diff =   "); txhex(d);
+				txstr(" [X-3]\n");
 				break;
+			}
+		}
+		// }}}
+
+		// Final result checking
+		// {{{
+		if (0 == failed) {
+			register	uint32_t	a, b, c, d;
+
+			c = cpu->c_sreg[1];
+			if (0 == c) {
+				failed = 4;
+				code = c;
+				txstr("SMP FAIL #4 [DEAD CPU]\n"
+					" uR1: 0x"); txhex(c);
+				txstr("\n");
+			} else if ((0x101 * ITERATIONS * 5) < c) {
+				failed = 5;
+				code = c;
+				txstr("SMP FAIL #5 [Over-Active CPU]\n"
+					" uR1: 0x"); txhex(c);
+				txstr("\n");
 			}
 		}
 		// }}}
@@ -153,25 +189,31 @@ int	main(int argc, char **argv) {
 		for(int k=0; k<ITERATIONS; k++) {
 			// Step once
 			// {{{
+			GETUREG(b, "uR0");
 			GETUREG(a, "uR1");
+			GETUREG(c, "uR2");
 			// preuinsn = _axilp->z_u.ac_icnt;
 			// preticks = _axilp->z_jiffies;
 			STEP;
 			// postticks = _axilp->z_jiffies;
 			// postuinsn = _axilp->z_u.ac_icnt;
 			GETUREG(b, "uR1");
+			GETUREG(d, "uR1");
 
-			/*
-			d = postuinsn-preuinsn;
-			if (d != 1) {
-				failed = 1; break;
+			if (d != b) {
+				failed = 1;
+				txstr("FAIL #1 [Reg-Consistency]\r\nA = "); txhex(a),
+				txstr("\r\nB = "); txhex(b);
+				txstr("\r\nC = "); txhex(c);
+				txstr("\r\nD = "); txhex(d);
+				txstr("\r\n");
+				break;
 			}
-			*/
 
 			d = b-a;
 			if (d != 0 && d != 257) {
-				failed = 1;
-				txstr("FAIL #1\r\nA = "); txhex(a),
+				failed = 2;
+				txstr("FAIL #2 [Single-Step]\r\nA = "); txhex(a),
 				txstr("\r\nB = "); txhex(b);
 				txstr("\r\nC = "); txhex(c);
 				txstr("\r\nD = "); txhex(d);
@@ -193,9 +235,9 @@ int	main(int argc, char **argv) {
 
 			d = c-b;
 			if (d != 257 && d != 514 && d != 771 && d != 1028) {
-				failed = 2;
+				failed = 3;
 				code   = b;
-				txstr("FAIL #2\r\nA = "); txhex(a),
+				txstr("FAIL #3 [Multi-step]\r\nA = "); txhex(a),
 				txstr("\r\nB = "); txhex(b);
 				txstr("\r\nC = "); txhex(c);
 				txstr("\r\nD = "); txhex(d);
@@ -218,6 +260,27 @@ int	main(int argc, char **argv) {
 			uregs[0]++;
 			// }}}
 		}
+
+		// Final result checking
+		// {{{
+		if (0 == failed) {
+			GETUREG(c,   "uR1");
+
+			if (0 == c) {
+				failed = 4;
+				code = c;
+				txstr("SMP FAIL #4 [DEAD CPU]\n"
+					"\n uR1    =   0x"); txhex(c);
+				txstr("\n");
+			} else if (0x101 * ITERATIONS * 4 > c) {
+				failed = 5;
+				code = c;
+				txstr("SMP FAIL #5 [Over-Active CPU]\n"
+					"\n uR1    =   0x"); txhex(c);
+				txstr("\n");
+			}
+		}
+		// }}}
 		// }}}
 	}
 
@@ -227,7 +290,56 @@ int	main(int argc, char **argv) {
 		txstr("CODE: "); txhex(failed); txstr("\r\n");
 		txstr(" D  : "); txhex(code); txstr("\r\n");
 		txstr("FAIL!\r\n\r\n");
-        	asm("NDUMP");
+        	// asm("NDUMP");
+
+		if (num_smp > 1) {
+			volatile SMP * const cpu = &_smp[1];
+			unsigned	r;
+
+			r = cpu->c_sreg[0]; txstr(  "sR0 : "); txhex(r);
+			r = cpu->c_sreg[1]; txstr( " sR1 : "); txhex(r);
+			r = cpu->c_sreg[2]; txstr( " sR2 : "); txhex(r);
+			r = cpu->c_sreg[3]; txstr( " sR3 : "); txhex(r);
+
+			r = cpu->c_sreg[4]; txstr("\nsR4 : "); txhex(r);
+			r = cpu->c_sreg[5]; txstr( " sR5 : "); txhex(r);
+			r = cpu->c_sreg[6]; txstr( " sR6 : "); txhex(r);
+			r = cpu->c_sreg[7]; txstr( " sR7 : "); txhex(r);
+
+			r = cpu->c_sreg[8]; txstr("\nsR8 : "); txhex(r);
+			r = cpu->c_sreg[9]; txstr( " sR9 : "); txhex(r);
+			r = cpu->c_sreg[10];txstr( " sR10: "); txhex(r);
+			r = cpu->c_sreg[11];txstr( " sR11: "); txhex(r);
+
+			r = cpu->c_sreg[12];txstr("\nsR12: "); txhex(r);
+			r = cpu->c_sreg[13]; txstr( " sSP : "); txhex(r);
+			r = cpu->c_sreg[14]; txstr( " sCC : "); txhex(r);
+			r = cpu->c_sreg[15]; txstr( " sPC : "); txhex(r);
+			txstr("\n\n");
+		} else {
+			unsigned	r;
+
+			GETUREG(r, "uR0"); txstr(  "uR0 : "); txhex(r);
+			GETUREG(r, "uR1"); txstr( " uR1 : "); txhex(r);
+			GETUREG(r, "uR2"); txstr( " uR2 : "); txhex(r);
+			GETUREG(r, "uR3"); txstr( " uR3 : "); txhex(r);
+
+			GETUREG(r, "uR4"); txstr("\nuR4 : "); txhex(r);
+			GETUREG(r, "uR5"); txstr( " uR5 : "); txhex(r);
+			GETUREG(r, "uR6"); txstr( " uR6 : "); txhex(r);
+			GETUREG(r, "uR7"); txstr( " uR7 : "); txhex(r);
+
+			GETUREG(r, "uR8"); txstr("\nuR8 : "); txhex(r);
+			GETUREG(r, "uR9"); txstr( " uR9 : "); txhex(r);
+			GETUREG(r, "uR10");txstr( " uR10: "); txhex(r);
+			GETUREG(r, "uR11");txstr( " uR11: "); txhex(r);
+
+			GETUREG(r, "uR12");txstr("\nuR12: "); txhex(r);
+			GETUREG(r, "uSP"); txstr( " uSP : "); txhex(r);
+			GETUREG(r, "uCC"); txstr( " uCC : "); txhex(r);
+			GETUREG(r, "uPC"); txstr( " uPC : "); txhex(r);
+			txstr("\n\n");
+		}
 	} else {
         	txstr("\r\n");
         	txstr("-----------------------------------\r\n");

@@ -511,6 +511,7 @@ module	zipaxil #(
 	);
 
 	assign	dbg_read_ready = arskd_valid && !dbg_blkram_stall
+				&& clk_gate
 				&& (!S_DBG_RVALID || S_DBG_RREADY);
 
 	assign	dbg_read_reg = (OPT_LOWPOWER && !dbg_read_ready)
@@ -525,7 +526,7 @@ module	zipaxil #(
 	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		r_blkram_stall <= 0;
 	else if (dbg_read_ready && arskd_addr[5] == DBG_ADDR_CPU)
-		r_blkram_stall <= 2 + (OPT_DISTRIBUTED_REGS ? 0:1);
+		r_blkram_stall <= 0 + (OPT_DISTRIBUTED_REGS ? 0:1);
 	else if (r_blkram_stall > 0)
 		r_blkram_stall <= r_blkram_stall - 1;
 
@@ -533,6 +534,9 @@ module	zipaxil #(
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || !OPT_DBGPORT)
 		dbg_read_valid <= 0;
+	else if (dbg_read_ready && arskd_addr[5] == DBG_ADDR_CPU
+					&& OPT_DISTRIBUTED_REGS)
+		dbg_read_valid <= 1;
 	else
 		dbg_read_valid <= (r_blkram_stall == 1);
 
@@ -599,16 +603,13 @@ module	zipaxil #(
 						&& dbg_cmd_data[RESET_BIT];
 	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
 						&& !dbg_cmd_data[HALT_BIT];
-	assign	halt_request = dbg_cmd_write && (
-				(dbg_cmd_strb[HALT_BIT/8]
-						&& dbg_cmd_data[HALT_BIT]
-				&&(!dbg_cmd_strb[STEP_BIT/8]
-						|| !dbg_cmd_data[STEP_BIT]))
-			||(dbg_cmd_strb[STEP_BIT/8] && dbg_cmd_data[STEP_BIT]
-				&& !cpu_has_halted));
 	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
 						&& dbg_cmd_data[STEP_BIT]
-						&& cpu_has_halted;
+				&&(!cmd_halt || cpu_has_halted);
+	assign	halt_request = dbg_cmd_write
+				&& dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT]
+				&& !step_request;
 	assign	clear_cache_request = dbg_cmd_write
 					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
 					&& dbg_cmd_data[CLEAR_CACHE_BIT];
@@ -697,7 +698,7 @@ module	zipaxil #(
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && halt_request && !step_request)
+		if (dbg_cmd_write && halt_request)
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -705,7 +706,7 @@ module	zipaxil #(
 			cmd_halt <= 1'b1;
 
 		// 4. Halt following any step command
-		if (cmd_step && !step_request && !cpu_has_halted)
+		if (cmd_step && !step_request)
 			cmd_halt <= 1'b1;
 
 		// 5. Halt following any clear cache
@@ -740,17 +741,21 @@ module	zipaxil #(
 	else if (cmd_reset || cpu_break
 			|| reset_request
 			|| clear_cache_request || cmd_clear_cache
-			|| halt_request || dbg_cpu_write)
+			|| dbg_cpu_write)
 		cmd_step <= 1'b0;
-	else if (!dbg_write_valid && cpu_has_halted && step_request)
+	else if (!dbg_write_valid && step_request)
 		cmd_step <= 1'b1;
-	else if (!cpu_has_halted)
+	else
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt
 	always @(*)
 	if (S_AXI_ARESETN && cmd_step)
 		assert(!cmd_halt);
+
+	always @(*)
+	if (S_AXI_ARESETN && dbg_write_valid)
+		assert(cmd_halt);
 
 	always @(posedge S_AXI_ACLK)
 	if (!S_AXI_ARESETN || !$past(S_AXI_ARESETN) || $past(reset_request)
@@ -767,8 +772,7 @@ module	zipaxil #(
 	begin
 		assert(!cmd_halt);
 		assert(cmd_step);
-	end else if (!$past(dbg_write_valid) && !$past(cpu_has_halted)
-			&& $past(cmd_step))
+	end else if (!$past(dbg_write_valid) && $past(cmd_step))
 		assert(!cmd_step && cmd_halt);
 `endif
 	// }}}

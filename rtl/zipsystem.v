@@ -450,7 +450,7 @@ module	zipsystem #(
 	wire	[DBG_WIDTH/8-1:0]	dbg_sel;
 	wire				no_dbg_err;
 
-	wire			cpu_break, dbg_cmd_write,
+	wire			cpu_break, dbg_cmd_write, cpu_read_stall,
 				dbg_cpu_write, dbg_cpu_read, dbg_cpu_read_req;
 	wire	[DBG_WIDTH-1:0]	dbg_cmd_data;
 	wire [DBG_WIDTH/8-1:0]	dbg_cmd_strb;
@@ -715,10 +715,13 @@ module	zipsystem #(
 						&& dbg_cmd_data[RESET_BIT];
 	assign	release_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
 						&& !dbg_cmd_data[HALT_BIT];
-	assign	halt_request = dbg_cmd_write && dbg_cmd_strb[HALT_BIT/8]
-						&& dbg_cmd_data[HALT_BIT];
 	assign	step_request = dbg_cmd_write && dbg_cmd_strb[STEP_BIT/8]
-						&& dbg_cmd_data[STEP_BIT];
+						&& dbg_cmd_data[STEP_BIT]
+				&&(!cmd_halt || cpu_has_halted);
+	assign	halt_request = dbg_cmd_write
+				&& dbg_cmd_strb[HALT_BIT/8]
+						&& dbg_cmd_data[HALT_BIT]
+				&& !step_request;
 	assign	clear_cache_request = dbg_cmd_write
 					&& dbg_cmd_strb[CLEAR_CACHE_BIT/8]
 					&& dbg_cmd_data[CLEAR_CACHE_BIT];
@@ -805,7 +808,7 @@ module	zipsystem #(
 
 		// 2. Halt on any user request to halt.  (Only valid if the
 		//	STEP bit isn't also set)
-		if (dbg_cmd_write && halt_request && !step_request)
+		if (dbg_cmd_write && halt_request)
 			cmd_halt <= 1'b1;
 
 		// 3. Halt on any user request to write to a CPU register
@@ -831,7 +834,7 @@ module	zipsystem #(
 	// {{{
 	initial	cmd_clear_cache = 1'b0;
 	always @(posedge i_clk)
-	if (i_reset || cpu_reset)
+	if (i_reset || cmd_reset)
 		cmd_clear_cache <= 1'b0;
 	else if (dbg_cmd_write && clear_cache_request && halt_request)
 		cmd_clear_cache <= 1'b1;
@@ -846,19 +849,40 @@ module	zipsystem #(
 	if (i_reset)
 		cmd_step <= 1'b0;
 	else if (cmd_reset || cpu_break
-			|| reset_request || release_request
+			|| reset_request
 			|| clear_cache_request || cmd_clear_cache
-			|| halt_request || dbg_cpu_write)
+			|| dbg_cpu_write)
 		cmd_step <= 1'b0;
-	else if (!cmd_write && cpu_has_halted && step_request)
+	else if (!cmd_write && step_request)
 		cmd_step <= 1'b1;
-	else if (cpu_has_halted)
+	else
 		cmd_step <= 1'b0;
 `ifdef	FORMAL
 	// While STEP is true, we can't halt
 	always @(*)
 	if (!i_reset && cmd_step)
 		assert(!cmd_halt);
+
+	always @(*)
+	if (!i_reset && cmd_write)
+		assert(cmd_halt);
+
+	always @(posedge i_clk)
+	if (i_reset || $past(i_reset) || $past(reset_request)
+			|| $past(cmd_reset) || $past(cpu_break)
+			|| $past(cmd_clear_cache) || $past(clear_cache_request))
+	begin
+	end else if ($past(cmd_write) || $past(dbg_cpu_write))
+	begin
+		// Halt on any register write
+		assert(cmd_halt);
+		assert(!cmd_step);
+	end else if ($past(step_request))
+	begin
+		assert(!cmd_halt);
+		assert(cmd_step);
+	end else if (!$past(cmd_write) && $past(cmd_step))
+		assert(!cmd_step && cmd_halt);
 `endif
 	// }}}
 
@@ -904,8 +928,7 @@ module	zipsystem #(
 	//	0x0000_0004 -> Step (auto clearing, write only)
 	//	0x0000_0002 -> Halt (status)
 	//	0x0000_0001 -> Halt (request)
-	generate
-	if (EXTERNAL_INTERRUPTS < 20)
+	generate if (EXTERNAL_INTERRUPTS < 20)
 	begin : CPU_STATUS_NO_EXTRA_INTERRUPTS
 		assign	cpu_status = { {(20-EXTERNAL_INTERRUPTS){1'b0}},
 			i_ext_int,
@@ -937,14 +960,40 @@ module	zipsystem #(
 
 	// cpu_read_ack
 	// {{{
-	initial	cpu_read_ack = 0;
-	always @(posedge i_clk)
-	if (i_reset || !dbg_cyc || !OPT_DBGPORT)
-		cpu_read_ack <= 0;
-	else if (dbg_cpu_read)
-		cpu_read_ack <= 1;
-	else // if (cpu_read_ack != 0)
-		cpu_read_ack <= 0;
+	generate if (OPT_DISTRIBUTED_REGS)
+	begin : CMD_READ_SINGLE
+		initial	cpu_read_ack = 0;
+		always @(posedge i_clk)
+		if (i_reset || !dbg_cyc || !OPT_DBGPORT)
+			cpu_read_ack <= 0;
+		else if (dbg_cpu_read)
+			cpu_read_ack <= 1;
+		else // if (cpu_read_ack != 0)
+			cpu_read_ack <= 0;
+
+		assign	cpu_read_stall = cpu_read_ack;
+	end else begin : CMD_READ_EXTRA
+		reg	cpu_read_active;
+
+		initial	cpu_read_ack = 0;
+		always @(posedge i_clk)
+		if (i_reset || !dbg_cyc || !OPT_DBGPORT)
+			{ cpu_read_ack, cpu_read_active } <= 0;
+		else if (dbg_cpu_read)
+			{ cpu_read_ack, cpu_read_active } <= 1;
+		else // if (cpu_read_ack != 0)
+			{ cpu_read_ack, cpu_read_active } <= { cpu_read_active, 1'b0 };
+		assign	cpu_read_stall = cpu_read_ack || cpu_read_active;
+`ifdef	FORMAL
+		always @(*)
+		if (!i_reset)
+			assert(!cpu_read_ack || !cpu_read_active);
+
+		always @(*)
+		if (cpu_read_stall)
+			assert(!dbg_cpu_read);
+`endif
+	end endgenerate
 	// }}}
 
 	// cmd_waddr, cmd_wdata
@@ -1665,7 +1714,7 @@ module	zipsystem #(
 	////////////////////////////////////////////////////////////////////////
 	//
 	//
-	assign	cpu_clken = cmd_write || cpu_read_ack || (dbg_stb && dbg_addr[6] == DBG_ADDR_CPU[1]);
+	assign	cpu_clken = cmd_write || cpu_read_ack || dbg_cyc;
 `ifdef	FORMAL
 	// {{{
 	// Anyseq model of the (separately verified) ZipCPU: only its bus-facing
@@ -2039,7 +2088,7 @@ module	zipsystem #(
 	else
 		dbg_odata = dbg_r_odata;
 
-	assign	dbg_stall = cpu_read_ack
+	assign	dbg_stall = cpu_read_stall
 			|| (dbg_cpu_read_req && pre_dbg_ack)
 			|| (cmd_write && cpu_dbg_stall
 				&& dbg_addr[6:5] == DBG_ADDR_CPU)
