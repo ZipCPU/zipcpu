@@ -323,10 +323,12 @@ module	dblfetch #(
 		// Keep Verilator happy
 		// {{{
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_shift;
 		assign	unused_shift = &{ 1'b0,
 				r_insn[DATA_WIDTH-1:INSN_WIDTH],
 				i_wb_shifted[DATA_WIDTH-1:INSN_WIDTH] };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 		// }}}
 `ifdef	FORMAL
@@ -371,12 +373,14 @@ module	dblfetch #(
 	begin
 		if (OPT_LITTLE_ENDIAN)
 		begin
+			// Verilator coverage_off
 			if (r_valid)
 				o_insn <= r_insn[INSN_WIDTH-1:0];
 			else if (cache_valid)
 				o_insn <= cache_word[INSN_WIDTH-1:0];
 			else
 				o_insn <= i_wb_shifted[INSN_WIDTH-1:0];
+			// Verilator coverage_on
 		end else begin
 			if (r_valid)
 				o_insn <= r_insn[DW-1:DW-INSN_WIDTH];

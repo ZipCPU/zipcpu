@@ -635,6 +635,7 @@ module	axilpipe #(
 		// }}}
 	end else begin : LITTLE_ENDIAN_DATA
 		// {{{
+		// verilator coverage_off
 		casez(i_op[2:1])
 		2'b10: wide_wdata
 			= { {(2*C_AXI_DATA_WIDTH-16){1'b0}}, i_data[15:0] } << (8*i_addr[AXILSB-1:0]);
@@ -653,6 +654,7 @@ module	axilpipe #(
 		2'b11: wide_wstrb
 			= { {(2*C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'b0001} << i_addr[AXILSB-1:0];
 		endcase
+		// verilator coverage_on
 		// }}}
 	end
 	// }}}
@@ -909,11 +911,13 @@ module	axilpipe #(
 		begin
 			// {{{
 			// Optionally sign extend the return result.
+			// Verilator coverage_off
 			case(fifo_op)
 			2'b10: o_result[31:16] <= {(16){pre_result[15]}};
 			2'b11: o_result[31: 8] <= {(24){pre_result[7]}};
 			default: begin end
 			endcase
+			// Verilator coverage_on
 			// }}}
 		end else if (fifo_op[1])
 		begin

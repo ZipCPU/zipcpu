@@ -343,8 +343,10 @@ module	prefetch #(
 		assign	f_bus_word = 0;
 `endif
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_shift;
 		assign	unused_shift = &{ 1'b0, OPT_LITTLE_ENDIAN };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 		// }}}
 	end endgenerate

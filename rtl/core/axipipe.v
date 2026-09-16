@@ -791,6 +791,7 @@ module	axipipe #(
 		// }}}
 	end else begin : LITTLE_ENDIAN_DATA
 		// {{{
+		// Verilator coverage_off
 		casez(i_op[2:1])
 		2'b10: wide_wdata
 			= { {(2*C_AXI_DATA_WIDTH-16){1'b0}}, i_data[15:0] }
@@ -811,6 +812,7 @@ module	axipipe #(
 		2'b11: wide_wstrb
 			= { {(2*C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'b0001} << i_addr[AXILSB-1:0];
 		endcase
+		// Verilator coverage_on
 		// }}}
 	end
 	// }}}

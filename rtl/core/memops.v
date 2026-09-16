@@ -219,9 +219,9 @@ module	memops #(
 		5'b11101: oword_sel[3:0] = 4'b0010;
 		5'b11110: oword_sel[3:0] = 4'b0100;
 		5'b11111: oword_sel[3:0] = 4'b1000;
-		// verilator coverage_on
 		//
 		default: oword_sel[3:0] = 4'b1111;
+		// verilator coverage_on
 		endcase
 	end
 
@@ -280,9 +280,11 @@ module	memops #(
 				3'b011: o_wb_data <= { i_data[ 7:0], {(BUS_WIDTH- 8){1'b0}} } >> (8*oshift);
 				3'b00?: o_wb_data <= { i_data[31:0], {(BUS_WIDTH-32){1'b0}} } >> (8*oshift);
 				//
+				// verilator coverage_off
 				3'b110: o_wb_data <= { {(BUS_WIDTH-16){1'b0}}, i_data[15:0] } << (8*oshift);
 				3'b111: o_wb_data <= { {(BUS_WIDTH-8){1'b0}},  i_data[ 7:0] } << (8*oshift);
 				3'b10?: o_wb_data <= { {(BUS_WIDTH-32){1'b0}}, i_data[31:0] } << (8*oshift);
+				// verilator coverage_on
 				//
 				endcase
 				// }}}

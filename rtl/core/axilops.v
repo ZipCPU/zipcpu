@@ -453,6 +453,7 @@ module	axilops #(
 					>> (8*swapaddr);
 			endcase
 		end else begin
+			// Verilator coverage_off
 			casez(i_op[2:1])
 			2'b10: { next_wdata, axi_wdata }
 				<= { {(2*C_AXI_DATA_WIDTH-16){1'b0}},
@@ -464,6 +465,7 @@ module	axilops #(
 				<= { {(2*C_AXI_DATA_WIDTH-32){1'b0}},
 				i_data } << (8*swapaddr);
 			endcase
+			// Verilator coverage_on
 		end
 
 		// next_wstrb, axi_wstrb
@@ -476,11 +478,13 @@ module	axilops #(
 			2'b11: { axi_wstrb, next_wstrb } <= swapped_wstrb_byte;
 			endcase
 		end else begin
+			// Verilator coverage_off
 			casez(i_op[2:1])
 			2'b0?: { next_wstrb, axi_wstrb } <= swapped_wstrb_word;
 			2'b10: { next_wstrb, axi_wstrb } <= swapped_wstrb_halfword;
 			2'b11: { next_wstrb, axi_wstrb } <= swapped_wstrb_byte;
 			endcase
+			// Verilator coverage_on
 		end
 		// }}}
 

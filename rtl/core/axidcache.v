@@ -912,6 +912,7 @@ module	axidcache #(
 			// }}}
 		end else begin
 			// {{{
+			// Verilator coverage_off
 			casez(i_op[2:1])
 			// Write a 16b half-word
 			2'b10: axi_wdata <= { {(C_AXI_DATA_WIDTH-16){1'b0}},
@@ -922,6 +923,7 @@ module	axidcache #(
 			default: axi_wdata <= { {(C_AXI_DATA_WIDTH-32){1'b0}},
 				i_data } << (8*i_addr[AXILSB-1:0]);
 			endcase
+			// Verilator coverage_on
 			// }}}
 		end
 		// }}}
@@ -947,6 +949,7 @@ module	axidcache #(
 			// }}}
 		end else begin
 			// {{{
+			// Verilator coverage_off
 			casez(i_op[2:1])
 			// Write a 16b half-word
 			2'b10: axi_wstrb <= { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
@@ -957,6 +960,7 @@ module	axidcache #(
 			default: axi_wstrb <= { {(C_AXI_DATA_WIDTH/8-4){1'b0}},
 					4'b1111 } << (i_addr[AXILSB-1:0]);
 			endcase
+			// Verilator coverage_on
 			// }}}
 		end
 		// }}}
@@ -1063,6 +1067,7 @@ module	axidcache #(
 					>> (8*i_addr[AXILSB-1:0]);
 				endcase
 			end else begin
+				// Verilator coverage_off
 				casez(i_op[2:1])
 				// Write a 16b half-word
 				2'b10: wcache_data <= { {(DW-16){1'b0}},
@@ -1073,6 +1078,7 @@ module	axidcache #(
 				default: wcache_data <= { {(DW-32){1'b0}},
 					i_data } << (8*i_addr[AXILSB-1:0]);
 				endcase
+				// Verilator coverage_on
 			end
 
 			if (locked_read_in_progress)
@@ -1097,6 +1103,7 @@ module	axidcache #(
 						>> (i_addr[AXILSB-1:0]);
 				endcase
 			end else begin
+				// Verilator coverage_off
 				case(i_op[2:1])
 				// Write a 16b half-word
 				2'b10: wcache_strb<=
@@ -1110,6 +1117,7 @@ module	axidcache #(
 					{{(C_AXI_DATA_WIDTH/8-4){1'b0}}, 4'hf }
 						<< (i_addr[AXILSB-1:0]);
 				endcase
+				// Verilator coverage_on
 			end
 			// }}}
 
@@ -1295,8 +1303,10 @@ module	axidcache #(
 		assign	o_pipe_stalled = pipe_stalled;
 
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_pipe;
 		assign	unused_pipe = &{ 1'b0, r_pipe_code };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 `ifdef	FORMAL
 		always @(*)

@@ -1979,6 +1979,7 @@ module	zipcore #(
 				begin
 					// DUMP all registers
 					// {{{
+					// Verilator coverage_off
 					if (!op_gie)
 					begin
 					$write("sR0 : %08x ", regset[0]);
@@ -2022,6 +2023,7 @@ module	zipcore #(
 					$write("uSP : %08x ", regset[29]);
 					$write("uCC : %08x ", w_uflags);
 					$write("uPC : %08x\n", (op_gie) ? op_pc : upc);
+					// Verilator coverage_on
 					// }}}
 				end
 
@@ -2029,6 +2031,7 @@ module	zipcore #(
 				begin
 					// Dump a register
 					// {{{
+					// Verilator coverage_off
 					$write("@%08x ", op_pc);
 					$write("%c", (op_gie) ? "s":"u");
 					$write("R[%2d] = 0x", op_sim_immv[3:0]);
@@ -2037,12 +2040,14 @@ module	zipcore #(
 						$display("%08x", wr_gpreg_vl);
 					else
 						$display("%08x", regset[regid]);
+					// Verilator coverage_on
 					// }}}
 				end
 				if (op_sim_immv[19:4] == 16'h0021)
 				begin
 					// Dump a user register
 					// {{{
+					// Verilator coverage_off
 					$write("@%08x u", op_pc);
 					$write("R[%2d] = 0x", op_sim_immv[3:0]);
 					if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
@@ -2050,26 +2055,31 @@ module	zipcore #(
 					else
 						$display("%08x\n", regset[{ 1'b1,
 								op_sim_immv[3:0]}]);
+					// Verilator coverage_on
 					// }}}
 				end
 				if (op_sim_immv[19:4] == 16'h0023)
 				begin
 					// SOUT(user register)
 					// {{{
+					// Verilator coverage_off
 					if (wr_reg_ce && wr_reg_id == { 1'b1, op_sim_immv[3:0] })
 						$write("%c", wr_gpreg_vl[7:0]);
 					else
 						$write("%c", regset[{ 1'b1, op_sim_immv[3:0]}][7:0]);
+					// Verilator coverage_on
 					// }}}
 				end
 				if (op_sim_immv[19:4] == 16'h0022)
 				begin
 					// SOUT(register)
 					// {{{
+					// Verilator coverage_off
 					if (wr_reg_ce && wr_reg_id == regid)
 						$write("%c", wr_gpreg_vl[7:0]);
 					else
 						$write("%c", regset[regid][7:0]);
+					// Verilator coverage_on
 					// }}}
 				end
 
@@ -2077,7 +2087,9 @@ module	zipcore #(
 				begin
 					// SOUT(Immediate)
 					// {{{
+					// Verilator coverage_off
 					$write("%c", op_sim_immv[7:0]);
+					// Verilator coverage_on
 					// }}}
 				end
 

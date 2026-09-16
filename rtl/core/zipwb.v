@@ -704,8 +704,10 @@ module	zipwb #(
 		assign	clk_gate = 1'b1;
 
 		// Verilattor lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_clk;
 		assign	unused_clk = &{ 1'b0, i_cpu_clken, cpu_clken };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 	end endgenerate
 	// }}}
