@@ -606,11 +606,13 @@ module	zipsystem #(
 	generate if (!OPT_ACCOUNTING)
 	begin : UNUSED_ACCOUNTING
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_ctrs;
 		assign	unused_ctrs = &{ 1'b0,
 			moc_int, mpc_int, mic_int, mtc_int,
 			uoc_int, upc_int, uic_int, utc_int,
 			cpu_gie, cpu_op_stall, cpu_pf_stall, cpu_i_count };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 	end endgenerate
 	// }}}
@@ -1090,6 +1092,7 @@ module	zipsystem #(
 		// Local definitions
 		// {{{
 		// Verilator lint_off UNUSED
+		// Verilator coverage_on
 		wire		mtc_stall, mtc_ack;
 		wire		moc_stall, moc_ack;
 		wire		mpc_stall, mpc_ack;
@@ -1098,6 +1101,7 @@ module	zipsystem #(
 		wire		uoc_stall, uoc_ack;
 		wire		upc_stall, upc_ack;
 		wire		uic_stall, uic_ack;
+		// Verilator coverage_off
 		// Verilator lint_on  UNUSED
 		reg	[DBG_WIDTH-1:0]	r_actr_data;
 		// }}}
@@ -1339,10 +1343,12 @@ module	zipsystem #(
 		// Keep Verilator happy
 		// {{{
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_counter_data;
 		assign	unused_counter_data = &{ 1'b0,
 				mtc_data, moc_data, mpc_data, mic_data,
 				utc_data, uoc_data, upc_data, uic_data };
+		// Verilator coverage_on
 		// Verilator lint_on  UNUSED
 		// }}}
 		// }}}
@@ -1436,9 +1442,11 @@ module	zipsystem #(
 		// Make Verilator happy
 		// {{{
 		// Verilator lint_off UNUSED
+		// Verilator coverage_off
 		wire	unused_dmac;
 		assign	unused_dmac = &{ 1'b0, dc_err, dc_ack,
 					dc_stall, dmac_int_vec };
+		// Verilator coverage_on
 		// Verilator lint_on UNUSED
 		// }}}
 		// }}}
@@ -2382,6 +2390,7 @@ module	zipsystem #(
 	// Make Verilator happy
 	// {{{
 	// verilator lint_off UNUSED
+	// Verilator coverage_off
 	wire		unused;
 	assign unused = &{ 1'b0,
 		cpu_dbg_cc[2],
@@ -2398,6 +2407,7 @@ module	zipsystem #(
 		// Unused MMU pins
 		pf_return_stb, pf_return_we, pf_return_p, pf_return_v,
 		pf_return_cachable, cpu_miss };
+	// Verilator coverage_on
 	// verilator lint_on UNUSED
 	// }}}
 ////////////////////////////////////////////////////////////////////////////////

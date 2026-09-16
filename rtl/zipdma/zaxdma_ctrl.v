@@ -57,7 +57,9 @@ module zaxdma_ctrl #(
 		input	wire		S_AXIL_AWVALID,
 		output	wire		S_AXIL_AWREADY,
 		input	wire	[3:0]	S_AXIL_AWADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_AXIL_AWPROT,
+		// Verilator coverage_on
 		//
 		input	wire		S_AXIL_WVALID,
 		output	wire		S_AXIL_WREADY,
@@ -66,17 +68,23 @@ module zaxdma_ctrl #(
 		//
 		output	wire		S_AXIL_BVALID,
 		input	wire		S_AXIL_BREADY,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_AXIL_BRESP,
+		// Verilator coverage_on
 		//
 		input	wire		S_AXIL_ARVALID,
 		output	wire		S_AXIL_ARREADY,
 		input	wire	[3:0]	S_AXIL_ARADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_AXIL_ARPROT,
+		// Verilator coverage_on
 		//
 		output	wire		S_AXIL_RVALID,
 		input	wire		S_AXIL_RREADY,
 		output	wire	[31:0]	S_AXIL_RDATA,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_AXIL_RRESP,
+		// Verilator coverage_on
 		// }}}
 		// DMA control wires and feedback
 		// {{{

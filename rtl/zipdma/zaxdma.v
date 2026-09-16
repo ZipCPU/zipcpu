@@ -58,7 +58,9 @@ module zaxdma #(
 		input	wire		S_AXIL_AWVALID,
 		output	wire		S_AXIL_AWREADY,
 		input	wire	[3:0]	S_AXIL_AWADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_AXIL_AWPROT,
+		// Verilator coverage_on
 		//
 		input	wire		S_AXIL_WVALID,
 		output	wire		S_AXIL_WREADY,
@@ -67,17 +69,23 @@ module zaxdma #(
 		//
 		output	wire		S_AXIL_BVALID,
 		input	wire		S_AXIL_BREADY,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_AXIL_BRESP,
+		// Verilator coverage_on
 		//
 		input	wire		S_AXIL_ARVALID,
 		output	wire		S_AXIL_ARREADY,
 		input	wire	[3:0]	S_AXIL_ARADDR,
+		// Verilator coverage_off
 		input	wire	[2:0]	S_AXIL_ARPROT,
+		// Verilator coverage_on
 		//
 		output	wire		S_AXIL_RVALID,
 		input	wire		S_AXIL_RREADY,
 		output	wire	[31:0]	S_AXIL_RDATA,
+		// Verilator coverage_off
 		output	wire	[1:0]	S_AXIL_RRESP,
+		// Verilator coverage_on
 		// }}}
 		// Master/DMA port
 		// {{{
@@ -88,10 +96,12 @@ module zaxdma #(
 		output	wire	[7:0]		M_AXI_AWLEN,
 		output	wire	[2:0]		M_AXI_AWSIZE,
 		output	wire	[1:0]		M_AXI_AWBURST,
+		// Verilator coverage_off
 		output	wire			M_AXI_AWLOCK,
 		output	wire	[3:0]		M_AXI_AWCACHE,
 		output	wire	[2:0]		M_AXI_AWPROT,
 		output	wire	[3:0]		M_AXI_AWQOS,
+		// Verilator coverage_on
 		//
 		output	wire			M_AXI_WVALID,
 		input	wire			M_AXI_WREADY,
@@ -111,10 +121,12 @@ module zaxdma #(
 		output	wire	[7:0]		M_AXI_ARLEN,
 		output	wire	[2:0]		M_AXI_ARSIZE,
 		output	wire	[1:0]		M_AXI_ARBURST,
+		// Verilator coverage_off
 		output	wire			M_AXI_ARLOCK,
 		output	wire	[3:0]		M_AXI_ARCACHE,
 		output	wire	[2:0]		M_AXI_ARPROT,
 		output	wire	[3:0]		M_AXI_ARQOS,
+		// Verilator coverage_on
 		//
 		input	wire			M_AXI_RVALID,
 		output	wire			M_AXI_RREADY,
