@@ -206,7 +206,7 @@ module	fdebug #(
 	// A halted CPU won't restart without being released
 	// {{{
 	always @(posedge i_clk)
-	if (!f_past_valid || $past(i_reset))
+	if (!f_past_valid || $past(i_reset || i_cpu_reset))
 	begin
 		`CPU_ASSERT(i_halted == OPT_START_HALTED);
 	end else if (f_past_valid && $past(i_halt && i_halted))

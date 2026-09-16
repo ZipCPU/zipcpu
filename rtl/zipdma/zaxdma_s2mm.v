@@ -158,10 +158,12 @@ module	zaxdma_s2mm #(
 		output	wire	[2:0]		M_AWSIZE,
 		output	wire	[1:0]		M_AWBURST,
 		// We'll never lock the bus, so AWLOCK=0
+		// Verilator coverage_off
 		output	wire			M_AWLOCK,
 		output	wire	[3:0]		M_AWCACHE,
 		output	wire	[2:0]		M_AWPROT,
 		output	wire	[3:0]		M_AWQOS,
+		// Verilator coverage_on
 		//
 		output	wire			M_WVALID,
 		input	wire			M_WREADY,
@@ -547,6 +549,7 @@ module	zaxdma_s2mm #(
 	else if (!o_busy)
 	begin
 		sr_offset <= 0;
+		if (i_inc)
 		case(i_size)
 		SZ_BYTE: sr_offset <= 0;
 		SZ_16B:  sr_offset[0] <= i_addr[0];
@@ -557,13 +560,18 @@ module	zaxdma_s2mm #(
 `ifdef	FORMAL
 	always @(posedge i_clk)
 	if (!i_reset && o_busy)
-	case(f_cfg_size)
-	SZ_BYTE: assert(sr_offset == 0);
-	SZ_16B: assert(sr_offset == { {(AXILSB-1){1'b0}}, f_cfg_addr[0] });
-	SZ_32B: assert({ 1'b0, sr_offset }
+	begin
+		if (!f_cfg_inc)
+		begin
+			assert(sr_offset == 0);
+		end else case(f_cfg_size)
+		SZ_BYTE: assert(sr_offset == 0);
+		SZ_16B: assert(sr_offset == { {(AXILSB-1){1'b0}}, f_cfg_addr[0] });
+		SZ_32B: assert({ 1'b0, sr_offset }
 				== { { (AXILSB+1-2){1'b0}}, f_cfg_addr[1:0] });
-	SZ_BUS: assert(sr_offset == f_cfg_addr[AXILSB-1:0]);
-	endcase
+		SZ_BUS: assert(sr_offset == f_cfg_addr[AXILSB-1:0]);
+		endcase
+	end
 `endif
 	// }}}
 
@@ -1242,15 +1250,29 @@ module	zaxdma_s2mm #(
 		case(i_size)
 		SZ_BYTE: base_wstrb <= 1;
 		SZ_16B : begin
-			base_wstrb <= { {(DW/8-2){1'b0}}, 2'h3 } << i_addr[0];
+			base_wstrb <= { {(DW/8-2){1'b0}}, 2'h3 };
+			if (i_inc)
+				// Under AXI4 rules, FIX addressing to
+				// unaligned addresses are disallowed.
+				base_wstrb <= { {(DW/8-2){1'b0}}, 2'h3 } << i_addr[0];
 			base_wstrb[DW/8-1:2] <= 0;
 			end
 		SZ_32B : begin
-			base_wstrb <= { {(DW/8-4){1'b0}}, 4'hf }<< i_addr[1:0];
+			base_wstrb <= { {(DW/8-4){1'b0}}, 4'hf };
+			if (i_inc)
+				// Under AXI4 rules, FIX addressing to
+				// unaligned addresses are disallowed.
+				base_wstrb <= { {(DW/8-4){1'b0}}, 4'hf }<< i_addr[1:0];
 			if (DW > 32)
 				base_wstrb[DW/8-1:(DW > 32 ? 4:0)] <= 0;
 			end
-		SZ_BUS: base_wstrb <= {(DW/8){1'b1}} << i_addr[AXILSB-1:0];
+		SZ_BUS: begin
+			base_wstrb <= {(DW/8){1'b1}};
+			if (i_inc)
+				// Under AXI4 rules, FIX addressing to
+				// unaligned addresses are disallowed.
+				base_wstrb <= {(DW/8){1'b1}} << i_addr[AXILSB-1:0];
+			end
 		endcase
 	end else if (sr_valid && sr_ready)
 	case(r_size)
@@ -1264,7 +1286,7 @@ module	zaxdma_s2mm #(
 	if (!o_busy)
 	begin
 		last_count <= 0;
-		if (i_request)
+		if (i_request && i_inc)
 		case(i_size)
 		SZ_BYTE: last_count <= 0;
 		SZ_16B:  last_count[  0] <= i_addr[  0];
