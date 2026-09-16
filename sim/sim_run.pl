@@ -555,7 +555,7 @@ sub simline($) {
 			}
 
 			system "echo \"$tstamp -- Starting simulation\" | tee -a $sim_log";
-			system "$testd/$tstname >> $sim_log";
+			system "stdbuf -oL $testd/$tstname >> $sim_log";
 
 			## Finish the log with another timestamp
 			## {{{
@@ -578,8 +578,31 @@ sub simline($) {
 			$errA = $?;
 			system "grep -iq \'fail\' $sim_log";
 			$errF = $?;
-			system "grep -iq \'TEST SUCCESS\' $sim_log";
-			$errS = $?;
+
+			if (("dmatest.hex" eq $memfil)
+					or ("dmatest64.hex" eq $memfil)
+					# or ("hello.hex" eq $memfil)
+					# or ("hello64.hex" eq $memfil)
+					or ("hellostep.hex" eq $memfil)
+					or ("hellostep64.hex" eq $memfil)
+					or ("lockcheck.hex" eq $memfil)
+					or ("lockcheck64.hex" eq $memfil)) {
+				system "grep -q \'SUCCESS\' $sim_log";
+				$errS = $?;
+			} elsif (("cputest.hex" eq $memfil)
+					or ("cputest64.hex" eq $memfil)
+					or ("stepchk.hex" eq $memfil)
+					or ("stepchk64.hex" eq $memfil)) {
+				system "grep -q \'All tests passed\' $sim_log";
+				$errS = $?;
+			} elsif (("hello.hex" eq $memfil)
+					or ("hello64.hex" eq $memfil)) {
+				system "grep -q \'Hello, World!\' $sim_log";
+				$errS = $?;
+			} else {
+				# Clock gate has no success measure
+				$errS = 0;
+			}
 			system "grep -v \"Not enough words in the file for the requested range\" $sim_log | grep -iq \'warning\'";
 			$warnW = $?;
 
@@ -599,8 +622,11 @@ sub simline($) {
 				$msg = sprintf("Warnings! %s\n", $msg);
 				## push @passed,$tstname;
 				## }}}
-			# } elsif ($errS != 0) {
+			} elsif ($errS != 0) {
 				## TEST SUCCESS message not found
+				## Not all tests produce a "TEST SUCCESS"
+				## message, therefore we cannot use this.
+				$msg = sprintf("FAIL      %s\n", $msg);
 			} elsif ($coverage_flag) {
 				## {{{
 				$msg = sprintf("COVERED   %s\n", $msg);

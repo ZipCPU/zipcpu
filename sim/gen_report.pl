@@ -232,6 +232,7 @@ while($line = <REPORT>) {
 		$TSTAMP{$test} = $tstamp;
 	}
 }
+## }}}
 
 printf("Last timestamp: $last_tstamp\n");
 
